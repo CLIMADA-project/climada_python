@@ -2,7 +2,7 @@
 set -e
 
 # Load previously installed climada_jenkins environment
-source activate climada_jenkins
+source ../../../.conda/envs/climada_jenkins/bin/activate climada_jenkins
 
 # run all climada tests
 PYTHONPATH=. python -m coverage run test_xmlrunner.py
