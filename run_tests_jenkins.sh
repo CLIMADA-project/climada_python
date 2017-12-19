@@ -1,13 +1,11 @@
 #! /usr/bin/env bash 
 set -e
 
-# activate climada environment
-source /Users/aznarsig/anaconda3/envs/climada/bin/activate climada
+# Load previously installed climada_jenkins environment
+source activate climada_jenkins
 
 # run all climada tests
-#PYTHONPATH=. python -m coverage run --include climada/entity/assets.py test_xmlrunner.py
 PYTHONPATH=. python -m coverage run test_xmlrunner.py
-#coverage run test_xmlrunner.py
 
 # analize coverage
 python -m coverage xml -o coverage.xml
