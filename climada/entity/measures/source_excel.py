@@ -1,17 +1,6 @@
 """
-=====================
-source_excel module
-=====================
-
 Define MeasuresExcelclass.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 16:46:01 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import numpy as np
 import pandas
@@ -20,14 +9,32 @@ from climada.entity.measures.base import Measure, Measures
 from climada.entity.tag import Tag
 
 class MeasuresExcel(Measures):
-    """Class that loads the measures from an excel file."""
+    """Contains impact functions loaded from an excel file.
+    
+    Attributes
+    ----------
+        sheet_name (str): name of excel sheet containing the data
+        col_names (dict): name of the table columns for each of the attributes
+    """
 
     def __init__(self, file_name=None, description=None):
-        """ Define the name of the sheet and columns names where the exposures
-        are defined"""
-        # Define tha name of the sheet that is read
+        """ Fill values from file, if provided.        
+
+        Parameters
+        ----------
+            file_name (str, optional): name of the source file
+            description (str, optional): description of the source data
+
+        Examples
+        --------
+            >>> MeasuresExcel()
+            Initializes empty attributes.
+            >>> MeasuresExcel('filename')
+            Loads data from the provided file.
+            >>> MeasuresExcel('filename', 'description of file')
+            Loads data from the provided file and stores provided description.
+        """
         self.sheet_name = 'measures'
-        # Define the names of the columns that are read
         self.col_names = {'name' : 'name',
                           'color' : 'color',
                           'cost' : 'cost',
@@ -44,9 +51,8 @@ class MeasuresExcel(Measures):
         # Initialize
         Measures.__init__(self, file_name, description)
 
-    def read(self, file_name, description=None):
-        """ Virtual class. Needs to be defined for each child."""
-
+    def _read(self, file_name, description=None):
+        """Read data from input file and stores input description."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

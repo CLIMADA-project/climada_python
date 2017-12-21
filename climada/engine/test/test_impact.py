@@ -16,7 +16,7 @@ Test ExposuresExcel class.
 import unittest
 import numpy as np
 
-from climada.util.config import hazard_mat
+from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_XLS
 from climada.entity.entity import Entity
 from climada.hazard.source_mat import HazardMat
 from climada.engine.impact import Impact
@@ -27,10 +27,12 @@ class TestOneExposure(unittest.TestCase):
     def test_ref_value_pass(self):
         ''' Test result against reference value'''
 
-        # Read default entity values
+        # Read demo entity values
+        # Set the entity default file to the demo one
+        Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
         # Read default hazard file
-        hazard = HazardMat(hazard_mat)
+        hazard = HazardMat(HAZ_DEMO_MAT)
         # Create impact object
         impact = Impact()
 
@@ -43,7 +45,7 @@ class TestOneExposure(unittest.TestCase):
         imp_id = ent.exposures.impact_id[iexp]
         imp_fun = ent.impact_funcs.data[hazard.tag.type][imp_id]
         # Compute
-        event_row, result = impact.one_exposure(iexp, ent.exposures, \
+        event_row, result = impact._one_exposure(iexp, ent.exposures, \
                                                   hazard, imp_fun)
 
         # Check sizes
@@ -86,9 +88,10 @@ class TestCalc(unittest.TestCase):
         ''' Test result against reference value'''
 
         # Read default entity values
+        Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
         # Read default hazard file
-        hazard = HazardMat(hazard_mat)
+        hazard = HazardMat(HAZ_DEMO_MAT)
         # Create impact object
         impact = Impact()
 

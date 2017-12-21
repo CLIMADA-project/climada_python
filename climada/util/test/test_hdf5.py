@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.config import hazard_mat
+from climada.util.constants import HAZ_DEMO_MAT
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary functions used to retrieve variables from HDF5'''
@@ -26,7 +26,7 @@ class TestFunc(unittest.TestCase):
         '''Check function to get a string from input integer array'''
 
         # Load input
-        contents = hdf5.read(hazard_mat)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # Convert several strings
         str_date = hdf5.get_string(contents['hazard']['date'])
@@ -50,7 +50,7 @@ class TestFunc(unittest.TestCase):
         to build a sparse matrix from the read HDF5 variable'''
 
         # Load input
-        contents = hdf5.read(hazard_mat)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # get matrix size
         mat_shape = (len(contents['hazard']['event_ID']), \
@@ -77,7 +77,7 @@ class TestReader(unittest.TestCase):
         '''Checking result against matlab atl_prob.mat file'''
 
         # Load input
-        contents = hdf5.read(hazard_mat)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # Check read contents
         self.assertEqual(1, len(contents))
@@ -131,7 +131,7 @@ class TestReader(unittest.TestCase):
 
         # Load input
         refs = True
-        contents = hdf5.read(hazard_mat, refs)
+        contents = hdf5.read(HAZ_DEMO_MAT, refs)
 
         # Check read contents
         self.assertEqual(2, len(contents))

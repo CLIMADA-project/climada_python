@@ -1,17 +1,6 @@
 """
-=====================
-source_excel module
-=====================
-
 Define ExposuresExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 16:46:01 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import warnings
 import numpy as np
@@ -19,17 +8,35 @@ import pandas
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
-from climada.util.config import present_ref_year
+from climada.util.config import config
 
 class ExposuresExcel(Exposures):
-    """Class that loads the exposures from an excel file"""
+    """Contains exposures loaded from an excel file.
+    
+    Attributes
+    ----------
+        sheet_name (str): name of excel sheet containing the data
+        col_names (dict): name of the table columns for each of the attributes
+    """
 
     def __init__(self, file_name=None, description=None):
-        """Define the name of the sheet and columns names where the exposures
-        are defined"""
-        # Define tha name of the sheet that is read
+        """ Fill values from file, if provided.        
+
+        Parameters
+        ----------
+            file_name (str, optional): name of the source file
+            description (str, optional): description of the source data
+
+        Examples
+        --------
+            >>> ExposuresExcel()
+            Initializes empty attributes.
+            >>> ExposuresExcel('filename')
+            Loads data from the provided file.
+            >>> ExposuresExcel('filename', 'description of file')
+            Loads data from the provided file and stores provided description.
+        """
         self.sheet_name = 'assets'
-        # Define the names of the columns that are read
         self.col_names = {'lat' : 'Latitude',
                           'lon' : 'Longitude',
                           'value' : 'Value',
@@ -40,9 +47,8 @@ class ExposuresExcel(Exposures):
         # Initialize
         Exposures.__init__(self, file_name, description)
 
-    def read(self, file_name, description=''):
-        """Virtual class. Needs to be defined for each child"""
-
+    def _read(self, file_name, description=None):
+        """Read data from input file and stores input description."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 
@@ -84,7 +90,7 @@ class ExposuresExcel(Exposures):
                               num_exp - 1, num_exp, dtype=int)
 
         # set default present reference year
-        self.ref_year = present_ref_year
+        self.ref_year = config["present_ref_year"]
 
         # set dummy category and region id
         self.category_id = np.zeros(num_exp)

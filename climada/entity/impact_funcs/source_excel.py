@@ -1,17 +1,6 @@
 """
-=====================
-source_csv module
-=====================
-
-Define ImpactFuncsCsv class.
+Define ImpactFuncsExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 16:46:01 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import pandas
 
@@ -19,15 +8,32 @@ from climada.entity.impact_funcs.base import ImpactFunc, ImpactFuncs
 from climada.entity.tag import Tag
 
 class ImpactFuncsExcel(ImpactFuncs):
-    """Class that loads the impact functions from an excel file."""
+    """Contains impact functions loaded from an excel file.
+    
+    Attributes
+    ----------
+        sheet_name (str): name of excel sheet containing the data
+        col_names (dict): name of the table columns for each of the attributes
+    """
 
     def __init__(self, file_name=None, description=None):
-        """ Define the name of the sheet nad columns names where the exposures
-        are defined"""
+        """ Fill values from file, if provided.        
 
-        # Define tha name of the sheet that is read
+        Parameters
+        ----------
+            file_name (str, optional): name of the source file
+            description (str, optional): description of the source data
+
+        Examples
+        --------
+            >>> ImpactFuncsExcel()
+            Initializes empty attributes.
+            >>> ImpactFuncsExcel('filename')
+            Loads data from the provided file.
+            >>> ImpactFuncsExcel('filename', 'description of file')
+            Loads data from the provided file and stores provided description.
+        """
         self.sheet_name = 'damagefunctions'
-        # Define the names of the columns that are read
         self.col_names = {'func_id' : 'DamageFunID',
                           'inten' : 'Intensity',
                           'mdd' : 'MDD',
@@ -36,13 +42,11 @@ class ImpactFuncsExcel(ImpactFuncs):
                           'unit' : 'Intensity_unit',
                           'peril' : 'peril_ID'
                          }
-
         # Initialize
         ImpactFuncs.__init__(self, file_name, description)
 
-    def read(self, file_name, description=None):
-        """Virtual class. Needs to be defined for each child."""
-
+    def _read(self, file_name, description=None):
+        """Read data from input file and stores input description."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

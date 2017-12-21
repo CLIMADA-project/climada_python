@@ -24,7 +24,7 @@ from climada.hazard.tag import Tag as TagHazard
 class HazardExcel(Hazard):
     """Class that loads the exposures from an excel file"""
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name=None, description=None, haztype=None):
         """Define the name of the sheet and columns names where the exposures
         are defined"""
         # Define tha name of the sheet that is read
@@ -46,9 +46,9 @@ class HazardExcel(Hazard):
                              }
 
         # Initialize
-        Hazard.__init__(self, file_name, description)
+        Hazard.__init__(self, file_name, description, haztype)
 
-    def read(self, file_name, description=None, centroids=None, \
+    def read(self, file_name, description=None, haztype=None, centroids=None,\
              out_file_name=None):
         """Virtual class. Needs to be defined for each child"""
 

@@ -1,45 +1,62 @@
 """
-=====================
-Impact
-=====================
-
-Impact class contains the event impact for a given exposures, damage functions
-and hazard.
+Define Impact class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Mon Nov 13 13:29:32 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import numpy as np
+import warnings
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 
 class Impact(object):
-    """ Contains the Impact variables and methods to compute them"""
+    """Impact for a given entity (exposures and impact functions) and hazard.
+    
+    Attributes
+    ----------
+        exposures_tag (Tag): information about the exposures
+        impact_funcs_tag (Tag): information about the impact functions
+        hazard_tag (TagHazard): information about the hazard
+        at_exp (np.array): impact for each exposure
+        at_event (np.array): impact for each hazard event
+        tot_vale (float): total exposure value affected
+        tot (float): total expected impact
+    """
 
     def __init__(self):
-        # references to inputs
+        """ Empty initialization."""
         self.exposures_tag = Tag()
         self.impact_funcs_tag = Tag()
         self.hazard_tag = TagHazard()
-        # impact pro exposure
         self.at_exp = np.array([])
-        # impact pro hazard event
         self.at_event = np.array([])
-        # total exposure value affected
         self.tot_value = 0
-        # total expecte impact
         self.tot = 0
 
     def calc(self, exposures, impact_funcs, hazard):
-        """ Computes the impact for a given hazard, exposures and impact
-        functions"""
+        """Compute impact of an hazard to exposures.
 
+        Parameters
+        ----------
+            exposures (subclass Exposures): exposures
+            impact_funcs (subclass ImpactFucs): vulnerability functions
+            hazard (subclass Hazard): hazard
+
+        Examples
+        --------            
+            Use Entity class
+            >>> hazard = HazardMat('filename') # Set hazard
+            >>> entity = Entity() # Load entity with default values
+            >>> entity.exposures = ExposuresExcel('filename') # Set exposures
+            >>> tc_impact = Impact()
+            >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
+            
+            Specify only exposures and impact functions
+            >>> hazard = HazardMat('filename') # Set hazard
+            >>> funcs = ImpactFuncsExcel('filename') # Set impact functions
+            >>> exposures = ExposuresExcel('filename') # Set exposures
+            >>> tc_impact = Impact()
+            >>> tc_impact.calc(exposures, funcs, hazard)
+        """
         # 1. Assign centroids to each exposure if not done
         if exposures.assigned.size == 0:
             exposures.assign(hazard)
@@ -54,6 +71,10 @@ class Impact(object):
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
                                           exposures.assigned >= 0))[0]
+        # Warning if no exposures selected
+        if exp_idx.size == 0:
+            warnings.warn('No affected exposures.')
+
         # Get hazard type
         haz_type = hazard.tag.type
         # Get damage functions for this hazard
@@ -68,7 +89,7 @@ class Impact(object):
             # loop over selected exposures
             for iexp in exp_iimp:
                 # compute impact on exposure
-                event_row, impact = self.one_exposure(iexp, exposures, \
+                event_row, impact = self._one_exposure(iexp, exposures, \
                                                         hazard, imp_fun)
 
                 # add values to impact impact
@@ -79,19 +100,21 @@ class Impact(object):
 
         self.tot = sum(self.at_event * hazard.frequency)
 
-    def one_exposure(self, iexp, exposures, hazard, imp_fun):
-        """ Compute for one exposure the impact it receives due to the events
-        which affect it.
-        INPUTS:
-            - iexp: array index of the exposure computed
-            - exposures: derived Exposure class
-            - hazard: derived Hazard class
-            - imp_fun: ImpactFunc class related to the input hazard and
-            exposure
-        OUTPUTS:
-            - event_row: row indices of the hazards events that affect the
-            exposure
-            - impact: impact at this exposure for each event in event_row
+    @staticmethod
+    def _one_exposure(iexp, exposures, hazard, imp_fun):
+        """Impact to one exposures.
+
+        Parameters
+        ----------
+            iexp (int): array index of the exposure computed
+            exposures (subclass Exposure): exposures
+            hazard (subclass Hazard): a hazard
+            imp_fun (ImpactFunc): one impact function
+
+        Returns
+        -------
+            event_row (np.array): hazard' events indices affecting exposure
+            impact (np.array: impact for each event in event_row
         """
         # get assigned centroid of this exposure
         icen = int(exposures.assigned[iexp])

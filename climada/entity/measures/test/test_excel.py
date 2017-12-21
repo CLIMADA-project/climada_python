@@ -1,31 +1,21 @@
 """
-=====================
-test_excel module
-=====================
-
 Test MeasuresExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  8 09:17:11 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import numpy as np
 
 from climada.entity.measures.source_excel import MeasuresExcel
-from climada.util.config import entity_default
+from climada.util.constants import ENT_DEMO_XLS
  
 class TestReader(unittest.TestCase):
+    """Test reader functionality of the MeasuresExcel class"""
 
     def test_one_file(self):
         # Read demo excel file
         meas = MeasuresExcel()
         description = 'One single file.'
-        meas.read(entity_default, description)
+        meas._read(ENT_DEMO_XLS, description)
 
         # Check results        
         n_meas = 4
@@ -64,7 +54,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(meas.data[n_meas-1].risk_transf_attach, 0)
         self.assertEqual(meas.data[n_meas-1].risk_transf_cover, 0)
 
-        self.assertEqual(meas.tag.file_name, entity_default)
+        self.assertEqual(meas.tag.file_name, ENT_DEMO_XLS)
         self.assertEqual(meas.tag.description, description)
         
 # Execute TestReader

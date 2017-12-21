@@ -19,7 +19,7 @@ import numpy
 
 from climada.hazard.source_excel import HazardExcel
 from climada.hazard.centroids import Centroids
-from climada.util.config import hazard_default
+from climada.util.constants import HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
     '''Test reader functionality of the ExposuresExcel class'''
@@ -30,7 +30,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         hazard = HazardExcel()
         description = 'One single file.'
-        hazard.read(hazard_default, description)
+        hazard.read(HAZ_DEMO_XLS, description)
 
         # Check results
         n_events = 100
@@ -78,12 +78,12 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard.fraction[n_events-1, n_centroids-1], 1)
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, hazard_default)
+        self.assertEqual(hazard.tag.file_name, HAZ_DEMO_XLS)
         self.assertEqual(hazard.tag.description, description)
         self.assertEqual(hazard.tag.type, 'TC')
 
         # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, hazard_default)
+        self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_XLS)
         self.assertEqual(hazard.centroids.tag.description, description)
 
     def test_hazard_save_pass(self):
@@ -92,11 +92,11 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         hazard = HazardExcel()
         description = 'One single file.'
-        out_file_name = 'hazard_excel.pkl'
-        hazard.read(hazard_default, description, None, out_file_name)
+        out_file = 'hazard_excel.pkl'
+        hazard.read(HAZ_DEMO_XLS, description, out_file_name=out_file)
 
         # Getting back the objects:
-        with open(out_file_name, 'rb') as file:
+        with open(out_file, 'rb') as file:
             hazard_read = pickle.load(file)
 
         # Check the loaded hazard have all variables
@@ -115,9 +115,9 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         centroids = Centroids()
         description = 'One single file.'
-        centroids.read_excel(hazard_default, description)
+        centroids.read_excel(HAZ_DEMO_XLS, description)
         hazard = HazardExcel()
-        hazard.read(hazard_default, description, centroids)
+        hazard.read(HAZ_DEMO_XLS, description, centroids)
 
         n_centroids = 45
         self.assertEqual(hazard.centroids.coord.shape[0], n_centroids)
@@ -132,7 +132,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard.centroids.id[n_centroids-1], 4045)
 
         # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, hazard_default)
+        self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_XLS)
         self.assertEqual(hazard.centroids.tag.description, description)
 
 # Execute TestReader

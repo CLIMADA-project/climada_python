@@ -1,17 +1,6 @@
 """
-=====================
-interpolation module
-=====================
-
-Define different interpolation methods and distances.
+Define Interpolator class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Tue Dec 12 13:35:41 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import warnings
 import numpy as np
@@ -21,6 +10,9 @@ from sklearn.neighbors import BallTree
 class Interpolator(object):
     """ Interpolator class """
 
+    dist_def = ['approx', 'haversine']
+    method = ['NN']
+
     def __init__(self, threshold=100):
         """ Initialize class.
         INPUT:
@@ -29,24 +21,24 @@ class Interpolator(object):
         """
         self.threshold = threshold
 
-    def interpol_index(self, centroids, coordinates, method='NN',
-                       distance='approx'):
+    def interpol_index(self, centroids, coordinates, method=method[0],
+                       distance=dist_def[0]):
         """ Returns for each coordinate the centroids indexes used for
         interpolation """
         if (method == 'NN') & (distance == 'approx'):
             # Compute for each coordinate the closest centroid
-            return self.__index_nn_aprox(centroids, coordinates)
+            return self.index_nn_aprox(centroids, coordinates)
         elif (method == 'NN') & (distance == 'haversine'):
             # Compute the nearest centroid for each coordinate using the
             # haversine formula. This is done with a Ball tree.
-            return self.__index_nn_haversine(centroids, coordinates)
+            return self.index_nn_haversine(centroids, coordinates)
         else:
             # Raise error: method or distance not supported
             raise ValueError('Interpolation using ' + method +
                              ' with distance ' + distance +
                              ' is not supported.')
 
-    def __index_nn_aprox(self, centroids, coordinates):
+    def index_nn_aprox(self, centroids, coordinates):
         """ Compute the nearest centroid for each coordinate using the
         euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
         (e.g. more than 5km apart) use the haversine distance.
@@ -85,7 +77,7 @@ class Interpolator(object):
         return assigned
 
 
-    def __index_nn_haversine(self, centroids, coordinates):
+    def index_nn_haversine(self, centroids, coordinates):
         """ Compute the neareast centroid for each coordinate using a Ball tree
         with haversine distance
         INPUT:

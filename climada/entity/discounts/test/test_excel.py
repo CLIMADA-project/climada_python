@@ -1,8 +1,4 @@
 """
-=====================
-test_excel module
-=====================
-
 Test DiscountsExcel class.
 """
 # Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
@@ -17,18 +13,18 @@ import unittest
 import numpy
 
 from climada.entity.discounts.source_excel import DiscountsExcel
-from climada.util.config import entity_default
+from climada.util.constants import ENT_DEMO_XLS
 
 class TestReader(unittest.TestCase):
-    '''Test reader functionality of the DiscountsExcel class'''
+    """Test reader functionality of the DiscountsExcel class"""
 
     def test_one_file(self):
-        ''' Read one single excel file'''
+        """ Read one single excel file"""
 
         # Read demo excel file
         disc_rate = DiscountsExcel()
         description = 'One single file.'
-        disc_rate.read(entity_default, description)
+        disc_rate._read(ENT_DEMO_XLS, description)
 
         # Check results
         n_rates = 51
@@ -43,7 +39,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, entity_default)
+        self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_XLS)
         self.assertEqual(disc_rate.tag.description, description)
 
 # Execute TestReader

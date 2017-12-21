@@ -1,25 +1,14 @@
 """
-=====================
-test_excel module
-=====================
-
 Test ImpactFuncsExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  8 14:07:55 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 
 from climada.entity.impact_funcs.source_excel import ImpactFuncsExcel
-from climada.util.config import entity_default
+from climada.util.constants import ENT_DEMO_XLS
 
 class TestReader(unittest.TestCase):
-    """Test reader functionality of the DiscountsExcel class"""
+    """Test reader functionality of the ImpactFuncsExcel class"""
 
     def test_one_file(self):
         """ Read one single excel file"""
@@ -27,7 +16,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         impact = ImpactFuncsExcel()
         description = 'One single file.'
-        impact.read(entity_default, description)
+        impact._read(ENT_DEMO_XLS, description)
 
         # Check results
         n_funcs = 2
@@ -89,7 +78,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(impact.data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(impact.tag.file_name, entity_default)
+        self.assertEqual(impact.tag.file_name, ENT_DEMO_XLS)
         self.assertEqual(impact.tag.description, description)
 
 # Execute TestReader

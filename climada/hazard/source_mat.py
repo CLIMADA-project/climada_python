@@ -24,13 +24,13 @@ import climada.util.hdf5_handler as hdf5
 class HazardMat(Hazard):
     """Class that loads the exposures from an excel file"""
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name=None, description=None, haztype=None):
         """Define the name of the sheet and columns names where the exposures
         are defined"""
         # Initialize
-        Hazard.__init__(self, file_name, description)
+        Hazard.__init__(self, file_name, description, haztype)
 
-    def read(self, file_name, description=None, centroids=None,
+    def read(self, file_name, description=None, haztype=None, centroids=None,\
              out_file_name=None):
         """Virtual class. Needs to be defined for each child"""
 
@@ -42,8 +42,10 @@ class HazardMat(Hazard):
             pass
 
         # Fill hazard tag
-        # Get hazard type
         haz_type = hdf5.get_string(hazard['peril_ID'])
+        # Raise error if provided hazard type does not match with read one
+        if haztype is not None and haz_type != haztype:
+            raise ValueError('Hazard read is not of type: ' + haztype)
         self.tag = TagHazard(file_name, description, haz_type)
 
         # Set the centroids if given, otherwise load them from the same file

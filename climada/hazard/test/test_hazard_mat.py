@@ -18,7 +18,7 @@ import numpy
 
 from climada.hazard.source_mat import HazardMat
 from climada.hazard.centroids import Centroids
-from climada.util.config import hazard_mat, hazard_default
+from climada.util.constants import HAZ_DEMO_MAT, HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
     '''Test reader functionality of the ExposuresExcel class'''
@@ -27,7 +27,7 @@ class TestReader(unittest.TestCase):
         ''' Read an hazard excel file correctly.'''
 
         # Read demo excel file
-        hazard = HazardMat(hazard_mat)
+        hazard = HazardMat(HAZ_DEMO_MAT)
 
         # Check results
         n_events = 14450
@@ -56,12 +56,12 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard.fraction.shape[1], n_centroids)
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, hazard_mat)
+        self.assertEqual(hazard.tag.file_name, HAZ_DEMO_MAT)
         self.assertEqual(hazard.tag.description, None)
         self.assertEqual(hazard.tag.type, 'TC')
 
         # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, hazard_mat)
+        self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_MAT)
         self.assertEqual(hazard.centroids.tag.description, None)
 
     def test_wrong_centroid_fail(self):
@@ -70,14 +70,14 @@ class TestReader(unittest.TestCase):
 
         # Read demo excel file
         read_cen = Centroids()
-        read_cen.read_excel(hazard_default)
+        read_cen.read_excel(HAZ_DEMO_XLS)
         # Read demo excel file
         hazard = HazardMat()
 
         # Expected exception because centroid size is smaller than the
         # one provided in the intensity matrix
         with self.assertRaises(ValueError):
-            hazard.read(hazard_mat, None, centroids=read_cen)
+            hazard.read(HAZ_DEMO_MAT, None, centroids=read_cen)
 
 # Execute TestReader
 suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)

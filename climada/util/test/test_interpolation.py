@@ -1,17 +1,6 @@
 """
-=====================
-test_interpolation module
-=====================
-
 Test Interpolation class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Tue Dec 12 16:07:26 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import warnings
@@ -20,13 +9,13 @@ import numpy as np
 from climada.entity.exposures.source_excel import ExposuresExcel
 from climada.hazard.centroids import Centroids
 from climada.util.interpolation import Interpolator
-from climada.util.config import entity_default
+from climada.util.constants import ENT_DEMO_XLS
 
 def def_input_values():
     '''Default input coordinates and centroids values'''
     # Load exposures coordinates from demo entity file
     exposures = ExposuresExcel()
-    exposures.read(entity_default)
+    exposures._read(ENT_DEMO_XLS)
 
     # Define centroids
     centroids = Centroids()

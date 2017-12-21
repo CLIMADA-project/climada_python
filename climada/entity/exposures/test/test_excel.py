@@ -1,34 +1,24 @@
 """
-=====================
-test_excel module
-=====================
-
 Test ExposuresExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 15:53:21 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import warnings
 import unittest
 import numpy as np
 
 from climada.entity.exposures.source_excel import ExposuresExcel
-from climada.util.config import entity_default
+from climada.util.constants import ENT_DEMO_XLS
+from climada.util.config import config
 
 class TestReader(unittest.TestCase):
-    '''Test reader functionality of the ExposuresExcel class'''
+    """Test reader functionality of the ExposuresExcel class"""
 
     def test_one_file(self):
-        ''' Read one single excel file'''
+        """ Read one single excel file"""
         # Read demo excel file
         expo = ExposuresExcel()
         description = 'One single file.'
-        expo.read(entity_default, description)
+        expo._read(ENT_DEMO_XLS, description)
 
         # Check results
         n_expos = 50
@@ -62,15 +52,15 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.coord[0][1], -80.12879900000)
         self.assertEqual(expo.coord[n_expos-1][1], -80.15885500000)
 
-        self.assertEqual(expo.ref_year, 2016)
+        self.assertEqual(expo.ref_year, config["present_ref_year"])
         self.assertEqual(expo.value_unit, 'NA')
-        self.assertEqual(expo.tag.file_name, entity_default)
+        self.assertEqual(expo.tag.file_name, ENT_DEMO_XLS)
         self.assertEqual(expo.tag.description, description)
 
     def test_not_cover_pass(self):
-        ''' Read excel file with no covered value. Check that the coverage is
+        """ Read excel file with no covered value. Check that the coverage is
         set to its default value (the exposures value) and that a warning is
-        raised.'''
+        raised."""
         # Read demo excel file
         expo = ExposuresExcel()
         description = 'Default cover.'
@@ -81,7 +71,7 @@ class TestReader(unittest.TestCase):
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
-            expo.read(entity_default, description)
+            expo._read(ENT_DEMO_XLS, description)
 
             # Verify some things
             assert "not found. Cover set to exposures values." \
@@ -91,9 +81,9 @@ class TestReader(unittest.TestCase):
         self.assertEqual(True, np.array_equal(expo.value, expo.cover))
         
     def test_not_deductible_pass(self):
-        ''' Read excel file with no deductible value. Check that the
+        """ Read excel file with no deductible value. Check that the
         deductible is set to its default value (0) and that a warning is
-        raised.'''
+        raised."""
         # Read demo excel file
         expo = ExposuresExcel()
         description = 'Default deductible.'
@@ -104,7 +94,7 @@ class TestReader(unittest.TestCase):
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
-            expo.read(entity_default, description)
+            expo._read(ENT_DEMO_XLS, description)
 
             # Verify some things
             assert "not found. Default zero values set for deductible."\

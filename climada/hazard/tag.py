@@ -16,7 +16,7 @@ Module containing the tag used for the hazard package.
 class Tag(object):
     """ Contains the definition of one tag """
 
-    def __init__(self, file_name='', description='', haz_type=''):
+    def __init__(self, file_name=None, description=None, haz_type=None):
         self.file_name = file_name
         self.description = description
         self.type = haz_type
