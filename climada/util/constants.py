@@ -1,17 +1,18 @@
 """
-=====================
-Constants
-=====================
-
-Define constants used in the climada execution.
+Define constants.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Tue Dec 12 14:52:45 2017
 
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
+import os
+
+# working directory
+WORKING_DIR = os.path.dirname(__file__) + '/../../'
+# folder containing the demo data
+DATA_DIR = WORKING_DIR + 'data/'
+
+# Files containg data used as demo, e.g. for unit testing
+HAZ_DEMO_XLS = DATA_DIR + 'demo/Excel_hazard.xlsx'
+HAZ_DEMO_MAT = DATA_DIR + 'demo/atl_prob.mat'
+ENT_DEMO_XLS = DATA_DIR + 'demo/demo_today.xlsx'
 
 # mean one latitude in km
 ONE_LAT_KM = 111.12
