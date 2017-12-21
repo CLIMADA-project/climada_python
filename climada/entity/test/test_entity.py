@@ -1,17 +1,6 @@
 """
-=====================
-test_entity module
-=====================
-
 Test Entity class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  8 14:52:28 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 
