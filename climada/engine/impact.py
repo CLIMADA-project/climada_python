@@ -43,19 +43,19 @@ class Impact(object):
 
         Examples
         --------
-            Use Entity class
             >>> hazard = HazardMat('filename') # Set hazard
             >>> entity = Entity() # Load entity with default values
             >>> entity.exposures = ExposuresExcel('filename') # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
+            Use Entity class
 
-            Specify only exposures and impact functions
             >>> hazard = HazardMat('filename') # Set hazard
             >>> funcs = ImpactFuncsExcel('filename') # Set impact functions
             >>> exposures = ExposuresExcel('filename') # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(exposures, funcs, hazard)
+            Specify only exposures and impact functions
         """
         # 1. Assign centroids to each exposure if not done
         if exposures.assigned.size == 0:
