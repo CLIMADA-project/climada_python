@@ -1,17 +1,6 @@
 """
-=====================
-test_excel module
-=====================
-
-Test HazardExcel class.
+Test Centroids class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 15:53:21 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import pickle
@@ -21,7 +10,7 @@ from climada.hazard.centroids import Centroids
 from climada.util.constants import HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
-    '''Test reader functionality of the ExposuresExcel class'''
+    '''Test reader functionality of the Centroids class'''
 
     def test_centroid_pass(self):
         ''' Read a centroid excel file correctly.'''

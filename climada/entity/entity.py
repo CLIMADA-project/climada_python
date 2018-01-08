@@ -2,6 +2,8 @@
 Define Entity Class.
 """
 
+import pickle
+
 from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.impact_funcs.source_excel  import ImpactFuncsExcel
 from climada.entity.discounts.base import Discounts
@@ -76,6 +78,29 @@ class Entity(object):
         """Return entity tag constructed from its attributes tags."""
         return {self._exposures.tag, self._impact_funcs.tag,
                 self._measures.tag, self._discounts.tag}
+
+    def save(self, out_file_name):
+        """Save as pkl.
+
+        Parameters
+        ----------
+            out_file_name (str): output file name to save as pkl
+        """
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
+
+    def is_entity(self):
+        """ Checks if the attributes contain consistent data.
+
+        Raises
+        ------
+            ValueError
+        """
+        self.discounts.is_discounts()
+        self.exposures.is_exposures()
+        self.impact_funcs.is_impactFuncs()
+        self.measures.is_measures()
 
     @property
     def exposures(self):

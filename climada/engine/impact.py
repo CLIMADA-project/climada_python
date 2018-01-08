@@ -2,15 +2,15 @@
 Define Impact class.
 """
 
-import numpy as np
 import warnings
+import numpy as np
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 
 class Impact(object):
     """Impact for a given entity (exposures and impact functions) and hazard.
-    
+
     Attributes
     ----------
         exposures_tag (Tag): information about the exposures
@@ -42,14 +42,14 @@ class Impact(object):
             hazard (subclass Hazard): hazard
 
         Examples
-        --------            
+        --------
             Use Entity class
             >>> hazard = HazardMat('filename') # Set hazard
             >>> entity = Entity() # Load entity with default values
             >>> entity.exposures = ExposuresExcel('filename') # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
-            
+
             Specify only exposures and impact functions
             >>> hazard = HazardMat('filename') # Set hazard
             >>> funcs = ImpactFuncsExcel('filename') # Set impact functions

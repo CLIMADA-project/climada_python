@@ -1,19 +1,7 @@
 """
-=====================
-source_excel module
-=====================
-
 Define HazardExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Mon Dec 11 08:50:42 2017
 
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
-
-import pickle
 import pandas
 from scipy import sparse
 import numpy as np
@@ -22,11 +10,10 @@ from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 
 class HazardExcel(Hazard):
-    """Class that loads the exposures from an excel file"""
+    """Hazard class loaded from an excel file."""
 
     def __init__(self, file_name=None, description=None, haztype=None):
-        """Define the name of the sheet and columns names where the exposures
-        are defined"""
+        """Extend Hazard __init__ method."""
         # Define tha name of the sheet that is read
         self.sheet_names = {'centroid' : 'centroids',
                             'inten' : 'hazard_intensity',
@@ -48,9 +35,8 @@ class HazardExcel(Hazard):
         # Initialize
         Hazard.__init__(self, file_name, description, haztype)
 
-    def read(self, file_name, description=None, haztype=None, centroids=None,\
-             out_file_name=None):
-        """Virtual class. Needs to be defined for each child"""
+    def _read(self, file_name, description=None, haztype=None, centroids=None):
+        """Override _read Hazard method."""
 
         # append the file name and description into the instance class.
         # Put type TC as default
@@ -101,8 +87,3 @@ class HazardExcel(Hazard):
         # Set fraction matrix to default value of 1
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, \
                                           dtype=np.float))
-
-        # Save results if output filename is given
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)

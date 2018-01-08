@@ -1,13 +1,6 @@
 """
 Test DiscountsExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Thu Dec  7 13:32:05 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import numpy

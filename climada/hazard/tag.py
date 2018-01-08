@@ -1,24 +1,28 @@
 """
-=====================
-Tag
-=====================
-
-Module containing the tag used for the hazard package.
+Define Tag class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Tue Nov 28 11:14:02 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 class Tag(object):
-    """ Contains the definition of one tag """
+    """Definition of one hazard tag.
+
+    Attributes
+    ----------
+        file_name (str): name of the source file
+        description (str): description of the data
+        type (str): acronym defining of the hazard type (e.g. 'TC')
+    """
 
     def __init__(self, file_name=None, description=None, haz_type=None):
+        """Initialize values.
+
+        Parameters
+        ----------
+            file_name (str, optional): file name to read
+            description (str, optional): description of the data
+            haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
+        """
         self.file_name = file_name
         self.description = description
         self.type = haz_type
-        self._next = 'NA'
-        self._prev = 'NA'
+        #self._next = 'NA'
+        #self._prev = 'NA'

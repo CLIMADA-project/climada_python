@@ -1,23 +1,25 @@
 """
-=====================
-Tags
-=====================
-
-Module containing different definition of tags used in the entity package.
+Define Tag class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Tue Nov 28 11:14:02 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 class Tag(object):
-    """ Contains the definition of one tag """
+    """Definition of one Exposures, Discounts, ImpactFuncs or Measures tag.
+
+    Attributes
+    ----------
+        file_name (str): name of the source file
+        description (str): description of the data
+    """
 
     def __init__(self, file_name=None, description=None):
+        """Initialize values.
+
+        Parameters
+        ----------
+            file_name (str, optional): file name to read
+            description (str, optional): description of the data
+        """
         self.file_name = file_name
         self.description = description
-        self._next = 'NA'
-        self._prev = 'NA'
+        #self._next = 'NA'
+        #self._prev = 'NA'

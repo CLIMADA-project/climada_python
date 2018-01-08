@@ -1,17 +1,6 @@
 """
-=====================
-Centroids
-=====================
-
-Define the class containing all the centroids.
+Define Centroids class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 16:04:44 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import pickle
 import pandas
@@ -20,7 +9,7 @@ import numpy as np
 from climada.entity.tag import Tag
 
 class Centroids(object):
-    """ Definition of a collection of centroids """
+    """Definition of the irregular grid."""
 
     def __init__(self):
         self.tag = Tag()
@@ -52,3 +41,11 @@ class Centroids(object):
         if out_file_name is not None:
             with open(out_file_name, 'wb') as file:
                 pickle.dump(self, file)
+
+    def read_mat(self, file_name, description=None, out_file_name=None):
+        """ Read from matlab file."""
+        #TODO
+
+    def is_centroids(self):
+        """ Check if attributes are coherent."""
+        # TODO

@@ -9,8 +9,8 @@ from climada.entity.measures.base import Measure, Measures
 from climada.entity.tag import Tag
 
 class MeasuresExcel(Measures):
-    """Contains impact functions loaded from an excel file.
-    
+    """Measures class loaded from an excel file.
+
     Attributes
     ----------
         sheet_name (str): name of excel sheet containing the data
@@ -18,7 +18,7 @@ class MeasuresExcel(Measures):
     """
 
     def __init__(self, file_name=None, description=None):
-        """ Fill values from file, if provided.        
+        """Extend Measures __init__ method.
 
         Parameters
         ----------
@@ -52,7 +52,7 @@ class MeasuresExcel(Measures):
         Measures.__init__(self, file_name, description)
 
     def _read(self, file_name, description=None):
-        """Read data from input file and stores input description."""
+        """Override _read Measures method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

@@ -1,17 +1,6 @@
 """
-=====================
-test_hdf5 module
-=====================
-
 Test hdf5_handler module.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Mon Dec 18 11:48:28 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import numpy as np

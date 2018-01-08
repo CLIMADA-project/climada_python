@@ -1,17 +1,6 @@
 """
-=====================
-test_excel module
-=====================
-
 Test HazardExcel class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 15:53:21 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import pickle
@@ -30,7 +19,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         hazard = HazardExcel()
         description = 'One single file.'
-        hazard.read(HAZ_DEMO_XLS, description)
+        hazard._read(HAZ_DEMO_XLS, description)
 
         # Check results
         n_events = 100
@@ -93,7 +82,7 @@ class TestReader(unittest.TestCase):
         hazard = HazardExcel()
         description = 'One single file.'
         out_file = 'hazard_excel.pkl'
-        hazard.read(HAZ_DEMO_XLS, description, out_file_name=out_file)
+        hazard.load(HAZ_DEMO_XLS, description, out_file_name=out_file)
 
         # Getting back the objects:
         with open(out_file, 'rb') as file:
@@ -117,7 +106,7 @@ class TestReader(unittest.TestCase):
         description = 'One single file.'
         centroids.read_excel(HAZ_DEMO_XLS, description)
         hazard = HazardExcel()
-        hazard.read(HAZ_DEMO_XLS, description, centroids)
+        hazard._read(HAZ_DEMO_XLS, description, centroids)
 
         n_centroids = 45
         self.assertEqual(hazard.centroids.coord.shape[0], n_centroids)

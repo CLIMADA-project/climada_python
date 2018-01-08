@@ -1,19 +1,7 @@
 """
-=====================
-source_mat module
-=====================
-
 Define HazardMat class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Mon Dec 11 08:50:42 2017
 
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
-
-import pickle
 import numpy as np
 
 from climada.hazard.base import Hazard
@@ -22,18 +10,15 @@ from climada.hazard.tag import Tag as TagHazard
 import climada.util.hdf5_handler as hdf5
 
 class HazardMat(Hazard):
-    """Class that loads the exposures from an excel file"""
+    """Hazard class loaded from a mat file."""
 
     def __init__(self, file_name=None, description=None, haztype=None):
-        """Define the name of the sheet and columns names where the exposures
-        are defined"""
+        """Extend Hazard __init__ method."""
         # Initialize
         Hazard.__init__(self, file_name, description, haztype)
 
-    def read(self, file_name, description=None, haztype=None, centroids=None,\
-             out_file_name=None):
-        """Virtual class. Needs to be defined for each child"""
-
+    def _read(self, file_name, description=None, haztype=None, centroids=None):
+        """Override _read Hazard method."""
         # Load hazard data
         hazard = hdf5.read(file_name)
         try:
@@ -83,8 +68,3 @@ class HazardMat(Hazard):
         except ValueError:
             print('Size missmatch in fraction matrix.')
             raise
-
-        # Save results if output filename is given
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)

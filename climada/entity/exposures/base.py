@@ -3,6 +3,7 @@ Define Exposures class.
 """
 
 import abc
+import pickle
 import numpy as np
 
 from climada.entity.tag import Tag
@@ -10,7 +11,7 @@ from climada.util.interpolation import Interpolator
 
 class Exposures(metaclass=abc.ABCMeta):
     """Contains the exposures values.
-    
+
     Attributes
     ----------
         tag (Tag): information about the source data
@@ -25,7 +26,7 @@ class Exposures(metaclass=abc.ABCMeta):
         cover (np.array): cover value for each exposure
         impact_id (np.array): impact function id corresponding to each
             exposure
-        category_id (np.array, optional): category id for each exposure 
+        category_id (np.array, optional): category id for each exposure
             (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
@@ -79,7 +80,7 @@ class Exposures(metaclass=abc.ABCMeta):
         ----------
             hazard (subclass Hazard): one hazard
             method (str, optional): interpolation method, neareast neighbor by
-                default. The different options are provided by the class 
+                default. The different options are provided by the class
                 attribute 'method' of the Interpolator class
             dist (str, optional): distance used, euclidian approximation by
                 default. The different options are provided by the class
@@ -98,32 +99,47 @@ class Exposures(metaclass=abc.ABCMeta):
 
     def geo_coverage(self):
         """Get geographic coverage of all the exposures together.
-                
+
         Returns
         -------
             polygon of coordinates
         """
         # TODO
 
-    def isExposures(self):
+    def is_exposures(self):
         """ Checks if the attributes contain consistent data.
-        
+
         Raises
         ------
             ValueError
         """
         # TODO: raise Error if instance is not well filled
 
-    def load(self, file_name, description=None):
-        """Read and check if data is right.
-        
+    def load(self, file_name, description=None, out_file_name=None):
+        """Read, check and save as pkl, if output file name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            out_file_name (str, optional): output file name to save as pkl
+
         Raises
         ------
             ValueError
         """
         self._read(file_name, description)
-        self.isExposures()
+        self.is_exposures()
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
     @abc.abstractmethod
     def _read(self, file_name, description=None):
-        """ Virtual class. Needs to be defined by subclass."""
+        """ Read input file. Abstract method. To be implemented by subclass.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+        """

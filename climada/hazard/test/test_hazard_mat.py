@@ -1,17 +1,6 @@
 """
-=====================
-test_mat module
-=====================
-
-Test HazardExcel class.
+Test HazardMat class.
 """
-# Author: Gabriela Aznar Siguan (gabriela.aznar@usys.ethz.ch)
-# Created on Fri Dec  1 15:53:21 2017
-
-#    Copyright (C) 2017 by
-#    David N. Bresch, david.bresch@gmail.com
-#    Gabriela Aznar Siguan (g.aznar.siguan@gmail.com)
-#    All rights reserved.
 
 import unittest
 import numpy
@@ -77,7 +66,7 @@ class TestReader(unittest.TestCase):
         # Expected exception because centroid size is smaller than the
         # one provided in the intensity matrix
         with self.assertRaises(ValueError):
-            hazard.read(HAZ_DEMO_MAT, None, centroids=read_cen)
+            hazard._read(HAZ_DEMO_MAT, None, centroids=read_cen)
 
 # Execute TestReader
 suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)

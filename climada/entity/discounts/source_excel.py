@@ -8,8 +8,8 @@ from climada.entity.discounts.base import Discounts
 from climada.entity.tag import Tag
 
 class DiscountsExcel(Discounts):
-    """Contains discount rates loaded from an excel file.
-    
+    """Discounts class loaded from an excel file.
+
     Attributes
     ----------
         sheet_name (str): name of excel sheet containing the data
@@ -17,7 +17,7 @@ class DiscountsExcel(Discounts):
     """
 
     def __init__(self, file_name=None, description=None):
-        """ Fill values from file, if provided.        
+        """Extend Discounts __init__ method.
 
         Parameters
         ----------
@@ -41,7 +41,7 @@ class DiscountsExcel(Discounts):
         Discounts.__init__(self, file_name, description)
 
     def _read(self, file_name, description=None):
-        """Read data from input file and stores input description."""
+        """Override _read Discounts method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

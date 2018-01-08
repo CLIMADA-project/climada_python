@@ -8,27 +8,54 @@ from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS
 from sklearn.neighbors import BallTree
 
 class Interpolator(object):
-    """ Interpolator class """
+    """Contains different interpolation methods and distances.
+
+    Attributes
+    ----------
+        threshold (float): distance in km over which a warning is raised
+        dist_def (list): supported distances
+        method (list): supported interpolation method
+    """
 
     dist_def = ['approx', 'haversine']
     method = ['NN']
 
     def __init__(self, threshold=100):
-        """ Initialize class.
-        INPUT:
-            - threshold: threshold used to raise a warning when the minimum
-            distance between two points exceeds it. Given in km
+        """Initialization.
+
+        Parameters
+        ----------
+            threshold (float, optional): distance threshold given in km
         """
         self.threshold = threshold
 
     def interpol_index(self, centroids, coordinates, method=method[0],
                        distance=dist_def[0]):
         """ Returns for each coordinate the centroids indexes used for
-        interpolation """
-        if (method == 'NN') & (distance == 'approx'):
+        interpolation
+
+        Parameters
+        ----------
+            centroids (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+            coordinates (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+            method (str): interpolation method to use
+            distance (str): distance to use
+
+        Returns
+        -------
+            array with so many rows as coordinates containing the centroids
+                indexes
+
+        Raises
+        ------
+            ValueError
+        """
+        if (method == self.method[0]) & (distance == self.dist_def[0]):
             # Compute for each coordinate the closest centroid
             return self.index_nn_aprox(centroids, coordinates)
-        elif (method == 'NN') & (distance == 'haversine'):
+        elif (method == self.method[0]) & (distance == self.dist_def[1]):
             # Compute the nearest centroid for each coordinate using the
             # haversine formula. This is done with a Ball tree.
             return self.index_nn_haversine(centroids, coordinates)
@@ -41,12 +68,19 @@ class Interpolator(object):
     def index_nn_aprox(self, centroids, coordinates):
         """ Compute the nearest centroid for each coordinate using the
         euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
-        (e.g. more than 5km apart) use the haversine distance.
-        INPUT:
-            - centroids: 2d numpy array. First column contains latitude,
-            second column contains longitude. Each row is a geographic point.
-            - coordinates: 2d numpy array. First column contains latitude,
-            second column contains longitude. Each row is a coordinate.
+        (e.g. more than 100km apart) use the haversine distance.
+
+        Parameters
+        ----------
+            centroids (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+            coordinates (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+
+        Returns
+        -------
+            array with so many rows as coordinates containing the centroids
+                indexes
         """
 
         # Compute only for the unique coordinates. Copy the results for the
@@ -78,13 +112,20 @@ class Interpolator(object):
 
 
     def index_nn_haversine(self, centroids, coordinates):
-        """ Compute the neareast centroid for each coordinate using a Ball tree
-        with haversine distance
-        INPUT:
-            - centroids: 2d numpy array. First column contains latitude, second
-            column contains longitude. Each row is a geographic point.
-            - coordinates: 2d numpy array. First column contains latitude, second
-            column contains longitude. Each row is a coordinate.
+        """ Compute the neareast centroid for each coordinate using a Ball
+        tree with haversine distance.
+
+        Parameters
+        ----------
+            centroids (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+            coordinates (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point
+
+        Returns
+        -------
+            array with so many rows as coordinates containing the centroids
+                indexes
         """
         # Construct tree from centroids
         tree = BallTree(centroids/180*np.pi, metric='haversine')

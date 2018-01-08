@@ -11,8 +11,8 @@ from climada.entity.tag import Tag
 from climada.util.config import config
 
 class ExposuresExcel(Exposures):
-    """Contains exposures loaded from an excel file.
-    
+    """Exposures class loaded from an excel file.
+
     Attributes
     ----------
         sheet_name (str): name of excel sheet containing the data
@@ -20,7 +20,7 @@ class ExposuresExcel(Exposures):
     """
 
     def __init__(self, file_name=None, description=None):
-        """ Fill values from file, if provided.        
+        """Extend Exposures __init__ method.
 
         Parameters
         ----------
@@ -48,7 +48,7 @@ class ExposuresExcel(Exposures):
         Exposures.__init__(self, file_name, description)
 
     def _read(self, file_name, description=None):
-        """Read data from input file and stores input description."""
+        """Override _read Exposures method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

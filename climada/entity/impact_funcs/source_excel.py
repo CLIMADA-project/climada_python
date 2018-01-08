@@ -8,8 +8,8 @@ from climada.entity.impact_funcs.base import ImpactFunc, ImpactFuncs
 from climada.entity.tag import Tag
 
 class ImpactFuncsExcel(ImpactFuncs):
-    """Contains impact functions loaded from an excel file.
-    
+    """ImpactFuncs class loaded from an excel file.
+
     Attributes
     ----------
         sheet_name (str): name of excel sheet containing the data
@@ -17,7 +17,7 @@ class ImpactFuncsExcel(ImpactFuncs):
     """
 
     def __init__(self, file_name=None, description=None):
-        """ Fill values from file, if provided.        
+        """Extend ImpactFuncs __init__ method.
 
         Parameters
         ----------
@@ -46,7 +46,7 @@ class ImpactFuncsExcel(ImpactFuncs):
         ImpactFuncs.__init__(self, file_name, description)
 
     def _read(self, file_name, description=None):
-        """Read data from input file and stores input description."""
+        """Override _read ImpactFuncs method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 
