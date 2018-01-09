@@ -47,8 +47,8 @@ class ExposuresExcel(Exposures):
         # Initialize
         Exposures.__init__(self, file_name, description)
 
-    def _read(self, file_name, description=None):
-        """Override _read Exposures method."""
+    def read(self, file_name, description=None):
+        """Override read Loader method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 
@@ -93,5 +93,5 @@ class ExposuresExcel(Exposures):
         self.ref_year = config["present_ref_year"]
 
         # set dummy category and region id
-        self.category_id = np.zeros(num_exp)
-        self.region_id = np.zeros(num_exp)
+        #self.category_id = np.zeros(num_exp)
+        #self.region_id = np.zeros(num_exp)

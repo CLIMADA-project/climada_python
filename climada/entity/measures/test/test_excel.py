@@ -15,7 +15,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         meas = MeasuresExcel()
         description = 'One single file.'
-        meas._read(ENT_DEMO_XLS, description)
+        meas.read(ENT_DEMO_XLS, description)
 
         # Check results        
         n_meas = 4

@@ -19,7 +19,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         hazard = HazardExcel()
         description = 'One single file.'
-        hazard._read(HAZ_DEMO_XLS, description)
+        hazard.read(HAZ_DEMO_XLS, description)
 
         # Check results
         n_events = 100
@@ -105,7 +105,7 @@ class TestReader(unittest.TestCase):
         description = 'One single file.'
         centroids = CentroidsExcel(HAZ_DEMO_XLS, description)
         hazard = HazardExcel()
-        hazard._read(HAZ_DEMO_XLS, description, centroids)
+        hazard.read(HAZ_DEMO_XLS, description, centroids)
 
         n_centroids = 45
         self.assertEqual(hazard.centroids.coord.shape[0], n_centroids)

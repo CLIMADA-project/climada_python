@@ -17,7 +17,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         disc_rate = DiscountsExcel()
         description = 'One single file.'
-        disc_rate._read(ENT_DEMO_XLS, description)
+        disc_rate.read(ENT_DEMO_XLS, description)
 
         # Check results
         n_rates = 51

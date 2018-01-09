@@ -24,8 +24,8 @@ class CentroidsExcel(Centroids):
         # Initialize
         Centroids.__init__(self, file_name, description)
 
-    def _read(self, file_name, description=None):
-        """Override _read Centroids method."""
+    def read(self, file_name, description=None):
+        """Override read Centroids method."""
         dfr = pandas.read_excel(file_name, self.sheet_name)
 
         self.tag = Tag(file_name, description)

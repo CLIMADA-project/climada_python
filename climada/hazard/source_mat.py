@@ -32,8 +32,8 @@ class HazardMat(Hazard):
         # Initialize
         Hazard.__init__(self, file_name, description, haztype)
 
-    def _read(self, file_name, description=None, haztype=None, centroids=None):
-        """Override _read Hazard method."""
+    def read(self, file_name, description=None, haztype=None, centroids=None):
+        """Override read Hazard method."""
         # Load hazard data
         hazard = hdf5.read(file_name)
         try:
@@ -53,7 +53,7 @@ class HazardMat(Hazard):
             self.centroids = CentroidsMat()
             self.centroids.field_name = 'hazard'
             self.centroids.var_names = self.var_cent
-            self.centroids._read(file_name, description)
+            self.centroids.read(file_name, description)
         else:
             self.centroids = centroids
 

@@ -53,13 +53,13 @@ class Centroids(object):
         ------
             ValueError
         """
-        self._read(file_name, description)
+        self.read(file_name, description)
         self.is_centroids()
         if out_file_name is not None:
             with open(out_file_name, 'wb') as file:
                 pickle.dump(self, file)
 
-    def _read(self, file_name, description=None):
+    def read(self, file_name, description=None):
         """ Read input file. Abstract method. To be implemented by subclass.
 
         Parameters

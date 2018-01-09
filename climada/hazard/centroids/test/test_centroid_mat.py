@@ -18,7 +18,7 @@ class TestReader(unittest.TestCase):
         description = 'One single file.'
         centroids = CentroidsMat()
         centroids.field_name = 'hazard'
-        centroids._read(HAZ_DEMO_MAT, description)
+        centroids.read(HAZ_DEMO_MAT, description)
 
         n_centroids = 100
         self.assertEqual(centroids.coord.shape[0], n_centroids)

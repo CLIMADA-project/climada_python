@@ -2,10 +2,10 @@
 Define Measure class and Measures ABC.
 """
 
-import abc
-import pickle
 import numpy as np
 
+from climada.entity.loader import Loader
+import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 
 class Measure(object):
@@ -41,7 +41,19 @@ class Measure(object):
         self.risk_transf_attach = 0
         self.risk_transf_cover = 0
 
-class Measures(metaclass=abc.ABCMeta):
+    def check(self):
+        """ Check consistent instance data.
+
+        Raises
+        ------
+            ValueError
+        """
+        aux.check_size(3, self.color_rgb, 'measure colour RGB')
+        aux.check_size(2, self.hazard_intensity, 'measure hazard intensity')
+        aux.check_size(2, self.mdd_impact, 'measure MDD impact')
+        aux.check_size(2, self.paa_impact, 'measure PAA impact')
+
+class Measures(Loader):
     """Contains measures of type Measures.
 
     Attributes
@@ -74,40 +86,7 @@ class Measures(metaclass=abc.ABCMeta):
         if file_name is not None:
             self.load(file_name, description)
 
-    def is_measures(self):
-        """ Checks if the attributes contain consistent data.
-
-        Raises
-        ------
-            ValueError
-        """
-        # TODO: raise Error if instance is not well filled
-
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
-
-        Raises
-        ------
-            ValueError
-        """
-        self._read(file_name, description)
-        self.is_measures()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
-
-    @abc.abstractmethod
-    def _read(self, file_name, description=None):
-        """ Read input file. Abstract method. To be implemented by subclass.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-        """
+    def check(self):
+        """ Override Loader check."""
+        for _, meas in self.data.items():
+            meas.check()

@@ -2,14 +2,15 @@
 Define Exposures ABC.
 """
 
-import abc
-import pickle
+import warnings
 import numpy as np
 
+from climada.entity.loader import Loader
+import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
 
-class Exposures(metaclass=abc.ABCMeta):
+class Exposures(Loader):
     """Contains the exposures values.
 
     Attributes
@@ -56,7 +57,7 @@ class Exposures(metaclass=abc.ABCMeta):
         self.value_unit = 'NA'
         # Followng values defined for each exposure
         self.id = np.array([], np.int64)
-        self.coord = np.array([])
+        self.coord = np.array([]) # 2d array (n_exp x 2(lat,lon))
         self.value = np.array([])
         self.deductible = np.array([])
         self.cover = np.array([])
@@ -106,40 +107,38 @@ class Exposures(metaclass=abc.ABCMeta):
         """
         # TODO
 
-    def is_exposures(self):
-        """ Checks if the attributes contain consistent data.
+    def check(self):
+        """ Override Loader check."""
+        num_exp = len(self.id)
+        aux.check_size(num_exp, self.value, 'exposures values')
+        aux.check_size(num_exp, self.impact_id, 'exposures impact functions')
+        aux.check_size(2, self.coord[0], 'exposures coordinates')
+        aux.check_size(num_exp, self.coord[:, 0], 'exposures coordinates')
 
-        Raises
-        ------
-            ValueError
-        """
-        # TODO: raise Error if instance is not well filled
+        if self.deductible.size == 0:
+            warnings.warn('Empty exposures deductibles. Default values set.')
+            self.deductible = np.zeros(num_exp)
+        else:
+            aux.check_size(num_exp, self.deductible, 'exposures deductibles')
 
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
+        if self.cover.size == 0:
+            warnings.warn('Empty exposures coverages. Default values set.')
+            self.cover = self.value
+        else:
+            aux.check_size(num_exp, self.cover, 'exposures coverages')
 
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
+        if self.category_id.size == 0:
+            warnings.warn('Exposures categories not set.')
+        else:
+            aux.check_size(num_exp, self.category_id, 'exposures categories')
 
-        Raises
-        ------
-            ValueError
-        """
-        self._read(file_name, description)
-        self.is_exposures()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
+        if self.region_id.size == 0:
+            warnings.warn('Exposures regions not set.')
+        else:
+            aux.check_size(num_exp, self.region_id, 'exposures regions')
 
-    @abc.abstractmethod
-    def _read(self, file_name, description=None):
-        """ Read input file. Abstract method. To be implemented by subclass.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-        """
+        if self.assigned.size == 0:
+            warnings.warn('Exposures assigned centroids not set.')
+        else:
+            aux.check_size(num_exp, self.assigned, \
+                            'exposures assigned centroids')

@@ -15,7 +15,7 @@ def def_input_values():
     '''Default input coordinates and centroids values'''
     # Load exposures coordinates from demo entity file
     exposures = ExposuresExcel()
-    exposures._read(ENT_DEMO_XLS)
+    exposures.read(ENT_DEMO_XLS)
 
     # Define centroids
     centroids = CentroidsExcel()

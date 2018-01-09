@@ -18,7 +18,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         expo = ExposuresExcel()
         description = 'One single file.'
-        expo._read(ENT_DEMO_XLS, description)
+        expo.read(ENT_DEMO_XLS, description)
 
         # Check results
         n_expos = 50
@@ -71,7 +71,7 @@ class TestReader(unittest.TestCase):
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
-            expo._read(ENT_DEMO_XLS, description)
+            expo.read(ENT_DEMO_XLS, description)
 
             # Verify some things
             assert "not found. Cover set to exposures values." \
@@ -94,7 +94,7 @@ class TestReader(unittest.TestCase):
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
-            expo._read(ENT_DEMO_XLS, description)
+            expo.read(ENT_DEMO_XLS, description)
 
             # Verify some things
             assert "not found. Default zero values set for deductible."\

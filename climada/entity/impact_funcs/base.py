@@ -2,10 +2,10 @@
 Define ImpactFunc class and ImpactFuncs ABC.
 """
 
-import abc
-import pickle
 import numpy as np
 
+from climada.entity.loader import Loader
+import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 
 class ImpactFunc(object):
@@ -54,7 +54,18 @@ class ImpactFunc(object):
             raise ValueError('Attribute of the impact function ' + \
                              attribute + 'not found.')
 
-class ImpactFuncs(metaclass=abc.ABCMeta):
+    def check(self):
+        """ Check consistent instance data.
+
+        Raises
+        ------
+            ValueError
+        """
+        num_exp = len(self.intensity)
+        aux.check_size(num_exp, self.mdd, 'impact function MDD')
+        aux.check_size(num_exp, self.paa, 'impact function PAA')
+
+class ImpactFuncs(Loader):
     """Contains impact functions of type ImpactFunc.
 
     Attributes
@@ -87,40 +98,8 @@ class ImpactFuncs(metaclass=abc.ABCMeta):
         if file_name is not None:
             self.load(file_name, description)
 
-    def is_impactfuncs(self):
-        """ Checks if the attributes contain consistent data.
-
-        Raises
-        ------
-            ValueError
-        """
-        # TODO: raise Error if instance is not well filled
-
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
-
-        Raises
-        ------
-            ValueError
-        """
-        self._read(file_name, description)
-        self.is_impactfuncs()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
-
-    @abc.abstractmethod
-    def _read(self, file_name, description=None):
-        """ Read input file. Abstract method. To be implemented by subclass.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-        """
+    def check(self):
+        """ Override Loader check."""
+        for _, fun in self.data.items():
+            for _, val in fun.items():
+                val.check()

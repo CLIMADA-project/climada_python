@@ -36,8 +36,8 @@ class HazardExcel(Hazard):
         # Initialize
         Hazard.__init__(self, file_name, description, haztype)
 
-    def _read(self, file_name, description=None, haztype=None, centroids=None):
-        """Override _read Hazard method."""
+    def read(self, file_name, description=None, haztype=None, centroids=None):
+        """Override read Hazard method."""
         # append the file name and description into the instance class.
         # Put type TC as default
         self.tag = TagHazard(file_name, description, 'TC')
@@ -47,7 +47,7 @@ class HazardExcel(Hazard):
             self.centroids = CentroidsExcel()
             self.centroids.sheet_name = self.sheet_names['centroid']
             self.centroids.col_names = self.col_centroids
-            self.centroids._read(file_name, description)
+            self.centroids.read(file_name, description)
         else:
             self.centroids = centroids
 
@@ -73,8 +73,8 @@ class HazardExcel(Hazard):
         if dfr.shape[0] is not num_cen:
             raise ValueError('Hazard intensity is given for a number of \
                               centroids different from the number of \
-                              centroids defined: %s != %s', dfr.shape[0], \
-                              num_cen)
+                              centroids defined: %s != %s' % 
+                              (str(dfr.shape[0]), str(num_cen)))
         # check centroids ids are correct
         if not np.array_equal(dfr[self.col_names['cen_id']].values,
                               self.centroids.id[-num_cen:]):

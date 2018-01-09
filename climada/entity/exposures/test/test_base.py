@@ -13,15 +13,12 @@ class TestAssign(unittest.TestCase):
     """Check assign interface"""
 
     # ignore abstract methods
-    p_exp = patch.multiple(Exposures, __abstractmethods__=set())
     p_haz = patch.multiple(Hazard, __abstractmethods__=set())
 
     def setUp(self):
-        self.p_exp.start()
         self.p_haz.start()
 
     def tearDown(self):
-        self.p_exp.stop()
         self.p_haz.stop()
 
     def test_assign_pass(self):

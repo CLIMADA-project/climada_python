@@ -24,8 +24,8 @@ class CentroidsMat(Centroids):
         # Initialize
         Centroids.__init__(self, file_name, description)
 
-    def _read(self, file_name, description=None):
-        """Override _read Centroids method."""
+    def read(self, file_name, description=None):
+        """Override read Centroids method."""
         cent = hdf5.read(file_name)
         try:
             cent = cent[self.field_name]

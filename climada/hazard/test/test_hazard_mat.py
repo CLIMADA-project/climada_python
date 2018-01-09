@@ -65,7 +65,7 @@ class TestReader(unittest.TestCase):
         # Expected exception because centroid size is smaller than the
         # one provided in the intensity matrix
         with self.assertRaises(ValueError):
-            hazard._read(HAZ_DEMO_MAT, None, centroids=read_cen)
+            hazard.read(HAZ_DEMO_MAT, None, centroids=read_cen)
 
 # Execute TestReader
 suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)

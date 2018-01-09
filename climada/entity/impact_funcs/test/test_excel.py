@@ -16,7 +16,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         impact = ImpactFuncsExcel()
         description = 'One single file.'
-        impact._read(ENT_DEMO_XLS, description)
+        impact.read(ENT_DEMO_XLS, description)
 
         # Check results
         n_funcs = 2

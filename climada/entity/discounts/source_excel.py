@@ -40,8 +40,8 @@ class DiscountsExcel(Discounts):
         # Initialize
         Discounts.__init__(self, file_name, description)
 
-    def _read(self, file_name, description=None):
-        """Override _read Discounts method."""
+    def read(self, file_name, description=None):
+        """Override read Loader method."""
         # append the file name and description into the instance class
         self.tag = Tag(file_name, description)
 

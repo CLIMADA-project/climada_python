@@ -86,7 +86,7 @@ class Hazard(metaclass=abc.ABCMeta):
         ------
             ValueError
         """
-        self._read(file_name, description, haztype, centroids)
+        self.read(file_name, description, haztype, centroids)
         self.is_hazard()
         self.centroids.is_centroids()
         if out_file_name is not None:
@@ -94,7 +94,7 @@ class Hazard(metaclass=abc.ABCMeta):
                 pickle.dump(self, file)
 
     @abc.abstractmethod
-    def _read(self, file_name, description=None, haztype=None,
+    def read(self, file_name, description=None, haztype=None,
               centroids=None):
         """ Read input file. Abstract method. To be implemented by subclass.
         If centroids are not provided, they are read from file_name.
