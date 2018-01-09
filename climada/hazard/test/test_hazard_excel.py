@@ -7,7 +7,7 @@ import pickle
 import numpy
 
 from climada.hazard.source_excel import HazardExcel
-from climada.hazard.centroids import Centroids
+from climada.hazard.centroids.source_excel import CentroidsExcel
 from climada.util.constants import HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
@@ -102,9 +102,8 @@ class TestReader(unittest.TestCase):
         """ Read centroid separately from the hazard """
 
         # Read demo excel file
-        centroids = Centroids()
         description = 'One single file.'
-        centroids.read_excel(HAZ_DEMO_XLS, description)
+        centroids = CentroidsExcel(HAZ_DEMO_XLS, description)
         hazard = HazardExcel()
         hazard._read(HAZ_DEMO_XLS, description, centroids)
 

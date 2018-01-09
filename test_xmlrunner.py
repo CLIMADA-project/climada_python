@@ -16,6 +16,7 @@ def find_tests():
     suite.addTest(unittest.TestLoader().discover('climada.entity.measures.test'))
     suite.addTest(unittest.TestLoader().discover('climada.entity.test'))
     suite.addTest(unittest.TestLoader().discover('climada.hazard.test'))
+    suite.addTest(unittest.TestLoader().discover('climada.hazard.centroids.test'))
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
     suite.addTest(unittest.TestLoader().discover('climada.test'))
     return suite

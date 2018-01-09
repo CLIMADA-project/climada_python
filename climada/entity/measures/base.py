@@ -1,5 +1,5 @@
 """
-Define Measure and Measures classes.
+Define Measure class and Measures ABC.
 """
 
 import abc

@@ -1,5 +1,5 @@
 """
-Define ImpactFunc and ImpactFuncs classes.
+Define ImpactFunc class and ImpactFuncs ABC.
 """
 
 import abc

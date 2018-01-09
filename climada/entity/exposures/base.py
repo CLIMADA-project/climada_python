@@ -1,5 +1,5 @@
 """
-Define Exposures class.
+Define Exposures ABC.
 """
 
 import abc

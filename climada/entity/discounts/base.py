@@ -1,5 +1,5 @@
 """
-Define Discounts class.
+Define Discounts ABC.
 """
 
 import abc

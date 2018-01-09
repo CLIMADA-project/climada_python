@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 
 from climada.entity.exposures.source_excel import ExposuresExcel
-from climada.hazard.centroids import Centroids
+from climada.hazard.centroids.source_excel import CentroidsExcel
 from climada.util.interpolation import Interpolator
 from climada.util.constants import ENT_DEMO_XLS
 
@@ -18,7 +18,7 @@ def def_input_values():
     exposures._read(ENT_DEMO_XLS)
 
     # Define centroids
-    centroids = Centroids()
+    centroids = CentroidsExcel()
     centroids.coord = np.zeros((100, 2))
     inext = 0
     for ilon in range(10):

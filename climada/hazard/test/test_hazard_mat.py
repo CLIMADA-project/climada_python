@@ -6,7 +6,7 @@ import unittest
 import numpy
 
 from climada.hazard.source_mat import HazardMat
-from climada.hazard.centroids import Centroids
+from climada.hazard.centroids.source_excel import CentroidsExcel
 from climada.util.constants import HAZ_DEMO_MAT, HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
@@ -58,8 +58,7 @@ class TestReader(unittest.TestCase):
         size """
 
         # Read demo excel file
-        read_cen = Centroids()
-        read_cen.read_excel(HAZ_DEMO_XLS)
+        read_cen = CentroidsExcel(HAZ_DEMO_XLS)
         # Read demo excel file
         hazard = HazardMat()
 

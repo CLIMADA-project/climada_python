@@ -20,6 +20,13 @@ class TestOneExposure(unittest.TestCase):
         # Set the entity default file to the demo one
         Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
+        
+        print('aquii')
+        print(len(ent.exposures.deductible))
+        print(ent.exposures.deductible[0])
+        print(ent.exposures.deductible[49])
+        print(len(ent.exposures.cover))
+        print(ent.exposures.cover[0])
         # Read default hazard file
         hazard = HazardMat(HAZ_DEMO_MAT)
         # Create impact object

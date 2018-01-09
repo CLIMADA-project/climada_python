@@ -1,24 +1,23 @@
 """
-Test Centroids class.
+Test CentroidsExcel class.
 """
 
 import unittest
 import pickle
 import numpy
 
-from climada.hazard.centroids import Centroids
+from climada.hazard.centroids.source_excel import CentroidsExcel
 from climada.util.constants import HAZ_DEMO_XLS
 
 class TestReader(unittest.TestCase):
-    '''Test reader functionality of the Centroids class'''
+    '''Test reader functionality of the CentroidsExcel class'''
 
     def test_centroid_pass(self):
         ''' Read a centroid excel file correctly.'''
 
         # Read demo excel file
-        centroids = Centroids()
         description = 'One single file.'
-        centroids.read_excel(HAZ_DEMO_XLS, description)
+        centroids = CentroidsExcel(HAZ_DEMO_XLS, description)
 
         n_centroids = 45
         self.assertEqual(centroids.coord.shape[0], n_centroids)
@@ -36,10 +35,10 @@ class TestReader(unittest.TestCase):
         """ Save the centroids object after being read correctly"""
 
         # Read demo excel file
-        centroids = Centroids()
+        centroids = CentroidsExcel()
         description = 'One single file.'
         out_file_name = 'centroid_excel.pkl'
-        centroids.read_excel(HAZ_DEMO_XLS, description, out_file_name)
+        centroids.load(HAZ_DEMO_XLS, description, out_file_name)
 
         # Getting back the objects:
         with open(out_file_name, 'rb') as file:

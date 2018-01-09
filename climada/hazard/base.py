@@ -9,7 +9,7 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
-from climada.hazard.centroids import Centroids
+from climada.hazard.centroids.source_mat import CentroidsMat
 
 class Hazard(metaclass=abc.ABCMeta):
     """Contains events of same hazard type defined at centroids. Interface.
@@ -44,7 +44,7 @@ class Hazard(metaclass=abc.ABCMeta):
         self.id = 0
         self.units = 'NA'
         # following values are defined for each event
-        self.centroids = Centroids()
+        self.centroids = CentroidsMat()
         self.event_id = np.array([], np.int64)
         self.frequency = np.array([])
         #self.name = [""]

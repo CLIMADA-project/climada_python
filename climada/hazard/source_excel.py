@@ -7,6 +7,7 @@ from scipy import sparse
 import numpy as np
 
 from climada.hazard.base import Hazard
+from climada.hazard.centroids.source_excel import CentroidsExcel
 from climada.hazard.tag import Tag as TagHazard
 
 class HazardExcel(Hazard):
@@ -37,16 +38,16 @@ class HazardExcel(Hazard):
 
     def _read(self, file_name, description=None, haztype=None, centroids=None):
         """Override _read Hazard method."""
-
         # append the file name and description into the instance class.
         # Put type TC as default
         self.tag = TagHazard(file_name, description, 'TC')
 
         # Set the centroids if given, otherwise load them from the same file
         if centroids is None:
+            self.centroids = CentroidsExcel()
             self.centroids.sheet_name = self.sheet_names['centroid']
             self.centroids.col_names = self.col_centroids
-            self.centroids.read_excel(file_name, description)
+            self.centroids._read(file_name, description)
         else:
             self.centroids = centroids
 
