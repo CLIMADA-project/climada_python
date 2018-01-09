@@ -79,7 +79,7 @@ class Hazard(metaclass=abc.ABCMeta):
             file_name (str): name of the source file
             description (str, optional): description of the source data
             haztype (str, optional): acronym of the hazard type (e.g. 'TC')
-            centroids (Centroids, optional) Centroids instance
+            centroids (Centroids, optional): Centroids instance
             out_file_name (str, optional): output file name to save as pkl
 
         Raises
@@ -104,5 +104,5 @@ class Hazard(metaclass=abc.ABCMeta):
             file_name (str): name of the source file
             description (str, optional): description of the source data
             haztype (str, optional): acronym of the hazard type (e.g. 'TC')
-            centroids (Centroids, optional) Centroids instance
+            centroids (Centroids, optional): Centroids instance
         """
