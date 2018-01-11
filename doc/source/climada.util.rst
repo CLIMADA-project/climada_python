@@ -4,6 +4,14 @@ climada\.util package
 Submodules
 ----------
 
+climada\.util\.auxiliar module
+------------------------------
+
+.. automodule:: climada.util.auxiliar
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.util\.config module
 ----------------------------
 

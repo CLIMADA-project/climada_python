@@ -22,6 +22,14 @@ climada\.entity\.entity module
     :undoc-members:
     :show-inheritance:
 
+climada\.entity\.loader module
+------------------------------
+
+.. automodule:: climada.entity.loader
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.entity\.tag module
 ---------------------------
 

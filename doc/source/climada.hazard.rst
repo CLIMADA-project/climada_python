@@ -1,6 +1,13 @@
 climada\.hazard package
 =======================
 
+Subpackages
+-----------
+
+.. toctree::
+
+    climada.hazard.centroids
+
 Submodules
 ----------
 
@@ -12,10 +19,10 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.centroids module
----------------------------------
+climada\.hazard\.loader module
+------------------------------
 
-.. automodule:: climada.hazard.centroids
+.. automodule:: climada.hazard.loader
     :members:
     :undoc-members:
     :show-inheritance:
