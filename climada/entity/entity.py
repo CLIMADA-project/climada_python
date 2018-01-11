@@ -90,17 +90,17 @@ class Entity(object):
             with open(out_file_name, 'wb') as file:
                 pickle.dump(self, file)
 
-    def is_entity(self):
+    def check(self):
         """ Checks if the attributes contain consistent data.
 
         Raises
         ------
             ValueError
         """
-        self.discounts.is_discounts()
-        self.exposures.is_exposures()
-        self.impact_funcs.is_impactFuncs()
-        self.measures.is_measures()
+        self.discounts.check()
+        self.exposures.check()
+        self.impact_funcs.check()
+        self.measures.check()
 
     @property
     def exposures(self):

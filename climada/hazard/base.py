@@ -3,15 +3,15 @@ Define Hazard ABC.
 """
 
 #from datetime import date
-import abc
-import pickle
 import numpy as np
 from scipy import sparse
 
+from climada.hazard.loader import Loader as LoaderHaz
+import climada.util.auxiliar as aux
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.source_mat import CentroidsMat
 
-class Hazard(metaclass=abc.ABCMeta):
+class Hazard(LoaderHaz):
     """Contains events of same hazard type defined at centroids. Interface.
 
     Attributes
@@ -61,48 +61,16 @@ class Hazard(metaclass=abc.ABCMeta):
         """ Compute the future hazard following the configuration """
         # TODO
 
-    def is_hazard(self):
+    def check(self):
         """ Checks if the attributes contain consistent data.
 
         Raises
         ------
             ValueError
         """
-        # TODO: raise Error if instance is not well filled
-
-    def load(self, file_name, description=None, haztype=None, centroids=None,
-             out_file_name=None):
-        """Read, check hazard (and its contained centroids) and save to pkl.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            haztype (str, optional): acronym of the hazard type (e.g. 'TC')
-            centroids (Centroids, optional): Centroids instance
-            out_file_name (str, optional): output file name to save as pkl
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description, haztype, centroids)
-        self.is_hazard()
-        self.centroids.is_centroids()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
-
-    @abc.abstractmethod
-    def read(self, file_name, description=None, haztype=None,
-              centroids=None):
-        """ Read input file. Abstract method. To be implemented by subclass.
-        If centroids are not provided, they are read from file_name.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            haztype (str, optional): acronym of the hazard type (e.g. 'TC')
-            centroids (Centroids, optional): Centroids instance
-        """
+        self.centroids.check()
+        num_ev = len(self.event_id)
+        num_cen = len(self.centroids.id)
+        aux.check_size(num_ev, self.frequency, 'hazard frequency')
+        aux.check_shape(num_ev, num_cen, self.intensity, 'hazard intensity')
+        aux.check_shape(num_ev, num_cen, self.fraction, 'hazard fraction')

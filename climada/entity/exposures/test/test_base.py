@@ -3,23 +3,14 @@ Test Exposure base class.
 """
 
 import unittest
-from unittest.mock import patch
 import numpy as np
 
 from climada.entity.exposures.base import Exposures
 from climada.hazard.base import Hazard
+from climada.util.constants import ENT_DEMO_XLS
 
 class TestAssign(unittest.TestCase):
     """Check assign interface"""
-
-    # ignore abstract methods
-    p_haz = patch.multiple(Hazard, __abstractmethods__=set())
-
-    def setUp(self):
-        self.p_haz.start()
-
-    def tearDown(self):
-        self.p_haz.stop()
 
     def test_assign_pass(self):
         """ Check that assigned attribute is correctly set."""
@@ -36,6 +27,124 @@ class TestAssign(unittest.TestCase):
         # check assigned variable has been set with correct length
         self.assertEqual(num_coord, len(expo.assigned))
 
+class TestLoader(unittest.TestCase):
+    """Test loading funcions from the Exposures class"""
+
+    @staticmethod
+    def good_exposures():
+        expo = Exposures()
+        # Followng values defined for each exposure
+        expo.id = np.array([1, 2, 3])
+        expo.coord = np.array([[1, 2], [2, 3], [3, 4]])
+        expo.value = np.array([1, 2, 3])
+        expo.deductible = np.array([1, 2, 3])
+        expo.cover = np.array([])
+        expo.impact_id = np.array([1, 2, 3])
+        expo.category_id = np.array([1, 2, 3])
+        expo.region_id = np.array([1, 2, 3])
+        expo.assigned = np.array([1, 2, 3])
+
+        return expo
+
+    def test_check_wrongValue_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.value = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures values size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongCoord_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.coord = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('exposures coordinates has wrong dimensions.', \
+                         str(error.exception))
+
+    def test_check_wrongDeduct_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.deductible = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures deductibles size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongCover_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.cover = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures coverages size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongImpact_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.impact_id = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures impact functions size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongCategory_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.category_id = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures categories size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongRegion_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.region_id = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures regions size: 3 != 2', \
+                         str(error.exception))
+
+    def test_check_wrongAssigned_fail(self):
+        """Wrong exposures definition"""
+        expo = self.good_exposures()
+        expo.assigned = np.array([1, 2])
+
+        with self.assertRaises(ValueError) as error:
+            expo.check()
+        self.assertEqual('Invalid exposures assigned centroids size: 3 != 2',\
+                         str(error.exception))
+
+    def test_load_notimplemented(self):
+        """Load function not implemented"""
+        expo = Exposures()
+        with self.assertRaises(NotImplementedError):
+            expo.load(ENT_DEMO_XLS)
+
+    def test_read_notimplemented(self):
+        """Read function not implemented"""
+        expo = Exposures()
+        with self.assertRaises(NotImplementedError):
+            expo.read(ENT_DEMO_XLS)
+
+    def test_constructfile_notimplemented(self):
+        """Constructor from file not implemented"""
+        with self.assertRaises(NotImplementedError):
+            Exposures(ENT_DEMO_XLS)
+
 # Execute TestAssign
-suite = unittest.TestLoader().loadTestsFromTestCase(TestAssign)
+suite = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
+suite.addTests(
+    unittest.TestLoader().loadTestsFromTestCase(TestAssign))
 unittest.TextTestRunner(verbosity=2).run(suite)

@@ -80,7 +80,7 @@ class Measures(Loader):
             This is an abstract class, it can't be instantiated.
         """
         self.tag = Tag(file_name, description)
-        self.data = {} # {id: Measure()}
+        self.data = [] # [Measure()]
 
         # Load values from file_name if provided
         if file_name is not None:
@@ -88,5 +88,5 @@ class Measures(Loader):
 
     def check(self):
         """ Override Loader check."""
-        for _, meas in self.data.items():
+        for meas in self.data:
             meas.check()

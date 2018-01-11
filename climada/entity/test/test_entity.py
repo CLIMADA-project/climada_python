@@ -3,6 +3,7 @@ Test Entity class.
 """
 
 import unittest
+import numpy as np
 
 from climada.entity.entity import Entity
 from climada.entity.measures.source_excel import MeasuresExcel
@@ -70,6 +71,41 @@ class TestReader(unittest.TestCase):
             ent.discounts = ExposuresExcel
             self.assertTrue('Discounts' in error.msg)
 
+class TestCheck(unittest.TestCase):
+    """Test entity checker."""
+    def test_wrongExpo_fail(self):
+        """Wrong exposures"""
+        ent = Entity()
+        ent.exposures.cover = np.array([1, 2])
+        with self.assertRaises(ValueError) as error:
+            ent.check()
+        self.assertIn('exposures', str(error.exception))
+
+    def test_wrongMeas_fail(self):
+        """Wrong measures"""
+        ent = Entity()
+        ent.measures.data[0].color_rgb = np.array([1, 2])
+        with self.assertRaises(ValueError) as error:
+            ent.check()
+        self.assertIn('measure', str(error.exception))
+
+    def test_wrongImpFun_fail(self):
+        """Wrong impact functions"""
+        ent = Entity()
+        ent.impact_funcs.data['TC'][1].paa = np.array([1, 2])
+        with self.assertRaises(ValueError) as error:
+            ent.check()
+        self.assertIn('impact function', str(error.exception))
+
+    def test_wrongDisc_fail(self):
+        """Wrong discount rates"""
+        ent = Entity()
+        ent.discounts.rates = np.array([1, 2])
+        with self.assertRaises(ValueError) as error:
+            ent.check()
+        self.assertIn('discount', str(error.exception))
+
 # Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheck))
+unittest.TextTestRunner(verbosity=2).run(suite)

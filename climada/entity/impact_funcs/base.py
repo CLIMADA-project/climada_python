@@ -51,8 +51,8 @@ class ImpactFunc(object):
         elif attribute == 'paa':
             return np.interp(inten, self.intensity, self.paa)
         else:
-            raise ValueError('Attribute of the impact function ' + \
-                             attribute + 'not found.')
+            raise ValueError('Attribute of the impact function %s not found.'\
+                             % (attribute))
 
     def check(self):
         """ Check consistent instance data.
@@ -101,5 +101,8 @@ class ImpactFuncs(Loader):
     def check(self):
         """ Override Loader check."""
         for _, fun in self.data.items():
-            for _, val in fun.items():
+            for key, val in fun.items():
+                if key != val.id:
+                    raise ValueError('Wrong impact function id: %s != %s' %\
+                                     (key,val.id))
                 val.check()

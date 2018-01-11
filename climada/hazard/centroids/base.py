@@ -2,12 +2,14 @@
 Define Centroids class.
 """
 
-import pickle
+import warnings
 import numpy as np
 
+from climada.entity.loader import Loader
+import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 
-class Centroids(object):
+class Centroids(Loader):
     """Definition of the irregular grid."""
 
     def __init__(self, file_name=None, description=None):
@@ -36,34 +38,12 @@ class Centroids(object):
         if file_name is not None:
             self.load(file_name, description)
 
-    def is_centroids(self):
+    def check(self):
         """ Check if attributes are coherent."""
-        # TODO
-
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.is_centroids()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
-
-    def read(self, file_name, description=None):
-        """ Read input file. Abstract method. To be implemented by subclass.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-        """
+        num_exp = len(self.id)
+        aux.check_size(2, self.coord[0], 'centroids coordinates')
+        aux.check_size(num_exp, self.coord[:, 0], 'centroids coordinates')
+        if self.region_id.size == 0:
+            warnings.warn('Centroids regions not set.')
+        else:
+            aux.check_size(num_exp, self.region_id, 'centroids regions')

@@ -21,7 +21,6 @@ class TestReader(unittest.TestCase):
         n_meas = 4
         
         self.assertEqual(len(meas.data), n_meas)
-        self.assertEqual(list(meas.data.keys()), [0, 1, 2, 3])
         
         first = 0
         self.assertEqual(meas.data[first].name, 'Mangroves')

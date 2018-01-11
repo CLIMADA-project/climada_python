@@ -65,12 +65,6 @@ class MeasuresExcel(Measures):
         # iterate over each measure
         for idx in range(0, num_mes):
             meas = Measure()
-            if not self.data.keys():
-                meas_id = 0
-            elif idx == 0:
-                meas_id = np.array(list(self.data.keys())).max() + 1
-            else:
-                meas_id = meas_id + 1
 
             meas.name = dfr[self.col_names['name']][idx]
             meas.color_rgb = np.fromstring(dfr[self.col_names['color']][idx],
@@ -86,4 +80,4 @@ class MeasuresExcel(Measures):
             meas.risk_transf_attach = dfr[self.col_names['risk_att']][idx]
             meas.risk_transf_cover = dfr[self.col_names['risk_cov']][idx]
 
-            self.data[meas_id] = meas
+            self.data.append(meas)
