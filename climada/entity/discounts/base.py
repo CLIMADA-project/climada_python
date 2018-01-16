@@ -37,7 +37,7 @@ class Discounts(Loader):
         self.tag = Tag(file_name, description)
         # Following values are given for each defined year
         self.years = np.array([], np.int64)
-        self.rates = np.array([])
+        self.rates = np.array([], np.float64)
 
         # Load values from file_name if provided
         if file_name is not None:
