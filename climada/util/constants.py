@@ -13,6 +13,8 @@ DATA_DIR = WORKING_DIR + 'data/'
 HAZ_DEMO_XLS = DATA_DIR + 'demo/Excel_hazard.xlsx'
 HAZ_DEMO_MAT = DATA_DIR + 'demo/atl_prob.mat'
 ENT_DEMO_XLS = DATA_DIR + 'demo/demo_today.xlsx'
+ENT_TEMPLATE_XLS = DATA_DIR + 'demo/entity_template.xlsx'
+ENT_DEMO_MAT = DATA_DIR + 'demo/demo_today.mat'
 
 # mean one latitude in km
 ONE_LAT_KM = 111.12

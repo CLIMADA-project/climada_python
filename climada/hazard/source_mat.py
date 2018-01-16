@@ -8,7 +8,13 @@ from climada.hazard.tag import Tag as TagHazard
 import climada.util.hdf5_handler as hdf5
 
 class HazardMat(Hazard):
-    """Hazard class loaded from a mat file produced by climada."""
+    """Hazard class loaded from a mat file produced by climada.
+
+    Attributes
+    ----------
+        field_name (str): name of variable containing the data
+        var_names (dict): name of the variables in field_name    
+    """
 
     def __init__(self, file_name=None, description=None, haztype=None):
         """Extend Hazard __init__ method."""

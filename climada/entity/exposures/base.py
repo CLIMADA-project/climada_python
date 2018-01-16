@@ -2,13 +2,13 @@
 Define Exposures ABC.
 """
 
-import warnings
 import numpy as np
 
 from climada.entity.loader import Loader
 import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
+from climada.util.config import config
 
 class Exposures(Loader):
     """Contains the exposures values.
@@ -52,22 +52,23 @@ class Exposures(Loader):
         --------
             This is an abstract class, it can't be instantiated.
         """
+        # Optional variables
         self.tag = Tag(file_name, description)
-        self.ref_year = 0
+        self.ref_year = config["present_ref_year"]
         self.value_unit = 'NA'
-        # Followng values defined for each exposure
-        self.id = np.array([], np.int64)
-        self.coord = np.array([]) # 2d array (n_exp x 2(lat,lon))
-        self.value = np.array([])
-        self.deductible = np.array([])
-        self.cover = np.array([])
+        # Following values defined for each exposure
+        # Obligatory variables
+        self.coord = np.array([], np.float64) # 2d array (n_exp x 2(lat,lon))
+        self.value = np.array([], np.float64)
         self.impact_id = np.array([], np.int64)
+        self.id = np.array([], np.int64)
+        # Optional variables. Default values set in check if not filled.
+        self.deductible = np.array([], np.float64)
+        self.cover = np.array([], np.float64)
+        # Optional variables. No default values set in check if not filled.
         self.category_id = np.array([], np.int64)
         self.region_id = np.array([], np.int64)
-
-        # Assignment of hazard centroids to each exposure
-        # Computed in function 'assign'
-        self.assigned = np.array([])
+        self.assigned = np.array([], np.int64)
 
         # Load values from file_name if provided
         if file_name is not None:
@@ -110,35 +111,29 @@ class Exposures(Loader):
     def check(self):
         """ Override Loader check."""
         num_exp = len(self.id)
-        aux.check_size(num_exp, self.value, 'exposures values')
-        aux.check_size(num_exp, self.impact_id, 'exposures impact functions')
-        aux.check_size(2, self.coord[0], 'exposures coordinates')
-        aux.check_size(num_exp, self.coord[:, 0], 'exposures coordinates')
+        self._check_obligatories(num_exp)
+        self._check_optionals(num_exp)
+        self._check_defaults(num_exp)
 
-        if self.deductible.size == 0:
-            warnings.warn('Empty exposures deductibles. Default values set.')
-            self.deductible = np.zeros(num_exp)
-        else:
-            aux.check_size(num_exp, self.deductible, 'exposures deductibles')
+    def _check_obligatories(self, num_exp):
+        """Check coherence obligatory variables."""
+        aux.check_size(num_exp, self.value, 'Exposures.value')
+        aux.check_size(num_exp, self.impact_id, 'Exposures.impact_id')
+        aux.check_size(2, self.coord[0], 'Exposures.coord')
+        aux.check_size(num_exp, self.coord[:, 0], 'Exposures.coord')
 
-        if self.cover.size == 0:
-            warnings.warn('Empty exposures coverages. Default values set.')
-            self.cover = self.value
-        else:
-            aux.check_size(num_exp, self.cover, 'exposures coverages')
+    def _check_defaults(self, num_exp):
+        """Check coherence optional variables. Warn and set default values \
+        if empty."""
+        self.deductible = aux.check_array_default(num_exp, self.deductible, \
+                                 'Exposures.deductible', np.zeros(num_exp))
+        self.cover = aux.check_array_default(num_exp, self.cover, \
+                                 'Exposures.cover', self.value)
 
-        if self.category_id.size == 0:
-            warnings.warn('Exposures categories not set.')
-        else:
-            aux.check_size(num_exp, self.category_id, 'exposures categories')
-
-        if self.region_id.size == 0:
-            warnings.warn('Exposures regions not set.')
-        else:
-            aux.check_size(num_exp, self.region_id, 'exposures regions')
-
-        if self.assigned.size == 0:
-            warnings.warn('Exposures assigned centroids not set.')
-        else:
-            aux.check_size(num_exp, self.assigned, \
-                            'exposures assigned centroids')
+    def _check_optionals(self, num_exp):
+        """Check coherence optional variables. Warn if empty."""
+        aux.check_array_optional(num_exp, self.category_id, \
+                                 'Exposures.category_id')
+        aux.check_array_optional(num_exp, self.region_id, \
+                         'Exposures.region_id')
+        aux.check_array_optional(num_exp, self.assigned, 'Exposures.assigned')

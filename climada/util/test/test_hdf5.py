@@ -4,9 +4,10 @@ Test hdf5_handler module.
 
 import unittest
 import numpy as np
+import h5py
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import HAZ_DEMO_MAT
+from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_MAT
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary functions used to retrieve variables from HDF5'''
@@ -58,6 +59,14 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(19.385821399329995, spr_mat[15, 0])
         self.assertEqual(52.253444444444447, spr_mat[76, 95])
         self.assertEqual(0, spr_mat[126, 86])
+
+    def test_get_string_from_ref(self):
+        """ Check import string from a HDF5 object reference"""
+        file = h5py.File(ENT_DEMO_MAT, 'r')
+        var = file['entity']['assets']['Value_unit'][0][0]
+        res = hdf5.get_string_from_ref(ENT_DEMO_MAT, var)
+        self.assertEqual('USD', res)
+        
 
 class TestReader(unittest.TestCase):
     '''Test HDF5 reader'''

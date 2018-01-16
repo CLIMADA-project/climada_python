@@ -53,7 +53,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures values size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.value size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongCoord_fail(self):
@@ -63,7 +63,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('exposures coordinates has wrong dimensions.', \
+        self.assertEqual('Exposures.coord has wrong dimensions.', \
                          str(error.exception))
 
     def test_check_wrongDeduct_fail(self):
@@ -73,7 +73,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures deductibles size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.deductible size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongCover_fail(self):
@@ -83,7 +83,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures coverages size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.cover size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongImpact_fail(self):
@@ -93,7 +93,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures impact functions size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.impact_id size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongCategory_fail(self):
@@ -103,7 +103,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures categories size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.category_id size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongRegion_fail(self):
@@ -113,7 +113,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures regions size: 3 != 2', \
+        self.assertEqual('Invalid Exposures.region_id size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongAssigned_fail(self):
@@ -123,7 +123,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             expo.check()
-        self.assertEqual('Invalid exposures assigned centroids size: 3 != 2',\
+        self.assertEqual('Invalid Exposures.assigned size: 3 != 2',\
                          str(error.exception))
 
     def test_load_notimplemented(self):

@@ -9,7 +9,13 @@ from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 
 class CentroidsMat(Centroids):
-    """Centroids class loaded from a mat file produced by climada."""
+    """Centroids class loaded from a mat file produced by climada.
+
+    Attributes
+    ----------
+        field_name (str): name of variable containing the data
+        var_names (dict): name of the variables in field_name
+    """
 
     def __init__(self, file_name=None, description=None):
         """Extend Centroids __init__ method."""

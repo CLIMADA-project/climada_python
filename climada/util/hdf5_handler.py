@@ -66,6 +66,22 @@ def get_string(array):
     """
     return u''.join(chr(c) for c in array)
 
+def get_string_from_ref(file_name, var):
+    """Form string from a reference HDF5 variable of the given file.
+
+        Parameters
+        ----------
+            file_name: matlab file name
+            var: HDF5 reference variable
+
+        Returns
+        -------
+            string
+    """
+    file = h5py.File(file_name, 'r')
+    obj = file[var]
+    return get_string(obj)
+
 def get_sparse_mat(mat_dict, shape):
     """Form sparse matrix from input hdf5 sparse matrix data type.
 

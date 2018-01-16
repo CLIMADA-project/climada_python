@@ -79,7 +79,7 @@ class TestCheck(unittest.TestCase):
         ent.exposures.cover = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('exposures', str(error.exception))
+        self.assertIn('Exposures.cover', str(error.exception))
 
     def test_wrongMeas_fail(self):
         """Wrong measures"""
