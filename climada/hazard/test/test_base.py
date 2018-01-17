@@ -35,7 +35,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             haz.check()
-        self.assertEqual('Invalid centroids regions size: 2 != 4', \
+        self.assertEqual('Invalid Centroids.region_id size: 2 != 4', \
                          str(error.exception))
 
     def test_check_wrongFreq_fail(self):
@@ -45,7 +45,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             haz.check()
-        self.assertEqual('Invalid hazard frequency size: 3 != 2', \
+        self.assertEqual('Invalid Hazard.frequency size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongInten_fail(self):
@@ -55,7 +55,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             haz.check()
-        self.assertEqual('Invalid hazard intensity row size: 3 != 2', \
+        self.assertEqual('Invalid Hazard.intensity row size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongFrac_fail(self):
@@ -65,7 +65,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             haz.check()
-        self.assertEqual('Invalid hazard fraction column size: 2 != 1', \
+        self.assertEqual('Invalid Hazard.fraction column size: 2 != 1', \
                          str(error.exception))
 
     def test_load_notimplemented(self):

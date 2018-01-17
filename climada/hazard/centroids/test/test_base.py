@@ -27,7 +27,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             cen.check()
-        self.assertEqual('Invalid centroids coordinates size: 3 != 2', \
+        self.assertEqual('Invalid Centroids.coord size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongRegion_fail(self):
@@ -37,7 +37,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             cen.check()
-        self.assertEqual('Invalid centroids regions size: 3 != 2', \
+        self.assertEqual('Invalid Centroids.region_id size: 3 != 2', \
                          str(error.exception))
 
     def test_load_notimplemented(self):
