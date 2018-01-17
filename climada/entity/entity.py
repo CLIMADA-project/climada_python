@@ -2,42 +2,45 @@
 Define Entity Class.
 """
 
-import pickle
+import os
 
+from climada.entity.loader import Loader
 from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.impact_funcs.source_excel  import ImpactFuncsExcel
+from climada.entity.impact_funcs.source_mat  import ImpactFuncsMat
 from climada.entity.discounts.base import Discounts
 from climada.entity.discounts.source_excel import DiscountsExcel
+from climada.entity.discounts.source_mat import DiscountsMat
 from climada.entity.measures.base import Measures
 from climada.entity.measures.source_excel import MeasuresExcel
+from climada.entity.measures.source_mat import MeasuresMat
 from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.source_excel import ExposuresExcel
+from climada.entity.exposures.source_mat import ExposuresMat
 from climada.util.config import ENT_DEF_XLS
 
-class Entity(object):
+class Entity(Loader):
     """Collects exposures, impact functions, measures and discount rates.
 
     Attributes
     ----------
-        exposures (subclass Exposures): exposures
-        impact_funcs (subclass ImpactFucs): vulnerability functions
-        measures (subclass Measures): measures
-        discounts (subclass Discounts): discount rates
+        exposures (Exposures): exposures
+        impact_funcs (ImpactFucs): vulnerability functions
+        measures (Measures): measures
+        discounts (Discounts): discount rates
         def_file (str): name of the xls file used as default source data
     """
 
     def_file = ENT_DEF_XLS
 
-    def __init__(self, exposures=None, impact_funcs=None, measures=None,
-                 discounts=None):
-        """Initialization. Default values are set for the inputs not provided.
+    def __init__(self, file_name=None, description=None):
+        """Fill values from file. Default file used when no file provided.
 
         Parameters
         ----------
-            exposures (subclass Exposures, optional)
-            impact_funcs (subclass ImpactFucs, optional)
-            measures (subclass Measures, optional)
-            discounts (subclass Discounts, optional)
+            file_name (str, optional): name of the source file with supported
+                format (xls, xlsx and mat)
+            description (str, optional): description of the source data
 
         Raises
         ------
@@ -47,60 +50,65 @@ class Entity(object):
         ---------
             >>> Entity()
             Builds an Entity with the values obtained from ENT_DEF_XLS file.
-            >>> Entity(exposures=myexposures)
-            Builds an Entity with impact function, measures and discount rates
-            from ENT_DEF_XLS file, and the given exposures.
+            >>> Entity(filename)
+            Builds an Entity with the values obtained from filename file.
             >>> Entity(impact_funcs=myimpact_funcs, measures=mymeasures)
             Builds an Entity with exposures and discount rates from
             ENT_DEF_XLS file, and the given impact functions and measures.
         """
-        if exposures is not None:
-            self.exposures = exposures
+        if file_name is None:
+            self._exposures = ExposuresExcel(self.def_file)
+            self._impact_funcs = ImpactFuncsExcel(self.def_file)
+            self._measures = MeasuresExcel(self.def_file)
+            self._discounts = DiscountsExcel(self.def_file)
         else:
-            self.exposures = ExposuresExcel(self.def_file)
+            self.load(file_name, description)
 
-        if impact_funcs is not None:
-            self.impact_funcs = impact_funcs
+    def read(self, file_name, description=None):
+        """Override read Loader method."""
+        # Call readers depending on file extension
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            self._exposures = ExposuresMat()
+            self._exposures.read(file_name, description)
+
+            self._impact_funcs = ImpactFuncsMat()
+            self._impact_funcs.read(file_name, description)
+
+            self._discounts = DiscountsMat()
+            self._discounts.read(file_name, description)
+
+            self._measures = MeasuresMat()
+            self._measures.read(file_name, description)
+
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            self._exposures = ExposuresExcel()
+            self._exposures.read(file_name, description)
+
+            self._impact_funcs = ImpactFuncsExcel()
+            self._impact_funcs.read(file_name, description)
+
+            self._discounts = DiscountsExcel()
+            self._discounts.read(file_name, description)
+
+            self._measures = MeasuresExcel()
+            self._measures.read(file_name, description)
+
         else:
-            self.impact_funcs = ImpactFuncsExcel(self.def_file)
-
-        if measures is not None:
-            self.measures = measures
-        else:
-            self.measures = MeasuresExcel(self.def_file)
-
-        if discounts is not None:
-            self.discounts = discounts
-        else:
-            self.discounts = DiscountsExcel(self.def_file)
-
-    def tags(self):
-        """Return entity tag constructed from its attributes tags."""
-        return {self._exposures.tag, self._impact_funcs.tag,
-                self._measures.tag, self._discounts.tag}
-
-    def save(self, out_file_name):
-        """Save as pkl.
-
-        Parameters
-        ----------
-            out_file_name (str): output file name to save as pkl
-        """
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
 
     def check(self):
-        """ Checks if the attributes contain consistent data.
+        """ Override Loader check."""
+        self._discounts.check()
+        self._exposures.check()
+        self._impact_funcs.check()
+        self._measures.check()
 
-        Raises
-        ------
-            ValueError
-        """
-        self.discounts.check()
-        self.exposures.check()
-        self.impact_funcs.check()
-        self.measures.check()
+    @property
+    def tags(self):
+        return [self._exposures.tag, self._impact_funcs.tag,
+                self._measures.tag, self._discounts.tag]
 
     @property
     def exposures(self):
@@ -109,7 +117,7 @@ class Entity(object):
     @exposures.setter
     def exposures(self, value):
         if not isinstance(value, Exposures):
-            raise ValueError("Input value is not subclass of Exposures ABC.")
+            raise ValueError("Input value is not (sub)class of Exposures.")
         self._exposures = value
 
     @property
@@ -119,8 +127,7 @@ class Entity(object):
     @impact_funcs.setter
     def impact_funcs(self, value):
         if not isinstance(value, ImpactFuncs):
-            raise ValueError("Input value is not subclass of ImpactFuncs \
-                             ABC.")
+            raise ValueError("Input value is not (sub)class of ImpactFuncs.")
         self._impact_funcs = value
 
     @property
@@ -130,7 +137,7 @@ class Entity(object):
     @measures.setter
     def measures(self, value):
         if not isinstance(value, Measures):
-            raise ValueError("Input value is not subclass of Measures ABC.")
+            raise ValueError("Input value is not (sub)class of Measures.")
         self._measures = value
 
     @property
@@ -140,5 +147,5 @@ class Entity(object):
     @discounts.setter
     def discounts(self, value):
         if not isinstance(value, Discounts):
-            raise ValueError("Input value is not subclass of Discounts ABC.")
+            raise ValueError("Input value is not (sub)class of Discounts.")
         self._discounts = value

@@ -56,7 +56,7 @@ def check_array_optional(size, var, var_name):
 
 def check_array_default(size, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.
-    
+
         Parameters
         ----------
             size (str): expected array size

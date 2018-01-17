@@ -2,7 +2,6 @@
 Define Centroids class.
 """
 
-import warnings
 import numpy as np
 
 from climada.entity.loader import Loader
@@ -41,9 +40,7 @@ class Centroids(Loader):
     def check(self):
         """ Check if attributes are coherent."""
         num_exp = len(self.id)
-        aux.check_size(2, self.coord[0], 'centroids coordinates')
-        aux.check_size(num_exp, self.coord[:, 0], 'centroids coordinates')
-        if self.region_id.size == 0:
-            warnings.warn('Centroids regions not set.')
-        else:
-            aux.check_size(num_exp, self.region_id, 'centroids regions')
+        aux.check_size(2, self.coord[0], 'Centroids.coord')
+        aux.check_size(num_exp, self.coord[:, 0], 'Centroids.coord')
+        aux.check_array_optional(num_exp, self.region_id, \
+                                 'Centroids.region_id')

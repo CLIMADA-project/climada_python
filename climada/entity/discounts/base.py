@@ -32,7 +32,11 @@ class Discounts(Loader):
 
         Examples
         --------
-            This is an abstract class, it can't be instantiated.
+            >>> disc_rates = Discounts()
+            >>> disc_rates.years = np.array([2000, 2001])
+            >>> disc_rates.rates = np.array([0.02, 0.02])
+            >>> disc_rates.check()
+            Fill discount rates with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
         # Following values are given for each defined year

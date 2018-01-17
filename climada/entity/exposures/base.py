@@ -21,7 +21,7 @@ class Exposures(Loader):
         id (np.array): an id for each exposure
         coord (np.array): 2d array. Each row contains the coordinates for one
             exposure. The first column is for latitudes and the second for
-            longitudes
+            longitudes (in degrees)
         value (np.array): a value for each exposure
         deductible (np.array): deductible value for each exposure
         cover (np.array): cover value for each exposure
@@ -50,7 +50,13 @@ class Exposures(Loader):
 
         Examples
         --------
-            This is an abstract class, it can't be instantiated.
+            >>> exp_city = Exposures()
+            >>> exp_city.coord = np.array([[40.1, 8], [40.2, 8], [40.3, 8]])
+            >>> exp_city.value = np.array([5604, 123, 9005001])
+            >>> exp_city.impact_id = np.array([1, 1, 1])
+            >>> exp_city.id = np.array([11, 12, 13])
+            >>> exp_city.check()
+            Fill exposures with values and check consistency data.
         """
         # Optional variables
         self.tag = Tag(file_name, description)

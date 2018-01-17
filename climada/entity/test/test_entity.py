@@ -12,7 +12,7 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.discounts.base import Discounts
 from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.entity.measures.base import Measures
-from climada.util.constants import ENT_DEMO_XLS
+from climada.util.constants import ENT_DEMO_XLS, ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the Entity class"""
@@ -39,37 +39,19 @@ class TestReader(unittest.TestCase):
         self.assertTrue(isinstance(def_entity.impact_funcs, ImpactFuncs))
         self.assertTrue(isinstance(def_entity.measures, Measures))
 
-    def test_wrong_input_fail(self):
-        """ValueError is raised when a wrong input is provided"""
-        # Instance entity
-        exposures = MeasuresExcel
-        impact_funcs = MeasuresExcel
-        discounts = MeasuresExcel
-        measures = ExposuresExcel
-        
-        # Set demo file as default
-        Entity.def_file = ENT_DEMO_XLS
+    def test_read_mat(self):
+        """Read entity from mat file produced by climada."""
+        entity_mat = Entity(ENT_DEMO_MAT)
+        self.assertEqual(len(entity_mat.tags), 4)
+        for idx in range(4):
+            self.assertEqual(entity_mat.tags[idx].file_name, ENT_DEMO_MAT)
 
-        with self.assertRaises(ValueError) as error:
-            Entity(exposures=exposures)
-            self.assertTrue('Exposures' in error.msg)
-
-        with self.assertRaises(ValueError) as error:
-            Entity(impact_funcs=impact_funcs)
-            self.assertTrue('ImpactFuncs' in error.msg)
-
-        with self.assertRaises(ValueError) as error:
-            Entity(discounts=discounts)
-            self.assertTrue('Discounts' in error.msg)
-
-        with self.assertRaises(ValueError) as error:
-            Entity(measures=measures)
-            self.assertTrue('Measures' in error.msg)
-
-        with self.assertRaises(ValueError) as error:
-            ent = Entity()
-            ent.discounts = ExposuresExcel
-            self.assertTrue('Discounts' in error.msg)
+    def test_read_excel(self):
+        """Read entity from an xls file following the template."""
+        entity_xls = Entity(ENT_TEMPLATE_XLS)
+        self.assertEqual(len(entity_xls.tags), 4)
+        for idx in range(4):
+            self.assertEqual(entity_xls.tags[idx].file_name, ENT_TEMPLATE_XLS)
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""
@@ -81,6 +63,10 @@ class TestCheck(unittest.TestCase):
             ent.check()
         self.assertIn('Exposures.cover', str(error.exception))
 
+        with self.assertRaises(ValueError) as error:
+            ent.exposures = MeasuresExcel()
+        self.assertIn('Exposures', str(error.exception))
+
     def test_wrongMeas_fail(self):
         """Wrong measures"""
         ent = Entity()
@@ -88,6 +74,10 @@ class TestCheck(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             ent.check()
         self.assertIn('Measure.color_rgb', str(error.exception))
+
+        with self.assertRaises(ValueError) as error:
+            ent.measures = ExposuresExcel()
+        self.assertIn('Measures', str(error.exception))
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
@@ -97,6 +87,10 @@ class TestCheck(unittest.TestCase):
             ent.check()
         self.assertIn('ImpactFunc.paa', str(error.exception))
 
+        with self.assertRaises(ValueError) as error:
+            ent.impact_funcs = ExposuresExcel()
+        self.assertIn('ImpactFuncs', str(error.exception))
+
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
         ent = Entity()
@@ -104,6 +98,10 @@ class TestCheck(unittest.TestCase):
         with self.assertRaises(ValueError) as error:
             ent.check()
         self.assertIn('Discounts.rates', str(error.exception))
+
+        with self.assertRaises(ValueError) as error:
+            ent.discounts = ExposuresExcel()
+        self.assertIn('Discounts', str(error.exception))
 
 # Execute TestReader
 suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)

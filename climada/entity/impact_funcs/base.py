@@ -8,6 +8,56 @@ from climada.entity.loader import Loader
 import climada.util.auxiliar as aux
 from climada.entity.tag import Tag
 
+class ImpactFuncs(Loader):
+    """Contains impact functions of type ImpactFunc.
+
+    Attributes
+    ----------
+        tag (Taf): information about the source data
+        data (dict): dictionary of impact functions. Keys are the impact
+            functions' id and values are instances of ImpactFunc.
+    """
+
+    def __init__(self, file_name=None, description=None):
+        """Fill values from file, if provided.
+
+        Parameters
+        ----------
+            file_name (str, optional): name of the source file
+            description (str, optional): description of the source data
+
+        Raises
+        ------
+            ValueError
+
+        Examples
+        --------
+            >>> fun_1 = ImpactFunc()
+            >>> fun_1.id = 3
+            >>> fun_1.intensity = np.array([0, 20])
+            >>> fun_1.paa = np.array([0, 1])
+            >>> fun_1.mdd = np.array([0, 0.5])
+            >>> imp_fun = ImpactFuncs()
+            >>> imp_fun.data['TC'] = {fun_1.id : fun_1}
+            >>> imp_fun.check()
+            Fill impact functions with values and check consistency data.
+        """
+        self.tag = Tag(file_name, description)
+        self.data = {} # {hazard_id : {id:ImpactFunc}}
+
+        # Load values from file_name if provided
+        if file_name is not None:
+            self.load(file_name, description)
+
+    def check(self):
+        """ Override Loader check."""
+        for _, fun in self.data.items():
+            for key, val in fun.items():
+                if key != val.id:
+                    raise ValueError('Wrong ImpactFunc.id: %s != %s' %\
+                                     (key, val.id))
+                val.check()
+
 class ImpactFunc(object):
     """Contains the definition of one Damage Function.
 
@@ -64,45 +114,3 @@ class ImpactFunc(object):
         num_exp = len(self.intensity)
         aux.check_size(num_exp, self.mdd, 'ImpactFunc.mdd')
         aux.check_size(num_exp, self.paa, 'ImpactFunc.paa')
-
-class ImpactFuncs(Loader):
-    """Contains impact functions of type ImpactFunc.
-
-    Attributes
-    ----------
-        tag (Taf): information about the source data
-        data (dict): dictionary of impact functions. Keys are the impact
-            functions' id and values are instances of ImpactFunc.
-    """
-
-    def __init__(self, file_name=None, description=None):
-        """Fill values from file, if provided.
-
-        Parameters
-        ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
-
-        Raises
-        ------
-            ValueError
-
-        Examples
-        --------
-            This is an abstract class, it can't be instantiated.
-        """
-        self.tag = Tag(file_name, description)
-        self.data = {} # {hazard_id : {id:ImpactFunc}}
-
-        # Load values from file_name if provided
-        if file_name is not None:
-            self.load(file_name, description)
-
-    def check(self):
-        """ Override Loader check."""
-        for _, fun in self.data.items():
-            for key, val in fun.items():
-                if key != val.id:
-                    raise ValueError('Wrong ImpactFunc.id: %s != %s' %\
-                                     (key, val.id))
-                val.check()
