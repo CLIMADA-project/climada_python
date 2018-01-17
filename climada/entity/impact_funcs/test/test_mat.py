@@ -4,8 +4,9 @@ Test imp_funcsFuncsExcel class.
 
 import unittest
 
-from climada.entity.impact_funcs.source_excel import ImpactFuncsExcel
-from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
+import climada.util.hdf5_handler as hdf5
+from climada.entity.impact_funcs.source_mat import ImpactFuncsMat
+from climada.util.constants import ENT_DEMO_MAT
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
@@ -13,9 +14,9 @@ class TestReader(unittest.TestCase):
     def test_demo_file_pass(self):
         """ Read demo excel file"""
         # Read demo excel file
-        imp_funcs = ImpactFuncsExcel()
+        imp_funcs = ImpactFuncsMat()
         description = 'One single file.'
-        imp_funcs.read(ENT_DEMO_XLS, description)
+        imp_funcs.read(ENT_DEMO_MAT, description)
 
         # Check results
         n_funcs = 2
@@ -81,28 +82,64 @@ class TestReader(unittest.TestCase):
         self.assertEqual(imp_funcs.data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_XLS)
+        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_MAT)
         self.assertEqual(imp_funcs.tag.description, description)
 
-    def test_template_file_pass(self):
-        """ Read template excel file"""
-        # Read demo excel file
-        imp_funcs = ImpactFuncsExcel()
-        imp_funcs.read(ENT_TEMPLATE_XLS)
-        # Check some results
-        self.assertEqual(len(imp_funcs.data), 10)
-        self.assertEqual(len(imp_funcs.data['TC'][3].paa), 9)
-        self.assertEqual(len(imp_funcs.data['EQ'][1].intensity), 14)
-        self.assertEqual(len(imp_funcs.data['HS'][1].mdd), 16)
+class TestGets(unittest.TestCase):
+    """Test functions to retrieve specific variables"""
 
-    def test_wrong_file_fail(self):
-        """ Read file intensity, fail."""
-        # Read demo excel file
-        imp_funcs = ImpactFuncsExcel()
-        imp_funcs.col_names['inten'] = 'wrong name'
-        with self.assertRaises(KeyError):
-            imp_funcs.read(ENT_DEMO_XLS)
+    def setUp(self):
+        self.imp = hdf5.read(ENT_DEMO_MAT)
+        self.imp = self.imp[ImpactFuncsMat().sup_field_name]
+        self.imp = self.imp[ImpactFuncsMat().field_name]
+
+    def test_rows_pass(self):
+        """Check get_funcs_rows."""
+        funcs = ImpactFuncsMat().get_funcs_rows(self.imp, ENT_DEMO_MAT)
+        self.assertEqual(len(funcs), 2)
+        
+        self.assertEqual(len(funcs['Tropical cyclone default']), 9)
+        self.assertEqual(len(funcs['TC Building code']), 9)
+        for i in range(9):
+            self.assertEqual(funcs['Tropical cyclone default'][i], i)
+            self.assertEqual(funcs['TC Building code'][i], 9 + i)
+
+    def test_hazard_pass(self):
+        """Check get_imp_fun_hazard."""
+        funcs = ImpactFuncsMat().get_funcs_rows(self.imp, ENT_DEMO_MAT)
+        haz_type = ImpactFuncsMat().get_imp_fun_hazard(
+                self.imp, funcs['TC Building code'], ENT_DEMO_MAT)
+        self.assertEqual(haz_type, 'TC')
+
+        haz_type = ImpactFuncsMat().get_imp_fun_hazard(
+                self.imp, funcs['Tropical cyclone default'], ENT_DEMO_MAT)
+        self.assertEqual(haz_type, 'TC')
+
+    def test_id_pass(self):
+        """Check get_imp_fun_id."""
+        funcs = ImpactFuncsMat().get_funcs_rows(self.imp, ENT_DEMO_MAT)
+        fun_id = ImpactFuncsMat().get_imp_fun_id(
+                self.imp, funcs['TC Building code'])
+        self.assertEqual(fun_id, 3)
+
+        fun_id = ImpactFuncsMat().get_imp_fun_id(
+                self.imp, funcs['Tropical cyclone default'])
+        self.assertEqual(fun_id, 1)
+
+    def test_unit_pass(self):
+        """Check get_imp_fun_unit"""
+        funcs = ImpactFuncsMat().get_funcs_rows(self.imp, ENT_DEMO_MAT)
+        fun_unit = ImpactFuncsMat().get_imp_fun_unit(self.imp, \
+                                 funcs['TC Building code'], ENT_DEMO_MAT)
+        self.assertEqual(fun_unit, 'm/s')
+
+        fun_unit = ImpactFuncsMat().get_imp_fun_unit(self.imp, \
+                                 funcs['Tropical cyclone default'], \
+                                 ENT_DEMO_MAT)
+        self.assertEqual(fun_unit, 'm/s')
 
 # Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+suite.addTests(
+    unittest.TestLoader().loadTestsFromTestCase(TestGets))
+unittest.TextTestRunner(verbosity=2).run(suite)

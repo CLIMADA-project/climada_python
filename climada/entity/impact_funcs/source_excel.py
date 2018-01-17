@@ -53,11 +53,11 @@ class ImpactFuncsExcel(ImpactFuncs):
         # load Excel data
         dfr = pandas.read_excel(file_name, self.sheet_name)
 
-        # number of exposures
+        # number of impact functions
         names_func = dfr[self.col_names['name']].unique()
         num_func = len(names_func)
 
-        # iterate over each measure
+        # iterate over each impact function
         for idx in range(0, num_func):
 
             # select an impact function

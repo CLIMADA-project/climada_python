@@ -11,7 +11,7 @@ from climada.util.constants import ENT_DEMO_MAT
 class TestReader(unittest.TestCase):
     """Test reader functionality of the DiscountsMat class"""
 
-    def test_demo_file(self):
+    def test_demo_file_pass(self):
         """ Read demo mat file"""
         # Read demo excel file
         disc_rate = DiscountsMat()

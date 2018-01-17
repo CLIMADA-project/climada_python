@@ -45,4 +45,4 @@ class Discounts(Loader):
 
     def check(self):
         """ Override Loader check."""
-        aux.check_size(len(self.years), self.rates, 'discount rates')
+        aux.check_size(len(self.years), self.rates, 'Discounts.rates')

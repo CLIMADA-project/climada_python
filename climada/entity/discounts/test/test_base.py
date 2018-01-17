@@ -19,7 +19,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             disc_rate.check()
-        self.assertEqual('Invalid discount rates size: 1 != 2', \
+        self.assertEqual('Invalid Discounts.rates size: 1 != 2', \
                          str(error.exception))
 
     def test_load_notimplemented(self):

@@ -62,8 +62,8 @@ class ImpactFunc(object):
             ValueError
         """
         num_exp = len(self.intensity)
-        aux.check_size(num_exp, self.mdd, 'impact function MDD')
-        aux.check_size(num_exp, self.paa, 'impact function PAA')
+        aux.check_size(num_exp, self.mdd, 'ImpactFuncs.mdd')
+        aux.check_size(num_exp, self.paa, 'ImpactFuncs.paa')
 
 class ImpactFuncs(Loader):
     """Contains impact functions of type ImpactFunc.

@@ -11,7 +11,7 @@ from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 class TestReader(unittest.TestCase):
     """Test reader functionality of the DiscountsExcel class"""
 
-    def test_demo_file(self):
+    def test_demo_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
         disc_rate = DiscountsExcel()
@@ -34,7 +34,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_XLS)
         self.assertEqual(disc_rate.tag.description, description)
 
-    def test_template_file(self):
+    def test_template_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
         disc_rate = DiscountsExcel()

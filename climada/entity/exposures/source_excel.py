@@ -102,6 +102,10 @@ class ExposuresExcel(Exposures):
         self.value_unit = self._parse_optional(dfr, self.value_unit, \
                                                self.col_names['uni'])
         if not isinstance(self.value_unit, str):
+            # Check all exposures have the same unit
+            if len(np.unique(self.value_unit)) is not 1:
+                raise ValueError('Different value units provided for \
+                                 exposures.')
             self.value_unit = self.value_unit[0]
         self.assigned = self._parse_optional(dfr, self.assigned, \
                                              self.col_names['ass'])

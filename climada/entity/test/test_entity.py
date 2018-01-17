@@ -95,7 +95,7 @@ class TestCheck(unittest.TestCase):
         ent.impact_funcs.data['TC'][1].paa = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('impact function', str(error.exception))
+        self.assertIn('ImpactFuncs.paa', str(error.exception))
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
@@ -103,7 +103,7 @@ class TestCheck(unittest.TestCase):
         ent.discounts.rates = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('discount', str(error.exception))
+        self.assertIn('Discounts.rates', str(error.exception))
 
 # Execute TestReader
 suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
