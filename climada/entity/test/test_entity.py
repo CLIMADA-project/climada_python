@@ -87,7 +87,7 @@ class TestCheck(unittest.TestCase):
         ent.measures.data[0].color_rgb = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('measure', str(error.exception))
+        self.assertIn('Measure.color_rgb', str(error.exception))
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
@@ -95,7 +95,7 @@ class TestCheck(unittest.TestCase):
         ent.impact_funcs.data['TC'][1].paa = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('ImpactFuncs.paa', str(error.exception))
+        self.assertIn('ImpactFunc.paa', str(error.exception))
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""

@@ -47,18 +47,18 @@ class DiscountsMat(Discounts):
         self.tag = Tag(file_name, description)
 
         # Load mat data
-        expo = hdf5.read(file_name)
+        disc = hdf5.read(file_name)
         try:
-            expo = expo[self.sup_field_name]
+            disc = disc[self.sup_field_name]
         except KeyError:
             pass
-        expo = expo[self.field_name]
+        disc = disc[self.field_name]
 
         # get the discount rates years
-        self.years = expo[self.var['year']].\
-        reshape(expo[self.var['year']].shape[1],)
+        self.years = disc[self.var['year']].\
+        reshape(disc[self.var['year']].shape[1],)
         self.years = self.years.astype(int)
 
         # get the discount rates for each year
-        self.rates = expo[self.var['disc']].\
-        reshape(expo[self.var['disc']].shape[1],)
+        self.rates = disc[self.var['disc']].\
+        reshape(disc[self.var['disc']].shape[1],)

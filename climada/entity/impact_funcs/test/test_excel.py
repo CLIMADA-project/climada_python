@@ -86,7 +86,6 @@ class TestReader(unittest.TestCase):
 
     def test_template_file_pass(self):
         """ Read template excel file"""
-        # Read demo excel file
         imp_funcs = ImpactFuncsExcel()
         imp_funcs.read(ENT_TEMPLATE_XLS)
         # Check some results
@@ -97,7 +96,6 @@ class TestReader(unittest.TestCase):
 
     def test_wrong_file_fail(self):
         """ Read file intensity, fail."""
-        # Read demo excel file
         imp_funcs = ImpactFuncsExcel()
         imp_funcs.col_names['inten'] = 'wrong name'
         with self.assertRaises(KeyError):

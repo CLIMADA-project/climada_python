@@ -22,7 +22,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid measure hazard intensity size: 2 != 3', \
+        self.assertEqual('Invalid Measure.hazard_intensity size: 2 != 3', \
                          str(error.exception))
 
     def test_check_wrongColor_fail(self):
@@ -36,7 +36,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid measure colour RGB size: 3 != 2', \
+        self.assertEqual('Invalid Measure.color_rgb size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
@@ -50,7 +50,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-            self.assertEqual('measure MDD impact has wrong dimensions.', \
+            self.assertEqual('Measure.mdd_impact has wrong dimensions.', \
                  str(error.exception))
 
     def test_check_wrongPAA_fail(self):
@@ -64,7 +64,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid measure PAA impact size: 2 != 4', \
+        self.assertEqual('Invalid Measure.paa_impact size: 2 != 4', \
                          str(error.exception))
 
     def test_load_notimplemented(self):

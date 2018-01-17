@@ -50,9 +50,9 @@ def check_array_optional(size, var, var_name):
             ValueError
     """
     if var.size == 0:
-         warnings.warn("%s not set. " % var_name)
+        warnings.warn("%s not set. " % var_name)
     else:
-         check_size(size, var, var_name)
+        check_size(size, var, var_name)
 
 def check_array_default(size, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.

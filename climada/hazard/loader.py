@@ -8,7 +8,7 @@ class Loader(object):
     """Define functions to load data."""
 
     def read(self, file_name, description=None, haztype=None,
-              centroids=None):
+             centroids=None):
         """ Read input file. To be implemented by subclass.
         If centroids are not provided, they are read from file_name.
 

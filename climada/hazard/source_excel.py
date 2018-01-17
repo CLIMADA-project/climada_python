@@ -71,10 +71,10 @@ class HazardExcel(Hazard):
                   frequency: ', dfr.shape[1] - 1, ' != ', num_events)
         # check number of centroids is the same as retrieved before
         if dfr.shape[0] is not num_cen:
-            raise ValueError('Hazard intensity is given for a number of \
-                              centroids different from the number of \
-                              centroids defined: %s != %s' % 
-                              (str(dfr.shape[0]), str(num_cen)))
+            raise ValueError( \
+                    'Hazard intensity is given for a number of centroids \
+                    different from the number of centroids defined: %s != %s'\
+                    % (str(dfr.shape[0]), str(num_cen)))
         # check centroids ids are correct
         if not np.array_equal(dfr[self.col_names['cen_id']].values,
                               self.centroids.id[-num_cen:]):

@@ -13,6 +13,7 @@ class ImpactFuncsMat(ImpactFuncs):
 
     Attributes
     ----------
+        sup_field_name (str): name of the enclosing variable, if present
         sheet_name (str): name of excel sheet containing the data
         col_names (dict): name of the table columns for each of the attributes
     """
@@ -68,7 +69,7 @@ class ImpactFuncsMat(ImpactFuncs):
             # get impact function values
             func = ImpactFunc()
             func.name = imp_name
-    
+
             # check that this function only represents one peril
             hazard = self.get_imp_fun_hazard(imp, imp_rows, file_name)
             # check that this function only has one id
@@ -89,21 +90,21 @@ class ImpactFuncsMat(ImpactFuncs):
     def get_funcs_rows(self, imp, file_name):
         """Get rows that fill every impact function and its name."""
         func_pos = dict()
-        it = np.nditer(imp[self.var['name']], flags=['refs_ok', 'c_index'])
-        while not it.finished:
+        it_fun = np.nditer(imp[self.var['name']], flags=['refs_ok', 'c_index'])
+        while not it_fun.finished:
             str_aux = hdf5.get_string_from_ref(file_name, \
-                                               it.itviews[0][it.index])
+                                               it_fun.itviews[0][it_fun.index])
             if str_aux not in func_pos.keys():
-                func_pos[str_aux] = [it.index]
+                func_pos[str_aux] = [it_fun.index]
             else:
-                func_pos[str_aux].append(it.index)
-            it.iternext()
+                func_pos[str_aux].append(it_fun.index)
+            it_fun.iternext()
         return func_pos
 
     def get_imp_fun_hazard(self, imp, idxs, file_name):
         """Get hazard id of each value of an impact function. Check all the
         values are the same.
-        
+
         Raises
         ------
             ValueError
@@ -121,7 +122,7 @@ class ImpactFuncsMat(ImpactFuncs):
     def get_imp_fun_id(self, imp, idxs):
         """Get function id of each value of an impact function. Check all the
         values are the same.
-        
+
         Raises
         ------
             ValueError
@@ -135,7 +136,7 @@ class ImpactFuncsMat(ImpactFuncs):
     def get_imp_fun_unit(self, imp, idxs, file_name):
         """Get units of each value of an impact function. Check all the
         values are the same.
-        
+
         Raises
         ------
             ValueError

@@ -62,8 +62,8 @@ class ImpactFunc(object):
             ValueError
         """
         num_exp = len(self.intensity)
-        aux.check_size(num_exp, self.mdd, 'ImpactFuncs.mdd')
-        aux.check_size(num_exp, self.paa, 'ImpactFuncs.paa')
+        aux.check_size(num_exp, self.mdd, 'ImpactFunc.mdd')
+        aux.check_size(num_exp, self.paa, 'ImpactFunc.paa')
 
 class ImpactFuncs(Loader):
     """Contains impact functions of type ImpactFunc.
@@ -103,6 +103,6 @@ class ImpactFuncs(Loader):
         for _, fun in self.data.items():
             for key, val in fun.items():
                 if key != val.id:
-                    raise ValueError('Wrong impact function id: %s != %s' %\
-                                     (key,val.id))
+                    raise ValueError('Wrong ImpactFunc.id: %s != %s' %\
+                                     (key, val.id))
                 val.check()

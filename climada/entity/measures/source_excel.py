@@ -1,5 +1,5 @@
 """
-Define MeasuresExcelclass.
+Define MeasuresExcel class.
 """
 
 import numpy as np
@@ -59,7 +59,7 @@ class MeasuresExcel(Measures):
         # load Excel data
         dfr = pandas.read_excel(file_name, self.sheet_name)
 
-        # number of exposures
+        # number of measures
         num_mes = len(dfr.index)
 
         # iterate over each measure
@@ -72,7 +72,15 @@ class MeasuresExcel(Measures):
             meas.cost = dfr[self.col_names['cost']][idx]
             meas.hazard_freq_cutoff = dfr[self.col_names['haz_frq']][idx]
             meas.hazard_event_set = dfr[self.col_names['haz_set']][idx]
-            meas.hazard_intensity = (1, dfr[self.col_names['haz_int']][idx])
+            # Search for (a, b) values, put a = 1 otherwise
+            try:
+                meas.hazard_intensity = (1, \
+                                         dfr[self.col_names['haz_int']][idx])
+            except KeyError:
+                col_name_a = self.col_names['haz_int'] + ' a'
+                col_name_b = self.col_names['haz_int'] + ' b'
+                meas.hazard_intensity = (dfr[col_name_a][idx], \
+                                         dfr[col_name_b][idx])
             meas.mdd_impact = (dfr[self.col_names['mdd_a']][idx],
                                dfr[self.col_names['mdd_b']][idx])
             meas.paa_impact = (dfr[self.col_names['paa_a']][idx],

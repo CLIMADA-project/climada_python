@@ -48,10 +48,10 @@ class Measure(object):
         ------
             ValueError
         """
-        aux.check_size(3, self.color_rgb, 'measure colour RGB')
-        aux.check_size(2, self.hazard_intensity, 'measure hazard intensity')
-        aux.check_size(2, self.mdd_impact, 'measure MDD impact')
-        aux.check_size(2, self.paa_impact, 'measure PAA impact')
+        aux.check_size(3, self.color_rgb, 'Measure.color_rgb')
+        aux.check_size(2, self.hazard_intensity, 'Measure.hazard_intensity')
+        aux.check_size(2, self.mdd_impact, 'Measure.mdd_impact')
+        aux.check_size(2, self.paa_impact, 'Measure.paa_impact')
 
 class Measures(Loader):
     """Contains measures of type Measures.

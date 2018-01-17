@@ -13,7 +13,7 @@ class HazardMat(Hazard):
     Attributes
     ----------
         field_name (str): name of variable containing the data
-        var_names (dict): name of the variables in field_name    
+        var_names (dict): name of the variables in field_name
     """
 
     def __init__(self, file_name=None, description=None, haztype=None):

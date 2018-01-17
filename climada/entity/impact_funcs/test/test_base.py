@@ -23,7 +23,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid impact function PAA size: 3 != 2', \
+        self.assertEqual('Invalid ImpactFunc.paa size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
@@ -38,7 +38,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid impact function MDD size: 3 != 2', \
+        self.assertEqual('Invalid ImpactFunc.mdd size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongID_fail(self):
@@ -49,7 +49,7 @@ class TestLoader(unittest.TestCase):
         imp_fun.data['TC'][imp_id].id = 0
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Wrong impact function id: 1 != 0', \
+        self.assertEqual('Wrong ImpactFunc.id: 1 != 0', \
                          str(error.exception))
 
     def test_load_notimplemented(self):
