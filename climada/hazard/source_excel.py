@@ -63,6 +63,7 @@ class HazardExcel(Hazard):
 
         # Load hazard intensity
         dfr = pandas.read_excel(file_name, self.sheet_names['inten'])
+        self.event_name = dfr.keys().values[1:].tolist()
         # number of events (ignore centroid_ID column)
         # check the number of events is the same as the one in the frequency
         if dfr.shape[1] - 1 is not num_events:

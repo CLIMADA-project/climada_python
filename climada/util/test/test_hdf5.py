@@ -60,13 +60,21 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(52.253444444444447, spr_mat[76, 95])
         self.assertEqual(0, spr_mat[126, 86])
 
-    def test_get_string_from_ref(self):
+    def test_get_str_from_ref(self):
         """ Check import string from a HDF5 object reference"""
         file = h5py.File(ENT_DEMO_MAT, 'r')
         var = file['entity']['assets']['Value_unit'][0][0]
-        res = hdf5.get_string_from_ref(ENT_DEMO_MAT, var)
+        res = hdf5.get_str_from_ref(ENT_DEMO_MAT, var)
         self.assertEqual('USD', res)
-        
+
+    def test_get_list_str_from_ref(self):
+        """ Check import string from a HDF5 object reference"""
+        file = h5py.File(HAZ_DEMO_MAT, 'r')
+        var = file['hazard']['name']
+        var_list = hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
+        self.assertEqual('NNN_1185404_gen7', var_list[157])
+        self.assertEqual('ALFA_gen8', var_list[9898])
+        self.assertEqual('ALBERTO_gen6', var_list[12566])
 
 class TestReader(unittest.TestCase):
     '''Test HDF5 reader'''

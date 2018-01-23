@@ -2,6 +2,8 @@
 Define HazardMat class.
 """
 
+import numpy as np
+
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.source_mat import CentroidsMat
 from climada.hazard.tag import Tag as TagHazard
@@ -23,6 +25,7 @@ class HazardMat(Hazard):
         # Define the names of the variables in field_namethat are read
         self.var = {'per_id' : 'peril_ID',
                     'even_id' : 'event_ID',
+                    'ev_name' : 'name',
                     'freq' : 'frequency',
                     'inten': 'intensity',
                     'unit': 'units',
@@ -64,11 +67,12 @@ class HazardMat(Hazard):
             self.centroids = centroids
 
         # reshape from shape (x,1) to 1d array shape (x,)
-        self.frequency = hazard[self.var['freq']]. \
-        reshape(len(hazard[self.var['freq']]),)
-        self.event_id = hazard[self.var['even_id']]. \
-        astype(int, copy=False).reshape(len(hazard[self.var['even_id']]),)
+        self.frequency = np.squeeze(hazard[self.var['freq']])
+        self.event_id = np.squeeze(hazard[self.var['even_id']]. \
+        astype(int, copy=False))
         self.units = hdf5.get_string(hazard[self.var['unit']])
+        self.event_name = hdf5.get_list_str_from_ref(
+            file_name, hazard[self.var['ev_name']])
 
         # number of centroids and events
         n_cen = len(self.centroids.id)

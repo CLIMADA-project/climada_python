@@ -14,7 +14,6 @@ class TestReader(unittest.TestCase):
 
     def test_hazard_pass(self):
         ''' Read an hazard excel file correctly.'''
-
         # Read demo excel file
         hazard = HazardMat(HAZ_DEMO_MAT)
 
@@ -25,24 +24,22 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard.id, 0)
         self.assertEqual(hazard.units, 'm/s')
 
-        self.assertEqual(hazard.centroids.coord.shape[0], n_centroids)
-        self.assertEqual(hazard.centroids.coord.shape[1], 2)
+        self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
 
         self.assertEqual(hazard.event_id.dtype, numpy.int64)
-        self.assertEqual(len(hazard.event_id), n_events)
         self.assertEqual(hazard.event_id.shape, (n_events,))
 
         self.assertEqual(hazard.frequency.dtype, numpy.float)
-        self.assertEqual(len(hazard.frequency), n_events)
         self.assertEqual(hazard.frequency.shape, (n_events,))
 
         self.assertEqual(hazard.intensity.dtype, numpy.float)
-        self.assertEqual(hazard.intensity.shape[0], n_events)
-        self.assertEqual(hazard.intensity.shape[1], n_centroids)
+        self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
 
         self.assertEqual(hazard.fraction.dtype, numpy.float)
-        self.assertEqual(hazard.fraction.shape[0], n_events)
-        self.assertEqual(hazard.fraction.shape[1], n_centroids)
+        self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
+
+        self.assertEqual(len(hazard.event_name), n_events)
+        self.assertEqual(hazard.event_name[124], 'NNN_1185308_gen4')
 
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_DEMO_MAT)
@@ -56,7 +53,6 @@ class TestReader(unittest.TestCase):
     def test_wrong_centroid_fail(self):
         """ Read centroid separately from the hazard. Wrong centroid data in
         size """
-
         # Read demo excel file
         read_cen = CentroidsExcel(HAZ_DEMO_XLS)
         # Read demo excel file

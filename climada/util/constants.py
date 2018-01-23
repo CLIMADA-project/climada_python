@@ -16,6 +16,8 @@ ENT_DEMO_XLS = DATA_DIR + 'demo/demo_today.xlsx'
 ENT_TEMPLATE_XLS = DATA_DIR + 'demo/entity_template.xlsx'
 ENT_DEMO_MAT = DATA_DIR + 'demo/demo_today.mat'
 
+SHAPES_MAT = DATA_DIR + 'system/admin0.mat'
+
 # mean one latitude in km
 ONE_LAT_KM = 111.12
 # earth radius in km
