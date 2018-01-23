@@ -5,7 +5,7 @@ Define Measure class and Measures ABC.
 import numpy as np
 
 from climada.entity.loader import Loader
-import climada.util.auxiliar as aux
+import climada.util.checker as check
 from climada.entity.tag import Tag
 
 class Measures(Loader):
@@ -95,7 +95,7 @@ class Measure(object):
         ------
             ValueError
         """
-        aux.check_size(3, self.color_rgb, 'Measure.color_rgb')
-        aux.check_size(2, self.hazard_intensity, 'Measure.hazard_intensity')
-        aux.check_size(2, self.mdd_impact, 'Measure.mdd_impact')
-        aux.check_size(2, self.paa_impact, 'Measure.paa_impact')
+        check.size(3, self.color_rgb, 'Measure.color_rgb')
+        check.size(2, self.hazard_intensity, 'Measure.hazard_intensity')
+        check.size(2, self.mdd_impact, 'Measure.mdd_impact')
+        check.size(2, self.paa_impact, 'Measure.paa_impact')

@@ -116,7 +116,7 @@ class ExposuresMat(Exposures):
                                                 self.var['ass'])
         self.assigned = self.assigned.astype(int)
         try:
-            self.value_unit = hdf5.get_string_from_ref(file_name, \
+            self.value_unit = hdf5.get_str_from_ref(file_name, \
                                                   expo[self.var['uni']][0][0])
         except KeyError:
             pass

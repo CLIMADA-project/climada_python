@@ -1,10 +1,10 @@
 """
-auxiliary module
+module containing functions to check variables properties.
 """
 
 import warnings
 
-def check_size(exp_len, var, var_name):
+def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
 
         Raises
@@ -18,7 +18,7 @@ def check_size(exp_len, var, var_name):
     except TypeError:
         raise ValueError('%s has wrong dimensions.' % var_name)
 
-def check_shape(exp_row, exp_col, var, var_name):
+def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
 
         Raises
@@ -36,12 +36,12 @@ def check_shape(exp_row, exp_col, var, var_name):
         raise ValueError('%s has wrong dimensions.' % var_name)
 
 
-def check_array_optional(size, var, var_name):
+def array_optional(exp_len, var, var_name):
     """Check if array has right size. Warn if array empty. Call check_size.
 
         Parameters
         ----------
-            size (str): expected array size
+            exp_len (str): expected array size
             var (np.array): numpy array to check
             var_name (str): name of the variable. Used in error/warning msg
 
@@ -49,17 +49,17 @@ def check_array_optional(size, var, var_name):
         ------
             ValueError
     """
-    if var.size == 0:
+    if len(var) == 0:
         warnings.warn("%s not set. " % var_name)
     else:
-        check_size(size, var, var_name)
+        size(exp_len, var, var_name)
 
-def check_array_default(size, var, var_name, def_val):
+def array_default(exp_len, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.
 
         Parameters
         ----------
-            size (str): expected array size
+            exp_len (str): expected array size
             var (np.array): numpy array to check
             var_name (str): name of the variable. Used in error/warning msg
             def_val (np.array): nump array used as default value
@@ -73,9 +73,9 @@ def check_array_default(size, var, var_name, def_val):
             Filled array
     """
     res = var
-    if var.size == 0:
+    if len(var) == 0:
         warnings.warn("%s not set. Default values set." % var_name)
         res = def_val
     else:
-        check_size(size, var, var_name)
+        size(exp_len, var, var_name)
     return res

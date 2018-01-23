@@ -5,7 +5,7 @@ Define Exposures ABC.
 import numpy as np
 
 from climada.entity.loader import Loader
-import climada.util.auxiliar as aux
+import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
 from climada.util.config import config
@@ -121,25 +121,29 @@ class Exposures(Loader):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
+    def plot_value(self):
+        """Plot exposures values over Earth's map without rendering"""
+        # TODO
+
     def _check_obligatories(self, num_exp):
         """Check coherence obligatory variables."""
-        aux.check_size(num_exp, self.value, 'Exposures.value')
-        aux.check_size(num_exp, self.impact_id, 'Exposures.impact_id')
-        aux.check_size(2, self.coord[0], 'Exposures.coord')
-        aux.check_size(num_exp, self.coord[:, 0], 'Exposures.coord')
+        check.size(num_exp, self.value, 'Exposures.value')
+        check.size(num_exp, self.impact_id, 'Exposures.impact_id')
+        check.size(2, self.coord[0], 'Exposures.coord')
+        check.size(num_exp, self.coord[:, 0], 'Exposures.coord')
 
     def _check_defaults(self, num_exp):
         """Check coherence optional variables. Warn and set default values \
         if empty."""
-        self.deductible = aux.check_array_default(num_exp, self.deductible, \
+        self.deductible = check.array_default(num_exp, self.deductible, \
                                  'Exposures.deductible', np.zeros(num_exp))
-        self.cover = aux.check_array_default(num_exp, self.cover, \
+        self.cover = check.array_default(num_exp, self.cover, \
                                  'Exposures.cover', self.value)
 
     def _check_optionals(self, num_exp):
         """Check coherence optional variables. Warn if empty."""
-        aux.check_array_optional(num_exp, self.category_id, \
+        check.array_optional(num_exp, self.category_id, \
                                  'Exposures.category_id')
-        aux.check_array_optional(num_exp, self.region_id, \
+        check.array_optional(num_exp, self.region_id, \
                          'Exposures.region_id')
-        aux.check_array_optional(num_exp, self.assigned, 'Exposures.assigned')
+        check.array_optional(num_exp, self.assigned, 'Exposures.assigned')

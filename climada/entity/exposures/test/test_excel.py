@@ -282,6 +282,11 @@ class TestParsers(unittest.TestCase):
         expo = ExposuresExcel()
         ref_year = expo._parse_ref_year(ENT_DEMO_XLS)
         self.assertEqual(config["present_ref_year"], ref_year)
+
+    def test_plot(self):
+        expo = ExposuresExcel(ENT_DEMO_XLS)
+        expo.plot_value()
+        
         
 # Execute TestReader
 suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)

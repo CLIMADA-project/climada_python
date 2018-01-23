@@ -5,7 +5,7 @@ Define Centroids class.
 import numpy as np
 
 from climada.entity.loader import Loader
-import climada.util.auxiliar as aux
+import climada.util.checker as check
 from climada.entity.tag import Tag
 
 class Centroids(Loader):
@@ -40,7 +40,7 @@ class Centroids(Loader):
     def check(self):
         """ Check if attributes are coherent."""
         num_exp = len(self.id)
-        aux.check_size(2, self.coord[0], 'Centroids.coord')
-        aux.check_size(num_exp, self.coord[:, 0], 'Centroids.coord')
-        aux.check_array_optional(num_exp, self.region_id, \
+        check.size(2, self.coord[0], 'Centroids.coord')
+        check.size(num_exp, self.coord[:, 0], 'Centroids.coord')
+        check.array_optional(num_exp, self.region_id, \
                                  'Centroids.region_id')

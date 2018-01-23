@@ -39,10 +39,8 @@ class CentroidsMat(Centroids):
             pass
 
         self.tag = Tag(file_name, description)
-        cen_lat = cent[self.var_names['lat']]. \
-        reshape(len(cent[self.var_names['lat']]),)
-        cen_lon = cent[self.var_names['lon']]. \
-        reshape(len(cent[self.var_names['lon']]),)
+        cen_lat = np.squeeze(cent[self.var_names['lat']])
+        cen_lon = np.squeeze(cent[self.var_names['lon']])
         self.coord = np.array([cen_lat, cen_lon]).transpose()
-        self.id = cent[self.var_names['cen_id']]. \
-        astype(int, copy=False)
+        self.id = np.squeeze(cent[self.var_names['cen_id']]. \
+        astype(int, copy=False))

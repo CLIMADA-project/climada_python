@@ -74,15 +74,15 @@ class MeasuresMat(Measures):
         for idx in range(0, num_mes):
             meas = Measure()
 
-            meas.name = hdf5.get_string_from_ref(
+            meas.name = hdf5.get_str_from_ref(
                 file_name, meas_all[self.var['name']][idx][0])
 
-            color_str = hdf5.get_string_from_ref(
+            color_str = hdf5.get_str_from_ref(
                 file_name, meas_all[self.var['color']][idx][0])
             meas.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
             meas.cost = meas_all[self.var['cost']][idx][0]
             meas.hazard_freq_cutoff = meas_all[self.var['haz_frq']][idx][0]
-            meas.hazard_event_set = hdf5.get_string_from_ref(
+            meas.hazard_event_set = hdf5.get_str_from_ref(
                 file_name, meas_all[self.var['haz_set']][idx][0])
             meas.hazard_intensity = (meas_all[self.var['haz_int_a']][idx][0], \
                                      meas_all[self.var['haz_int_b']][0][idx])

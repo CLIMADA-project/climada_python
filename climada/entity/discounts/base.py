@@ -5,7 +5,7 @@ Define Discounts.
 import numpy as np
 
 from climada.entity.loader import Loader
-import climada.util.auxiliar as aux
+import climada.util.checker as check
 from climada.entity.tag import Tag
 
 class Discounts(Loader):
@@ -49,4 +49,4 @@ class Discounts(Loader):
 
     def check(self):
         """ Override Loader check."""
-        aux.check_size(len(self.years), self.rates, 'Discounts.rates')
+        check.size(len(self.years), self.rates, 'Discounts.rates')
