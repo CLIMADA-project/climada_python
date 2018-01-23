@@ -69,6 +69,7 @@ class ImpactFuncsExcel(ImpactFuncs):
             hazard = df_func[self.col_names['peril']].values[0]
 
             # load impact function values
+            func.haz_type = hazard
             # check that the impact function has a unique id
             if len(df_func[self.col_names['func_id']].unique()) is not 1:
                 raise ValueError('Impact function with two different IDs.')

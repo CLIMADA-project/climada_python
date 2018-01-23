@@ -72,6 +72,7 @@ class ImpactFuncsMat(ImpactFuncs):
 
             # check that this function only represents one peril
             hazard = self.get_imp_fun_hazard(imp, imp_rows, file_name)
+            func.haz_type = hazard
             # check that this function only has one id
             func.id = self.get_imp_fun_id(imp, imp_rows)
             # check that this function only has one intensity unit
@@ -92,7 +93,7 @@ class ImpactFuncsMat(ImpactFuncs):
         func_pos = dict()
         it_fun = np.nditer(imp[self.var['name']], flags=['refs_ok', 'c_index'])
         while not it_fun.finished:
-            str_aux = hdf5.get_string_from_ref(file_name, \
+            str_aux = hdf5.get_str_from_ref(file_name, \
                                                it_fun.itviews[0][it_fun.index])
             if str_aux not in func_pos.keys():
                 func_pos[str_aux] = [it_fun.index]
@@ -111,7 +112,7 @@ class ImpactFuncsMat(ImpactFuncs):
         """
         prev_haz = ""
         for row in idxs:
-            cur_haz = hdf5.get_string_from_ref(file_name, \
+            cur_haz = hdf5.get_str_from_ref(file_name, \
                                                imp[self.var['peril']][row][0])
             if prev_haz == "":
                 prev_haz = cur_haz
@@ -143,7 +144,7 @@ class ImpactFuncsMat(ImpactFuncs):
         """
         prev_unit = ""
         for row in idxs:
-            cur_unit = hdf5.get_string_from_ref(file_name, \
+            cur_unit = hdf5.get_str_from_ref(file_name, \
                                                 imp[self.var['unit']][row][0])
             if prev_unit == "":
                 prev_unit = cur_unit

@@ -15,11 +15,13 @@ class TestLoader(unittest.TestCase):
         """Wrong PAA definition"""
         imp_fun = ImpactFuncs()
         imp_id = 1
-        imp_fun.data['TC'] = {imp_id:ImpactFunc()}
-        imp_fun.data['TC'][imp_id].id = imp_id
-        imp_fun.data['TC'][imp_id].intensity = np.array([1, 2, 3])
-        imp_fun.data['TC'][imp_id].mdd = np.array([1, 2, 3])
-        imp_fun.data['TC'][imp_id].paa = np.array([1, 2])
+        haz_type = 'TC'
+        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type][imp_id].id = imp_id
+        imp_fun.data[haz_type][imp_id].haz_type = haz_type
+        imp_fun.data[haz_type][imp_id].intensity = np.array([1, 2, 3])
+        imp_fun.data[haz_type][imp_id].mdd = np.array([1, 2, 3])
+        imp_fun.data[haz_type][imp_id].paa = np.array([1, 2])
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
@@ -30,11 +32,13 @@ class TestLoader(unittest.TestCase):
         """Wrong MDD definition"""
         imp_fun = ImpactFuncs()
         imp_id = 1
-        imp_fun.data['TC'] = {imp_id:ImpactFunc()}
-        imp_fun.data['TC'][imp_id].id = imp_id
-        imp_fun.data['TC'][imp_id].intensity = np.array([1, 2, 3])
-        imp_fun.data['TC'][imp_id].mdd = np.array([1, 2])
-        imp_fun.data['TC'][imp_id].paa = np.array([1, 2, 3])
+        haz_type = 'TC'
+        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type][imp_id].id = imp_id
+        imp_fun.data[haz_type][imp_id].haz_type = haz_type
+        imp_fun.data[haz_type][imp_id].intensity = np.array([1, 2, 3])
+        imp_fun.data[haz_type][imp_id].mdd = np.array([1, 2])
+        imp_fun.data[haz_type][imp_id].paa = np.array([1, 2, 3])
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
@@ -45,11 +49,26 @@ class TestLoader(unittest.TestCase):
         """Wrong id definition"""
         imp_fun = ImpactFuncs()
         imp_id = 1
-        imp_fun.data['TC'] = {imp_id:ImpactFunc()}
-        imp_fun.data['TC'][imp_id].id = 0
+        haz_type = 'TC'
+        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type][imp_id].id = 0
+        imp_fun.data[haz_type][imp_id].haz_type = haz_type
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
         self.assertEqual('Wrong ImpactFunc.id: 1 != 0', \
+                         str(error.exception))
+
+    def test_check_wrongType_fail(self):
+        """Wrong hazard type definition"""
+        imp_fun = ImpactFuncs()
+        imp_id = 1
+        haz_type = 'TC'
+        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type][imp_id].id = imp_id
+        imp_fun.data[haz_type][imp_id].haz_type = 'null'
+        with self.assertRaises(ValueError) as error:
+            imp_fun.check()
+        self.assertEqual('Wrong ImpactFunc.haz_type: TC != null', \
                          str(error.exception))
 
     def test_load_notimplemented(self):
@@ -99,7 +118,7 @@ class TestInterpolation(unittest.TestCase):
         imp_fun.paa = np.array([3,4])
         intensity = 0.5
         resul = imp_fun.interpolate(intensity, 'paa')
-        self.assertEqual(3.5, resul)
+        self.assertEqual(3.5, resul)        
 
 # Execute TestReader
 suite = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
