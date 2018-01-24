@@ -49,7 +49,9 @@ setup(
                       'scipy',
                       'scikit-learn',
                       'xlrd',
-                      'xmlrunner'], 
+                      'xmlrunner',
+                      'coverage',
+                      'pylint'], 
 
     #package_data={ 'climada': ['data/*'],
     #},
