@@ -1,0 +1,13 @@
+admin0.mat is the .mat binary version of the shape file ne_10m_admin_0_countries.shp, to be obtained from from www.naturalearthdata.com/downloads/10m-cultural-vectors
+specifically the file: www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_countries.zip and then and then (re)create the .mat file with:
+shapes=climada_shaperead('SYSTEM_ADMIN0’)
+
+The file admin0.xls contains the full names of all countries for which shapes exist in admin0.mat as well as the country ISO3 codes. Use this Excel tables to match any other country name convention to the one used in climada. It is recommended to use the ISO3 name for matching, as this is safer than the full country names.
+
+Please note that the following countries needed to be restricted to their domestic (or core) extent, as we otherwise run into troubles: France, Netherlands, Norway, New Zealand , Portugal, Russia, United States. For those, X_ALL and Y_ALL contain the original shapes including ALL overseas territories etc (like Alaska for United States). Some of the sub-shapes have been assigned proper ISO3 and Names and have been appended to the shapes (e.g. DOM/TOM for France, see climada_admin0_fix).
+
+See also climada code climada_country_name
+
+Note for Octave users: Octave stores its own version, admin0_oct.mat, see climada_octave
+
+copyright (c) 2016, David N. Bresch, david.bresch@gmail.com all rights reserved.
