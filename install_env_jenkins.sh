@@ -1,11 +1,18 @@
 #! /usr/bin/env bash
-set -e
 
-# Install the environment
-PYENV_HOME=$WORKSPACE/.pyenv/
-# Delete previously built virtualenv
-if [ -d $PYENV_HOME ]; then
-    rm -rf $PYENV_HOME
-fi
-# Create virtualenv and install necessary packages
-conda create -n climada_jenkins --file requirements.txt
+# Virtual environment using conda
+# Delete previous env folder containing the environment
+conda remove --name climada_env --all
+
+# Create new environment
+conda create --name climada_env python=3.6
+
+# Install packages in new environment
+source activate climada_env
+python setup.py develop
+
+echo "Installation completed in environment climada_env. Execute tests to check installation."
+PYTHONPATH=. python3 unit_tests.py
+PYTHONPATH=. python3 integ_tests.py
+
+source deactivate

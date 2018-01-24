@@ -18,7 +18,6 @@ def find_tests():
     suite.addTest(unittest.TestLoader().discover('climada.hazard.test'))
     suite.addTest(unittest.TestLoader().discover('climada.hazard.centroids.test'))
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
-    suite.addTest(unittest.TestLoader().discover('climada.test'))
     return suite
 
 if __name__ == '__main__':
