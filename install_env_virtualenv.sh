@@ -13,8 +13,8 @@ source activate env
 pip install -r requirements.txt
 
 # for mac os x: use TkAgg backend
-sed -i '' '/macosx/d' ../../../.conda/envs/climada_env/lib/python3.6/site-packages/matplotlib-2.1.2-py3.6-macosx-10.7-x86_64.egg/matplotlib/mpl-data/matplotlibrc
-echo "backend : TkAgg" >> ../../../.conda/envs/climada_env/lib/python3.6/site-packages/matplotlib-2.1.2-py3.6-macosx-10.7-x86_64.egg/matplotlib/mpl-data/matplotlibrc
+sed -i '' '/macosx/d' env/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc
+echo "backend : TkAgg" >> env/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc
 
 # Execute tests to verify installation
 PYTHONPATH=. python3 unit_tests.py
