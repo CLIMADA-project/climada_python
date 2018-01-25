@@ -26,10 +26,6 @@ setup(
 
     license='GNU General Public License',
 
-    # Classifiers help users find your project by categorizing it.
-    #
-    # For a list of valid classifiers, see
-    # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[ 
         #   3 - Alpha
         #   4 - Beta
