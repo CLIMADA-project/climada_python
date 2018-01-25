@@ -24,6 +24,8 @@ setup(
 
     author='ETH',
 
+    license='GNU General Public License',
+
     # Classifiers help users find your project by categorizing it.
     #
     # For a list of valid classifiers, see
@@ -34,7 +36,6 @@ setup(
         #   5 - Production/Stable
         'Development Status :: 3 - Alpha',
         'Topic :: Climate Adaptation',
-        'License :: GNU General Public License',
         'Programming Language :: Python :: 3.6',
     ],
 
