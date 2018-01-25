@@ -10,7 +10,7 @@ def runner(output='python_tests_xml'):
     )
 
 def find_tests():
-    suite.addTest(unittest.TestLoader().discover('climada.test'))
+    suite = unittest.TestLoader().discover('climada.test')
     return suite
 
 if __name__ == '__main__':
