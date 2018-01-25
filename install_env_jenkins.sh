@@ -11,8 +11,8 @@ conda create --name climada_env python=3.6
 source activate climada_env
 python setup.py develop
 
-# for mac os x: install matplotlib with condas defined dependencies
-conda install matplotlib
+# for mac os x: use Agg backend
+echo "backend : Agg" >> ../../../.conda/envs/climada_env/lib/python3.6/site-packages/matplotlib-2.1.2-py3.6-macosx-10.7-x86_64.egg/matplotlib/mpl-data/matplotlibrc
 
 echo "Installation completed in environment climada_env. Execute tests to check installation."
 PYTHONPATH=. python3 unit_tests.py
