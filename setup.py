@@ -51,7 +51,9 @@ setup(
                       'xlrd',
                       'xmlrunner',
                       'coverage',
-                      'pylint'], 
+                      'pylint',
+                      'spyder'
+                     ], 
 
     #package_data={ 'climada': ['data/*'],
     #},
