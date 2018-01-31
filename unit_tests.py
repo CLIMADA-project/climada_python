@@ -5,9 +5,7 @@ import unittest
 import xmlrunner
 
 def runner(output='python_tests_xml'):
-    return xmlrunner.XMLTestRunner(
-        output=output
-    )
+    return xmlrunner.XMLTestRunner(output=output)
 
 def find_tests():
     suite = unittest.TestLoader().discover('climada.entity.exposures.test')
@@ -17,6 +15,7 @@ def find_tests():
     suite.addTest(unittest.TestLoader().discover('climada.entity.test'))
     suite.addTest(unittest.TestLoader().discover('climada.hazard.test'))
     suite.addTest(unittest.TestLoader().discover('climada.hazard.centroids.test'))
+    suite.addTest(unittest.TestLoader().discover('climada.engine.test'))
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
     return suite
 
