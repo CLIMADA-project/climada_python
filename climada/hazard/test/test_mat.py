@@ -63,6 +63,5 @@ class TestReader(unittest.TestCase):
         with self.assertRaises(ValueError):
             hazard.read(HAZ_DEMO_MAT, None, centroids=read_cen)
 
-# Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()

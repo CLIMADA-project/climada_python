@@ -144,7 +144,5 @@ class TestReader(unittest.TestCase):
         self.assertEqual(True, 'hazard' in contents.keys())
         self.assertEqual(True, '#refs#' in contents.keys())
 
-# Execute TestNNApprox
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
-suite_reader.addTest(unittest.TestLoader().loadTestsFromTestCase(TestReader))
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()

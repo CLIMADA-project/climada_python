@@ -50,7 +50,6 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hasattr(centroids_read, 'coord'), True)
         self.assertEqual(hasattr(centroids_read, 'region_id'), True)
 
-# Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()
         

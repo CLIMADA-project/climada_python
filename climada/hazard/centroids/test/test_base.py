@@ -57,6 +57,5 @@ class TestLoader(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             Centroids('filename')
 
-# Execute TestAssign
-suite = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

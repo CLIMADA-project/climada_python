@@ -103,7 +103,5 @@ class TestCheck(unittest.TestCase):
             ent.discounts = ExposuresExcel()
         self.assertIn('Discounts', str(error.exception))
 
-# Execute TestReader
-suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheck))
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

@@ -212,15 +212,6 @@ class TestParsers(unittest.TestCase):
         def_val = 5
         var = ExposuresMat._parse_default(self.expo, 'Not Present', def_val)
         self.assertEqual(def_val, var)
-        
-# Execute TestReader
-suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestParsers))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestDefaults))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestOptionals))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestObligatories))
-unittest.TextTestRunner(verbosity=2).run(suite)
+
+if __name__ == '__main__':
+    unittest.main()

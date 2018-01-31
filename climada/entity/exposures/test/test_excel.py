@@ -281,21 +281,7 @@ class TestParsers(unittest.TestCase):
         """Check that the reference year is default if not present."""
         expo = ExposuresExcel()
         ref_year = expo._parse_ref_year(ENT_DEMO_XLS)
-        self.assertEqual(config["present_ref_year"], ref_year)
-
-    def test_plot(self):
-        expo = ExposuresExcel(ENT_DEMO_XLS)
-        expo.plot_value()
+        self.assertEqual(config["present_ref_year"], ref_year)      
         
-        
-# Execute TestReader
-suite = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestParsers))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestDefaults))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestOptionals))
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestObligatories))
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

@@ -31,7 +31,6 @@ class TestReader(unittest.TestCase):
         self.assertEqual(centroids.id[0], 1)
         self.assertEqual(centroids.id[n_centroids-1], 100)
 
-# Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()
         

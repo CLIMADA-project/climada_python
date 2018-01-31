@@ -84,6 +84,5 @@ class TestLoader(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             Measures(ENT_DEMO_XLS)
 
-# Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()

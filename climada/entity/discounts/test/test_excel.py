@@ -64,6 +64,5 @@ class TestReader(unittest.TestCase):
         with self.assertRaises(KeyError):
             disc_rate.read(ENT_DEMO_XLS)
 
-# Execute TestReader
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()

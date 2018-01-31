@@ -120,8 +120,5 @@ class TestInterpolation(unittest.TestCase):
         resul = imp_fun.interpolate(intensity, 'paa')
         self.assertEqual(3.5, resul)        
 
-# Execute TestReader
-suite = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-suite.addTests(
-    unittest.TestLoader().loadTestsFromTestCase(TestInterpolation))
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

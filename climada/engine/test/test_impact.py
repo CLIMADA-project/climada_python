@@ -1,5 +1,5 @@
 """
-Test ExposuresExcel class.
+Test Impact class.
 """
 
 import unittest
@@ -117,7 +117,5 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(6.512201157564421e+09, impact.tot, 5)
         self.assertEqual(True, np.isclose(6.512201157564421e+09, impact.tot))
 
-# Execute Tests
-suite_reader = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
-suite_reader.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
-unittest.TextTestRunner(verbosity=2).run(suite_reader)
+if __name__ == '__main__':
+    unittest.main()
