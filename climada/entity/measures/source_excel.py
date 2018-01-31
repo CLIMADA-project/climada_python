@@ -7,7 +7,7 @@ __all__ = ['MeasuresExcel']
 import numpy as np
 import pandas
 
-from climada.entity.measures.base import Measure, Measures
+from climada.entity.measures.base import Action, Measures
 from climada.entity.tag import Tag
 
 class MeasuresExcel(Measures):
@@ -66,28 +66,28 @@ class MeasuresExcel(Measures):
 
         # iterate over each measure
         for idx in range(0, num_mes):
-            meas = Measure()
+            act = Action()
 
-            meas.name = dfr[self.col_names['name']][idx]
-            meas.color_rgb = np.fromstring(dfr[self.col_names['color']][idx],
-                                           dtype=float, sep=' ')
-            meas.cost = dfr[self.col_names['cost']][idx]
-            meas.hazard_freq_cutoff = dfr[self.col_names['haz_frq']][idx]
-            meas.hazard_event_set = dfr[self.col_names['haz_set']][idx]
+            act.name = dfr[self.col_names['name']][idx]
+            act.color_rgb = np.fromstring(dfr[self.col_names['color']][idx],
+                                          dtype=float, sep=' ')
+            act.cost = dfr[self.col_names['cost']][idx]
+            act.hazard_freq_cutoff = dfr[self.col_names['haz_frq']][idx]
+            act.hazard_event_set = dfr[self.col_names['haz_set']][idx]
             # Search for (a, b) values, put a = 1 otherwise
             try:
-                meas.hazard_intensity = (1, \
+                act.hazard_intensity = (1, \
                                          dfr[self.col_names['haz_int']][idx])
             except KeyError:
                 col_name_a = self.col_names['haz_int'] + ' a'
                 col_name_b = self.col_names['haz_int'] + ' b'
-                meas.hazard_intensity = (dfr[col_name_a][idx], \
+                act.hazard_intensity = (dfr[col_name_a][idx], \
                                          dfr[col_name_b][idx])
-            meas.mdd_impact = (dfr[self.col_names['mdd_a']][idx],
-                               dfr[self.col_names['mdd_b']][idx])
-            meas.paa_impact = (dfr[self.col_names['paa_a']][idx],
-                               dfr[self.col_names['paa_b']][idx])
-            meas.risk_transf_attach = dfr[self.col_names['risk_att']][idx]
-            meas.risk_transf_cover = dfr[self.col_names['risk_cov']][idx]
+            act.mdd_impact = (dfr[self.col_names['mdd_a']][idx],
+                              dfr[self.col_names['mdd_b']][idx])
+            act.paa_impact = (dfr[self.col_names['paa_a']][idx],
+                              dfr[self.col_names['paa_b']][idx])
+            act.risk_transf_attach = dfr[self.col_names['risk_att']][idx]
+            act.risk_transf_cover = dfr[self.col_names['risk_cov']][idx]
 
-            self.data.append(meas)
+            self.data.append(act)

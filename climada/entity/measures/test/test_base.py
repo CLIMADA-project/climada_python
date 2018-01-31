@@ -5,7 +5,7 @@ Test Measures class.
 import unittest
 import numpy
 
-from climada.entity.measures.base import Measures, Measure
+from climada.entity.measures.base import Measures, Action
 from climada.util.constants import ENT_DEMO_XLS
 
 class TestLoader(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestLoader(unittest.TestCase):
     def test_check_wronginten_fail(self):
         """Wrong intensity definition"""
         meas = Measures()
-        meas.data.append(Measure())
+        meas.data.append(Action())
         meas.data[0].hazard_intensity = (1, 2, 3)
         meas.data[0].color_rgb = numpy.array([1, 1, 1])
         meas.data[0].mdd_impact = (1, 2)
@@ -22,13 +22,13 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Measure.hazard_intensity size: 2 != 3', \
+        self.assertEqual('Invalid Action.hazard_intensity size: 2 != 3', \
                          str(error.exception))
 
     def test_check_wrongColor_fail(self):
         """Wrong discount rates definition"""
         meas = Measures()
-        meas.data.append(Measure())
+        meas.data.append(Action())
         meas.data[0].color_rgb = (1, 2)
         meas.data[0].mdd_impact = (1, 2)
         meas.data[0].paa_impact = (1, 2)
@@ -36,13 +36,13 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Measure.color_rgb size: 3 != 2', \
+        self.assertEqual('Invalid Action.color_rgb size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
         """Wrong discount rates definition"""
         meas = Measures()
-        meas.data.append(Measure())
+        meas.data.append(Action())
         meas.data[0].color_rgb = numpy.array([1, 1, 1])
         meas.data[0].mdd_impact = (1)
         meas.data[0].paa_impact = (1, 2)
@@ -56,7 +56,7 @@ class TestLoader(unittest.TestCase):
     def test_check_wrongPAA_fail(self):
         """Wrong discount rates definition"""
         meas = Measures()
-        meas.data.append(Measure())
+        meas.data.append(Action())
         meas.data[0].color_rgb = numpy.array([1, 1, 1])
         meas.data[0].mdd_impact = (1, 2)
         meas.data[0].paa_impact = (1, 2, 3, 4)
@@ -64,7 +64,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Measure.paa_impact size: 2 != 4', \
+        self.assertEqual('Invalid Action.paa_impact size: 2 != 4', \
                          str(error.exception))
 
     def test_load_notimplemented(self):

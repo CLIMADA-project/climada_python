@@ -73,7 +73,7 @@ class TestCheck(unittest.TestCase):
         ent.measures.data[0].color_rgb = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('Measure.color_rgb', str(error.exception))
+        self.assertIn('Action.color_rgb', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
             ent.measures = ExposuresExcel()

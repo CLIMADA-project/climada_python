@@ -1,8 +1,8 @@
 """
-Define Measure class and Measures ABC.
+Define Action class and Measures.
 """
 
-__all__ = ['Measure', 'Measures']
+__all__ = ['Action', 'Measures']
 
 import numpy as np
 
@@ -34,19 +34,19 @@ class Measures(Loader):
 
         Examples
         --------
-            >>> meas_1 = Measure()
-            >>> meas_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
-            >>> meas_1.hazard_intensity = (1, 0)
-            >>> meas_1.mdd_impact = (1, 0)
-            >>> meas_1.paa_impact = (1, 0)
+            >>> act_1 = Action()
+            >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
+            >>> act_1.hazard_intensity = (1, 0)
+            >>> act_1.mdd_impact = (1, 0)
+            >>> act_1.paa_impact = (1, 0)
             >>> meas = Measures()
-            >>> meas.data.append(meas_1)
+            >>> meas.data.append(act_1)
             >>> meas.tag.description = "my dummy measures."
             >>> meas.check()
             Fill measures with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
-        self.data = [] # [Measure()]
+        self.data = [] # [Action()]
 
         # Load values from file_name if provided
         if file_name is not None:
@@ -57,12 +57,12 @@ class Measures(Loader):
         for meas in self.data:
             meas.check()
 
-class Measure(object):
-    """Contains the definition of one Measure.
+class Action(object):
+    """Contains the definition of one Action.
 
     Attributes
     ----------
-        name (str): name of the function
+        name (str): name of the action
         color_rgb (np.array): integer array of size 3. Gives color code of
             this measure in RGB
         cost (float): cost
@@ -97,7 +97,7 @@ class Measure(object):
         ------
             ValueError
         """
-        check.size(3, self.color_rgb, 'Measure.color_rgb')
-        check.size(2, self.hazard_intensity, 'Measure.hazard_intensity')
-        check.size(2, self.mdd_impact, 'Measure.mdd_impact')
-        check.size(2, self.paa_impact, 'Measure.paa_impact')
+        check.size(3, self.color_rgb, 'Action.color_rgb')
+        check.size(2, self.hazard_intensity, 'Action.hazard_intensity')
+        check.size(2, self.mdd_impact, 'Action.mdd_impact')
+        check.size(2, self.paa_impact, 'Action.paa_impact')

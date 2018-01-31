@@ -7,7 +7,7 @@ __all__ = ['MeasuresMat']
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
-from climada.entity.measures.base import Measure, Measures
+from climada.entity.measures.base import Action, Measures
 from climada.entity.tag import Tag
 
 class MeasuresMat(Measures):
@@ -62,37 +62,37 @@ class MeasuresMat(Measures):
         self.tag = Tag(file_name, description)
 
         # Load mat data
-        meas_all = hdf5.read(file_name)
+        meas = hdf5.read(file_name)
         try:
-            meas_all = meas_all[self.sup_field_name]
+            meas = meas[self.sup_field_name]
         except KeyError:
             pass
-        meas_all = meas_all[self.field_name]
+        meas = meas[self.field_name]
 
         # number of measures
-        num_mes = len(meas_all[self.var['name']])
+        num_mes = len(meas[self.var['name']])
 
         # iterate over each measure
         for idx in range(0, num_mes):
-            meas = Measure()
+            act = Action()
 
-            meas.name = hdf5.get_str_from_ref(
-                file_name, meas_all[self.var['name']][idx][0])
+            act.name = hdf5.get_str_from_ref(
+                file_name, meas[self.var['name']][idx][0])
 
             color_str = hdf5.get_str_from_ref(
-                file_name, meas_all[self.var['color']][idx][0])
-            meas.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
-            meas.cost = meas_all[self.var['cost']][idx][0]
-            meas.hazard_freq_cutoff = meas_all[self.var['haz_frq']][idx][0]
-            meas.hazard_event_set = hdf5.get_str_from_ref(
-                file_name, meas_all[self.var['haz_set']][idx][0])
-            meas.hazard_intensity = (meas_all[self.var['haz_int_a']][idx][0], \
-                                     meas_all[self.var['haz_int_b']][0][idx])
-            meas.mdd_impact = (meas_all[self.var['mdd_a']][idx][0],
-                               meas_all[self.var['mdd_b']][idx][0])
-            meas.paa_impact = (meas_all[self.var['paa_a']][idx][0],
-                               meas_all[self.var['paa_b']][idx][0])
-            meas.risk_transf_attach = meas_all[self.var['risk_att']][idx][0]
-            meas.risk_transf_cover = meas_all[self.var['risk_cov']][idx][0]
+                file_name, meas[self.var['color']][idx][0])
+            act.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
+            act.cost = meas[self.var['cost']][idx][0]
+            act.hazard_freq_cutoff = meas[self.var['haz_frq']][idx][0]
+            act.hazard_event_set = hdf5.get_str_from_ref(
+                file_name, meas[self.var['haz_set']][idx][0])
+            act.hazard_intensity = (meas[self.var['haz_int_a']][idx][0], \
+                                     meas[self.var['haz_int_b']][0][idx])
+            act.mdd_impact = (meas[self.var['mdd_a']][idx][0],
+                              meas[self.var['mdd_b']][idx][0])
+            act.paa_impact = (meas[self.var['paa_a']][idx][0],
+                              meas[self.var['paa_b']][idx][0])
+            act.risk_transf_attach = meas[self.var['risk_att']][idx][0]
+            act.risk_transf_cover = meas[self.var['risk_cov']][idx][0]
 
-            self.data.append(meas)
+            self.data.append(act)
