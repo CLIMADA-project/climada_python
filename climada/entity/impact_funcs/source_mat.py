@@ -2,6 +2,8 @@
 Define ImpactFuncsMat class.
 """
 
+__all__ = ['ImpactFuncsMat']
+
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5

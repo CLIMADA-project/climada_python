@@ -2,6 +2,8 @@
 Define Measure class and Measures ABC.
 """
 
+__all__ = ['Measure', 'Measures']
+
 import numpy as np
 
 from climada.entity.loader import Loader

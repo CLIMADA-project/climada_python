@@ -2,6 +2,8 @@
 Define Entity Class.
 """
 
+__all__ = ['Entity']
+
 import os
 
 from climada.entity.loader import Loader

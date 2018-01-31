@@ -2,6 +2,8 @@
 Define ExposuresMat class.
 """
 
+__all__ = ['ExposuresMat']
+
 import numpy as np
 
 from climada.entity.exposures.base import Exposures

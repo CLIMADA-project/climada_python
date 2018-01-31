@@ -2,6 +2,8 @@
 Define HazardMat class.
 """
 
+__all__ = ['HazardMat']
+
 import numpy as np
 
 from climada.hazard.base import Hazard

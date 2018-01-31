@@ -2,6 +2,8 @@
 Define ImpactFuncsExcel class.
 """
 
+__all__ = ['ImpactFuncsExcel']
+
 import pandas
 
 from climada.entity.impact_funcs.base import ImpactFunc, ImpactFuncs

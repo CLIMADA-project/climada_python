@@ -2,6 +2,8 @@
 Define Discounts.
 """
 
+__all__ = ['Discounts']
+
 import numpy as np
 
 from climada.entity.loader import Loader

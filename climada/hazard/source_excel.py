@@ -2,6 +2,8 @@
 Define HazardExcel class.
 """
 
+__all__ = ['HazardExcel']
+
 import pandas
 from scipy import sparse
 import numpy as np

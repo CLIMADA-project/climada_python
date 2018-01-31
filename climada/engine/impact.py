@@ -2,11 +2,61 @@
 Define Impact class.
 """
 
+__all__ = ['ImpactFreqCurve', 'Impact']
+
+import os
 import warnings
 import numpy as np
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
+import climada.util.plot as plot
+
+class ImpactFreqCurve(object):
+    """ Impact exceedence frequency curve.
+
+    Attributes
+    ----------
+        return_per (np.array): return period
+        impact (np.array): impact exceeding frequency
+        unit (str): value unit used (given by exposures unit)
+        label (str): string describing source data
+    """
+    def __init__(self):
+        self.return_per = np.array([])
+        self.impact = np.array([])
+        self.unit = 'NA'
+        self.label = ''
+
+    def plot(self):
+        """Plot impact frequency curve.
+
+        Returns
+        -------
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        graph = plot.Graph2D(self.label)
+        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
+        graph.add_curve(self.return_per, self.impact, 'y')
+        plot.show()
+        return graph.get_elems()
+
+    def plot_compare(self, ifc):
+        """Plot current and input impact frequency curves in a figure.
+
+        Returns
+        -------
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        if self.unit != ifc.unit:
+            warnings.warn("Comparing between two different units: %s and %s" %\
+                         (self.unit, ifc.unit))
+        graph = plot.Graph2D('', 2)
+        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
+        graph.add_curve(self.return_per, self.impact, 'b', self.label)
+        graph.add_curve(ifc.return_per, ifc.impact, 'r', ifc.label)
+        plot.show()
+        return graph.get_elems()
 
 class Impact(object):
     """Impact for a given entity (exposures and impact functions) and hazard.
@@ -18,8 +68,10 @@ class Impact(object):
         hazard_tag (TagHazard): information about the hazard
         at_exp (np.array): impact for each exposure
         at_event (np.array): impact for each hazard event
+        frequency (np.arrray): frequency (pro event)
         tot_vale (float): total exposure value affected
         tot (float): total expected impact
+        unit (str): value unit used (given by exposures unit)
     """
 
     def __init__(self):
@@ -29,17 +81,34 @@ class Impact(object):
         self.hazard_tag = TagHazard()
         self.at_exp = np.array([])
         self.at_event = np.array([])
+        self.frequency = np.array([])
         self.tot_value = 0
         self.tot = 0
+        self.unit = 'NA'
+
+    def calc_freq_curve(self):
+        """Compute and plot impact frequency curve."""
+        ifc = ImpactFreqCurve()
+        # Sort descendingly the impacts per events
+        sort_idxs = np.argsort(self.at_event)[::-1]
+        # Calculate exceedence frequency
+        exceed_freq = np.cumsum(self.frequency[sort_idxs])
+        # Set return period and imact exceeding frequency
+        ifc.return_per = 1/exceed_freq
+        ifc.impact = self.at_event[sort_idxs]
+        ifc.unit = self.unit
+        ifc.label = os.path.basename(self.exposures_tag.file_name) + ' x ' +\
+            os.path.basename(self.hazard_tag.file_name)
+        return ifc
 
     def calc(self, exposures, impact_funcs, hazard):
         """Compute impact of an hazard to exposures.
 
         Parameters
         ----------
-            exposures (subclass Exposures): exposures
-            impact_funcs (subclass ImpactFucs): vulnerability functions
-            hazard (subclass Hazard): hazard
+            exposures (Exposures): exposures
+            impact_funcs (ImpactFucs): vulnerability functions
+            hazard (Hazard): hazard
 
         Examples
         --------
@@ -62,6 +131,8 @@ class Impact(object):
             exposures.assign(hazard)
 
         # 2. Initialize values
+        self.unit = exposures.value_unit
+        self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.at_exp = np.zeros(len(exposures.value))
         self.tot_value = 0

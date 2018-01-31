@@ -2,6 +2,8 @@
 Define ExposuresExcel class.
 """
 
+__all__ = ['ExposuresExcel']
+
 from xlrd import XLRDError
 import numpy as np
 import pandas

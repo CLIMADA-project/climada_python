@@ -1,6 +1,8 @@
 """
-Define Hazard ABC.
+Define Hazard.
 """
+
+__all__ = ['Hazard']
 
 #from datetime import date
 import numpy as np
@@ -23,7 +25,7 @@ class Hazard(LoaderHaz):
         centroids (Centroids): centroids of the events
         event_id (np.array): id (>0) of each event
         event_name (list): name of each event
-        frequency (np.array): frequency of each event
+        frequency (np.array): frequency of each event in seconds
         intensity (sparse.csr_matrix): intensity of the events at centroids
         fraction (sparse.csr_matrix): fraction of affected exposures for each
             event at each centroid
@@ -82,15 +84,15 @@ class Hazard(LoaderHaz):
         """Plots describing hazard."""
         # TODO
 
-    def plot_intensity(self, event_id=None, centr_id=None):
+    def plot_intensity(self, event=None, centr_id=None):
         """Plot intensity values for a selected event or centroid.
 
         Parameters
         ----------
-            event_id (int, optional): If event_id > 0, plot intensities of
-                event with id = event_id. If event_id = 0, plot maximum
-                intensity in each centroid. If event_id < 0, plot
-                abs(event_id)-largest event.
+            event (int or str, optional): If event > 0, plot intensities of
+                event with id = event. If event = 0, plot maximum intensity in
+                each centroid. If event < 0, plot abs(event)-largest event. If
+                event is string, plot event with name in event.
             centr_id (int, optional): If centr_id > 0, plot intensities
                 of all events at centroid with id = centr_id. If centr_id = 0,
                 plot maximum intensity of each event. If centr_id < 0,
@@ -106,22 +108,25 @@ class Hazard(LoaderHaz):
             ValueError
         """
         col_label = 'Intensity %s' % self.units
-        if event_id is not None:
-            return self._event_plot(event_id, self.intensity, col_label)
+
+        if event is not None:
+            if isinstance(event, str):
+                event = self.event_name_to_id(event)
+            return self._event_plot(event, self.intensity, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.intensity, col_label)
         else:
             raise ValueError('Provide one event id or one centroid id.')
 
-    def plot_fraction(self, event_id=None, centr_id=None):
+    def plot_fraction(self, event=None, centr_id=None):
         """Plot fraction values for a selected event or centroid.
 
         Parameters
         ----------
-            event_id (int, optional): If event_id > 0, plot fraction of
-                event with id = event_id. If event_id = 0, plot maximum
-                fraction in each centroid. If event_id < 0, plot
-                abs(event_id)-largest event.
+            event (int or str, optional): If event > 0, plot fraction of event
+                with id = event. If event = 0, plot maximum fraction in each
+                centroid. If event < 0, plot abs(event)-largest event. If event
+                is string, plot event with name in event.
             centr_id (int, optional): If centr_id > 0, plot fraction
                 of all events at centroid with id = centr_id. If centr_id = 0,
                 plot maximum fraction of each event. If centr_id < 0,
@@ -137,12 +142,35 @@ class Hazard(LoaderHaz):
             ValueError
         """
         col_label = 'Fraction'
-        if event_id is not None:
-            return self._event_plot(event_id, self.fraction, col_label)
+        if event is not None:
+            if isinstance(event, str):
+                event = self.event_name_to_id(event)
+            return self._event_plot(event, self.fraction, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.fraction, col_label)
         else:
             raise ValueError('Provide one event id or one centroid id.')
+
+    def event_name_to_id(self, event_name):
+        """"Get an event id from its name.
+
+        Parameters
+        ----------
+            event_name (str): Event name
+
+        Returns
+        -------
+            int
+
+        Raises
+        ------
+            ValueError
+        """
+        try:
+            event_id = self.event_id[self.event_name.index(event_name)]
+        except:
+            raise ValueError('No event with name: ' + event_name)
+        return event_id
 
     def _event_plot(self, event_id, mat_var, col_name):
         """"Plot an event of the input matrix.
@@ -158,7 +186,7 @@ class Hazard(LoaderHaz):
 
         Returns
         -------
-            matplotlib.figure.Figure (optional)
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if event_id > 0:
             try:
@@ -166,14 +194,14 @@ class Hazard(LoaderHaz):
             except IndexError:
                 raise IndexError('Wrong event id: %s.' % event_id)
             array_val = mat_var[event_pos, :].todense().transpose()
-            title = 'Event %s: %s' % (str(self.event_id[event_pos]), \
+            title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
                                       self.event_name[event_pos])
         elif event_id < 0:
             max_inten = np.squeeze(np.asarray(np.sum(mat_var, axis=1)))
             event_pos = np.argpartition(max_inten, event_id)[event_id:]
             event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
             array_val = mat_var[event_pos, :].todense().transpose()
-            title = '%s-largest Event %s: %s' % (np.abs(event_id), \
+            title = '%s-largest Event. ID %s: %s' % (np.abs(event_id), \
                 str(self.event_id[event_pos]), self.event_name[event_pos])
         else:
             array_val = np.max(mat_var, axis=0).todense().transpose()
@@ -198,7 +226,7 @@ class Hazard(LoaderHaz):
 
         Returns
         -------
-            matplotlib.figure.Figure (optional)
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if centr_id > 0:
             try:
@@ -206,7 +234,7 @@ class Hazard(LoaderHaz):
             except IndexError:
                 raise IndexError('Wrong centroid id: %s.' % centr_id)
             array_val = mat_var[:, centr_pos].todense()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_id), \
+            title = 'Centroid ID %s: (%s, %s)' % (str(centr_id), \
                     self.centroids.coord[centr_pos, 0], \
                     self.centroids.coord[centr_pos, 1])
         elif centr_id < 0:
@@ -214,7 +242,7 @@ class Hazard(LoaderHaz):
             centr_pos = np.argpartition(max_inten, centr_id)[centr_id:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].todense()
-            title = '%s-largest Centroid %s: (%s, %s)' % \
+            title = '%s-largest Centroid. ID %s: (%s, %s)' % \
                 (np.abs(centr_id), str(self.centroids.id[centr_pos]), \
                  self.centroids.coord[centr_pos, 0], \
                  self.centroids.coord[centr_pos, 1])
@@ -222,4 +250,9 @@ class Hazard(LoaderHaz):
             array_val = np.max(mat_var, axis=1).todense()
             title = '%s max intensity at each event' % self.tag.type
 
-        return plot.graph_2d(array_val, 'Event number', col_name, title)
+        graph = plot.Graph2D(title)
+        graph.add_subplot('Event number', col_name)
+        graph.add_curve(range(len(array_val)), array_val, 'b')
+        graph.set_x_lim(range(len(array_val)))
+        plot.show()
+        return graph.get_elems()

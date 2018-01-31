@@ -2,6 +2,8 @@
 Define MeasuresExcel class.
 """
 
+__all__ = ['MeasuresExcel']
+
 import numpy as np
 import pandas
 

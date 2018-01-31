@@ -2,12 +2,14 @@
 Define ImpactFunc class and ImpactFuncs ABC.
 """
 
+__all__ = ['ImpactFunc', 'ImpactFuncs']
+
 import numpy as np
-import matplotlib.pyplot as plt
 
 from climada.entity.loader import Loader
 import climada.util.checker as check
 from climada.entity.tag import Tag
+import climada.util.plot as plot
 
 class ImpactFuncs(Loader):
     """Contains impact functions of type ImpactFunc.
@@ -62,6 +64,46 @@ class ImpactFuncs(Loader):
                                      (key_haz, val.haz_type))
                 val.check()
 
+    def plot(self, haz_type=None, id_fun=None):
+        """Plot impact functions of selected hazard (all if not provided) and
+        selected function id (all if not provided).
+
+        Parameters
+        ----------
+            haz_type (str, optional): hazard type
+            id_fun (int, optional): id of the function
+            show (bool, optional): bool to execute plt.show(). Default: True
+
+        Returns
+        -------
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        # Select all hazard types to plot
+        if haz_type is not None:
+            hazards = [haz_type]
+        else:
+            hazards = self.data.keys()
+        # Count number of plots
+        num_plts = 0
+        for sel_haz in hazards:
+            if id_fun is not None:
+                num_plts += 1
+            else:
+                num_plts += len(self.data[sel_haz].keys())
+        # Plot
+        do_show = plot.SHOW
+        plot.SHOW = False
+        graph = plot.Graph2D('', num_plts)
+        for sel_haz in hazards:
+            if id_fun is not None:
+                self.data[sel_haz][id_fun].plot(graph)
+            else:
+                for sel_id in self.data[sel_haz].keys():
+                    self.data[sel_haz][sel_id].plot(graph)
+        plot.SHOW = do_show
+        plot.show()
+        return graph.get_elems()
+
 class ImpactFunc(object):
     """Contains the definition of one Damage Function.
 
@@ -110,20 +152,29 @@ class ImpactFunc(object):
             raise ValueError('Attribute of the impact function %s not found.'\
                              % (attribute))
 
-    def plot(self):
-        """Plot the impact functions MDD, MDR and PAA in one graph."""
-        fig, ax = plt.subplots()
-        ax.plot(self.intensity, self.mdd * 100, 'b', label='MDD')
-        ax.plot(self.intensity, self.paa * 100, 'r', label='PAA')
-        ax.plot(self.intensity, self.mdd * self.paa * 100, 'k--', label='MDR')
-        ax.grid()
-        ax.legend(loc='upper left')
-        ax.set_xlabel('Intensity (%s)' % self.intensity_unit)
-        ax.set_ylabel('Percentage (%)')
-        ax.set_xlim([np.min(self.intensity), np.max(self.intensity)])
-        fig.suptitle('%s %s %s' % (self.haz_type, str(self.id), self.name))
+    def plot(self, graph=None):
+        """Plot the impact functions MDD, MDR and PAA in one graph.
 
-        plt.show()
+        Parameters
+        ----------
+            graph (Graph2D, optional): graph where to add the plots
+            show (bool, optional): bool to execute plt.show(). Default: True
+        Returns
+        -------
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        if graph is None:
+            graph = plot.Graph2D('', 1)
+        graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
+                         'Percentage (%)', \
+                         '%s %s %s' % (self.haz_type, str(self.id), self.name))
+        graph.add_curve(self.intensity, self.mdd * 100, 'b', 'MDD')
+        graph.add_curve(self.intensity, self.paa * 100, 'r', 'PAA')
+        graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \
+                        'MDR')
+        graph.set_x_lim(self.intensity)
+        plot.show()
+        return graph.get_elems()
 
     def check(self):
         """ Check consistent instance data.

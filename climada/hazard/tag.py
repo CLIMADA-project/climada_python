@@ -2,6 +2,8 @@
 Define Tag class.
 """
 
+__all__ = ['Tag']
+
 class Tag(object):
     """Definition of one hazard tag.
 

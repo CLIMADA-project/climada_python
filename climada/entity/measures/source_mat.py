@@ -2,6 +2,8 @@
 Define MeasuresMat class.
 """
 
+__all__ = ['MeasuresMat']
+
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5

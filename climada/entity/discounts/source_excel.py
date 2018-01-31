@@ -2,6 +2,8 @@
 Define DiscountsExcel class.
 """
 
+__all__ = ['DiscountsExcel']
+
 import pandas
 
 from climada.entity.discounts.base import Discounts

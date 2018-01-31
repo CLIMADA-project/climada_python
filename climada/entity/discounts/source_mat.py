@@ -2,6 +2,8 @@
 Define DiscountsMat class.
 """
 
+__all__ = ['DiscountsMat']
+
 import climada.util.hdf5_handler as hdf5
 from climada.entity.discounts.base import Discounts
 from climada.entity.tag import Tag

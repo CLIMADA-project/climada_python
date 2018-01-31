@@ -1,7 +1,10 @@
 """
-Define Exposures ABC.
+Define Exposures.
 """
 
+__all__ = ['Exposures']
+
+import os
 import numpy as np
 
 from climada.entity.loader import Loader
@@ -9,6 +12,7 @@ import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
 from climada.util.config import config
+import climada.util.plot as plot
 
 class Exposures(Loader):
     """Contains the exposures values.
@@ -122,8 +126,11 @@ class Exposures(Loader):
         self._check_defaults(num_exp)
 
     def plot_value(self):
-        """Plot exposures values over Earth's map without rendering"""
-        # TODO
+        """Plot exposures values binned over Earth's map."""
+        return plot.geo_bin_from_array(self.coord, self.value, 'Value (%s)' % \
+                                self.value_unit, \
+                                os.path.splitext(os.path.basename( \
+                                    self.tag.file_name))[0])
 
     def _check_obligatories(self, num_exp):
         """Check coherence obligatory variables."""
