@@ -107,7 +107,7 @@ class Impact(object):
         Parameters
         ----------
             exposures (Exposures): exposures
-            impact_funcs (ImpactFucs): vulnerability functions
+            impact_funcs (ImpactFuncs): impact functions
             hazard (Hazard): hazard
 
         Examples
@@ -178,9 +178,9 @@ class Impact(object):
         Parameters
         ----------
             iexp (int): array index of the exposure computed
-            exposures (subclass Exposure): exposures
-            hazard (subclass Hazard): a hazard
-            imp_fun (Vulnerability): one vulnerability
+            exposures (Exposure): exposures
+            hazard (Hazard): a hazard
+            imp_fun (Vulnerability): a vulnerability
 
         Returns
         -------
