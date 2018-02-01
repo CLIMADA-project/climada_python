@@ -5,7 +5,7 @@ Define Tag class.
 __all__ = ['Tag']
 
 class Tag(object):
-    """Definition of one Exposures, Discounts, ImpactFuncs or Measures tag.
+    """Definition of one Exposures, DiscRates, ImpactFuncs or Measures tag.
 
     Attributes
     ----------

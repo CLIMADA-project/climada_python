@@ -1,8 +1,8 @@
 """
-Define ImpactFunc class and ImpactFuncs ABC.
+Define Vulnerability class and ImpactFuncs.
 """
 
-__all__ = ['ImpactFunc', 'ImpactFuncs']
+__all__ = ['Vulnerability', 'ImpactFuncs']
 
 import numpy as np
 
@@ -12,13 +12,13 @@ from climada.entity.tag import Tag
 import climada.util.plot as plot
 
 class ImpactFuncs(Loader):
-    """Contains impact functions of type ImpactFunc.
+    """Contains impact functions of type Vulnerability.
 
     Attributes
     ----------
         tag (Taf): information about the source data
-        data (dict): dictionary of impact functions. Keys are the impact
-            functions' id and values are instances of ImpactFunc.
+        data (dict): dictionary of vulnerabilities. Keys are the
+            vulnerabilities' id and values are instances of Vulnerability.
     """
 
     def __init__(self, file_name=None, description=None):
@@ -35,7 +35,7 @@ class ImpactFuncs(Loader):
 
         Examples
         --------
-            >>> fun_1 = ImpactFunc()
+            >>> fun_1 = Vulnerability()
             >>> fun_1.id = 3
             >>> fun_1.intensity = np.array([0, 20])
             >>> fun_1.paa = np.array([0, 1])
@@ -46,7 +46,7 @@ class ImpactFuncs(Loader):
             Fill impact functions with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
-        self.data = {} # {hazard_id : {id:ImpactFunc}}
+        self.data = {} # {hazard_id : {id:Vulnerability}}
 
         # Load values from file_name if provided
         if file_name is not None:
@@ -57,11 +57,11 @@ class ImpactFuncs(Loader):
         for key_haz, fun in self.data.items():
             for key, val in fun.items():
                 if key != val.id:
-                    raise ValueError('Wrong ImpactFunc.id: %s != %s' %\
+                    raise ValueError('Wrong Vulnerability.id: %s != %s' %\
                                      (key, val.id))
                 if key_haz != val.haz_type:
-                    raise ValueError('Wrong ImpactFunc.haz_type: %s != %s' %\
-                                     (key_haz, val.haz_type))
+                    raise ValueError('Wrong Vulnerability.haz_type: %s != %s'\
+                                     % (key_haz, val.haz_type))
                 val.check()
 
     def plot(self, haz_type=None, id_fun=None):
@@ -104,8 +104,8 @@ class ImpactFuncs(Loader):
         plot.show()
         return graph.get_elems()
 
-class ImpactFunc(object):
-    """Contains the definition of one Damage Function.
+class Vulnerability(object):
+    """Contains the definition of one Vulnerability (or impact function).
 
     Attributes
     ----------
@@ -184,5 +184,5 @@ class ImpactFunc(object):
             ValueError
         """
         num_exp = len(self.intensity)
-        check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
-        check.size(num_exp, self.paa, 'ImpactFunc.paa')
+        check.size(num_exp, self.mdd, 'Vulnerability.mdd')
+        check.size(num_exp, self.paa, 'Vulnerability.paa')

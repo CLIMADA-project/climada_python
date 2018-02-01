@@ -9,7 +9,7 @@ from climada.entity.entity import Entity
 from climada.entity.measures.source_excel import MeasuresExcel
 from climada.entity.exposures.source_excel import ExposuresExcel
 from climada.entity.exposures.base import Exposures
-from climada.entity.discounts.base import Discounts
+from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.entity.measures.base import Measures
 from climada.util.constants import ENT_DEMO_XLS, ENT_DEMO_MAT, ENT_TEMPLATE_XLS
@@ -32,9 +32,9 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(def_entity.measures.data[0].name, 'Mangroves')
 
-        self.assertEqual(def_entity.discounts.years[5], 2005)
+        self.assertEqual(def_entity.disc_rates.years[5], 2005)
 
-        self.assertTrue(isinstance(def_entity.discounts, Discounts))
+        self.assertTrue(isinstance(def_entity.disc_rates, DiscRates))
         self.assertTrue(isinstance(def_entity.exposures, Exposures))
         self.assertTrue(isinstance(def_entity.impact_funcs, ImpactFuncs))
         self.assertTrue(isinstance(def_entity.measures, Measures))
@@ -85,7 +85,7 @@ class TestCheck(unittest.TestCase):
         ent.impact_funcs.data['TC'][1].paa = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('ImpactFunc.paa', str(error.exception))
+        self.assertIn('Vulnerability.paa', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
             ent.impact_funcs = ExposuresExcel()
@@ -94,14 +94,14 @@ class TestCheck(unittest.TestCase):
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
         ent = Entity()
-        ent.discounts.rates = np.array([1, 2])
+        ent.disc_rates.rates = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
-        self.assertIn('Discounts.rates', str(error.exception))
+        self.assertIn('DiscRates.rates', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
-            ent.discounts = ExposuresExcel()
-        self.assertIn('Discounts', str(error.exception))
+            ent.disc_rates = ExposuresExcel()
+        self.assertIn('DiscRates', str(error.exception))
 
 if __name__ == '__main__':
     unittest.main()

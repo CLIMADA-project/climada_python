@@ -7,7 +7,7 @@ __all__ = ['ImpactFuncsMat']
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
-from climada.entity.impact_funcs.base import ImpactFunc, ImpactFuncs
+from climada.entity.impact_funcs.base import Vulnerability, ImpactFuncs
 from climada.entity.tag import Tag
 
 class ImpactFuncsMat(ImpactFuncs):
@@ -69,7 +69,7 @@ class ImpactFuncsMat(ImpactFuncs):
         # iterate over each impact function
         for imp_name, imp_rows in funcs_idx.items():
             # get impact function values
-            func = ImpactFunc()
+            func = Vulnerability()
             func.name = imp_name
 
             # check that this function only represents one peril

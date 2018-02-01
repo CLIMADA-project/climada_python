@@ -5,7 +5,7 @@ Test ImpactFuncs class.
 import unittest
 import numpy as np
 
-from climada.entity.impact_funcs.base import ImpactFuncs, ImpactFunc
+from climada.entity.impact_funcs.base import ImpactFuncs, Vulnerability
 from climada.util.constants import ENT_DEMO_XLS
 
 class TestLoader(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestLoader(unittest.TestCase):
         imp_fun = ImpactFuncs()
         imp_id = 1
         haz_type = 'TC'
-        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type] = {imp_id:Vulnerability()}
         imp_fun.data[haz_type][imp_id].id = imp_id
         imp_fun.data[haz_type][imp_id].haz_type = haz_type
         imp_fun.data[haz_type][imp_id].intensity = np.array([1, 2, 3])
@@ -25,7 +25,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid ImpactFunc.paa size: 3 != 2', \
+        self.assertEqual('Invalid Vulnerability.paa size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
@@ -33,7 +33,7 @@ class TestLoader(unittest.TestCase):
         imp_fun = ImpactFuncs()
         imp_id = 1
         haz_type = 'TC'
-        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type] = {imp_id:Vulnerability()}
         imp_fun.data[haz_type][imp_id].id = imp_id
         imp_fun.data[haz_type][imp_id].haz_type = haz_type
         imp_fun.data[haz_type][imp_id].intensity = np.array([1, 2, 3])
@@ -42,7 +42,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid ImpactFunc.mdd size: 3 != 2', \
+        self.assertEqual('Invalid Vulnerability.mdd size: 3 != 2', \
                          str(error.exception))
 
     def test_check_wrongID_fail(self):
@@ -50,12 +50,12 @@ class TestLoader(unittest.TestCase):
         imp_fun = ImpactFuncs()
         imp_id = 1
         haz_type = 'TC'
-        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type] = {imp_id:Vulnerability()}
         imp_fun.data[haz_type][imp_id].id = 0
         imp_fun.data[haz_type][imp_id].haz_type = haz_type
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Wrong ImpactFunc.id: 1 != 0', \
+        self.assertEqual('Wrong Vulnerability.id: 1 != 0', \
                          str(error.exception))
 
     def test_check_wrongType_fail(self):
@@ -63,12 +63,12 @@ class TestLoader(unittest.TestCase):
         imp_fun = ImpactFuncs()
         imp_id = 1
         haz_type = 'TC'
-        imp_fun.data[haz_type] = {imp_id:ImpactFunc()}
+        imp_fun.data[haz_type] = {imp_id:Vulnerability()}
         imp_fun.data[haz_type][imp_id].id = imp_id
         imp_fun.data[haz_type][imp_id].haz_type = 'null'
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Wrong ImpactFunc.haz_type: TC != null', \
+        self.assertEqual('Wrong Vulnerability.haz_type: TC != null', \
                          str(error.exception))
 
     def test_load_notimplemented(self):
@@ -93,7 +93,7 @@ class TestInterpolation(unittest.TestCase):
 
     def test_wrongAttribute_fail(self):
         """Interpolation of wrong variable fails."""
-        imp_fun = ImpactFunc()
+        imp_fun = Vulnerability()
         intensity = 3
         with self.assertRaises(ValueError) as error:
             imp_fun.interpolate(intensity, 'mdg')
@@ -102,7 +102,7 @@ class TestInterpolation(unittest.TestCase):
 
     def test_mdd_pass(self):
         """Interpolation of wrong variable fails."""
-        imp_fun = ImpactFunc()
+        imp_fun = Vulnerability()
         imp_fun.intensity = np.array([0,1])
         imp_fun.mdd = np.array([1,2])
         imp_fun.paa = np.array([3,4])
@@ -112,7 +112,7 @@ class TestInterpolation(unittest.TestCase):
 
     def test_paa_pass(self):
         """Interpolation of wrong variable fails."""
-        imp_fun = ImpactFunc()
+        imp_fun = Vulnerability()
         imp_fun.intensity = np.array([0,1])
         imp_fun.mdd = np.array([1,2])
         imp_fun.paa = np.array([3,4])

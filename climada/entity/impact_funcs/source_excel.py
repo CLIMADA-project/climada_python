@@ -6,7 +6,7 @@ __all__ = ['ImpactFuncsExcel']
 
 import pandas
 
-from climada.entity.impact_funcs.base import ImpactFunc, ImpactFuncs
+from climada.entity.impact_funcs.base import Vulnerability, ImpactFuncs
 from climada.entity.tag import Tag
 
 class ImpactFuncsExcel(ImpactFuncs):
@@ -64,7 +64,7 @@ class ImpactFuncsExcel(ImpactFuncs):
 
             # select an impact function
             df_func = dfr[dfr[self.col_names['name']] == names_func[idx]]
-            func = ImpactFunc()
+            func = Vulnerability()
             # check that this function only represents one peril
             if len(df_func[self.col_names['peril']].unique()) is not 1:
                 raise ValueError('Impact function with two different perils.')

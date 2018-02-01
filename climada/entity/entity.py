@@ -10,9 +10,9 @@ from climada.entity.loader import Loader
 from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.impact_funcs.source_excel  import ImpactFuncsExcel
 from climada.entity.impact_funcs.source_mat  import ImpactFuncsMat
-from climada.entity.discounts.base import Discounts
-from climada.entity.discounts.source_excel import DiscountsExcel
-from climada.entity.discounts.source_mat import DiscountsMat
+from climada.entity.disc_rates.base import DiscRates
+from climada.entity.disc_rates.source_excel import DiscRatesExcel
+from climada.entity.disc_rates.source_mat import DiscRatesMat
 from climada.entity.measures.base import Measures
 from climada.entity.measures.source_excel import MeasuresExcel
 from climada.entity.measures.source_mat import MeasuresMat
@@ -29,7 +29,7 @@ class Entity(Loader):
         exposures (Exposures): exposures
         impact_funcs (ImpactFucs): vulnerability functions
         measures (Measures): measures
-        discounts (Discounts): discount rates
+        disc_rates (DiscRates): discount rates
         def_file (str): name of the xls file used as default source data
     """
 
@@ -62,7 +62,7 @@ class Entity(Loader):
             self._exposures = ExposuresExcel(self.def_file)
             self._impact_funcs = ImpactFuncsExcel(self.def_file)
             self._measures = MeasuresExcel(self.def_file)
-            self._discounts = DiscountsExcel(self.def_file)
+            self._disc_rates = DiscRatesExcel(self.def_file)
         else:
             self.load(file_name, description)
 
@@ -77,8 +77,8 @@ class Entity(Loader):
             self._impact_funcs = ImpactFuncsMat()
             self._impact_funcs.read(file_name, description)
 
-            self._discounts = DiscountsMat()
-            self._discounts.read(file_name, description)
+            self._disc_rates = DiscRatesMat()
+            self._disc_rates.read(file_name, description)
 
             self._measures = MeasuresMat()
             self._measures.read(file_name, description)
@@ -90,8 +90,8 @@ class Entity(Loader):
             self._impact_funcs = ImpactFuncsExcel()
             self._impact_funcs.read(file_name, description)
 
-            self._discounts = DiscountsExcel()
-            self._discounts.read(file_name, description)
+            self._disc_rates = DiscRatesExcel()
+            self._disc_rates.read(file_name, description)
 
             self._measures = MeasuresExcel()
             self._measures.read(file_name, description)
@@ -102,7 +102,7 @@ class Entity(Loader):
 
     def check(self):
         """ Override Loader check."""
-        self._discounts.check()
+        self._disc_rates.check()
         self._exposures.check()
         self._impact_funcs.check()
         self._measures.check()
@@ -110,7 +110,7 @@ class Entity(Loader):
     @property
     def tags(self):
         return [self._exposures.tag, self._impact_funcs.tag,
-                self._measures.tag, self._discounts.tag]
+                self._measures.tag, self._disc_rates.tag]
 
     @property
     def exposures(self):
@@ -143,11 +143,11 @@ class Entity(Loader):
         self._measures = value
 
     @property
-    def discounts(self):
-        return self._discounts
+    def disc_rates(self):
+        return self._disc_rates
 
-    @discounts.setter
-    def discounts(self, value):
-        if not isinstance(value, Discounts):
-            raise ValueError("Input value is not (sub)class of Discounts.")
-        self._discounts = value
+    @disc_rates.setter
+    def disc_rates(self, value):
+        if not isinstance(value, DiscRates):
+            raise ValueError("Input value is not (sub)class of DiscRates.")
+        self._disc_rates = value

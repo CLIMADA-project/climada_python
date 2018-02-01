@@ -9,7 +9,7 @@ def runner(output='python_tests_xml'):
 
 def find_tests():
     suite = unittest.TestLoader().discover('climada.entity.exposures.test')
-    suite.addTest(unittest.TestLoader().discover('climada.entity.discounts.test'))
+    suite.addTest(unittest.TestLoader().discover('climada.entity.disc_rates.test'))
     suite.addTest(unittest.TestLoader().discover('climada.entity.impact_funcs.test'))
     suite.addTest(unittest.TestLoader().discover('climada.entity.measures.test'))
     suite.addTest(unittest.TestLoader().discover('climada.entity.test'))

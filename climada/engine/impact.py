@@ -180,7 +180,7 @@ class Impact(object):
             iexp (int): array index of the exposure computed
             exposures (subclass Exposure): exposures
             hazard (subclass Hazard): a hazard
-            imp_fun (ImpactFunc): one impact function
+            imp_fun (Vulnerability): one vulnerability
 
         Returns
         -------
