@@ -87,7 +87,4 @@ class ImpactFuncsExcel(ImpactFuncs):
             func.mdd = df_func[self.col_names['mdd']].values
             func.paa = df_func[self.col_names['paa']].values
 
-            # Save impact function
-            if hazard not in self.data:
-                self.data[hazard] = {}
-            self.data[hazard][func.id] = func
+            self.add_vulner(func)

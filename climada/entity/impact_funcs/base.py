@@ -17,7 +17,7 @@ class ImpactFuncs(Loader):
     Attributes
     ----------
         tag (Taf): information about the source data
-        data (dict): dictionary of vulnerabilities. Keys are the
+        _data (dict): dictionary of vulnerabilities. Keys are the
             vulnerabilities' id and values are instances of Vulnerability.
     """
 
@@ -36,92 +36,258 @@ class ImpactFuncs(Loader):
         Examples
         --------
             >>> fun_1 = Vulnerability()
+            >>> fun_1.haz_type = 'TC'
             >>> fun_1.id = 3
             >>> fun_1.intensity = np.array([0, 20])
             >>> fun_1.paa = np.array([0, 1])
             >>> fun_1.mdd = np.array([0, 0.5])
             >>> imp_fun = ImpactFuncs()
-            >>> imp_fun.data['TC'] = {fun_1.id : fun_1}
+            >>> imp_fun.add_vulner(fun_1)
             >>> imp_fun.check()
             Fill impact functions with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
-        self.data = {} # {hazard_id : {id:Vulnerability}}
+        self._data = dict() # {hazard_id : {id:Vulnerability}}
 
         # Load values from file_name if provided
         if file_name is not None:
             self.load(file_name, description)
 
+    def add_vulner(self, vulner):
+        """Add a vulnerability.
+
+        Parameters
+        ----------
+            vulner (Vulnerability): vulnerability instance
+
+        Raises
+        ------
+            ValueError
+        """
+        if not isinstance(vulner, Vulnerability):
+            raise ValueError("Input value is not of type Vulnerability.")
+        if vulner.haz_type == 'NA':
+            raise ValueError("Input vulnerability's hazard type not set.")
+        if vulner.id == 'NA':
+            raise ValueError("Input vulnerability's id not set.")
+        if vulner.haz_type not in self._data:
+            self._data[vulner.haz_type] = dict()
+        self._data[vulner.haz_type][vulner.id] = vulner
+
+    def remove_vulner(self, haz_type=None, vul_id=None):
+        """Remove vulenerability(ies) with provided hazard type and/or id.
+        If no input provided, all vulnerabilities are removed.
+        
+        Parameters
+        ----------
+            haz_type (str, optional): all vulnerabilities with this hazard
+            vul_id (int, optional): all vulnerabilities with this id
+
+        Raises
+        ------
+            ValueError
+        """
+        if (haz_type is not None) and (vul_id is not None):
+            try:
+                del self._data[haz_type][vul_id]
+            except KeyError:
+                raise ValueError('No Vulnerability with hazard %s and id %s.' \
+                                 % (haz_type, vul_id))
+        elif haz_type is not None:
+            try:
+                del self._data[haz_type]
+            except KeyError:
+                raise ValueError('No Vulnerability with hazard %s.' % haz_type)
+        elif vul_id is not None:
+            haz_remove = self.get_hazard_types(vul_id)
+            if not haz_remove:
+                raise ValueError('No Vulnerability with id %s.' % vul_id)
+            for vul_haz in haz_remove:
+                del self._data[vul_haz][vul_id]
+        else:
+            self._data = dict()
+
+    def get_hazard_types(self, vul_id=None):
+        """Get vulnerabilities hazard types contained for the id provided.
+        Return all hazard types if no input id.
+
+        Returns
+        -------
+            list
+        """
+        if vul_id is None:
+            return list(self._data.keys())
+        else:
+            haz_types = []
+            for vul_haz, vul_dict in self._data.items():
+                if vul_id in vul_dict:
+                    haz_types.append(vul_haz)
+            return haz_types    
+
+    def get_ids(self, haz_type=None):
+        """Get vulnerabilities ids contained for the hazard type provided.
+        Return all ids for each hazard type if no input hazard type.
+
+        Parameters
+        ----------
+            haz_type (str, optional): hazard type from which to obtain the ids
+
+        Returns
+        -------
+            list(Vulnerability.id) (if haz_type provided),
+            {Vulnerability.haz_type : list(Vulnerability.id)} (if no haz_type)
+
+        Raises
+        ------
+            ValueError
+        """
+        if haz_type is None:
+            out_dict = dict()
+            for vul_haz, vul_dict in self._data.items():
+                out_dict[vul_haz] = list(vul_dict.keys())
+            return out_dict
+        else:
+            try:
+                return list(self._data[haz_type].keys())
+            except KeyError:
+                raise ValueError('No Vulnearability with hazard %s.' \
+                                 % haz_type)
+
+    def get_vulner(self, haz_type=None, vul_id=None):
+        """Get Vulnerability(ies) of input hazard type and/or id.
+        If no input provided, all vulnerabilities are returned.
+
+        Parameters
+        ----------
+            haz_type (str, optional): hazard type
+            vul_id (int, optional): vulnerability id
+
+        Returns
+        -------
+            Vulnerability (if haz_type and vul_id)
+            list(Vulnerability) (if haz_type or vul_id)
+            {Vulnerability.haz_type : {Vulnerability.id : Vulnerability}}
+                (if None)
+
+        Raises
+        ------
+            ValueError
+        """
+        if (haz_type is not None) and (vul_id is not None):
+            try:
+                return self._data[haz_type][vul_id]
+            except KeyError:
+                raise ValueError('No Vulnerability with hazard %s and id %s.' \
+                                 % (haz_type, vul_id))
+        elif haz_type is not None:
+            try:
+                return list(self._data[haz_type].values())
+            except KeyError:
+                raise ValueError('No Vulnerability with hazard %s.' % haz_type)
+        elif vul_id is not None:
+            haz_return = self.get_hazard_types(vul_id)
+            if not haz_return:
+                raise ValueError('No Vulnerability with id %s.' % vul_id)
+            vul_return = []
+            for vul_haz in haz_return:
+                vul_return.append(self._data[vul_haz][vul_id])
+            return vul_return
+        else:
+            return self._data
+
+    def num_vulner(self, haz_type=None, vul_id=None):
+        """Get number of vulnearbilities contained with input hazard type and\
+        /or id. If no input provided, get total number of vulnerabilites.
+
+        Parameters
+        ----------
+            haz_type (str, optional): hazard type
+            vul_id (int, optional): vulnerability id
+
+        Returns
+        -------
+            int
+        Raises
+        ------
+            ValueError        
+        """
+        if (haz_type is not None) and (vul_id is not None):
+            try:
+                self.get_vulner(haz_type, vul_id)
+                return 1
+            except ValueError as error:
+                raise error
+        elif haz_type is not None:
+            return len(self.get_ids(haz_type))
+        elif vul_id is not None:
+            return len(self.get_hazard_types(vul_id))
+        else:
+            vul_map = self.get_ids()
+            return sum(len(vul_list) for vul_list in vul_map.values())
+
     def check(self):
         """ Override Loader check."""
-        for key_haz, fun in self.data.items():
+        for key_haz, fun in self._data.items():
             for key, val in fun.items():
-                if key != val.id:
+                if (key != val.id) | (key == 'NA'):
                     raise ValueError('Wrong Vulnerability.id: %s != %s' %\
                                      (key, val.id))
-                if key_haz != val.haz_type:
+                if (key_haz != val.haz_type) | (key_haz == 'NA'):
                     raise ValueError('Wrong Vulnerability.haz_type: %s != %s'\
                                      % (key_haz, val.haz_type))
                 val.check()
 
-    def plot(self, haz_type=None, id_fun=None):
+    def plot(self, haz_type=None, vul_id=None):
         """Plot impact functions of selected hazard (all if not provided) and
         selected function id (all if not provided).
 
         Parameters
         ----------
             haz_type (str, optional): hazard type
-            id_fun (int, optional): id of the function
-            show (bool, optional): bool to execute plt.show(). Default: True
+            vul_id (int, optional): id of the function
 
         Returns
         -------
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
+        num_plts = self.num_vulner(haz_type, vul_id)
         # Select all hazard types to plot
         if haz_type is not None:
             hazards = [haz_type]
         else:
-            hazards = self.data.keys()
-        # Count number of plots
-        num_plts = 0
-        for sel_haz in hazards:
-            if id_fun is not None:
-                num_plts += 1
-            else:
-                num_plts += len(self.data[sel_haz].keys())
+            hazards = self._data.keys()
+
         # Plot
         do_show = plot.SHOW
         plot.SHOW = False
         graph = plot.Graph2D('', num_plts)
         for sel_haz in hazards:
-            if id_fun is not None:
-                self.data[sel_haz][id_fun].plot(graph)
+            if vul_id is not None:
+                self._data[sel_haz][vul_id].plot(graph)
             else:
-                for sel_id in self.data[sel_haz].keys():
-                    self.data[sel_haz][sel_id].plot(graph)
+                for sel_id in self._data[sel_haz].keys():
+                    self._data[sel_haz][sel_id].plot(graph)
         plot.SHOW = do_show
         plot.show()
         return graph.get_elems()
 
 class Vulnerability(object):
-    """Contains the definition of one Vulnerability (or impact function).
+    """Contains the definition of one Vulnerability (impact function).
 
     Attributes
     ----------
-        id (int): id of the function
-        name (str): name of the function
-        haz_type (str): hazard type
+        haz_type (str): hazard type    
+        id (int): id of the vulnerability (wrt vulnerabilities of same hazard)
+        name (str): name of the vulnerability
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
         mdd (np.array): mean damage (impact) degree for each intensity
         paa (np.array): percentage of affected assets (exposures) for each
             intensity
     """
-
     def __init__(self):
         """ Empty initialization."""
-        self.id = 0
+        self.id = 'NA' # int expected
         self.name = ''
         self.intensity_unit = 'NA'
         self.haz_type = 'NA'

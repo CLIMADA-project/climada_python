@@ -85,10 +85,7 @@ class ImpactFuncsMat(ImpactFuncs):
             func.mdd = np.take(imp[self.var['mdd']], imp_rows)
             func.paa = np.take(imp[self.var['paa']], imp_rows)
 
-            # Save impact function
-            if hazard not in self.data:
-                self.data[hazard] = {}
-            self.data[hazard][func.id] = func
+            self.add_vulner(func)
 
     def get_funcs_rows(self, imp, file_name):
         """Get rows that fill every impact function and its name."""

@@ -149,13 +149,13 @@ class Impact(object):
         # Get hazard type
         haz_type = hazard.tag.type
         # Get damage functions for this hazard
-        haz_imp = impact_funcs.data[haz_type]
+        haz_imp = impact_funcs.get_vulner(haz_type)
 
         # 3. Loop over exposures according to their impact function
         # Loop over impact functions
-        for fun_id, imp_fun in haz_imp.items():
+        for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures.impact_id[exp_idx] == fun_id)[0]
+            exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
 
             # loop over selected exposures
             for iexp in exp_iimp:

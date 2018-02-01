@@ -28,7 +28,8 @@ class TestReader(unittest.TestCase):
         self.assertEqual(len(def_entity.exposures.deductible), 50)
         self.assertEqual(def_entity.exposures.value[2], 12596064143.542929)
 
-        self.assertEqual(len(def_entity.impact_funcs.data['TC'][1].mdd), 9)
+        self.assertEqual(len(def_entity.impact_funcs.get_vulner('TC', 1).mdd),\
+                         9)
 
         self.assertEqual(def_entity.measures.data[0].name, 'Mangroves')
 
@@ -85,7 +86,7 @@ class TestCheck(unittest.TestCase):
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
         ent = Entity()
-        ent.impact_funcs.data['TC'][1].paa = np.array([1, 2])
+        ent.impact_funcs.get_vulner('TC', 1).paa = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
         self.assertIn('Vulnerability.paa', str(error.exception))
