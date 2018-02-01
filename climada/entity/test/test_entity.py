@@ -42,16 +42,19 @@ class TestReader(unittest.TestCase):
     def test_read_mat(self):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity(ENT_DEMO_MAT)
-        self.assertEqual(len(entity_mat.tags), 4)
-        for idx in range(4):
-            self.assertEqual(entity_mat.tags[idx].file_name, ENT_DEMO_MAT)
+        self.assertEqual(entity_mat.exposures.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(entity_mat.disc_rates.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(entity_mat.measures.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(entity_mat.impact_funcs.tag.file_name, ENT_DEMO_MAT)
 
     def test_read_excel(self):
         """Read entity from an xls file following the template."""
         entity_xls = Entity(ENT_TEMPLATE_XLS)
-        self.assertEqual(len(entity_xls.tags), 4)
-        for idx in range(4):
-            self.assertEqual(entity_xls.tags[idx].file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(entity_xls.exposures.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(entity_xls.disc_rates.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(entity_xls.measures.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(entity_xls.impact_funcs.tag.file_name, \
+                         ENT_TEMPLATE_XLS)
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""

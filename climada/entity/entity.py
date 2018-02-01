@@ -59,10 +59,10 @@ class Entity(Loader):
             ENT_DEF_XLS file, and the given impact functions and measures.
         """
         if file_name is None:
-            self._exposures = ExposuresExcel(self.def_file)
-            self._impact_funcs = ImpactFuncsExcel(self.def_file)
-            self._measures = MeasuresExcel(self.def_file)
-            self._disc_rates = DiscRatesExcel(self.def_file)
+            self.exposures = ExposuresExcel(self.def_file)
+            self.impact_funcs = ImpactFuncsExcel(self.def_file)
+            self.measures = MeasuresExcel(self.def_file)
+            self.disc_rates = DiscRatesExcel(self.def_file)
         else:
             self.load(file_name, description)
 
@@ -71,30 +71,30 @@ class Entity(Loader):
         # Call readers depending on file extension
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            self._exposures = ExposuresMat()
-            self._exposures.read(file_name, description)
+            self.exposures = ExposuresMat()
+            self.exposures.read(file_name, description)
 
-            self._impact_funcs = ImpactFuncsMat()
-            self._impact_funcs.read(file_name, description)
+            self.impact_funcs = ImpactFuncsMat()
+            self.impact_funcs.read(file_name, description)
 
-            self._disc_rates = DiscRatesMat()
-            self._disc_rates.read(file_name, description)
+            self.disc_rates = DiscRatesMat()
+            self.disc_rates.read(file_name, description)
 
-            self._measures = MeasuresMat()
-            self._measures.read(file_name, description)
+            self.measures = MeasuresMat()
+            self.measures.read(file_name, description)
 
         elif (extension == '.xlsx') or (extension == '.xls'):
-            self._exposures = ExposuresExcel()
-            self._exposures.read(file_name, description)
+            self.exposures = ExposuresExcel()
+            self.exposures.read(file_name, description)
 
-            self._impact_funcs = ImpactFuncsExcel()
-            self._impact_funcs.read(file_name, description)
+            self.impact_funcs = ImpactFuncsExcel()
+            self.impact_funcs.read(file_name, description)
 
-            self._disc_rates = DiscRatesExcel()
-            self._disc_rates.read(file_name, description)
+            self.disc_rates = DiscRatesExcel()
+            self.disc_rates.read(file_name, description)
 
-            self._measures = MeasuresExcel()
-            self._measures.read(file_name, description)
+            self.measures = MeasuresExcel()
+            self.measures.read(file_name, description)
 
         else:
             raise TypeError('Input file extension not supported: %s.' % \
@@ -102,52 +102,24 @@ class Entity(Loader):
 
     def check(self):
         """ Override Loader check."""
-        self._disc_rates.check()
-        self._exposures.check()
-        self._impact_funcs.check()
-        self._measures.check()
+        self.disc_rates.check()
+        self.exposures.check()
+        self.impact_funcs.check()
+        self.measures.check()
 
-    @property
-    def tags(self):
-        return [self._exposures.tag, self._impact_funcs.tag,
-                self._measures.tag, self._disc_rates.tag]
-
-    @property
-    def exposures(self):
-        return self._exposures
-
-    @exposures.setter
-    def exposures(self, value):
-        if not isinstance(value, Exposures):
-            raise ValueError("Input value is not (sub)class of Exposures.")
-        self._exposures = value
-
-    @property
-    def impact_funcs(self):
-        return self._impact_funcs
-
-    @impact_funcs.setter
-    def impact_funcs(self, value):
-        if not isinstance(value, ImpactFuncs):
-            raise ValueError("Input value is not (sub)class of ImpactFuncs.")
-        self._impact_funcs = value
-
-    @property
-    def measures(self):
-        return self._measures
-
-    @measures.setter
-    def measures(self, value):
-        if not isinstance(value, Measures):
-            raise ValueError("Input value is not (sub)class of Measures.")
-        self._measures = value
-
-    @property
-    def disc_rates(self):
-        return self._disc_rates
-
-    @disc_rates.setter
-    def disc_rates(self, value):
-        if not isinstance(value, DiscRates):
-            raise ValueError("Input value is not (sub)class of DiscRates.")
-        self._disc_rates = value
+    def __setattr__(self, name, value):
+        """Check input type before set"""
+        if name == "exposures":
+            if not isinstance(value, Exposures):
+                raise ValueError("Input value is not (sub)class of Exposures.")
+        elif name == "impact_funcs":
+            if not isinstance(value, ImpactFuncs):
+                raise ValueError("Input value is not (sub)class of \
+                                 ImpactFuncs.")
+        elif name == "measures":
+            if not isinstance(value, Measures):
+                raise ValueError("Input value is not (sub)class of Measures.")
+        elif name == "disc_rates":
+            if not isinstance(value, DiscRates):
+                raise ValueError("Input value is not (sub)class of DiscRates.")
+        super().__setattr__(name, value)
