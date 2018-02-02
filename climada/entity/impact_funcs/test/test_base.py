@@ -11,35 +11,34 @@ from climada.util.constants import ENT_DEMO_XLS
 class TestContainer(unittest.TestCase):
     """Test ImpactFuncs as container."""
     def test_add_wrong_error(self):
-        """Test error is raised when wrong Vulnearability provided."""
+        """Test error is raised when wrong Vulnerability provided."""
         imp_fun = ImpactFuncs()
         vulner_1 = Vulnerability()
         with self.assertRaises(ValueError) as error:
             imp_fun.add_vulner(vulner_1)
-        self.assertEqual("Input vulnerability's hazard type not set.", 
+        self.assertEqual("Input Vulnerability's hazard type not set.", \
                          str(error.exception))
 
         vulner_1.haz_type = 'TC'
         with self.assertRaises(ValueError) as error:
             imp_fun.add_vulner(vulner_1)
-        self.assertEqual("Input vulnerability's id not set.", 
+        self.assertEqual("Input Vulnerability's id not set.", \
                          str(error.exception))
 
         with self.assertRaises(ValueError) as error:
             imp_fun.add_vulner(45)
-        self.assertEqual("Input value is not of type Vulnerability.", 
+        self.assertEqual("Input value is not of type Vulnerability.", \
                          str(error.exception))
 
     def test_remove_vulner_pass(self):
-        """Test remove_vulner removes Vulnerability to ImpactFuncs correcty."""
+        """Test remove_vulner removes Vulnerability of ImpactFuncs correcty."""
         imp_fun = ImpactFuncs()
         vulner_1 = Vulnerability()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
         imp_fun.add_vulner(vulner_1)
         imp_fun.remove_vulner()
-        self.assertEqual(0, len(imp_fun.get_hazard_types()))
-        self.assertEqual(0, len(imp_fun.get_ids()))
+        self.assertEqual(0, len(imp_fun._data))
 
     def test_remove_wrong_error(self):
         """Test error is raised when invalid inputs."""
@@ -65,18 +64,22 @@ class TestContainer(unittest.TestCase):
         vulner_1.haz_type = 'TC'
         imp_fun.add_vulner(vulner_1)
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
+        self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
         vulner_2 = Vulnerability()
         vulner_2.id = 1
         vulner_2.haz_type = 'TC'
         imp_fun.add_vulner(vulner_2)
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
+        self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
         vulner_3 = Vulnerability()
         vulner_3.id = 1
         vulner_3.haz_type = 'FL'
         imp_fun.add_vulner(vulner_3)
         self.assertEqual(2, len(imp_fun.get_hazard_types()))
+        self.assertIn('TC', imp_fun.get_hazard_types())
+        self.assertIn('FL', imp_fun.get_hazard_types())
 
     def test_get_ids_pass(self):
         """Test normal functionality of get_ids method."""
@@ -122,7 +125,7 @@ class TestContainer(unittest.TestCase):
         imp_fun.add_vulner(vulner_1)
         with self.assertRaises(ValueError) as error:
             imp_fun.get_ids('TC')
-        self.assertEqual('No Vulnearability with hazard TC.', \
+        self.assertEqual('No Vulnerability with hazard TC.', \
                          str(error.exception))
 
     def test_get_vulner_pass(self):
@@ -154,6 +157,10 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(1, len(imp_fun.get_vulner('TC')))
         self.assertIs(vulner_3, imp_fun.get_vulner('TC', 6))
 
+        self.assertEqual(2, len(imp_fun.get_vulner().keys()))
+        self.assertEqual(1, len(imp_fun.get_vulner()['TC'].keys()))
+        self.assertEqual(2, len(imp_fun.get_vulner()['WS'].keys()))
+
     def test_get_vulner_wrong_error(self):
         """Test get_vulner method with wrong inputs."""
         imp_fun = ImpactFuncs()
@@ -166,7 +173,7 @@ class TestContainer(unittest.TestCase):
         self.assertEqual('No Vulnerability with hazard TC.', \
                          str(error.exception))
 
-    def test_num_vulner(self):
+    def test_num_vulner_pass(self):
         """Test num_vulner function."""
         imp_fun = ImpactFuncs()
         self.assertEqual(0, imp_fun.num_vulner())
@@ -205,6 +212,27 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(1, imp_fun.num_vulner('TC'))
         self.assertEqual(1, imp_fun.num_vulner(vul_id=56))
         self.assertEqual(2, imp_fun.num_vulner(vul_id=5))
+
+    def test_num_vulner_wrong_error(self):
+        """Test num_vulner method with wrong inputs."""
+        imp_fun = ImpactFuncs()
+        
+        try:
+            imp_fun.num_vulner('TC')
+        except ValueError as error:
+            self.assertEqual('No Vulnerability with hazard TC.', error.args[0])
+
+        try:
+            imp_fun.num_vulner('TC', 3)
+        except ValueError as error:
+            self.assertEqual('No Vulnerability with hazard TC and id 3.', \
+                             error.args[0])
+
+        try:
+            imp_fun.num_vulner(vul_id=3)
+        except ValueError as error:
+            self.assertEqual('No Vulnerability with id 3.', \
+                             error.args[0])
 
     def test_add_vulner_pass(self):
         """Test add_vulner adds Vulnerability to ImpactFuncs correctly."""
@@ -341,5 +369,8 @@ class TestInterpolation(unittest.TestCase):
         resul = imp_fun.interpolate(intensity, 'paa')
         self.assertEqual(3.5, resul)        
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpolation))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

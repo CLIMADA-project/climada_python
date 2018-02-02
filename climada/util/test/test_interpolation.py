@@ -161,5 +161,7 @@ class TestNN(unittest.TestCase):
         ''' Call repeat_coord_pass test for haversine distance'''
         self.repeat_coord_pass('haversine')
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

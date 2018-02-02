@@ -31,7 +31,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(len(def_entity.impact_funcs.get_vulner('TC', 1).mdd),\
                          9)
 
-        self.assertEqual(def_entity.measures.data[0].name, 'Mangroves')
+        self.assertIn('Mangroves', def_entity.measures.get_names())
 
         self.assertEqual(def_entity.disc_rates.years[5], 2005)
 
@@ -74,7 +74,8 @@ class TestCheck(unittest.TestCase):
     def test_wrongMeas_fail(self):
         """Wrong measures"""
         ent = Entity()
-        ent.measures.data[0].color_rgb = np.array([1, 2])
+        actions = ent.measures.get_action()
+        actions[0].color_rgb = np.array([1, 2])
         with self.assertRaises(ValueError) as error:
             ent.check()
         self.assertIn('Action.color_rgb', str(error.exception))
@@ -107,5 +108,7 @@ class TestCheck(unittest.TestCase):
             ent.disc_rates = ExposuresExcel()
         self.assertIn('DiscRates', str(error.exception))
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheck))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

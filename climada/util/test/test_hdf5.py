@@ -144,5 +144,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(True, 'hazard' in contents.keys())
         self.assertEqual(True, '#refs#' in contents.keys())
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

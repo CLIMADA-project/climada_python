@@ -283,5 +283,10 @@ class TestParsers(unittest.TestCase):
         ref_year = expo._parse_ref_year(ENT_DEMO_XLS)
         self.assertEqual(config["present_ref_year"], ref_year)      
         
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefaults)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOptionals))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestObligatories))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestParsers))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

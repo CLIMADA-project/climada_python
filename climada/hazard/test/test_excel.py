@@ -116,6 +116,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_XLS)
         self.assertEqual(hazard.centroids.tag.description, description)
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+unittest.TextTestRunner(verbosity=2).run(TESTS)
         

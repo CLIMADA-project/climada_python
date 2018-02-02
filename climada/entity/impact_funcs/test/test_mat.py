@@ -138,5 +138,7 @@ class TestGets(unittest.TestCase):
                                  ENT_DEMO_MAT)
         self.assertEqual(fun_unit, 'm/s')
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGets))
+unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -143,5 +143,7 @@ class TestLoader(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             Exposures(ENT_DEMO_XLS)
 
-if __name__ == '__main__':
-    unittest.main()
+# Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
+unittest.TextTestRunner(verbosity=2).run(TESTS)
