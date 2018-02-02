@@ -74,16 +74,13 @@ class ExposuresMat(Exposures):
 
     def _read_obligatory(self, expo):
         """Fill obligatory variables."""
-        self.value = expo[self.var['val']]. \
-        reshape(len(expo[self.var['val']]),)
+        self.value = np.squeeze(expo[self.var['val']])
 
         coord_lat = expo[self.var['lat']]
         coord_lon = expo[self.var['lon']]
         self.coord = np.concatenate((coord_lat, coord_lon), axis=1)
 
-        self.impact_id = expo[self.var['imp']]. \
-        reshape(len(expo[self.var['imp']]),)
-        self.impact_id = self.impact_id.astype(int)
+        self.impact_id = np.squeeze(expo[self.var['imp']]).astype(int)
 
         # set exposures id according to appearance order
         num_exp = len(self.value)
@@ -106,7 +103,7 @@ class ExposuresMat(Exposures):
         self.ref_year = self._parse_optional(expo, self.ref_year, \
                                              self.var['ref'])
         if not isinstance(self.ref_year, int):
-            self.ref_year = int(self.ref_year[0])
+            self.ref_year = int(self.ref_year)
 
         self.category_id = self._parse_optional(expo, self.category_id, \
                                                 self.var['cat'])
@@ -127,7 +124,7 @@ class ExposuresMat(Exposures):
     def _parse_optional(hdf, var, var_name):
         """Retrieve optional variable, leave its original value if fail."""
         try:
-            var = hdf[var_name].reshape(len(hdf[var_name]),)
+            var = np.squeeze(hdf[var_name])
         except KeyError:
             pass
         return var
@@ -136,7 +133,7 @@ class ExposuresMat(Exposures):
     def _parse_default(hdf, var_name, def_val):
         """Retrieve optional variable, set default value if fail."""
         try:
-            res = hdf[var_name].reshape(len(hdf[var_name]),)
+            res = np.squeeze(hdf[var_name])
         except KeyError:
             res = def_val
         return res

@@ -165,8 +165,8 @@ class Impact(object):
 
                 # add values to impact impact
                 self.at_event[event_row] += impact
-                self.at_exp[iexp] += sum(impact * hazard. \
-                           frequency[event_row].reshape(len(event_row),))
+                self.at_exp[iexp] += np.squeeze(sum(impact * hazard. \
+                           frequency[event_row]))
                 self.tot_value += exposures.value[iexp]
 
         self.tot = sum(self.at_event * hazard.frequency)
@@ -196,12 +196,11 @@ class Impact(object):
         inten_val = hazard.intensity.data[hazard.intensity.indptr[icen]: \
                     hazard.intensity.indptr[icen+1]]
         # get affected fraction for these events
-        fract = hazard.fraction[:, icen].toarray()[event_row].reshape( \
-                               len(event_row),)
+        fract = np.squeeze(hazard.fraction[:, icen].toarray()[event_row])
 
         # get MDD and PAA for these intensities
         mdd = imp_fun.interpolate(inten_val, 'mdd')
-        paa = imp_fun.interpolate(inten_val, 'paa')*fract
+        paa = imp_fun.interpolate(inten_val, 'paa') * fract
 
         # impact on this exposure
         impact = exposures.value[iexp] * mdd * paa

@@ -60,32 +60,26 @@ class HazardMat(Hazard):
         self.tag = TagHazard(file_name, description, haz_type)
 
         # Set the centroids if given, otherwise load them from the same file
-        if centroids is None:
-            self.centroids = CentroidsMat()
-            self.centroids.field_name = 'hazard'
-            self.centroids.var_names = self.var_cent
-            self.centroids.read(file_name, description)
-        else:
-            self.centroids = centroids
+        self._read_centroids(centroids)
 
         # reshape from shape (x,1) to 1d array shape (x,)
         self.frequency = np.squeeze(hazard[self.var['freq']])
         self.event_id = np.squeeze(hazard[self.var['even_id']]. \
-        astype(int, copy=False))
+                                   astype(int, copy=False))
         self.units = hdf5.get_string(hazard[self.var['unit']])
 
         # number of centroids and events
         n_cen = len(self.centroids.id)
         n_event = len(self.event_id)
 
-        # intensity and fraction
+        # intensity
         try:
             self.intensity = hdf5.get_sparse_mat(hazard[self.var['inten']], \
                                                  (n_event, n_cen))
         except ValueError:
             print('Size missmatch in intensity matrix.')
             raise
-
+        # fraction
         try:
             self.fraction = hdf5.get_sparse_mat(hazard[self.var['frac']], \
                                      (n_event, n_cen))
@@ -98,3 +92,13 @@ class HazardMat(Hazard):
                 file_name, hazard[self.var['ev_name']])
         except KeyError:
             self.event_name = list(self.event_id)
+
+    def _read_centroids(self, centroids=None):
+        """Read centroids file if no centroids provided"""
+        if centroids is None:
+            self.centroids = CentroidsMat()
+            self.centroids.field_name = 'hazard'
+            self.centroids.var_names = self.var_cent
+            self.centroids.read(self.tag.file_name, self.tag.description)
+        else:
+            self.centroids = centroids

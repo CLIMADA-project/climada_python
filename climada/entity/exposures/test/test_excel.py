@@ -114,7 +114,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.ref_year, 2017)
         self.assertEqual(expo.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(expo.tag.description, None)
+        self.assertEqual(expo.tag.description, '')
 
     def test_check_template_warning(self):
         """Check warning centroids when template read."""

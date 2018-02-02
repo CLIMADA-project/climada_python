@@ -148,4 +148,4 @@ class Interpolator(object):
             assigned[dist*EARTH_RADIUS > self.threshold] = -1
 
         # Copy result to all exposures and return value
-        return assigned[inv].reshape(assigned[inv].shape[0],)
+        return np.squeeze(assigned[inv])

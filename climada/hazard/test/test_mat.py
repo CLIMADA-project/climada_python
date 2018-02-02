@@ -43,12 +43,12 @@ class TestReader(unittest.TestCase):
 
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_DEMO_MAT)
-        self.assertEqual(hazard.tag.description, None)
+        self.assertEqual(hazard.tag.description, '')
         self.assertEqual(hazard.tag.type, 'TC')
 
         # tag centroids
         self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_MAT)
-        self.assertEqual(hazard.centroids.tag.description, None)
+        self.assertEqual(hazard.centroids.tag.description, '')
 
     def test_wrong_centroid_fail(self):
         """ Read centroid separately from the hazard. Wrong centroid data in
