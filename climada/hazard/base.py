@@ -5,16 +5,19 @@ Define Hazard.
 __all__ = ['Hazard']
 
 #from datetime import date
+import os
+import pickle
 import numpy as np
 from scipy import sparse
 
-from climada.hazard.loader import Loader as LoaderHaz
-import climada.util.checker as check
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
+from climada.hazard.source_excel import read as read_excel
+from climada.hazard.source_mat import read as read_mat
 import climada.util.plot as plot
+import climada.util.checker as check
 
-class Hazard(LoaderHaz):
+class Hazard(object):
     """Contains events of same hazard type defined at centroids. Interface.
 
     Attributes
@@ -31,7 +34,7 @@ class Hazard(LoaderHaz):
             event at each centroid
     """
 
-    def __init__(self, file_name=None, description=None, haztype=None):
+    def __init__(self, file_name=None, haztype='NA', description=None):
         """Initialize values from given file, if given.
 
         Parameters
@@ -59,11 +62,32 @@ class Hazard(LoaderHaz):
 
         # Load values from file_name if provided
         if file_name is not None:
-            self.load(file_name, description, haztype)
+            if haztype == 'NA':
+                raise ValueError('Provide hazard type acronym.')
+            else:
+                self.load(file_name, haztype, description)
 
-    def calc_future(self, conf):
-        """ Compute the future hazard following the configuration """
-        # TODO
+    def load(self, file_name, haztype, description=None, centroids=None,\
+             out_file_name=None):
+        """Read, check hazard (and its contained centroids) and save to pkl.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            haztype (str): acronym of the hazard type (e.g. 'TC')
+            description (str, optional): description of the source data
+            centroids (Centroids, optional): Centroids instance
+            out_file_name (str, optional): output file name to save as pkl
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description, haztype, centroids)
+        self.check()
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
     def check(self):
         """ Checks if the attributes contain consistent data.
@@ -80,6 +104,30 @@ class Hazard(LoaderHaz):
         check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
         check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
                             list(self.event_id))
+
+    def read(self, file_name, haztype, description=None, centroids=None):
+        """ Read input file. If centroids are not provided, they are read
+        from file_name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            haztype (str): acronym of the hazard type (e.g. 'TC')
+            description (str, optional): description of the source data
+            centroids (Centroids, optional): Centroids instance
+
+        Raises
+        ------
+            ValueError, KeyError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            read_mat(self, file_name, haztype, description, centroids)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            read_excel(self, file_name, haztype, description, centroids)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
 
     def plot_stats(self):
         """Plots describing hazard."""
@@ -172,6 +220,10 @@ class Hazard(LoaderHaz):
         except:
             raise ValueError('No event with name: ' + event_name)
         return event_id
+
+    def calc_future(self, conf):
+        """ Compute the future hazard following the configuration """
+        # TODO
 
     def _event_plot(self, event_id, mat_var, col_name):
         """"Plot an event of the input matrix.

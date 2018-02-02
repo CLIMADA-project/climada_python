@@ -1,5 +1,5 @@
 """
-Test ExposuresExcel class.
+Test Exposures from Excel file.
 """
 
 import warnings
@@ -7,7 +7,8 @@ import unittest
 import numpy as np
 import pandas
 
-from climada.entity.exposures.source_excel import ExposuresExcel
+from climada.entity.exposures import source_excel as excel
+from climada.entity.exposures.base import Exposures
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 from climada.util.config import config
 
@@ -17,7 +18,7 @@ class TestReader(unittest.TestCase):
     def test_read_demo_pass(self):
         """ Read one single excel file"""
         # Read demo excel file
-        expo = ExposuresExcel()
+        expo = Exposures()
         description = 'One single file.'
         expo.read(ENT_DEMO_XLS, description)
 
@@ -65,7 +66,7 @@ class TestReader(unittest.TestCase):
     def test_read_template_pass(self):
         """Check template excel file. Catch warning centroids not set."""
         # Read template file
-        expo = ExposuresExcel()
+        expo = Exposures()
         expo.read(ENT_TEMPLATE_XLS)
 
         # Check results
@@ -120,7 +121,7 @@ class TestReader(unittest.TestCase):
         """Check warning centroids when template read."""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            ExposuresExcel(ENT_TEMPLATE_XLS)
+            Exposures(ENT_TEMPLATE_XLS)
             # Verify warnings thrown
             self.assertIn("Exposures.assigned not set.", \
                           str(w[-1].message))
@@ -129,7 +130,7 @@ class TestReader(unittest.TestCase):
         """Check warning centroids when demo read."""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            ExposuresExcel(ENT_DEMO_XLS)
+            Exposures(ENT_DEMO_XLS)
             # Verify warnings thrown
             self.assertIn("Exposures.category_id not set.", \
                           str(w[0].message))
@@ -141,39 +142,69 @@ class TestReader(unittest.TestCase):
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
 
+    def tearDown(self):
+        excel.COL_NAMES = {'lat' : 'Latitude',
+                           'lon' : 'Longitude',
+                           'val' : 'Value',
+                           'ded' : 'Deductible',
+                           'cov' : 'Cover',
+                           'imp' : 'DamageFunID',
+                           'cat' : 'Category_ID',
+                           'reg' : 'Region_ID',
+                           'uni' : 'Value unit',
+                           'ass' : 'centroid_index',
+                           'ref': 'reference_year',
+                           'item' : 'Item'
+                          }
+
     def test_no_value_fail(self):
         """Error if no values."""
-        expo = ExposuresExcel()
-        expo.col_names['val'] = 'no valid value'
+        expo = Exposures()
+        excel.COL_NAMES['val'] = 'no valid value'
         with self.assertRaises(KeyError):
             expo.read(ENT_DEMO_XLS)
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
-        expo = ExposuresExcel()
-        expo.col_names['imp'] = 'no valid impact'
+        expo = Exposures()
+        excel.COL_NAMES['imp'] = 'no valid impact'
         with self.assertRaises(KeyError):
             expo.read(ENT_DEMO_XLS)
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
-        expo = ExposuresExcel()
-        expo.col_names['lat'] = 'no valid Latitude'
+        expo = Exposures()
+        excel.COL_NAMES['lat'] = 'no valid Latitude'
         with self.assertRaises(KeyError):
             expo.read(ENT_DEMO_XLS)
 
-        expo.col_names['lat'] = 'Latitude'
-        expo.col_names['lon'] = 'no valid Longitude'
+        excel.COL_NAMES['lat'] = 'Latitude'
+        excel.COL_NAMES['lon'] = 'no valid Longitude'
         with self.assertRaises(KeyError):
             expo.read(ENT_DEMO_XLS)
 
 class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
 
+    def tearDown(self):
+        excel.COL_NAMES = {'lat' : 'Latitude',
+                           'lon' : 'Longitude',
+                           'val' : 'Value',
+                           'ded' : 'Deductible',
+                           'cov' : 'Cover',
+                           'imp' : 'DamageFunID',
+                           'cat' : 'Category_ID',
+                           'reg' : 'Region_ID',
+                           'uni' : 'Value unit',
+                           'ass' : 'centroid_index',
+                           'ref': 'reference_year',
+                           'item' : 'Item'
+                          }
+
     def test_no_category_pass(self):
         """Not error if no category id."""
-        expo = ExposuresExcel()
-        expo.col_names['cat'] = 'no valid category'
+        expo = Exposures()
+        excel.COL_NAMES['cat'] = 'no valid category'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -181,8 +212,8 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_region_pass(self):
         """Not error if no region id."""
-        expo = ExposuresExcel()
-        expo.col_names['reg'] = 'no valid region'
+        expo = Exposures()
+        excel.COL_NAMES['reg'] = 'no valid region'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -190,8 +221,8 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_unit_pass(self):
         """Not error if no value unit."""
-        expo = ExposuresExcel()
-        expo.col_names['uni'] = 'no valid value unit'
+        expo = Exposures()
+        excel.COL_NAMES['uni'] = 'no valid value unit'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -199,8 +230,8 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""
-        expo = ExposuresExcel()
-        expo.col_names['ass'] = 'no valid assign'
+        expo = Exposures()
+        excel.COL_NAMES['ass'] = 'no valid assign'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -208,8 +239,8 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""
-        expo = ExposuresExcel()
-        expo.col_names['ref'] = 'no valid ref'
+        expo = Exposures()
+        excel.COL_NAMES['ref'] = 'no valid ref'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -218,12 +249,27 @@ class TestOptionals(unittest.TestCase):
 class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
 
+    def tearDown(self):
+        excel.COL_NAMES = {'lat' : 'Latitude',
+                           'lon' : 'Longitude',
+                           'val' : 'Value',
+                           'ded' : 'Deductible',
+                           'cov' : 'Cover',
+                           'imp' : 'DamageFunID',
+                           'cat' : 'Category_ID',
+                           'reg' : 'Region_ID',
+                           'uni' : 'Value unit',
+                           'ass' : 'centroid_index',
+                           'ref': 'reference_year',
+                           'item' : 'Item'
+                          }
+
     def test_no_cover_pass(self):
         """Check default values for excel file with no cover."""
         # Read demo excel file
-        expo = ExposuresExcel()
+        expo = Exposures()
         # Change cover column name to simulate no present column
-        expo.col_names['cov'] = 'Dummy'
+        excel.COL_NAMES['cov'] = 'Dummy'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -232,9 +278,9 @@ class TestDefaults(unittest.TestCase):
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
         # Read demo excel file
-        expo = ExposuresExcel()
+        expo = Exposures()
         # Change deductible column name to simulate no present column
-        expo.col_names['ded'] = 'Dummy'
+        excel.COL_NAMES['ded'] = 'Dummy'
         expo.read(ENT_DEMO_XLS)
 
         # Check results
@@ -250,37 +296,35 @@ class TestParsers(unittest.TestCase):
     def test_parse_optional_exist_pass(self):
         """Check variable read if present."""
         var_ini = 0
-        var = ExposuresExcel._parse_optional(self.dfr, var_ini, 'Latitude')
+        var = excel._parse_optional(self.dfr, var_ini, 'Latitude')
         self.assertEqual(24, len(var))
 
     def test_parse_optional_not_exist_pass(self):
         """Check pass if variable not present and initial value kept."""
         var_ini = 0
-        var = ExposuresExcel._parse_optional(self.dfr, var_ini, 'Not Present')
+        var = excel._parse_optional(self.dfr, var_ini, 'Not Present')
         self.assertEqual(var_ini, var)
 
     def test_parse_default_exist_pass(self):
         """Check variable read if present."""
         def_val = 5
-        var = ExposuresExcel._parse_default(self.dfr, 'Latitude', def_val)
+        var = excel._parse_default(self.dfr, 'Latitude', def_val)
         self.assertEqual(24, len(var))
 
     def test_parse_default_not_exist_pass(self):
         """Check pass if variable not present and default value is set."""
         def_val = 5
-        var = ExposuresExcel._parse_default(self.dfr, 'Not Present', def_val)
+        var = excel._parse_default(self.dfr, 'Not Present', def_val)
         self.assertEqual(def_val, var)
 
     def test_refyear_exist_pass(self):
         """Check that the reference year is well read from template."""
-        expo = ExposuresExcel()
-        ref_year = expo._parse_ref_year(ENT_TEMPLATE_XLS)
+        ref_year = excel._parse_ref_year(ENT_TEMPLATE_XLS)
         self.assertEqual(2017, ref_year)
 
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
-        expo = ExposuresExcel()
-        ref_year = expo._parse_ref_year(ENT_DEMO_XLS)
+        ref_year = excel._parse_ref_year(ENT_DEMO_XLS)
         self.assertEqual(config["present_ref_year"], ref_year)      
         
 # Execute Tests

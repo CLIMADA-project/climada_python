@@ -4,24 +4,15 @@ Define Entity Class.
 
 __all__ = ['Entity']
 
-import os
+import pickle
 
-from climada.entity.loader import Loader
 from climada.entity.impact_funcs.base  import ImpactFuncs
-from climada.entity.impact_funcs.source_excel  import ImpactFuncsExcel
-from climada.entity.impact_funcs.source_mat  import ImpactFuncsMat
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.disc_rates.source_excel import DiscRatesExcel
-from climada.entity.disc_rates.source_mat import DiscRatesMat
 from climada.entity.measures.base import Measures
-from climada.entity.measures.source_excel import MeasuresExcel
-from climada.entity.measures.source_mat import MeasuresMat
 from climada.entity.exposures.base import Exposures
-from climada.entity.exposures.source_excel import ExposuresExcel
-from climada.entity.exposures.source_mat import ExposuresMat
 from climada.util.config import ENT_DEF_XLS
 
-class Entity(Loader):
+class Entity(object):
     """Collects exposures, impact functions, measures and discount rates.
 
     Attributes
@@ -59,49 +50,74 @@ class Entity(Loader):
             ENT_DEF_XLS file, and the given impact functions and measures.
         """
         if file_name is None:
-            self.exposures = ExposuresExcel(self.def_file)
-            self.impact_funcs = ImpactFuncsExcel(self.def_file)
-            self.measures = MeasuresExcel(self.def_file)
-            self.disc_rates = DiscRatesExcel(self.def_file)
+            self.exposures = Exposures(self.def_file)
+            self.impact_funcs = ImpactFuncs(self.def_file)
+            self.measures = Measures(self.def_file)
+            self.disc_rates = DiscRates(self.def_file)
         else:
             self.load(file_name, description)
 
     def read(self, file_name, description=None):
-        """Override read Loader method."""
-        # Call readers depending on file extension
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            self.exposures = ExposuresMat()
-            self.exposures.read(file_name, description)
+        """Read input file.
 
-            self.impact_funcs = ImpactFuncsMat()
-            self.impact_funcs.read(file_name, description)
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
 
-            self.disc_rates = DiscRatesMat()
-            self.disc_rates.read(file_name, description)
+        Raises
+        ------
+            ValueError
+        """
+        self.exposures = Exposures()
+        self.exposures.read(file_name, description)
 
-            self.measures = MeasuresMat()
-            self.measures.read(file_name, description)
+        self.disc_rates = DiscRates()
+        self.disc_rates.read(file_name, description)
 
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            self.exposures = ExposuresExcel()
-            self.exposures.read(file_name, description)
+        self.impact_funcs = ImpactFuncs()
+        self.impact_funcs.read(file_name, description)
 
-            self.impact_funcs = ImpactFuncsExcel()
-            self.impact_funcs.read(file_name, description)
+        self.measures = Measures()
+        self.measures.read(file_name, description)
 
-            self.disc_rates = DiscRatesExcel()
-            self.disc_rates.read(file_name, description)
 
-            self.measures = MeasuresExcel()
-            self.measures.read(file_name, description)
+    def load(self, file_name, description=None, out_file_name=None):
+        """Read, check and save as pkl, if output file name.
 
-        else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            out_file_name (str, optional): output file name to save as pkl
+
+        Raises
+        ------
+            ValueError
+        """
+        self.exposures = Exposures()
+        self.exposures.load(file_name, description)
+
+        self.disc_rates = DiscRates()
+        self.disc_rates.load(file_name, description)
+
+        self.impact_funcs = ImpactFuncs()
+        self.impact_funcs.load(file_name, description)
+
+        self.measures = Measures()
+        self.measures.load(file_name, description)
+
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
     def check(self):
-        """ Override Loader check."""
+        """Check instance attributes.
+
+        Raises
+        ------
+            ValueError
+        """
         self.disc_rates.check()
         self.exposures.check()
         self.impact_funcs.check()

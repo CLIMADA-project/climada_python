@@ -6,19 +6,18 @@ import unittest
 import warnings
 import numpy as np
 
-from climada.entity.exposures.source_excel import ExposuresExcel
-from climada.hazard.centroids.source_excel import CentroidsExcel
+from climada.entity.exposures.base import Exposures
+from climada.hazard.centroids.base import Centroids
 from climada.util.interpolation import Interpolator
 from climada.util.constants import ENT_DEMO_XLS
 
 def def_input_values():
     '''Default input coordinates and centroids values'''
     # Load exposures coordinates from demo entity file
-    exposures = ExposuresExcel()
-    exposures.read(ENT_DEMO_XLS)
+    exposures = Exposures(ENT_DEMO_XLS)
 
     # Define centroids
-    centroids = CentroidsExcel()
+    centroids = Centroids()
     centroids.coord = np.zeros((100, 2))
     inext = 0
     for ilon in range(10):

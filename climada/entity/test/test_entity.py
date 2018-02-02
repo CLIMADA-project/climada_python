@@ -6,8 +6,6 @@ import unittest
 import numpy as np
 
 from climada.entity.entity import Entity
-from climada.entity.measures.source_excel import MeasuresExcel
-from climada.entity.exposures.source_excel import ExposuresExcel
 from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.base import ImpactFuncs
@@ -68,7 +66,7 @@ class TestCheck(unittest.TestCase):
         self.assertIn('Exposures.cover', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
-            ent.exposures = MeasuresExcel()
+            ent.exposures = Measures()
         self.assertIn('Exposures', str(error.exception))
 
     def test_wrongMeas_fail(self):
@@ -81,7 +79,7 @@ class TestCheck(unittest.TestCase):
         self.assertIn('Action.color_rgb', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
-            ent.measures = ExposuresExcel()
+            ent.measures = Exposures()
         self.assertIn('Measures', str(error.exception))
 
     def test_wrongImpFun_fail(self):
@@ -93,7 +91,7 @@ class TestCheck(unittest.TestCase):
         self.assertIn('Vulnerability.paa', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
-            ent.impact_funcs = ExposuresExcel()
+            ent.impact_funcs = Exposures()
         self.assertIn('ImpactFuncs', str(error.exception))
 
     def test_wrongDisc_fail(self):
@@ -105,7 +103,7 @@ class TestCheck(unittest.TestCase):
         self.assertIn('DiscRates.rates', str(error.exception))
 
         with self.assertRaises(ValueError) as error:
-            ent.disc_rates = ExposuresExcel()
+            ent.disc_rates = Exposures()
         self.assertIn('DiscRates', str(error.exception))
 
 # Execute Tests

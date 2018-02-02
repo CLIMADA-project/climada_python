@@ -1,139 +1,107 @@
 """
-Define ExposuresMat class.
+Define Exposures reader function from a MATLAB file.
 """
 
-__all__ = ['ExposuresMat']
+__all__ = ['SUP_FIELD_NAME', 'FIELD_NAME', 'VAR_NAMES', 'read']
 
 import numpy as np
 
-from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 
-class ExposuresMat(Exposures):
-    """Exposures class loaded from a mat file produced by climada.
+# name of the enclosing variable, if present
+SUP_FIELD_NAME = 'entity'
+# name of variable containing the data
+FIELD_NAME = 'assets'
+# name of the variables in FIELD_NAME
+VAR_NAMES = {'lat' : 'lat',
+             'lon' : 'lon',
+             'val' : 'Value',
+             'ded' : 'Deductible',
+             'cov' : 'Cover',
+             'imp' : 'DamageFunID',
+             'cat' : 'Category_ID',
+             'reg' : 'Region_ID',
+             'uni' : 'Value_unit',
+             'ass' : 'centroid_index',
+             'ref' : 'reference_year'
+            }
 
-    Attributes
-    ----------
-        sup_field_name (str): name of the enclosing variable, if present
-        field_name (str): name of variable containing the data
-        var (dict): name of the variables in field_name
-    """
+def read(exposures, file_name, description=None):
+    """Read MATLAB file and store variables in exposures. """
+   # append the file name and description into the instance class
+    exposures.tag = Tag(file_name, description)
 
-    def __init__(self, file_name=None, description=None):
-        """Extend Exposures __init__ method.
+    # Load mat data
+    data = hdf5.read(file_name)
+    try:
+        data = data[SUP_FIELD_NAME]
+    except KeyError:
+        pass
+    data = data[FIELD_NAME]
 
-        Parameters
-        ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+    # Fill variables
+    _read_obligatory(exposures, data)
+    _read_default(exposures, data)
+    _read_optional(exposures, data, file_name)
 
-        Examples
-        --------
-            >>> ExposuresMat()
-            Initializes empty attributes.
-            >>> ExposuresMat('filename')
-            Loads data from the provided file.
-            >>> ExposuresMat('filename', 'description of file')
-            Loads data from the provided file and stores provided description.
-        """
-        self.sup_field_name = 'entity'
-        self.field_name = 'assets'
-        self.var = {'lat' : 'lat',
-                    'lon' : 'lon',
-                    'val' : 'Value',
-                    'ded' : 'Deductible',
-                    'cov' : 'Cover',
-                    'imp' : 'DamageFunID',
-                    'cat' : 'Category_ID',
-                    'reg' : 'Region_ID',
-                    'uni' : 'Value_unit',
-                    'ass' : 'centroid_index',
-                    'ref' : 'reference_year'
-                   }
-        # Initialize
-        Exposures.__init__(self, file_name, description)
+def _read_obligatory(exposures, data):
+    """Fill obligatory variables."""
+    exposures.value = np.squeeze(data[VAR_NAMES['val']])
 
-    def read(self, file_name, description=None):
-        """Override read Loader method."""
-       # append the file name and description into the instance class
-        self.tag = Tag(file_name, description)
+    coord_lat = data[VAR_NAMES['lat']]
+    coord_lon = data[VAR_NAMES['lon']]
+    exposures.coord = np.concatenate((coord_lat, coord_lon), axis=1)
 
-        # Load mat data
-        expo = hdf5.read(file_name)
-        try:
-            expo = expo[self.sup_field_name]
-        except KeyError:
-            pass
-        expo = expo[self.field_name]
+    exposures.impact_id = np.squeeze(data[VAR_NAMES['imp']]).astype(int)
 
-        # Fill variables
-        self._read_obligatory(expo)
-        self._read_default(expo)
-        self._read_optional(expo, file_name)
+    # set exposures id according to appearance order
+    num_exp = len(exposures.value)
+    exposures.id = np.linspace(exposures.id.size, exposures.id.size + \
+                          num_exp - 1, num_exp, dtype=int)
 
-    def _read_obligatory(self, expo):
-        """Fill obligatory variables."""
-        self.value = np.squeeze(expo[self.var['val']])
+def _read_default(exposures, data):
+    """Fill optional variables. Set default values."""
+    num_exp = len(data[VAR_NAMES['val']])
+    # get the exposures deductibles as np.array float 64
+    # if not provided set default zero values
+    exposures.deductible = _parse_default(data, VAR_NAMES['ded'], \
+                                           np.zeros(num_exp))
+    # get the exposures coverages as np.array float 64
+    # if not provided set default exposure values
+    exposures.cover = _parse_default(data, VAR_NAMES['cov'], exposures.value)
 
-        coord_lat = expo[self.var['lat']]
-        coord_lon = expo[self.var['lon']]
-        self.coord = np.concatenate((coord_lat, coord_lon), axis=1)
+def _read_optional(exposures, data, file_name):
+    """Fill optional parameters."""
+    exposures.ref_year = _parse_optional(data, exposures.ref_year, \
+                                         VAR_NAMES['ref'])
+    if not isinstance(exposures.ref_year, int):
+        exposures.ref_year = int(exposures.ref_year)
 
-        self.impact_id = np.squeeze(expo[self.var['imp']]).astype(int)
+    exposures.category_id = _parse_optional(data, exposures.category_id, \
+                                            VAR_NAMES['cat']).astype(int)
+    exposures.region_id = _parse_optional(data, exposures.region_id, \
+                                            VAR_NAMES['reg']).astype(int)
+    exposures.assigned = _parse_optional(data, exposures.assigned, \
+                                            VAR_NAMES['ass']).astype(int)
+    try:
+        exposures.value_unit = hdf5.get_str_from_ref(file_name, \
+            data[VAR_NAMES['uni']][0][0])
+    except KeyError:
+        pass
 
-        # set exposures id according to appearance order
-        num_exp = len(self.value)
-        self.id = np.linspace(self.id.size, self.id.size + \
-                              num_exp - 1, num_exp, dtype=int)
+def _parse_optional(hdf, var, var_name):
+    """Retrieve optional variable, leave its original value if fail."""
+    try:
+        var = np.squeeze(hdf[var_name])
+    except KeyError:
+        pass
+    return var
 
-    def _read_default(self, expo):
-        """Fill optional variables. Set default values."""
-        num_exp = len(expo[self.var['val']])
-        # get the exposures deductibles as np.array float 64
-        # if not provided set default zero values
-        self.deductible = self._parse_default(expo, self.var['ded'], \
-                                               np.zeros(num_exp))
-        # get the exposures coverages as np.array float 64
-        # if not provided set default exposure values
-        self.cover = self._parse_default(expo, self.var['cov'], self.value)
-
-    def _read_optional(self, expo, file_name):
-        """Fill optional parameters."""
-        self.ref_year = self._parse_optional(expo, self.ref_year, \
-                                             self.var['ref'])
-        if not isinstance(self.ref_year, int):
-            self.ref_year = int(self.ref_year)
-
-        self.category_id = self._parse_optional(expo, self.category_id, \
-                                                self.var['cat'])
-        self.category_id = self.category_id.astype(int)
-        self.region_id = self._parse_optional(expo, self.region_id, \
-                                                self.var['reg'])
-        self.region_id = self.region_id.astype(int)
-        self.assigned = self._parse_optional(expo, self.assigned, \
-                                                self.var['ass'])
-        self.assigned = self.assigned.astype(int)
-        try:
-            self.value_unit = hdf5.get_str_from_ref(file_name, \
-                                                  expo[self.var['uni']][0][0])
-        except KeyError:
-            pass
-
-    @staticmethod
-    def _parse_optional(hdf, var, var_name):
-        """Retrieve optional variable, leave its original value if fail."""
-        try:
-            var = np.squeeze(hdf[var_name])
-        except KeyError:
-            pass
-        return var
-
-    @staticmethod
-    def _parse_default(hdf, var_name, def_val):
-        """Retrieve optional variable, set default value if fail."""
-        try:
-            res = np.squeeze(hdf[var_name])
-        except KeyError:
-            res = def_val
-        return res
+def _parse_default(hdf, var_name, def_val):
+    """Retrieve optional variable, set default value if fail."""
+    try:
+        res = np.squeeze(hdf[var_name])
+    except KeyError:
+        res = def_val
+    return res

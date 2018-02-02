@@ -2,6 +2,16 @@
 Define constants.
 """
 
+__all__ = ['WORKING_DIR',
+           'DATA_DIR',
+           'HAZ_DEMO_XLS',
+           'HAZ_DEMO_MAT',
+           'ENT_DEMO_XLS',
+           'ENT_TEMPLATE_XLS',
+           'ENT_DEMO_MAT',
+           'ONE_LAT_KM',
+           'EARTH_RADIUS']
+
 import os
 
 # working directory

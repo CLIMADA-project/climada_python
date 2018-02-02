@@ -320,23 +320,6 @@ class TestLoader(unittest.TestCase):
         self.assertEqual('Invalid Vulnerability.mdd size: 3 != 2', \
                          str(error.exception))
 
-    def test_load_notimplemented(self):
-        """"Load function not implemented"""
-        imp_fun = ImpactFuncs()
-        with self.assertRaises(NotImplementedError):
-            imp_fun.load(ENT_DEMO_XLS)
-
-    def test_read_notimplemented(self):
-        """Read function not implemented"""
-        imp_fun = ImpactFuncs()
-        with self.assertRaises(NotImplementedError):
-            imp_fun.read(ENT_DEMO_XLS)
-
-    def test_constructfile_notimplemented(self):
-        """Constructor from file not implemented"""
-        with self.assertRaises(NotImplementedError):
-            ImpactFuncs(ENT_DEMO_XLS)
-
 class TestInterpolation(unittest.TestCase):
     """Impact function interpolation test"""
 

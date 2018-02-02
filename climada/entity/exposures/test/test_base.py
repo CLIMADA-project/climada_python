@@ -7,7 +7,6 @@ import numpy as np
 
 from climada.entity.exposures.base import Exposures
 from climada.hazard.base import Hazard
-from climada.util.constants import ENT_DEMO_XLS
 
 class TestAssign(unittest.TestCase):
     """Check assign interface"""
@@ -125,23 +124,6 @@ class TestLoader(unittest.TestCase):
             expo.check()
         self.assertEqual('Invalid Exposures.assigned size: 3 != 2',\
                          str(error.exception))
-
-    def test_load_notimplemented(self):
-        """Load function not implemented"""
-        expo = Exposures()
-        with self.assertRaises(NotImplementedError):
-            expo.load(ENT_DEMO_XLS)
-
-    def test_read_notimplemented(self):
-        """Read function not implemented"""
-        expo = Exposures()
-        with self.assertRaises(NotImplementedError):
-            expo.read(ENT_DEMO_XLS)
-
-    def test_constructfile_notimplemented(self):
-        """Constructor from file not implemented"""
-        with self.assertRaises(NotImplementedError):
-            Exposures(ENT_DEMO_XLS)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)

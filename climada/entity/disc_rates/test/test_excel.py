@@ -1,20 +1,26 @@
 """
-Test DiscRatesExcel class.
+Test DiscRates from Excel.
 """
 
 import unittest
 import numpy
 
-from climada.entity.disc_rates.source_excel import DiscRatesExcel
+from climada.entity.disc_rates.base import DiscRates
+from climada.entity.disc_rates import source_excel as excel
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the DiscRatesExcel class"""
 
+    def tearDown(self):
+        excel.COL_NAMES = {'year' : 'year',
+                           'disc' : 'discount_rate'
+                          }
+
     def test_demo_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
-        disc_rate = DiscRatesExcel()
+        disc_rate = DiscRates()
         description = 'One single file.'
         disc_rate.read(ENT_DEMO_XLS, description)
 
@@ -37,7 +43,7 @@ class TestReader(unittest.TestCase):
     def test_template_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
-        disc_rate = DiscRatesExcel()
+        disc_rate = DiscRates()
         disc_rate.read(ENT_TEMPLATE_XLS)
 
         # Check results
@@ -59,8 +65,8 @@ class TestReader(unittest.TestCase):
     def test_wrong_file_fail(self):
         """ Read file without year column, fail."""
         # Read demo excel file
-        disc_rate = DiscRatesExcel()
-        disc_rate.col_names['year'] = 'wrong col'
+        disc_rate = DiscRates()
+        excel.COL_NAMES['year'] = 'wrong col'
         with self.assertRaises(KeyError):
             disc_rate.read(ENT_DEMO_XLS)
 

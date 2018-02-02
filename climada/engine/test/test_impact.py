@@ -7,7 +7,7 @@ import numpy as np
 
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_XLS
 from climada.entity.entity import Entity
-from climada.hazard.source_mat import HazardMat
+from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 
 class TestFreqCurve(unittest.TestCase):
@@ -65,7 +65,7 @@ class TestOneExposure(unittest.TestCase):
         ent = Entity()
         
         # Read default hazard file
-        hazard = HazardMat(HAZ_DEMO_MAT)
+        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
         # Create impact object
         impact = Impact()
 
@@ -123,7 +123,7 @@ class TestCalc(unittest.TestCase):
         Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
         # Read default hazard file
-        hazard = HazardMat(HAZ_DEMO_MAT)
+        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
         # Create impact object
         impact = Impact()
 

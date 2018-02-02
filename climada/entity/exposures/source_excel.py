@@ -1,145 +1,113 @@
 """
-Define ExposuresExcel class.
+Define Exposures reader function from an Excel file.
 """
-
-__all__ = ['ExposuresExcel']
 
 from xlrd import XLRDError
 import numpy as np
 import pandas
 
-from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 from climada.util.config import config
 
-class ExposuresExcel(Exposures):
-    """Exposures class loaded from an excel file.
+# name of excel sheet containing the data
+SHEET_NAMES = {'exp': 'assets',
+               'name': 'names'
+              }
+# name of the table columns for each of the attributes
+COL_NAMES = {'lat' : 'Latitude',
+             'lon' : 'Longitude',
+             'val' : 'Value',
+             'ded' : 'Deductible',
+             'cov' : 'Cover',
+             'imp' : 'DamageFunID',
+             'cat' : 'Category_ID',
+             'reg' : 'Region_ID',
+             'uni' : 'Value unit',
+             'ass' : 'centroid_index',
+             'ref': 'reference_year',
+             'item' : 'Item'
+            }
 
-    Attributes
-    ----------
-        sheet_name (str): name of excel sheet containing the data
-        col_names (dict): name of the table columns for each of the attributes
-    """
+def read(exposures, file_name, description=None):
+    """Read excel file and store variables in exposures. """
+    # append the file name and description into the instance class
+    exposures.tag = Tag(file_name, description)
 
-    def __init__(self, file_name=None, description=None):
-        """Extend Exposures __init__ method.
+    # load Excel data
+    dfr = pandas.read_excel(file_name, SHEET_NAMES['exp'])
+    # get variables
+    _read_obligatory(exposures, dfr)
+    _read_default(exposures, dfr)
+    _read_optional(exposures, dfr, file_name)
 
-        Parameters
-        ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+def _read_obligatory(exposures, dfr):
+    """Fill obligatory variables."""
+    exposures.value = dfr[COL_NAMES['val']].values
 
-        Examples
-        --------
-            >>> ExposuresExcel()
-            Initializes empty attributes.
-            >>> ExposuresExcel('filename')
-            Loads data from the provided file.
-            >>> ExposuresExcel('filename', 'description of file')
-            Loads data from the provided file and stores provided description.
-        """
-        self.sheet_name = {'exp': 'assets',
-                           'name': 'names'
-                          }
-        self.col_names = {'lat' : 'Latitude',
-                          'lon' : 'Longitude',
-                          'val' : 'Value',
-                          'ded' : 'Deductible',
-                          'cov' : 'Cover',
-                          'imp' : 'DamageFunID',
-                          'cat' : 'Category_ID',
-                          'reg' : 'Region_ID',
-                          'uni' : 'Value unit',
-                          'ass' : 'centroid_index',
-                          'ref': 'reference_year',
-                          'item' : 'Item'
-                         }
-        # Initialize
-        Exposures.__init__(self, file_name, description)
+    coord_cols = [COL_NAMES['lat'], COL_NAMES['lon']]
+    exposures.coord = np.array(dfr[coord_cols])
 
-    def read(self, file_name, description=None):
-        """Override read Loader method."""
-        # append the file name and description into the instance class
-        self.tag = Tag(file_name, description)
+    exposures.impact_id = dfr[COL_NAMES['imp']].values
 
-        # load Excel data
-        dfr = pandas.read_excel(file_name, self.sheet_name['exp'])
-        # get variables
-        self._read_obligatory(dfr)
-        self._read_default(dfr)
-        self._read_optional(dfr, file_name)
+    # set exposures id according to appearance order
+    num_exp = len(dfr.index)
+    exposures.id = np.linspace(exposures.id.size, exposures.id.size + \
+                          num_exp - 1, num_exp, dtype=int)
 
-    def _read_obligatory(self, dfr):
-        """Fill obligatory variables."""
-        self.value = dfr[self.col_names['val']].values
+def _read_default(exposures, dfr):
+    """Fill optional variables. Set default values."""
+    # get the exposures deductibles as np.array float 64
+    # if not provided set default zero values
+    num_exp = len(dfr.index)
+    exposures.deductible = _parse_default(dfr, COL_NAMES['ded'], \
+                                          np.zeros(num_exp))
+    # get the exposures coverages as np.array float 64
+    # if not provided set default exposure values
+    exposures.cover = _parse_default(dfr, COL_NAMES['cov'], exposures.value)
 
-        coord_cols = [self.col_names['lat'], self.col_names['lon']]
-        self.coord = np.array(dfr[coord_cols])
+def _read_optional(exposures, dfr, file_name):
+    """Fill optional parameters."""
+    exposures.category_id = _parse_optional(dfr, exposures.category_id, \
+                                            COL_NAMES['cat'])
+    exposures.region_id = _parse_optional(dfr, exposures.region_id, \
+                                          COL_NAMES['reg'])
+    exposures.value_unit = _parse_optional(dfr, exposures.value_unit, \
+                                           COL_NAMES['uni'])
+    if not isinstance(exposures.value_unit, str):
+        # Check all exposures have the same unit
+        if len(np.unique(exposures.value_unit)) is not 1:
+            raise ValueError('Different value units provided for \
+                             exposures.')
+        exposures.value_unit = exposures.value_unit[0]
+    exposures.assigned = _parse_optional(dfr, exposures.assigned, \
+                                         COL_NAMES['ass'])
 
-        self.impact_id = dfr[self.col_names['imp']].values
+    # check if reference year given under "names" sheet
+    # if not, set default present reference year
+    exposures.ref_year = _parse_ref_year(file_name)
 
-        # set exposures id according to appearance order
-        num_exp = len(dfr.index)
-        self.id = np.linspace(self.id.size, self.id.size + \
-                              num_exp - 1, num_exp, dtype=int)
+def _parse_ref_year(file_name):
+    """Retrieve reference year provided in the other sheet, if given."""
+    try:
+        dfr = pandas.read_excel(file_name, SHEET_NAMES['name'])
+        dfr.index = dfr[COL_NAMES['item']]
+        ref_year = dfr.loc[COL_NAMES['ref']]['name']
+    except (XLRDError, KeyError):
+        ref_year = config['present_ref_year']
+    return ref_year
 
-    def _read_default(self, dfr):
-        """Fill optional variables. Set default values."""
-        # get the exposures deductibles as np.array float 64
-        # if not provided set default zero values
-        num_exp = len(dfr.index)
-        self.deductible = self._parse_default(dfr, self.col_names['ded'], \
-                                              np.zeros(num_exp))
-        # get the exposures coverages as np.array float 64
-        # if not provided set default exposure values
-        self.cover = self._parse_default(dfr, self.col_names['cov'], \
-                                         self.value)
+def _parse_optional(dfr, var, var_name):
+    """Retrieve optional variable, leave its original value if fail."""
+    try:
+        var = dfr[var_name].values
+    except KeyError:
+        pass
+    return var
 
-    def _read_optional(self, dfr, file_name):
-        """Fill optional parameters."""
-        self.category_id = self._parse_optional(dfr, self.category_id, \
-                                                self.col_names['cat'])
-        self.region_id = self._parse_optional(dfr, self.region_id, \
-                                              self.col_names['reg'])
-        self.value_unit = self._parse_optional(dfr, self.value_unit, \
-                                               self.col_names['uni'])
-        if not isinstance(self.value_unit, str):
-            # Check all exposures have the same unit
-            if len(np.unique(self.value_unit)) is not 1:
-                raise ValueError('Different value units provided for \
-                                 exposures.')
-            self.value_unit = self.value_unit[0]
-        self.assigned = self._parse_optional(dfr, self.assigned, \
-                                             self.col_names['ass'])
-
-        # check if reference year given under "names" sheet
-        # if not, set default present reference year
-        self.ref_year = self._parse_ref_year(file_name)
-
-    def _parse_ref_year(self, file_name):
-        """Retrieve reference year provided in the other sheet, if given."""
-        try:
-            dfr = pandas.read_excel(file_name, self.sheet_name['name'])
-            dfr.index = dfr[self.col_names['item']]
-            ref_year = dfr.loc[self.col_names['ref']]['name']
-        except (XLRDError, KeyError):
-            ref_year = config['present_ref_year']
-        return ref_year
-
-    @staticmethod
-    def _parse_optional(dfr, var, var_name):
-        """Retrieve optional variable, leave its original value if fail."""
-        try:
-            var = dfr[var_name].values
-        except KeyError:
-            pass
-        return var
-
-    @staticmethod
-    def _parse_default(dfr, var_name, def_val):
-        """Retrieve optional variable, set default value if fail."""
-        try:
-            res = dfr[var_name].values
-        except KeyError:
-            res = def_val
-        return res
+def _parse_default(dfr, var_name, def_val):
+    """Retrieve optional variable, set default value if fail."""
+    try:
+        res = dfr[var_name].values
+    except KeyError:
+        res = def_val
+    return res

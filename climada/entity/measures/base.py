@@ -4,13 +4,16 @@ Define Action class and Measures.
 
 __all__ = ['Action', 'Measures']
 
+import os
+import pickle
 import numpy as np
 
-from climada.entity.loader import Loader
+from climada.entity.measures.source_excel import read as read_excel
+from climada.entity.measures.source_mat import read as read_mat
 import climada.util.checker as check
 from climada.entity.tag import Tag
 
-class Measures(Loader):
+class Measures(object):
     """Contains measures of type Measures.
 
     Attributes
@@ -122,12 +125,57 @@ class Measures(Loader):
         return len(self._data.keys())
 
     def check(self):
-        """ Override Loader check."""
+        """Check instance attributes.
+
+        Raises
+        ------
+            ValueError
+        """
         for act_name, act in self._data.items():
             if act_name != act.name:
                 raise ValueError('Wrong Action.name: %s != %s' %\
                                 (act_name, act.name))
             act.check()
+
+    def read(self, file_name, description=None):
+        """Read input file.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+
+        Raises
+        ------
+            ValueError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            read_mat(self, file_name, description)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            read_excel(self, file_name, description)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
+
+    def load(self, file_name, description=None, out_file_name=None):
+        """Read, check and save as pkl, if output file name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            out_file_name (str, optional): output file name to save as pkl
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description)
+        self.check()
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
 class Action(object):
     """Contains the definition of one Action.

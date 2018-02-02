@@ -2,10 +2,12 @@
 Test Exposure base class.
 """
 
+import pickle
 import unittest
 import numpy as np
 
 from climada.hazard.centroids.base import Centroids
+from climada.util.constants import HAZ_DEMO_XLS
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Centroids class"""
@@ -39,23 +41,25 @@ class TestLoader(unittest.TestCase):
             cen.check()
         self.assertEqual('Invalid Centroids.region_id size: 3 != 2', \
                          str(error.exception))
+    
+    def test_centroid_save_pass(self):
+        """ Save the centroids object after being read correctly"""
 
-    def test_load_notimplemented(self):
-        """Load function not implemented"""
-        cen = Centroids()
-        with self.assertRaises(NotImplementedError):
-            cen.load('filename')
+        # Read demo excel file
+        centroids = Centroids()
+        description = 'One single file.'
+        out_file_name = 'centroid_excel.pkl'
+        centroids.load(HAZ_DEMO_XLS, description, out_file_name)
 
-    def test_read_notimplemented(self):
-        """Read function not implemented"""
-        cen = Centroids()
-        with self.assertRaises(NotImplementedError):
-            cen.read('filename')
+        # Getting back the objects:
+        with open(out_file_name, 'rb') as file:
+            centroids_read = pickle.load(file)
 
-    def test_constructfile_notimplemented(self):
-        """Constructor from file not implemented"""
-        with self.assertRaises(NotImplementedError):
-            Centroids('filename')
+        # Check the loaded hazard have all variables
+        self.assertEqual(hasattr(centroids_read, 'tag'), True)
+        self.assertEqual(hasattr(centroids_read, 'id'), True)
+        self.assertEqual(hasattr(centroids_read, 'coord'), True)
+        self.assertEqual(hasattr(centroids_read, 'region_id'), True)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)

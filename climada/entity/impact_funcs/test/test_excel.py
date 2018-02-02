@@ -1,19 +1,30 @@
 """
-Test imp_funcsFuncsExcel class.
+Test imp_funcsFuncs from Excel file.
 """
 
 import unittest
 
-from climada.entity.impact_funcs.source_excel import ImpactFuncsExcel
+from climada.entity.impact_funcs import source_excel as excel
+from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
+    def tearDown(self):
+        excel.COL_NAMES = {'func_id' : 'DamageFunID',
+                           'inten' : 'Intensity',
+                           'mdd' : 'MDD',
+                           'paa' : 'PAA',
+                           'name' : 'name',
+                           'unit' : 'Intensity_unit',
+                           'peril' : 'peril_ID'
+                          }
+
     def test_demo_file_pass(self):
         """ Read demo excel file"""
         # Read demo excel file
-        imp_funcs = ImpactFuncsExcel()
+        imp_funcs = ImpactFuncs()
         description = 'One single file.'
         imp_funcs.read(ENT_DEMO_XLS, description)
 
@@ -86,7 +97,7 @@ class TestReader(unittest.TestCase):
 
     def test_template_file_pass(self):
         """ Read template excel file"""
-        imp_funcs = ImpactFuncsExcel()
+        imp_funcs = ImpactFuncs()
         imp_funcs.read(ENT_TEMPLATE_XLS)
         # Check some results
         self.assertEqual(len(imp_funcs._data), 10)
@@ -96,8 +107,8 @@ class TestReader(unittest.TestCase):
 
     def test_wrong_file_fail(self):
         """ Read file intensity, fail."""
-        imp_funcs = ImpactFuncsExcel()
-        imp_funcs.col_names['inten'] = 'wrong name'
+        imp_funcs = ImpactFuncs()
+        excel.COL_NAMES['inten'] = 'wrong name'
         with self.assertRaises(KeyError):
             imp_funcs.read(ENT_DEMO_XLS)
 

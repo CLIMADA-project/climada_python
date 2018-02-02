@@ -4,14 +4,17 @@ Define Vulnerability class and ImpactFuncs.
 
 __all__ = ['Vulnerability', 'ImpactFuncs']
 
+import os
+import pickle
 import numpy as np
 
-from climada.entity.loader import Loader
+from climada.entity.impact_funcs.source_excel import read as read_excel
+from climada.entity.impact_funcs.source_mat import read as read_mat
 import climada.util.checker as check
 from climada.entity.tag import Tag
 import climada.util.plot as plot
 
-class ImpactFuncs(Loader):
+class ImpactFuncs(object):
     """Contains impact functions of type Vulnerability.
 
     Attributes
@@ -226,7 +229,12 @@ class ImpactFuncs(Loader):
             return sum(len(vul_list) for vul_list in vul_map.values())
 
     def check(self):
-        """ Override Loader check."""
+        """Check instance attributes.
+
+        Raises
+        ------
+            ValueError
+        """
         for key_haz, fun in self._data.items():
             for key, val in fun.items():
                 if (key != val.id) | (key == 'NA'):
@@ -236,6 +244,46 @@ class ImpactFuncs(Loader):
                     raise ValueError('Wrong Vulnerability.haz_type: %s != %s'\
                                      % (key_haz, val.haz_type))
                 val.check()
+
+    def read(self, file_name, description=None):
+        """Read input file.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+
+        Raises
+        ------
+            ValueError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            read_mat(self, file_name, description)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            read_excel(self, file_name, description)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
+
+    def load(self, file_name, description=None, out_file_name=None):
+        """Read, check and save as pkl, if output file name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            out_file_name (str, optional): output file name to save as pkl
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description)
+        self.check()
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
     def plot(self, haz_type=None, vul_id=None):
         """Plot impact functions of selected hazard (all if not provided) and

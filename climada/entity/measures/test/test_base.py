@@ -179,23 +179,6 @@ class TestLoader(unittest.TestCase):
         self.assertEqual('Wrong Action.name: LoLo != LaLa', \
                          str(error.exception))
 
-    def test_load_notimplemented(self):
-        """Load function not implemented"""
-        meas = Measures()
-        with self.assertRaises(NotImplementedError):
-            meas.load(ENT_DEMO_XLS)
-
-    def test_read_notimplemented(self):
-        """Read function not implemented"""
-        meas = Measures()
-        with self.assertRaises(NotImplementedError):
-            meas.read(ENT_DEMO_XLS)
-
-    def test_constructfile_notimplemented(self):
-        """Constructor from file not implemented"""
-        with self.assertRaises(NotImplementedError):
-            Measures(ENT_DEMO_XLS)
-
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))

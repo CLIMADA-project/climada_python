@@ -5,16 +5,18 @@ Define Exposures.
 __all__ = ['Exposures']
 
 import os
+import pickle
 import numpy as np
 
-from climada.entity.loader import Loader
+from climada.entity.exposures.source_mat import read as read_mat
+from climada.entity.exposures.source_excel import read as read_excel
 import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
 from climada.util.config import config
 import climada.util.plot as plot
 
-class Exposures(Loader):
+class Exposures(object):
     """Contains the exposures values.
 
     Attributes
@@ -119,7 +121,12 @@ class Exposures(Loader):
         # TODO
 
     def check(self):
-        """ Override Loader check."""
+        """Check instance attributes.
+
+        Raises
+        ------
+            ValueError
+        """
         num_exp = len(self.id)
         self._check_obligatories(num_exp)
         self._check_optionals(num_exp)
@@ -131,6 +138,46 @@ class Exposures(Loader):
                                 self.value_unit, \
                                 os.path.splitext(os.path.basename( \
                                     self.tag.file_name))[0])
+
+    def read(self, file_name, description=None):
+        """Read input file.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+
+        Raises
+        ------
+            ValueError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            read_mat(self, file_name, description)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            read_excel(self, file_name, description)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
+
+    def load(self, file_name, description=None, out_file_name=None):
+        """Read, check and save as pkl, if output file name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            out_file_name (str, optional): output file name to save as pkl
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description)
+        self.check()
+        if out_file_name is not None:
+            with open(out_file_name, 'wb') as file:
+                pickle.dump(self, file)
 
     def _check_obligatories(self, num_exp):
         """Check coherence obligatory variables."""
