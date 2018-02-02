@@ -35,12 +35,13 @@ class Measures(Loader):
         Examples
         --------
             >>> act_1 = Action()
+            >>> act_1.name = 'Seawall'
             >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
             >>> act_1.hazard_intensity = (1, 0)
             >>> act_1.mdd_impact = (1, 0)
             >>> act_1.paa_impact = (1, 0)
             >>> meas = Measures()
-            >>> meas.data.append(act_1)
+            >>> meas.add_action(act_1)
             >>> meas.tag.description = "my dummy measures."
             >>> meas.check()
             Fill measures with values and check consistency data.
