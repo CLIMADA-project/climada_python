@@ -95,4 +95,4 @@ class MeasuresMat(Measures):
             act.risk_transf_attach = meas[self.var['risk_att']][idx][0]
             act.risk_transf_cover = meas[self.var['risk_cov']][idx][0]
 
-            self.data.append(act)
+            self.add_action(act)

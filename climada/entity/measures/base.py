@@ -16,8 +16,8 @@ class Measures(Loader):
     Attributes
     ----------
         tag (Taf): information about the source data
-        data (dict): dictionary of measures. Keys are the measures' id and
-            values are instances of Measures.
+        _data (dict): cotains Action classes. It's not suppossed to be
+            directly accessed. Use the class methods instead.
     """
 
     def __init__(self, file_name=None, description=None):
@@ -46,16 +46,87 @@ class Measures(Loader):
             Fill measures with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
-        self.data = [] # [Action()]
+        self._data = dict() # {Action()}
 
         # Load values from file_name if provided
         if file_name is not None:
             self.load(file_name, description)
 
+    def add_action(self, action):
+        """Add an Action.
+        
+        Parameters
+        ----------
+            action (Action): Action instance
+
+        Raises
+        ------
+            ValueError
+        """
+        if not isinstance(action, Action):
+            raise ValueError("Input value is not of type Action.")
+        if action.name == 'NA':
+            raise ValueError("Input Action's name not set.")
+        self._data[action.name] = action
+
+    def remove_action(self, name=None):
+        """Remove Action with provided name. Delete all actions if no input
+        name
+        
+        Parameters
+        ----------
+            action (Action): Action instance
+
+        Raises
+        ------
+            ValueError
+        """
+        if name is not None:
+            try:
+                del self._data[name]
+            except KeyError:
+                raise ValueError('No Action with name %s.' % name)
+        else:
+            self._data = dict()
+
+    def get_action(self, name=None):
+        """Get Action with input name. Get all if no name provided.
+        Parameters
+        ----------
+            name (str, optional): action type
+
+        Returns
+        -------
+            Action (if name)
+            list(Action) (if None)
+
+        Raises
+        ------
+            ValueError    
+        """
+        if name is not None:
+            try:
+                return self._data[name]
+            except KeyError:
+                raise ValueError('No Action with name %s.' % name)
+        else:
+            return list(self._data.values())
+
+    def get_names(self):
+        """Get all Action names"""
+        return list(self._data.keys())
+
+    def num_action(self):
+        """Get number of actions contained """
+        return len(self._data.keys())
+
     def check(self):
         """ Override Loader check."""
-        for meas in self.data:
-            meas.check()
+        for act_name, act in self._data.items():
+            if act_name != act.name:
+                raise ValueError('Wrong Action.name: %s != %s' %\
+                                (act_name, act.name))
+            act.check()
 
 class Action(object):
     """Contains the definition of one Action.
@@ -67,7 +138,6 @@ class Action(object):
             this measure in RGB
         cost (float): cost
         hazard_freq_cutoff (float): hazard frequency cutoff
-        hazard_event_set (str): hazard event set
         hazard_intensity (tuple): parameter a and b
         mdd_impact (tuple): parameter a and b of the impact over the mean
             damage (impact) degree
@@ -79,11 +149,11 @@ class Action(object):
 
     def __init__(self):
         """ Empty initialization."""
-        self.name = ""
+        self.name = 'NA'
         self.color_rgb = np.array([0, 0, 0])
         self.cost = 0
         self.hazard_freq_cutoff = 0
-        self.hazard_event_set = 'NA'
+#        self.hazard_event_set = 'NA'
         self.hazard_intensity = () # parameter a and b
         self.mdd_impact = () # parameter a and b
         self.paa_impact = () # parameter a and b

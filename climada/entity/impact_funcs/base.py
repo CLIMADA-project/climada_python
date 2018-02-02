@@ -17,8 +17,8 @@ class ImpactFuncs(Loader):
     Attributes
     ----------
         tag (Taf): information about the source data
-        _data (dict): dictionary of vulnerabilities. Keys are the
-            vulnerabilities' id and values are instances of Vulnerability.
+        _data (dict): contains Vulnerability classes. It's not suppossed to be
+            directly accessed. Use the class methods instead.
     """
 
     def __init__(self, file_name=None, description=None):
@@ -54,7 +54,7 @@ class ImpactFuncs(Loader):
             self.load(file_name, description)
 
     def add_vulner(self, vulner):
-        """Add a vulnerability.
+        """Add a Vulnerability.
 
         Parameters
         ----------
@@ -67,9 +67,9 @@ class ImpactFuncs(Loader):
         if not isinstance(vulner, Vulnerability):
             raise ValueError("Input value is not of type Vulnerability.")
         if vulner.haz_type == 'NA':
-            raise ValueError("Input vulnerability's hazard type not set.")
+            raise ValueError("Input Vulnerability's hazard type not set.")
         if vulner.id == 'NA':
-            raise ValueError("Input vulnerability's id not set.")
+            raise ValueError("Input Vulnerability's id not set.")
         if vulner.haz_type not in self._data:
             self._data[vulner.haz_type] = dict()
         self._data[vulner.haz_type][vulner.id] = vulner
@@ -150,7 +150,7 @@ class ImpactFuncs(Loader):
             try:
                 return list(self._data[haz_type].keys())
             except KeyError:
-                raise ValueError('No Vulnearability with hazard %s.' \
+                raise ValueError('No Vulnerability with hazard %s.' \
                                  % haz_type)
 
     def get_vulner(self, haz_type=None, vul_id=None):
@@ -196,7 +196,7 @@ class ImpactFuncs(Loader):
             return self._data
 
     def num_vulner(self, haz_type=None, vul_id=None):
-        """Get number of vulnearbilities contained with input hazard type and\
+        """Get number of vulnerbilities contained with input hazard type and\
         /or id. If no input provided, get total number of vulnerabilites.
 
         Parameters

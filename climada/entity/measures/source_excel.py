@@ -90,4 +90,4 @@ class MeasuresExcel(Measures):
             act.risk_transf_attach = dfr[self.col_names['risk_att']][idx]
             act.risk_transf_cover = dfr[self.col_names['risk_cov']][idx]
 
-            self.data.append(act)
+            self.add_action(act)
