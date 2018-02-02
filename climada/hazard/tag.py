@@ -23,8 +23,17 @@ class Tag(object):
             description (str, optional): description of the data
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
         """
-        self.file_name = file_name
-        self.description = description
-        self.type = haz_type
+        if file_name is None:
+            self.file_name = ''
+        else:
+            self.file_name = file_name
+        if description is None:
+            self.description = ''
+        else:
+            self.description = description
+        if haz_type is None:
+            self.type = 'NA'
+        else:
+            self.type = haz_type
         #self._next = 'NA'
         #self._prev = 'NA'

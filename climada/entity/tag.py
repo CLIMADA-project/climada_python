@@ -21,7 +21,13 @@ class Tag(object):
             file_name (str, optional): file name to read
             description (str, optional): description of the data
         """
-        self.file_name = file_name
-        self.description = description
+        if file_name is None:
+            self.file_name = ''
+        else:
+            self.file_name = file_name
+        if description is None:
+            self.description = ''
+        else:
+            self.description = description
         #self._next = 'NA'
         #self._prev = 'NA'
