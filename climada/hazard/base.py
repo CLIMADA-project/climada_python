@@ -24,7 +24,7 @@ class Hazard(LoaderHaz):
         units (str): units of the intensity
         centroids (Centroids): centroids of the events
         event_id (np.array): id (>0) of each event
-        event_name (list): name of each event
+        event_name (list): name of each event (set as event_id if no provided)
         frequency (np.array): frequency of each event in seconds
         intensity (sparse.csr_matrix): intensity of the events at centroids
         fraction (sparse.csr_matrix): fraction of affected exposures for each
@@ -78,7 +78,8 @@ class Hazard(LoaderHaz):
         check.size(num_ev, self.frequency, 'Hazard.frequency')
         check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
         check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
-        check.array_optional(num_ev, self.event_name, 'Hazard.event_name')
+        check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
+                            list(self.event_id))
 
     def plot_stats(self):
         """Plots describing hazard."""

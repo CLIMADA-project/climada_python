@@ -73,8 +73,6 @@ class HazardMat(Hazard):
         self.event_id = np.squeeze(hazard[self.var['even_id']]. \
         astype(int, copy=False))
         self.units = hdf5.get_string(hazard[self.var['unit']])
-        self.event_name = hdf5.get_list_str_from_ref(
-            file_name, hazard[self.var['ev_name']])
 
         # number of centroids and events
         n_cen = len(self.centroids.id)
@@ -94,3 +92,9 @@ class HazardMat(Hazard):
         except ValueError:
             print('Size missmatch in fraction matrix.')
             raise
+        # Event names: set as event_id if no provided
+        try:
+            self.event_name = hdf5.get_list_str_from_ref(
+                file_name, hazard[self.var['ev_name']])
+        except KeyError:
+            self.event_name = list(self.event_id)
