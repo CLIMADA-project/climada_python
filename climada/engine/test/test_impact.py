@@ -10,12 +10,55 @@ from climada.entity.entity import Entity
 from climada.hazard.source_mat import HazardMat
 from climada.engine.impact import Impact
 
+class TestFreqCurve(unittest.TestCase):
+    '''Test exceedence frequency curve computation'''
+    def test_ref_value_pass(self):
+        """Test result against reference value"""
+        imp = Impact()
+        imp.frequency = np.ones(10) * 6.211180124223603e-04
+        imp.at_event = np.zeros(10)
+        imp.at_event[0] = 0
+        imp.at_event[1] = 0.400665463736549e9
+        imp.at_event[2] = 3.150330960044466e9
+        imp.at_event[3] = 3.715826406781887e9
+        imp.at_event[4] = 2.900244271902339e9
+        imp.at_event[5] = 0.778570745161971e9
+        imp.at_event[6] = 0.698736262566472e9
+        imp.at_event[7] = 0.381063674256423e9
+        imp.at_event[8] = 0.569142464157450e9
+        imp.at_event[9] = 0.467572545849132e9
+        imp.unit = 'USD'
+
+        ifc = imp.calc_freq_curve()
+        self.assertEqual(10, len(ifc.return_per))
+        self.assertEqual(1610.0000000000000, ifc.return_per[0])
+        self.assertEqual(805.00000000000000, ifc.return_per[1])
+        self.assertEqual(536.66666666666663, ifc.return_per[2])
+        self.assertEqual(402.500000000000, ifc.return_per[3])
+        self.assertEqual(322.000000000000, ifc.return_per[4])
+        self.assertEqual(268.33333333333331, ifc.return_per[5])
+        self.assertEqual(230.000000000000, ifc.return_per[6])
+        self.assertEqual(201.250000000000, ifc.return_per[7])
+        self.assertEqual(178.88888888888889, ifc.return_per[8])
+        self.assertEqual(161.000000000000, ifc.return_per[9])
+        self.assertEqual(10, len(ifc.impact))
+        self.assertEqual(3.715826406781887e9, ifc.impact[0])
+        self.assertEqual(3.150330960044466e9, ifc.impact[1])
+        self.assertEqual(2.900244271902339e9, ifc.impact[2])
+        self.assertEqual(0.778570745161971e9, ifc.impact[3])
+        self.assertEqual(0.698736262566472e9, ifc.impact[4])
+        self.assertEqual(0.569142464157450e9, ifc.impact[5])
+        self.assertEqual(0.467572545849132e9, ifc.impact[6])
+        self.assertEqual(0.400665463736549e9, ifc.impact[7])
+        self.assertEqual(0.381063674256423e9, ifc.impact[8])
+        self.assertEqual(0, ifc.impact[9])
+        self.assertEqual(' x ', ifc.label)
+        self.assertEqual('USD', ifc.unit)
+
 class TestOneExposure(unittest.TestCase):
     '''Test one_exposure function'''
-
     def test_ref_value_pass(self):
         ''' Test result against reference value'''
-
         # Read demo entity values
         # Set the entity default file to the demo one
         Entity.def_file = ENT_DEMO_XLS
@@ -76,7 +119,6 @@ class TestCalc(unittest.TestCase):
 
     def test_ref_value_pass(self):
         ''' Test result against reference value'''
-
         # Read default entity values
         Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
@@ -120,4 +162,5 @@ class TestCalc(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
