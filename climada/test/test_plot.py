@@ -6,9 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from climada.entity.entity import Entity
-from climada.hazard.source_mat import HazardMat
-from climada.entity.exposures.source_excel import ExposuresExcel
-from climada.entity.impact_funcs.source_excel import ImpactFuncsExcel
+from climada.hazard.base import Hazard
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_XLS
 
@@ -23,7 +23,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = HazardMat(HAZ_DEMO_MAT)
+        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
         myfig, _ = hazard.plot_intensity(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
                       myfig._suptitle.get_text())
@@ -61,7 +61,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_fraction_pass(self):
         """Generate all possible plots of the hazard fraction."""
-        hazard = HazardMat(HAZ_DEMO_MAT)
+        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
         myfig, _ = hazard.plot_fraction(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
                       myfig._suptitle.get_text())
@@ -80,13 +80,13 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = ExposuresExcel(ENT_DEMO_XLS)
+        myexp = Exposures(ENT_DEMO_XLS)
         myfig, _ = myexp.plot_value()
         self.assertIn('demo_today', myfig._suptitle.get_text())
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncsExcel(ENT_DEMO_XLS)
+        myfuncs = ImpactFuncs(ENT_DEMO_XLS)
         _, myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1 Tropical cyclone default', \
@@ -99,7 +99,7 @@ class TestPlotter(unittest.TestCase):
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
         myent = Entity(ENT_DEMO_XLS)
-        myhaz = HazardMat(HAZ_DEMO_MAT)
+        myhaz = Hazard(HAZ_DEMO_MAT, 'TC')
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()
