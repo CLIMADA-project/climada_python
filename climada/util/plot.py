@@ -158,16 +158,18 @@ class Graph2D(object):
         self.fig.suptitle(title)
         self.curr_ax = -1
         self.axs = []
-        self.fig.subplots_adjust(wspace=0.3)
-        self.fig.subplots_adjust(hspace=0.3)
+        if self.num_col > 1:
+            self.fig.subplots_adjust(wspace=0.3)
+        if self.num_row > 1:
+            self.fig.subplots_adjust(hspace=0.7)
 
     def add_subplot(self, xlabel, ylabel, title='', on_grid=True):
         """Add subplot to figure."""
         self.curr_ax += 1
-        if self.curr_ax >= self.num_col + self.num_row:
-            raise ValueError("Number of subplots in figure exceeded. Figure \
-                             contains only %s subplots" % self.num_col + \
-                             self.num_row)
+        if self.curr_ax >= self.num_col * self.num_row:
+            raise ValueError("Number of subplots in figure exceeded. Figure " \
+                             "contains only %s subplots." % str(self.num_col +\
+                             self.num_row))
         new_ax = self.fig.add_subplot(self.num_row, self.num_col, \
                                       self.curr_ax + 1)
         new_ax.set_xlabel(xlabel)

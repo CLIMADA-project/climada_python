@@ -98,7 +98,7 @@ def get_list_str_from_ref(file_name, var):
     name_list = []
     file = h5py.File(file_name, 'r')
     for name in var:
-        name_list.append(get_string(file[name[0]][:]))
+        name_list.append(get_string(file[name[0]][:]).strip())
     return name_list
 
 def get_sparse_mat(mat_dict, shape):
