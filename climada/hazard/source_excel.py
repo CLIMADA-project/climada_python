@@ -27,11 +27,10 @@ COL_CENTROIDS = {'cen_id' : 'centroid_ID',
                  'lon' : 'Longitude'
                 }
 
-def read(hazard, file_name, haztype, description=None, centroids=None):
+def read(hazard, file_name, haztype, description='', centroids=None):
     """Read excel file and store variables in hazard. """
-    # append the file name and description into the instance class.
-    # Put type TC as default
-    hazard.tag = TagHazard(file_name, description, haztype)
+    # File name and description into the instance class.
+    hazard.tag = TagHazard(file_name, haztype, description)
 
     # Set the centroids if given, otherwise load them from the same file
     read_centroids(hazard, centroids)
@@ -74,6 +73,7 @@ def read(hazard, file_name, haztype, description=None, centroids=None):
     # Set fraction matrix to default value of 1
     hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape, \
                                       dtype=np.float))
+    return hazard
 
 def read_centroids(hazard, centroids=None):
     """Read centroids file if no centroids provided"""

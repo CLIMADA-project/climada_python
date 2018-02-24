@@ -24,7 +24,6 @@ class TestReader(unittest.TestCase):
         n_events = 100
         n_centroids = 45
 
-        self.assertEqual(hazard.id, 0)
         self.assertEqual(hazard.units, 'NA')
 
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
@@ -61,7 +60,7 @@ class TestReader(unittest.TestCase):
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_DEMO_XLS)
         self.assertEqual(hazard.tag.description, description)
-        self.assertEqual(hazard.tag.type, 'TC')
+        self.assertEqual(hazard.tag.haz_type, 'TC')
 
         # tag centroids
         self.assertEqual(hazard.centroids.tag.file_name, HAZ_DEMO_XLS)

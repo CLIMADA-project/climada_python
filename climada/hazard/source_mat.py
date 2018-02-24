@@ -28,7 +28,7 @@ VAR_CENT = {'cen_id' : 'centroid_ID',
             'lon' : 'lon'
            }
 
-def read(hazard, file_name, haztype, description=None, centroids=None):
+def read(hazard, file_name, haztype, description='', centroids=None):
     """Read MATLAB file and store variables in hazard. """
     # Load hazard data
     data = hdf5.read(file_name)
@@ -42,7 +42,7 @@ def read(hazard, file_name, haztype, description=None, centroids=None):
     # Raise error if provided hazard type does not match with read one
     if haztype is not None and haz_type != haztype:
         raise ValueError('Hazard read is not of type: ' + haztype)
-    hazard.tag = TagHazard(file_name, description, haz_type)
+    hazard.tag = TagHazard(file_name, haz_type, description)
 
     # Set the centroids if given, otherwise load them from the same file
     read_centroids(hazard, centroids)
@@ -59,14 +59,14 @@ def read(hazard, file_name, haztype, description=None, centroids=None):
 
     # intensity
     try:
-        hazard.intensity = hdf5.get_sparse_mat(data[VAR_NAME['inten']], \
+        hazard.intensity = hdf5.get_sparse_csr_mat(data[VAR_NAME['inten']], \
                                              (n_event, n_cen))
     except ValueError:
         print('Size missmatch in intensity matrix.')
         raise
     # fraction
     try:
-        hazard.fraction = hdf5.get_sparse_mat(data[VAR_NAME['frac']], \
+        hazard.fraction = hdf5.get_sparse_csr_mat(data[VAR_NAME['frac']], \
                                  (n_event, n_cen))
     except ValueError:
         print('Size missmatch in fraction matrix.')
@@ -77,6 +77,7 @@ def read(hazard, file_name, haztype, description=None, centroids=None):
             file_name, data[VAR_NAME['ev_name']])
     except KeyError:
         hazard.event_name = list(hazard.event_id)
+    return hazard
 
 def read_centroids(hazard, centroids=None):
     """Read centroids file if no centroids provided"""

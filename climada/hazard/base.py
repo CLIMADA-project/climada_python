@@ -6,7 +6,10 @@ __all__ = ['Hazard']
 
 #from datetime import date
 import os
-import pickle
+import warnings
+from array import array
+import concurrent.futures
+import itertools
 import numpy as np
 from scipy import sparse
 
@@ -14,8 +17,12 @@ from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.source_excel import read as read_excel
 from climada.hazard.source_mat import read as read_mat
+from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.plot as plot
 import climada.util.checker as check
+
+def _wrap_read_one(hazard, file, haz_type, description='', centroid=None):
+    return hazard.read_one(file, haz_type, description, centroid)
 
 class Hazard(object):
     """Contains events of same hazard type defined at centroids. Interface.
@@ -23,7 +30,6 @@ class Hazard(object):
     Attributes
     ----------
         tag (TagHazard): information about the source
-        id (int): hazard id
         units (str): units of the intensity
         centroids (Centroids): centroids of the events
         event_id (np.array): id (>0) of each event
@@ -34,21 +40,23 @@ class Hazard(object):
             event at each centroid
     """
 
-    def __init__(self, file_name=None, haztype='NA', description=None):
+    def __init__(self, files='', haz_type='NA', descriptions='', \
+                 centroids=None):
         """Initialize values from given file, if given.
 
         Parameters
         ----------
-            file_name (str, optional): file name to read
-            description (str, optional): description of the data
-            haztype (str, optional): acronym of the hazard type (e.g. 'TC')
+            files (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
+            descriptions (str or list(str), optional): description of the data
+            centroids (Centroids or list(Centroids), optional): Centroids
 
         Raises
         ------
             ValueError
         """
-        self.tag = TagHazard(file_name, description, haztype)
-        self.id = 0
+        self.tag = TagHazard()
         self.units = 'NA'
         # following values are defined for each event
         self.centroids = Centroids()
@@ -61,33 +69,29 @@ class Hazard(object):
         self.fraction = sparse.csr_matrix([])  # events x centroids
 
         # Load values from file_name if provided
-        if file_name is not None:
-            if haztype == 'NA':
+        if files != '':
+            if haz_type == 'NA':
                 raise ValueError('Provide hazard type acronym.')
             else:
-                self.load(file_name, haztype, description)
+                self.load(files, haz_type, descriptions, centroids)
 
-    def load(self, file_name, haztype, description=None, centroids=None,\
-             out_file_name=None):
-        """Read, check hazard (and its contained centroids) and save to pkl.
+    def load(self, files, haz_type, descriptions='', centroids=None):
+        """Read, check hazard. If centroids not provided, read and check them.
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            haztype (str): acronym of the hazard type (e.g. 'TC')
-            description (str, optional): description of the source data
-            centroids (Centroids, optional): Centroids instance
-            out_file_name (str, optional): output file name to save as pkl
+            files (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            haz_type (str): acronym of the hazard type (e.g. 'TC')
+            descriptions (str or list(str), optional): description of the data
+            centroids (Centroids or list(Centroids), optional): Centroids
 
         Raises
         ------
             ValueError
         """
-        self.read(file_name, description, haztype, centroids)
+        self.read(files, haz_type, descriptions, centroids)
         self.check()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
 
     def check(self):
         """ Checks if the attributes contain consistent data.
@@ -99,20 +103,53 @@ class Hazard(object):
         self.centroids.check()
         num_ev = len(self.event_id)
         num_cen = len(self.centroids.id)
+        if np.unique(self.event_id).size != num_ev:
+            raise ValueError('There are events with the same identifier.')
         check.size(num_ev, self.frequency, 'Hazard.frequency')
-        check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
-        check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
+        if num_ev == 0 and num_cen == 0:
+            check.shape(1, num_cen, self.intensity, 'Hazard.intensity')
+            check.shape(1, num_cen, self.fraction, 'Hazard.fraction')
+        else:
+            check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
+            check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
         check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
                             list(self.event_id))
 
-    def read(self, file_name, haztype, description=None, centroids=None):
+    def read(self, files, haz_type, descriptions='', centroids=None):
+        """Read hazard, and centroids if not provided. Parallel through files.
+
+        Parameters
+        ----------
+            files (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            haz_type (str): acronym of the hazard type (e.g. 'TC')
+            descriptions (str or list(str), optional): description of the data
+            centroids (Centroids or list(Centroids), optional): Centroids
+
+        Raises
+        ------
+            ValueError
+        """
+        # Construct absolute path file names
+        all_files = get_file_names(files)
+        num_files = len(all_files)
+        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        centr_list = to_str_list(num_files, centroids, 'centroids')
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for haz_part in executor.map(_wrap_read_one, \
+                    itertools.repeat(Hazard(), num_files), all_files, \
+                    itertools.repeat(haz_type, num_files), desc_list, \
+                    centr_list):
+                self.append(haz_part)
+
+    def read_one(self, file_name, haz_type, description=None, centroid=None):
         """ Read input file. If centroids are not provided, they are read
         from file_name.
 
         Parameters
         ----------
             file_name (str): name of the source file
-            haztype (str): acronym of the hazard type (e.g. 'TC')
+            haz_type (str): acronym of the hazard type (e.g. 'TC')
             description (str, optional): description of the source data
             centroids (Centroids, optional): Centroids instance
 
@@ -122,12 +159,13 @@ class Hazard(object):
         """
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            read_mat(self, file_name, haztype, description, centroids)
+            self = read_mat(self, file_name, haz_type, description, centroid)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, haztype, description, centroids)
+            self = read_excel(self, file_name, haz_type, description, centroid)
         else:
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
+        return self
 
     def plot_stats(self):
         """Plots describing hazard."""
@@ -225,6 +263,94 @@ class Hazard(object):
         """ Compute the future hazard following the configuration """
         # TODO
 
+    def append(self, hazard):
+        """Append variables of input Hazard to current Hazard. Repeated
+        events and centroids will be overwritten."""
+        self.check()
+        hazard.check()
+        if self.event_id.size == 0:
+            self.__dict__ = hazard.__dict__.copy()
+            return
+        
+        n_ini_cen = self.centroids.id.size
+        n_ini_ev = self.event_id.size
+        self.tag.append(hazard.tag)
+        if (self.units == 'NA') and (hazard.units != 'NA'):
+            warnings.warn("Initial hazard does not have units.")
+            self.units = hazard.units
+        elif hazard.units == 'NA':
+            warnings.warn("Appended hazard does not have units.")
+        elif self.units != hazard.units:
+            raise ValueError("Hazards with different units can't be appended"\
+                             + ": %s != %s." % (self.units, hazard.units))
+        
+        # Add not repeated centroids
+        # for each input centroid, position in the final centroid vector
+        new_cen_pos = self.centroids.append(hazard.centroids)
+        n_add_cen = np.where(np.array(new_cen_pos) >= n_ini_cen)[0].size
+        if n_add_cen:
+            self.intensity = sparse.hstack([self.intensity, \
+                np.zeros((self.intensity.shape[0], n_add_cen))]).tolil()
+            self.fraction = sparse.hstack([self.fraction, \
+                np.zeros((self.fraction.shape[0], n_add_cen))]).tolil()
+
+        # Add not repeated events
+        # for each input event, position in the final event vector
+        new_ev_pos = array('L')
+        new_name = []
+        new_id = array('L')
+        self._append_events(hazard, new_ev_pos, new_name, new_id)
+        n_add_ev = np.where(np.array(new_ev_pos) >= n_ini_ev)[0].size
+        sparse_add = n_add_ev - 1
+        if n_ini_cen != 0 or n_ini_ev != 0:
+            sparse_add = n_add_ev
+        if n_add_ev:
+            self.event_name = self.event_name + new_name
+            self.event_id = np.append(self.event_id, np.array(new_id)).\
+                astype(int)
+            self.intensity = sparse.vstack([self.intensity, \
+                np.zeros((sparse_add, self.fraction.shape[1]))]).tolil()   
+            self.fraction = sparse.vstack([self.fraction, \
+                np.zeros((sparse_add, self.fraction.shape[1]))]).tolil()
+            self.frequency = np.append(self.frequency, np.zeros(n_add_ev))
+        # fill intensity, fraction and frequency
+        for i_ev in range(hazard.event_id.size):
+            self.intensity[new_ev_pos[i_ev], new_cen_pos] = \
+            hazard.intensity[i_ev, :]
+            self.fraction[new_ev_pos[i_ev], new_cen_pos] = \
+            hazard.fraction[i_ev, :]
+            self.frequency[new_ev_pos[i_ev]] = hazard.frequency[i_ev]
+
+        self.intensity = self.intensity.tocsr()
+        self.fraction = self.fraction.tocsr()
+    
+    def _append_events(self, hazard, new_ev_pos, new_name, new_id):
+        """Iterate over hazard events and collect their new position"""
+        try:
+            max_id = int(np.max(self.event_id))
+        except ValueError:
+            max_id = 0
+        for ev_id, ev_name in zip(hazard.event_id, hazard.event_name):
+            try:
+                found = self.event_name.index(ev_name)
+                new_ev_pos.append(found)
+                if ((ev_id in self.event_id) or (ev_id in new_id)) and \
+                (ev_id != self.event_id[found]):
+                    max_id += 1
+                    self.event_id[found] = max_id
+                else:
+                    self.event_id[found] = ev_id
+                    max_id = max(max_id, ev_id)
+            except ValueError:
+                new_ev_pos.append(len(self.event_id) + len(new_name))
+                new_name.append(ev_name)
+                if (ev_id in self.event_id) or (ev_id in new_id):
+                    max_id += 1
+                    new_id.append(max_id)
+                else:
+                    new_id.append(ev_id)
+                    max_id = max(max_id, ev_id)
+    
     def _event_plot(self, event_id, mat_var, col_name):
         """"Plot an event of the input matrix.
 
@@ -258,7 +384,7 @@ class Hazard(object):
                 str(self.event_id[event_pos]), self.event_name[event_pos])
         else:
             array_val = np.max(mat_var, axis=0).todense().transpose()
-            title = '%s max intensity at each point' % self.tag.type
+            title = '%s max intensity at each point' % self.tag.haz_type
 
         return plot.geo_im_from_array(self.centroids.coord, array_val, \
                                    col_name, title)
@@ -301,7 +427,7 @@ class Hazard(object):
                  self.centroids.coord[centr_pos, 1])
         else:
             array_val = np.max(mat_var, axis=1).todense()
-            title = '%s max intensity at each event' % self.tag.type
+            title = '%s max intensity at each event' % self.tag.haz_type
 
         graph = plot.Graph2D(title)
         graph.add_subplot('Event number', col_name)

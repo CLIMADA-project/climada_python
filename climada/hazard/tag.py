@@ -9,31 +9,43 @@ class Tag(object):
 
     Attributes
     ----------
-        file_name (str): name of the source file
-        description (str): description of the data
-        type (str): acronym defining of the hazard type (e.g. 'TC')
+        file_name (str or list(str)): name of the source file(s)
+        haz_type (str): acronym defining the hazard type (e.g. 'TC')
+        description (str or list(str)): description(s) of the data
     """
 
-    def __init__(self, file_name=None, description=None, haz_type=None):
+    def __init__(self, file_name='', haz_type='NA', description=''):
         """Initialize values.
 
         Parameters
         ----------
-            file_name (str, optional): file name to read
-            description (str, optional): description of the data
+            file_name (str or list(str), optional): file name(s) to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
+            description (str or list(str), optional): description of the data
+            
         """
-        if file_name is None:
-            self.file_name = ''
-        else:
-            self.file_name = file_name
-        if description is None:
-            self.description = ''
-        else:
-            self.description = description
-        if haz_type is None:
-            self.type = 'NA'
-        else:
-            self.type = haz_type
-        #self._next = 'NA'
-        #self._prev = 'NA'
+        self.file_name = file_name
+        self.haz_type = haz_type
+        self.description = description
+
+    def append(self, tag):
+        """Append input Tag instance information to current Tag."""
+        if self.haz_type == 'NA':
+            self.haz_type = tag.haz_type
+        if tag.haz_type != self.haz_type:
+            raise ValueError("Hazards of different type can't be appended: "\
+                             + "%s != %s." % (self.haz_type, tag.haz_type))
+
+        # add file name if not present in tag
+        if self.file_name == '':
+            self.file_name = tag.file_name  
+            self.description = tag.description
+        elif tag.file_name not in self.file_name:
+            if not isinstance(self.file_name, list):
+                self.file_name = [self.file_name]        
+            self.file_name.append(tag.file_name)
+    
+            if not isinstance(self.description, list):
+                self.description = [self.description]
+            self.description.append(tag.description)
+        
