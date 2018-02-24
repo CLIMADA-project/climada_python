@@ -16,9 +16,6 @@ import climada.util.checker as check
 from climada.entity.tag import Tag
 import climada.util.plot as plot
 
-def _wrap_read_one(impact_funcs, file, description=''):
-    return impact_funcs._read_one(file, description)
-
 class ImpactFuncs(object):
     """Contains impact functions of type Vulnerability.
 
@@ -34,8 +31,9 @@ class ImpactFuncs(object):
 
         Parameters
         ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -287,7 +285,7 @@ class ImpactFuncs(object):
         """
         self.check()
         impact_funcs.check()
-        if self.num_vulner == 0:
+        if self.num_vulner() == 0:
             self.__dict__ = impact_funcs.__dict__.copy()
             return
         
@@ -303,8 +301,9 @@ class ImpactFuncs(object):
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -361,14 +360,17 @@ class ImpactFuncs(object):
         """
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            self = read_mat(self, file_name, description)
+            read_mat(self, file_name, description)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            self = read_excel(self, file_name, description)
+            read_excel(self, file_name, description)
         else:
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
 
         return self
+
+def _wrap_read_one(impact_funcs, file, description=''):
+    return impact_funcs._read_one(file, description)
 
 class Vulnerability(object):
     """Contains the definition of one Vulnerability (impact function).

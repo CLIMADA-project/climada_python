@@ -59,8 +59,6 @@ def read(imp_funcs, file_name, description=''):
         func.paa = np.take(imp[VAR_NAMES['paa']], imp_rows)
 
         imp_funcs.add_vulner(func)
-        
-    return imp_funcs
 
 def get_funcs_rows(imp, file_name):
     """Get rows that fill every impact function and its name."""

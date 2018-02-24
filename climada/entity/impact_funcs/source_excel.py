@@ -62,5 +62,3 @@ def read(imp_funcs, file_name, description=''):
         func.paa = df_func[COL_NAMES['paa']].values
     
         imp_funcs.add_vulner(func)
-    
-    return imp_funcs

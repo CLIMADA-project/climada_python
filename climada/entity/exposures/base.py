@@ -50,8 +50,9 @@ class Exposures(object):
 
         Parameters
         ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -172,8 +173,9 @@ class Exposures(object):
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -245,9 +247,9 @@ class Exposures(object):
         """
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            self = read_mat(self, file_name, description)
+            read_mat(self, file_name, description)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            self = read_excel(self, file_name, description)
+            read_excel(self, file_name, description)
         else:
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
