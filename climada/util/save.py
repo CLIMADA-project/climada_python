@@ -20,4 +20,5 @@ def save(out_file_name, var):
         with open(SAVE_DIR + out_file_name, 'wb') as file:
             pickle.dump(var, file)
     except FileNotFoundError:
-        raise ValueError('Folder not found: %s' % os.path.dirname(os.path.abspath(SAVE_DIR + out_file_name)))
+        raise ValueError('Folder not found: %s' % \
+            os.path.dirname(os.path.abspath(SAVE_DIR + out_file_name)))
