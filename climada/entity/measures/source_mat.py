@@ -27,7 +27,7 @@ VAR_NAMES = {'name' : 'name',
              'risk_cov' : 'risk_transfer_cover'
             }
 
-def read(measures, file_name, description=None):
+def read(measures, file_name, description=''):
     """Read MATLAB file and store variables in measures. """
     from climada.entity.measures.base import Action
 

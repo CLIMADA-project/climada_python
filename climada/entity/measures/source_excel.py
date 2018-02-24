@@ -24,7 +24,7 @@ COL_NAMES = {'name' : 'name',
              'risk_cov' : 'risk transfer cover'
             }
 
-def read(measures, file_name, description=None):
+def read(measures, file_name, description=''):
     """Read excel file and store variables in measures. """
     from climada.entity.measures.base import Action
 

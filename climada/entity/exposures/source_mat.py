@@ -27,7 +27,7 @@ VAR_NAMES = {'lat' : 'lat',
              'ref' : 'reference_year'
             }
 
-def read(exposures, file_name, description=None):
+def read(exposures, file_name, description=''):
     """Read MATLAB file and store variables in exposures. """
    # append the file name and description into the instance class
     exposures.tag = Tag(file_name, description)

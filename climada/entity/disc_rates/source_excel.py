@@ -13,7 +13,7 @@ COL_NAMES = {'year' : 'year',
              'disc' : 'discount_rate'
             }
 
-def read(disc_rates, file_name, description=None):
+def read(disc_rates, file_name, description=''):
     """Read excel file and store variables in disc_rates. """
     # append the file name and description into the instance class
     disc_rates.tag = Tag(file_name, description)

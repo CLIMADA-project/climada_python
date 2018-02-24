@@ -28,7 +28,7 @@ COL_NAMES = {'lat' : 'Latitude',
              'item' : 'Item'
             }
 
-def read(exposures, file_name, description=None):
+def read(exposures, file_name, description=''):
     """Read excel file and store variables in exposures. """
     # append the file name and description into the instance class
     exposures.tag = Tag(file_name, description)

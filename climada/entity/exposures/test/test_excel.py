@@ -273,7 +273,7 @@ class TestDefaults(unittest.TestCase):
         expo.read(ENT_DEMO_XLS)
 
         # Check results
-        self.assertEqual(True, np.array_equal(expo.value, expo.cover))
+        self.assertTrue(np.array_equal(expo.value, expo.cover))
 
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
@@ -284,7 +284,7 @@ class TestDefaults(unittest.TestCase):
         expo.read(ENT_DEMO_XLS)
 
         # Check results
-        self.assertEqual(True, np.array_equal(np.zeros(len(expo.value)), \
+        self.assertTrue(np.array_equal(np.zeros(len(expo.value)), \
                                               expo.deductible))
 
 class TestParsers(unittest.TestCase):

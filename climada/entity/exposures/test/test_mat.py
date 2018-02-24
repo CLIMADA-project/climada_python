@@ -75,9 +75,8 @@ class TestReader(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             Exposures(ENT_DEMO_MAT)
-            # Verify warnings thrown
-            self.assertIn("Exposures.region_id not set.", \
-                          str(w[0].message))
+        # Verify warnings thrown
+        self.assertIn("Exposures.region_id not set.", str(w[0].message))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
@@ -210,7 +209,7 @@ class TestDefaults(unittest.TestCase):
         expo.read(ENT_DEMO_MAT)
 
         # Check results
-        self.assertEqual(True, np.array_equal(expo.value, expo.cover))
+        self.assertTrue(np.array_equal(expo.value, expo.cover))
 
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
@@ -221,7 +220,7 @@ class TestDefaults(unittest.TestCase):
         expo.read(ENT_DEMO_MAT)
 
         # Check results
-        self.assertEqual(True, np.array_equal(np.zeros(len(expo.value)), \
+        self.assertTrue(np.array_equal(np.zeros(len(expo.value)), \
                                               expo.deductible))
 
 class TestParsers(unittest.TestCase):

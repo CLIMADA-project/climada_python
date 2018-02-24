@@ -18,7 +18,7 @@ COL_NAMES = {'func_id' : 'DamageFunID',
              'peril' : 'peril_ID'
             }
         
-def read(imp_funcs, file_name, description=None):
+def read(imp_funcs, file_name, description=''):
     """Read excel file and store variables in imp_funcs. """
     from climada.entity.impact_funcs.base import Vulnerability
 
