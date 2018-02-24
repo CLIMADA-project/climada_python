@@ -5,10 +5,13 @@ Define Action class and Measures.
 __all__ = ['Action', 'Measures']
 
 import os
+import concurrent.futures
+import itertools
 import numpy as np
 
 from climada.entity.measures.source_excel import read as read_excel
 from climada.entity.measures.source_mat import read as read_mat
+from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 
@@ -27,8 +30,9 @@ class Measures(object):
 
         Parameters
         ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -49,7 +53,7 @@ class Measures(object):
             Fill measures with values and check consistency data.
         """
         self.tag = Tag(file_name, description)
-        self._data = dict() # {Action()}
+        self._data = dict() # {name: Action()}
 
         # Load values from file_name if provided
         if file_name != '':
@@ -136,7 +140,70 @@ class Measures(object):
                                 (act_name, act.name))
             act.check()
 
-    def read(self, file_name, description=''):
+    def read(self, files, descriptions=''):
+        """Read exposures in parallel through files.
+
+        Parameters
+        ----------
+            files (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            descriptions (str or list(str), optional): description of the data
+
+        Raises
+        ------
+            ValueError
+        """
+        # Construct absolute path file names
+        all_files = get_file_names(files)
+        num_files = len(all_files)
+        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for exp_part in executor.map(_wrap_read_one, \
+                    itertools.repeat(Measures(), num_files), all_files, \
+                    desc_list):
+                self.append(exp_part)
+
+    def load(self, file_name, description=''):
+        """Read and check.
+
+        Parameters
+        ----------
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description)
+        self.check()
+
+    def append(self, measures):
+        """Append actions of input Measures to current Measures. Overvrite 
+        actions if same name.
+        
+        Parameters
+        ----------
+            measures (Measures): Measures instance to append
+
+        Raises
+        ------
+            ValueError
+        """
+        self.check()
+        measures.check()
+        if self.num_action() == 0:
+            self.__dict__ = measures.__dict__.copy()
+            return
+        
+        self.tag.append(measures.tag)
+        
+        new_act = measures.get_action()
+        for action in new_act:
+            self.add_action(action)
+
+    def _read_one(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -156,21 +223,10 @@ class Measures(object):
         else:
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
-
-    def load(self, file_name, description=''):
-        """Read and check.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data'
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.check()
+        return self
+        
+def _wrap_read_one(disc_rates, file, description=''):
+    return disc_rates._read_one(file, description)
 
 class Action(object):
     """Contains the definition of one Action.

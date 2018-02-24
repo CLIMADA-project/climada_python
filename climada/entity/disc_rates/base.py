@@ -5,10 +5,14 @@ Define DiscRates.
 __all__ = ['DiscRates']
 
 import os
+import concurrent.futures
+import itertools
+from array import array
 import numpy as np
 
 from climada.entity.disc_rates.source_excel import read as read_excel
 from climada.entity.disc_rates.source_mat import read as read_mat
+from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 
@@ -27,8 +31,9 @@ class DiscRates(object):
 
         Parameters
         ----------
-            file_name (str, optional): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -60,7 +65,79 @@ class DiscRates(object):
         """
         check.size(len(self.years), self.rates, 'DiscRates.rates')
 
-    def read(self, file_name, description=''):
+    def load(self, file_name, description=''):
+        """Read and check.
+
+        Parameters
+        ----------
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
+
+        Raises
+        ------
+            ValueError
+        """
+        self.read(file_name, description)
+        self.check()
+
+    def read(self, files, descriptions=''):
+        """Read exposures in parallel through files.
+
+        Parameters
+        ----------
+            files (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            descriptions (str or list(str), optional): description of the data
+
+        Raises
+        ------
+            ValueError
+        """
+        # Construct absolute path file names
+        all_files = get_file_names(files)
+        num_files = len(all_files)
+        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for exp_part in executor.map(_wrap_read_one, \
+                    itertools.repeat(DiscRates(), num_files), all_files, \
+                    desc_list):
+                self.append(exp_part)
+
+    def append(self, disc_rates):
+        """Append vulnerabilities of input ImpactFuncs to current ImpactFuncs.
+        Overvrite vulnerability if same id.
+        
+        Parameters
+        ----------
+            impact_funcs (ImpactFuncs): ImpactFuncs instance to append
+
+        Raises
+        ------
+            ValueError
+        """
+        self.check()
+        disc_rates.check()
+        if self.years.size == 0:
+            self.__dict__ = disc_rates.__dict__.copy()
+            return
+        
+        self.tag.append(disc_rates.tag)
+        
+        new_year = array('l')
+        new_rate = array('d')
+        for year, rate in zip(disc_rates.years, disc_rates.rates):
+            found = np.where(year == self.years)[0]
+            if found.size > 0:
+                self.rates[found[0]] = rate
+            else:
+                new_year.append(year)
+                new_rate.append(rate)
+        
+        self.years = np.append(self.years, new_year).astype(int)
+        self.rates = np.append(self.rates, new_rate)
+
+    def _read_one(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -80,18 +157,7 @@ class DiscRates(object):
         else:
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
+        return self
 
-    def load(self, file_name, description=''):
-        """Read and check.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.check()
+def _wrap_read_one(disc_rates, file, description=''):
+    return disc_rates._read_one(file, description)

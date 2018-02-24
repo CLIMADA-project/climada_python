@@ -6,7 +6,6 @@ import unittest
 import numpy
 
 from climada.entity.measures.base import Measures, Action
-from climada.util.constants import ENT_DEMO_XLS
 
 class TestContainer(unittest.TestCase):
     """Test Measures as container."""
@@ -179,7 +178,84 @@ class TestLoader(unittest.TestCase):
         self.assertEqual('Wrong Action.name: LoLo != LaLa', \
                          str(error.exception))
 
+class TestAppend(unittest.TestCase):
+    """Check append function"""
+    def test_append_to_empty_same(self):
+        """Append Measures to empty one.""" 
+        meas = Measures()
+        meas_add = Measures()
+        act_1 = Action()
+        act_1.name = 'Mangrove'
+        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.mdd_impact = (1, 2)
+        act_1.paa_impact = (1, 2)
+        act_1.hazard_intensity = (1, 2)
+        meas_add.add_action(act_1)
+        
+        meas.append(meas_add)
+        meas.check()
+        
+        self.assertEqual(meas.num_action(), 1)
+        self.assertEqual(meas.get_names(), [act_1.name])
+
+    def test_append_equal_same(self):
+        """Append the same Measures. The inital Measures is obtained."""     
+        meas = Measures()
+        meas_add = Measures()
+        act_1 = Action()
+        act_1.name = 'Mangrove'
+        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.mdd_impact = (1, 2)
+        act_1.paa_impact = (1, 2)
+        act_1.hazard_intensity = (1, 2)
+        meas.add_action(act_1)
+        meas_add.add_action(act_1)
+        
+        meas.append(meas_add)
+        meas.check()
+
+        self.assertEqual(meas.num_action(), 1)
+        self.assertEqual(meas.get_names(), [act_1.name])
+
+    def test_append_different_append(self):
+        """Append Measures with same and new values. The actions
+        with repeated name are overwritten."""
+        act_1 = Action()
+        act_1.name = 'Mangrove'
+        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.mdd_impact = (1, 2)
+        act_1.paa_impact = (1, 2)
+        act_1.hazard_intensity = (1, 2)
+        
+        act_11 = Action()
+        act_11.name = 'Mangrove'
+        act_11.color_rgb = numpy.array([1, 1, 1])
+        act_11.mdd_impact = (1, 2)
+        act_11.paa_impact = (1, 3)
+        act_11.hazard_intensity = (1, 2)
+        
+        act_2 = Action()
+        act_2.name = 'Anything'
+        act_2.color_rgb = numpy.array([1, 1, 1])
+        act_2.mdd_impact = (1, 2)
+        act_2.paa_impact = (1, 2)
+        act_2.hazard_intensity = (1, 2)
+        
+        meas = Measures()
+        meas.add_action(act_1)
+        meas_add = Measures()
+        meas_add.add_action(act_11)
+        meas_add.add_action(act_2)
+        
+        meas.append(meas_add)
+        meas.check()
+
+        self.assertEqual(meas.num_action(), 2)
+        self.assertEqual(meas.get_names(), [act_1.name, act_2.name])
+        self.assertEqual(meas.get_action(act_1.name).paa_impact, act_11.paa_impact)
+        
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
