@@ -2,6 +2,13 @@
 Functionalities to handle HDF5 files. Used for MATLAB files as well.
 """
 
+__all__ = ['read',
+           'get_string',
+           'get_str_from_ref',
+           'get_list_str_from_ref',
+           'get_sparse_csr_mat'
+          ]
+
 from scipy import sparse
 import numpy as np
 import h5py
@@ -101,7 +108,7 @@ def get_list_str_from_ref(file_name, var):
         name_list.append(get_string(file[name[0]][:]).strip())
     return name_list
 
-def get_sparse_mat(mat_dict, shape):
+def get_sparse_csr_mat(mat_dict, shape):
     """Form sparse matrix from input hdf5 sparse matrix data type.
 
         Parameters
@@ -111,7 +118,7 @@ def get_sparse_mat(mat_dict, shape):
 
         Returns
         -------
-            sparse csc matrix
+            sparse csr matrix
     """
     # Check if input has all the necessary data of a sparse matrix
     if ('data' not in mat_dict) or ('ir' not in mat_dict) or \
@@ -119,4 +126,4 @@ def get_sparse_mat(mat_dict, shape):
         raise ValueError('Input data is not a sparse matrix.')
 
     return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'], \
-                              mat_dict['jc']), shape)
+                              mat_dict['jc']), shape).tocsr()

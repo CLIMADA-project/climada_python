@@ -2,6 +2,8 @@
 Define Interpolator class.
 """
 
+__all__ = ['Interpolator']
+
 import warnings
 import numpy as np
 from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS

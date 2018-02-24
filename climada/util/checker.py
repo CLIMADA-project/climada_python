@@ -2,6 +2,12 @@
 module containing functions to check variables properties.
 """
 
+__all__ = ['size',
+           'shape',
+           'array_optional',
+           'array_default'
+          ]
+
 import warnings
 
 def size(exp_len, var, var_name):
