@@ -30,7 +30,7 @@ class Tag(object):
         if self.file_name == '':
             self.file_name = tag.file_name  
             self.description = tag.description
-        elif tag.file_name not in self.file_name:
+        else:
             if not isinstance(self.file_name, list):
                 self.file_name = [self.file_name]
             self.file_name.append(tag.file_name)
