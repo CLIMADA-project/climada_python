@@ -16,7 +16,7 @@ VAR_NAME = {'cen_id' : 'centroid_ID',
             'lon' : 'lon'
            }
 
-def read(centroids, file_name, description=None):
+def read(centroids, file_name, description=''):
     """Read MATLAB file and store variables in hazard. """
     cent = hdf5.read(file_name)
     # Try open encapsulating variable FIELD_NAMES

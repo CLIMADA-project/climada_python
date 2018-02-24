@@ -15,7 +15,7 @@ COL_NAME = {'cen_id' : 'centroid_ID',
             'lon' : 'Longitude'
            }
 
-def read(centroids, file_name, description=None):
+def read(centroids, file_name, description=''):
     """Read excel file and store variables in centroids. """
     dfr = pandas.read_excel(file_name, SHEET_NAME)
 
