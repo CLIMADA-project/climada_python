@@ -4,6 +4,7 @@ Define constants.
 
 __all__ = ['WORKING_DIR',
            'DATA_DIR',
+           'SAVE_DIR',
            'HAZ_DEMO_XLS',
            'HAZ_DEMO_MAT',
            'ENT_DEMO_XLS',
@@ -18,6 +19,7 @@ import os
 WORKING_DIR = os.path.dirname(__file__) + '/../../'
 # folder containing the data
 DATA_DIR = WORKING_DIR + 'data/'
+SAVE_DIR = WORKING_DIR + 'data/results/'
 
 # Files containg data used as demo, e.g. for unit testing
 HAZ_DEMO_XLS = DATA_DIR + 'demo/Excel_hazard.xlsx'
