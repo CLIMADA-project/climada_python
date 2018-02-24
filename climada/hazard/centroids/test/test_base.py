@@ -8,7 +8,7 @@ from array import array
 import numpy as np
 
 from climada.hazard.centroids.base import Centroids
-from climada.entity.tag import Tag
+from climada.hazard.centroids.tag import Tag
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Centroids class"""
@@ -30,7 +30,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             cen.check()
-        self.assertEqual('Invalid Centroids.coord row size: 3 != 2', \
+        self.assertEqual('Invalid Centroids.coord row size: 3 != 2.', \
                          str(error.exception))
 
     def test_check_wrongRegion_fail(self):
@@ -40,7 +40,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             cen.check()
-        self.assertEqual('Invalid Centroids.region_id size: 3 != 2', \
+        self.assertEqual('Invalid Centroids.region_id size: 3 != 2.', \
                          str(error.exception))
 
     def test_check_wrongId_fail(self):

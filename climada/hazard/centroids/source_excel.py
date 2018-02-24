@@ -5,7 +5,7 @@ Define Centroids reader function from an Excel file.
 import pandas
 import numpy as np
 
-from climada.entity.tag import Tag
+from climada.hazard.centroids.tag import Tag
 
 # Define tha name of the sheet that is read
 SHEET_NAME = 'centroids'

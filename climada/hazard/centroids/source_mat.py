@@ -5,7 +5,7 @@ Define Centroids reader function from a MATLAB file.
 import warnings
 import numpy as np
 
-from climada.entity.tag import Tag
+from climada.hazard.centroids.tag import Tag
 import climada.util.hdf5_handler as hdf5
 
 # Define tha name of the field that is read

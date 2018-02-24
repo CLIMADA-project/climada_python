@@ -12,7 +12,7 @@ import numpy as np
 from climada.hazard.centroids.source_excel import read as read_excel
 from climada.hazard.centroids.source_mat import read as read_mat
 import climada.util.checker as check
-from climada.entity.tag import Tag
+from climada.hazard.centroids.tag import Tag
 
 class Centroids(object):
     """Definition of the irregular grid through coordinates named centroids.
