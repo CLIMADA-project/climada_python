@@ -5,13 +5,19 @@ Define Vulnerability class and ImpactFuncs.
 __all__ = ['Vulnerability', 'ImpactFuncs']
 
 import os
+import concurrent.futures
+import itertools
 import numpy as np
 
 from climada.entity.impact_funcs.source_excel import read as read_excel
 from climada.entity.impact_funcs.source_mat import read as read_mat
+from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 import climada.util.plot as plot
+
+def _wrap_read_one(impact_funcs, file, description=''):
+    return impact_funcs._read_one(file, description)
 
 class ImpactFuncs(object):
     """Contains impact functions of type Vulnerability.
@@ -56,7 +62,7 @@ class ImpactFuncs(object):
             self.load(file_name, description)
 
     def add_vulner(self, vulner):
-        """Add a Vulnerability.
+        """Add a Vulnerability. Overwrite existing if same id.
 
         Parameters
         ----------
@@ -234,36 +240,63 @@ class ImpactFuncs(object):
         ------
             ValueError
         """
-        for key_haz, fun in self._data.items():
-            for key, val in fun.items():
-                if (key != val.id) | (key == 'NA'):
+        for key_haz, vul_dict in self._data.items():
+            for vul_id, vul in vul_dict.items():
+                if (vul_id != vul.id) | (vul_id == 'NA'):
                     raise ValueError('Wrong Vulnerability.id: %s != %s' %\
-                                     (key, val.id))
-                if (key_haz != val.haz_type) | (key_haz == 'NA'):
+                                     (vul_id, vul.id))
+                if (key_haz != vul.haz_type) | (key_haz == 'NA'):
                     raise ValueError('Wrong Vulnerability.haz_type: %s != %s'\
-                                     % (key_haz, val.haz_type))
-                val.check()
+                                     % (key_haz, vul.haz_type))
+                vul.check()
 
-    def read(self, file_name, description=''):
-        """Read input file.
+    def read(self, files, descriptions=''):
+        """Read exposures in parallel through files.
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            files (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            descriptions (str or list(str), optional): description of the data
 
         Raises
         ------
             ValueError
         """
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(self, file_name, description)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, description)
-        else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
+        # Construct absolute path file names
+        all_files = get_file_names(files)
+        num_files = len(all_files)
+        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            for exp_part in executor.map(_wrap_read_one, \
+                    itertools.repeat(ImpactFuncs(), num_files), all_files, \
+                    desc_list):
+                self.append(exp_part)
+
+    def append(self, impact_funcs):
+        """Append vulnerabilities of input ImpactFuncs to current ImpactFuncs.
+        Overvrite vulnerability if same id.
+        
+        Parameters
+        ----------
+            impact_funcs (ImpactFuncs): ImpactFuncs instance to append
+
+        Raises
+        ------
+            ValueError
+        """
+        self.check()
+        impact_funcs.check()
+        if self.num_vulner == 0:
+            self.__dict__ = impact_funcs.__dict__.copy()
+            return
+        
+        self.tag.append(impact_funcs.tag)
+        
+        new_vulner = impact_funcs.get_vulner()
+        for _, vul_dict in new_vulner.items():
+            for _, vul in vul_dict.items():
+                self.add_vulner(vul)
 
     def load(self, file_name, description=''):
         """Read and check.
@@ -313,6 +346,29 @@ class ImpactFuncs(object):
         plot.SHOW = do_show
         plot.show()
         return graph.get_elems()
+
+    def _read_one(self, file_name, description=''):
+        """Read input file.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+
+        Raises
+        ------
+            ValueError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            self = read_mat(self, file_name, description)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            self = read_excel(self, file_name, description)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
+
+        return self
 
 class Vulnerability(object):
     """Contains the definition of one Vulnerability (impact function).

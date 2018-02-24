@@ -6,7 +6,6 @@ import unittest
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFuncs, Vulnerability
-from climada.util.constants import ENT_DEMO_XLS
 
 class TestContainer(unittest.TestCase):
     """Test ImpactFuncs as container."""
@@ -301,7 +300,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid Vulnerability.paa size: 3 != 2', \
+        self.assertEqual('Invalid Vulnerability.paa size: 3 != 2.', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
@@ -317,8 +316,100 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             imp_fun.check()
-        self.assertEqual('Invalid Vulnerability.mdd size: 3 != 2', \
+        self.assertEqual('Invalid Vulnerability.mdd size: 3 != 2.', \
                          str(error.exception))
+
+class TestAppend(unittest.TestCase):
+    """Check append function"""
+    def test_append_to_empty_same(self):
+        """Append ImpactFuncs to empty one."""     
+        imp_fun = ImpactFuncs()
+        imp_fun_add = ImpactFuncs()
+        vulner_1 = Vulnerability()
+        vulner_1.id = 1
+        vulner_1.haz_type = 'TC'
+        imp_fun_add.add_vulner(vulner_1)
+
+        vulner_2 = Vulnerability()
+        vulner_2.id = 3
+        vulner_2.haz_type = 'TC'
+        imp_fun_add.add_vulner(vulner_2)
+
+        vulner_3 = Vulnerability()
+        vulner_3.id = 3
+        vulner_3.haz_type = 'FL'
+        imp_fun_add.add_vulner(vulner_3)
+        
+        imp_fun_add.tag.file_name = 'file1.txt'
+        
+        imp_fun.append(imp_fun_add)
+        imp_fun.check()
+
+        self.assertEqual(imp_fun.num_vulner(), 3)
+        self.assertEqual(imp_fun.num_vulner('TC'), 2)
+        self.assertEqual(imp_fun.num_vulner('FL'), 1)
+        self.assertEqual(imp_fun.tag.file_name, imp_fun_add.tag.file_name)
+        self.assertEqual(imp_fun.tag.description, imp_fun_add.tag.description)
+
+    def test_append_equal_same(self):
+        """Append the same ImpactFuncs. The inital ImpactFuncs is obtained."""     
+        imp_fun = ImpactFuncs()
+        vulner_1 = Vulnerability()
+        vulner_1.id = 1
+        vulner_1.haz_type = 'TC'
+        imp_fun.add_vulner(vulner_1)
+        
+        imp_fun_add = ImpactFuncs()
+        imp_fun_add.add_vulner(vulner_1)
+        
+        imp_fun.append(imp_fun_add)
+        imp_fun.check()
+
+        self.assertEqual(imp_fun.num_vulner(), 1)
+        self.assertEqual(imp_fun.num_vulner('TC'), 1)
+
+    def test_append_different_append(self):
+        """Append ImpactFuncs with same and new values. The vulnerabilities
+        with repeated id are overwritten."""
+        imp_fun = ImpactFuncs()
+        vulner_1 = Vulnerability()
+        vulner_1.id = 1
+        vulner_1.haz_type = 'TC'
+        imp_fun.add_vulner(vulner_1)
+
+        vulner_2 = Vulnerability()
+        vulner_2.id = 3
+        vulner_2.haz_type = 'TC'
+        imp_fun.add_vulner(vulner_2)
+
+        vulner_3 = Vulnerability()
+        vulner_3.id = 3
+        vulner_3.haz_type = 'FL'
+        imp_fun.add_vulner(vulner_3)
+        
+        imp_fun_add = ImpactFuncs()
+        vulner_1 = Vulnerability()
+        vulner_1.id = 1
+        vulner_1.haz_type = 'TC'
+        imp_fun_add.add_vulner(vulner_1)
+
+        vulner_2 = Vulnerability()
+        vulner_2.id = 1
+        vulner_2.haz_type = 'WS'
+        imp_fun_add.add_vulner(vulner_2)
+
+        vulner_3 = Vulnerability()
+        vulner_3.id = 3
+        vulner_3.haz_type = 'FL'
+        imp_fun_add.add_vulner(vulner_3)
+        
+        imp_fun.append(imp_fun_add)
+        imp_fun.check()
+
+        self.assertEqual(imp_fun.num_vulner(), 4)
+        self.assertEqual(imp_fun.num_vulner('TC'), 2)
+        self.assertEqual(imp_fun.num_vulner('FL'), 1)
+        self.assertEqual(imp_fun.num_vulner('WS'), 1)
 
 class TestInterpolation(unittest.TestCase):
     """Impact function interpolation test"""
@@ -355,5 +446,6 @@ class TestInterpolation(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpolation))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

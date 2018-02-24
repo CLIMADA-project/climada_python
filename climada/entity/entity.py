@@ -4,8 +4,6 @@ Define Entity Class.
 
 __all__ = ['Entity']
 
-import pickle
-
 from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.base import Measures
@@ -82,14 +80,13 @@ class Entity(object):
         self.measures.read(file_name, description)
 
 
-    def load(self, file_name, description=None, out_file_name=None):
+    def load(self, file_name, description=None):
         """Read, check and save as pkl, if output file name.
 
         Parameters
         ----------
             file_name (str): name of the source file
             description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
 
         Raises
         ------
@@ -106,10 +103,6 @@ class Entity(object):
 
         self.measures = Measures()
         self.measures.load(file_name, description)
-
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
 
     def check(self):
         """Check instance attributes.

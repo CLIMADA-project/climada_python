@@ -76,7 +76,8 @@ class TestReader(unittest.TestCase):
             warnings.simplefilter("always")
             Exposures(ENT_DEMO_MAT)
         # Verify warnings thrown
-        self.assertIn("Exposures.region_id not set.", str(w[0].message))
+        self.assertIn("Exposures.category_id not set.", str(w[0].message))
+        self.assertIn("Exposures.region_id not set.", str(w[1].message))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""

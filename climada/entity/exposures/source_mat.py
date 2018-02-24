@@ -44,6 +44,8 @@ def read(exposures, file_name, description=''):
     _read_obligatory(exposures, data)
     _read_default(exposures, data)
     _read_optional(exposures, data, file_name)
+    
+    return exposures
 
 def _read_obligatory(exposures, data):
     """Fill obligatory variables."""
