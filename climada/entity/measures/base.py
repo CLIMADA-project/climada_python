@@ -5,7 +5,6 @@ Define Action class and Measures.
 __all__ = ['Action', 'Measures']
 
 import os
-import pickle
 import numpy as np
 
 from climada.entity.measures.source_excel import read as read_excel
@@ -23,7 +22,7 @@ class Measures(object):
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
         Parameters
@@ -53,7 +52,7 @@ class Measures(object):
         self._data = dict() # {Action()}
 
         # Load values from file_name if provided
-        if file_name is not None:
+        if file_name != '':
             self.load(file_name, description)
 
     def add_action(self, action):
@@ -137,7 +136,7 @@ class Measures(object):
                                 (act_name, act.name))
             act.check()
 
-    def read(self, file_name, description=None):
+    def read(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -158,14 +157,13 @@ class Measures(object):
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
 
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
+    def load(self, file_name, description=''):
+        """Read and check.
 
         Parameters
         ----------
             file_name (str): name of the source file
-            description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
+            description (str, optional): description of the source data'
 
         Raises
         ------
@@ -173,9 +171,6 @@ class Measures(object):
         """
         self.read(file_name, description)
         self.check()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
 
 class Action(object):
     """Contains the definition of one Action.

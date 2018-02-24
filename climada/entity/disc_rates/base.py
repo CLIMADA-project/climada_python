@@ -5,7 +5,6 @@ Define DiscRates.
 __all__ = ['DiscRates']
 
 import os
-import pickle
 import numpy as np
 
 from climada.entity.disc_rates.source_excel import read as read_excel
@@ -23,7 +22,7 @@ class DiscRates(object):
         rates (np.array): discount rates for each year
     """
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
         Parameters
@@ -49,7 +48,7 @@ class DiscRates(object):
         self.rates = np.array([], np.float64)
 
         # Load values from file_name if provided
-        if file_name is not None:
+        if file_name != '':
             self.load(file_name, description)
 
     def check(self):
@@ -61,7 +60,7 @@ class DiscRates(object):
         """
         check.size(len(self.years), self.rates, 'DiscRates.rates')
 
-    def read(self, file_name, description=None):
+    def read(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -82,14 +81,13 @@ class DiscRates(object):
             raise TypeError('Input file extension not supported: %s.' % \
                             extension)
 
-    def load(self, file_name, description=None, out_file_name=None):
-        """Read, check and save as pkl, if output file name.
+    def load(self, file_name, description=''):
+        """Read and check.
 
         Parameters
         ----------
             file_name (str): name of the source file
             description (str, optional): description of the source data
-            out_file_name (str, optional): output file name to save as pkl
 
         Raises
         ------
@@ -97,6 +95,3 @@ class DiscRates(object):
         """
         self.read(file_name, description)
         self.check()
-        if out_file_name is not None:
-            with open(out_file_name, 'wb') as file:
-                pickle.dump(self, file)
