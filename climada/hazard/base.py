@@ -80,7 +80,7 @@ class Hazard(object):
 
         Parameters
         ----------
-            files (str or list(str), optional): file name(s) or folder name 
+            files (str or list(str)): file name(s) or folder name 
                 containing the files to read
             haz_type (str): acronym of the hazard type (e.g. 'TC')
             descriptions (str or list(str), optional): description of the data
@@ -120,7 +120,7 @@ class Hazard(object):
 
         Parameters
         ----------
-            files (str or list(str), optional): file name(s) or folder name 
+            files (str or list(str)): file name(s) or folder name 
                 containing the files to read
             haz_type (str): acronym of the hazard type (e.g. 'TC')
             descriptions (str or list(str), optional): description of the data
@@ -142,7 +142,7 @@ class Hazard(object):
                     centr_list):
                 self.append(haz_part)
 
-    def read_one(self, file_name, haz_type, description=None, centroid=None):
+    def read_one(self, file_name, haz_type, description='', centroid=None):
         """ Read input file. If centroids are not provided, they are read
         from file_name.
 
@@ -265,7 +265,16 @@ class Hazard(object):
 
     def append(self, hazard):
         """Append variables of input Hazard to current Hazard. Repeated
-        events and centroids will be overwritten."""
+        events and centroids will be overwritten.
+        
+        Parameters
+        ----------
+            hazard (Hazard): Hazard instance to append to current
+
+        Raises
+        ------
+            ValueError
+        """
         self.check()
         hazard.check()
         if self.event_id.size == 0:
