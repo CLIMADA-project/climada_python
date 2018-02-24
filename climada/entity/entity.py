@@ -29,9 +29,9 @@ class Entity(object):
 
         Parameters
         ----------
-            file_name (str, optional): name of the source file with supported
-                format (xls, xlsx and mat)
-            description (str, optional): description of the source data
+            file_name (str or list(str), optional): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -60,8 +60,9 @@ class Entity(object):
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------
@@ -85,8 +86,9 @@ class Entity(object):
 
         Parameters
         ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str or list(str)): file name(s) or folder name 
+                containing the files to read
+            description (str or list(str), optional): description of the data
 
         Raises
         ------

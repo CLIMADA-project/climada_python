@@ -54,6 +54,19 @@ class TestReader(unittest.TestCase):
         self.assertEqual(entity_xls.measures.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(entity_xls.impact_funcs.tag.file_name, \
                          ENT_TEMPLATE_XLS)
+    
+    def test_read_parallel(self):
+        """Read in parallel two entities."""
+        
+        with self.assertRaises(ValueError) as error:
+            Entity([ENT_DEMO_XLS, ENT_TEMPLATE_XLS], ['demo', 'template'])
+        self.assertEqual('Append not possible. Different reference years.', \
+                         str(error.exception))
+        
+        ent = Entity([ENT_DEMO_XLS, ENT_DEMO_XLS], ['demo', 'demo'])
+        self.assertEqual(ent.exposures.id.size, 100)
+        self.assertEqual(ent.exposures.tag.file_name, \
+                         [ENT_DEMO_XLS, ENT_DEMO_XLS])
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""
