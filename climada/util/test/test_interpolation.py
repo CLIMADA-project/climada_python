@@ -91,7 +91,7 @@ class TestNN(unittest.TestCase):
         ref_neighbors = def_ref()
         # Check results
         self.assertEqual(exposures.coord.shape[0], len(neighbors))
-        self.assertEqual(True, np.array_equal(neighbors, ref_neighbors))
+        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def normal_warning(self, dist):
         '''Checking that a warning is raised when minimum distance greater
@@ -114,7 +114,7 @@ class TestNN(unittest.TestCase):
             str(warns[-1].message)
 
         ref_neighbors = def_ref_50()
-        self.assertEqual(True, np.array_equal(neighbors, ref_neighbors))
+        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def repeat_coord_pass(self, dist):
         '''Check that exposures with the same coordinates have same

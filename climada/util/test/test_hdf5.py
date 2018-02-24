@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_MAT
+from climada.util.constants import HAZ_DEMO_MAT, HAZ_TEST_MAT, ENT_DEMO_MAT
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary functions used to retrieve variables from HDF5'''
@@ -16,7 +16,7 @@ class TestFunc(unittest.TestCase):
         '''Check function to get a string from input integer array'''
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = hdf5.read(HAZ_TEST_MAT)
 
         # Convert several strings
         str_date = hdf5.get_string(contents['hazard']['date'])
@@ -40,12 +40,12 @@ class TestFunc(unittest.TestCase):
         to build a sparse matrix from the read HDF5 variable'''
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = hdf5.read(HAZ_TEST_MAT)
 
         # get matrix size
         mat_shape = (len(contents['hazard']['event_ID']), \
                      len(contents['hazard']['centroid_ID']))
-        spr_mat = hdf5.get_sparse_mat(contents['hazard']['intensity'], \
+        spr_mat = hdf5.get_sparse_csr_mat(contents['hazard']['intensity'], \
                                       mat_shape)
 
         self.assertEqual(mat_shape[0], spr_mat.shape[0])
@@ -83,49 +83,49 @@ class TestReader(unittest.TestCase):
         '''Checking result against matlab atl_prob.mat file'''
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = hdf5.read(HAZ_TEST_MAT)
 
         # Check read contents
         self.assertEqual(1, len(contents))
-        self.assertEqual(True, 'hazard' in contents.keys())
+        self.assertTrue('hazard' in contents.keys())
         self.assertEqual(False, '#refs#' in contents.keys())
 
         hazard = contents['hazard']
-        self.assertEqual(True, 'reference_year' in hazard.keys())
-        self.assertEqual(True, 'lon' in hazard.keys())
-        self.assertEqual(True, 'lat' in hazard.keys())
-        self.assertEqual(True, 'centroid_ID' in hazard.keys())
-        self.assertEqual(True, 'orig_years' in hazard.keys())
-        self.assertEqual(True, 'orig_event_count' in hazard.keys())
-        self.assertEqual(True, 'event_count' in hazard.keys())
-        self.assertEqual(True, 'event_ID' in hazard.keys())
-        self.assertEqual(True, 'category' in hazard.keys())
-        self.assertEqual(True, 'orig_event_flag' in hazard.keys())
-        self.assertEqual(True, 'yyyy' in hazard.keys())
-        self.assertEqual(True, 'mm' in hazard.keys())
-        self.assertEqual(True, 'dd' in hazard.keys())
-        self.assertEqual(True, 'datenum' in hazard.keys())
-        self.assertEqual(True, 'scenario' in hazard.keys())
-        self.assertEqual(True, 'intensity' in hazard.keys())
-        self.assertEqual(True, 'name' in hazard.keys())
-        self.assertEqual(True, 'frequency' in hazard.keys())
-        self.assertEqual(True, 'matrix_density' in hazard.keys())
-        self.assertEqual(True, 'windfield_comment' in hazard.keys())
-        self.assertEqual(True, 'peril_ID' in hazard.keys())
-        self.assertEqual(True, 'filename' in hazard.keys())
-        self.assertEqual(True, 'comment' in hazard.keys())
-        self.assertEqual(True, 'date' in hazard.keys())
-        self.assertEqual(True, 'units' in hazard.keys())
-        self.assertEqual(True, 'orig_yearset' in hazard.keys())
-        self.assertEqual(True, 'fraction' in hazard.keys())
-        self.assertEqual(27, len(hazard.keys()))
+        self.assertTrue('reference_year' in hazard.keys())
+        self.assertTrue('lon' in hazard.keys())
+        self.assertTrue('lat' in hazard.keys())
+        self.assertTrue('centroid_ID' in hazard.keys())
+        self.assertTrue('orig_years' in hazard.keys())
+        self.assertTrue('orig_event_count' in hazard.keys())
+        self.assertTrue('event_count' in hazard.keys())
+        self.assertTrue('event_ID' in hazard.keys())
+        self.assertTrue('category' in hazard.keys())
+        self.assertTrue('orig_event_flag' in hazard.keys())
+        self.assertTrue('yyyy' in hazard.keys())
+        self.assertTrue('mm' in hazard.keys())
+        self.assertTrue('dd' in hazard.keys())
+        self.assertTrue('datenum' in hazard.keys())
+        self.assertTrue('scenario' in hazard.keys())
+        self.assertTrue('intensity' in hazard.keys())
+        self.assertFalse('name' in hazard.keys())
+        self.assertTrue('frequency' in hazard.keys())
+        self.assertTrue('matrix_density' in hazard.keys())
+        self.assertTrue('windfield_comment' in hazard.keys())
+        self.assertTrue('peril_ID' in hazard.keys())
+        self.assertTrue('filename' in hazard.keys())
+        self.assertTrue('comment' in hazard.keys())
+        self.assertTrue('date' in hazard.keys())
+        self.assertTrue('units' in hazard.keys())
+        self.assertTrue('orig_yearset' in hazard.keys())
+        self.assertTrue('fraction' in hazard.keys())
+        self.assertEqual(26, len(hazard.keys()))
 
         # Check some random values
         mat_shape = (len(contents['hazard']['event_ID']), \
              len(contents['hazard']['centroid_ID']))
-        sp_mat = hdf5.get_sparse_mat(hazard['intensity'], mat_shape)
+        sp_mat = hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
 
-        self.assertEqual(True, np.array_equal(np.array([[84], [67]]), \
+        self.assertTrue(np.array_equal(np.array([[84], [67]]), \
                                               hazard['peril_ID']))
         self.assertEqual(34.537289477809473, sp_mat[2862, 97])
         self.assertEqual(-80, hazard['lon'][46])
@@ -137,12 +137,12 @@ class TestReader(unittest.TestCase):
 
         # Load input
         refs = True
-        contents = hdf5.read(HAZ_DEMO_MAT, refs)
+        contents = hdf5.read(HAZ_TEST_MAT, refs)
 
         # Check read contents
         self.assertEqual(2, len(contents))
-        self.assertEqual(True, 'hazard' in contents.keys())
-        self.assertEqual(True, '#refs#' in contents.keys())
+        self.assertTrue('hazard' in contents.keys())
+        self.assertTrue('#refs#' in contents.keys())
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
