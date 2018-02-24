@@ -2,6 +2,12 @@
 Define auxiliary functions for plots.
 """
 
+__all__ = ['Graph2D',
+           'geo_bin_from_array',
+           'geo_im_from_array',
+           'show'
+          ]
+
 import numpy as np
 from scipy.interpolate import griddata
 import h5py
@@ -18,7 +24,7 @@ BUFFER_PERCEN = 10
 # Degrees to add in the border
 BUFFER_DEG = 1
 # Enable/Disable show
-SHOW = True
+SHOW = False
 
 # TODO: change to use basemap
 def add_shapes(axis):
@@ -143,6 +149,7 @@ def geo_im_from_array(geo_coord, array_im, var_name, title):
 def show():
     """Show plot just if SHOW constant activated."""
     if SHOW:
+        plt.tight_layout()
         plt.show()
 
 class Graph2D(object):
