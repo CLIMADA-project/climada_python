@@ -77,7 +77,6 @@ def read(hazard, file_name, haztype, description='', centroids=None):
             file_name, data[VAR_NAME['ev_name']])
     except KeyError:
         hazard.event_name = list(hazard.event_id)
-    return hazard
 
 def read_centroids(hazard, centroids=None):
     """Read centroids file if no centroids provided"""

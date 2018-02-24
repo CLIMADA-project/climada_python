@@ -21,9 +21,6 @@ from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.plot as plot
 import climada.util.checker as check
 
-def _wrap_read_one(hazard, file, haz_type, description='', centroid=None):
-    return hazard.read_one(file, haz_type, description, centroid)
-
 class Hazard(object):
     """Contains events of same hazard type defined at centroids. Interface.
 
@@ -141,31 +138,6 @@ class Hazard(object):
                     itertools.repeat(haz_type, num_files), desc_list, \
                     centr_list):
                 self.append(haz_part)
-
-    def read_one(self, file_name, haz_type, description='', centroid=None):
-        """ Read input file. If centroids are not provided, they are read
-        from file_name.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            haz_type (str): acronym of the hazard type (e.g. 'TC')
-            description (str, optional): description of the source data
-            centroids (Centroids, optional): Centroids instance
-
-        Raises
-        ------
-            ValueError, KeyError
-        """
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            self = read_mat(self, file_name, haz_type, description, centroid)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            self = read_excel(self, file_name, haz_type, description, centroid)
-        else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
-        return self
 
     def plot_stats(self):
         """Plots describing hazard."""
@@ -333,6 +305,31 @@ class Hazard(object):
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
     
+    def _read_one(self, file_name, haz_type, description='', centroid=None):
+        """ Read input file. If centroids are not provided, they are read
+        from file_name.
+
+        Parameters
+        ----------
+            file_name (str): name of the source file
+            haz_type (str): acronym of the hazard type (e.g. 'TC')
+            description (str, optional): description of the source data
+            centroids (Centroids, optional): Centroids instance
+
+        Raises
+        ------
+            ValueError, KeyError
+        """
+        extension = os.path.splitext(file_name)[1]
+        if extension == '.mat':
+            read_mat(self, file_name, haz_type, description, centroid)
+        elif (extension == '.xlsx') or (extension == '.xls'):
+            read_excel(self, file_name, haz_type, description, centroid)
+        else:
+            raise TypeError('Input file extension not supported: %s.' % \
+                            extension)
+        return self
+    
     def _append_events(self, hazard, new_ev_pos, new_name, new_id):
         """Iterate over hazard events and collect their new position"""
         try:
@@ -444,3 +441,6 @@ class Hazard(object):
         graph.set_x_lim(range(len(array_val)))
         plot.show()
         return graph.get_elems()
+
+def _wrap_read_one(hazard, file, haz_type, description='', centroid=None):
+    return hazard._read_one(file, haz_type, description, centroid)

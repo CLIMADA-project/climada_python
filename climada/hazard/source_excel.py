@@ -73,7 +73,6 @@ def read(hazard, file_name, haztype, description='', centroids=None):
     # Set fraction matrix to default value of 1
     hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape, \
                                       dtype=np.float))
-    return hazard
 
 def read_centroids(hazard, centroids=None):
     """Read centroids file if no centroids provided"""
