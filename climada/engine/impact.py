@@ -147,7 +147,7 @@ class Impact(object):
             warnings.warn('No affected exposures.')
 
         # Get hazard type
-        haz_type = hazard.tag.type
+        haz_type = hazard.tag.haz_type
         # Get damage functions for this hazard
         haz_imp = impact_funcs.get_vulner(haz_type)
 
@@ -191,10 +191,9 @@ class Impact(object):
         icen = int(exposures.assigned[iexp])
 
         # get intensities for this centroid
-        event_row = hazard.intensity.indices[hazard.intensity.indptr[icen]: \
-                    hazard.intensity.indptr[icen+1]]
-        inten_val = hazard.intensity.data[hazard.intensity.indptr[icen]: \
-                    hazard.intensity.indptr[icen+1]]
+        event_row = hazard.intensity[:, icen].nonzero()[0]
+        inten_val = np.asarray(hazard.intensity[event_row, icen].todense()). \
+                    squeeze()
         # get affected fraction for these events
         fract = np.squeeze(hazard.fraction[:, icen].toarray()[event_row])
 

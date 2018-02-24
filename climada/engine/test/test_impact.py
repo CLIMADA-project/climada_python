@@ -5,7 +5,7 @@ Test Impact class.
 import unittest
 import numpy as np
 
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_XLS
+from climada.util.constants import HAZ_TEST_MAT, ENT_DEMO_XLS
 from climada.entity.entity import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
@@ -65,7 +65,7 @@ class TestOneExposure(unittest.TestCase):
         ent = Entity()
         
         # Read default hazard file
-        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
+        hazard = Hazard(HAZ_TEST_MAT, 'TC')
         # Create impact object
         impact = Impact()
 
@@ -76,11 +76,10 @@ class TestOneExposure(unittest.TestCase):
         iexp = 5
         # Take its impact function
         imp_id = ent.exposures.impact_id[iexp]
-        imp_fun = ent.impact_funcs.get_vulner(hazard.tag.type, imp_id)
+        imp_fun = ent.impact_funcs.get_vulner(hazard.tag.haz_type, imp_id)
         # Compute
         event_row, result = impact._one_exposure(iexp, ent.exposures, \
                                                   hazard, imp_fun)
-
         # Check sizes
         num_res = 1280
         self.assertEqual(num_res, len(event_row))
@@ -123,7 +122,7 @@ class TestCalc(unittest.TestCase):
         Entity.def_file = ENT_DEMO_XLS
         ent = Entity()
         # Read default hazard file
-        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
+        hazard = Hazard(HAZ_TEST_MAT, 'TC')
         # Create impact object
         impact = Impact()
 
@@ -148,16 +147,16 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(1.518553670803242e+08, impact.at_exp[0])
         self.assertAlmostEqual(1.373490457046383e+08, \
                                impact.at_exp[int(num_exp/2)], 6)
-        self.assertEqual(True, np.isclose(1.373490457046383e+08, \
+        self.assertTrue(np.isclose(1.373490457046383e+08, \
                                           impact.at_exp[int(num_exp/2)]))
         self.assertAlmostEqual(1.066837260150042e+08, \
                                impact.at_exp[num_exp-1], 6)
-        self.assertEqual(True, np.isclose(1.066837260150042e+08, \
+        self.assertTrue(np.isclose(1.066837260150042e+08, \
                                           impact.at_exp[int(num_exp-1)]))
 
         self.assertAlmostEqual(6.570532945599104e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.tot, 5)
-        self.assertEqual(True, np.isclose(6.512201157564421e+09, impact.tot))
+        self.assertTrue(np.isclose(6.512201157564421e+09, impact.tot))
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
