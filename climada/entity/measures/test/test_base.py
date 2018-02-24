@@ -117,7 +117,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Action.hazard_intensity size: 2 != 3', \
+        self.assertEqual('Invalid Action.hazard_intensity size: 2 != 3.', \
                          str(error.exception))
 
     def test_check_wrongColor_fail(self):
@@ -133,7 +133,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Action.color_rgb size: 3 != 2', \
+        self.assertEqual('Invalid Action.color_rgb size: 3 != 2.', \
                          str(error.exception))
 
     def test_check_wrongMDD_fail(self):
@@ -165,7 +165,7 @@ class TestLoader(unittest.TestCase):
         
         with self.assertRaises(ValueError) as error:
             meas.check()
-        self.assertEqual('Invalid Action.paa_impact size: 2 != 4', \
+        self.assertEqual('Invalid Action.paa_impact size: 2 != 4.', \
                          str(error.exception))
 
     def test_check_name_fail(self):

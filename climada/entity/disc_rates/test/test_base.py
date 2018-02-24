@@ -18,7 +18,7 @@ class TestLoader(unittest.TestCase):
 
         with self.assertRaises(ValueError) as error:
             disc_rate.check()
-        self.assertEqual('Invalid DiscRates.rates size: 1 != 2', \
+        self.assertEqual('Invalid DiscRates.rates size: 1 != 2.', \
                          str(error.exception))
 
 # Execute Tests
