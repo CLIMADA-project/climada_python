@@ -93,7 +93,7 @@ class TestPlotter(unittest.TestCase):
                       myax[0].title.get_text())
         self.assertIn('TC 3 TC Building code', myax[1].title.get_text())
 
-        myfuncs.get_vulner('TC', 3).plot()
+        myfuncs.get_vulner('TC', 3)[0].plot()
         myfuncs.plot(haz_type='TC')
 
     def test_impact_pass(self):
