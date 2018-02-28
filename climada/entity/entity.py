@@ -4,11 +4,15 @@ Define Entity Class.
 
 __all__ = ['Entity']
 
+import logging
+
 from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.base import Measures
 from climada.entity.exposures.base import Exposures
 from climada.util.config import ENT_DEF_XLS
+
+LOGGER = logging.getLogger(__name__)
 
 class Entity(object):
     """Collects exposures, impact functions, measures and discount rates.
@@ -31,7 +35,8 @@ class Entity(object):
         ----------
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            description (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -53,16 +58,17 @@ class Entity(object):
             self.measures = Measures(self.def_file)
             self.disc_rates = DiscRates(self.def_file)
         else:
-            self.load(file_name, description)
+            self.read(file_name, description)
 
     def read(self, file_name, description=None):
-        """Read input file.
+        """Read and check input file.
 
         Parameters
         ----------
-            file_name (str or list(str)): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            description (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -80,32 +86,6 @@ class Entity(object):
         self.measures = Measures()
         self.measures.read(file_name, description)
 
-
-    def load(self, file_name, description=None):
-        """Read, check and save as pkl, if output file name.
-
-        Parameters
-        ----------
-            file_name (str or list(str)): file name(s) or folder name 
-                containing the files to read
-            description (str or list(str), optional): description of the data
-
-        Raises
-        ------
-            ValueError
-        """
-        self.exposures = Exposures()
-        self.exposures.load(file_name, description)
-
-        self.disc_rates = DiscRates()
-        self.disc_rates.load(file_name, description)
-
-        self.impact_funcs = ImpactFuncs()
-        self.impact_funcs.load(file_name, description)
-
-        self.measures = Measures()
-        self.measures.load(file_name, description)
-
     def check(self):
         """Check instance attributes.
 
@@ -122,15 +102,18 @@ class Entity(object):
         """Check input type before set"""
         if name == "exposures":
             if not isinstance(value, Exposures):
-                raise ValueError("Input value is not (sub)class of Exposures.")
+                LOGGER.error("Input value is not (sub)class of Exposures.")
+                raise ValueError
         elif name == "impact_funcs":
             if not isinstance(value, ImpactFuncs):
-                raise ValueError("Input value is not (sub)class of \
-                                 ImpactFuncs.")
+                LOGGER.error("Input value is not (sub)class of ImpactFuncs.")
+                raise ValueError
         elif name == "measures":
             if not isinstance(value, Measures):
-                raise ValueError("Input value is not (sub)class of Measures.")
+                LOGGER.error("Input value is not (sub)class of Measures.")
+                raise ValueError
         elif name == "disc_rates":
             if not isinstance(value, DiscRates):
-                raise ValueError("Input value is not (sub)class of DiscRates.")
+                LOGGER.error("Input value is not (sub)class of DiscRates.")                
+                raise ValueError
         super().__setattr__(name, value)

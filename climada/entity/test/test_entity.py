@@ -26,7 +26,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(len(def_entity.exposures.deductible), 50)
         self.assertEqual(def_entity.exposures.value[2], 12596064143.542929)
 
-        self.assertEqual(len(def_entity.impact_funcs.get_vulner('TC', 1).mdd),\
+        self.assertEqual(len(def_entity.impact_funcs.get_vulner('TC', 1)[0].mdd),\
                          9)
 
         self.assertIn('Mangroves', def_entity.measures.get_names())
@@ -57,11 +57,11 @@ class TestReader(unittest.TestCase):
     
     def test_read_parallel(self):
         """Read in parallel two entities."""
-        
-        with self.assertRaises(ValueError) as error:
-            Entity([ENT_DEMO_XLS, ENT_TEMPLATE_XLS], ['demo', 'template'])
-        self.assertEqual('Append not possible. Different reference years.', \
-                         str(error.exception))
+        with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                Entity([ENT_DEMO_XLS, ENT_TEMPLATE_XLS], ['demo', 'template'])
+        self.assertIn('Append not possible. Different reference years.', \
+                         cm.output[0])
         
         ent = Entity([ENT_DEMO_XLS, ENT_DEMO_XLS], ['demo', 'demo'])
         self.assertEqual(ent.exposures.id.size, 100)
@@ -74,50 +74,58 @@ class TestCheck(unittest.TestCase):
         """Wrong exposures"""
         ent = Entity()
         ent.exposures.cover = np.array([1, 2])
-        with self.assertRaises(ValueError) as error:
-            ent.check()
-        self.assertIn('Exposures.cover', str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.check()
+        self.assertIn('Exposures.cover', cm.output[0])
 
-        with self.assertRaises(ValueError) as error:
-            ent.exposures = Measures()
-        self.assertIn('Exposures', str(error.exception))
+        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.exposures = Measures()
+        self.assertIn('Exposures', cm.output[0])
 
     def test_wrongMeas_fail(self):
         """Wrong measures"""
         ent = Entity()
         actions = ent.measures.get_action()
         actions[0].color_rgb = np.array([1, 2])
-        with self.assertRaises(ValueError) as error:
-            ent.check()
-        self.assertIn('Action.color_rgb', str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.check()
+        self.assertIn('Action.color_rgb', cm.output[0])
 
-        with self.assertRaises(ValueError) as error:
-            ent.measures = Exposures()
-        self.assertIn('Measures', str(error.exception))
+        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.measures = Exposures()
+        self.assertIn('Measures', cm.output[0])
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
         ent = Entity()
-        ent.impact_funcs.get_vulner('TC', 1).paa = np.array([1, 2])
-        with self.assertRaises(ValueError) as error:
-            ent.check()
-        self.assertIn('Vulnerability.paa', str(error.exception))
+        ent.impact_funcs.get_vulner('TC', 1)[0].paa = np.array([1, 2])
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.check()
+        self.assertIn('Vulnerability.paa', cm.output[0])
 
-        with self.assertRaises(ValueError) as error:
-            ent.impact_funcs = Exposures()
-        self.assertIn('ImpactFuncs', str(error.exception))
+        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.impact_funcs = Exposures()
+        self.assertIn('ImpactFuncs', cm.output[0])
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
         ent = Entity()
         ent.disc_rates.rates = np.array([1, 2])
-        with self.assertRaises(ValueError) as error:
-            ent.check()
-        self.assertIn('DiscRates.rates', str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.check()
+        self.assertIn('DiscRates.rates', cm.output[0])
 
-        with self.assertRaises(ValueError) as error:
-            ent.disc_rates = Exposures()
-        self.assertIn('DiscRates', str(error.exception))
+        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                ent.disc_rates = Exposures()
+        self.assertIn('DiscRates', cm.output[0])
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
