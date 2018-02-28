@@ -80,6 +80,6 @@ def read_centroids(hazard, centroids=None):
         hazard.centroids = Centroids()
         hazard.centroids.sheet_name = SHEET_NAMES['centroid']
         hazard.centroids.col_names = COL_CENTROIDS
-        hazard.centroids.read(hazard.tag.file_name, hazard.tag.description)
+        hazard.centroids.read_one(hazard.tag.file_name, hazard.tag.description)
     else:
         hazard.centroids = centroids

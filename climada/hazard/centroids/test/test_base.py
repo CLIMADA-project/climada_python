@@ -3,7 +3,6 @@ Test Centroids base class.
 """
 
 import unittest
-import warnings
 from array import array
 import numpy as np
 
@@ -28,30 +27,32 @@ class TestLoader(unittest.TestCase):
         cen = self.good_centroids()
         cen.coord = np.array([[1, 2],[3, 4]])
 
-        with self.assertRaises(ValueError) as error:
-            cen.check()
-        self.assertEqual('Invalid Centroids.coord row size: 3 != 2.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                cen.check()
+        self.assertIn('Invalid Centroids.coord row size: 3 != 2.', \
+                         cm.output[0])
 
     def test_check_wrongRegion_fail(self):
         """Wrong centroids definition"""
         cen = self.good_centroids()
         cen.region_id = np.array([1, 2])
 
-        with self.assertRaises(ValueError) as error:
-            cen.check()
-        self.assertEqual('Invalid Centroids.region_id size: 3 != 2.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                cen.check()
+        self.assertIn('Invalid Centroids.region_id size: 3 != 2.', \
+                         cm.output[0])
 
     def test_check_wrongId_fail(self):
         """Wrong centroids definition"""
         cen = self.good_centroids()
         cen.id = np.array([1, 2, 2])
-
-        with self.assertRaises(ValueError) as error:
-            cen.check()
-        self.assertEqual('There are centroids with the same identifier.', \
-                         str(error.exception))
+        with self.assertLogs('climada.hazard.centroids.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                cen.check()
+        self.assertIn('There are centroids with the same identifier.', \
+                         cm.output[0])
 
 class TestAppend(unittest.TestCase):
     """Test append function."""
@@ -203,12 +204,12 @@ class TestAppend(unittest.TestCase):
         centr2.id = np.array([5, 7, 9])
         centr2.region_id = np.array([1, 1, 1])
         
-        with warnings.catch_warnings(record=True) as w:
+        with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
                          np.int64)))
         self.assertIn("Centroids.region_id is not going to be set.", \
-                      str(w[1].message))
+                      cm.output[0])
 
         centr1 = Centroids()
         centr1.tag = Tag('file_1.mat', 'description 1')
@@ -221,12 +222,12 @@ class TestAppend(unittest.TestCase):
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr2.id = np.array([5, 7, 9])
         
-        with warnings.catch_warnings(record=True) as w:
+        with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
                          np.int64)))
         self.assertIn("Centroids.region_id is not going to be set.", \
-                      str(w[1].message))
+                      cm.output[0])
 
     def test_with_region_pass(self):
         """Append the same centroids with region id."""

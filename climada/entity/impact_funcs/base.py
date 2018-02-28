@@ -5,6 +5,7 @@ Define Vulnerability class and ImpactFuncs.
 __all__ = ['Vulnerability', 'ImpactFuncs']
 
 import os
+import logging
 import concurrent.futures
 import itertools
 import numpy as np
@@ -15,6 +16,8 @@ from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 import climada.util.plot as plot
+
+LOGGER = logging.getLogger(__name__)
 
 class ImpactFuncs(object):
     """Contains impact functions of type Vulnerability.
@@ -33,7 +36,8 @@ class ImpactFuncs(object):
         ----------
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            description (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -52,12 +56,14 @@ class ImpactFuncs(object):
             >>> imp_fun.check()
             Fill impact functions with values and check consistency data.
         """
-        self.tag = Tag(file_name, description)
-        self._data = dict() # {hazard_id : {id:Vulnerability}}
-
-        # Load values from file_name if provided
+        self.clear()
         if file_name != '':
-            self.load(file_name, description)
+            self.read(file_name, description)
+
+    def clear(self):
+        """Reinitialize attributes."""        
+        self.tag = Tag()
+        self._data = dict() # {hazard_id : {id:Vulnerability}}
 
     def add_vulner(self, vulner):
         """Add a Vulnerability. Overwrite existing if same id.
@@ -71,11 +77,14 @@ class ImpactFuncs(object):
             ValueError
         """
         if not isinstance(vulner, Vulnerability):
-            raise ValueError("Input value is not of type Vulnerability.")
+            LOGGER.error("Input value is not of type Vulnerability.")
+            raise ValueError
         if vulner.haz_type == 'NA':
-            raise ValueError("Input Vulnerability's hazard type not set.")
+            LOGGER.error("Input Vulnerability's hazard type not set.")
+            raise ValueError
         if vulner.id == 'NA':
-            raise ValueError("Input Vulnerability's id not set.")
+            LOGGER.error("Input Vulnerability's id not set.")
+            raise ValueError
         if vulner.haz_type not in self._data:
             self._data[vulner.haz_type] = dict()
         self._data[vulner.haz_type][vulner.id] = vulner
@@ -88,26 +97,22 @@ class ImpactFuncs(object):
         ----------
             haz_type (str, optional): all vulnerabilities with this hazard
             vul_id (int, optional): all vulnerabilities with this id
-
-        Raises
-        ------
-            ValueError
         """
         if (haz_type is not None) and (vul_id is not None):
             try:
                 del self._data[haz_type][vul_id]
             except KeyError:
-                raise ValueError('No Vulnerability with hazard %s and id %s.' \
-                                 % (haz_type, vul_id))
+                LOGGER.warning("No Vulnerability with hazard %s and id %s.", \
+                             haz_type, vul_id)
         elif haz_type is not None:
             try:
                 del self._data[haz_type]
             except KeyError:
-                raise ValueError('No Vulnerability with hazard %s.' % haz_type)
+                LOGGER.warning("No Vulnerability with hazard %s.", haz_type)
         elif vul_id is not None:
             haz_remove = self.get_hazard_types(vul_id)
             if not haz_remove:
-                raise ValueError('No Vulnerability with id %s.' % vul_id)
+                LOGGER.warning("No Vulnerability with id %s.", vul_id)
             for vul_haz in haz_remove:
                 del self._data[vul_haz][vul_id]
         else:
@@ -142,10 +147,6 @@ class ImpactFuncs(object):
         -------
             list(Vulnerability.id) (if haz_type provided),
             {Vulnerability.haz_type : list(Vulnerability.id)} (if no haz_type)
-
-        Raises
-        ------
-            ValueError
         """
         if haz_type is None:
             out_dict = dict()
@@ -156,8 +157,7 @@ class ImpactFuncs(object):
             try:
                 return list(self._data[haz_type].keys())
             except KeyError:
-                raise ValueError('No Vulnerability with hazard %s.' \
-                                 % haz_type)
+                return list()
 
     def get_vulner(self, haz_type=None, vul_id=None):
         """Get Vulnerability(ies) of input hazard type and/or id.
@@ -170,30 +170,23 @@ class ImpactFuncs(object):
 
         Returns
         -------
-            Vulnerability (if haz_type and vul_id)
-            list(Vulnerability) (if haz_type or vul_id)
+            list(Vulnerability) (if haz_type and/or vul_id)
+            list(Vulnerability) (if haz_type and/or vul_id)
             {Vulnerability.haz_type : {Vulnerability.id : Vulnerability}}
                 (if None)
-
-        Raises
-        ------
-            ValueError
         """
         if (haz_type is not None) and (vul_id is not None):
             try:
-                return self._data[haz_type][vul_id]
+                return [self._data[haz_type][vul_id]]
             except KeyError:
-                raise ValueError('No Vulnerability with hazard %s and id %s.' \
-                                 % (haz_type, vul_id))
+                return list()
         elif haz_type is not None:
             try:
                 return list(self._data[haz_type].values())
             except KeyError:
-                raise ValueError('No Vulnerability with hazard %s.' % haz_type)
+                return list()
         elif vul_id is not None:
             haz_return = self.get_hazard_types(vul_id)
-            if not haz_return:
-                raise ValueError('No Vulnerability with id %s.' % vul_id)
             vul_return = []
             for vul_haz in haz_return:
                 vul_return.append(self._data[vul_haz][vul_id])
@@ -202,7 +195,7 @@ class ImpactFuncs(object):
             return self._data
 
     def num_vulner(self, haz_type=None, vul_id=None):
-        """Get number of vulnerbilities contained with input hazard type and\
+        """Get number of vulnerbilities contained with input hazard type and
         /or id. If no input provided, get total number of vulnerabilites.
 
         Parameters
@@ -212,25 +205,13 @@ class ImpactFuncs(object):
 
         Returns
         -------
-            int
-        Raises
-        ------
-            ValueError        
+            int      
         """
-        if (haz_type is not None) and (vul_id is not None):
-            try:
-                self.get_vulner(haz_type, vul_id)
-                return 1
-            except ValueError as error:
-                raise error
-        elif haz_type is not None:
-            return len(self.get_ids(haz_type))
-        elif vul_id is not None:
-            return len(self.get_hazard_types(vul_id))
-        else:
-            vul_map = self.get_ids()
-            return sum(len(vul_list) for vul_list in vul_map.values())
+        if (haz_type != None) or (vul_id != None):
+            return len(self.get_vulner(haz_type, vul_id))
 
+        return sum(len(vul_list) for vul_list in self.get_ids().values())
+        
     def check(self):
         """Check instance attributes.
 
@@ -241,21 +222,24 @@ class ImpactFuncs(object):
         for key_haz, vul_dict in self._data.items():
             for vul_id, vul in vul_dict.items():
                 if (vul_id != vul.id) | (vul_id == 'NA'):
-                    raise ValueError('Wrong Vulnerability.id: %s != %s' %\
-                                     (vul_id, vul.id))
+                    LOGGER.error("Wrong Vulnerability.id: %s != %s.", vul_id, \
+                                 vul.id)
+                    raise ValueError
                 if (key_haz != vul.haz_type) | (key_haz == 'NA'):
-                    raise ValueError('Wrong Vulnerability.haz_type: %s != %s'\
-                                     % (key_haz, vul.haz_type))
+                    LOGGER.error("Wrong Vulnerability.haz_type: %s != %s.",\
+                                 key_haz, vul.haz_type)
+                    raise ValueError
                 vul.check()
 
     def read(self, files, descriptions=''):
-        """Read exposures in parallel through files.
+        """Read and check impact functions in parallel through files.
 
         Parameters
         ----------
-            files (str or list(str)): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            descriptions (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -265,11 +249,13 @@ class ImpactFuncs(object):
         all_files = get_file_names(files)
         num_files = len(all_files)
         desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        self.clear()
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            for exp_part in executor.map(_wrap_read_one, \
+            for cnt, imp_part in enumerate(executor.map(_wrap_read_one, \
                     itertools.repeat(ImpactFuncs(), num_files), all_files, \
-                    desc_list):
-                self.append(exp_part)
+                    desc_list)):
+                LOGGER.info('Read file: %s', all_files[cnt])
+                self.append(imp_part)
 
     def append(self, impact_funcs):
         """Append vulnerabilities of input ImpactFuncs to current ImpactFuncs.
@@ -283,7 +269,6 @@ class ImpactFuncs(object):
         ------
             ValueError
         """
-        self.check()
         impact_funcs.check()
         if self.num_vulner() == 0:
             self.__dict__ = impact_funcs.__dict__.copy()
@@ -295,22 +280,6 @@ class ImpactFuncs(object):
         for _, vul_dict in new_vulner.items():
             for _, vul in vul_dict.items():
                 self.add_vulner(vul)
-
-    def load(self, file_name, description=''):
-        """Read and check.
-
-        Parameters
-        ----------
-            file_name (str or list(str)): file name(s) or folder name 
-                containing the files to read
-            description (str or list(str), optional): description of the data
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.check()
 
     def plot(self, haz_type=None, vul_id=None):
         """Plot impact functions of selected hazard (all if not provided) and
@@ -346,7 +315,7 @@ class ImpactFuncs(object):
         plot.show()
         return graph.get_elems()
 
-    def _read_one(self, file_name, description=''):
+    def read_one(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -364,13 +333,12 @@ class ImpactFuncs(object):
         elif (extension == '.xlsx') or (extension == '.xls'):
             read_excel(self, file_name, description)
         else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
-
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
         return self
 
 def _wrap_read_one(impact_funcs, file, description=''):
-    return impact_funcs._read_one(file, description)
+    return impact_funcs.read_one(file, description)
 
 class Vulnerability(object):
     """Contains the definition of one Vulnerability (impact function).
@@ -416,8 +384,9 @@ class Vulnerability(object):
         elif attribute == 'paa':
             return np.interp(inten, self.intensity, self.paa)
         else:
-            raise ValueError('Attribute of the impact function %s not found.'\
-                             % (attribute))
+            LOGGER.error("Attribute of the impact function not found: %s",\
+                         attribute)
+            raise ValueError
 
     def plot(self, graph=None):
         """Plot the impact functions MDD, MDR and PAA in one graph.

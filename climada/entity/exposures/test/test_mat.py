@@ -72,12 +72,11 @@ class TestReader(unittest.TestCase):
 
     def test_check_demo_warning(self):
         """Check warning centroids when demo read."""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with self.assertLogs('climada.util.checker', level='WARNING') as cm:
             Exposures(ENT_DEMO_MAT)
-        # Verify warnings thrown
-        self.assertIn("Exposures.category_id not set.", str(w[0].message))
-        self.assertIn("Exposures.region_id not set.", str(w[1].message))
+        self.assertIn("Exposures.deductible not set. Default values set.", cm.output[0])
+        self.assertIn("Exposures.cover not set. Default values set.", cm.output[1])
+        self.assertIn("Exposures.region_id not set.", cm.output[2])
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""

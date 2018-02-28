@@ -2,7 +2,6 @@
 Test Exposures from Excel file.
 """
 
-import warnings
 import unittest
 import numpy as np
 import pandas
@@ -119,25 +118,17 @@ class TestReader(unittest.TestCase):
 
     def test_check_template_warning(self):
         """Check warning centroids when template read."""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with self.assertLogs('climada.util.checker', level='WARNING') as cm:
             Exposures(ENT_TEMPLATE_XLS)
-            # Verify warnings thrown
-            self.assertIn("Exposures.assigned not set.", \
-                          str(w[-1].message))
+        self.assertIn("Exposures.assigned not set.", cm.output[2])
 
     def test_check_demo_warning(self):
         """Check warning centroids when demo read."""
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with self.assertLogs('climada.util.checker', level='WARNING') as cm:
             Exposures(ENT_DEMO_XLS)
-            # Verify warnings thrown
-            self.assertIn("Exposures.category_id not set.", \
-                          str(w[0].message))
-            self.assertIn("Exposures.region_id not set.", \
-                          str(w[1].message))
-            self.assertIn("Exposures.assigned not set.", \
-                          str(w[2].message))
+        self.assertIn("Exposures.category_id not set.", cm.output[2])
+        self.assertIn("Exposures.region_id not set.", cm.output[3])
+        self.assertIn("Exposures.assigned not set.", cm.output[4])
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""

@@ -5,7 +5,7 @@ Define Centroids class.
 __all__ = ['Centroids']
 
 import os
-import warnings
+import logging
 from array import array
 import numpy as np
 
@@ -13,6 +13,8 @@ from climada.hazard.centroids.source_excel import read as read_excel
 from climada.hazard.centroids.source_mat import read as read_mat
 import climada.util.checker as check
 from climada.hazard.centroids.tag import Tag
+
+LOGGER = logging.getLogger(__name__)
 
 class Centroids(object):
     """Definition of the irregular grid through coordinates named centroids.
@@ -44,15 +46,16 @@ class Centroids(object):
         --------
             This is an abstract class, it can't be instantiated.
         """
-        self.tag = Tag(file_name, description)
+        self.clear()
+        if file_name != '':
+            self.read_one(file_name, description)
+
+    def clear(self):
+        """Reinitialize attributes."""
+        self.tag = Tag()
         self.coord = np.array([]).reshape((0, 2))
         self.id = np.array([], np.int64)
-        self.region_id = np.array([], np.int64)
-        #self.mask = 0
-
-        # Load values from file_name if provided
-        if file_name != '':
-            self.load(file_name, description)
+        self.region_id = np.array([], np.int64)        
 
     def check(self):
         """Check instance attributes.
@@ -63,13 +66,14 @@ class Centroids(object):
         """
         num_exp = len(self.id)
         if np.unique(self.id).size != num_exp:
-            raise ValueError('There are centroids with the same identifier.')
+            LOGGER.error("There are centroids with the same identifier.")
+            raise ValueError
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
         check.array_optional(num_exp, self.region_id, \
                                  'Centroids.region_id')
 
-    def load(self, file_name, description=''):
-        """Read, check hazard (and its contained centroids).
+    def read_one(self, file_name, description=''):
+        """ Read input file.
 
         Parameters
         ----------
@@ -80,29 +84,14 @@ class Centroids(object):
         ------
             ValueError
         """
-        self.read(file_name, description)
-        self.check()
-
-    def read(self, file_name, description=''):
-        """ Read input file.
-
-        Parameters
-        ----------
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-
-        Raises
-        ------
-            ValueError, KeyError
-        """
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
             read_mat(self, file_name, description)
         elif (extension == '.xlsx') or (extension == '.xls'):
             read_excel(self, file_name, description)
         else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
+            LOGGER.error("Input file extension not supported: %s.", extension)
+            raise ValueError
 
     def append(self, centroids):
         """Append input centroids coordinates to current. Id is perserved if 
@@ -116,7 +105,6 @@ class Centroids(object):
         -------
             array
         """
-        self.check()
         centroids.check()
 
         if self.id.size == 0:
@@ -130,7 +118,7 @@ class Centroids(object):
         if (self.region_id.size == 0) | (centroids.region_id.size == 0):
             regions = False
             self.region_id = np.array([], np.int64)
-            warnings.warn("Centroids.region_id is not going to be set.")
+            LOGGER.warning("Centroids.region_id is not going to be set.")
 
         new_pos = array('L')
         new_id = array('L')

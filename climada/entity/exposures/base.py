@@ -5,7 +5,7 @@ Define Exposures.
 __all__ = ['Exposures']
 
 import os
-import warnings
+import logging
 import concurrent.futures
 import itertools
 import numpy as np
@@ -19,8 +19,10 @@ from climada.util.interpolation import Interpolator
 from climada.util.config import config
 import climada.util.plot as plot
 
+LOGGER = logging.getLogger(__name__)
+
 class Exposures(object):
-    """Contains the exposures values.
+    """Defines exposures attributes and basic methods.
 
     Attributes
     ----------
@@ -32,10 +34,10 @@ class Exposures(object):
             exposure. The first column is for latitudes and the second for
             longitudes (in degrees)
         value (np.array): a value for each exposure
-        deductible (np.array): deductible value for each exposure
-        cover (np.array): cover value for each exposure
         impact_id (np.array): impact function id corresponding to each
             exposure
+        deductible (np.array, default): deductible value for each exposure
+        cover (np.array, default): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
             (when defined)
         region_id (np.array, optional): region id for each exposure
@@ -52,7 +54,8 @@ class Exposures(object):
         ----------
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            description (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -67,14 +70,22 @@ class Exposures(object):
             >>> exp_city.id = np.array([11, 12, 13])
             >>> exp_city.check()
             Fill exposures with values and check consistency data.
+            >>> exp_city = Exposures('Zurich.mat')
+            Read exposures from Zurich.mat and checks consistency data.
         """
+        self.clear()
+        if file_name != '':
+            self.read(file_name, description)
+
+    def clear(self):
+        """Reinitialize attributes."""
         # Optional variables
         self.tag = Tag()
         self.ref_year = config["present_ref_year"]
         self.value_unit = 'NA'
         # Following values defined for each exposure
         # Obligatory variables
-        self.coord = np.array([], np.float64).reshape(0, 2) # 2d array (n_exp x 2(lat,lon))
+        self.coord = np.array([], np.float64).reshape(0, 2) # n_exp x (lat,lon)
         self.value = np.array([], np.float64)
         self.impact_id = np.array([], np.int64)
         self.id = np.array([], np.int64)
@@ -85,11 +96,7 @@ class Exposures(object):
         self.category_id = np.array([], np.int64)
         self.region_id = np.array([], np.int64)
         self.assigned = np.array([], np.int64)
-
-        # Load values from file_name if provided
-        if file_name != '':
-            self.load(file_name, description)
-
+        
     def assign(self, hazard, method=Interpolator.method[0], \
                dist=Interpolator.dist_def[0], threshold=100):
         """Compute the hazard centroids ids affecting to each exposure.
@@ -115,15 +122,6 @@ class Exposures(object):
         self.assigned = interp.interpol_index(hazard.centroids.coord, \
                                               self.coord, method, dist)
 
-    def geo_coverage(self):
-        """Get geographic coverage of all the exposures together.
-
-        Returns
-        -------
-            polygon of coordinates
-        """
-        # TODO
-
     def check(self):
         """Check instance attributes.
 
@@ -133,7 +131,8 @@ class Exposures(object):
         """
         num_exp = len(self.id)
         if np.unique(self.id).size != num_exp:
-            raise ValueError('There are exposures with the same identifier.')
+            LOGGER.error("There are exposures with the same identifier.")
+            raise ValueError
         self._check_obligatories(num_exp)
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
@@ -146,13 +145,14 @@ class Exposures(object):
                                     self.tag.file_name))[0])
 
     def read(self, files, descriptions=''):
-        """Read exposures in parallel through files.
+        """Read and check exposures in parallel through files.
 
         Parameters
         ----------
-            files (str or list(str)): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            descriptions (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -162,30 +162,16 @@ class Exposures(object):
         all_files = get_file_names(files)
         num_files = len(all_files)
         desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        self.clear()
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            for exp_part in executor.map(_wrap_read_one, \
+            for cnt, exp_part in enumerate(executor.map(_wrap_read_one, \
                     itertools.repeat(Exposures(), num_files), all_files, \
-                    desc_list):
+                    desc_list)):
+                LOGGER.info('Read file: %s', all_files[cnt])
                 self.append(exp_part)
 
-    def load(self, file_name, description=''):
-        """Read and check.
-
-        Parameters
-        ----------
-            file_name (str or list(str)): file name(s) or folder name 
-                containing the files to read
-            description (str or list(str), optional): description of the data
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.check()
-
     def append(self, exposures):
-        """Append variables of input Exposures to current Exposures.
+        """Check and append variables of input Exposures to current Exposures.
         
         Parameters
         ----------
@@ -195,7 +181,8 @@ class Exposures(object):
         ------
             ValueError
         """
-        self.check()
+
+        self._check_defaults(len(self.id))
         exposures.check()
         if self.id.size == 0:
             self.__dict__ = exposures.__dict__.copy()
@@ -203,16 +190,18 @@ class Exposures(object):
         
         self.tag.append(exposures.tag)
         if self.ref_year != exposures.ref_year:
-            raise ValueError('Append not possible. Different reference years.')
+            LOGGER.error("Append not possible. Different reference years.")
+            raise ValueError
         if (self.value_unit == 'NA') and (exposures.value_unit != 'NA'):
-            warnings.warn("Initial hazard does not have units.")
+            LOGGER.warning("Initial exposures does not have units.")
             self.value_unit = exposures.value_unit
         elif exposures.value_unit == 'NA':
-            warnings.warn("Appended hazard does not have units.")
+            LOGGER.warning("Appended exposures does not have units.")
         elif self.value_unit != exposures.value_unit:
-            raise ValueError("Append not possible. Different units: %s != %s."\
-                             % (self.value_unit, exposures.value_unit))
-            
+            LOGGER.error("Append not possible. Different units: %s != %s.", \
+                             self.value_unit, exposures.value_unit)
+            raise ValueError
+        
         self.coord = np.append(self.coord, exposures.coord, axis=0)
         self.value = np.append(self.value, exposures.value)
         self.impact_id = np.append(self.impact_id, exposures.impact_id)
@@ -233,8 +222,8 @@ class Exposures(object):
             self.id[dup_id] = new_id
             new_id += 1
             
-    def _read_one(self, file_name, description=''):
-        """Read input file.
+    def read_one(self, file_name, description=''):
+        """Read one file and fill attributes.
 
         Parameters
         ----------
@@ -251,10 +240,10 @@ class Exposures(object):
         elif (extension == '.xlsx') or (extension == '.xls'):
             read_excel(self, file_name, description)
         else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
         return self
-           
+     
     @staticmethod
     def _append_optional(ini, to_add):
         """Append variable only if both are filled."""
@@ -287,4 +276,4 @@ class Exposures(object):
         check.array_optional(num_exp, self.assigned, 'Exposures.assigned')
 
 def _wrap_read_one(exposures, file, description=''):
-    return exposures._read_one(file, description)
+    return exposures.read_one(file, description)

@@ -6,21 +6,42 @@ import unittest
 import numpy
 
 from climada.entity.measures.base import Measures, Action
+from climada.util.constants import ENT_TEMPLATE_XLS
 
+class TestConstructor(unittest.TestCase):
+    """Test impact function attributes."""
+    def test_attributes_all(self):
+        """All attributes are defined"""
+        meas = Measures()
+        act_1 = Action()
+        act_1.name = 'Seawall'
+        self.assertTrue(hasattr(meas, 'tag'))
+        self.assertTrue(hasattr(meas, '_data'))
+        self.assertTrue(hasattr(act_1, 'name'))
+        self.assertTrue(hasattr(act_1, 'color_rgb'))
+        self.assertTrue(hasattr(act_1, 'cost'))
+        self.assertTrue(hasattr(act_1, 'hazard_freq_cutoff'))
+        self.assertTrue(hasattr(act_1, 'hazard_intensity'))
+        self.assertTrue(hasattr(act_1, 'mdd_impact'))
+        self.assertTrue(hasattr(act_1, 'paa_impact'))
+        self.assertTrue(hasattr(act_1, 'risk_transf_attach'))
+        self.assertTrue(hasattr(act_1, 'risk_transf_cover'))
+        
 class TestContainer(unittest.TestCase):
     """Test Measures as container."""
     def test_add_wrong_error(self):
         """Test error is raised when wrong Vulnerability provided."""
         meas = Measures()
         act_1 = Action()
-        with self.assertRaises(ValueError) as error:
-            meas.add_action(act_1)
-        self.assertEqual("Input Action's name not set.", str(error.exception))
+        with self.assertLogs('climada.entity.measures.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.add_action(act_1)
+        self.assertIn("Input Action's name not set.", cm.output[0])
 
-        with self.assertRaises(ValueError) as error:
-            meas.add_action(45)
-        self.assertEqual("Input value is not of type Action.", \
-                         str(error.exception))
+        with self.assertLogs('climada.entity.measures.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.add_action(45)
+        self.assertIn("Input value is not of type Action.", cm.output[0])
 
     def test_remove_action_pass(self):
         """Test remove_action removes Action of Measures correcty."""
@@ -37,10 +58,9 @@ class TestContainer(unittest.TestCase):
         act_1 = Action()
         act_1.name = 'Mangrove'
         meas.add_action(act_1)
-        with self.assertRaises(ValueError) as error:
+        with self.assertLogs('climada.entity.measures.base', level='WARNING') as cm:
             meas.remove_action('Seawall')
-        self.assertEqual('No Action with name Seawall.', \
-                         str(error.exception))
+        self.assertIn('No Action with name Seawall.', cm.output[0])
 
     def test_get_names_pass(self):
         """Test get_names function."""
@@ -79,10 +99,7 @@ class TestContainer(unittest.TestCase):
         act_1 = Action()
         act_1.name = 'Seawall'
         meas.add_action(act_1)
-        with self.assertRaises(ValueError) as error:
-            meas.get_action('Mangrove')
-        self.assertEqual('No Action with name Mangrove.', \
-                         str(error.exception))
+        self.assertEqual([], meas.get_action('Mangrove'))
 
     def test_num_action_pass(self):
         """Test num_action function."""
@@ -100,8 +117,8 @@ class TestContainer(unittest.TestCase):
         meas.add_action(act_2)
         self.assertEqual(2, meas.num_action())
 
-class TestLoader(unittest.TestCase):
-    """Test reader functionality of the Measures class"""
+class TestChecker(unittest.TestCase):
+    """Test check functionality of the Measures class"""
 
     def test_check_wronginten_fail(self):
         """Wrong intensity definition"""
@@ -114,10 +131,11 @@ class TestLoader(unittest.TestCase):
         act_1.paa_impact = (1, 2)
         meas.add_action(act_1)
         
-        with self.assertRaises(ValueError) as error:
-            meas.check()
-        self.assertEqual('Invalid Action.hazard_intensity size: 2 != 3.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.check()
+        self.assertIn('Invalid Action.hazard_intensity size: 2 != 3.', \
+                         cm.output[0])
 
     def test_check_wrongColor_fail(self):
         """Wrong discount rates definition"""
@@ -130,10 +148,10 @@ class TestLoader(unittest.TestCase):
         act_1.hazard_intensity = (1, 2)
         meas.add_action(act_1)
         
-        with self.assertRaises(ValueError) as error:
-            meas.check()
-        self.assertEqual('Invalid Action.color_rgb size: 3 != 2.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.check()
+        self.assertIn('Invalid Action.color_rgb size: 3 != 2.', cm.output[0])
 
     def test_check_wrongMDD_fail(self):
         """Wrong discount rates definition"""
@@ -146,10 +164,10 @@ class TestLoader(unittest.TestCase):
         act_1.hazard_intensity = (1, 2)
         meas.add_action(act_1)
 
-        with self.assertRaises(ValueError) as error:
-            meas.check()
-            self.assertEqual('Measure.mdd_impact has wrong dimensions.', \
-                 str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.check()
+        self.assertIn('Action.mdd_impact has wrong dimensions.', cm.output[0])
 
     def test_check_wrongPAA_fail(self):
         """Wrong discount rates definition"""
@@ -162,10 +180,10 @@ class TestLoader(unittest.TestCase):
         act_1.hazard_intensity = (1, 2)
         meas.add_action(act_1)
         
-        with self.assertRaises(ValueError) as error:
-            meas.check()
-        self.assertEqual('Invalid Action.paa_impact size: 2 != 4.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                meas.check()
+        self.assertIn('Invalid Action.paa_impact size: 2 != 4.', cm.output[0])
 
     def test_check_name_fail(self):
         """Wrong discount rates definition"""
@@ -253,9 +271,22 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(meas.num_action(), 2)
         self.assertEqual(meas.get_names(), [act_1.name, act_2.name])
         self.assertEqual(meas.get_action(act_1.name).paa_impact, act_11.paa_impact)
-        
+
+class TestReadParallel(unittest.TestCase):
+    """Check read function with several files"""
+
+    def test_read_two_pass(self):
+        """Both files are readed and appended."""
+        descriptions = ['desc1','desc2']
+        meas = Measures([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
+        self.assertEqual(meas.tag.file_name, [ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS])
+        self.assertEqual(meas.tag.description, descriptions)
+        self.assertEqual(meas.num_action(), 7)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

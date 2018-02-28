@@ -22,7 +22,7 @@ class TestReader(unittest.TestCase):
         # Read demo mat file
         description = 'One single file.'
         centroids = Centroids()
-        centroids.read(HAZ_TEST_MAT, description)
+        centroids.read_one(HAZ_TEST_MAT, description)
 
         n_centroids = 100
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))

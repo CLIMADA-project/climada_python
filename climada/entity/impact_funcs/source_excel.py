@@ -2,6 +2,7 @@
 Define ImpactFuncs reader function from Excel file.
 """
 
+import logging
 import pandas
 
 from climada.entity.tag import Tag
@@ -18,6 +19,8 @@ COL_NAMES = {'func_id' : 'DamageFunID',
              'peril' : 'peril_ID'
             }
         
+LOGGER = logging.getLogger(__name__)
+
 def read(imp_funcs, file_name, description=''):
     """Read excel file and store variables in imp_funcs. """
     from climada.entity.impact_funcs.base import Vulnerability

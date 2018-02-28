@@ -5,6 +5,7 @@ Define Action class and Measures.
 __all__ = ['Action', 'Measures']
 
 import os
+import logging
 import concurrent.futures
 import itertools
 import numpy as np
@@ -14,6 +15,8 @@ from climada.entity.measures.source_mat import read as read_mat
 from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
+
+LOGGER = logging.getLogger(__name__)
 
 class Measures(object):
     """Contains measures of type Measures.
@@ -32,7 +35,8 @@ class Measures(object):
         ----------
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            description (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -52,13 +56,15 @@ class Measures(object):
             >>> meas.check()
             Fill measures with values and check consistency data.
         """
-        self.tag = Tag(file_name, description)
-        self._data = dict() # {name: Action()}
-
-        # Load values from file_name if provided
+        self.clear()
         if file_name != '':
-            self.load(file_name, description)
+            self.read(file_name, description)
 
+    def clear(self):
+        """Reinitialize attributes.""" 
+        self.tag = Tag()
+        self._data = dict() # {name: Action()}
+        
     def add_action(self, action):
         """Add an Action.
         
@@ -71,9 +77,11 @@ class Measures(object):
             ValueError
         """
         if not isinstance(action, Action):
-            raise ValueError("Input value is not of type Action.")
+            LOGGER.error("Input value is not of type Action.")
+            raise ValueError
         if action.name == 'NA':
-            raise ValueError("Input Action's name not set.")
+            LOGGER.error("Input Action's name not set.")
+            raise ValueError
         self._data[action.name] = action
 
     def remove_action(self, name=None):
@@ -92,7 +100,7 @@ class Measures(object):
             try:
                 del self._data[name]
             except KeyError:
-                raise ValueError('No Action with name %s.' % name)
+                LOGGER.warning('No Action with name %s.', name)
         else:
             self._data = dict()
 
@@ -104,18 +112,13 @@ class Measures(object):
 
         Returns
         -------
-            Action (if name)
-            list(Action) (if None)
-
-        Raises
-        ------
-            ValueError    
+            list(Action)
         """
         if name is not None:
             try:
                 return self._data[name]
             except KeyError:
-                raise ValueError('No Action with name %s.' % name)
+                return list()
         else:
             return list(self._data.values())
 
@@ -135,19 +138,20 @@ class Measures(object):
             ValueError
         """
         for act_name, act in self._data.items():
-            if act_name != act.name:
+            if (act_name != act.name) | (act.name == 'NA'):
                 raise ValueError('Wrong Action.name: %s != %s' %\
                                 (act_name, act.name))
             act.check()
 
     def read(self, files, descriptions=''):
-        """Read exposures in parallel through files.
+        """Read and check measures in parallel through files.
 
         Parameters
         ----------
-            files (str or list(str)): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
-            descriptions (str or list(str), optional): description of the data
+            description (str or list(str), optional): one description of the
+                data or a description of each data file
 
         Raises
         ------
@@ -157,27 +161,13 @@ class Measures(object):
         all_files = get_file_names(files)
         num_files = len(all_files)
         desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        self.clear()        
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            for exp_part in executor.map(_wrap_read_one, \
+            for cnt, meas_part in enumerate(executor.map(_wrap_read_one, \
                     itertools.repeat(Measures(), num_files), all_files, \
-                    desc_list):
-                self.append(exp_part)
-
-    def load(self, file_name, description=''):
-        """Read and check.
-
-        Parameters
-        ----------
-            file_name (str or list(str)): file name(s) or folder name 
-                containing the files to read
-            description (str or list(str), optional): description of the data
-
-        Raises
-        ------
-            ValueError
-        """
-        self.read(file_name, description)
-        self.check()
+                    desc_list)):
+                LOGGER.info('Read file: %s', all_files[cnt])
+                self.append(meas_part)
 
     def append(self, measures):
         """Append actions of input Measures to current Measures. Overvrite 
@@ -191,7 +181,6 @@ class Measures(object):
         ------
             ValueError
         """
-        self.check()
         measures.check()
         if self.num_action() == 0:
             self.__dict__ = measures.__dict__.copy()
@@ -203,7 +192,7 @@ class Measures(object):
         for action in new_act:
             self.add_action(action)
 
-    def _read_one(self, file_name, description=''):
+    def read_one(self, file_name, description=''):
         """Read input file.
 
         Parameters
@@ -221,12 +210,12 @@ class Measures(object):
         elif (extension == '.xlsx') or (extension == '.xls'):
             read_excel(self, file_name, description)
         else:
-            raise TypeError('Input file extension not supported: %s.' % \
-                            extension)
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
         return self
         
 def _wrap_read_one(disc_rates, file, description=''):
-    return disc_rates._read_one(file, description)
+    return disc_rates.read_one(file, description)
 
 class Action(object):
     """Contains the definition of one Action.

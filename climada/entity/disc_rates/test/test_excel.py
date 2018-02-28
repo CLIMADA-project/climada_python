@@ -10,7 +10,7 @@ from climada.entity.disc_rates import source_excel as excel
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
-    """Test reader functionality of the DiscRatesExcel class"""
+    """Test excel reader for discount rates"""
 
     def tearDown(self):
         excel.COL_NAMES = {'year' : 'year',
@@ -43,8 +43,7 @@ class TestReader(unittest.TestCase):
     def test_template_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
-        disc_rate = DiscRates()
-        disc_rate.read(ENT_TEMPLATE_XLS)
+        disc_rate = DiscRates(ENT_TEMPLATE_XLS)
 
         # Check results
         n_rates = 102

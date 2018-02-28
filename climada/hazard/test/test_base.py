@@ -34,69 +34,75 @@ class TestLoader(unittest.TestCase):
 
     def test_constructor_wrong_fail(self):
         """Fail if no hazard type provided in constructor when file name."""
-        with self.assertRaises(ValueError) as error:
-            Hazard(HAZ_DEMO_XLS)
-        self.assertEqual('Provide hazard type acronym.', str(error.exception))
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                Hazard(HAZ_DEMO_XLS)
+        self.assertIn('Provide hazard type acronym.', cm.output[0])
 
     def test_check_wrongCentroids_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.centroids.region_id = np.array([1, 2, 3, 4])
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('Invalid Centroids.region_id size: 2 != 4.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Centroids.region_id size: 2 != 4.', cm.output[0])
 
     def test_check_wrongFreq_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.frequency = np.array([1, 2])
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('Invalid Hazard.frequency size: 3 != 2.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.frequency size: 3 != 2.', \
+                         cm.output[0])
 
     def test_check_wrongInten_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.intensity = sparse.csr_matrix([[1, 2], [1, 2]])
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('Invalid Hazard.intensity row size: 3 != 2.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.', \
+                         cm.output[0])
 
     def test_check_wrongFrac_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.fraction = sparse.csr_matrix([[1], [1], [1]])
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('Invalid Hazard.fraction column size: 2 != 1.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.', \
+                         cm.output[0])
 
     def test_check_wrongEvName_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.event_name = ['M']
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('Invalid Hazard.event_name size: 3 != 1.', \
-                         str(error.exception))
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.event_name size: 3 != 1.', \
+                         cm.output[0])
 
     def test_check_wrongId_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.event_id = np.array([1, 2, 1])
 
-        with self.assertRaises(ValueError) as error:
-            haz.check()
-        self.assertEqual('There are events with the same identifier.', \
-                         str(error.exception))
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('There are events with the same identifier.', \
+                         cm.output[0])
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
@@ -433,20 +439,22 @@ class TestAppend(unittest.TestCase):
         haz1 = self.dummy_hazard()
         haz2 = self.dummy_hazard()
         haz2.tag = TagHazard('file2.mat', 'WS', 'Description 2')
-        with self.assertRaises(ValueError) as error:
-            haz1.append(haz2)
-        self.assertEqual("Hazards of different type can't be appended: "\
-                         + "TC != WS.", str(error.exception))
+        with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz1.append(haz2)
+        self.assertIn("Hazards of different type can't be appended: "\
+                         + "TC != WS.", cm.output[0])
 
     def test_incompatible_units_fail(self):
         """Raise error when append two incompatible hazards."""
         haz1 = self.dummy_hazard()
         haz2 = self.dummy_hazard()
         haz2.units = 'km/h'
-        with self.assertRaises(ValueError) as error:
-            haz1.append(haz2)
-        self.assertEqual("Hazards with different units can't be appended: "\
-            + 'm/s != km/h.', str(error.exception))
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz1.append(haz2)
+        self.assertIn("Hazards with different units can't be appended: "\
+            + 'm/s != km/h.', cm.output[0])
 
 class TestReadParallel(unittest.TestCase):
     """Test loading funcions from the Hazard class"""

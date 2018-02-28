@@ -10,7 +10,7 @@ from climada.entity.disc_rates.base import DiscRates
 from climada.util.constants import ENT_DEMO_MAT
 
 class TestReader(unittest.TestCase):
-    """Test reader functionality of the DiscRatesMat class"""
+    """Test mat reader for discount rates"""
 
     def tearDown(self):
         mat.VAR_NAMES = {'year' : 'year',

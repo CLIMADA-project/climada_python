@@ -2,6 +2,7 @@
 Define ImpactFuncs reader function from MATLAB file.
 """
 
+import logging
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
@@ -20,6 +21,8 @@ VAR_NAMES = {'fun_id' : 'DamageFunID',
              'unit' : 'Intensity_unit',
              'peril' : 'peril_ID'
             }
+
+LOGGER = logging.getLogger(__name__)
 
 def read(imp_funcs, file_name, description=''):
     """Read MATLAB file and store variables in imp_funcs. """
@@ -89,7 +92,8 @@ def get_imp_fun_hazard(imp, idxs, file_name):
         if prev_haz == "":
             prev_haz = cur_haz
         elif prev_haz != cur_haz:
-            raise ValueError('Impact function with two different perils.')
+            LOGGER.error("Impact function with two different perils.")
+            raise ValueError
     return prev_haz
 
 def get_imp_fun_id(imp, idxs):
@@ -102,7 +106,8 @@ def get_imp_fun_id(imp, idxs):
     """
     fun_id = np.unique(np.take(imp[VAR_NAMES['fun_id']], idxs))
     if len(fun_id) != 1:
-        raise ValueError('Impact function with two different IDs.')
+        LOGGER.error("Impact function with two different IDs.")
+        raise ValueError
     else:
         return int(fun_id)
 
@@ -121,6 +126,6 @@ def get_imp_fun_unit(imp, idxs, file_name):
         if prev_unit == "":
             prev_unit = cur_unit
         elif prev_unit != cur_unit:
-            raise ValueError('Impact function with two different \
-                             intensity units.')
+            LOGGER.error("Impact function with two different intensity units.")
+            raise ValueError
     return prev_unit

@@ -84,6 +84,6 @@ def read_centroids(hazard, centroids=None):
         hazard.centroids = Centroids()
         hazard.centroids.field_name = 'hazard'
         hazard.centroids.var_names = VAR_CENT
-        hazard.centroids.read(hazard.tag.file_name, hazard.tag.description)
+        hazard.centroids.read_one(hazard.tag.file_name, hazard.tag.description)
     else:
         hazard.centroids = centroids

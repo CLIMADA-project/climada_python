@@ -2,6 +2,7 @@
 Define Exposures reader function from an Excel file.
 """
 
+import logging
 from xlrd import XLRDError
 import numpy as np
 import pandas
@@ -27,6 +28,8 @@ COL_NAMES = {'lat' : 'Latitude',
              'ref': 'reference_year',
              'item' : 'Item'
             }
+
+LOGGER = logging.getLogger(__name__)
 
 def read(exposures, file_name, description=''):
     """Read excel file and store variables in exposures. """
@@ -76,8 +79,8 @@ def _read_optional(exposures, dfr, file_name):
     if not isinstance(exposures.value_unit, str):
         # Check all exposures have the same unit
         if len(np.unique(exposures.value_unit)) is not 1:
-            raise ValueError('Different value units provided for \
-                             exposures.')
+            LOGGER.error("Different value units provided for exposures.")
+            raise ValueError
         exposures.value_unit = exposures.value_unit[0]
     exposures.assigned = _parse_optional(dfr, exposures.assigned, \
                                          COL_NAMES['ass'])
