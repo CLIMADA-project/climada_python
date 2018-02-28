@@ -7,6 +7,7 @@ __all__ = ['to_str_list',
           ]
 
 import os
+import logging
 
 def to_str_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
@@ -22,6 +23,7 @@ def to_str_list(num_exp, values, val_name):
     -------
         list
     """
+    val_list = list()
     if isinstance(values, list):
         if len(values) == num_exp:
             val_list = values
@@ -29,13 +31,11 @@ def to_str_list(num_exp, values, val_name):
             val_list = list()
             val_list += num_exp * [values[0]]
         else:
-            raise ValueError('Provide one or %s %s.' % \
-                             (num_exp, val_name))
+            logger = logging.getLogger(__name__)
+            logger.error('Provide one or %s %s.', num_exp, val_name)
     else:
-        val_list = list()
-        val_list += num_exp * [values] 
+        val_list += num_exp * [values]
     return val_list
-
 
 def get_file_names(file_name):
     """Return list of files contained.

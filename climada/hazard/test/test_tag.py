@@ -28,10 +28,11 @@ class TestTag(unittest.TestCase):
         """Appends an other tag correctly."""
         tag1 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
         tag2 = TagHazard('file_name2.mat', 'EQ', 'dummy file 2')
-        with self.assertRaises(ValueError) as error:
-            tag1.append(tag2)
-        self.assertEqual("Hazards of different type can't be appended: " \
-                         + "TC != EQ.", str(error.exception))
+        with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                tag1.append(tag2)
+        self.assertIn("Hazards of different type can't be appended: " \
+                         + "TC != EQ.", cm.output[0])
 
     def test_equal_same(self):
         """Appends an other tag correctly."""

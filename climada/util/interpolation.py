@@ -4,10 +4,13 @@ Define Interpolator class.
 
 __all__ = ['Interpolator']
 
-import warnings
+import logging
 import numpy as np
+
 from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS
 from sklearn.neighbors import BallTree
+
+LOGGER = logging.getLogger(__name__)
 
 class Interpolator(object):
     """Contains different interpolation methods and distances.
@@ -49,10 +52,6 @@ class Interpolator(object):
         -------
             array with so many rows as coordinates containing the centroids
                 indexes
-
-        Raises
-        ------
-            ValueError
         """
         if (method == self.method[0]) & (distance == self.dist_def[0]):
             # Compute for each coordinate the closest centroid
@@ -63,9 +62,8 @@ class Interpolator(object):
             return self.index_nn_haversine(centroids, coordinates)
         else:
             # Raise error: method or distance not supported
-            raise ValueError('Interpolation using ' + method +
-                             ' with distance ' + distance +
-                             ' is not supported.')
+            LOGGER.error('Interpolation using ' + method + \
+                ' with distance ' + distance + ' is not supported.')
 
     def index_nn_aprox(self, centroids, coordinates):
         """ Compute the nearest centroid for each coordinate using the
@@ -101,10 +99,10 @@ class Interpolator(object):
             # Raise a warning if the minimum distance is greater than the
             # threshold and set an unvalid index -1
             if np.sqrt(dist.min())*ONE_LAT_KM > self.threshold:
-                warnings.warn('Distance to closest centroid for coordinate' +\
+                LOGGER.warning('Distance to closest centroid for coordinate' +\
                              ' (' + str(coordinates[idx[icoord]][0]) + ',' + \
                              str(coordinates[idx[icoord]][1]) + ') is ' + \
-                             str(np.sqrt(dist.min())*ONE_LAT_KM))
+                             str(np.sqrt(dist.min()) * ONE_LAT_KM))
                 min_idx = -1
 
             # Assign found centroid index to all the same coordinates
@@ -144,7 +142,7 @@ class Interpolator(object):
         # threshold and set an unvalid index -1
         num_warn = np.sum(dist*EARTH_RADIUS > self.threshold)
         if num_warn > 0:
-            warnings.warn('Distance to closest centroid is greater than ' +\
+            LOGGER.warning('Distance to closest centroid is greater than ' +\
                           str(self.threshold) + ' for ' + str(num_warn) +\
                           'coordinates.')
             assigned[dist*EARTH_RADIUS > self.threshold] = -1

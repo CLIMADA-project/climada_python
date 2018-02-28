@@ -5,12 +5,14 @@ Define Impact class.
 __all__ = ['ImpactFreqCurve', 'Impact']
 
 import os
-import warnings
+import logging
 import numpy as np
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 import climada.util.plot as plot
+
+LOGGER = logging.getLogger(__name__)
 
 class ImpactFreqCurve(object):
     """ Impact exceedence frequency curve.
@@ -49,8 +51,8 @@ class ImpactFreqCurve(object):
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         if self.unit != ifc.unit:
-            warnings.warn("Comparing between two different units: %s and %s" %\
-                         (self.unit, ifc.unit))
+            LOGGER.warning("Comparing between two different units: %s and %s",\
+                         self.unit, ifc.unit)
         graph = plot.Graph2D('', 2)
         graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
         graph.add_curve(self.return_per, self.impact, 'b', self.label)
@@ -144,7 +146,7 @@ class Impact(object):
                                           exposures.assigned >= 0))[0]
         # Warning if no exposures selected
         if exp_idx.size == 0:
-            warnings.warn('No affected exposures.')
+            LOGGER.warning("No affected exposures.")
 
         # Get hazard type
         haz_type = hazard.tag.haz_type

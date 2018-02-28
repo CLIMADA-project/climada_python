@@ -3,7 +3,6 @@ Test Interpolation class.
 """
 
 import unittest
-import warnings
 import numpy as np
 
 from climada.entity.exposures.base import Exposures
@@ -50,15 +49,19 @@ class TestInterpIndex(unittest.TestCase):
     def test_wrong_method_fail(self):
         ''' Check exception is thrown when wrong method is given'''
         interp = Interpolator()
-        with self.assertRaises(ValueError):
+        with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
+        self.assertIn('Interpolation using method' + \
+            ' with distance approx is not supported.', cm.output[0])
 
     def test_wrong_distance_fail(self):
         ''' Check exception is thrown when wrong distance is given'''
         interp = Interpolator()
-        with self.assertRaises(ValueError):
+        with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), \
                                   distance='distance')
+        self.assertIn('Interpolation using NN' + \
+            ' with distance distance is not supported.', cm.output[0])
 
     def test_wrong_centroid_fail(self):
         ''' Check exception is thrown when centroids missing one dimension'''
@@ -67,8 +70,7 @@ class TestInterpIndex(unittest.TestCase):
             interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)))
 
     def test_wrong_coord_fail(self):
-        ''' Check exception is thrown when coordinates missing one\
-        dimension'''
+        ''' Check exception is thrown when coordinates missing one dimension'''
         interp = Interpolator()
         with self.assertRaises(IndexError):
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)))
@@ -103,15 +105,12 @@ class TestNN(unittest.TestCase):
         # Interpolate with lower threshold to raise warnings
         interp = Interpolator()
         interp.threshold = 50
-        with warnings.catch_warnings(record=True) as warns:
-            # Cause all warnings to always be triggered.
-            warnings.simplefilter("always")
-            # Trigger a warning.
+        neighbors = interp.interpol_index(centroids.coord,
+                                  exposures.coord, 'NN', dist)
+        with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
             neighbors = interp.interpol_index(centroids.coord,
                                               exposures.coord, 'NN', dist)
-            # Verify some things
-            assert "Distance to closest centroid" in \
-            str(warns[-1].message)
+        self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_50()
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))

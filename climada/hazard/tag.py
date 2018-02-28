@@ -2,7 +2,11 @@
 Define Tag class.
 """
 
+import logging
+
 __all__ = ['Tag']
+
+LOGGER = logging.getLogger(__name__)
 
 class Tag(object):
     """Definition of one hazard tag.
@@ -33,8 +37,9 @@ class Tag(object):
         if self.haz_type == 'NA':
             self.haz_type = tag.haz_type
         if tag.haz_type != self.haz_type:
-            raise ValueError("Hazards of different type can't be appended: "\
-                             + "%s != %s." % (self.haz_type, tag.haz_type))
+            LOGGER.error("Hazards of different type can't be appended:"\
+                 + " %s != %s.", self.haz_type, tag.haz_type)
+            raise ValueError
 
         # add file name if not present in tag
         if self.file_name == '':

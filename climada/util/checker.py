@@ -8,7 +8,9 @@ __all__ = ['size',
            'array_default'
           ]
 
-import warnings
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
@@ -17,12 +19,14 @@ def size(exp_len, var, var_name):
         ------
             ValueError
     """
-    try:
+    try:        
         if exp_len != len(var):
-            raise ValueError('Invalid %s size: %s != %s.' %
-                             (var_name, str(exp_len), str(len(var))))
+            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len, \
+                         len(var))
+            raise ValueError
     except TypeError:
-        raise ValueError('%s has wrong dimensions.' % var_name)
+        LOGGER.error("%s has wrong dimensions.", var_name)
+        raise ValueError
 
 def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
@@ -33,13 +37,16 @@ def shape(exp_row, exp_col, var, var_name):
     """
     try:
         if exp_row != var.shape[0]:
-            raise ValueError('Invalid %s row size: %s != %s.' %
-                             (var_name, str(exp_row), str(var.shape[0])))
+            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,\
+                         var.shape[0])
+            raise ValueError
         if exp_col != var.shape[1]:
-            raise ValueError('Invalid %s column size: %s != %s.' %
-                             (var_name, str(exp_col), str(var.shape[1])))
+            LOGGER.error("Invalid %s column size: %s != %s.", var_name, \
+                         exp_col, var.shape[1])
+            raise ValueError
     except TypeError:
-        raise ValueError('%s has wrong dimensions.' % var_name)
+        LOGGER.error("%s has wrong dimensions.", var_name)
+        raise ValueError
 
 
 def array_optional(exp_len, var, var_name):
@@ -56,7 +63,7 @@ def array_optional(exp_len, var, var_name):
             ValueError
     """
     if len(var) == 0:
-        warnings.warn("%s not set. " % var_name)
+        LOGGER.warning("%s not set. ", var_name)
     else:
         size(exp_len, var, var_name)
 
@@ -80,7 +87,7 @@ def array_default(exp_len, var, var_name, def_val):
     """
     res = var
     if len(var) == 0:
-        warnings.warn("%s not set. Default values set." % var_name)
+        LOGGER.warning("%s not set. Default values set.", var_name)
         res = def_val
     else:
         size(exp_len, var, var_name)

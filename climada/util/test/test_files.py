@@ -37,9 +37,9 @@ class TestToStrList(unittest.TestCase):
         values = ['1', '2']
         val_name = 'values'
         
-        with self.assertRaises(ValueError) as error:
+        with self.assertLogs('climada.util.files_handler', level='ERROR') as cm:
             to_str_list(num_exp, values, val_name)
-        self.assertEqual("Provide one or 3 values.", str(error.exception))
+        self.assertIn("Provide one or 3 values.", cm.output[0])
         
 class TestGetFileNames(unittest.TestCase):
     """Test get_file_names function"""

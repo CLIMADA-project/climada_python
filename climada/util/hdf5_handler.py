@@ -9,6 +9,7 @@ __all__ = ['read',
            'get_sparse_csr_mat'
           ]
 
+import logging
 from scipy import sparse
 import numpy as np
 import h5py
@@ -56,9 +57,9 @@ def read(file_name, with_refs=False):
         contents = get_group(file)
         file.close()
         return contents
-    except Exception:
-        print('Error reading ' + file_name)
-        raise
+    except OSError:
+        logger = logging.getLogger(__name__)
+        logger.error('File not found: %s', file_name)
 
 def get_string(array):
     """Form string from input array of unisgned integers.
