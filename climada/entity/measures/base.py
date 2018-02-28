@@ -170,8 +170,8 @@ class Measures(object):
                 self.append(meas_part)
 
     def append(self, measures):
-        """Append actions of input Measures to current Measures. Overvrite 
-        actions if same name.
+        """Check and append actions of input Measures to current Measures. 
+        Overwrite actions if same name.
         
         Parameters
         ----------

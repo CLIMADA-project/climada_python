@@ -258,8 +258,8 @@ class ImpactFuncs(object):
                 self.append(imp_part)
 
     def append(self, impact_funcs):
-        """Append vulnerabilities of input ImpactFuncs to current ImpactFuncs.
-        Overvrite vulnerability if same id.
+        """Check and append vulnerabilities of input ImpactFuncs to current
+        ImpactFuncs. Overwrite vulnerability if same id.
         
         Parameters
         ----------

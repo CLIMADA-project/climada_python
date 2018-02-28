@@ -102,7 +102,8 @@ class Hazard(object):
                             list(self.event_id))
 
     def read(self, files, haz_type, description='', centroids=None):
-        """Read hazard, and centroids if not provided. Parallel through files.
+        """Read and check hazard, and centroids if not provided. Parallel 
+        through files.
 
         Parameters
         ----------
@@ -231,8 +232,8 @@ class Hazard(object):
         # TODO
 
     def append(self, hazard):
-        """Append variables of input Hazard to current Hazard. Repeated
-        events and centroids will be overwritten.
+        """Check and append variables of input Hazard to current Hazard. 
+        Repeated events and centroids will be overwritten.
         
         Parameters
         ----------

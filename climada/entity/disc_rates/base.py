@@ -101,7 +101,7 @@ class DiscRates(object):
                 self.append(disc_part)
 
     def append(self, disc_rates):
-        """Check and append discount rates to current DiscRates. Overvrite 
+        """Check and append discount rates to current DiscRates. Overwrite 
         discount rate if same year.
         
         Parameters
