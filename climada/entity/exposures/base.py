@@ -16,7 +16,7 @@ from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.interpolation import Interpolator
-from climada.util.config import config
+from climada.util.config import CONFIG
 import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class Exposures(object):
         deductible (np.array, default): deductible value for each exposure
         cover (np.array, default): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
-            (when defined)
+ls            (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
         assigned (np.array, optional): for a given hazard, id of the
@@ -81,7 +81,7 @@ class Exposures(object):
         """Reinitialize attributes."""
         # Optional variables
         self.tag = Tag()
-        self.ref_year = config["present_ref_year"]
+        self.ref_year = CONFIG["present_ref_year"]
         self.value_unit = 'NA'
         # Following values defined for each exposure
         # Obligatory variables

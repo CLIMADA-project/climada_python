@@ -58,7 +58,7 @@ class TestGetFileNames(unittest.TestCase):
     def test_folder_contents(self):
         """If input is one folder name, return a list with containg files. 
         Folder names are not contained."""
-        file_name = DATA_DIR + "demo/"
+        file_name = os.path.join(DATA_DIR, 'demo')
         out = get_file_names(file_name)
         for file in out:
             self.assertEqual('.', os.path.splitext(file)[1][0])

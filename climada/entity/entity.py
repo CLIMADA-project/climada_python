@@ -10,7 +10,7 @@ from climada.entity.impact_funcs.base  import ImpactFuncs
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.base import Measures
 from climada.entity.exposures.base import Exposures
-from climada.util.config import ENT_DEF_XLS
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class Entity(object):
         def_file (str): name of the xls file used as default source data
     """
 
-    def_file = ENT_DEF_XLS
+    def_file = CONFIG['local_data']['entity_def']
 
     def __init__(self, file_name=None, description=None):
         """Fill values from file. Default file used when no file provided.
@@ -45,12 +45,12 @@ class Entity(object):
         Examples
         ---------
             >>> Entity()
-            Builds an Entity with the values obtained from ENT_DEF_XLS file.
+            Builds Entity with values obtained from configurable entity_def.
             >>> Entity(filename)
-            Builds an Entity with the values obtained from filename file.
+            Builds Entity with the values obtained from filename file.
             >>> Entity(impact_funcs=myimpact_funcs, measures=mymeasures)
-            Builds an Entity with exposures and discount rates from
-            ENT_DEF_XLS file, and the given impact functions and measures.
+            Builds Entity with exposures and discount rates from configurable
+            entity_def file, and the given impact functions and measures.
         """
         if file_name is None:
             self.exposures = Exposures(self.def_file)

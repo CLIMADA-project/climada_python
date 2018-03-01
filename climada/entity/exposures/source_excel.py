@@ -8,7 +8,7 @@ import numpy as np
 import pandas
 
 from climada.entity.tag import Tag
-from climada.util.config import config
+from climada.util.config import CONFIG
 
 # name of excel sheet containing the data
 SHEET_NAMES = {'exp': 'assets',
@@ -96,7 +96,7 @@ def _parse_ref_year(file_name):
         dfr.index = dfr[COL_NAMES['item']]
         ref_year = dfr.loc[COL_NAMES['ref']]['name']
     except (XLRDError, KeyError):
-        ref_year = config['present_ref_year']
+        ref_year = CONFIG['present_ref_year']
     return ref_year
 
 def _parse_optional(dfr, var, var_name):

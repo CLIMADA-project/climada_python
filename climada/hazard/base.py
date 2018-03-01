@@ -79,27 +79,14 @@ class Hazard(object):
         self.fraction = sparse.csr_matrix([])  # events x centroids
 
     def check(self):
-        """ Checks if the attributes contain consistent data.
+        """ Check if the attributes contain consistent data.
 
         Raises
         ------
             ValueError
         """
         self.centroids.check()
-        num_ev = len(self.event_id)
-        num_cen = len(self.centroids.id)
-        if np.unique(self.event_id).size != num_ev:
-            LOGGER.error("There are events with the same identifier.")
-            raise ValueError
-        check.size(num_ev, self.frequency, 'Hazard.frequency')
-        if num_ev == 0 and num_cen == 0:
-            check.shape(1, num_cen, self.intensity, 'Hazard.intensity')
-            check.shape(1, num_cen, self.fraction, 'Hazard.fraction')
-        else:
-            check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
-            check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
-        check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
-                            list(self.event_id))
+        self._check_events()
 
     def read(self, files, haz_type, description='', centroids=None):
         """Read and check hazard, and centroids if not provided. Parallel 
@@ -243,7 +230,7 @@ class Hazard(object):
         ------
             ValueError
         """
-        hazard.check()
+        hazard._check_events()
         if self.event_id.size == 0:
             self.__dict__ = hazard.__dict__.copy()
             return
@@ -325,6 +312,28 @@ class Hazard(object):
             LOGGER.error("Input file extension not supported: %s.", extension)
             raise ValueError
         return self
+            
+    def _check_events(self):
+        """ Check that all attributes but centroids contain consistent data.
+
+        Raises
+        ------
+            ValueError
+        """
+        num_ev = len(self.event_id)
+        num_cen = len(self.centroids.id)
+        if np.unique(self.event_id).size != num_ev:
+            LOGGER.error("There are events with the same identifier.")
+            raise ValueError
+        check.size(num_ev, self.frequency, 'Hazard.frequency')
+        if num_ev == 0 and num_cen == 0:
+            check.shape(1, num_cen, self.intensity, 'Hazard.intensity')
+            check.shape(1, num_cen, self.fraction, 'Hazard.fraction')
+        else:
+            check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
+            check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
+        check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
+                            list(self.event_id))
     
     def _append_events(self, hazard, new_ev_pos, new_name, new_id):
         """Iterate over hazard events and collect their new position"""
