@@ -18,7 +18,8 @@ from climada.util.constants import WORKING_DIR
 def check_conf():
     """Check configuration files presence and generate folders if needed."""
     for key, path in CONFIG['local_data'].items():
-        abspath = os.path.abspath(os.path.expanduser(path))
+        abspath = os.path.abspath(os.path.join(WORKING_DIR, \
+                                               os.path.expanduser(path)))
         CONFIG['local_data'][key] = abspath
         if "_dir" in key:
             logging.debug('CONFIG:%s: Checking presence of %s ...', key, \
