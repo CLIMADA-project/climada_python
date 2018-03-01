@@ -154,9 +154,9 @@ class Hazard(object):
             return self._event_plot(event, self.intensity, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.intensity, col_label)
-        else:
-            LOGGER.warning("Provide one event id or one centroid id.")
-            return
+        
+        LOGGER.error("Provide one event id or one centroid id.")
+        raise ValueError
 
     def plot_fraction(self, event=None, centr_id=None):
         """Plot fraction values for a selected event or centroid.
@@ -188,9 +188,9 @@ class Hazard(object):
             return self._event_plot(event, self.fraction, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.fraction, col_label)
-        else:
-            LOGGER.warning("Provide one event id or one centroid id.")
-            return
+        
+        LOGGER.error("Provide one event id or one centroid id.")
+        raise ValueError
 
     def event_name_to_id(self, event_name):
         """"Get an event id from its name.
@@ -208,11 +208,10 @@ class Hazard(object):
             ValueError
         """
         try:
-            event_id = self.event_id[self.event_name.index(event_name)]
-            return event_id
+            return self.event_id[self.event_name.index(event_name)]
         except (ValueError, IndexError):
-            LOGGER.warning("No event with name: %s", event_name)
-            return
+            LOGGER.error("No event with name: %s", event_name)
+            raise ValueError
 
     def calc_future(self, conf):
         """ Compute the future hazard following the configuration """
@@ -382,8 +381,8 @@ class Hazard(object):
             try:
                 event_pos = np.where(self.event_id == event_id)[0][0]
             except IndexError:
-                LOGGER.warning('Wrong event id: %s.', event_id)
-                return
+                LOGGER.error('Wrong event id: %s.', event_id)
+                raise ValueError from IndexError
             array_val = mat_var[event_pos, :].todense().transpose()
             title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
                                       self.event_name[event_pos])
@@ -423,8 +422,8 @@ class Hazard(object):
             try:
                 centr_pos = np.where(self.centroids.id == centr_id)[0][0]
             except IndexError:
-                LOGGER.warning('Wrong centroid id: %s.', centr_id)
-                return
+                LOGGER.error('Wrong centroid id: %s.', centr_id)
+                raise ValueError from IndexError
             array_val = mat_var[:, centr_pos].todense()
             title = 'Centroid ID %s: (%s, %s)' % (str(centr_id), \
                     self.centroids.coord[centr_pos, 0], \
