@@ -2,7 +2,7 @@
 Define constants.
 """
 
-__all__ = ['WORKING_DIR',
+__all__ = ['SOURCE_DIR',
            'DATA_DIR',
            'HAZ_DEMO_XLS',
            'HAZ_DEMO_MAT',
@@ -15,12 +15,12 @@ __all__ = ['WORKING_DIR',
 
 import os
 
-# working directory
-WORKING_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), \
-                                           os.pardir, os.pardir))
+# climada directory
+SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), \
+                                           os.pardir))
 
 # folder containing the data
-DATA_DIR = os.path.abspath(os.path.join(WORKING_DIR, 'data'))
+DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'test', 'data'))
 
 # Files containg data used as demo and unit testing
 HAZ_DEMO_XLS = os.path.join(DATA_DIR, 'demo', 'Excel_hazard.xlsx')

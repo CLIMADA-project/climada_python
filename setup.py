@@ -17,10 +17,14 @@ def package_files(directory):
     paths = []
     for (path, directories, filenames) in os.walk(directory):
         for filename in filenames:
-            paths.append(os.path.join('..', path, filename))
+            if filename != '.DS_Store':
+                paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files = package_files('./data')
+extra_files = package_files(here + '/climada/test/data/')
+# Add configuration files
+extra_files.append(here + '/climada/conf/defaults.conf')
+extra_files.append(here + '/climada/conf/logging.conf')
 
 setup(
     name='climada',
@@ -56,11 +60,7 @@ setup(
                       'h5py',
                       'scipy',
                       'scikit-learn',
-                      'xlrd',
-                      'xmlrunner',
-                      'coverage',
-                      'pylint',
-                      'spyder'
+                      'xlrd'
                      ], 
 
     package_data={'': extra_files },  

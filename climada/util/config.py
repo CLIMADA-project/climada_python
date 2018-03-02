@@ -13,30 +13,29 @@ import logging
 import logging.config
 from pkg_resources import Requirement, resource_filename
 
-from climada.util.constants import WORKING_DIR
+from climada.util.constants import SOURCE_DIR, DATA_DIR
+
+WORKING_DIR = os.getcwd()
+logging.basicConfig(level=logging.DEBUG)
 
 def check_conf():
     """Check configuration files presence and generate folders if needed."""
     for key, path in CONFIG['local_data'].items():
-        abspath = os.path.abspath(os.path.join(WORKING_DIR, \
-                                               os.path.expanduser(path)))
+        abspath = path
+        if not os.path.isabs(abspath):
+            abspath = os.path.abspath(os.path.join(WORKING_DIR, \
+                                                   os.path.expanduser(path)))    
+        if (key == "entity_def") and (path == ""):
+            abspath = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
         CONFIG['local_data'][key] = abspath
-        if "_dir" in key:
-            logging.debug('CONFIG:%s: Checking presence of %s ...', key, \
-                          abspath)
-            if not os.path.isdir(abspath):
-                os.mkdir(abspath)
-                logging.debug('Created folder for %s (%s).', key, abspath)
 
-
-CONFIG_DIR = os.path.abspath(os.path.join(WORKING_DIR, 'climada', 'config'))
+CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))
 
 DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
 if not os.path.isfile(DEFAULT_PATH):
     DEFAULT_PATH = resource_filename(Requirement.parse('climada'), \
                                      'defaults.conf')
-
-logging.debug('Loading CONFIGFILE=%s', DEFAULT_PATH)
+logging.debug('Loading config default file: %s', DEFAULT_PATH)
 
 with open(DEFAULT_PATH) as def_file:
     CONFIG = json.load(def_file)
@@ -50,12 +49,16 @@ def setup_logging(default_level=logging.INFO):
     if not os.path.isfile(default_path):
         default_path = resource_filename(Requirement.parse('climada'), \
                                          'logging.conf')
-        
+    logging.debug('Loading logging config default file: %s', DEFAULT_PATH)
+
     path = default_path
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada', \
-                                             'climada_log.conf'))
+    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada_log.conf'))
+    while not os.path.isfile(user_file) and user_file != '/climada_log.conf':
+        user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
+                                            os.pardir, 'climada_log.conf'))
     if os.path.isfile(user_file):
         path = user_file
+        logging.debug('Loading user logging config: %s ...', user_file)
     
     if os.path.exists(path):
         with open(path, 'rt') as log_file:
@@ -66,8 +69,10 @@ def setup_logging(default_level=logging.INFO):
 
 def setup_conf_user():
     """Setup climada configuration"""
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada', \
-                                             'climada.conf'))
+    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada.conf'))
+    while not os.path.isfile(user_file) and user_file != '/climada.conf':
+        user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
+                                                 os.pardir, 'climada.conf'))
     
     if os.path.isfile(user_file):
         logging.debug('Loading user config: %s ...', user_file)
@@ -79,9 +84,9 @@ def setup_conf_user():
             CONFIG['local_data'].update(userconfig['local_data'])
     
         if 'present_ref_year' in userconfig.keys():
-            CONFIG['present_ref_year'].update(userconfig['present_ref_year'])
+            CONFIG['present_ref_year'] = userconfig['present_ref_year']
 
         if 'future_ref_year' in userconfig.keys():
-            CONFIG['present_ref_year'].update(userconfig['present_ref_year'])
+            CONFIG['future_ref_year'] = userconfig['future_ref_year']
 
         check_conf()  

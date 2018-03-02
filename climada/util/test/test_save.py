@@ -13,16 +13,10 @@ class TestSave(unittest.TestCase):
     def test_entity_in_save_dir(self):
         """Returns the same list if its length is correct."""
         ent = Entity(ENT_DEMO_XLS)
-        save('entity_demo.pkl', ent)
-                
-    def test_inexistent_folder_fail(self):
-        """Raise error if folder does not exists."""
-        ent = Entity(ENT_DEMO_XLS)
-        with self.assertLogs('climada.util.save', level='ERROR') as cm:
-            with self.assertRaises(FileNotFoundError):
-                save('../wrong/entity_demo.pkl', ent)
-        self.assertIn('Folder not found:', cm.output[0])
-        self.assertIn('wrong', cm.output[0])
+        with self.assertLogs('climada.util.save', level='INFO') as cm:
+            save('entity_demo.pkl', ent)
+        self.assertTrue(('entity_demo.pkl' in cm.output[0]) or \
+                        ('entity_demo.pkl' in cm.output[1]))        
             
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
