@@ -4,7 +4,7 @@ Python (3.6+) version of CLIMADA
 
 TEST version of core CLIMADA in Python - please use https://github.com/davidnbresch/climada for the time being unless you really know what you're doing. dbresch@ethz.ch
 
-Authors: Gabriela Aznar Siguan <aznarsig@ethz.ch>
+Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz.ch>
 
 Date: 2018-03-02
 
