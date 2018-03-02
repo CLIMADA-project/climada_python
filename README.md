@@ -72,7 +72,7 @@ A minimal configuration file looks something like this:
 | Option | Description | Default |
 | ------ | ----------- | ------- |
 | ``save_dir`` | Folder were the variables are saved through the ``save`` command. An absolut path is safer. | ``./results`` |
-| ``entity_def`` | Entity to be used as default. If not provided, the static entity_template.xlsx is used. | ```` |
+| ``entity_def`` | Entity to be used as default. If not provided, the static entity_template.xlsx is used. | "" |
 
 
 ### present_ref_year
