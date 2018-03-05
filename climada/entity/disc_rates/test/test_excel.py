@@ -6,17 +6,11 @@ import unittest
 import numpy
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.disc_rates import source_excel as excel
+from climada.entity.disc_rates.source_excel import DEF_VAR_NAME
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test excel reader for discount rates"""
-
-    def tearDown(self):
-        excel.COL_NAMES = {'year' : 'year',
-                           'disc' : 'discount_rate'
-                          }
-
     def test_demo_file_pass(self):
         """ Read demo excel file."""
         # Read demo excel file
@@ -63,11 +57,11 @@ class TestReader(unittest.TestCase):
 
     def test_wrong_file_fail(self):
         """ Read file without year column, fail."""
-        # Read demo excel file
+        new_var_name = DEF_VAR_NAME
+        new_var_name['col_name']['year'] = 'wrong col'
         disc_rate = DiscRates()
-        excel.COL_NAMES['year'] = 'wrong col'
         with self.assertRaises(KeyError):
-            disc_rate.read(ENT_DEMO_XLS)
+            disc_rate.read(ENT_DEMO_XLS, var_names=new_var_name)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)

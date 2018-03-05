@@ -5,27 +5,12 @@ Test Measures from Excel file.
 import unittest
 import numpy as np
 
-from climada.entity.measures import source_excel as excel
+from climada.entity.measures.source_excel import DEF_VAR_NAME
 from climada.entity.measures.base import Measures
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
  
 class TestReader(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
-
-    def tearDown(self):
-        excel.COL_NAMES = {'name' : 'name',
-                           'color' : 'color',
-                           'cost' : 'cost',
-                           'haz_int' : 'hazard intensity impact',
-                           'haz_frq' : 'hazard high frequency cutoff',
-                           'haz_set' : 'hazard event set',
-                           'mdd_a' : 'MDD impact a',
-                           'mdd_b' : 'MDD impact b',
-                           'paa_a' : 'PAA impact a',
-                           'paa_b' : 'PAA impact b',
-                           'risk_att' : 'risk transfer attachement',
-                           'risk_cov' : 'risk transfer cover'
-                          }
 
     def test_demo_file(self):
         # Read demo excel file
@@ -84,10 +69,11 @@ class TestReader(unittest.TestCase):
 
     def test_wrong_file_fail(self):
         """ Read file intensity, fail."""
+        new_var_names = DEF_VAR_NAME
+        new_var_names['col_name']['mdd_a'] = 'wrong name'
         meas = Measures()
-        excel.COL_NAMES['mdd_a'] = 'wrong name'
         with self.assertRaises(KeyError):
-            meas.read(ENT_DEMO_XLS)
+            meas.read(ENT_DEMO_XLS, var_names=new_var_names)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)

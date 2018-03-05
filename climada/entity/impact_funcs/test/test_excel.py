@@ -4,22 +4,12 @@ Test imp_funcsFuncs from Excel file.
 
 import unittest
 
-from climada.entity.impact_funcs import source_excel as excel
+from climada.entity.measures.source_excel import DEF_VAR_NAME
 from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
-
-    def tearDown(self):
-        excel.COL_NAMES = {'func_id' : 'DamageFunID',
-                           'inten' : 'Intensity',
-                           'mdd' : 'MDD',
-                           'paa' : 'PAA',
-                           'name' : 'name',
-                           'unit' : 'Intensity_unit',
-                           'peril' : 'peril_ID'
-                          }
 
     def test_demo_file_pass(self):
         """ Read demo excel file"""
@@ -107,10 +97,11 @@ class TestReader(unittest.TestCase):
 
     def test_wrong_file_fail(self):
         """ Read file intensity, fail."""
+        new_var_names = DEF_VAR_NAME
+        new_var_names['col_name']['inten'] = 'wrong name'
         imp_funcs = ImpactFuncs()
-        excel.COL_NAMES['inten'] = 'wrong name'
         with self.assertRaises(KeyError):
-            imp_funcs.read(ENT_DEMO_XLS)
+            imp_funcs.read(ENT_DEMO_XLS, var_names=new_var_names)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)

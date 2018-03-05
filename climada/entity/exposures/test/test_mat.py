@@ -2,7 +2,6 @@
 Test Exposures from MATLAB file.
 """
 
-import warnings
 import unittest
 import numpy as np
 
@@ -82,103 +81,118 @@ class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
 
     def tearDown(self):
-        mat.VAR_NAMES = {'lat' : 'lat',
-                         'lon' : 'lon',
-                         'val' : 'Value',
-                         'ded' : 'Deductible',
-                         'cov' : 'Cover',
-                         'imp' : 'DamageFunID',
-                         'cat' : 'Category_ID',
-                         'reg' : 'Region_ID',
-                         'uni' : 'Value_unit',
-                         'ass' : 'centroid_index',
-                         'ref' : 'reference_year'
-                        }
+        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
+                            'field_name': 'assets',
+                            'var_name': {'lat' : 'lat',
+                                         'lon' : 'lon',
+                                         'val' : 'Value',
+                                         'ded' : 'Deductible',
+                                         'cov' : 'Cover',
+                                         'imp' : 'DamageFunID',
+                                         'cat' : 'Category_ID',
+                                         'reg' : 'Region_ID',
+                                         'uni' : 'Value_unit',
+                                         'ass' : 'centroid_index',
+                                         'ref' : 'reference_year'
+                                        }
+                            }
 
     def test_no_value_fail(self):
         """Error if no values."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['val'] = 'no valid value'
         expo = Exposures()
-        mat.VAR_NAMES['val'] = 'no valid value'
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_MAT)
+            expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['imp'] = 'no valid value'
         expo = Exposures()
-        mat.VAR_NAMES['imp'] = 'no valid impact'
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_MAT)
+            expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
+        new_var_names = mat.DEF_VAR_NAME
+        print('aquiiiiiiiiiiiiiiiiiiiiiiiiiiii', new_var_names)
+        new_var_names['var_name']['lat'] = 'no valid Latitude'
         expo = Exposures()
-        mat.VAR_NAMES['lat'] = 'no valid Latitude'
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_MAT)
+            expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
-        mat.VAR_NAMES['lat'] = 'Latitude'
-        mat.VAR_NAMES['lon'] = 'no valid Longitude'
+        new_var_names['var_name']['lat'] = 'nLatitude'
+        new_var_names['var_name']['lon'] = 'no valid Longitude'
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_MAT)
+            expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
 class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
 
     def tearDown(self):
-        mat.VAR_NAMES = {'lat' : 'lat',
-                         'lon' : 'lon',
-                         'val' : 'Value',
-                         'ded' : 'Deductible',
-                         'cov' : 'Cover',
-                         'imp' : 'DamageFunID',
-                         'cat' : 'Category_ID',
-                         'reg' : 'Region_ID',
-                         'uni' : 'Value_unit',
-                         'ass' : 'centroid_index',
-                         'ref' : 'reference_year'
-                        }
+        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
+                            'field_name': 'assets',
+                            'var_name': {'lat' : 'lat',
+                                         'lon' : 'lon',
+                                         'val' : 'Value',
+                                         'ded' : 'Deductible',
+                                         'cov' : 'Cover',
+                                         'imp' : 'DamageFunID',
+                                         'cat' : 'Category_ID',
+                                         'reg' : 'Region_ID',
+                                         'uni' : 'Value_unit',
+                                         'ass' : 'centroid_index',
+                                         'ref' : 'reference_year'
+                                        }
+                            }
 
     def test_no_category_pass(self):
         """Not error if no category id."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['cat'] = 'no valid category'
         expo = Exposures()
-        mat.VAR_NAMES['cat'] = 'no valid category'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, expo.category_id.size)
 
     def test_no_region_pass(self):
         """Not error if no region id."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['reg'] = 'no valid region'
         expo = Exposures()
-        mat.VAR_NAMES['reg'] = 'no valid region'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, expo.region_id.size)
 
     def test_no_unit_pass(self):
         """Not error if no value unit."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['uni'] = 'no valid unit'
         expo = Exposures()
-        mat.VAR_NAMES['uni'] = 'no valid value unit'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual('NA', expo.value_unit)
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['ass'] = 'no valid assign'
         expo = Exposures()
-        mat.VAR_NAMES['ass'] = 'no valid assign'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, expo.assigned.size)
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['ref'] = 'no valid ref'
         expo = Exposures()
-        mat.VAR_NAMES['ref'] = 'no valid ref'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual(CONFIG["present_ref_year"], expo.ref_year)
@@ -187,37 +201,38 @@ class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
 
     def tearDown(self):
-        mat.VAR_NAMES = {'lat' : 'lat',
-                         'lon' : 'lon',
-                         'val' : 'Value',
-                         'ded' : 'Deductible',
-                         'cov' : 'Cover',
-                         'imp' : 'DamageFunID',
-                         'cat' : 'Category_ID',
-                         'reg' : 'Region_ID',
-                         'uni' : 'Value_unit',
-                         'ass' : 'centroid_index',
-                         'ref' : 'reference_year'
-                        }
+        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
+                            'field_name': 'assets',
+                            'var_name': {'lat' : 'lat',
+                                         'lon' : 'lon',
+                                         'val' : 'Value',
+                                         'ded' : 'Deductible',
+                                         'cov' : 'Cover',
+                                         'imp' : 'DamageFunID',
+                                         'cat' : 'Category_ID',
+                                         'reg' : 'Region_ID',
+                                         'uni' : 'Value_unit',
+                                         'ass' : 'centroid_index',
+                                         'ref' : 'reference_year'
+                                        }
+                            }
 
     def test_no_cover_pass(self):
         """Check default values for excel file with no cover."""
-        # Read demo excel file
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['cov'] = 'Dummy'
         expo = Exposures()
-        # Change cover column name to simulate no present column
-        mat.VAR_NAMES['cov'] = 'Dummy'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertTrue(np.array_equal(expo.value, expo.cover))
 
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
-        # Read demo excel file
+        new_var_names = mat.DEF_VAR_NAME
+        new_var_names['var_name']['ded'] = 'Dummy'
         expo = Exposures()
-        # Change deductible column name to simulate no present column
-        mat.VAR_NAMES['ded'] = 'Dummy'
-        expo.read(ENT_DEMO_MAT)
+        expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
         self.assertTrue(np.array_equal(np.zeros(len(expo.value)), \

@@ -405,40 +405,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(imp_fun.num_vulner(), 4)
         self.assertEqual(imp_fun.num_vulner('TC'), 2)
         self.assertEqual(imp_fun.num_vulner('FL'), 1)
-        self.assertEqual(imp_fun.num_vulner('WS'), 1)
-
-class TestInterpolation(unittest.TestCase):
-    """Impact function interpolation test"""
-
-    def test_wrongAttribute_fail(self):
-        """Interpolation of wrong variable fails."""
-        imp_fun = Vulnerability()
-        intensity = 3
-        with self.assertLogs('climada.entity.impact_funcs.base', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.interpolate(intensity, 'mdg')
-        self.assertIn('Attribute of the impact function not found: mdg', \
-                      cm.output[0])
-
-    def test_mdd_pass(self):
-        """Good interpolation of MDD."""
-        imp_fun = Vulnerability()
-        imp_fun.intensity = np.array([0,1])
-        imp_fun.mdd = np.array([1,2])
-        imp_fun.paa = np.array([3,4])
-        intensity = 0.5
-        resul = imp_fun.interpolate(intensity, 'mdd')
-        self.assertEqual(1.5, resul)
-
-    def test_paa_pass(self):
-        """Good interpolation of PAA."""
-        imp_fun = Vulnerability()
-        imp_fun.intensity = np.array([0,1])
-        imp_fun.mdd = np.array([1,2])
-        imp_fun.paa = np.array([3,4])
-        intensity = 0.5
-        resul = imp_fun.interpolate(intensity, 'paa')
-        self.assertEqual(3.5, resul)        
+        self.assertEqual(imp_fun.num_vulner('WS'), 1)      
 
 class TestReadParallel(unittest.TestCase):
     """Check read function with several files"""
@@ -455,7 +422,6 @@ class TestReadParallel(unittest.TestCase):
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpolation))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

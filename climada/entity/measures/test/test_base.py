@@ -138,7 +138,7 @@ class TestChecker(unittest.TestCase):
                          cm.output[0])
 
     def test_check_wrongColor_fail(self):
-        """Wrong discount rates definition"""
+        """Wrong measures definition"""
         meas = Measures()
         act_1 = Action()
         act_1.name = 'Mangrove'
@@ -154,7 +154,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('Invalid Action.color_rgb size: 3 != 2.', cm.output[0])
 
     def test_check_wrongMDD_fail(self):
-        """Wrong discount rates definition"""
+        """Wrong measures definition"""
         meas = Measures()
         act_1 = Action()
         act_1.name = 'Mangrove'
@@ -170,7 +170,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('Action.mdd_impact has wrong dimensions.', cm.output[0])
 
     def test_check_wrongPAA_fail(self):
-        """Wrong discount rates definition"""
+        """Wrong measures definition"""
         meas = Measures()
         act_1 = Action()
         act_1.name = 'Mangrove'
@@ -186,7 +186,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('Invalid Action.paa_impact size: 2 != 4.', cm.output[0])
 
     def test_check_name_fail(self):
-        """Wrong discount rates definition"""
+        """Wrong measures definition"""
         meas = Measures()
         act_1 = Action()
         act_1.name = 'LaLa'

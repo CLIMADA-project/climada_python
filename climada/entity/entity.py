@@ -33,7 +33,7 @@ class Entity(object):
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name
                 containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file

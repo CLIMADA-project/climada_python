@@ -91,12 +91,12 @@ class TestGets(unittest.TestCase):
 
     def setUp(self):
         self.imp = hdf5.read(ENT_DEMO_MAT)
-        self.imp = self.imp[mat.SUP_FIELD_NAME]
-        self.imp = self.imp[mat.FIELD_NAME]
+        self.imp = self.imp[mat.DEF_VAR_NAME['sup_field_name']]
+        self.imp = self.imp[mat.DEF_VAR_NAME['field_name']]
 
     def test_rows_pass(self):
         """Check get_funcs_rows."""
-        funcs = mat.get_funcs_rows(self.imp, ENT_DEMO_MAT)
+        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(len(funcs), 2)
         
         self.assertEqual(len(funcs['Tropical cyclone default']), 9)
@@ -107,36 +107,36 @@ class TestGets(unittest.TestCase):
 
     def test_hazard_pass(self):
         """Check get_imp_fun_hazard."""
-        funcs = mat.get_funcs_rows(self.imp, ENT_DEMO_MAT)
-        haz_type = mat.get_imp_fun_hazard(
-                self.imp, funcs['TC Building code'], ENT_DEMO_MAT)
+        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        haz_type = mat._get_imp_fun_hazard(self.imp, funcs['TC Building code'], \
+                                      ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(haz_type, 'TC')
 
-        haz_type = mat.get_imp_fun_hazard(
-                self.imp, funcs['Tropical cyclone default'], ENT_DEMO_MAT)
+        haz_type = mat._get_imp_fun_hazard(self.imp, \
+            funcs['Tropical cyclone default'], ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(haz_type, 'TC')
 
     def test_id_pass(self):
         """Check get_imp_fun_id."""
-        funcs = mat.get_funcs_rows(self.imp, ENT_DEMO_MAT)
-        fun_id = mat.get_imp_fun_id(
-                self.imp, funcs['TC Building code'])
+        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        fun_id = mat._get_imp_fun_id(self.imp, funcs['TC Building code'], \
+                                mat.DEF_VAR_NAME)
         self.assertEqual(fun_id, 3)
 
-        fun_id = mat.get_imp_fun_id(
-                self.imp, funcs['Tropical cyclone default'])
+        fun_id = mat._get_imp_fun_id(self.imp, funcs['Tropical cyclone default'], \
+                                mat.DEF_VAR_NAME)
         self.assertEqual(fun_id, 1)
 
     def test_unit_pass(self):
         """Check get_imp_fun_unit"""
-        funcs = mat.get_funcs_rows(self.imp, ENT_DEMO_MAT)
-        fun_unit = mat.get_imp_fun_unit(self.imp, \
-                                 funcs['TC Building code'], ENT_DEMO_MAT)
+        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        fun_unit = mat._get_imp_fun_unit(self.imp, funcs['TC Building code'], \
+                                    ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(fun_unit, 'm/s')
 
-        fun_unit = mat.get_imp_fun_unit(self.imp, \
+        fun_unit = mat._get_imp_fun_unit(self.imp, \
                                  funcs['Tropical cyclone default'], \
-                                 ENT_DEMO_MAT)
+                                 ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(fun_unit, 'm/s')
 
 # Execute Tests
