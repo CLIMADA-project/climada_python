@@ -89,7 +89,12 @@ class Impact(object):
         self.unit = 'NA'
 
     def calc_freq_curve(self):
-        """Compute and plot impact frequency curve."""
+        """Compute and plot impact frequency curve.
+        
+        Returns
+        -------
+            ImpactFreqCurve
+        """
         ifc = ImpactFreqCurve()
         # Sort descendingly the impacts per events
         sort_idxs = np.argsort(self.at_event)[::-1]
