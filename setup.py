@@ -60,7 +60,9 @@ setup(
                       'h5py',
                       'scipy',
                       'scikit-learn',
-                      'xlrd'
+                      'xlrd',
+                      'pathos',
+                      'xmlrunner'
                      ], 
 
     package_data={'': extra_files },  
