@@ -6,8 +6,7 @@ __all__ = ['Exposures']
 
 import os
 import logging
-import concurrent.futures
-import itertools
+from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
 from climada.entity.exposures.source_mat import read as read_mat
@@ -39,7 +38,7 @@ class Exposures(object):
         deductible (np.array, default): deductible value for each exposure
         cover (np.array, default): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
-ls            (when defined)
+            (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
         assigned (np.array, optional): for a given hazard, id of the
@@ -47,15 +46,17 @@ ls            (when defined)
             the 'assign' method
     """
 
-    def __init__(self, file_name='', description=''):
+    def __init__(self, file_name='', description='', var_names=None):
         """Fill values from file, if provided.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -75,7 +76,7 @@ ls            (when defined)
         """
         self.clear()
         if file_name != '':
-            self.read(file_name, description)
+            self.read(file_name, description, var_names)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -144,15 +145,17 @@ ls            (when defined)
                                 os.path.splitext(os.path.basename( \
                                     self.tag.file_name))[0])
 
-    def read(self, files, descriptions=''):
+    def read(self, files, descriptions='', var_names=None):
         """Read and check exposures in parallel through files.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -160,15 +163,13 @@ ls            (when defined)
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
-        num_files = len(all_files)
-        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_str_list(len(all_files), var_names, 'var_names')
         self.clear()
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for cnt, exp_part in enumerate(executor.map(_wrap_read_one, \
-                    itertools.repeat(Exposures(), num_files), all_files, \
-                    desc_list)):
-                LOGGER.info('Read file: %s', all_files[cnt])
-                self.append(exp_part)
+        expo_part = Pool().map(self._read_one, all_files, desc_list, var_list)
+        for expo, file in zip(expo_part, all_files):
+            LOGGER.info('Read file: %s', file)    
+            self.append(expo)
 
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
@@ -222,7 +223,8 @@ ls            (when defined)
             self.id[dup_id] = new_id
             new_id += 1
             
-    def read_one(self, file_name, description=''):
+    @staticmethod
+    def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
 
         Parameters
@@ -233,16 +235,21 @@ ls            (when defined)
         Raises
         ------
             ValueError
+
+        Returns
+        ------
+            Exposures
         """
+        exp = Exposures()
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            read_mat(self, file_name, description)
+            read_mat(exp, file_name, description, var_names)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, description)
+            read_excel(exp, file_name, description, var_names)
         else:
             LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
-        return self
+        return exp
      
     @staticmethod
     def _append_optional(ini, to_add):
@@ -274,6 +281,3 @@ ls            (when defined)
         check.array_optional(num_exp, self.region_id, \
                              'Exposures.region_id')
         check.array_optional(num_exp, self.assigned, 'Exposures.assigned')
-
-def _wrap_read_one(exposures, file, description=''):
-    return exposures.read_one(file, description)

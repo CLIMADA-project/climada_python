@@ -1,19 +1,17 @@
 """
-Define Action class and Measures.
+Define Measures class.
 """
 
-__all__ = ['Action', 'Measures']
+__all__ = ['Measures']
 
 import os
 import logging
-import concurrent.futures
-import itertools
-import numpy as np
+from pathos.multiprocessing import ProcessingPool as Pool
 
-from climada.entity.measures.source_excel import read as read_excel
+from climada.entity.measures.action import Action
 from climada.entity.measures.source_mat import read as read_mat
+from climada.entity.measures.source_excel import read as read_excel
 from climada.util.files_handler import to_str_list, get_file_names
-import climada.util.checker as check
 from climada.entity.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
@@ -28,15 +26,17 @@ class Measures(object):
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name='', description=''):
+    def __init__(self, file_name='', description='', var_names=None):
         """Fill values from file, if provided.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -58,7 +58,7 @@ class Measures(object):
         """
         self.clear()
         if file_name != '':
-            self.read(file_name, description)
+            self.read(file_name, description, var_names)
 
     def clear(self):
         """Reinitialize attributes.""" 
@@ -143,32 +143,31 @@ class Measures(object):
                                 (act_name, act.name))
             act.check()
 
-    def read(self, files, descriptions=''):
+    def read(self, files, descriptions='', var_names=None):
         """Read and check measures in parallel through files.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
             ValueError
         """
-        # Construct absolute path file names
         all_files = get_file_names(files)
-        num_files = len(all_files)
-        desc_list = to_str_list(num_files, descriptions, 'descriptions')
-        self.clear()        
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for cnt, meas_part in enumerate(executor.map(_wrap_read_one, \
-                    itertools.repeat(Measures(), num_files), all_files, \
-                    desc_list)):
-                LOGGER.info('Read file: %s', all_files[cnt])
-                self.append(meas_part)
-
+        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_str_list(len(all_files), var_names, 'var_names')
+        self.clear()       
+        meas_part = Pool().map(self._read_one, all_files, desc_list, var_list)
+        for meas, file in zip(meas_part, all_files):
+            LOGGER.info('Read file: %s', file)    
+            self.append(meas)
+        
     def append(self, measures):
         """Check and append actions of input Measures to current Measures. 
         Overwrite actions if same name.
@@ -192,71 +191,32 @@ class Measures(object):
         for action in new_act:
             self.add_action(action)
 
-    def read_one(self, file_name, description=''):
+    @staticmethod
+    def _read_one(file_name, description, var_names):
         """Read input file.
 
         Parameters
         ----------
             file_name (str): name of the source file
-            description (str, optional): description of the source data
+            description (str): description of the source data
+            var_names (dict): name of the variables in the file (e.g. 
+                      DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
             ValueError
+            
+        Returns
+        ------
+            Measures
         """
+        meas = Measures()
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            read_mat(self, file_name, description)
+            read_mat(meas, file_name, description, var_names)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, description)
+            read_excel(meas, file_name, description, var_names)
         else:
             LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
-        return self
-        
-def _wrap_read_one(disc_rates, file, description=''):
-    return disc_rates.read_one(file, description)
-
-class Action(object):
-    """Contains the definition of one Action.
-
-    Attributes
-    ----------
-        name (str): name of the action
-        color_rgb (np.array): integer array of size 3. Gives color code of
-            this measure in RGB
-        cost (float): cost
-        hazard_freq_cutoff (float): hazard frequency cutoff
-        hazard_intensity (tuple): parameter a and b
-        mdd_impact (tuple): parameter a and b of the impact over the mean
-            damage (impact) degree
-        paa_impact (tuple): parameter a and b of the impact over the
-            percentage of affected assets (exposures)
-        risk_transf_attach (float): risk transfer attach
-        risk_transf_cover (float): risk transfer cover
-    """
-
-    def __init__(self):
-        """ Empty initialization."""
-        self.name = 'NA'
-        self.color_rgb = np.array([0, 0, 0])
-        self.cost = 0
-        self.hazard_freq_cutoff = 0
-#        self.hazard_event_set = 'NA'
-        self.hazard_intensity = () # parameter a and b
-        self.mdd_impact = () # parameter a and b
-        self.paa_impact = () # parameter a and b
-        self.risk_transf_attach = 0
-        self.risk_transf_cover = 0
-
-    def check(self):
-        """ Check consistent instance data.
-
-        Raises
-        ------
-            ValueError
-        """
-        check.size(3, self.color_rgb, 'Action.color_rgb')
-        check.size(2, self.hazard_intensity, 'Action.hazard_intensity')
-        check.size(2, self.mdd_impact, 'Action.mdd_impact')
-        check.size(2, self.paa_impact, 'Action.paa_impact')
+        return meas

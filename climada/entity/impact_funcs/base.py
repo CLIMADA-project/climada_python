@@ -1,19 +1,17 @@
 """
-Define Vulnerability class and ImpactFuncs.
+Define ImpactFuncs class.
 """
 
-__all__ = ['Vulnerability', 'ImpactFuncs']
+__all__ = ['ImpactFuncs']
 
 import os
 import logging
-import concurrent.futures
-import itertools
-import numpy as np
+from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.entity.impact_funcs.source_excel import read as read_excel
 from climada.entity.impact_funcs.source_mat import read as read_mat
 from climada.util.files_handler import to_str_list, get_file_names
-import climada.util.checker as check
+from climada.entity.impact_funcs.vulnerability import Vulnerability
 from climada.entity.tag import Tag
 import climada.util.plot as plot
 
@@ -29,15 +27,17 @@ class ImpactFuncs(object):
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name='', description=''):
+    def __init__(self, file_name='', description='', var_names=None):
         """Fill values from file, if provided.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -58,7 +58,7 @@ class ImpactFuncs(object):
         """
         self.clear()
         if file_name != '':
-            self.read(file_name, description)
+            self.read(file_name, description, var_names)
 
     def clear(self):
         """Reinitialize attributes."""        
@@ -231,15 +231,17 @@ class ImpactFuncs(object):
                     raise ValueError
                 vul.check()
 
-    def read(self, files, descriptions=''):
+    def read(self, files, descriptions='', var_names=None):
         """Read and check impact functions in parallel through files.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -247,15 +249,13 @@ class ImpactFuncs(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
-        num_files = len(all_files)
-        desc_list = to_str_list(num_files, descriptions, 'descriptions')
+        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_str_list(len(all_files), var_names, 'var_names')
         self.clear()
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for cnt, imp_part in enumerate(executor.map(_wrap_read_one, \
-                    itertools.repeat(ImpactFuncs(), num_files), all_files, \
-                    desc_list)):
-                LOGGER.info('Read file: %s', all_files[cnt])
-                self.append(imp_part)
+        imp_part = Pool().map(self._read_one, all_files, desc_list, var_list)
+        for imp, file in zip(imp_part, all_files):
+            LOGGER.info('Read file: %s', file)    
+            self.append(imp)
 
     def append(self, impact_funcs):
         """Check and append vulnerabilities of input ImpactFuncs to current
@@ -315,110 +315,32 @@ class ImpactFuncs(object):
         plot.show()
         return graph.get_elems()
 
-    def read_one(self, file_name, description=''):
+    @staticmethod
+    def _read_one(file_name, description, var_names):
         """Read input file.
 
         Parameters
         ----------
             file_name (str): name of the source file
-            description (str, optional): description of the source data
+            description (str): description of the source data
+            var_names (dict): name of the variables in the file (e.g. 
+                      DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
             ValueError
+            
+        Returns
+        ------
+            ImpactFuncs
         """
+        new_imp = ImpactFuncs()
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            read_mat(self, file_name, description)
+            read_mat(new_imp, file_name, description, var_names)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, description)
+            read_excel(new_imp, file_name, description, var_names)
         else:
             LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
-        return self
-
-def _wrap_read_one(impact_funcs, file, description=''):
-    return impact_funcs.read_one(file, description)
-
-class Vulnerability(object):
-    """Contains the definition of one Vulnerability (impact function).
-
-    Attributes
-    ----------
-        haz_type (str): hazard type    
-        id (int): id of the vulnerability (wrt vulnerabilities of same hazard)
-        name (str): name of the vulnerability
-        intensity_unit (str): unit of the intensity
-        intensity (np.array): intensity values
-        mdd (np.array): mean damage (impact) degree for each intensity
-        paa (np.array): percentage of affected assets (exposures) for each
-            intensity
-    """
-    def __init__(self):
-        """ Empty initialization."""
-        self.id = 'NA' # int expected
-        self.name = ''
-        self.intensity_unit = 'NA'
-        self.haz_type = 'NA'
-        # Followng values defined for each intensity value
-        self.intensity = np.array([])
-        self.mdd = np.array([])
-        self.paa = np.array([])
-
-    def interpolate(self, inten, attribute):
-        """ Interpolate impact function to a given intensity.
-
-        Parameters
-        ----------
-            inten (float or np.array): intensity, the x-coordinate of the
-                interpolated values.
-            attribute (str): defines the impact function attribute to
-                interpolate. Possbile values: 'mdd' or 'paa'.
-
-        Raises
-        ------
-            ValueError
-        """
-        if attribute == 'mdd':
-            return np.interp(inten, self.intensity, self.mdd)
-        elif attribute == 'paa':
-            return np.interp(inten, self.intensity, self.paa)
-        else:
-            LOGGER.error("Attribute of the impact function not found: %s",\
-                         attribute)
-            raise ValueError
-
-    def plot(self, graph=None):
-        """Plot the impact functions MDD, MDR and PAA in one graph.
-
-        Parameters
-        ----------
-            graph (Graph2D, optional): graph where to add the plots
-            show (bool, optional): bool to execute plt.show(). Default: True
-        Returns
-        -------
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
-        """
-        if graph is None:
-            graph = plot.Graph2D('', 1)
-        graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
-                         'Percentage (%)', \
-                         '%s %s %s' % (self.haz_type, str(self.id), self.name))
-        graph.add_curve(self.intensity, self.mdd * 100, 'b', 'MDD')
-        graph.add_curve(self.intensity, self.paa * 100, 'r', 'PAA')
-        graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \
-                        'MDR')
-        graph.set_x_lim(self.intensity)
-        plot.show()
-        return graph.get_elems()
-
-    def check(self):
-        """ Check consistent instance data.
-
-        Raises
-        ------
-            ValueError
-        """
-        num_exp = len(self.intensity)
-        check.size(num_exp, self.mdd, 'Vulnerability.mdd')
-        check.size(num_exp, self.paa, 'Vulnerability.paa')
+        return new_imp

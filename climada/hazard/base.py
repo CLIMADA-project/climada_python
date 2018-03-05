@@ -8,8 +8,8 @@ __all__ = ['Hazard']
 import os
 from array import array
 import logging
-import concurrent.futures
 import itertools
+from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 from scipy import sparse
 
@@ -24,7 +24,7 @@ import climada.util.checker as check
 LOGGER = logging.getLogger(__name__)
 
 class Hazard(object):
-    """Contains events of same hazard type defined at centroids. Interface.
+    """Contains events of some hazard type defined at centroids. Interface.
 
     Attributes
     ----------
@@ -40,17 +40,19 @@ class Hazard(object):
     """
 
     def __init__(self, file_name='', haz_type='NA', description='', \
-                 centroids=None):
+                 centroids=None, var_names=None):
         """Initialize values from given file, if given.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -62,7 +64,8 @@ class Hazard(object):
                 LOGGER.error("Provide hazard type acronym.")
                 raise ValueError
             else:
-                self.read(file_name, haz_type, description, centroids)
+                self.read(file_name, haz_type, description, centroids, \
+                          var_names)
 
     def clear(self):
         """Reinitialize attributes."""    
@@ -88,18 +91,21 @@ class Hazard(object):
         self.centroids.check()
         self._check_events()
 
-    def read(self, files, haz_type, description='', centroids=None):
+    def read(self, files, haz_type, description='', centroids=None, \
+             var_names=None):
         """Read and check hazard, and centroids if not provided. Parallel 
         through files.
 
         Parameters
         ----------
-            file_name (str or list(str), optional): file name(s) or folder name 
-                containing the files to read
+            file_name (str or list(str), optional): absolute file name(s) or 
+                folder name containing the files to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
+            var_names (dict or list(dict), default): name of the variables in 
+                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -110,14 +116,14 @@ class Hazard(object):
         num_files = len(all_files)
         desc_list = to_str_list(num_files, description, 'description')
         centr_list = to_str_list(num_files, centroids, 'centroids')
+        var_list = to_str_list(num_files, var_names, 'var_names')
         self.clear()
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            for cnt, haz_part in enumerate(executor.map(_wrap_read_one, \
-                    itertools.repeat(Hazard(), num_files), all_files, \
-                    itertools.repeat(haz_type, num_files), desc_list, \
-                    centr_list)):
-                LOGGER.info('Read file: %s', all_files[cnt])                
-                self.append(haz_part)
+        haz_part = Pool().map(self._read_one, all_files, \
+            itertools.repeat(haz_type, num_files), desc_list, centr_list, \
+            var_list)
+        for haz, file in zip(haz_part, all_files):
+            LOGGER.info('Read file: %s', file)    
+            self.append(haz)
 
     def plot_stats(self):
         """Plots describing hazard."""
@@ -287,7 +293,8 @@ class Hazard(object):
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
     
-    def read_one(self, file_name, haz_type, description='', centroids=None):
+    @staticmethod
+    def _read_one(file_name, haz_type, description, centroids, var_names):
         """ Read input file. If centroids are not provided, they are read
         from file_name.
 
@@ -295,22 +302,32 @@ class Hazard(object):
         ----------
             file_name (str): name of the source file
             haz_type (str): acronym of the hazard type (e.g. 'TC')
-            description (str, optional): description of the source data
+            description (str): description of the source data
             centroids (Centroids, optional): Centroids instance
-
+            var_names (dict): name of the variables in the file (e.g. 
+                      DEF_VAR_NAME defined in the source modules)
+            file_name (str): name of the source file
+            
         Raises
         ------
             ValueError, KeyError
+            
+        Returns
+        ------
+            Hazard
         """
+        new_haz = Hazard()
         extension = os.path.splitext(file_name)[1]
         if extension == '.mat':
-            read_mat(self, file_name, haz_type, description, centroids)
+            read_mat(new_haz, file_name, haz_type, description, centroids, \
+                     var_names)
         elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, haz_type, description, centroids)
+            read_excel(new_haz, file_name, haz_type, description, centroids, \
+                       var_names)
         else:
             LOGGER.error("Input file extension not supported: %s.", extension)
             raise ValueError
-        return self
+        return new_haz
             
     def _check_events(self):
         """ Check that all attributes but centroids contain consistent data.
@@ -447,6 +464,3 @@ class Hazard(object):
         graph.set_x_lim(range(len(array_val)))
         plot.show()
         return graph.get_elems()
-
-def _wrap_read_one(hazard, file, haz_type, description='', centroid=None):
-    return hazard.read_one(file, haz_type, description, centroid)
