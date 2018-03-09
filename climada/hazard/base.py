@@ -462,5 +462,4 @@ class Hazard(object):
         graph.add_subplot('Event number', col_name)
         graph.add_curve(range(len(array_val)), array_val, 'b')
         graph.set_x_lim(range(len(array_val)))
-        plot.show()
         return graph.get_elems()

@@ -40,7 +40,6 @@ class ImpactFreqCurve(object):
         graph = plot.Graph2D(self.label)
         graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
         graph.add_curve(self.return_per, self.impact, 'y')
-        plot.show()
         return graph.get_elems()
 
     def plot_compare(self, ifc):
@@ -57,7 +56,6 @@ class ImpactFreqCurve(object):
         graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
         graph.add_curve(self.return_per, self.impact, 'b', self.label)
         graph.add_curve(ifc.return_per, ifc.impact, 'r', ifc.label)
-        plot.show()
         return graph.get_elems()
 
 class Impact(object):

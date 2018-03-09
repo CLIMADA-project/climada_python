@@ -301,9 +301,6 @@ class ImpactFuncs(object):
         else:
             hazards = self._data.keys()
 
-        # Plot
-        do_show = plot.SHOW
-        plot.SHOW = False
         graph = plot.Graph2D('', num_plts)
         for sel_haz in hazards:
             if vul_id is not None:
@@ -311,8 +308,6 @@ class ImpactFuncs(object):
             else:
                 for sel_id in self._data[sel_haz].keys():
                     self._data[sel_haz][sel_id].plot(graph)
-        plot.SHOW = do_show
-        plot.show()
         return graph.get_elems()
 
     @staticmethod

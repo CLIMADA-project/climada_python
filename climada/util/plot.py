@@ -4,42 +4,59 @@ Define auxiliary functions for plots.
 
 __all__ = ['Graph2D',
            'geo_bin_from_array',
-           'geo_im_from_array',
-           'show'
+           'geo_im_from_array'
           ]
 
 import numpy as np
 from scipy.interpolate import griddata
-import h5py
-from matplotlib import cm
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import cartopy.crs as ccrs
+from cartopy.io import shapereader
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
-import climada.util.hdf5_handler as hdf5
-from climada.util.constants import SHAPES_MAT
 
 # Number of pixels in one direction in rendered image
-RESOLUTION = 200
-# Percentage of pixel to add as border
-BUFFER_PERCEN = 10
+RESOLUTION = 250
 # Degrees to add in the border
-BUFFER_DEG = 1
-# Enable/Disable show
-SHOW = False
+BUFFER_DEG = 1.0
 
-# TODO: change to use basemap
-def add_shapes(axis):
-    """Overlay Earth's contries shapes to given matplotlib.pyplot axis."""
-    file = h5py.File(SHAPES_MAT, 'r')
-    h5f = hdf5.read(SHAPES_MAT)
-    for shape_i in range(h5f['shapes']['X'].size):
-        # Special case since we had to restrict to domestic. See admin0.txt
-        if file[h5f['shapes']['X_ALL'][0][shape_i]][:].nonzero()[0].size > 0:
-            h5f['shapes']['X'][0][shape_i] = h5f['shapes']['X_ALL'][0][shape_i]
-            h5f['shapes']['Y'][0][shape_i] = h5f['shapes']['Y_ALL'][0][shape_i]
-        axis.plot(file[h5f['shapes']['X'][0][shape_i]][:], \
-                     file[h5f['shapes']['Y'][0][shape_i]][:], color='0.3', \
-                     linewidth=0.5)
+def make_map(projection=ccrs.PlateCarree()):
+    """Create map figure with cartopy."""
+    fig, axis = plt.subplots(figsize=(9, 13), \
+                             subplot_kw=dict(projection=projection))
+    grid = axis.gridlines(draw_labels=True)
+    grid.xlabels_top = grid.ylabels_right = False
+    grid.xformatter = LONGITUDE_FORMATTER
+    grid.yformatter = LATITUDE_FORMATTER
+    return fig, axis
 
+def add_shapes(axis, projection=ccrs.PlateCarree()):
+    """Overlay Earth's countries coastlines to matplotlib.pyplot axis."""
+    shp_file = shapereader.natural_earth(resolution='10m', \
+                category='cultural', name='admin_0_countries')
+    shp = shapereader.Reader(shp_file)
+    for geometry in shp.geometries():
+        axis.add_geometries([geometry], projection, facecolor='', \
+                            edgecolor='black')
+
+def add_populated(axis, extent, projection=ccrs.PlateCarree()):
+    """Add cities names."""
+    shp_file = shapereader.natural_earth(resolution='110m', \
+                           category='cultural', name='populated_places_simple')
+
+    shp = shapereader.Reader(shp_file)
+    cnt = 0
+    for rec, point in zip(shp.records(), shp.geometries()):
+        cnt += 1
+        if (point.x <= extent[1]) and (point.x > extent[0]):
+            if (point.y <= extent[3]) and (point.y > extent[2]):
+                axis.plot(point.x, point.y, 'ko', markersize=7, \
+                          transform=projection)
+                axis.text(point.x, point.y, rec.attributes['name'], \
+                    horizontalalignment='right', verticalalignment='bottom', \
+                    transform=projection, fontsize=14)
+        
 def geo_bin_from_array(geo_coord, array_val, var_name, title):
     """Plot array values binned over input coordinates.
 
@@ -53,7 +70,7 @@ def geo_bin_from_array(geo_coord, array_val, var_name, title):
 
     Returns
     -------
-        matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
 
     Raises
     ------
@@ -63,32 +80,26 @@ def geo_bin_from_array(geo_coord, array_val, var_name, title):
         raise ValueError("Size mismatch in input array: %s != %s." % \
                          (geo_coord.shape[0], array_val.size))
 
-    # Define axes
-    # add buffer around the lon,lat extent
-    min_lat, max_lat, min_lon, max_lon = get_borders(geo_coord)
-    axes = ([min_lon - BUFFER_DEG, max_lon + BUFFER_DEG, min_lat - BUFFER_DEG,\
-             max_lat + BUFFER_DEG])
+    extent = get_borders(geo_coord)
+    extent = ([extent[0] - BUFFER_DEG, extent[1] + BUFFER_DEG, extent[2] - \
+               BUFFER_DEG, extent[3] + BUFFER_DEG])
+    fig, axis = make_map()
+    axis.set_extent((extent))
+    add_shapes(axis)    
+    add_populated(axis, extent)
 
-    # Plot bins
-    fig, axs = plt.subplots()
-    plt.axis(axes)
-    # By default, this makes the mean value of all values in each bin. It can
-    # be changed by setting reduce_C_function
-    plt.hexbin(geo_coord[:, 1], geo_coord[:, 0], C=array_val, cmap='Wistia', \
-               gridsize=int(array_val.size/2))
-    col_bar = plt.colorbar()
-    col_bar.set_label(var_name)
-    axs.set_xlabel('lon')
-    axs.set_ylabel('lat')
-    fig.suptitle(title)
+    hex_bin = axis.hexbin(geo_coord[:, 1], geo_coord[:, 0], C=array_val, \
+        cmap='Wistia', gridsize=int(array_val.size/2), \
+        transform=ccrs.PlateCarree())
 
-    # Add Earth's countries shapes
-    add_shapes(axs)
-
-    # show figure if activate and return figure and axis
-    if SHOW:
-        plt.show()
-    return fig, axs
+    # Create colorbar in this axes  
+    divider = make_axes_locatable(axis)
+    cbax = divider.append_axes('right', size="6.5%", pad=0.1, \
+                               axes_class=plt.Axes)
+    cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical')
+    cbar.set_label(var_name)
+    axis.set_title(title)
+    return fig, axis
 
 def geo_im_from_array(geo_coord, array_im, var_name, title):
     """Image plot defined in array over input coordinates.
@@ -103,7 +114,7 @@ def geo_im_from_array(geo_coord, array_im, var_name, title):
 
     Returns
     -------
-        matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
 
     Raises
     ------
@@ -113,44 +124,27 @@ def geo_im_from_array(geo_coord, array_im, var_name, title):
         raise ValueError("Size mismatch in input array: %s != %s." % \
                          (geo_coord.shape[0], array_im.size))
     # Create regular grid where to interpolate the array
-    min_lat, max_lat, min_lon, max_lon = get_borders(geo_coord)
-    grid_x, grid_y = np.mgrid[min_lon : max_lon : complex(0, RESOLUTION), \
-                              min_lat : max_lat : complex(0, RESOLUTION)]
+    extent = get_borders(geo_coord)
+    grid_x, grid_y = np.mgrid[extent[0] : extent[1] : complex(0, RESOLUTION), \
+                              extent[2] : extent[3] : complex(0, RESOLUTION)]
     grid_im = griddata((geo_coord[:, 1], geo_coord[:, 0]), array_im, \
                              (grid_x, grid_y))
     grid_im = np.squeeze(grid_im)
-    grid_im = np.flip(grid_im.transpose(), axis=0)
 
-    # Define axes
-    # add buffer around the lon,lat extent
-    buffer = np.max([np.abs(max_lon - min_lon)/BUFFER_PERCEN/2, \
-                     np.abs(max_lat - min_lat)/BUFFER_PERCEN/2])
-    axes = ([min_lon - buffer, max_lon + buffer, min_lat - buffer, \
-             max_lat + buffer])
-
-    # Plot image
-    fig, axs = plt.subplots()
-    axs.axis(axes)
-    subimg = axs.imshow(grid_im, extent=axes, cmap=cm.jet, \
-                            interpolation='bilinear')
-    plt.colorbar(subimg, ax=axs, label=var_name)
-    axs.set_xlabel('lon')
-    axs.set_ylabel('lat')
-    fig.suptitle(title)
-
-    # Add Earth's countries shapes
-    add_shapes(axs)
-
-    # show figure if activate and return figure and axis
-    if SHOW:
-        plt.show()
-    return fig, axs
-
-def show():
-    """Show plot just if SHOW constant activated."""
-    if SHOW:
-        plt.tight_layout()
-        plt.show()
+    # Colormesh with coastline
+    fig, axis = make_map()
+    axis.set_extent((extent))
+    add_shapes(axis)       
+    col_mesh = axis.pcolormesh(grid_x, grid_y, grid_im)  
+    
+    # Create colorbar in this axes  
+    divider = make_axes_locatable(axis)
+    cbax = divider.append_axes('right', size="6.5%", pad=0.1, \
+                               axes_class=plt.Axes)
+    cbar = plt.colorbar(col_mesh, cax=cbax, orientation='vertical')
+    cbar.set_label(var_name)
+    axis.set_title(title)
+    return fig, axis
 
 class Graph2D(object):
     """2D graph object. Handles various subplots and curves."""
@@ -228,6 +222,6 @@ class Graph2D(object):
                 self.num_row = int(num_sub/2) + num_sub % 2
 
 def get_borders(geo_coord):
-    """Get min and max latitude and min and max longitude (in this order)."""
-    return np.min(geo_coord[:, 0]), np.max(geo_coord[:, 0]), \
-        np.min(geo_coord[:, 1]), np.max(geo_coord[:, 1])
+    """Get min and max longitude and min and max latitude (in this order)."""
+    return [np.min(geo_coord[:, 1]), np.max(geo_coord[:, 1]), \
+        np.min(geo_coord[:, 0]), np.max(geo_coord[:, 0])]
