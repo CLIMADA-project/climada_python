@@ -116,7 +116,6 @@ class TestObligatories(unittest.TestCase):
     def test_no_coord_fail(self):
         """Error if no coordinates."""
         new_var_names = mat.DEF_VAR_NAME
-        print('aquiiiiiiiiiiiiiiiiiiiiiiiiiiii', new_var_names)
         new_var_names['var_name']['lat'] = 'no valid Latitude'
         expo = Exposures()
         with self.assertRaises(KeyError):
