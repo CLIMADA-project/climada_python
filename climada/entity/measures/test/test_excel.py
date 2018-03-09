@@ -12,8 +12,25 @@ from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 class TestReader(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
+    def tearDown(self):
+        DEF_VAR_NAME = {'sheet_name': 'measures',
+                        'col_name': {'name' : 'name',
+                                     'color' : 'color',
+                                     'cost' : 'cost',
+                                     'haz_int' : 'hazard intensity impact',
+                                     'haz_frq' : 'hazard high frequency cutoff',
+                                     'haz_set' : 'hazard event set',
+                                     'mdd_a' : 'MDD impact a',
+                                     'mdd_b' : 'MDD impact b',
+                                     'paa_a' : 'PAA impact a',
+                                     'paa_b' : 'PAA impact b',
+                                     'risk_att' : 'risk transfer attachement',
+                                     'risk_cov' : 'risk transfer cover'
+                                    }
+                       }
+
     def test_demo_file(self):
-        # Read demo excel file
+        """ Read demo excel file"""
         meas = Measures()
         description = 'One single file.'
         meas.read(ENT_DEMO_XLS, description)

@@ -12,6 +12,25 @@ from climada.util.constants import ENT_DEMO_MAT
 class TestReader(unittest.TestCase):
     """Test reader functionality of the MeasuresMat class"""
 
+    def tearDown(self):
+        DEF_VAR_NAME = {'sup_field_name': 'entity',      
+                        'field_name': 'measures',
+                        'var_name': {'name' : 'name',
+                                     'color' : 'color',
+                                     'cost' : 'cost',
+                                     'haz_int_a' : 'hazard_intensity_impact_a',
+                                     'haz_int_b' : 'hazard_intensity_impact_b',
+                                     'haz_frq' : 'hazard_high_frequency_cutoff',
+                                     'haz_set' : 'hazard_event_set',
+                                     'mdd_a' : 'MDD_impact_a',
+                                     'mdd_b' : 'MDD_impact_b',
+                                     'paa_a' : 'PAA_impact_a',
+                                     'paa_b' : 'PAA_impact_b',
+                                     'risk_att' : 'risk_transfer_attachement',
+                                     'risk_cov' : 'risk_transfer_cover'
+                                    }
+                       }
+
     def test_demo_file(self):
         # Read demo excel file
         meas = Measures()
