@@ -3,13 +3,26 @@ Test imp_funcsFuncs from Excel file.
 """
 
 import unittest
+import pandas
 
-from climada.entity.measures.source_excel import DEF_VAR_NAME
+from climada.entity.impact_funcs.source_excel import DEF_VAR_NAME, _distinct_funcs
 from climada.entity.impact_funcs.base import ImpactFuncs
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
+
+    def tearDown(self):
+        DEF_VAR_NAME = {'sheet_name': 'damagefunctions',
+                        'col_name': {'func_id' : 'DamageFunID',
+                                     'inten' : 'Intensity',
+                                     'mdd' : 'MDD',
+                                     'paa' : 'PAA',
+                                     'name' : 'name',
+                                     'unit' : 'Intensity_unit',
+                                     'peril' : 'peril_ID'
+                                    }
+                       }
 
     def test_demo_file_pass(self):
         """ Read demo excel file"""
@@ -102,7 +115,18 @@ class TestReader(unittest.TestCase):
         imp_funcs = ImpactFuncs()
         with self.assertRaises(KeyError):
             imp_funcs.read(ENT_DEMO_XLS, var_names=new_var_names)
+            
+class TestFunctions(unittest.TestCase):
+    """Test reader functionality of the imp_funcsFuncsExcel class"""
+
+    def test_distinct_funcs(self):
+        """ Read demo excel file"""
+        dfr = pandas.read_excel(ENT_DEMO_XLS, DEF_VAR_NAME['sheet_name'])
+        imp_funcs = _distinct_funcs(dfr, DEF_VAR_NAME)
+        self.assertEqual(imp_funcs[0], ('TC', 1))
+        self.assertEqual(imp_funcs[1], ('TC', 3))
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctions))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

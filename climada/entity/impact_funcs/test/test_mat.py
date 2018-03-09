@@ -99,45 +99,35 @@ class TestGets(unittest.TestCase):
         funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(len(funcs), 2)
         
-        self.assertEqual(len(funcs['Tropical cyclone default']), 9)
-        self.assertEqual(len(funcs['TC Building code']), 9)
+        self.assertEqual(len(funcs[('TC', 1)]), 9)
+        self.assertEqual(len(funcs[('TC', 3)]), 9)
         for i in range(9):
-            self.assertEqual(funcs['Tropical cyclone default'][i], i)
-            self.assertEqual(funcs['TC Building code'][i], 9 + i)
-
-    def test_hazard_pass(self):
-        """Check get_imp_fun_hazard."""
-        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
-        haz_type = mat._get_imp_fun_hazard(self.imp, funcs['TC Building code'], \
-                                      ENT_DEMO_MAT, mat.DEF_VAR_NAME)
-        self.assertEqual(haz_type, 'TC')
-
-        haz_type = mat._get_imp_fun_hazard(self.imp, \
-            funcs['Tropical cyclone default'], ENT_DEMO_MAT, mat.DEF_VAR_NAME)
-        self.assertEqual(haz_type, 'TC')
-
-    def test_id_pass(self):
-        """Check get_imp_fun_id."""
-        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
-        fun_id = mat._get_imp_fun_id(self.imp, funcs['TC Building code'], \
-                                mat.DEF_VAR_NAME)
-        self.assertEqual(fun_id, 3)
-
-        fun_id = mat._get_imp_fun_id(self.imp, funcs['Tropical cyclone default'], \
-                                mat.DEF_VAR_NAME)
-        self.assertEqual(fun_id, 1)
+            self.assertEqual(funcs[('TC', 1)][i], i)
+            self.assertEqual(funcs[('TC', 3)][i], 9 + i)
 
     def test_unit_pass(self):
         """Check get_imp_fun_unit"""
         funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
-        fun_unit = mat._get_imp_fun_unit(self.imp, funcs['TC Building code'], \
+        fun_unit = mat._get_imp_fun_unit(self.imp, funcs[('TC', 3)], \
                                     ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(fun_unit, 'm/s')
 
         fun_unit = mat._get_imp_fun_unit(self.imp, \
-                                 funcs['Tropical cyclone default'], \
+                                 funcs[('TC', 1)], \
                                  ENT_DEMO_MAT, mat.DEF_VAR_NAME)
         self.assertEqual(fun_unit, 'm/s')
+        
+    def test_name_pass(self):
+        """Check get_imp_fun_unit"""
+        funcs = mat._get_funcs_rows(self.imp, ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        fun_name = mat._get_imp_fun_name(self.imp, funcs[('TC', 1)], \
+                                    ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        self.assertEqual(fun_name, 'Tropical cyclone default')
+
+        fun_name = mat._get_imp_fun_name(self.imp, \
+                                 funcs[('TC', 3)], \
+                                 ENT_DEMO_MAT, mat.DEF_VAR_NAME)
+        self.assertEqual(fun_name, 'TC Building code')
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)

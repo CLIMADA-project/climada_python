@@ -37,36 +37,45 @@ def read(imp_funcs, file_name, description='', var_names=None):
     dfr = pandas.read_excel(file_name, var_names['sheet_name'])
     
     # number of impact functions
-    names_func = dfr[var_names['col_name']['name']].unique()
-    num_func = len(names_func)
+    dist_func = _distinct_funcs(dfr, var_names)
     
     # iterate over each impact function
-    for idx in range(0, num_func):
-    
+    for haz_type, imp_id in dist_func:
+        # hazard type
+        
         # select an impact function
-        df_func = dfr[dfr[var_names['col_name']['name']] == names_func[idx]]
+        df_func = dfr[dfr[DEF_VAR_NAME['col_name']['peril']] == haz_type]
+        df_func = df_func[df_func[DEF_VAR_NAME['col_name']['func_id']] \
+                          == imp_id]
 
-        func = Vulnerability()
-        # check that this function only represents one peril
-        if len(df_func[var_names['col_name']['peril']].unique()) is not 1:
-            raise ValueError('Impact function with two different perils.')
-        hazard = df_func[var_names['col_name']['peril']].values[0]
-    
         # load impact function values
-        func.haz_type = hazard
-        # check that the impact function has a unique id
-        if len(df_func[var_names['col_name']['func_id']].unique()) is not 1:
-            raise ValueError('Impact function with two different IDs.')
-        func.id = df_func[var_names['col_name']['func_id']].values[0]
-        func.name = names_func[idx]
+        func = Vulnerability()
+        func.haz_type = haz_type
+        func.id = imp_id
         # check that the unit of the intensity is the same
-        if len(df_func[var_names['col_name']['unit']].unique()) is not 1:
-            raise ValueError('Impact function with two different \
-                             intensity units.')
-        func.intensity_unit = df_func[var_names['col_name']['unit']].values[0]
+        if len(df_func[var_names['col_name']['name']].unique()) is not 1:
+            raise ValueError('Impact function with two different names.')
+        func.name = df_func[var_names['col_name']['name']].values[0]
+        # check that the unit of the intensity is the same, if provided
+        try:
+            if len(df_func[var_names['col_name']['unit']].unique()) is not 1:
+                raise ValueError('Impact function with two different \
+                                 intensity units.')
+            func.intensity_unit = \
+                            df_func[var_names['col_name']['unit']].values[0]
+        except KeyError:
+            pass
     
         func.intensity = df_func[var_names['col_name']['inten']].values
         func.mdd = df_func[var_names['col_name']['mdd']].values
         func.paa = df_func[var_names['col_name']['paa']].values
     
         imp_funcs.add_vulner(func)
+
+def _distinct_funcs(dfr, var_names):
+    dist_func = []
+    for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']], \
+    dfr[var_names['col_name']['func_id']]):
+        if (haz_type, imp_id) not in dist_func:
+            dist_func.append((haz_type, imp_id))
+    return dist_func

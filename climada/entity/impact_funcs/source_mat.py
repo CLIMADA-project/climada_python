@@ -50,20 +50,20 @@ def read(imp_funcs, file_name, description='', var_names=None):
     funcs_idx = _get_funcs_rows(imp, file_name, var_names)
 
     # iterate over each impact function
-    for imp_name, imp_rows in funcs_idx.items():
+    for imp_key, imp_rows in funcs_idx.items():
         # get impact function values
         func = Vulnerability()
-        func.name = imp_name
-
-        # check that this function only represents one peril
-        hazard = _get_imp_fun_hazard(imp, imp_rows, file_name, var_names)
-        func.haz_type = hazard
-        # check that this function only has one id
-        func.id = _get_imp_fun_id(imp, imp_rows, var_names)
-        # check that this function only has one intensity unit
-        func.intensity_unit = _get_imp_fun_unit(imp, imp_rows, \
-                                                    file_name, var_names)
-
+        func.haz_type = imp_key[0]
+        func.id = imp_key[1]
+        # check that this function only has one intensity unit, if provided
+        try:
+            func.intensity_unit = _get_imp_fun_unit(imp, imp_rows, \
+                                                file_name, var_names)
+        except KeyError:
+            pass
+        # check that this function only has one name
+        func.name = _get_imp_fun_name(imp, imp_rows, \
+                                                file_name, var_names)        
         func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
         func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
         func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
@@ -73,51 +73,15 @@ def read(imp_funcs, file_name, description='', var_names=None):
 def _get_funcs_rows(imp, file_name, var_names):
     """Get rows that fill every impact function and its name."""
     func_pos = dict()
-    it_fun = np.nditer(imp[var_names['var_name']['name']], \
-                       flags=['refs_ok', 'c_index'])
-    while not it_fun.finished:
-        str_aux = hdf5.get_str_from_ref(file_name, \
-                                        it_fun.itviews[0][it_fun.index])
-        if str_aux not in func_pos.keys():
-            func_pos[str_aux] = [it_fun.index]
-        else:
-            func_pos[str_aux].append(it_fun.index)
-        it_fun.iternext()
+    for row, (fun_id, fun_type) in enumerate(zip( \
+    imp[var_names['var_name']['fun_id']], \
+    imp[var_names['var_name']['peril']])):
+        type_str = hdf5.get_str_from_ref(file_name, fun_type[0])
+        key = (type_str, fun_id[0])
+        if key not in func_pos:
+            func_pos[key] = list()
+        func_pos[key].append(row)
     return func_pos
-
-def _get_imp_fun_hazard(imp, idxs, file_name, var_names):
-    """Get hazard id of each value of an impact function. Check all the
-    values are the same.
-
-    Raises
-    ------
-        ValueError
-    """
-    prev_haz = ""
-    for row in idxs:
-        cur_haz = hdf5.get_str_from_ref(file_name, \
-                imp[var_names['var_name']['peril']][row][0])
-        if prev_haz == "":
-            prev_haz = cur_haz
-        elif prev_haz != cur_haz:
-            LOGGER.error("Impact function with two different perils.")
-            raise ValueError
-    return prev_haz
-
-def _get_imp_fun_id(imp, idxs, var_names):
-    """Get function id of each value of an impact function. Check all the
-    values are the same.
-
-    Raises
-    ------
-        ValueError
-    """
-    fun_id = np.unique(np.take(imp[var_names['var_name']['fun_id']], idxs))
-    if len(fun_id) != 1:
-        LOGGER.error("Impact function with two different IDs.")
-        raise ValueError
-    else:
-        return int(fun_id)
 
 def _get_imp_fun_unit(imp, idxs, file_name, var_names):
     """Get units of each value of an impact function. Check all the
@@ -137,3 +101,22 @@ def _get_imp_fun_unit(imp, idxs, file_name, var_names):
             LOGGER.error("Impact function with two different intensity units.")
             raise ValueError
     return prev_unit
+
+def _get_imp_fun_name(imp, idxs, file_name, var_names):
+    """Get name of each value of an impact function. Check all the
+    values are the same.
+
+    Raises
+    ------
+        ValueError
+    """
+    prev_name = ""
+    for row in idxs:
+        cur_name = hdf5.get_str_from_ref(file_name, \
+                imp[var_names['var_name']['name']][row][0])
+        if prev_name == "":
+            prev_name = cur_name
+        elif prev_name != cur_name:
+            LOGGER.error("Impact function with two different names.")
+            raise ValueError
+    return prev_name
