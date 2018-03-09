@@ -2,7 +2,7 @@
 set -e
 
 # Load previously installed climada_jenkins environment
-source ../../../.conda/envs/climada_env/bin/activate climada_env
+source activate climada_env
 
 # run all climada tests
 PYTHONPATH=. python -m coverage run --parallel-mode --concurrency=multiprocessing unit_tests.py
