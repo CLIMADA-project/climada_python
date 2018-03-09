@@ -30,9 +30,6 @@ ENT_DEMO_XLS = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 ENT_TEMPLATE_XLS = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 
-# Auxiliary files
-SHAPES_MAT = os.path.join(DATA_DIR, 'system', 'admin0.mat')
-
 # Mean one latitude in km
 ONE_LAT_KM = 111.12
 
