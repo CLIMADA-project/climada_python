@@ -59,7 +59,7 @@ def read(file_name, with_refs=False):
         return contents
     except OSError:
         logger = logging.getLogger(__name__)
-        logger.error('File not found: %s', file_name)
+        logger.error('Invalid file: %s', file_name)
 
 def get_string(array):
     """Form string from input array of unisgned integers.
