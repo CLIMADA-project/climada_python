@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
-from climada.entity.exposures import source_mat as mat
+from climada.entity.exposures import source as source
 from climada.entity.exposures.base import Exposures
 from climada.util.constants import ENT_DEMO_MAT
 from climada.util.config import CONFIG
@@ -81,25 +81,25 @@ class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
 
     def tearDown(self):
-        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
-                            'field_name': 'assets',
-                            'var_name': {'lat' : 'lat',
-                                         'lon' : 'lon',
-                                         'val' : 'Value',
-                                         'ded' : 'Deductible',
-                                         'cov' : 'Cover',
-                                         'imp' : 'DamageFunID',
-                                         'cat' : 'Category_ID',
-                                         'reg' : 'Region_ID',
-                                         'uni' : 'Value_unit',
-                                         'ass' : 'centroid_index',
-                                         'ref' : 'reference_year'
-                                        }
-                            }
+        source.DEF_VAR_MAT = {'sup_field_name': 'entity',
+                              'field_name': 'assets',
+                              'var_name': {'lat' : 'lat',
+                                           'lon' : 'lon',
+                                           'val' : 'Value',
+                                           'ded' : 'Deductible',
+                                           'cov' : 'Cover',
+                                           'imp' : 'DamageFunID',
+                                           'cat' : 'Category_ID',
+                                           'reg' : 'Region_ID',
+                                           'uni' : 'Value_unit',
+                                           'ass' : 'centroid_index',
+                                           'ref' : 'reference_year'
+                                          }
+                             }
 
     def test_no_value_fail(self):
         """Error if no values."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['val'] = 'no valid value'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -107,7 +107,7 @@ class TestObligatories(unittest.TestCase):
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['imp'] = 'no valid value'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -115,7 +115,7 @@ class TestObligatories(unittest.TestCase):
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['lat'] = 'no valid Latitude'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -130,25 +130,25 @@ class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
 
     def tearDown(self):
-        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
-                            'field_name': 'assets',
-                            'var_name': {'lat' : 'lat',
-                                         'lon' : 'lon',
-                                         'val' : 'Value',
-                                         'ded' : 'Deductible',
-                                         'cov' : 'Cover',
-                                         'imp' : 'DamageFunID',
-                                         'cat' : 'Category_ID',
-                                         'reg' : 'Region_ID',
-                                         'uni' : 'Value_unit',
-                                         'ass' : 'centroid_index',
-                                         'ref' : 'reference_year'
-                                        }
-                            }
+        source.DEF_VAR_MAT = {'sup_field_name': 'entity',
+                               'field_name': 'assets',
+                               'var_name': {'lat' : 'lat',
+                                            'lon' : 'lon',
+                                            'val' : 'Value',
+                                            'ded' : 'Deductible',
+                                            'cov' : 'Cover',
+                                            'imp' : 'DamageFunID',
+                                            'cat' : 'Category_ID',
+                                            'reg' : 'Region_ID',
+                                            'uni' : 'Value_unit',
+                                            'ass' : 'centroid_index',
+                                            'ref' : 'reference_year'
+                                           }
+                              }
 
     def test_no_category_pass(self):
         """Not error if no category id."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['cat'] = 'no valid category'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -158,7 +158,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_region_pass(self):
         """Not error if no region id."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['reg'] = 'no valid region'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -168,7 +168,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_unit_pass(self):
         """Not error if no value unit."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['uni'] = 'no valid unit'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -178,7 +178,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['ass'] = 'no valid assign'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -188,7 +188,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['ref'] = 'no valid ref'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -200,7 +200,7 @@ class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
 
     def tearDown(self):
-        mat.DEF_VAR_NAME = {'sup_field_name': 'entity',
+        source.DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'field_name': 'assets',
                             'var_name': {'lat' : 'lat',
                                          'lon' : 'lon',
@@ -218,7 +218,7 @@ class TestDefaults(unittest.TestCase):
 
     def test_no_cover_pass(self):
         """Check default values for excel file with no cover."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['cov'] = 'Dummy'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -228,7 +228,7 @@ class TestDefaults(unittest.TestCase):
 
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
-        new_var_names = mat.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_MAT
         new_var_names['var_name']['ded'] = 'Dummy'
         expo = Exposures()
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
@@ -248,25 +248,25 @@ class TestParsers(unittest.TestCase):
     def test_parse_optional_exist_pass(self):
         """Check variable read if present."""
         var_ini = 0
-        var = mat._parse_optional(self.expo, var_ini, 'lat')
+        var = source._parse_mat_optional(self.expo, var_ini, 'lat')
         self.assertEqual(50, len(var))
 
     def test_parse_optional_not_exist_pass(self):
         """Check pass if variable not present and initial value kept."""
         var_ini = 0
-        var = mat._parse_optional(self.expo, var_ini, 'Not Present')
+        var = source._parse_mat_optional(self.expo, var_ini, 'Not Present')
         self.assertEqual(var_ini, var)
 
     def test_parse_default_exist_pass(self):
         """Check variable read if present."""
         def_val = 5
-        var = mat._parse_default(self.expo, 'lat', def_val)
+        var = source._parse_mat_default(self.expo, 'lat', def_val)
         self.assertEqual(50, len(var))
 
     def test_parse_default_not_exist_pass(self):
         """Check pass if variable not present and default value is set."""
         def_val = 5
-        var = mat._parse_default(self.expo, 'Not Present', def_val)
+        var = source._parse_mat_default(self.expo, 'Not Present', def_val)
         self.assertEqual(def_val, var)
 
 # Execute Tests

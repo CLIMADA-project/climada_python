@@ -9,8 +9,7 @@ import logging
 from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
-from climada.entity.exposures.source_mat import read as read_mat
-from climada.entity.exposures.source_excel import read as read_excel
+from climada.entity.exposures.source import read as read_source
 from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
@@ -240,16 +239,9 @@ class Exposures(object):
         ------
             Exposures
         """
-        exp = Exposures()
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(exp, file_name, description, var_names)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(exp, file_name, description, var_names)
-        else:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        return exp
+        new_exp = Exposures()
+        read_source(new_exp, file_name, description, var_names)
+        return new_exp
      
     @staticmethod
     def _append_optional(ini, to_add):

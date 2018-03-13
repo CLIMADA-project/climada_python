@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 import pandas
 
-from climada.entity.exposures import source_excel as excel
+from climada.entity.exposures import source as source
 from climada.entity.exposures.base import Exposures
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 from climada.util.config import CONFIG
@@ -134,7 +134,7 @@ class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
 
     def tearDown(self):
-        excel.DEF_VAR_NAME = {'sheet_name': {'exp': 'assets',
+        source.DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
                                              'name': 'names'
                                             },
                               'col_name': {'lat' : 'Latitude',
@@ -154,7 +154,7 @@ class TestObligatories(unittest.TestCase):
 
     def test_no_value_fail(self):
         """Error if no values."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['val'] = 'no valid value'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -162,7 +162,7 @@ class TestObligatories(unittest.TestCase):
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['imp'] = 'no valid impact'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -170,7 +170,7 @@ class TestObligatories(unittest.TestCase):
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['lat'] = 'no valid Latitude'
         expo = Exposures()
         with self.assertRaises(KeyError):
@@ -185,7 +185,7 @@ class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
 
     def tearDown(self):
-         excel.DEF_VAR_NAME = {'sheet_name': {'exp': 'assets',
+         source.DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
                                              'name': 'names'
                                             },
                               'col_name': {'lat' : 'Latitude',
@@ -205,7 +205,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_category_pass(self):
         """Not error if no category id."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['cat'] = 'no valid category'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -215,7 +215,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_region_pass(self):
         """Not error if no region id."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['reg'] = 'no valid region'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -225,7 +225,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_unit_pass(self):
         """Not error if no value unit."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['uni'] = 'no valid value unit'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -235,7 +235,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ass'] = 'no valid assign'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -245,7 +245,7 @@ class TestOptionals(unittest.TestCase):
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ref'] = 'no valid ref'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -257,7 +257,7 @@ class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
 
     def tearDown(self):
-         excel.DEF_VAR_NAME = {'sheet_name': {'exp': 'assets',
+         source.DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
                                              'name': 'names'
                                             },
                                'col_name': {'lat' : 'Latitude',
@@ -277,7 +277,7 @@ class TestDefaults(unittest.TestCase):
 
     def test_no_cover_pass(self):
         """Check default values for excel file with no cover."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['cov'] = 'Dummy'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -287,7 +287,7 @@ class TestDefaults(unittest.TestCase):
 
     def test_no_deductible_pass(self):
         """Check default values for excel file with no deductible."""
-        new_var_names = excel.DEF_VAR_NAME
+        new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ded'] = 'Dummy'
         expo = Exposures()
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
@@ -305,35 +305,35 @@ class TestParsers(unittest.TestCase):
     def test_parse_optional_exist_pass(self):
         """Check variable read if present."""
         var_ini = 0
-        var = excel._parse_optional(self.dfr, var_ini, 'Latitude')
+        var = source._parse_xls_optional(self.dfr, var_ini, 'Latitude')
         self.assertEqual(24, len(var))
 
     def test_parse_optional_not_exist_pass(self):
         """Check pass if variable not present and initial value kept."""
         var_ini = 0
-        var = excel._parse_optional(self.dfr, var_ini, 'Not Present')
+        var = source._parse_xls_optional(self.dfr, var_ini, 'Not Present')
         self.assertEqual(var_ini, var)
 
     def test_parse_default_exist_pass(self):
         """Check variable read if present."""
         def_val = 5
-        var = excel._parse_default(self.dfr, 'Latitude', def_val)
+        var = source._parse_xls_default(self.dfr, 'Latitude', def_val)
         self.assertEqual(24, len(var))
 
     def test_parse_default_not_exist_pass(self):
         """Check pass if variable not present and default value is set."""
         def_val = 5
-        var = excel._parse_default(self.dfr, 'Not Present', def_val)
+        var = source._parse_xls_default(self.dfr, 'Not Present', def_val)
         self.assertEqual(def_val, var)
 
     def test_refyear_exist_pass(self):
         """Check that the reference year is well read from template."""
-        ref_year = excel._parse_ref_year(ENT_TEMPLATE_XLS, excel.DEF_VAR_NAME)
+        ref_year = source._parse_xls_ref_year(ENT_TEMPLATE_XLS, source.DEF_VAR_EXCEL)
         self.assertEqual(2017, ref_year)
 
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
-        ref_year = excel._parse_ref_year(ENT_DEMO_XLS, excel.DEF_VAR_NAME)
+        ref_year = source._parse_xls_ref_year(ENT_DEMO_XLS, source.DEF_VAR_EXCEL)
         self.assertEqual(CONFIG["present_ref_year"], ref_year)      
         
 # Execute Tests

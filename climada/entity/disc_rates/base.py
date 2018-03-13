@@ -4,14 +4,12 @@ Define DiscRates.
 
 __all__ = ['DiscRates']
 
-import os
 from array import array
 import logging
 from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
-from climada.entity.disc_rates.source_mat import read as read_mat
-from climada.entity.disc_rates.source_excel import read as read_excel
+from climada.entity.disc_rates.source import read as read_source
 from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
@@ -28,7 +26,7 @@ class DiscRates(object):
         rates (np.array): discount rates for each year
     """
 
-    def __init__(self, file_name='', description='', var_names=None):
+    def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
         Parameters
@@ -37,8 +35,6 @@ class DiscRates(object):
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
-                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -57,7 +53,7 @@ class DiscRates(object):
         self.clear()
         # Load values from file_name if provided
         if file_name != '':
-            self.read(file_name, description, var_names)
+            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""        
@@ -152,13 +148,6 @@ class DiscRates(object):
         ------
             DiscRates
         """
-        disc = DiscRates()
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(disc, file_name, description, var_names)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(disc, file_name, description, var_names)
-        else:
-            LOGGER.error('Not supported file extension: %s.', extension)
-            raise ValueError
-        return disc
+        new_disc = DiscRates()
+        read_source(new_disc, file_name, description, var_names)
+        return new_disc
