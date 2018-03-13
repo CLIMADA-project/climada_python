@@ -8,9 +8,10 @@ import logging
 from array import array
 import numpy as np
 
+from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import read as read_source
 import climada.util.checker as check
-from climada.hazard.centroids.tag import Tag
+from climada.util.coordinates import Coordinates
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class Centroids(object):
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self.coord = np.array([]).reshape((0, 2))
+        self.coord = Coordinates()
         self.id = np.array([], np.int64)
         self.region_id = np.array([], np.int64)        
 
@@ -66,7 +67,7 @@ class Centroids(object):
         if np.unique(self.id).size != num_exp:
             LOGGER.error("There are centroids with the same identifier.")
             raise ValueError
-        check.shape(num_exp, 2, self.coord, 'Centroids.coord')
+        check.shape(num_exp, 2, self.coord, 'Centroids.coord')            
         check.array_optional(num_exp, self.region_id, \
                                  'Centroids.region_id')
 
@@ -98,11 +99,13 @@ class Centroids(object):
         """
         centroids.check()
 
+        self.tag.append(centroids.tag)
+
         if self.id.size == 0:
             self.__dict__ = centroids.__dict__.copy()
             return np.arange(centroids.id.size)
-
-        self.tag.append(centroids.tag)
+        elif centroids.id.size == 0:
+            return np.array([])
 
         # Check if region id need to be considered
         regions = True
@@ -111,14 +114,27 @@ class Centroids(object):
             self.region_id = np.array([], np.int64)
             LOGGER.warning("Centroids.region_id is not going to be set.")
 
+        new_pos, new_id, new_reg, new_lat, new_lon = \
+            self._append_one(centroids, regions)
+
+        self.coord = np.append(self.coord, np.transpose( \
+                np.array([new_lat, new_lon])), axis=0)
+        self.id = np.append(self.id, new_id).astype(int)
+        if regions:
+            self.region_id = np.append(self.region_id, new_reg)
+
+        return new_pos
+
+    def _append_one(self, centroids, regions):
+        """Append one by one centroid."""
         new_pos = array('L')
         new_id = array('L')
         new_reg = array('l')
         new_lat = array('d')
         new_lon = array('d')
         max_id = int(np.max(self.id))
-        for cnt, (centr, centr_id) \
-        in enumerate(zip(centroids.coord, centroids.id)):
+        for cnt, (centr_id, centr) \
+        in enumerate(zip(centroids.id, centroids.coord)):
             found = np.where((centr == self.coord).all(axis=1))[0]
             if found.size > 0:
                 new_pos.append(found[0])
@@ -144,10 +160,5 @@ class Centroids(object):
                 if regions:
                     new_reg.append(centroids.region_id[cnt])
 
-        self.coord = np.append(self.coord, np.transpose( \
-                np.array([new_lat, new_lon])), axis=0)
-        self.id = np.append(self.id, new_id).astype(int)
-        if regions:
-            self.region_id = np.append(self.region_id, new_reg)
-
-        return new_pos
+        return new_pos, new_id, new_reg, new_lat, new_lon
+    

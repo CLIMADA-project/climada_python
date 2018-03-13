@@ -13,7 +13,8 @@ from climada.entity.exposures.source import read as read_source
 from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
-from climada.util.interpolation import Interpolator
+from climada.util.coordinates import Coordinates
+from climada.util.interpolation import METHOD, DIST_DEF
 from climada.util.config import CONFIG
 import climada.util.plot as plot
 
@@ -85,7 +86,7 @@ class Exposures(object):
         self.value_unit = 'NA'
         # Following values defined for each exposure
         # Obligatory variables
-        self.coord = np.array([], np.float64).reshape(0, 2) # n_exp x (lat,lon)
+        self.coord = Coordinates()
         self.value = np.array([], np.float64)
         self.impact_id = np.array([], np.int64)
         self.id = np.array([], np.int64)
@@ -97,8 +98,7 @@ class Exposures(object):
         self.region_id = np.array([], np.int64)
         self.assigned = dict()
         
-    def assign(self, hazard, method=Interpolator.method[0], \
-               dist=Interpolator.dist_def[0], threshold=100):
+    def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[0]):
         """Compute the hazard centroids ids affecting to each exposure.
 
         Parameters
@@ -106,21 +106,17 @@ class Exposures(object):
             hazard (subclass Hazard): one hazard
             method (str, optional): interpolation method, neareast neighbor by
                 default. The different options are provided by the class
-                attribute 'method' of the Interpolator class
+                constant 'METHOD' of the interpolation module
             dist (str, optional): distance used, euclidian approximation by
                 default. The different options are provided by the class
-                attribute 'dist_def' of the Interpolator class
-            threshold (float, optional): threshold distance in km between
-                exposure coordinate and hazard's centroid. A warning is thrown
-                when the threshold is exceeded. Default value: 100km.
+                constant 'DIST_DEF' of the interpolation module
 
         Raises
         ------
             ValueError
         """
-        interp = Interpolator(threshold)
-        self.assigned[hazard.tag.haz_type] = interp.interpol_index( \
-                     hazard.centroids.coord, self.coord, method, dist)
+        self.assigned[hazard.tag.haz_type] = hazard.centroids.coord.resample(\
+                     self.coord, method, dist)
 
     def check(self):
         """Check instance attributes.

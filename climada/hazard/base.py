@@ -116,6 +116,11 @@ class Hazard(object):
         haz_part = Pool().map(self._read_one, all_files, \
             itertools.repeat(haz_type, num_files), desc_list, centr_list, \
             var_list)
+#        haz_part = list()
+#        haz_part.append(self._read_one(all_files[0], haz_type, desc_list[0], centr_list[0], \
+#            var_list[0]))
+#        haz_part.append(self._read_one(all_files[1], haz_type, desc_list[1], centr_list[1], \
+#            var_list[1]))
         for haz, file in zip(haz_part, all_files):
             LOGGER.info('Read file: %s', file)    
             self.append(haz)

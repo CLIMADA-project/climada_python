@@ -7,6 +7,7 @@ import numpy as np
 
 from climada.entity.exposures.base import Exposures
 from climada.hazard.base import Hazard
+from climada.util.coordinates import IrregularGrid
 from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
 
 def good_exposures():
@@ -179,7 +180,7 @@ class TestAssign(unittest.TestCase):
         # Fill with dummy values the centroids
         haz = Hazard()
         haz.tag.haz_type = 'TC'
-        haz.centroids.coord = np.ones((num_coord+6, 2))
+        haz.centroids.coord = IrregularGrid(np.ones((num_coord+6, 2)))
         # assign
         expo.assign(haz)
 

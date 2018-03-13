@@ -2,15 +2,20 @@
 Define Exposures reader function from an Excel file.
 """
 
+__all__ = ['DEF_VAR_EXCEL',
+           'DEF_VAR_MAT',
+           'read']
+
 import os
 import logging
 from xlrd import XLRDError
 import numpy as np
 import pandas
 
-import climada.util.hdf5_handler as hdf5
 from climada.entity.tag import Tag
+import climada.util.hdf5_handler as hdf5
 from climada.util.config import CONFIG
+from climada.util.coordinates import IrregularGrid
 
 DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
                                 'name': 'names'
@@ -107,7 +112,7 @@ def _read_xls_obligatory(exposures, dfr, var_names):
     exposures.value = dfr[var_names['col_name']['val']].values
 
     coord_cols = [var_names['col_name']['lat'], var_names['col_name']['lon']]
-    exposures.coord = np.array(dfr[coord_cols])
+    exposures.coord = IrregularGrid(np.array(dfr[coord_cols]))
 
     exposures.impact_id = dfr[var_names['col_name']['imp']].values
 
@@ -183,7 +188,8 @@ def _read_mat_obligatory(exposures, data, var_names):
 
     coord_lat = data[var_names['var_name']['lat']]
     coord_lon = data[var_names['var_name']['lon']]
-    exposures.coord = np.concatenate((coord_lat, coord_lon), axis=1)
+    exposures.coord = IrregularGrid(np.concatenate((coord_lat, coord_lon), \
+                                                   axis=1))
 
     exposures.impact_id = np.squeeze(data[var_names['var_name']['imp']]). \
         astype(int)

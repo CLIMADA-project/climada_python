@@ -7,7 +7,7 @@ import numpy as np
 
 from climada.entity.exposures.base import Exposures
 from climada.hazard.centroids.base import Centroids
-from climada.util.interpolation import Interpolator
+import climada.util.interpolation as interp
 from climada.util.constants import ENT_DEMO_XLS
 
 def def_input_values():
@@ -48,7 +48,6 @@ class TestInterpIndex(unittest.TestCase):
 
     def test_wrong_method_fail(self):
         ''' Check exception is thrown when wrong method is given'''
-        interp = Interpolator()
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
         self.assertIn('Interpolation using method' + \
@@ -56,7 +55,6 @@ class TestInterpIndex(unittest.TestCase):
 
     def test_wrong_distance_fail(self):
         ''' Check exception is thrown when wrong distance is given'''
-        interp = Interpolator()
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), \
                                   distance='distance')
@@ -65,18 +63,19 @@ class TestInterpIndex(unittest.TestCase):
 
     def test_wrong_centroid_fail(self):
         ''' Check exception is thrown when centroids missing one dimension'''
-        interp = Interpolator()
         with self.assertRaises(IndexError):
             interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)))
 
     def test_wrong_coord_fail(self):
         ''' Check exception is thrown when coordinates missing one dimension'''
-        interp = Interpolator()
         with self.assertRaises(IndexError):
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)))
 
 class TestNN(unittest.TestCase):
     '''Test interpolator neareast neighbor with approximate distance'''
+
+    def tearDown(self):
+        interp.THRESHOLD = 100
 
     def normal_pass(self, dist):
         '''Checking result against matlab climada_demo_step_by_step'''
@@ -85,7 +84,6 @@ class TestNN(unittest.TestCase):
         exposures, centroids = def_input_values()
 
         # Interpolate with default threshold
-        interp = Interpolator()
         neighbors = interp.interpol_index(centroids.coord, exposures.coord,
                                           'NN', dist)
 
@@ -103,8 +101,7 @@ class TestNN(unittest.TestCase):
         exposures, centroids = def_input_values()
 
         # Interpolate with lower threshold to raise warnings
-        interp = Interpolator()
-        interp.threshold = 50
+        interp.THRESHOLD = 50
         neighbors = interp.interpol_index(centroids.coord,
                                   exposures.coord, 'NN', dist)
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
@@ -126,7 +123,6 @@ class TestNN(unittest.TestCase):
         exposures.coord[2, :] = exposures.coord[0, :]
 
         # Interpolate with default threshold
-        interp = Interpolator()
         neighbors = interp.interpol_index(centroids.coord, exposures.coord,
                                           'NN', dist)
 

@@ -2,6 +2,10 @@
 Define Centroids general reader functions from specific format files.
 """
 
+__all__ = ['DEF_VAR_EXCEL',
+           'DEF_VAR_MAT',
+           'read']
+
 import os
 import logging
 import pandas
@@ -9,6 +13,7 @@ import numpy as np
 
 from climada.hazard.centroids.tag import Tag
 import climada.util.hdf5_handler as hdf5
+from climada.util.coordinates import IrregularGrid
 
 DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                'var_name': {'cen_id' : 'centroid_ID',
@@ -57,7 +62,7 @@ def read_excel(centroids, file_name, var_names):
     coord_cols = [var_names['col_name']['lat'], \
                   var_names['col_name']['lon']]
 
-    centroids.coord = np.array(dfr[coord_cols])
+    centroids.coord = IrregularGrid(np.array(dfr[coord_cols]))
     centroids.id = dfr[var_names['col_name']['cen_id']].values
 
 def read_mat(centroids, file_name, var_names):
@@ -81,6 +86,6 @@ def read_mat(centroids, file_name, var_names):
 
     cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
     cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-    centroids.coord = np.array([cen_lat, cen_lon]).transpose()
+    centroids.coord = IrregularGrid(np.array([cen_lat, cen_lon]).transpose())
     centroids.id = np.squeeze(cent[var_names['var_name']['cen_id']]. \
                               astype(int, copy=False))
