@@ -40,7 +40,7 @@ class Exposures(object):
             (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
-        assigned (np.array, optional): for a given hazard, id of the
+        assigned (dict, optional): for a given hazard, id of the
             centroid(s) affecting each exposure. This values are filled by
             the 'assign' method
     """
@@ -95,7 +95,7 @@ class Exposures(object):
         # Optional variables. No default values set in check if not filled.
         self.category_id = np.array([], np.int64)
         self.region_id = np.array([], np.int64)
-        self.assigned = np.array([], np.int64)
+        self.assigned = dict()
         
     def assign(self, hazard, method=Interpolator.method[0], \
                dist=Interpolator.dist_def[0], threshold=100):
@@ -119,8 +119,8 @@ class Exposures(object):
             ValueError
         """
         interp = Interpolator(threshold)
-        self.assigned = interp.interpol_index(hazard.centroids.coord, \
-                                              self.coord, method, dist)
+        self.assigned[hazard.tag.haz_type] = interp.interpol_index( \
+                     hazard.centroids.coord, self.coord, method, dist)
 
     def check(self):
         """Check instance attributes.
@@ -212,8 +212,12 @@ class Exposures(object):
                           exposures.category_id)
         self.region_id = self._append_optional(self.region_id, \
                         exposures.region_id)
-        self.assigned = self._append_optional(self.assigned, \
-                       exposures.assigned)
+        for (ass_haz, ass) in exposures.assigned.items():
+            if ass_haz not in self.assigned:
+                self.assigned[ass_haz] = ass
+            else:
+                self.assigned[ass_haz] = self._append_optional( \
+                                         self.assigned[ass_haz], ass)
     
         # provide new ids to repeated ones
         _, indices = np.unique(self.id, return_index=True)
@@ -272,4 +276,9 @@ class Exposures(object):
                              'Exposures.category_id')
         check.array_optional(num_exp, self.region_id, \
                              'Exposures.region_id')
-        check.array_optional(num_exp, self.assigned, 'Exposures.assigned')
+        check.empty_optional(self.assigned, "Exposures.assigned")
+        for (ass_haz, ass) in self.assigned.items():
+            if ass_haz == 'NA':
+                LOGGER.warning('Exposures.assigned: assigned hazard type ' \
+                               'not set.')
+            check.array_optional(num_exp, ass, 'Exposures.assigned')

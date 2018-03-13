@@ -103,7 +103,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.region_id[0], 1)
         self.assertEqual(expo.region_id[n_expos-1], 1)
 
-        self.assertEqual(expo.assigned.shape, (0,))
+        self.assertTrue(isinstance(expo.assigned, dict))
         self.assertEqual(expo.value_unit, 'USD')
 
         self.assertEqual(expo.coord.shape, (n_expos, 2))
@@ -241,7 +241,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_DEMO_XLS, var_names=new_var_names)
 
         # Check results
-        self.assertEqual(0, expo.assigned.size)
+        self.assertEqual(0, len(expo.assigned))
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""

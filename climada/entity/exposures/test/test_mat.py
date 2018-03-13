@@ -51,10 +51,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.category_id[0], 1)
         self.assertEqual(expo.category_id[n_expos-1], 1)
 
-        self.assertEqual(type(expo.assigned[0]), np.int64)
-        self.assertEqual(expo.assigned.shape, (n_expos,))
-        self.assertEqual(expo.assigned[0], 47)
-        self.assertEqual(expo.assigned[n_expos-1], 46)
+        self.assertEqual(type(expo.assigned['NA'][0]), np.int64)
+        self.assertEqual(expo.assigned['NA'].shape, (n_expos,))
+        self.assertEqual(expo.assigned['NA'][0], 47)
+        self.assertEqual(expo.assigned['NA'][n_expos-1], 46)
 
         self.assertEqual(expo.region_id.shape, (0,))
 
@@ -184,7 +184,8 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertEqual(0, expo.assigned.size)
+        self.assertEqual(0, len(expo.assigned))
+        self.assertTrue(isinstance(expo.assigned, dict))
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""

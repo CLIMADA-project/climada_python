@@ -20,7 +20,7 @@ def good_exposures():
     expo.impact_id = np.array([1, 2, 3])
     expo.category_id = np.array([1, 2, 3])
     expo.region_id = np.array([1, 2, 3])
-    expo.assigned = np.array([1, 2, 3])
+    expo.assigned['TC'] = np.array([1, 2, 3])
     return expo
 
 class TestConstructor(unittest.TestCase):
@@ -43,6 +43,26 @@ class TestConstructor(unittest.TestCase):
 
 class TestAppend(unittest.TestCase):
     """Check append function"""
+    def test_assign_diff(self):
+        """Append Exposure to empty one."""        
+        # Fill with dummy values the coordinates
+        expo = good_exposures()
+        
+        expo_app = Exposures()
+        expo_app.id = np.arange(4, 9)
+        expo_app.value = np.arange(4, 9)
+        expo_app.impact_id = np.arange(4, 9)
+        expo_app.coord = np.ones((5, 2))
+        expo_app.assigned['TC'] = np.ones((5, 2))
+        
+        expo.append(expo_app)
+        self.assertTrue(len(expo.assigned['TC']), 8)
+        
+        expo_app.assigned['WS'] = np.ones((5, 2))
+        expo.append(expo_app)
+        self.assertTrue(len(expo.assigned['TC']), 8)
+        self.assertTrue(len(expo.assigned['WS']), 5)
+        
     def test_append_to_empty_same(self):
         """Append Exposure to empty one."""        
         # Fill with dummy values the coordinates
@@ -59,7 +79,8 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.impact_id, expo_app.impact_id))
         self.assertTrue(np.array_equal(expo.category_id, expo_app.category_id))
         self.assertTrue(np.array_equal(expo.region_id, expo_app.region_id))
-        self.assertTrue(np.array_equal(expo.assigned, expo_app.assigned))
+        self.assertTrue(np.array_equal(expo.assigned['TC'], \
+                                       expo_app.assigned['TC']))
         self.assertTrue(np.array_equal(expo.tag.description, \
                                        expo_app.tag.description))
         self.assertTrue(np.array_equal(expo.tag.file_name, \
@@ -95,8 +116,8 @@ class TestAppend(unittest.TestCase):
                                   expo_app.category_id)))
         self.assertTrue(np.array_equal(expo.region_id, \
                         np.append(expo_check.region_id, expo_app.region_id)))
-        self.assertTrue(np.array_equal(expo.assigned, \
-                        np.append(expo_check.assigned, expo_app.assigned)))
+        self.assertTrue(np.array_equal(expo.assigned['TC'], \
+                np.append(expo_check.assigned['TC'], expo_app.assigned['TC'])))
         self.assertEqual(expo.tag.description, '')
         self.assertEqual(expo.tag.file_name, '')
         self.assertTrue(np.array_equal(expo.value_unit, expo_check.value_unit))
@@ -116,7 +137,7 @@ class TestAppend(unittest.TestCase):
         expo_app.impact_id = np.array([1, 2, 3, 4, 5])
         expo_app.category_id = np.array([1, 2, 3, 4, 5])
         expo_app.region_id = np.array([1, 2, 3, 4, 5])
-        expo_app.assigned = np.array([1, 2, 3, 4, 5])
+        expo_app.assigned['TC'] = np.array([1, 2, 3, 4, 5])
         
         expo.append(expo_app)
         expo.check()
@@ -139,8 +160,8 @@ class TestAppend(unittest.TestCase):
                         expo_app.category_id)))
         self.assertTrue(np.array_equal(expo.region_id, \
                         np.append(expo_check.region_id, expo_app.region_id)))
-        self.assertTrue(np.array_equal(expo.assigned, \
-                        np.append(expo_check.assigned, expo_app.assigned)))
+        self.assertTrue(np.array_equal(expo.assigned['TC'], \
+                np.append(expo_check.assigned['TC'], expo_app.assigned['TC'])))
         self.assertEqual(expo.tag.description, '')
         self.assertEqual(expo.tag.file_name, '')
         self.assertTrue(np.array_equal(expo.value_unit, expo_check.value_unit))
@@ -157,12 +178,13 @@ class TestAssign(unittest.TestCase):
         expo.coord = np.ones((num_coord, 2))
         # Fill with dummy values the centroids
         haz = Hazard()
+        haz.tag.haz_type = 'TC'
         haz.centroids.coord = np.ones((num_coord+6, 2))
         # assign
         expo.assign(haz)
 
         # check assigned variable has been set with correct length
-        self.assertEqual(num_coord, len(expo.assigned))
+        self.assertEqual(num_coord, len(expo.assigned['TC']))
 
 class TestReadParallel(unittest.TestCase):
     """Check read function with several files"""
@@ -262,7 +284,7 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongAssigned_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo.assigned = np.array([1, 2])
+        expo.assigned['TC'] = np.array([1, 2])
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):

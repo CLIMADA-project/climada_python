@@ -142,8 +142,10 @@ def _read_xls_optional(exposures, dfr, file_name, var_names):
             LOGGER.error("Different value units provided for exposures.")
             raise ValueError
         exposures.value_unit = exposures.value_unit[0]
-    exposures.assigned = _parse_xls_optional(dfr, exposures.assigned, \
-                                         var_names['col_name']['ass'])
+    assigned = _parse_xls_optional(dfr, np.array([]), \
+                                   var_names['col_name']['ass'])
+    if assigned.size > 0:
+        exposures.assigned['NA'] = assigned
 
     # check if reference year given under "names" sheet
     # if not, set default present reference year
@@ -215,8 +217,10 @@ def _read_mat_optional(exposures, data, file_name, var_names):
                         var_names['var_name']['cat']).astype(int)
     exposures.region_id = _parse_mat_optional(data, exposures.region_id, \
                         var_names['var_name']['reg']).astype(int)
-    exposures.assigned = _parse_mat_optional(data, exposures.assigned, \
-                        var_names['var_name']['ass']).astype(int)
+    assigned = _parse_mat_optional(data, np.array([]), \
+                                   var_names['var_name']['ass']).astype(int)
+    if assigned.size > 0:
+        exposures.assigned['NA'] = assigned
     try:
         exposures.value_unit = hdf5.get_str_from_ref(file_name, \
             data[var_names['var_name']['uni']][0][0])

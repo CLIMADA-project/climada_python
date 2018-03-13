@@ -132,7 +132,7 @@ class Impact(object):
             Specify only exposures and impact functions
         """
         # 1. Assign centroids to each exposure if not done
-        if exposures.assigned.size == 0:
+        if exposures.assigned[hazard.tag.haz_type].size == 0:
             exposures.assign(hazard)
 
         # 2. Initialize values
@@ -146,7 +146,7 @@ class Impact(object):
         self.hazard_tag = hazard.tag
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
-                                          exposures.assigned >= 0))[0]
+                           exposures.assigned[hazard.tag.haz_type] >= 0))[0]
         # Warning if no exposures selected
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
@@ -193,7 +193,7 @@ class Impact(object):
             impact (np.array: impact for each event in event_row
         """
         # get assigned centroid of this exposure
-        icen = int(exposures.assigned[iexp])
+        icen = int(exposures.assigned[hazard.tag.haz_type][iexp])
 
         # get intensities for this centroid
         event_row = hazard.intensity[:, icen].nonzero()[0]
