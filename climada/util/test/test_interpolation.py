@@ -1,5 +1,5 @@
 """
-Test Interpolation class.
+Test interpolation module.
 """
 
 import unittest
