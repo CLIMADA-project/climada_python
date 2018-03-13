@@ -132,7 +132,8 @@ class Impact(object):
             Specify only exposures and impact functions
         """
         # 1. Assign centroids to each exposure if not done
-        if exposures.assigned[hazard.tag.haz_type].size == 0:
+        if (not exposures.assigned) or \
+        (hazard.tag.haz_type not in exposures.assigned):
             exposures.assign(hazard)
 
         # 2. Initialize values
