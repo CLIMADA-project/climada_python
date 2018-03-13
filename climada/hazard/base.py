@@ -5,7 +5,6 @@ Define Hazard.
 __all__ = ['Hazard']
 
 #from datetime import date
-import os
 from array import array
 import logging
 import itertools
@@ -15,8 +14,7 @@ from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
-from climada.hazard.source_excel import read as read_excel
-from climada.hazard.source_mat import read as read_mat
+from climada.hazard.source import read  as read_source
 from climada.util.files_handler import to_str_list, get_file_names
 import climada.util.plot as plot
 import climada.util.checker as check
@@ -40,7 +38,7 @@ class Hazard(object):
     """
 
     def __init__(self, file_name='', haz_type='NA', description='', \
-                 centroids=None, var_names=None):
+                 centroids=None):
         """Initialize values from given file, if given.
 
         Parameters
@@ -51,8 +49,6 @@ class Hazard(object):
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
-            var_names (dict or list(dict), default): name of the variables in 
-                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -64,8 +60,7 @@ class Hazard(object):
                 LOGGER.error("Provide hazard type acronym.")
                 raise ValueError
             else:
-                self.read(file_name, haz_type, description, centroids, \
-                          var_names)
+                self.read(file_name, haz_type, description, centroids)
 
     def clear(self):
         """Reinitialize attributes."""    
@@ -306,7 +301,6 @@ class Hazard(object):
             centroids (Centroids, optional): Centroids instance
             var_names (dict): name of the variables in the file (e.g. 
                       DEF_VAR_NAME defined in the source modules)
-            file_name (str): name of the source file
             
         Raises
         ------
@@ -317,16 +311,8 @@ class Hazard(object):
             Hazard
         """
         new_haz = Hazard()
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(new_haz, file_name, haz_type, description, centroids, \
-                     var_names)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(new_haz, file_name, haz_type, description, centroids, \
-                       var_names)
-        else:
-            LOGGER.error("Input file extension not supported: %s.", extension)
-            raise ValueError
+        read_source(new_haz, file_name, haz_type, description, centroids, \
+                    var_names)
         return new_haz
             
     def _check_events(self):

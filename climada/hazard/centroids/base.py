@@ -4,13 +4,11 @@ Define Centroids class.
 
 __all__ = ['Centroids']
 
-import os
 import logging
 from array import array
 import numpy as np
 
-from climada.hazard.centroids.source_excel import read as read_excel
-from climada.hazard.centroids.source_mat import read as read_mat
+from climada.hazard.centroids.source import read as read_source
 import climada.util.checker as check
 from climada.hazard.centroids.tag import Tag
 
@@ -72,7 +70,7 @@ class Centroids(object):
         check.array_optional(num_exp, self.region_id, \
                                  'Centroids.region_id')
 
-    def read_one(self, file_name, description=''):
+    def read_one(self, file_name, description='', var_names=None):
         """ Read input file.
 
         Parameters
@@ -82,16 +80,9 @@ class Centroids(object):
 
         Raises
         ------
-            ValueError
+            TypeError, ValueError
         """
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(self, file_name, description)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(self, file_name, description)
-        else:
-            LOGGER.error("Input file extension not supported: %s.", extension)
-            raise ValueError
+        read_source(self, file_name, description, var_names)
 
     def append(self, centroids):
         """Append input centroids coordinates to current. Id is perserved if 
