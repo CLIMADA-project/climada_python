@@ -1,8 +1,8 @@
 """
-Define Action class.
+Define Measure class.
 """
 
-__all__ = ['Action']
+__all__ = ['Measure']
 
 import logging
 import numpy as np
@@ -11,8 +11,8 @@ import climada.util.checker as check
 
 LOGGER = logging.getLogger(__name__)
 
-class Action(object):
-    """Contains the definition of one Action.
+class Measure(object):
+    """Contains the definition of one Measure.
 
     Attributes
     ----------
@@ -50,7 +50,7 @@ class Action(object):
         ------
             ValueError
         """
-        check.size(3, self.color_rgb, 'Action.color_rgb')
-        check.size(2, self.hazard_intensity, 'Action.hazard_intensity')
-        check.size(2, self.mdd_impact, 'Action.mdd_impact')
-        check.size(2, self.paa_impact, 'Action.paa_impact')
+        check.size(3, self.color_rgb, 'Measure.color_rgb')
+        check.size(2, self.hazard_intensity, 'Measure.hazard_intensity')
+        check.size(2, self.mdd_impact, 'Measure.mdd_impact')
+        check.size(2, self.paa_impact, 'Measure.paa_impact')

@@ -1,32 +1,30 @@
 """
-Define Measures class.
+Define MeasureSet class.
 """
 
-__all__ = ['Measures']
+__all__ = ['MeasureSet']
 
-import os
 import logging
 from pathos.multiprocessing import ProcessingPool as Pool
 
-from climada.entity.measures.action import Action
-from climada.entity.measures.source_mat import read as read_mat
-from climada.entity.measures.source_excel import read as read_excel
+from climada.entity.measures.measure import Measure
+from climada.entity.measures.source import read as read_source
 from climada.util.files_handler import to_str_list, get_file_names
 from climada.entity.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
-class Measures(object):
-    """Contains measures of type Measures.
+class MeasureSet(object):
+    """Contains MeasureSet of type MeasureSet.
 
     Attributes
     ----------
         tag (Taf): information about the source data
-        _data (dict): cotains Action classes. It's not suppossed to be
+        _data (dict): cotains Measure classes. It's not suppossed to be
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name='', description='', var_names=None):
+    def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
         Parameters
@@ -35,8 +33,6 @@ class Measures(object):
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
-                the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises
         ------
@@ -44,53 +40,53 @@ class Measures(object):
 
         Examples
         --------
-            >>> act_1 = Action()
+            >>> act_1 = Measure()
             >>> act_1.name = 'Seawall'
             >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
             >>> act_1.hazard_intensity = (1, 0)
             >>> act_1.mdd_impact = (1, 0)
             >>> act_1.paa_impact = (1, 0)
-            >>> meas = Measures()
-            >>> meas.add_action(act_1)
-            >>> meas.tag.description = "my dummy measures."
+            >>> meas = MeasureSet()
+            >>> meas.add_Measure(act_1)
+            >>> meas.tag.description = "my dummy MeasureSet."
             >>> meas.check()
-            Fill measures with values and check consistency data.
+            Fill MeasureSet with values and check consistency data.
         """
         self.clear()
         if file_name != '':
-            self.read(file_name, description, var_names)
+            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes.""" 
         self.tag = Tag()
-        self._data = dict() # {name: Action()}
+        self._data = dict() # {name: Measure()}
         
-    def add_action(self, action):
-        """Add an Action.
+    def add_measure(self, meas):
+        """Add an Measure.
         
         Parameters
         ----------
-            action (Action): Action instance
+            meas (Measure): Measure instance
 
         Raises
         ------
             ValueError
         """
-        if not isinstance(action, Action):
-            LOGGER.error("Input value is not of type Action.")
+        if not isinstance(meas, Measure):
+            LOGGER.error("Input value is not of type Measure.")
             raise ValueError
-        if action.name == 'NA':
-            LOGGER.error("Input Action's name not set.")
+        if meas.name == 'NA':
+            LOGGER.error("Input Measure's name not set.")
             raise ValueError
-        self._data[action.name] = action
+        self._data[meas.name] = meas
 
-    def remove_action(self, name=None):
-        """Remove Action with provided name. Delete all actions if no input
+    def remove_measure(self, name=None):
+        """Remove Measure with provided name. Delete all Measures if no input
         name
         
         Parameters
         ----------
-            action (Action): Action instance
+            name (str, optional): measure name
 
         Raises
         ------
@@ -100,19 +96,19 @@ class Measures(object):
             try:
                 del self._data[name]
             except KeyError:
-                LOGGER.warning('No Action with name %s.', name)
+                LOGGER.warning('No Measure with name %s.', name)
         else:
             self._data = dict()
 
-    def get_action(self, name=None):
-        """Get Action with input name. Get all if no name provided.
+    def get_measure(self, name=None):
+        """Get Measure with input name. Get all if no name provided.
         Parameters
         ----------
-            name (str, optional): action type
+            name (str, optional): measure name
 
         Returns
         -------
-            list(Action)
+            list(Measure)
         """
         if name is not None:
             try:
@@ -123,11 +119,11 @@ class Measures(object):
             return list(self._data.values())
 
     def get_names(self):
-        """Get all Action names"""
+        """Get all Measure names"""
         return list(self._data.keys())
 
-    def num_action(self):
-        """Get number of actions contained """
+    def num_measures(self):
+        """Get number of measures contained """
         return len(self._data.keys())
 
     def check(self):
@@ -139,12 +135,12 @@ class Measures(object):
         """
         for act_name, act in self._data.items():
             if (act_name != act.name) | (act.name == 'NA'):
-                raise ValueError('Wrong Action.name: %s != %s' %\
+                raise ValueError('Wrong Measure.name: %s != %s' %\
                                 (act_name, act.name))
             act.check()
 
     def read(self, files, descriptions='', var_names=None):
-        """Read and check measures in parallel through files.
+        """Read and check MeasureSet in parallel through files.
 
         Parameters
         ----------
@@ -168,28 +164,26 @@ class Measures(object):
             LOGGER.info('Read file: %s', file)    
             self.append(meas)
         
-    def append(self, measures):
-        """Check and append actions of input Measures to current Measures. 
-        Overwrite actions if same name.
+    def append(self, meas):
+        """Check and append measures of input MeasureSet to current MeasureSet. 
+        Overwrite Measure if same name.
         
         Parameters
         ----------
-            measures (Measures): Measures instance to append
+            meas (MeasureSet): MeasureSet instance to append
 
         Raises
         ------
             ValueError
         """
-        measures.check()
-        if self.num_action() == 0:
-            self.__dict__ = measures.__dict__.copy()
+        meas.check()
+        if self.num_measures() == 0:
+            self.__dict__ = meas.__dict__.copy()
             return
         
-        self.tag.append(measures.tag)
-        
-        new_act = measures.get_action()
-        for action in new_act:
-            self.add_action(action)
+        self.tag.append(meas.tag)
+        for measure in meas.get_measure():
+            self.add_measure(measure)
 
     @staticmethod
     def _read_one(file_name, description, var_names):
@@ -208,15 +202,8 @@ class Measures(object):
             
         Returns
         ------
-            Measures
+            MeasureSet
         """
-        meas = Measures()
-        extension = os.path.splitext(file_name)[1]
-        if extension == '.mat':
-            read_mat(meas, file_name, description, var_names)
-        elif (extension == '.xlsx') or (extension == '.xls'):
-            read_excel(meas, file_name, description, var_names)
-        else:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        return meas
+        new_meas = MeasureSet()
+        read_source(new_meas, file_name, description, var_names)
+        return new_meas
