@@ -1,8 +1,8 @@
 """
-Define Vulnerability class.
+Define ImpactFunc class.
 """
 
-__all__ = ['Vulnerability']
+__all__ = ['ImpactFunc']
 
 import logging
 import numpy as np
@@ -12,14 +12,14 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
-class Vulnerability(object):
-    """Contains the definition of one Vulnerability (impact function).
+class ImpactFunc(object):
+    """Contains the definition of one ImpactFunc (impact function).
 
     Attributes
     ----------
         haz_type (str): hazard type    
-        id (int): id of the vulnerability (wrt vulnerabilities of same hazard)
-        name (str): name of the vulnerability
+        id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
+        name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
         mdd (np.array): mean damage (impact) degree for each intensity
@@ -91,5 +91,5 @@ class Vulnerability(object):
             ValueError
         """
         num_exp = len(self.intensity)
-        check.size(num_exp, self.mdd, 'Vulnerability.mdd')
-        check.size(num_exp, self.paa, 'Vulnerability.paa')
+        check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
+        check.size(num_exp, self.paa, 'ImpactFunc.paa')

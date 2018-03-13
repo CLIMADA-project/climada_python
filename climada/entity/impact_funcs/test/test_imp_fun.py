@@ -5,16 +5,16 @@ Test Vulnerability class.
 import unittest
 import numpy as np
 
-from climada.entity.impact_funcs.base import Vulnerability
+from climada.entity.impact_funcs.impact_func import ImpactFunc
 
 class TestInterpolation(unittest.TestCase):
     """Impact function interpolation test"""
 
     def test_wrongAttribute_fail(self):
         """Interpolation of wrong variable fails."""
-        imp_fun = Vulnerability()
+        imp_fun = ImpactFunc()
         intensity = 3
-        with self.assertLogs('climada.entity.impact_funcs.vulnerability', \
+        with self.assertLogs('climada.entity.impact_funcs.impact_func', \
                              level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 imp_fun.interpolate(intensity, 'mdg')
@@ -23,7 +23,7 @@ class TestInterpolation(unittest.TestCase):
 
     def test_mdd_pass(self):
         """Good interpolation of MDD."""
-        imp_fun = Vulnerability()
+        imp_fun = ImpactFunc()
         imp_fun.intensity = np.array([0,1])
         imp_fun.mdd = np.array([1,2])
         imp_fun.paa = np.array([3,4])
@@ -33,7 +33,7 @@ class TestInterpolation(unittest.TestCase):
 
     def test_paa_pass(self):
         """Good interpolation of PAA."""
-        imp_fun = Vulnerability()
+        imp_fun = ImpactFunc()
         imp_fun.intensity = np.array([0,1])
         imp_fun.mdd = np.array([1,2])
         imp_fun.paa = np.array([3,4])

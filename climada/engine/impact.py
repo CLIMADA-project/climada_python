@@ -112,21 +112,21 @@ class Impact(object):
         Parameters
         ----------
             exposures (Exposures): exposures
-            impact_funcs (ImpactFuncs): impact functions
+            impact_funcs (ImpactFuncSet): impact functions
             hazard (Hazard): hazard
 
         Examples
         --------
-            >>> hazard = HazardMat('filename') # Set hazard
+            >>> hazard = Hazard('filename') # Set hazard
             >>> entity = Entity() # Load entity with default values
-            >>> entity.exposures = ExposuresExcel('filename') # Set exposures
+            >>> entity.exposures = Exposures('filename') # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
             Use Entity class
 
-            >>> hazard = HazardMat('filename') # Set hazard
-            >>> funcs = ImpactFuncsExcel('filename') # Set impact functions
-            >>> exposures = ExposuresExcel('filename') # Set exposures
+            >>> hazard = Hazard('filename') # Set hazard
+            >>> funcs = ImpactFuncSet('filename') # Set impact functions
+            >>> exposures = Exposures('filename') # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(exposures, funcs, hazard)
             Specify only exposures and impact functions
@@ -154,7 +154,7 @@ class Impact(object):
         # Get hazard type
         haz_type = hazard.tag.haz_type
         # Get damage functions for this hazard
-        haz_imp = impact_funcs.get_vulner(haz_type)
+        haz_imp = impact_funcs.get_func(haz_type)
 
         # 3. Loop over exposures according to their impact function
         # Loop over impact functions
@@ -185,7 +185,7 @@ class Impact(object):
             iexp (int): array index of the exposure computed
             exposures (Exposure): exposures
             hazard (Hazard): a hazard
-            imp_fun (Vulnerability): a vulnerability
+            imp_fun (ImpactFunc): an impact function
 
         Returns
         -------

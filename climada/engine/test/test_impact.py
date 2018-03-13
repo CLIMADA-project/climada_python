@@ -76,7 +76,7 @@ class TestOneExposure(unittest.TestCase):
         iexp = 5
         # Take its impact function
         imp_id = ent.exposures.impact_id[iexp]
-        imp_fun = ent.impact_funcs.get_vulner(hazard.tag.haz_type, imp_id)[0]
+        imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
         # Compute
         event_row, result = impact._one_exposure(iexp, ent.exposures, \
                                                   hazard, imp_fun)

@@ -2,4 +2,4 @@
 init impact functions
 """
 from .base import *
-from .vulnerability import *
+from .impact_func import *
