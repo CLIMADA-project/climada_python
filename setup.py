@@ -54,7 +54,8 @@ setup(
 
     packages=find_packages(where='.'), 
 
-    install_requires=['cartopy',
+    install_requires=['cartopy==0.16.0',
+                      'shapely==1.6.2',
                       'cython',
                       'matplotlib',
                       'pandas',

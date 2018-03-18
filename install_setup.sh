@@ -9,8 +9,9 @@ conda create --name climada_env python=3.6
 
 # Install packages in new environment
 source activate climada_env
-conda install GEOS
-conda install proj4
+# System req: GEOS and Proj4
+conda install GEOS=3.6.2
+conda install proj4=4.9.3
 
 python setup.py install
 python setup.py install

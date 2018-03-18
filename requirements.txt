@@ -9,7 +9,7 @@ pathos==0.2.1
 pyshp==1.2.12
 scikit-learn==0.19.1
 scipy==1.0.0
-Shapely==1.6.4.post1
+Shapely==1.6.2
 six==1.11.0
 virtualenv==15.1.0
 xlrd==1.1.0
