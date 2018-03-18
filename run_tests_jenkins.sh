@@ -4,6 +4,9 @@ set -e
 # Load previously installed climada_jenkins environment
 source activate climada_env
 
+# install validation libraries
+pip install coverage
+
 # run all climada tests
 PYTHONPATH=. python -m coverage run --parallel-mode --concurrency=multiprocessing unit_tests.py
 PYTHONPATH=. python -m coverage run --parallel-mode --concurrency=multiprocessing integ_tests.py
