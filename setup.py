@@ -54,13 +54,15 @@ setup(
 
     packages=find_packages(where='.'), 
 
-    install_requires=['numpy',
+    install_requires=['cartopy',
+                      'cython',
                       'matplotlib',
                       'pandas',
                       'h5py',
                       'scipy',
                       'scikit-learn',
                       'xlrd',
+                      'numpy',
                       'pathos',
                       'xmlrunner'
                      ], 

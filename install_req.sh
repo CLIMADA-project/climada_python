@@ -5,8 +5,13 @@ conda remove --name climada_env --all
 
 # Create new environment
 conda create --name climada_env python=3.6
+
 # Install packages
 source activate climada_env
+# System req: GEOS and Proj4
+conda install proj4
+conda install GEOS
+
 pip install -r requirements.txt
 
 # for mac os x: use TkAgg backend
