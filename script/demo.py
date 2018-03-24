@@ -4,36 +4,35 @@ climada demo
 
 # Import classes
 from climada import Entity, Hazard, Impact, Exposures
-from climada import HAZ_DEMO_MAT, ENT_DEMO_MAT
+from climada import HAZ_DEMO_MAT, ENT_DEMO_XLS, ENT_DEMO_MAT
 
 def calc_plot_impact():
     """Compute impact from demo entity and hazard."""
     # Load entity
-    ent_demo = Entity('/Users/aznarsig/Documents/Spyder/climada_python/climada/test/data/demo/demo_today.mat')
-##    ent_demo = Entity('/Users/aznarsig/Documents/Spyder/climada_python/climada/test/data/demo/USA_UnitedStates_Florida_entity.mat')
-#    ent_demo = Entity('/Users/aznarsig/Documents/florida_new.mat')
-#    
-#    # Plot exposures values
-#    ent_demo.exposures.plot_value()
-#    
+    ent_demo = Entity(ENT_DEMO_XLS)
+    
+    # Plot exposures values
+    ent_demo.exposures.plot_value()
+    
     # Plot impact functions
     ent_demo.impact_funcs.plot()
-#    
-#    # Load Hazard
-#    haz_demo = Hazard(HAZ_DEMO_MAT, 'TC')
-#    
-#    # Plot some events
-#    haz_demo.plot_intensity(event=5489)
-#    haz_demo.plot_intensity(event=-1)
-#    haz_demo.plot_intensity(event='DONNA')
-#    haz_demo.plot_intensity(centr_id=46)
-#    haz_demo.plot_fraction(event=-1)
+   
+    # Load Hazard
+    haz_demo = Hazard(HAZ_DEMO_MAT, 'TC')
+    
+    # Plot some events
+    haz_demo.plot_intensity(event=5489)
+    haz_demo.plot_intensity(event=-1)
+    haz_demo.plot_intensity(event='DONNA')
+    haz_demo.plot_intensity(centr_id=46)
+    haz_demo.plot_fraction(event=-1)
     
     # Plot impact exceedence frequency curve
-#    imp_demo = Impact()
-#    imp_demo.calc(ent_demo.exposures, ent_demo.impact_funcs, haz_demo)
-#    ifc_demo = imp_demo.calc_freq_curve()
-#    ifc_demo.plot()
+    imp_demo = Impact()
+    imp_demo.calc(ent_demo.exposures, ent_demo.impact_funcs, haz_demo)
+    imp_demo.plot_at_exposure()
+    ifc_demo = imp_demo.calc_freq_curve()
+    ifc_demo.plot()
 
 def load_default_entity():
     """Define entity with default values"""
@@ -53,5 +52,5 @@ def fail_wrong_input():
 
 if __name__ == "__main__":
     calc_plot_impact()
-#    load_default_entity()
-#    fail_wrong_input()
+    load_default_entity()
+    fail_wrong_input()
