@@ -11,7 +11,6 @@ import numpy as np
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.coordinates import Coordinates
-from climada.util.utils import name_to_id
 import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
