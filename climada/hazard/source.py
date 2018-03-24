@@ -24,7 +24,8 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             'freq' : 'frequency',
                             'inten': 'intensity',
                             'unit': 'units',
-                            'frac': 'fraction'
+                            'frac': 'fraction',
+                            'comment': 'comment'
                            },
                'var_cent': {'field_names': ['centroids', 'hazard'],
                             'var_name': {'cen_id' : 'centroid_ID',
@@ -116,6 +117,11 @@ def read_mat(hazard, file_name, haz_type, centroids, var_names):
             file_name, data[var_names['var_name']['ev_name']])
     except KeyError:
         hazard.event_name = list(hazard.event_id)
+    try:
+        comment = hdf5.get_string(data[var_names['var_name']['comment']])
+        hazard.tag.description += ' ' + comment
+    except KeyError:
+        pass
 
 def read_excel(hazard, file_name, centroids, var_names):
     """Read excel file and store variables in hazard. """

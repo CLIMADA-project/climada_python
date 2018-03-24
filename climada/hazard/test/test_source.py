@@ -65,7 +65,8 @@ class TestReaderMat(unittest.TestCase):
 
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_TEST_MAT)
-        self.assertEqual(hazard.tag.description, '')
+        self.assertEqual(hazard.tag.description, \
+                         ' TC hazard event set, generated 14-Nov-2017 10:09:05')
         self.assertEqual(hazard.tag.haz_type, 'TC')
 
         # tag centroids
