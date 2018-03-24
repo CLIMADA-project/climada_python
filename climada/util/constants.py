@@ -30,6 +30,8 @@ ENT_DEMO_XLS = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 ENT_TEMPLATE_XLS = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 
+GLB_CENTROIDS = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_1.mat')
+
 # Mean one latitude in km
 ONE_LAT_KM = 111.12
 
