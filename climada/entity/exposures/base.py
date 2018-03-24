@@ -29,9 +29,7 @@ class Exposures(object):
         ref_year (int): reference year
         value_unit (str): unit of the exposures values
         id (np.array): an id for each exposure
-        coord (np.array): 2d array. Each row contains the coordinates for one
-            exposure. The first column is for latitudes and the second for
-            longitudes (in degrees)
+        coord (Coordinates): Coordinates instance (in degrees)
         value (np.array): a value for each exposure
         impact_id (np.array): impact function id corresponding to each
             exposure
@@ -134,7 +132,12 @@ class Exposures(object):
         self._check_defaults(num_exp)
 
     def plot_value(self):
-        """Plot exposures values binned over Earth's map."""
+        """Plot exposures values binned over Earth's map.
+        
+         Returns
+        -------
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
         return plot.geo_bin_from_array(self.coord, self.value, 'Value (%s)' % \
                                 self.value_unit, \
                                 os.path.splitext(os.path.basename( \
