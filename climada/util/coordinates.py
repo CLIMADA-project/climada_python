@@ -24,7 +24,9 @@ class Coordinates(object):
         raise NotImplementedError
 
 class IrregularGrid(np.ndarray, Coordinates):
-    """Define irregular grid using 2d numpy array."""
+    """Define irregular grid using 2d numpy array. Each row contains the 
+    coordinates for one exposure. The first column is for latitudes and the 
+    second for longitudes (in degrees)."""
     def __new__(cls, input_array):
         # Input array is an already formed ndarray instance
         # We first cast to be our class type
