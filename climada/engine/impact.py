@@ -10,6 +10,8 @@ import numpy as np
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
+from climada.util.coordinates import Coordinates
+from climada.util.utils import name_to_id
 import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
@@ -66,6 +68,9 @@ class Impact(object):
         exposures_tag (Tag): information about the exposures
         impact_funcs_tag (Tag): information about the impact functions
         hazard_tag (TagHazard): information about the hazard
+        event_id (np.array): id (>0) of each hazard event
+        event_name (list): name of each hazard event
+        exp_coord (Coordinates): exposures coordinates (in degrees)
         at_exp (np.array): impact for each exposure
         at_event (np.array): impact for each hazard event
         frequency (np.arrray): frequency (pro event)
@@ -79,6 +84,9 @@ class Impact(object):
         self.exposures_tag = Tag()
         self.impact_funcs_tag = Tag()
         self.hazard_tag = TagHazard()
+        self.event_id = np.array([], np.int64)
+        self.event_name = list()
+        self.exp_coord = Coordinates()
         self.at_exp = np.array([])
         self.at_event = np.array([])
         self.frequency = np.array([])
@@ -138,6 +146,9 @@ class Impact(object):
 
         # 2. Initialize values
         self.unit = exposures.value_unit
+        self.event_id = hazard.event_id
+        self.event_name = hazard.event_name
+        self.exp_coord = exposures.coord
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.at_exp = np.zeros(len(exposures.value))
@@ -151,6 +162,7 @@ class Impact(object):
         # Warning if no exposures selected
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
+            return
 
         # Get hazard type
         haz_type = hazard.tag.haz_type
@@ -177,6 +189,18 @@ class Impact(object):
 
         self.tot = sum(self.at_event * hazard.frequency)
 
+    def plot_at_exposure(self):
+        """"Plot accumulated impact at each exposure.
+        
+         Returns
+        -------
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        title = 'Accumulated impact'
+        col_name = 'Impact ' + self.unit
+        return plot.geo_bin_from_array(self.exp_coord, self.at_exp, col_name, \
+                                title)
+
     @staticmethod
     def _one_exposure(iexp, exposures, hazard, imp_fun):
         """Impact to one exposures.
@@ -191,7 +215,7 @@ class Impact(object):
         Returns
         -------
             event_row (np.array): hazard' events indices affecting exposure
-            impact (np.array: impact for each event in event_row
+            impact (np.array): impact for each event in event_row
         """
         # get assigned centroid of this exposure
         icen = int(exposures.assigned[hazard.tag.haz_type][iexp])
