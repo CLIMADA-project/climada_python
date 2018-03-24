@@ -18,14 +18,19 @@ from climada.util.coordinates import IrregularGrid
 DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                'var_name': {'cen_id' : 'centroid_ID',
                             'lat' : 'lat',
-                            'lon' : 'lon'
+                            'lon' : 'lon',
+                            'dist_coast': 'distance2coast_km',
+                            'admin0_name': 'admin0_name',
+                            'admin0_iso3': 'admin0_ISO3',
+                            'comment': 'comment',
+                            'region_id': 'NatId'
                            }
               }
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                  'col_name': {'cen_id' : 'centroid_ID',
                               'lat' : 'Latitude',
-                              'lon' : 'Longitude'
+                              'lon' : 'Longitude',
                              }
                 }
 
@@ -78,8 +83,7 @@ def read_mat(centroids, file_name, var_names):
             cent = cent[field]
             break
         except KeyError:
-            pass
-        num_try += 1
+            num_try += 1
     if num_try == len(var_names['field_names']):
         LOGGER.warning("Variables are not under: %s.", \
                        var_names['field_names'])
@@ -89,3 +93,30 @@ def read_mat(centroids, file_name, var_names):
     centroids.coord = IrregularGrid(np.array([cen_lat, cen_lon]).transpose())
     centroids.id = np.squeeze(cent[var_names['var_name']['cen_id']]. \
                               astype(int, copy=False))
+
+    try:
+        centroids.dist_coast = \
+                        np.squeeze(cent[var_names['var_name']['dist_coast']])
+    except KeyError:
+        pass
+    try:
+        centroids.admin0_name = hdf5.get_string(\
+                                    cent[var_names['var_name']['admin0_name']])
+    except KeyError:
+        pass
+    try:
+        centroids.admin0_iso3 = hdf5.get_string(\
+                                    cent[var_names['var_name']['admin0_ISO3']])
+    except KeyError:
+        pass
+    try:
+        comment = hdf5.get_string(cent[var_names['var_name']['comment']])
+        if num_try == 0:
+            centroids.tag.description += ' ' + comment
+    except KeyError:
+        pass
+    try:
+        centroids.region_id = \
+                        np.squeeze(cent[var_names['var_name']['region_id']])
+    except KeyError:
+        pass

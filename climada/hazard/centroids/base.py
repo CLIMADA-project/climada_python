@@ -21,12 +21,13 @@ class Centroids(object):
     Attributes
     ----------
         tag (Tag): information about the source
-        coord (np.array): 2d array. Each row contains the coordinates for one
-            centroid. The first column is for latitudes and the second for
-            longitudes (in degrees)
+        coord (Coordinates): Coordinates instance
         id (np.array): an id for each centroid
         region_id (np.array, optional): region id for each centroid
             (when defined) 
+        dist_coast (np.array, optional): distance to coast   
+        admin0_name (str, optional): admin0 country name
+        admin0_iso3 (str, optional): admin0 ISO3 country name
     """
 
     def __init__(self, file_name='', description=''):
@@ -55,6 +56,9 @@ class Centroids(object):
         self.coord = Coordinates()
         self.id = np.array([], np.int64)
         self.region_id = np.array([], np.int64)        
+        self.dist_coast = np.array([], np.float)     
+        self.admin0_name = ''
+        self.admin0_iso3 = ''
 
     def check(self):
         """Check instance attributes.
@@ -70,6 +74,8 @@ class Centroids(object):
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')            
         check.array_optional(num_exp, self.region_id, \
                                  'Centroids.region_id')
+        check.array_optional(num_exp, self.dist_coast, \
+                                 'Centroids.dist_coast')
 
     def read_one(self, file_name, description='', var_names=None):
         """ Read input file.

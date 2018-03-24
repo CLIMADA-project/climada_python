@@ -7,7 +7,7 @@ import numpy as np
 
 import climada.hazard.centroids.source as source
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import HAZ_TEST_MAT, HAZ_DEMO_XLS
+from climada.util.constants import HAZ_TEST_MAT, HAZ_DEMO_XLS, GLB_CENTROIDS
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of MATLAB files'''
@@ -17,7 +17,12 @@ class TestReaderMat(unittest.TestCase):
         source.DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                               'var_name': {'cen_id' : 'centroid_ID',
                                            'lat' : 'lat',
-                                           'lon' : 'lon'
+                                           'lon' : 'lon',
+                                           'dist_coast': 'distance2coast_km',
+                                           'admin0_name': 'admin0_name',
+                                           'admin0_iso3': 'admin0_ISO3',
+                                           'comment': 'comment',
+                                           'region_id': 'NatId'
                                           }
                              }
 
@@ -53,7 +58,13 @@ class TestReaderMat(unittest.TestCase):
 #        with self.assertLogs('climada.entity.impact_funcs.base', level='WARNING') as cm:
 #            Centroids(HAZ_TEST_MAT)
 #        self.assertIn("Variables are not under: ['wrong'].", cm[0].output)
-
+            
+    def test_nat_global_pass(self):
+        glb_cent = Centroids(GLB_CENTROIDS)
+        self.assertEqual(glb_cent.region_id[1062443], 35)
+        self.assertEqual(glb_cent.region_id[170825], 28)
+        self.assertAlmostEqual(glb_cent.dist_coast[9], 21.366461094662913)
+        self.assertAlmostEqual(glb_cent.dist_coast[1568370], 36.76908653021)
 
 class TestReaderExcel(unittest.TestCase):
     '''Test reader functionality of Excel files'''
