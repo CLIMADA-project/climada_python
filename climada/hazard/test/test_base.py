@@ -478,6 +478,6 @@ class TestReadParallel(unittest.TestCase):
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReadParallel)
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
