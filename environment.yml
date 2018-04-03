@@ -1,4 +1,4 @@
-name: climada
+name: climada_env
 channels:
   - defaults
 dependencies:
