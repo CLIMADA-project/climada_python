@@ -85,15 +85,15 @@ class Exposures(object):
         # Following values defined for each exposure
         # Obligatory variables
         self.coord = Coordinates()
-        self.value = np.array([], np.float64)
-        self.impact_id = np.array([], np.int64)
-        self.id = np.array([], np.int64)
+        self.value = np.array([], float)
+        self.impact_id = np.array([], int)
+        self.id = np.array([], int)
         # Optional variables. Default values set in check if not filled.
-        self.deductible = np.array([], np.float64)
-        self.cover = np.array([], np.float64)
+        self.deductible = np.array([], float)
+        self.cover = np.array([], float)
         # Optional variables. No default values set in check if not filled.
-        self.category_id = np.array([], np.int64)
-        self.region_id = np.array([], np.int64)
+        self.category_id = np.array([], int)
+        self.region_id = np.array([], int)
         self.assigned = dict()
         
     def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[0]):
@@ -252,7 +252,7 @@ class Exposures(object):
         if (ini.size != 0) and (to_add.size != 0):
             ini = np.append(ini, to_add)    
         else:
-            ini = np.array([], np.float64)
+            ini = np.array([], float)
         return ini
 
     def _check_obligatories(self, num_exp):

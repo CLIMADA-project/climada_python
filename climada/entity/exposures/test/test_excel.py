@@ -24,7 +24,7 @@ class TestReader(unittest.TestCase):
         # Check results
         n_expos = 50
 
-        self.assertEqual(type(expo.id[0]), np.int64)
+        self.assertIn('int', str(expo.id.dtype))
         self.assertEqual(len(expo.id), n_expos)
         self.assertEqual(expo.id[0], 0)
         self.assertEqual(expo.id[n_expos-1], n_expos-1)
@@ -41,7 +41,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.cover[0], 13927504367.680632)
         self.assertEqual(expo.cover[n_expos-1], 12624818493.687229)
 
-        self.assertEqual(type(expo.impact_id[0]), np.int64)
+        self.assertIn('int', str(expo.impact_id.dtype))
         self.assertEqual(len(expo.impact_id), n_expos)
         self.assertEqual(expo.impact_id[0], 1)
         self.assertEqual(expo.impact_id[n_expos-1], 1)
@@ -71,7 +71,7 @@ class TestReader(unittest.TestCase):
         # Check results
         n_expos = 24
 
-        self.assertEqual(type(expo.id[0]), np.int64)
+        self.assertIn('int', str(expo.id.dtype))
         self.assertEqual(expo.id.shape, (n_expos,))
         self.assertEqual(expo.id[0], 0)
         self.assertEqual(expo.id[n_expos-1], n_expos-1)
@@ -88,17 +88,17 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.cover[0], 13927504367.680632)
         self.assertEqual(expo.cover[n_expos-1], 12597535489.94726)
 
-        self.assertEqual(type(expo.impact_id[0]), np.int64)
+        self.assertIn('int', str(expo.impact_id.dtype))
         self.assertEqual(expo.impact_id.shape, (n_expos,))
         self.assertEqual(expo.impact_id[0], 1)
         self.assertEqual(expo.impact_id[n_expos-1], 1)
 
-        self.assertEqual(type(expo.category_id[0]), np.int64)
+        self.assertIn('int', str(expo.category_id.dtype))        
         self.assertEqual(expo.category_id.shape, (n_expos,))
         self.assertEqual(expo.category_id[0], 1)
         self.assertEqual(expo.category_id[n_expos-1], 1)
 
-        self.assertEqual(type(expo.region_id[0]), np.int64)
+        self.assertIn('int', str(expo.region_id.dtype)) 
         self.assertEqual(expo.region_id.shape, (n_expos,))
         self.assertEqual(expo.region_id[0], 1)
         self.assertEqual(expo.region_id[n_expos-1], 1)

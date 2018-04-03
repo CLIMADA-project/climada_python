@@ -68,7 +68,8 @@ def read_excel(centroids, file_name, var_names):
                   var_names['col_name']['lon']]
 
     centroids.coord = IrregularGrid(np.array(dfr[coord_cols]))
-    centroids.id = dfr[var_names['col_name']['cen_id']].values
+    centroids.id = dfr[var_names['col_name']['cen_id']].values. \
+                    astype(int, copy=False)
 
 def read_mat(centroids, file_name, var_names):
     """Read MATLAB file and store variables in hazard. """

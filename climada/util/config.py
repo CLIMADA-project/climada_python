@@ -18,6 +18,9 @@ from climada.util.constants import SOURCE_DIR, DATA_DIR
 WORKING_DIR = os.getcwd()
 logging.basicConfig(level=logging.DEBUG)
 
+WINDOWS_END = 'C:\\'
+UNIX_END = '/'
+
 def check_conf():
     """Check configuration files presence and generate folders if needed."""
     for key, path in CONFIG['local_data'].items():
@@ -52,10 +55,12 @@ def setup_logging(default_level=logging.INFO):
     logging.debug('Loading logging config default file: %s', DEFAULT_PATH)
 
     path = default_path
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada_log.conf'))
-    while not os.path.isfile(user_file) and user_file != '/climada_log.conf':
+    log_name = 'climada_log.conf'
+    user_file = os.path.abspath(os.path.join(WORKING_DIR, log_name))
+    while not os.path.isfile(user_file) and user_file != UNIX_END + log_name \
+    and user_file != WINDOWS_END + log_name:
         user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
-                                            os.pardir, 'climada_log.conf'))
+                                            os.pardir, log_name))
     if os.path.isfile(user_file):
         path = user_file
         logging.debug('Loading user logging config: %s ...', user_file)
@@ -69,10 +74,12 @@ def setup_logging(default_level=logging.INFO):
 
 def setup_conf_user():
     """Setup climada configuration"""
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, 'climada.conf'))
-    while not os.path.isfile(user_file) and user_file != '/climada.conf':
+    conf_name = 'climada.conf'
+    user_file = os.path.abspath(os.path.join(WORKING_DIR, conf_name))
+    while not os.path.isfile(user_file) and user_file != UNIX_END + conf_name \
+    and user_file != WINDOWS_END + conf_name:
         user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
-                                                 os.pardir, 'climada.conf'))
+                                                 os.pardir, conf_name))
     
     if os.path.isfile(user_file):
         logging.debug('Loading user config: %s ...', user_file)

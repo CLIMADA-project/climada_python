@@ -89,8 +89,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, []))
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
 
     def test_append_to_empty_fill(self):
         """Append to empty centroids."""
@@ -109,8 +108,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2]))
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
 
     def test_same_centroids_pass(self):
         """Append the same centroids."""
@@ -131,8 +129,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2]))
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
 
     def test_new_elem_pass(self):
         """Append a centroids with a new element."""
@@ -187,8 +184,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (5,))
         self.assertTrue(np.array_equal(centr1.id, \
                                               np.array([5, 7, 9, 10, 11])))
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
         self.assertTrue(np.array_equal(new_pos, [3, 4]))
 
     def test_without_region_pass(self):
@@ -206,8 +202,7 @@ class TestAppend(unittest.TestCase):
         
         with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
         self.assertIn("Centroids.region_id is not going to be set.", \
                       cm.output[0])
 
@@ -224,8 +219,7 @@ class TestAppend(unittest.TestCase):
         
         with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
-        self.assertTrue(np.array_equal(centr1.region_id, np.array([], \
-                         np.int64)))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
         self.assertIn("Centroids.region_id is not going to be set.", \
                       cm.output[0])
 

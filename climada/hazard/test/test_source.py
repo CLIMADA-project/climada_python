@@ -44,7 +44,7 @@ class TestReaderMat(unittest.TestCase):
 
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
 
-        self.assertEqual(hazard.event_id.dtype, np.int64)
+        self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
 
         self.assertEqual(hazard.frequency.dtype, np.float)
@@ -114,7 +114,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(centroids.coord[0][1], -84)
         self.assertEqual(centroids.coord[n_centroids-1][0], 30)
         self.assertEqual(centroids.coord[n_centroids-1][1], -75)
-        self.assertEqual(centroids.id.dtype, np.int64)
+        self.assertEqual(centroids.id.dtype, int)
         self.assertEqual(centroids.id.shape, (n_centroids, ))
         self.assertEqual(centroids.id[0], 1)
         self.assertEqual(centroids.id[n_centroids-1], 100)
@@ -168,14 +168,14 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.centroids.coord[0][1], 32.57)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][0], -24.7)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][1], 33.88)
-        self.assertEqual(hazard.centroids.id.dtype, np.int64)
+        self.assertEqual(hazard.centroids.id.dtype, int)
         self.assertEqual(hazard.centroids.id[0], 4001)
         self.assertEqual(hazard.centroids.id[n_centroids-1], 4045)
 
         self.assertEqual(len(hazard.event_name), 100)
         self.assertEqual(hazard.event_name[12], 'event013')
 
-        self.assertEqual(hazard.event_id.dtype, np.int64)
+        self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
         self.assertEqual(hazard.event_id[0], 1)
         self.assertEqual(hazard.event_id[n_events-1], 100)
@@ -233,7 +233,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.centroids.coord[0][1], 32.57)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][0], -24.7)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][1], 33.88)
-        self.assertEqual(hazard.centroids.id.dtype, np.int64)
+        self.assertEqual(hazard.centroids.id.dtype, int)
         self.assertEqual(len(hazard.centroids.id), n_centroids)
         self.assertEqual(hazard.centroids.id[0], 4001)
         self.assertEqual(hazard.centroids.id[n_centroids-1], 4045)
@@ -252,5 +252,5 @@ class TestReaderExcel(unittest.TestCase):
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderMat)
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

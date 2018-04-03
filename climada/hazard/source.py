@@ -93,7 +93,7 @@ def read_mat(hazard, file_name, haz_type, centroids, var_names):
 
     hazard.frequency = np.squeeze(data[var_names['var_name']['freq']])
     hazard.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
-                               astype(int, copy=False))
+                                 astype(np.int, copy=False))
     hazard.units = hdf5.get_string(data[var_names['var_name']['unit']])
 
     n_cen = len(hazard.centroids.id)
@@ -137,7 +137,8 @@ def read_excel(hazard, file_name, centroids, var_names):
     num_events = dfr.shape[0]
 
     hazard.frequency = dfr[var_names['col_name']['freq']].values
-    hazard.event_id = dfr[var_names['col_name']['even_id']].values
+    hazard.event_id = dfr[var_names['col_name']['even_id']].values. \
+                        astype(int, copy=False)
 
     dfr = pandas.read_excel(file_name, var_names['sheet_name']['inten'])
     hazard.event_name = dfr.keys().values[1:].tolist()

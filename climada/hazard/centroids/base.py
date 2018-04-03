@@ -54,9 +54,9 @@ class Centroids(object):
         """Reinitialize attributes."""
         self.tag = Tag()
         self.coord = Coordinates()
-        self.id = np.array([], np.int64)
-        self.region_id = np.array([], np.int64)        
-        self.dist_coast = np.array([], np.float)     
+        self.id = np.array([], int)
+        self.region_id = np.array([], int)        
+        self.dist_coast = np.array([], float)     
         self.admin0_name = ''
         self.admin0_iso3 = ''
 
@@ -117,7 +117,7 @@ class Centroids(object):
         regions = True
         if (self.region_id.size == 0) | (centroids.region_id.size == 0):
             regions = False
-            self.region_id = np.array([], np.int64)
+            self.region_id = np.array([], int)
             LOGGER.warning("Centroids.region_id is not going to be set.")
 
         new_pos, new_id, new_reg, new_lat, new_lon = \

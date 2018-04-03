@@ -59,8 +59,8 @@ class DiscRates(object):
         """Reinitialize attributes."""        
         self.tag = Tag()
         # Following values are given for each defined year
-        self.years = np.array([], np.int64)
-        self.rates = np.array([], np.float64)
+        self.years = np.array([], int)
+        self.rates = np.array([], float)
 
     def check(self):
         """Check attributes consistency.
@@ -126,7 +126,7 @@ class DiscRates(object):
                 new_year.append(year)
                 new_rate.append(rate)
         
-        self.years = np.append(self.years, new_year).astype(int)
+        self.years = np.append(self.years, new_year).astype(int, copy=False)
         self.rates = np.append(self.rates, new_rate)
 
     @staticmethod

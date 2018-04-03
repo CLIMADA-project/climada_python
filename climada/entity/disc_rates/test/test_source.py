@@ -3,7 +3,6 @@ Test DiscRates from Excel.
 """
 
 import unittest
-import numpy
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.disc_rates import source as source
@@ -28,12 +27,12 @@ class TestReaderExcel(unittest.TestCase):
         # Check results
         n_rates = 51
 
-        self.assertEqual(type(disc_rate.years[0]), numpy.int64)
+        self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(disc_rate.years.shape, (n_rates,))
         self.assertEqual(disc_rate.years[0], 2000)
         self.assertEqual(disc_rate.years[n_rates-1], 2050)
 
-        self.assertEqual(type(disc_rate.rates[0]), numpy.float64)
+        self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(disc_rate.rates.shape, (n_rates,))
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
@@ -48,12 +47,12 @@ class TestReaderExcel(unittest.TestCase):
         # Check results
         n_rates = 102
 
-        self.assertEqual(type(disc_rate.years[0]), numpy.int64)
+        self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(disc_rate.years.shape, (n_rates,))
         self.assertEqual(disc_rate.years[0], 2000)
         self.assertEqual(disc_rate.years[n_rates-1], 2101)
 
-        self.assertEqual(type(disc_rate.rates[0]), numpy.float64)
+        self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(disc_rate.rates.shape, (n_rates,))
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
@@ -89,12 +88,12 @@ class TestReaderMat(unittest.TestCase):
         # Check results
         n_rates = 51
 
-        self.assertEqual(type(disc_rate.years[0]), numpy.int64)
+        self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(len(disc_rate.years), n_rates)
         self.assertEqual(disc_rate.years[0], 2000)
         self.assertEqual(disc_rate.years[n_rates-1], 2050)
 
-        self.assertEqual(type(disc_rate.rates[0]), numpy.float64)
+        self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(len(disc_rate.rates), n_rates)
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)

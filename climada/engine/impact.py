@@ -83,7 +83,7 @@ class Impact(object):
         self.exposures_tag = Tag()
         self.impact_funcs_tag = Tag()
         self.hazard_tag = TagHazard()
-        self.event_id = np.array([], np.int64)
+        self.event_id = np.array([], int)
         self.event_name = list()
         self.exp_coord = Coordinates()
         self.at_exp = np.array([])

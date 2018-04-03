@@ -68,7 +68,7 @@ class Hazard(object):
         self.units = 'NA'
         # following values are defined for each event
         self.centroids = Centroids()
-        self.event_id = np.array([], np.int64)
+        self.event_id = np.array([], int)
         self.frequency = np.array([])
         self.event_name = list()
         #self.date = [date(1,1,1)]  # size: num_events
@@ -271,7 +271,7 @@ class Hazard(object):
         if n_add_ev:
             self.event_name = self.event_name + new_name
             self.event_id = np.append(self.event_id, np.array(new_id)).\
-                astype(int)
+                astype(int, copy=False)
             self.intensity = sparse.vstack([self.intensity, \
                 np.zeros((sparse_add, self.fraction.shape[1]))]).tolil()   
             self.fraction = sparse.vstack([self.fraction, \

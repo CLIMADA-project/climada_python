@@ -114,7 +114,8 @@ def _read_xls_obligatory(exposures, dfr, var_names):
     coord_cols = [var_names['col_name']['lat'], var_names['col_name']['lon']]
     exposures.coord = IrregularGrid(np.array(dfr[coord_cols]))
 
-    exposures.impact_id = dfr[var_names['col_name']['imp']].values
+    exposures.impact_id = dfr[var_names['col_name']['imp']].values. \
+                            astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(dfr.index)
@@ -136,11 +137,11 @@ def _read_xls_default(exposures, dfr, var_names):
 def _read_xls_optional(exposures, dfr, file_name, var_names):
     """Fill optional parameters."""
     exposures.category_id = _parse_xls_optional(dfr, exposures.category_id, \
-                                            var_names['col_name']['cat'])
+                        var_names['col_name']['cat']).astype(int, copy=False)
     exposures.region_id = _parse_xls_optional(dfr, exposures.region_id, \
-                                          var_names['col_name']['reg'])
+                        var_names['col_name']['reg']).astype(int, copy=False)
     exposures.value_unit = _parse_xls_optional(dfr, exposures.value_unit, \
-                                           var_names['col_name']['uni'])
+                        var_names['col_name']['uni'])
     if not isinstance(exposures.value_unit, str):
         # Check all exposures have the same unit
         if len(np.unique(exposures.value_unit)) is not 1:
@@ -148,7 +149,7 @@ def _read_xls_optional(exposures, dfr, file_name, var_names):
             raise ValueError
         exposures.value_unit = exposures.value_unit[0]
     assigned = _parse_xls_optional(dfr, np.array([]), \
-                                   var_names['col_name']['ass'])
+                var_names['col_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
         exposures.assigned['NA'] = assigned
 
@@ -192,7 +193,7 @@ def _read_mat_obligatory(exposures, data, var_names):
                                                    axis=1))
 
     exposures.impact_id = np.squeeze(data[var_names['var_name']['imp']]). \
-        astype(int)
+        astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(exposures.value)
@@ -220,11 +221,11 @@ def _read_mat_optional(exposures, data, file_name, var_names):
         exposures.ref_year = int(exposures.ref_year)
 
     exposures.category_id = _parse_mat_optional(data, exposures.category_id, \
-                        var_names['var_name']['cat']).astype(int)
+                        var_names['var_name']['cat']).astype(int, copy=False)
     exposures.region_id = _parse_mat_optional(data, exposures.region_id, \
-                        var_names['var_name']['reg']).astype(int)
+                        var_names['var_name']['reg']).astype(int, copy=False)
     assigned = _parse_mat_optional(data, np.array([]), \
-                                   var_names['var_name']['ass']).astype(int)
+                var_names['var_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
         exposures.assigned['NA'] = assigned
     try:

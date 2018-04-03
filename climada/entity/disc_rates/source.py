@@ -64,7 +64,7 @@ def read_mat(disc_rates, file_name, var_names):
     disc = disc[var_names['field_name']]
 
     disc_rates.years = np.squeeze(disc[var_names['var_name']['year']]). \
-                        astype(int)
+                        astype(int, copy=False)
     disc_rates.rates = np.squeeze(disc[var_names['var_name']['disc']])
 
 def read_excel(disc_rates, file_name, var_names):
@@ -75,6 +75,7 @@ def read_excel(disc_rates, file_name, var_names):
 
     dfr = pandas.read_excel(file_name, var_names['sheet_name'])
 
-    disc_rates.years = dfr[var_names['col_name']['year']].values
+    disc_rates.years = dfr[var_names['col_name']['year']].values. \
+                        astype(int, copy=False)
     disc_rates.rates = dfr[var_names['col_name']['disc']].values
     
