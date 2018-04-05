@@ -133,7 +133,7 @@ class Centroids(object):
 
     def _append_one(self, centroids, regions):
         """Append one by one centroid."""
-        new_pos = array('L')
+        new_pos = array('l')
         new_id = array('L')
         new_reg = array('l')
         new_lat = array('d')

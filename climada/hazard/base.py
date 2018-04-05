@@ -260,7 +260,7 @@ class Hazard(object):
 
         # Add not repeated events
         # for each input event, position in the final event vector
-        new_ev_pos = array('L')
+        new_ev_pos = array('l')
         new_name = []
         new_id = array('L')
         self._append_events(hazard, new_ev_pos, new_name, new_id)
