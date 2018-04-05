@@ -28,8 +28,14 @@ def check_conf():
         if not os.path.isabs(abspath):
             abspath = os.path.abspath(os.path.join(WORKING_DIR, \
                                                    os.path.expanduser(path)))    
-        if (key == "entity_def") and (path == ""):
+        if (key == "entity_def") and \
+        ((path == "") or not os.path.isfile(abspath)):
             abspath = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
+        
+        if (key == "repository") and \
+        ((path == "") or not os.path.isfile(abspath)):
+            abspath = os.path.join(DATA_DIR, 'demo')
+    
         CONFIG['local_data'][key] = abspath
 
 CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))

@@ -3,12 +3,13 @@ Test TropCyclone class
 """
 
 import unittest
+import os
 import numpy as np
 
 from climada.hazard.trop_cyclone import TropCyclone, read_ibtracs, set_category, missing_pressure
 from climada.util.config import CONFIG
 
-TEST_TRACK = CONFIG['local_data']['repository'] + "/tc_tracks/ibtracs/ibtracs_global_intp-None_1951239N12334.csv"
+TEST_TRACK = os.path.join(CONFIG['local_data']['repository'], "demo_trac.csv")
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
