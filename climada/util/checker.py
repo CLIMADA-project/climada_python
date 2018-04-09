@@ -20,8 +20,7 @@ def empty_optional(var, var_name):
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises
-        ------
+        Raises:
             ValueError
     """
     try:        
@@ -36,8 +35,7 @@ def size(exp_len, var, var_name):
 def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises
-        ------
+        Raises:
             ValueError
     """
     try:
@@ -57,14 +55,12 @@ def shape(exp_row, exp_col, var, var_name):
 def array_optional(exp_len, var, var_name):
     """Check if array has right size. Warn if array empty. Call check_size.
 
-        Parameters
-        ----------
+        Parameters:
             exp_len (str): expected array size
             var (np.array): numpy array to check
             var_name (str): name of the variable. Used in error/warning msg
 
-        Raises
-        ------
+        Raises:
             ValueError
     """
     if len(var) == 0:
@@ -75,19 +71,16 @@ def array_optional(exp_len, var, var_name):
 def array_default(exp_len, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.
 
-        Parameters
-        ----------
+        Parameters:
             exp_len (str): expected array size
             var (np.array): numpy array to check
             var_name (str): name of the variable. Used in error/warning msg
             def_val (np.array): nump array used as default value
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Returns
-        ------
+        Returns:
             Filled array
     """
     res = var

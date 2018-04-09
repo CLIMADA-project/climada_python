@@ -1,0 +1,30 @@
+climada\.entity\.disc\_rates package
+====================================
+
+Submodules
+----------
+
+climada\.entity\.disc\_rates\.base module
+-----------------------------------------
+
+.. automodule:: climada.entity.disc_rates.base
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.entity\.disc\_rates\.source module
+-------------------------------------------
+
+.. automodule:: climada.entity.disc_rates.source
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: climada.entity.disc_rates
+    :members:
+    :undoc-members:
+    :show-inheritance:

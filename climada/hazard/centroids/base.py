@@ -16,10 +16,9 @@ from climada.util.coordinates import Coordinates
 LOGGER = logging.getLogger(__name__)
 
 class Centroids(object):
-    """Definition of the irregular grid through coordinates named centroids.
+    """Definition of the hazard coordinates.
     
-    Attributes
-    ----------
+    Attributes:
         tag (Tag): information about the source
         coord (Coordinates): Coordinates instance
         id (np.array): an id for each centroid
@@ -33,18 +32,23 @@ class Centroids(object):
     def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str, optional): name of the source file
             description (str, optional): description of the source data
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        --------
-            This is an abstract class, it can't be instantiated.
+        Examples:
+            Fill centroids attributes by hand:
+            
+            >>> centr = Centroids()
+            >>> centr.coord = IrregularGrid([[0,-1], [0, -2]])
+            >>> ...
+            
+            Read centroids from file:
+            
+            >>> centr = Centroids(HAZ_DEMO_XLS, 'Centroids demo')
         """
         self.clear()
         if file_name != '':
@@ -63,8 +67,7 @@ class Centroids(object):
     def check(self):
         """Check instance attributes.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         num_exp = len(self.id)
@@ -80,27 +83,25 @@ class Centroids(object):
     def read_one(self, file_name, description='', var_names=None):
         """ Read input file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
             description (str, optional): description of the source data
 
-        Raises
-        ------
+        Raises:
             TypeError, ValueError
         """
         read_source(self, file_name, description, var_names)
+        LOGGER.info('Read file: %s', file_name)  
 
     def append(self, centroids):
         """Append input centroids coordinates to current. Id is perserved if 
         not present in current centroids. Otherwise, a new id is provided.
         Returns the array position of each appended centroid. 
         
-        Parameters
-        ----------
+        Parameters:
             centroids (Centroids): Centroids instance to append
-        Returns
-        -------
+            
+        Returns:
             array
         """
         centroids.check()

@@ -19,26 +19,10 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.loader module
+climada\.hazard\.source module
 ------------------------------
 
-.. automodule:: climada.hazard.loader
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.hazard\.source\_excel module
--------------------------------------
-
-.. automodule:: climada.hazard.source_excel
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.hazard\.source\_mat module
------------------------------------
-
-.. automodule:: climada.hazard.source_mat
+.. automodule:: climada.hazard.source
     :members:
     :undoc-members:
     :show-inheritance:
@@ -51,6 +35,13 @@ climada\.hazard\.tag module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.trop\_cyclone module
+-------------------------------------
+
+.. automodule:: climada.hazard.trop_cyclone
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Module contents
 ---------------

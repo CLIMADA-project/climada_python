@@ -12,10 +12,9 @@ import climada.util.checker as check
 LOGGER = logging.getLogger(__name__)
 
 class Measure(object):
-    """Contains the definition of one Measure.
+    """Contains the definition of one measure.
 
-    Attributes
-    ----------
+    Attributes:
         name (str): name of the action
         color_rgb (np.array): integer array of size 3. Gives color code of
             this measure in RGB
@@ -46,8 +45,7 @@ class Measure(object):
     def check(self):
         """ Check consistent instance data.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         check.size(3, self.color_rgb, 'Measure.color_rgb')

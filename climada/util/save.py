@@ -13,8 +13,7 @@ LOGGER = logging.getLogger(__name__)
 def save(out_file_name, var):
     """Save variable with provided file name.
             
-    Parameters
-    ----------
+    Parameters:
         out_file_name (str): file name (absolute path or relative to configured
             save_dir)
         var (object): variable to save in pickle format

@@ -60,20 +60,17 @@ def add_populated(axis, extent, projection=ccrs.PlateCarree()):
 def geo_bin_from_array(geo_coord, array_val, var_name, title):
     """Plot array values binned over input coordinates.
 
-    Parameters
-    ----------
+    Parameters:
         geo_coord (2d np.array): (lat, lon) for each point
         array_val (np.array): values at each point in geo_coord that are
             binned
         var_name (str): label to be shown in the colorbar
         title (str): figure title
 
-    Returns
-    -------
+    Returns:
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
 
-    Raises
-    ------
+    Raises:
         ValueError
     """
     if geo_coord.shape[0] != array_val.size:
@@ -104,20 +101,17 @@ def geo_bin_from_array(geo_coord, array_val, var_name, title):
 def geo_im_from_array(geo_coord, array_im, var_name, title):
     """Image plot defined in array over input coordinates.
 
-    Parameters
-    ----------
+    Parameters:
         geo_coord (2d np.array): (lat, lon) for each point
         array_im (np.array): values at each point in geo_coord that are
             ploted
         var_name (str): label to be shown in the colorbar
         title (str): figure title
 
-    Returns
-    -------
+    Returns:
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
 
-    Raises
-    ------
+    Raises:
         ValueError
     """
     if geo_coord.shape[0] != array_im.size:
@@ -202,8 +196,7 @@ class Graph2D(object):
     def get_elems(self):
         """Return figure and list of all axes (of each subplot).
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         return self.fig, self.axs

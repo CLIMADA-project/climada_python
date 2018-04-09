@@ -24,8 +24,7 @@ LOGGER = logging.getLogger(__name__)
 class Hazard(object):
     """Contains events of some hazard type defined at centroids. Interface.
 
-    Attributes
-    ----------
+    Attributes:
         tag (TagHazard): information about the source
         units (str): units of the intensity
         centroids (Centroids): centroids of the events
@@ -41,18 +40,32 @@ class Hazard(object):
                  centroids=None):
         """Initialize values from given file, if given.
 
-        Parameters
-        ----------
-            file_name (str or list(str), optional): absolute file name(s) or 
+        Parameters:
+            file_name (str or list(str), optional): absolute file name(s) or \
                 folder name containing the files to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
 
-        Raises
-        ------
+        Raises:
             ValueError
+            
+        Examples:
+            Fill hazard values by hand:
+            
+            >>> haz = Hazard()
+            >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
+            >>> ...
+
+            Take hazard values from file:
+
+            >>> haz = Hazard(HAZ_DEMO_XLS, 'TC')
+            
+            Take centriods from a different source:
+            
+            >>> centr = Centroids(HAZ_DEMO_XLS, 'Centroids demo')
+            >>> haz = Hazard(HAZ_DEMO_XLS, 'TC', 'Demo hazard.', centr)
         """
         self.clear()
         if file_name != '':
@@ -79,8 +92,7 @@ class Hazard(object):
     def check(self):
         """ Check if the attributes contain consistent data.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         self.centroids.check()
@@ -91,8 +103,7 @@ class Hazard(object):
         """Read and check hazard, and centroids if not provided. Parallel 
         through files.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
@@ -102,8 +113,7 @@ class Hazard(object):
             var_names (dict or list(dict), default): name of the variables in 
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         # Construct absolute path file names
@@ -127,8 +137,7 @@ class Hazard(object):
     def plot_intensity(self, event=None, centr_id=None):
         """Plot intensity values for a selected event or centroid.
 
-        Parameters
-        ----------
+        Parameters:
             event (int or str, optional): If event > 0, plot intensities of
                 event with id = event. If event = 0, plot maximum intensity in
                 each centroid. If event < 0, plot abs(event)-largest event. If
@@ -139,12 +148,10 @@ class Hazard(object):
                 plot abs(centr_id)-largest centroid where higher intensities
                 are reached.
 
-        Returns
-        -------
-            matplotlib.figure.Figure (optional)
+        Returns:
+            matplotlib.figure.Figure
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         col_label = 'Intensity %s' % self.units
@@ -162,8 +169,7 @@ class Hazard(object):
     def plot_fraction(self, event=None, centr_id=None):
         """Plot fraction values for a selected event or centroid.
 
-        Parameters
-        ----------
+        Parameters:
             event (int or str, optional): If event > 0, plot fraction of event
                 with id = event. If event = 0, plot maximum fraction in each
                 centroid. If event < 0, plot abs(event)-largest event. If event
@@ -174,12 +180,10 @@ class Hazard(object):
                 plot abs(centr_id)-largest centroid where highest fractions
                 are reached.
 
-        Returns
-        -------
-            matplotlib.figure.Figure (optional)
+        Returns:
+            matplotlib.figure.Figure
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         col_label = 'Fraction'
@@ -196,16 +200,13 @@ class Hazard(object):
     def event_name_to_id(self, event_name):
         """"Get an event id from its name.
 
-        Parameters
-        ----------
+        Parameters:
             event_name (str): Event name
 
-        Returns
-        -------
+        Returns:
             int
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         try:
@@ -222,12 +223,10 @@ class Hazard(object):
         """Check and append variables of input Hazard to current Hazard. 
         Repeated events and centroids will be overwritten.
         
-        Parameters
-        ----------
+        Parameters:
             hazard (Hazard): Hazard instance to append to current
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         hazard._check_events()
@@ -289,25 +288,22 @@ class Hazard(object):
         self.fraction = self.fraction.tocsr()
     
     @staticmethod
-    def _read_one(file_name, haz_type, description, centroids, var_names=None):
+    def _read_one(file_name, haz_type, description='', centroids=None, \
+                  var_names=None):
         """ Read input file. If centroids are not provided, they are read
         from file_name.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
             haz_type (str): acronym of the hazard type (e.g. 'TC')
-            description (str): description of the source data
+            description (str, optional): description of the source data
             centroids (Centroids, optional): Centroids instance
-            var_names (dict): name of the variables in the file (e.g. 
-                      DEF_VAR_NAME defined in the source modules)
+            var_names (dict, optional): name of the variables in the file
             
-        Raises
-        ------
+        Raises:
             ValueError, KeyError
             
-        Returns
-        ------
+        Returns:
             Hazard
         """
         new_haz = Hazard()
@@ -318,8 +314,7 @@ class Hazard(object):
     def _check_events(self):
         """ Check that all attributes but centroids contain consistent data.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         num_ev = len(self.event_id)
@@ -367,8 +362,7 @@ class Hazard(object):
     def _event_plot(self, event_id, mat_var, col_name):
         """"Plot an event of the input matrix.
 
-        Parameters
-        ----------
+        Parameters:
             event_id (int): If event_id > 0, plot mat_var of
                 event with id = event_id. If event_id = 0, plot maximum
                 mat_var in each centroid. If event_id < 0, plot
@@ -376,8 +370,7 @@ class Hazard(object):
             mat_var (sparse matrix): Sparse matrix where each row is an event
             col_name (sparse matrix): Colorbar label
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if event_id > 0:
@@ -406,8 +399,7 @@ class Hazard(object):
     def _centr_plot(self, centr_id, mat_var, col_name):
         """"Plot a centroid of the input matrix.
 
-        Parameters
-        ----------
+        Parameters:
             centr_id (int): If centr_id > 0, plot mat_var
                 of all events at centroid with id = centr_id. If centr_id = 0,
                 plot maximum mat_var of each event. If centr_id < 0,
@@ -417,8 +409,7 @@ class Hazard(object):
                 a centroid
             col_name (sparse matrix): Colorbar label
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if centr_id > 0:

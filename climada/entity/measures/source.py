@@ -1,5 +1,6 @@
 """
-Fill Measures from MATLAB file.
+Define DiscRates reader function from a file with extension defined in 
+constant FILE_EXT.
 """
 
 __all__ = ['DEF_VAR_MAT',
@@ -13,8 +14,9 @@ import numpy as np
 import pandas
 
 from climada.entity.measures.measure import Measure
-import climada.util.hdf5_handler as hdf5
 from climada.entity.tag import Tag
+from climada.util.constants import FILE_EXT
+import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',      
                'field_name': 'measures',
@@ -52,18 +54,28 @@ DEF_VAR_EXCEL = {'sheet_name': 'measures',
 
 LOGGER = logging.getLogger(__name__)
 
-def read(meas, file_name, description, var_names):
-    """Read file and store variables in MeasureSet. """
+def read(meas, file_name, description='', var_names=None):
+    """Read file and fill measures.
+
+    Parameters:
+        meas (MeasureSet): measures to fill
+        file_name (str): absolute path of the file to read
+        description (str, optional): description of the data
+        var_names (dict, optional): names of the variables in the file
+            
+    Raises:
+        KeyError, ValueError
+    """ 
     meas.tag = Tag(file_name, description)
     
     extension = os.path.splitext(file_name)[1]
-    if extension == '.mat':
+    if extension == FILE_EXT['MAT']:
         try:
             read_mat(meas, file_name, var_names)
         except KeyError as var_err:
             LOGGER.error("Not existing variable. " + str(var_err))
             raise var_err
-    elif (extension == '.xlsx') or (extension == '.xls'):
+    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
         try:
             read_excel(meas, file_name, var_names)
         except KeyError as var_err:

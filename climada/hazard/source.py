@@ -1,5 +1,6 @@
 """
-Define Hazard reader function from a MATLAB file.
+Define Hazard reader function from a file with extension defined in 
+constant FILE_EXT.
 """
 
 __all__ = ['DEF_VAR_MAT',
@@ -15,6 +16,7 @@ from scipy import sparse
 
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
+from climada.util.constants import FILE_EXT
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_MAT = {'field_name': 'hazard',
@@ -52,18 +54,29 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
 
 LOGGER = logging.getLogger(__name__)
 
-def read(hazard, file_name, haz_type, description, centroids, var_names):
-    """Read file and fill attributes."""
+def read(hazard, file_name, haz_type, description='', centroids=None, \
+         var_names=None):
+    """Read file and fill hazard.
+
+    Parameters:
+        hazard (Hazard): hazard to fill
+        file_name (str): absolute path of the file to read
+        description (str, optional): description of the data
+        var_names (dict, optional): names of the variables in the file
+            
+    Raises:
+        KeyError, ValueError
+    """ 
     hazard.tag = TagHazard(file_name, haz_type, description)
 
     extension = os.path.splitext(file_name)[1]
-    if extension == '.mat':
+    if extension == FILE_EXT['MAT']:
         try:
             read_mat(hazard, file_name, haz_type, centroids, var_names)
         except KeyError as var_err:
             LOGGER.error("Not existing variable. " + str(var_err))
             raise var_err
-    elif (extension == '.xlsx') or (extension == '.xls'):
+    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
         try:
             read_excel(hazard, file_name, centroids, var_names)
         except KeyError as var_err:

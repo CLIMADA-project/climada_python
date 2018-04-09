@@ -1,5 +1,5 @@
 """
-Define DiscRates.
+Define DiscRates class.
 """
 
 __all__ = ['DiscRates']
@@ -19,8 +19,7 @@ LOGGER = logging.getLogger(__name__)
 class DiscRates(object):
     """Defines discount rates and basic methods.
 
-    Attributes
-    ----------
+    Attributes:
         tag (Tag): information about the source data
         years (np.array): years
         rates (np.array): discount rates for each year
@@ -29,29 +28,28 @@ class DiscRates(object):
     def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        --------
+        Examples:
+            Fill discount rates with values and check consistency data:
+            
             >>> disc_rates = DiscRates()
             >>> disc_rates.years = np.array([2000, 2001])
             >>> disc_rates.rates = np.array([0.02, 0.02])
             >>> disc_rates.check()
-            Fill discount rates with values and check consistency data.
-            >>> disc_rates = DiscRates('year_2050.mat')
+            
             Read discount rates from year_2050.mat and checks consistency data.
+            
+            >>> disc_rates = DiscRates(ENT_DEMO_XLS)
         """
         self.clear()
-        # Load values from file_name if provided
         if file_name != '':
             self.read(file_name, description)
 
@@ -65,8 +63,7 @@ class DiscRates(object):
     def check(self):
         """Check attributes consistency.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         check.size(len(self.years), self.rates, 'DiscRates.rates')
@@ -74,8 +71,7 @@ class DiscRates(object):
     def read(self, files, descriptions='', var_names=None):
         """Read and check discount rates in parallel through files.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
@@ -83,8 +79,7 @@ class DiscRates(object):
             var_names (dict or list(dict), default): name of the variables in 
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         # Construct absolute path file names
@@ -101,12 +96,10 @@ class DiscRates(object):
         """Check and append discount rates to current DiscRates. Overwrite 
         discount rate if same year.
         
-        Parameters
-        ----------
+        Parameters:
             disc_rates (DiscRates): DiscRates instance to append
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         disc_rates.check()
@@ -130,22 +123,18 @@ class DiscRates(object):
         self.rates = np.append(self.rates, new_rate)
 
     @staticmethod
-    def _read_one(file_name, description, var_names):
+    def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
-            description (str): description of the source data
-            var_names (dict): name of the variables in the file (e.g. 
-                      DEF_VAR_NAME defined in the source modules)
+            description (str, optional): description of the source data
+            var_names (dict, optional): name of the variables in the file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Returns
-        ------
+        Returns:
             DiscRates
         """
         new_disc = DiscRates()

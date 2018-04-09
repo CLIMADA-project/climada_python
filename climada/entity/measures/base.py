@@ -15,10 +15,9 @@ from climada.entity.tag import Tag
 LOGGER = logging.getLogger(__name__)
 
 class MeasureSet(object):
-    """Contains MeasureSet of type MeasureSet.
+    """Contains measures of type Measure.
 
-    Attributes
-    ----------
+    Attributes:
         tag (Taf): information about the source data
         _data (dict): cotains Measure classes. It's not suppossed to be
             directly accessed. Use the class methods instead.
@@ -27,19 +26,18 @@ class MeasureSet(object):
     def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        --------
+        Examples:
+            Fill MeasureSet with values and check consistency data:
+            
             >>> act_1 = Measure()
             >>> act_1.name = 'Seawall'
             >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
@@ -50,7 +48,10 @@ class MeasureSet(object):
             >>> meas.add_Measure(act_1)
             >>> meas.tag.description = "my dummy MeasureSet."
             >>> meas.check()
-            Fill MeasureSet with values and check consistency data.
+            
+            Read measures from file and checks consistency data:
+            
+            >>> meas = MeasureSet(ENT_DEMO_XLS)
         """
         self.clear()
         if file_name != '':
@@ -64,12 +65,10 @@ class MeasureSet(object):
     def add_measure(self, meas):
         """Add an Measure.
         
-        Parameters
-        ----------
+        Parameters:
             meas (Measure): Measure instance
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         if not isinstance(meas, Measure):
@@ -84,12 +83,10 @@ class MeasureSet(object):
         """Remove Measure with provided name. Delete all Measures if no input
         name
         
-        Parameters
-        ----------
+        Parameters:
             name (str, optional): measure name
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         if name is not None:
@@ -102,12 +99,11 @@ class MeasureSet(object):
 
     def get_measure(self, name=None):
         """Get Measure with input name. Get all if no name provided.
-        Parameters
-        ----------
+        
+        Parameters:
             name (str, optional): measure name
 
-        Returns
-        -------
+        Returns:
             list(Measure)
         """
         if name is not None:
@@ -129,8 +125,7 @@ class MeasureSet(object):
     def check(self):
         """Check instance attributes.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         for act_name, act in self._data.items():
@@ -142,8 +137,7 @@ class MeasureSet(object):
     def read(self, files, descriptions='', var_names=None):
         """Read and check MeasureSet in parallel through files.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
@@ -151,8 +145,7 @@ class MeasureSet(object):
             var_names (dict or list(dict), default): name of the variables in 
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         all_files = get_file_names(files)
@@ -168,12 +161,10 @@ class MeasureSet(object):
         """Check and append measures of input MeasureSet to current MeasureSet. 
         Overwrite Measure if same name.
         
-        Parameters
-        ----------
+        Parameters:
             meas (MeasureSet): MeasureSet instance to append
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         meas.check()
@@ -186,22 +177,18 @@ class MeasureSet(object):
             self.add_measure(measure)
 
     @staticmethod
-    def _read_one(file_name, description, var_names):
+    def _read_one(file_name, description='', var_names=None):
         """Read input file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
-            description (str): description of the source data
-            var_names (dict): name of the variables in the file (e.g. 
-                      DEF_VAR_NAME defined in the source modules)
+            description (str, optional): description of the source data
+            var_names (dict), optional): name of the variables in the file
 
-        Raises
-        ------
+        Raises:
             ValueError
             
-        Returns
-        ------
+        Returns:
             MeasureSet
         """
         new_meas = MeasureSet()

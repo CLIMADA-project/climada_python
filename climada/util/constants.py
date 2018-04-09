@@ -15,25 +15,42 @@ __all__ = ['SOURCE_DIR',
 
 import os
 
-# climada directory
 SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), \
                                            os.pardir))
+""" climada directory """
 
-# folder containing the data
 DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'test', 'data'))
+""" Folder containing the data """
 
-# Files containg data used as demo and unit testing
 HAZ_DEMO_XLS = os.path.join(DATA_DIR, 'demo', 'Excel_hazard.xlsx')
+""" Hazard demo in xls format."""
+
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
+""" Hazard demo in mat format."""
+
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob_no_name.mat')
+""" Hazard for unit tests in mat format."""
+
 ENT_DEMO_XLS = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
+""" Entity demo in xls format."""
+
 ENT_TEMPLATE_XLS = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
+""" Entity template in xls format."""
+
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
+""" Entity demo in mat format."""
 
 GLB_CENTROIDS = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_1.mat')
+""" Global centroids."""
 
-# Mean one latitude in km
+FILE_EXT = {'MAT':  '.mat', \
+            'XLS':  '.xls', \
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
 ONE_LAT_KM = 111.12
+""" Mean one latitude in km """
 
-# Earth radius in km
 EARTH_RADIUS = 6371
+""" Earth radius in km """

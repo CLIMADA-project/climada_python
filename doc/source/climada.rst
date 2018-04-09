@@ -1,5 +1,5 @@
-climada package
-===============
+Package
+=======
 
 Subpackages
 -----------
@@ -9,7 +9,6 @@ Subpackages
     climada.engine
     climada.entity
     climada.hazard
-    climada.test
     climada.util
 
 Module contents

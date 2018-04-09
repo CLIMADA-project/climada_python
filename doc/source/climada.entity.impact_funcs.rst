@@ -12,10 +12,18 @@ climada\.entity\.impact\_funcs\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.source\_excel module
-----------------------------------------------------
+climada\.entity\.impact\_funcs\.impact\_func module
+---------------------------------------------------
 
-.. automodule:: climada.entity.impact_funcs.source_excel
+.. automodule:: climada.entity.impact_funcs.impact_func
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.entity\.impact\_funcs\.source module
+---------------------------------------------
+
+.. automodule:: climada.entity.impact_funcs.source
     :members:
     :undoc-members:
     :show-inheritance:

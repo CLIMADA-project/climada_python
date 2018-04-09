@@ -13,10 +13,9 @@ import climada.util.plot as plot
 LOGGER = logging.getLogger(__name__)
 
 class ImpactFunc(object):
-    """Contains the definition of one ImpactFunc (impact function).
+    """Contains the definition of one impact function.
 
-    Attributes
-    ----------
+    Attributes:
         haz_type (str): hazard type    
         id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
         name (str): name of the ImpactFunc
@@ -40,15 +39,13 @@ class ImpactFunc(object):
     def interpolate(self, inten, attribute):
         """ Interpolate impact function to a given intensity.
 
-        Parameters
-        ----------
+        Parameters:
             inten (float or np.array): intensity, the x-coordinate of the
                 interpolated values.
             attribute (str): defines the impact function attribute to
                 interpolate. Possbile values: 'mdd' or 'paa'.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         if attribute == 'mdd':
@@ -63,12 +60,11 @@ class ImpactFunc(object):
     def plot(self, graph=None):
         """Plot the impact functions MDD, MDR and PAA in one graph.
 
-        Parameters
-        ----------
+        Parameters:
             graph (Graph2D, optional): graph where to add the plots
             show (bool, optional): bool to execute plt.show(). Default: True
-        Returns
-        -------
+            
+        Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         if graph is None:
@@ -86,8 +82,7 @@ class ImpactFunc(object):
     def check(self):
         """ Check consistent instance data.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         num_exp = len(self.intensity)

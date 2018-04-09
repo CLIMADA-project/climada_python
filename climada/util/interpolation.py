@@ -21,8 +21,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
     """ Returns for each coordinate the centroids indexes used for
     interpolation
 
-    Parameters
-    ----------
+    Parameters:
         centroids (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
@@ -30,8 +29,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
         method (str): interpolation method to use
         distance (str): distance to use
 
-    Returns
-    -------
+    Returns:
         numpy array with so many rows as coordinates containing the
             centroids indexes
     """
@@ -53,15 +51,13 @@ def index_nn_aprox(centroids, coordinates):
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
 
-    Parameters
-    ----------
+    Parameters:
         centroids (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
 
-    Returns
-    -------
+    Returns:
         array with so many rows as coordinates containing the centroids
             indexes
     """
@@ -98,15 +94,13 @@ def index_nn_haversine(centroids, coordinates):
     """ Compute the neareast centroid for each coordinate using a Ball
     tree with haversine distance.
 
-    Parameters
-    ----------
+    Parameters:
         centroids (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
 
-    Returns
-    -------
+    Returns:
         array with so many rows as coordinates containing the centroids
             indexes
     """

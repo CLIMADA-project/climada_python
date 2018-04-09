@@ -17,26 +17,25 @@ import h5py
 def read(file_name, with_refs=False):
     """Load a hdf5 data structure from a file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name: file to load
             with_refs: enable loading of the references. Default is unset,
                 since it increments the execution time considerably.
 
-        Returns
-        -------
+        Returns:
             contents: dictionary structure containing all the variables.
 
-        Examples
-        --------
-            >>> contents = read("/pathto/dummy.mat")
+        Examples:
             Contents contains the Matlab data in a dictionary.
-            >>> contents = read("/pathto/dummy.mat", True)
+            
+            >>> contents = read("/pathto/dummy.mat")
+            
             Contents contains the Matlab data and its reference in a
             dictionary.
+            
+            >>> contents = read("/pathto/dummy.mat", True)
 
-        Raises
-        ------
+        Raises:
             Exception while reading
         """
     def get_group(group):
@@ -64,12 +63,10 @@ def read(file_name, with_refs=False):
 def get_string(array):
     """Form string from input array of unisgned integers.
 
-        Parameters
-        ----------
+        Parameters:
             array: array of integers
 
-        Returns
-        -------
+        Returns:
             string
     """
     return u''.join(chr(c) for c in array)
@@ -77,13 +74,11 @@ def get_string(array):
 def get_str_from_ref(file_name, var):
     """Form string from a reference HDF5 variable of the given file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name: matlab file name
             var: HDF5 reference variable
 
-        Returns
-        -------
+        Returns:
             string
     """
     file = h5py.File(file_name, 'r')
@@ -94,13 +89,11 @@ def get_str_from_ref(file_name, var):
 def get_list_str_from_ref(file_name, var):
     """Form list of strings from a reference HDF5 variable of the given file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name: matlab file name
             var: array of HDF5 reference variable
 
-        Returns
-        -------
+        Returns:
             string
     """
     name_list = []
@@ -112,13 +105,11 @@ def get_list_str_from_ref(file_name, var):
 def get_sparse_csr_mat(mat_dict, shape):
     """Form sparse matrix from input hdf5 sparse matrix data type.
 
-        Parameters
-        ----------
+        Parameters:
             mat_dict: dictionary containing the sparse matrix information.
             shape: tuple describing output matrix shape.
 
-        Returns
-        -------
+        Returns:
             sparse csr matrix
     """
     # Check if input has all the necessary data of a sparse matrix

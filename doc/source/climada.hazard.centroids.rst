@@ -12,18 +12,18 @@ climada\.hazard\.centroids\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.centroids\.source\_excel module
-------------------------------------------------
+climada\.hazard\.centroids\.source module
+-----------------------------------------
 
-.. automodule:: climada.hazard.centroids.source_excel
+.. automodule:: climada.hazard.centroids.source
     :members:
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.centroids\.source\_mat module
-----------------------------------------------
+climada\.hazard\.centroids\.tag module
+--------------------------------------
 
-.. automodule:: climada.hazard.centroids.source_mat
+.. automodule:: climada.hazard.centroids.tag
     :members:
     :undoc-members:
     :show-inheritance:

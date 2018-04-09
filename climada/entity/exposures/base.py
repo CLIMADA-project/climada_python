@@ -1,5 +1,5 @@
 """
-Define Exposures.
+Define Exposures class.
 """
 
 __all__ = ['Exposures']
@@ -23,8 +23,7 @@ LOGGER = logging.getLogger(__name__)
 class Exposures(object):
     """Defines exposures attributes and basic methods.
 
-    Attributes
-    ----------
+    Attributes:
         tag (Tag): information about the source data
         ref_year (int): reference year
         value_unit (str): unit of the exposures values
@@ -40,41 +39,38 @@ class Exposures(object):
         region_id (np.array, optional): region id for each exposure
             (when defined)
         assigned (dict, optional): for a given hazard, id of the
-            centroid(s) affecting each exposure. This values are filled by
-            the 'assign' method
+            centroid(s) affecting each exposure. Filled in 'assign' method.
     """
 
-    def __init__(self, file_name='', description='', var_names=None):
+    def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
-                the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        --------
+        Examples:
+            Fill exposures with values and check consistency data:
+
             >>> exp_city = Exposures()
             >>> exp_city.coord = np.array([[40.1, 8], [40.2, 8], [40.3, 8]])
             >>> exp_city.value = np.array([5604, 123, 9005001])
             >>> exp_city.impact_id = np.array([1, 1, 1])
             >>> exp_city.id = np.array([11, 12, 13])
             >>> exp_city.check()
-            Fill exposures with values and check consistency data.
-            >>> exp_city = Exposures('Zurich.mat')
+
             Read exposures from Zurich.mat and checks consistency data.
+            
+            >>> exp_city = Exposures(ENT_DEMO_XLS)
         """
         self.clear()
         if file_name != '':
-            self.read(file_name, description, var_names)
+            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -99,8 +95,7 @@ class Exposures(object):
     def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[0]):
         """Compute the hazard centroids ids affecting to each exposure.
 
-        Parameters
-        ----------
+        Parameters:
             hazard (subclass Hazard): one hazard
             method (str, optional): interpolation method, neareast neighbor by
                 default. The different options are provided by the class
@@ -109,8 +104,7 @@ class Exposures(object):
                 default. The different options are provided by the class
                 constant 'DIST_DEF' of the interpolation module
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         self.assigned[hazard.tag.haz_type] = hazard.centroids.coord.resample(\
@@ -119,8 +113,7 @@ class Exposures(object):
     def check(self):
         """Check instance attributes.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         num_exp = len(self.id)
@@ -134,8 +127,7 @@ class Exposures(object):
     def plot_value(self):
         """Plot exposures values binned over Earth's map.
         
-         Returns
-        -------
+         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         return plot.geo_bin_from_array(self.coord, self.value, 'Value (%s)' % \
@@ -146,8 +138,7 @@ class Exposures(object):
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures in parallel through files.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
@@ -155,8 +146,7 @@ class Exposures(object):
             var_names (dict or list(dict), default): name of the variables in 
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         # Construct absolute path file names
@@ -172,12 +162,10 @@ class Exposures(object):
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
         
-        Parameters
-        ----------
+        Parameters:
             exposures (Exposures): Exposures instance to append to current
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
 
@@ -229,17 +217,15 @@ class Exposures(object):
     def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
             description (str, optional): description of the source data
+            var_names (dict, optional): name of the variables in the file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Returns
-        ------
+        Returns:
             Exposures
         """
         new_exp = Exposures()

@@ -13,14 +13,12 @@ def to_str_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
     a list with num_exp repeated values.
     
-    Parameters
-    ----------
+    Parameters:
         num_exp (int): number of expect list elements
         values (object or list(object)): values to check and transform
         val_name (str): name of the variable values
 
-    Returns
-    -------
+    Returns:
         list
     """
     val_list = list()
@@ -40,13 +38,11 @@ def to_str_list(num_exp, values, val_name):
 def get_file_names(file_name):
     """Return list of files contained.
     
-    Parameters
-    ----------
+    Parameters:
         file_name (str or list(str)): file name, or list of file names or name
             of the folder containing the files
 
-    Returns
-    -------
+    Returns:
         list
     """
     file_list = list()

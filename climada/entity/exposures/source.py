@@ -1,10 +1,12 @@
 """
-Define Exposures reader function from an Excel file.
+Define Exposures reader function from a file with extension defined in 
+constant FILE_EXT.
 """
 
 __all__ = ['DEF_VAR_EXCEL',
            'DEF_VAR_MAT',
-           'read']
+           'read'
+          ]
 
 import os
 import logging
@@ -15,6 +17,7 @@ import pandas
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.config import CONFIG
+from climada.util.constants import FILE_EXT
 from climada.util.coordinates import IrregularGrid
 
 DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
@@ -53,18 +56,28 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
 
 LOGGER = logging.getLogger(__name__)
 
-def read(exposures, file_name, description, var_names):
-    '''Test reader functionality of the CentroidsExcel class'''    
+def read(exposures, file_name, description='', var_names=None):
+    """Read file and fill exposures.
+
+    Parameters:
+        exposures (Exposures): exposures to fill
+        file_name (str): absolute path of the file to read
+        description (str, optional): description of the data
+        var_names (dict, optional): names of the variables in the file
+            
+    Raises:
+        KeyError, ValueError
+    """ 
     exposures.tag = Tag(file_name, description)
     
     extension = os.path.splitext(file_name)[1]
-    if extension == '.mat':
+    if extension == FILE_EXT['MAT']:
         try:
-            read_mat(exposures, file_name, description, var_names)
+            read_mat(exposures, file_name, var_names)
         except KeyError as var_err:
             LOGGER.error("Not existing variable. " + str(var_err))
             raise var_err
-    elif (extension == '.xlsx') or (extension == '.xls'):
+    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
         try:
             read_excel(exposures, file_name, var_names)
         except KeyError as var_err:
@@ -72,16 +85,13 @@ def read(exposures, file_name, description, var_names):
             raise var_err
     else:
         LOGGER.error('Input file extension not supported: %s.', extension)
-        raise ValueError
+        raise ValueError 
 
-def read_mat(exposures, file_name, description='', var_names=None):
+def read_mat(exposures, file_name, var_names=None):
     """Read MATLAB file and store variables in exposures. """
     # set variable names in source file
     if var_names is None:
         var_names = DEF_VAR_MAT
-        
-   # append the file name and description into the instance class
-    exposures.tag = Tag(file_name, description)
 
     # Load mat data
     data = hdf5.read(file_name)

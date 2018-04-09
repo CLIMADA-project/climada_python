@@ -12,10 +12,18 @@ climada\.entity\.measures\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.measures\.source\_excel module
------------------------------------------------
+climada\.entity\.measures\.measure module
+-----------------------------------------
 
-.. automodule:: climada.entity.measures.source_excel
+.. automodule:: climada.entity.measures.measure
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.entity\.measures\.source module
+----------------------------------------
+
+.. automodule:: climada.entity.measures.source
     :members:
     :undoc-members:
     :show-inheritance:

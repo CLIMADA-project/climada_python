@@ -15,15 +15,15 @@ from climada.util.config import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 class Entity(object):
-    """Collects exposures, impact functions, measures and discount rates.
+    """Collects exposures, impact functions, measures and discount rates. 
+    Default values set when empty constructor.
 
-    Attributes
-    ----------
+    Attributes:
         exposures (Exposures): exposures
         impact_funcs (ImpactFucs): impact functions
         measures (MeasureSet): measures
         disc_rates (DiscRates): discount rates
-        def_file (str): name of the xls file used as default source data
+        def_file (str): Default file from configuration file
     """
 
     def_file = CONFIG['local_data']['entity_def']
@@ -31,26 +31,29 @@ class Entity(object):
     def __init__(self, file_name=None, description=None):
         """Fill values from file. Default file used when no file provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): file name(s) or folder name
                 containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        ---------
+        Examples:
+            Builds Entity with values obtained from configurable entity_def:
+            
             >>> Entity()
-            Builds Entity with values obtained from configurable entity_def.
-            >>> Entity(filename)
-            Builds Entity with the values obtained from filename file.
-            >>> Entity(impact_funcs=myimpact_funcs, measures=mymeasures)
+            
+            Builds Entity with the values obtained from file:
+            
+            >>> Entity(ENT_DEMO_XLS)
+            
             Builds Entity with exposures and discount rates from configurable
-            entity_def file, and the given impact functions and measures.
+            entity_def file, and the given impact functions and measures:
+            
+            >>> Entity(impact_funcs=myimpact_funcs, measures=mymeasures)
+            
         """
         if file_name is None:
             self.exposures = Exposures(self.def_file)
@@ -63,15 +66,13 @@ class Entity(object):
     def read(self, file_name, description=None):
         """Read and check input file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         self.exposures = Exposures()
@@ -89,8 +90,7 @@ class Entity(object):
     def check(self):
         """Check instance attributes.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         self.disc_rates.check()

@@ -6,7 +6,7 @@ Subpackages
 
 .. toctree::
 
-    climada.entity.discounts
+    climada.entity.disc_rates
     climada.entity.exposures
     climada.entity.impact_funcs
     climada.entity.measures
@@ -18,14 +18,6 @@ climada\.entity\.entity module
 ------------------------------
 
 .. automodule:: climada.entity.entity
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.entity\.loader module
-------------------------------
-
-.. automodule:: climada.entity.loader
     :members:
     :undoc-members:
     :show-inheritance:

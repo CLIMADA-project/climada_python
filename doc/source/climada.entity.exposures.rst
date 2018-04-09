@@ -12,10 +12,10 @@ climada\.entity\.exposures\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.source\_excel module
-------------------------------------------------
+climada\.entity\.exposures\.source module
+-----------------------------------------
 
-.. automodule:: climada.entity.exposures.source_excel
+.. automodule:: climada.entity.exposures.source
     :members:
     :undoc-members:
     :show-inheritance:

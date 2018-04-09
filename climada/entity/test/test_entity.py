@@ -17,7 +17,6 @@ class TestReader(unittest.TestCase):
 
     def test_default_pass(self):
         """Instantiating the Entity class the default entity file is loaded"""
-        # Instance entity
         # Set demo file as default
         Entity.def_file = ENT_DEMO_XLS
         def_entity = Entity()

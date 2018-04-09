@@ -18,9 +18,8 @@ LOGGER = logging.getLogger(__name__)
 class ImpactFuncSet(object):
     """Contains impact functions of type ImpactFunc.
 
-    Attributes
-    ----------
-        tag (Taf): information about the source data
+    Attributes:
+        tag (Tag): information about the source data
         _data (dict): contains ImpactFunc classes. It's not suppossed to be
             directly accessed. Use the class methods instead.
     """
@@ -28,19 +27,18 @@ class ImpactFuncSet(object):
     def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
 
-        Raises
-        ------
+        Raises:
             ValueError
 
-        Examples
-        --------
+        Examples:
+            Fill impact functions with values and check consistency data:           
+            
             >>> fun_1 = ImpactFunc()
             >>> fun_1.haz_type = 'TC'
             >>> fun_1.id = 3
@@ -50,7 +48,10 @@ class ImpactFuncSet(object):
             >>> imp_fun = ImpactFuncSet()
             >>> imp_fun.add_func(fun_1)
             >>> imp_fun.check()
-            Fill impact functions with values and check consistency data.
+            
+            Read impact functions from file and checks consistency data.
+            
+            >>> imp_fun = ImpactFuncSet(ENT_DEMO_XLS)
         """
         self.clear()
         if file_name != '':
@@ -64,12 +65,10 @@ class ImpactFuncSet(object):
     def add_func(self, func):
         """Add a ImpactFunc. Overwrite existing if same id.
 
-        Parameters
-        ----------
+        Parameters:
             func (ImpactFunc): ImpactFunc instance
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         if not isinstance(func, ImpactFunc):
@@ -89,8 +88,7 @@ class ImpactFuncSet(object):
         """Remove vulenerability(ies) with provided hazard type and/or id.
         If no input provided, all impact functions are removed.
         
-        Parameters
-        ----------
+        Parameters:
             haz_type (str, optional): all impact functions with this hazard
             fun_id (int, optional): all impact functions with this id
         """
@@ -118,12 +116,10 @@ class ImpactFuncSet(object):
         """Get impact functions hazard types contained for the id provided.
         Return all hazard types if no input id.
 
-        Parameters
-        ----------
+        Parameters:
             fun_id (int, optional): id of an impact function
 
-        Returns
-        -------
+        Returns:
             list
         """
         if fun_id is None:
@@ -139,12 +135,10 @@ class ImpactFuncSet(object):
         """Get impact functions ids contained for the hazard type provided.
         Return all ids for each hazard type if no input hazard type.
 
-        Parameters
-        ----------
+        Parameters:
             haz_type (str, optional): hazard type from which to obtain the ids
 
-        Returns
-        -------
+        Returns:
             list(ImpactFunc.id) (if haz_type provided),
             {ImpactFunc.haz_type : list(ImpactFunc.id)} (if no haz_type)
         """
@@ -163,13 +157,11 @@ class ImpactFuncSet(object):
         """Get ImpactFunc(s) of input hazard type and/or id.
         If no input provided, all impact functions are returned.
 
-        Parameters
-        ----------
+        Parameters:
             haz_type (str, optional): hazard type
             fun_id (int, optional): ImpactFunc id
 
-        Returns
-        -------
+        Returns:
             list(ImpactFunc) (if haz_type and/or fun_id)
             list(ImpactFunc) (if haz_type and/or fun_id)
             {ImpactFunc.haz_type : {ImpactFunc.id : ImpactFunc}}
@@ -198,13 +190,11 @@ class ImpactFuncSet(object):
         """Get number of impact functions contained with input hazard type and
         /or id. If no input provided, get total number of impact functions.
 
-        Parameters
-        ----------
+        Parameters:
             haz_type (str, optional): hazard type
             fun_id (int, optional): ImpactFunc id
 
-        Returns
-        -------
+        Returns:
             int      
         """
         if (haz_type != None) or (fun_id != None):
@@ -215,8 +205,7 @@ class ImpactFuncSet(object):
     def check(self):
         """Check instance attributes.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         for key_haz, vul_dict in self._data.items():
@@ -234,8 +223,7 @@ class ImpactFuncSet(object):
     def read(self, files, descriptions='', var_names=None):
         """Read and check impact functions in parallel through files.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): absolute file name(s) or 
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
@@ -243,8 +231,7 @@ class ImpactFuncSet(object):
             var_names (dict or list(dict), default): name of the variables in 
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         # Construct absolute path file names
@@ -261,12 +248,10 @@ class ImpactFuncSet(object):
         """Check and append impact functions of input ImpactFuncSet to current
         ImpactFuncSet. Overwrite ImpactFunc if same id.
         
-        Parameters
-        ----------
+        Parameters:
             impact_funcs (ImpactFuncSet): ImpactFuncSet instance to append
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         impact_funcs.check()
@@ -285,13 +270,11 @@ class ImpactFuncSet(object):
         """Plot impact functions of selected hazard (all if not provided) and
         selected function id (all if not provided).
 
-        Parameters
-        ----------
+        Parameters:
             haz_type (str, optional): hazard type
             fun_id (int, optional): id of the function
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         num_plts = self.num_funcs(haz_type, fun_id)
@@ -311,22 +294,18 @@ class ImpactFuncSet(object):
         return graph.get_elems()
 
     @staticmethod
-    def _read_one(file_name, description, var_names):
+    def _read_one(file_name, description='', var_names=None):
         """Read input file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
-            description (str): description of the source data
-            var_names (dict): name of the variables in the file (e.g. 
-                      DEF_VAR_NAME defined in the source modules)
+            description (str, optional): description of the source data
+            var_names (dict, optional): name of the variables in the file
 
-        Raises
-        ------
+        Raises:
             ValueError
             
-        Returns
-        ------
+        Returns:
             ImpactFuncSet
         """
         new_imp = ImpactFuncSet()

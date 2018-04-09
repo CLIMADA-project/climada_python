@@ -1,5 +1,5 @@
 """
-Define Impact class.
+Define Impact and ImpactFreqCurve classes.
 """
 
 __all__ = ['ImpactFreqCurve', 'Impact']
@@ -18,8 +18,7 @@ LOGGER = logging.getLogger(__name__)
 class ImpactFreqCurve(object):
     """ Impact exceedence frequency curve.
 
-    Attributes
-    ----------
+    Attributes:
         return_per (np.array): return period
         impact (np.array): impact exceeding frequency
         unit (str): value unit used (given by exposures unit)
@@ -34,8 +33,7 @@ class ImpactFreqCurve(object):
     def plot(self):
         """Plot impact frequency curve.
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         graph = plot.Graph2D(self.label)
@@ -46,8 +44,7 @@ class ImpactFreqCurve(object):
     def plot_compare(self, ifc):
         """Plot current and input impact frequency curves in a figure.
 
-        Returns
-        -------
+        Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
         if self.unit != ifc.unit:
@@ -60,10 +57,10 @@ class ImpactFreqCurve(object):
         return graph.get_elems()
 
 class Impact(object):
-    """Impact for a given entity (exposures and impact functions) and hazard.
+    """Impact definition. Compute from an entity (exposures and impact 
+    functions) and hazard.
 
-    Attributes
-    ----------
+    Attributes:
         exposures_tag (Tag): information about the exposures
         impact_funcs_tag (Tag): information about the impact functions
         hazard_tag (TagHazard): information about the hazard
@@ -73,7 +70,7 @@ class Impact(object):
         at_exp (np.array): impact for each exposure
         at_event (np.array): impact for each hazard event
         frequency (np.arrray): frequency (pro event)
-        tot_vale (float): total exposure value affected
+        tot_value (float): total exposure value affected
         tot (float): total expected impact
         unit (str): value unit used (given by exposures unit)
     """
@@ -96,8 +93,7 @@ class Impact(object):
     def calc_freq_curve(self):
         """Compute and plot impact frequency curve.
         
-        Returns
-        -------
+        Returns:
             ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
@@ -116,27 +112,27 @@ class Impact(object):
     def calc(self, exposures, impact_funcs, hazard):
         """Compute impact of an hazard to exposures.
 
-        Parameters
-        ----------
+        Parameters:
             exposures (Exposures): exposures
             impact_funcs (ImpactFuncSet): impact functions
             hazard (Hazard): hazard
 
-        Examples
-        --------
-            >>> hazard = Hazard('filename') # Set hazard
+        Examples:
+            Use Entity class:
+            
+            >>> hazard = Hazard(HAZ_DEMO_XLS) # Set hazard
             >>> entity = Entity() # Load entity with default values
-            >>> entity.exposures = Exposures('filename') # Set exposures
+            >>> entity.exposures = Exposures(ENT_DEMO_XLS) # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
-            Use Entity class
 
-            >>> hazard = Hazard('filename') # Set hazard
-            >>> funcs = ImpactFuncSet('filename') # Set impact functions
-            >>> exposures = Exposures('filename') # Set exposures
+            Specify only exposures and impact functions:
+
+            >>> hazard = Hazard(HAZ_DEMO_XLS) # Set hazard
+            >>> funcs = ImpactFuncSet(ENT_DEMO_XLS) # Set impact functions
+            >>> exposures = Exposures(ENT_DEMO_XLS) # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(exposures, funcs, hazard)
-            Specify only exposures and impact functions
         """
         # 1. Assign centroids to each exposure if not done
         if (not exposures.assigned) or \
@@ -189,10 +185,9 @@ class Impact(object):
         self.tot = sum(self.at_event * hazard.frequency)
 
     def plot_at_exposure(self):
-        """"Plot accumulated impact at each exposure.
+        """Plot accumulated impact at each exposure.
         
-         Returns
-        -------
+         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         title = 'Accumulated impact'
@@ -204,15 +199,13 @@ class Impact(object):
     def _one_exposure(iexp, exposures, hazard, imp_fun):
         """Impact to one exposures.
 
-        Parameters
-        ----------
+        Parameters:
             iexp (int): array index of the exposure computed
-            exposures (Exposure): exposures
+            exposures (Exposures): exposures
             hazard (Hazard): a hazard
             imp_fun (ImpactFunc): an impact function
 
-        Returns
-        -------
+        Returns:
             event_row (np.array): hazard' events indices affecting exposure
             impact (np.array): impact for each event in event_row
         """

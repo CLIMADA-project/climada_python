@@ -1,5 +1,5 @@
 """
-Define Tropical Cyclone.
+Define TropCyclone class and IBTracs reader.
 """
 
 __all__ = ['TropCyclone', 'read_ibtracs']
@@ -24,8 +24,7 @@ SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 135, 1000]
 class TropCyclone(Hazard):
     """Contains events of Tropical Cyclones.
 
-    Attributes
-    ----------
+    Attributes:
         tag (TagHazard): information about the source
         units (str): units of the intensity
         centroids (Centroids): centroids of the events
@@ -41,8 +40,7 @@ class TropCyclone(Hazard):
     def __init__(self, file_name='', description='', centroids=None):
         """Initialize values from given file, if given.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str or list(str), optional): file name(s) or folder name 
                 containing the files to read
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
@@ -50,8 +48,7 @@ class TropCyclone(Hazard):
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         self.haz_type = 'TC'
@@ -59,19 +56,19 @@ class TropCyclone(Hazard):
         Hazard.__init__(self, file_name, self.haz_type, description, centroids)
     
     @staticmethod
-    def _read_one(file_name, haz_type, description, centroids, var_names=None):
+    def _read_one(file_name, haz_type='TC', description='', centroids=None, \
+                  var_names=None):
         """ Read input file. If centroids are not provided, they are read
         from file_name.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): name of the source file
-            haz_type (str): acronym of the hazard type (e.g. 'TC')
-            description (str): description of the source data
+            haz_type (str): 'TC'
+            description (str, optional): description of the source data
             centroids (Centroids, optional): Centroids instance
+            var_names (dict): None
 
-        Raises
-        ------
+        Raises:
             ValueError, KeyError
         """
         if centroids is None:
@@ -97,12 +94,10 @@ class TropCyclone(Hazard):
         """Check and append variables of input TropCyclone to current. 
         Repeated events and centroids will be overwritten. Tracks are appended.
         
-        Parameters
-        ----------
+        Parameters:
             tc_haz (TropCyclone): TropCyclone instance to append to current
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         super(TropCyclone, self).append(tc_haz)
@@ -119,8 +114,7 @@ class TropCyclone(Hazard):
     def check(self):
         """Check if the attributes contain consistent data.
 
-        Raises
-        ------
+        Raises:
             ValueError
         """
         super(TropCyclone, self).check()
@@ -129,12 +123,10 @@ class TropCyclone(Hazard):
 def read_ibtracs(file_name):
     """Read IBTrACS track file.
 
-        Parameters
-        ----------
+        Parameters:
             file_name (str): file name containing one IBTrACS track to read
         
-        Returns
-        -------
+        Returns:
             xarray.Dataset     
     """
     dfr = pd.read_csv(file_name)
