@@ -11,17 +11,17 @@ To clone it, you might want to use the `GitHub Desktop <https://desktop.github.c
 Developers with Unix
 ====================
 
-.. _ref_anaconda:
+.. _Install environment with Anaconda:
 
 Install environment with Anaconda
 ---------------------------------
 1. **Anaconda**: Download or update to the latest version of `Anaconda <https://www.anaconda.com/>`_. Execute it.
 
-2. **Install dependencies**: In the *Environments* section, use the *Import* box to create a new virtual environment from a yml file. A dialogue box will ask you for the location of the file. Provide first the path of climada's :file:`environment.yml`. The default name of the environment, *climada_env*, appears. Click the *Import* button to start the installation. 
+2. **Install dependencies**: In the *Environments* section, use the *Import* box to create a new virtual environment from a yml file. A dialogue box will ask you for the location of the file. Provide first the path of climada's ``environment.yml``. The default name of the environment, *climada_env*, appears. Click the *Import* button to start the installation. 
 
   The installation of the packages will take some minutes. No dialogue box should appear in the meantime. If an error happens, try to solve it looking into the details description.
 
-3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and launch Spyder. Open the file containing all the unit tests, :file:`unit_tests.py` in :file:`climada_python` folder. If the installation has been successful, an OK will appear at the end of the execution.
+3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and launch Spyder. Open the file containing all the unit tests, ``unit_tests.py`` in ``climada_python`` folder. If the installation has been successful, an OK will appear at the end of the execution.
 
 Install environment with Miniconda
 ----------------------------------
@@ -37,12 +37,12 @@ Install environment with Miniconda
     python3 unit_tests.py
     source deactivate
   
-    An OK will appear at the end of the execution.
+ If the installation has been successful, an OK will appear at the end of the execution.
 
 Install environment with Pip
 ----------------------------
 
-.. _ref_pre_req:
+.. _Pre-requisites:
 
 Pre-requisites
 ++++++++++++++
@@ -73,7 +73,7 @@ Install environment
 
     PYTHONPATH=. python3 unit_tests.py
 
-  An OK will appear at the end of the execution.
+ If the installation has been successful, an OK will appear at the end of the execution.
 
 
 Developers with Windows
@@ -82,7 +82,7 @@ Developers with Windows
 Install environment with Anaconda
 ---------------------------------
 
-See :ref:`ref_anaconda`.
+See `Install environment with Anaconda`_.
 
 
 Package Installation
@@ -91,12 +91,12 @@ Package Installation
 Pre-requisites
 --------------
 
-See :ref:`ref_pre_req`. 
+See `Pre-requisites`_. 
 
 Install climada package
 -----------------------
 
-1. **Install climada**: A distribution contained in the :file:`dist` folder is installed as follows::
+1. **Install climada**: A distribution contained in the ``dist`` folder is installed as follows::
 
     pip install dist/climada-0.0.1.tar.gz
 
@@ -104,5 +104,5 @@ Install climada package
 
     PYTHONPATH=. python3 unit_tests.py
 
-  An OK will appear at the end of the execution.
+ If the installation has been successful, an OK will appear at the end of the execution.
 
