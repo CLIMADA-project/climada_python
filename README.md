@@ -43,7 +43,8 @@ A minimal configuration file looks something like this:
     "local_data":
     {
         "save_dir": "./results/",
-        "entity_def" : ""
+        "entity_def" : "",
+        "repository": ""
     },
     
     "present_ref_year": 2016,
@@ -59,6 +60,7 @@ A minimal configuration file looks something like this:
 | ------ | ----------- | ------- |
 | ``save_dir`` | Folder were the variables are saved through the ``save`` command. An absolut path is safer. | "./results" |
 | ``entity_def`` | Entity to be used as default. If not provided, the static entity_template.xlsx is used. | "" |
+| ``repository`` | Absolute path of climada's data repository. No default path provided. | "" |
 
 
 ### present_ref_year
