@@ -15,24 +15,10 @@ Introduction
 
 CLIMADA stands for **clim**ate **ada**ptation and is a probabilistic natural catastrophe damage model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-Requirements
-------------
-- numpy
-- matplotlib
-- pandas
-- h5py
-- scipy
-- scikit-learn
-- xlrd
-
 Installation
 ------------
 
-From the filesystem:
-
-1. Install dependencies manually first.
-
-2. ``pip install climada-0.0.1.tar.gz``
+Follow the https://github.com/davidnbresch/climada_python/wiki/Installation instructions to install climada's development version and climada's stable version.
 
 Configuration options
 ---------------------
