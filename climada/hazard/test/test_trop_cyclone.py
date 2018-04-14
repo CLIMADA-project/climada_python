@@ -458,6 +458,7 @@ class TestIBTracs(unittest.TestCase):
                                    intensity[0, 1630877]))
 
 # Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIBTracs)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

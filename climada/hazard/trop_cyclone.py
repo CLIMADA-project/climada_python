@@ -357,8 +357,9 @@ def _windfield_holland(track, centroids, model='H08'):
         v_ang = _vang_holland(track, i_node, r_arr, v_trans, model)
 
         v_full = v_trans_corr + v_ang
-        v_full[v_full < min_wind_threshold] = 0
         v_full[np.isnan(v_full)] = 0
+        v_full[v_full < min_wind_threshold] = 0
+
         # keep maximum instantaneous wind
         intensity[0, close_centr] = np.maximum(
             intensity[0, close_centr].todense(), v_full)
@@ -408,6 +409,30 @@ def _extra_rad_max_wind(track, ureg):
     return (track.radius_max_wind.values * ureg.nautical_mile). \
         to(ureg.kilometer).magnitude
 
+def _vtrans(track, i_node, ureg):
+    """ Compute Hollands translation wind without correction  in m/s.
+
+    Parameters:
+        track (xr.Dataset): contains TC track information
+        i_node (int): track node (point) to compute
+        ureg (UnitRegistry): units handler
+
+    Returns:
+        float
+    """
+    dist = np.sqrt(dist_sqr_approx(track.lat[i_node - 1].values, \
+        track.lon[i_node-1].values, \
+        np.cos(track.lat[i_node - 1].values / 180 * np.pi), \
+        track.lat[i_node].values, track.lon[i_node].values)) * ONE_LAT_KM
+    dist = (dist * ureg.kilometer).to(ureg.nautical_mile).magnitude
+
+    # nautical miles/hour, limit to 30 nmph
+    v_trans = dist / track.time_step[i_node].values
+    if v_trans > 30:
+        v_trans = 30
+    # to m/s
+    return (v_trans * ureg.knot).to(ureg.meter / ureg.second).magnitude
+
 def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     """ Compute Hollands translation wind. Returns gust in m/s.
 
@@ -422,18 +447,7 @@ def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     Returns:
         v_trans (float), v_trans corrected (np.array)
     """
-    dist = np.sqrt(dist_sqr_approx(track.lat[i_node - 1].values, \
-        track.lon[i_node-1].values, \
-        np.cos(track.lat[i_node - 1].values / 180 * np.pi), \
-        track.lat[i_node].values, track.lon[i_node].values)) * ONE_LAT_KM
-    dist = (dist * ureg.kilometer).to(ureg.nautical_mile).magnitude
-
-    # nautical miles/hour, limit to 30 nmph
-    v_trans = dist / track.time_step[i_node].values
-    if v_trans > 30:
-        v_trans = 30
-    # to m/s
-    v_trans = (v_trans * ureg.knot).to(ureg.meter / ureg.second).magnitude
+    v_trans = _vtrans(track, i_node, ureg)
 
     if i_node == track.lon.size - 1:
         node_dx = (track.lon[i_node] - track.lon[i_node]).values
@@ -441,6 +455,7 @@ def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     else:
         node_dx = (track.lon[i_node + 1] - track.lon[i_node]).values
         node_dy = (track.lat[i_node + 1] - track.lat[i_node]).values
+    node_dlen = LA.norm([node_dx, node_dy])
 
     # we use the scalar product of the track forward vector and the vector
     # towards each centroid to figure the angle between and hence whether
@@ -458,9 +473,13 @@ def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     centroids_dlat = centroids[close_centr, 0] - track.lat[i_node].values
 
     # scalar product, a*b=|a|*|b|*cos(phi), phi angle between vectors
-    cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
-            LA.norm([centroids_dlon, centroids_dlat], axis=0) / \
-            LA.norm([node_dx, node_dy])
+    if node_dlen > 0:
+        cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
+            LA.norm([centroids_dlon, centroids_dlat], axis=0) / node_dlen
+    else:
+        cos_phi = np.empty((close_centr.size, 1))
+        cos_phi[:] = np.nan
+
     # southern hemisphere
     if track.lat[i_node] < 0:
         cos_phi = -cos_phi
