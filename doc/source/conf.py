@@ -213,7 +213,7 @@ latex_documents = [
 # -----------------------------------------------------------------------------
 # show __init__ and _read documentation
 def skip(app, what, name, obj, skip, options):
-    if (name == "__init__") | (name == "_read_one"):
+    if (name == "__init__") | (name == "_read_one") | (name == "_set_one"):
         return False
     return skip
 
