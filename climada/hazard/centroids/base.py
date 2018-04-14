@@ -54,7 +54,7 @@ class Centroids(object):
         self.clear()
         if file_name != '':
             self.read_one(file_name, description)
-        self.check()
+            self.check()
 
     def clear(self):
         """Reinitialize attributes."""
