@@ -8,12 +8,12 @@ import numpy as np
 from climada.entity.exposures.base import Exposures
 from climada.hazard.centroids.base import Centroids
 import climada.util.interpolation as interp
-from climada.util.constants import ENT_DEMO_XLS
+from climada.util.constants import ENT_TEST_XLS
 
 def def_input_values():
     '''Default input coordinates and centroids values'''
     # Load exposures coordinates from demo entity file
-    exposures = Exposures(ENT_DEMO_XLS)
+    exposures = Exposures(ENT_TEST_XLS)
 
     # Define centroids
     centroids = Centroids()

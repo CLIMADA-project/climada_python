@@ -5,17 +5,17 @@ Test files_handler module.
 import os
 import unittest
 
-from climada.util.files_handler import to_str_list, get_file_names
+from climada.util.files_handler import to_list, get_file_names
 from climada.util.constants import DATA_DIR
 
 class TestToStrList(unittest.TestCase):
-    """Test to_str_list function"""
+    """Test to_list function"""
     def test_identity_pass(self):
         """Returns the same list if its length is correct."""
         num_exp = 3
         values = ['hi', 'ho', 'ha']
         val_name = 'values'
-        out = to_str_list(num_exp, values, val_name)
+        out = to_list(num_exp, values, val_name)
         self.assertEqual(values, out)
         
     def test_one_to_list(self):
@@ -24,11 +24,11 @@ class TestToStrList(unittest.TestCase):
         num_exp = 3
         values = 'hi'
         val_name = 'values'
-        out = to_str_list(num_exp, values, val_name)
+        out = to_list(num_exp, values, val_name)
         self.assertEqual(['hi', 'hi', 'hi'], out)
         
         values = ['ha']
-        out = to_str_list(num_exp, values, val_name)
+        out = to_list(num_exp, values, val_name)
         self.assertEqual(['ha', 'ha', 'ha'], out)
 
     def test_list_wrong_length_fail(self):
@@ -38,7 +38,7 @@ class TestToStrList(unittest.TestCase):
         val_name = 'values'
         
         with self.assertLogs('climada.util.files_handler', level='ERROR') as cm:
-            to_str_list(num_exp, values, val_name)
+            to_list(num_exp, values, val_name)
         self.assertIn("Provide one or 3 values.", cm.output[0])
         
 class TestGetFileNames(unittest.TestCase):
