@@ -16,14 +16,14 @@ def empty_optional(var, var_name):
     """Check if a data structure is empty."""
     if not var:
         LOGGER.warning("%s not set. ", var_name)
-        
+
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
 
         Raises:
             ValueError
     """
-    try:        
+    try:
         if exp_len != len(var):
             LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len, \
                          len(var))

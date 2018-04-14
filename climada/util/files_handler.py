@@ -2,17 +2,17 @@
 Functions to deal with files.
 """
 
-__all__ = ['to_str_list',
+__all__ = ['to_list',
            'get_file_names'
           ]
 
 import os
 import logging
 
-def to_str_list(num_exp, values, val_name):
+def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
     a list with num_exp repeated values.
-    
+
     Parameters:
         num_exp (int): number of expect list elements
         values (object or list(object)): values to check and transform
@@ -37,7 +37,7 @@ def to_str_list(num_exp, values, val_name):
 
 def get_file_names(file_name):
     """Return list of files contained.
-    
+
     Parameters:
         file_name (str or list(str)): file name, or list of file names or name
             of the folder containing the files
@@ -55,11 +55,11 @@ def get_file_names(file_name):
 
 def _process_one_file_name(name, file_list):
     """Apend to input list the file contained in name"""
-    if os.path.splitext(name)[1] == '': 
+    if os.path.splitext(name)[1] == '':
         tmp_files = os.listdir(name)
         # append only files, not folders
         for file in tmp_files:
-            if os.path.splitext(file)[1] != '': 
+            if os.path.splitext(file)[1] != '':
                 file_list.append(file)
     else:
         file_list.append(name)

@@ -27,12 +27,12 @@ def read(file_name, with_refs=False):
 
         Examples:
             Contents contains the Matlab data in a dictionary.
-            
+
             >>> contents = read("/pathto/dummy.mat")
-            
+
             Contents contains the Matlab data and its reference in a
             dictionary.
-            
+
             >>> contents = read("/pathto/dummy.mat", True)
 
         Raises:
