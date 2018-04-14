@@ -18,7 +18,7 @@ CLIMADA stands for **clim**ate **ada**ptation and is a probabilistic natural cat
 Installation
 ------------
 
-Follow the [Installation](https://github.com/davidnbresch/climada_python/wiki/Installation) instructions to install climada's development version and climada's stable version.
+Follow the [Installation](https://github.com/davidnbresch/climada_python/blob/master/doc/source/install.rst) instructions to install climada's development version and climada's stable version.
 
 Configuration options
 ---------------------
@@ -43,7 +43,8 @@ A minimal configuration file looks something like this:
     "local_data":
     {
         "save_dir": "./results/",
-        "entity_def" : ""
+        "entity_def" : "",
+        "repository": ""
     },
     
     "present_ref_year": 2016,
@@ -59,6 +60,7 @@ A minimal configuration file looks something like this:
 | ------ | ----------- | ------- |
 | ``save_dir`` | Folder were the variables are saved through the ``save`` command. An absolut path is safer. | "./results" |
 | ``entity_def`` | Entity to be used as default. If not provided, the static entity_template.xlsx is used. | "" |
+| ``repository`` | Absolute path of climada's data repository. No default path provided. | "" |
 
 
 ### present_ref_year
