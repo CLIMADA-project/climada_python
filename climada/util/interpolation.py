@@ -1,8 +1,9 @@
 """
-Define Interpolator class.
+Define interpolation functions using different metrics.
 """
 
-__all__ = ['interpol_index']
+__all__ = ['interpol_index',
+           'dist_sqr_approx']
 
 import logging
 import numpy as np
@@ -15,6 +16,10 @@ LOGGER = logging.getLogger(__name__)
 DIST_DEF = ['approx', 'haversine']
 METHOD = ['NN']
 THRESHOLD = 100
+
+def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
+    """ Compute approximated squared distance between two points."""
+    return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
                    distance=DIST_DEF[0]):
@@ -66,21 +71,19 @@ def index_nn_aprox(centroids, coordinates):
     # not unique coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
                             return_inverse=True)
-    n_diff_coord = len(idx)
     # Compute cos(lat) for all centroids
     centr_cos_lat = np.cos(centroids[:, 0] / 180 * np.pi)
     assigned = np.zeros(coordinates.shape[0])
-    for icoord in range(n_diff_coord):
-        dist = ((centroids[:, 1] - coordinates[idx[icoord]][1]) * \
-                centr_cos_lat)**2 + \
-                (centroids[:, 0] - coordinates[idx[icoord]][0])**2
+    for icoord, iidx in enumerate(idx):
+        dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1], \
+                                centr_cos_lat, coordinates[iidx, 0], \
+                                coordinates[iidx, 1])
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
         if np.sqrt(dist.min()) * ONE_LAT_KM > THRESHOLD:
-            LOGGER.warning('Distance to closest centroid for coordinate ' \
-                '(%s, %s) is %s.', coordinates[idx[icoord]][0], \
-                coordinates[idx[icoord]][1], \
+            LOGGER.warning('Distance to closest centroid for coordinate ' + \
+                '(%s, %s) is %s.', coordinates[iidx][0], coordinates[iidx][1],\
                 np.sqrt(dist.min()) * ONE_LAT_KM)
             min_idx = -1
 
@@ -88,7 +91,6 @@ def index_nn_aprox(centroids, coordinates):
         assigned[inv == icoord] = min_idx
 
     return assigned
-
 
 def index_nn_haversine(centroids, coordinates):
     """ Compute the neareast centroid for each coordinate using a Ball
@@ -107,7 +109,7 @@ def index_nn_haversine(centroids, coordinates):
     # Construct tree from centroids
     tree = BallTree(centroids/180*np.pi, metric='haversine')
     # Select unique exposures coordinates
-    _, idx, inv = np.unique(coordinates, axis=0, return_index=True, 
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
                             return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
