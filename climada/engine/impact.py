@@ -57,7 +57,7 @@ class ImpactFreqCurve(object):
         return graph.get_elems()
 
 class Impact(object):
-    """Impact definition. Compute from an entity (exposures and impact 
+    """Impact definition. Compute from an entity (exposures and impact
     functions) and hazard.
 
     Attributes:
@@ -92,7 +92,7 @@ class Impact(object):
 
     def calc_freq_curve(self):
         """Compute and plot impact frequency curve.
-        
+
         Returns:
             ImpactFreqCurve
         """
@@ -119,18 +119,18 @@ class Impact(object):
 
         Examples:
             Use Entity class:
-            
-            >>> hazard = Hazard(HAZ_DEMO_XLS) # Set hazard
+
+            >>> hazard = Hazard(HAZ_TEST_XLS) # Set hazard
             >>> entity = Entity() # Load entity with default values
-            >>> entity.exposures = Exposures(ENT_DEMO_XLS) # Set exposures
+            >>> entity.exposures = Exposures(ENT_TEST_XLS) # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
 
             Specify only exposures and impact functions:
 
-            >>> hazard = Hazard(HAZ_DEMO_XLS) # Set hazard
-            >>> funcs = ImpactFuncSet(ENT_DEMO_XLS) # Set impact functions
-            >>> exposures = Exposures(ENT_DEMO_XLS) # Set exposures
+            >>> hazard = Hazard(HAZ_TEST_XLS) # Set hazard
+            >>> funcs = ImpactFuncSet(ENT_TEST_XLS) # Set impact functions
+            >>> exposures = Exposures(ENT_TEST_XLS) # Set exposures
             >>> tc_impact = Impact()
             >>> tc_impact.calc(exposures, funcs, hazard)
         """
@@ -186,13 +186,13 @@ class Impact(object):
 
     def plot_at_exposure(self):
         """Plot accumulated impact at each exposure.
-        
+
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         title = 'Accumulated impact'
         col_name = 'Impact ' + self.unit
-        return plot.geo_bin_from_array(self.exp_coord, self.at_exp, col_name, \
+        return plot.geo_bin_from_array(self.at_exp, self.exp_coord, col_name, \
                                 title)
 
     @staticmethod
