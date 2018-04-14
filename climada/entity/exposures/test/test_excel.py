@@ -8,7 +8,7 @@ import pandas
 
 from climada.entity.exposures import source as source
 from climada.entity.exposures.base import Exposures
-from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS
 from climada.util.config import CONFIG
 
 class TestReader(unittest.TestCase):
@@ -19,7 +19,7 @@ class TestReader(unittest.TestCase):
         # Read demo excel file
         expo = Exposures()
         description = 'One single file.'
-        expo.read(ENT_DEMO_XLS, description)
+        expo.read(ENT_TEST_XLS, description)
 
         # Check results
         n_expos = 50
@@ -59,7 +59,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.ref_year, CONFIG["present_ref_year"])
         self.assertEqual(expo.value_unit, 'NA')
-        self.assertEqual(expo.tag.file_name, ENT_DEMO_XLS)
+        self.assertEqual(expo.tag.file_name, ENT_TEST_XLS)
         self.assertEqual(expo.tag.description, description)
 
     def test_read_template_pass(self):
@@ -125,7 +125,7 @@ class TestReader(unittest.TestCase):
     def test_check_demo_warning(self):
         """Check warning centroids when demo read."""
         with self.assertLogs('climada.util.checker', level='WARNING') as cm:
-            Exposures(ENT_DEMO_XLS)
+            Exposures(ENT_TEST_XLS)
         self.assertIn("Exposures.category_id not set.", cm.output[2])
         self.assertIn("Exposures.region_id not set.", cm.output[3])
         self.assertIn("Exposures.assigned not set.", cm.output[4])
@@ -158,7 +158,7 @@ class TestObligatories(unittest.TestCase):
         new_var_names['col_name']['val'] = 'no valid value'
         expo = Exposures()
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+            expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
@@ -166,7 +166,7 @@ class TestObligatories(unittest.TestCase):
         new_var_names['col_name']['imp'] = 'no valid impact'
         expo = Exposures()
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+            expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
@@ -174,12 +174,12 @@ class TestObligatories(unittest.TestCase):
         new_var_names['col_name']['lat'] = 'no valid Latitude'
         expo = Exposures()
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+            expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         new_var_names['col_name']['lat'] = 'Latitude'
         new_var_names['col_name']['lon'] = 'no valid Longitude'
         with self.assertRaises(KeyError):
-            expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+            expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
 class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
@@ -208,7 +208,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['cat'] = 'no valid category'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, expo.category_id.size)
@@ -218,7 +218,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['reg'] = 'no valid region'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, expo.region_id.size)
@@ -228,7 +228,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['uni'] = 'no valid value unit'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertEqual('NA', expo.value_unit)
@@ -238,7 +238,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ass'] = 'no valid assign'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertEqual(0, len(expo.assigned))
@@ -248,7 +248,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ref'] = 'no valid ref'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertEqual(CONFIG["present_ref_year"], expo.ref_year)
@@ -280,7 +280,7 @@ class TestDefaults(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['cov'] = 'Dummy'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertTrue(np.array_equal(expo.value, expo.cover))
@@ -290,7 +290,7 @@ class TestDefaults(unittest.TestCase):
         new_var_names = source.DEF_VAR_EXCEL
         new_var_names['col_name']['ded'] = 'Dummy'
         expo = Exposures()
-        expo.read(ENT_DEMO_XLS, var_names=new_var_names)
+        expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
         self.assertTrue(np.array_equal(np.zeros(len(expo.value)), \
@@ -333,7 +333,7 @@ class TestParsers(unittest.TestCase):
 
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
-        ref_year = source._parse_xls_ref_year(ENT_DEMO_XLS, source.DEF_VAR_EXCEL)
+        ref_year = source._parse_xls_ref_year(ENT_TEST_XLS, source.DEF_VAR_EXCEL)
         self.assertEqual(CONFIG["present_ref_year"], ref_year)      
         
 # Execute Tests

@@ -5,7 +5,7 @@ Test Impact class.
 import unittest
 import numpy as np
 
-from climada.util.constants import HAZ_TEST_MAT, ENT_DEMO_XLS
+from climada.util.constants import HAZ_TEST_MAT, ENT_TEST_XLS
 from climada.entity.entity import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
@@ -61,11 +61,11 @@ class TestOneExposure(unittest.TestCase):
         ''' Test result against reference value'''
         # Read demo entity values
         # Set the entity default file to the demo one
-        Entity.def_file = ENT_DEMO_XLS
+        Entity.def_file = ENT_TEST_XLS
         ent = Entity()
         
         # Read default hazard file
-        hazard = Hazard(HAZ_TEST_MAT, 'TC')
+        hazard = Hazard('TC', HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 
@@ -119,10 +119,10 @@ class TestCalc(unittest.TestCase):
     def test_ref_value_pass(self):
         ''' Test result against reference value'''
         # Read default entity values
-        Entity.def_file = ENT_DEMO_XLS
+        Entity.def_file = ENT_TEST_XLS
         ent = Entity()
         # Read default hazard file
-        hazard = Hazard(HAZ_TEST_MAT, 'TC')
+        hazard = Hazard('TC', HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 

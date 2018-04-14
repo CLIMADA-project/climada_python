@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.util.constants import ENT_DEMO_XLS
+from climada.util.constants import ENT_TEST_XLS
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""
@@ -108,8 +108,8 @@ class TestReadParallel(unittest.TestCase):
     def test_read_two_pass(self):
         """Both files are readed and appended."""
         descriptions = ['desc1','desc2']
-        disc_rate = DiscRates([ENT_DEMO_XLS, ENT_DEMO_XLS], descriptions)
-        self.assertEqual(disc_rate.tag.file_name, [ENT_DEMO_XLS, ENT_DEMO_XLS])
+        disc_rate = DiscRates([ENT_TEST_XLS, ENT_TEST_XLS], descriptions)
+        self.assertEqual(disc_rate.tag.file_name, [ENT_TEST_XLS, ENT_TEST_XLS])
         self.assertEqual(disc_rate.tag.description, descriptions)
         self.assertEqual(disc_rate.years.size, 51)
 

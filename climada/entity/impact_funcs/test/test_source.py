@@ -8,7 +8,7 @@ import pandas
 import climada.util.hdf5_handler as hdf5
 from climada.entity.impact_funcs.base import ImpactFuncSet
 from climada.entity.impact_funcs.source import DEF_VAR_MAT, DEF_VAR_EXCEL, _get_xls_funcs, _get_hdf5_funcs, _get_hdf5_unit, _get_hdf5_name
-from climada.util.constants import ENT_DEMO_MAT, ENT_DEMO_XLS, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_DEMO_MAT, ENT_TEST_XLS, ENT_TEMPLATE_XLS
 
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
@@ -150,7 +150,7 @@ class TestReaderExcel(unittest.TestCase):
         # Read demo excel file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read(ENT_DEMO_XLS, description)
+        imp_funcs.read(ENT_TEST_XLS, description)
 
         # Check results
         n_funcs = 2
@@ -216,7 +216,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_XLS)
+        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_XLS)
         self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):
@@ -235,14 +235,14 @@ class TestReaderExcel(unittest.TestCase):
         new_var_names['col_name']['inten'] = 'wrong name'
         imp_funcs = ImpactFuncSet()
         with self.assertRaises(KeyError):
-            imp_funcs.read(ENT_DEMO_XLS, var_names=new_var_names)
+            imp_funcs.read(ENT_TEST_XLS, var_names=new_var_names)
             
 class TestFuncsExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
     def test_distinct_funcs(self):
         """ Read demo excel file"""
-        dfr = pandas.read_excel(ENT_DEMO_XLS, DEF_VAR_EXCEL['sheet_name'])
+        dfr = pandas.read_excel(ENT_TEST_XLS, DEF_VAR_EXCEL['sheet_name'])
         imp_funcs = _get_xls_funcs(dfr, DEF_VAR_EXCEL)
         self.assertEqual(imp_funcs[0], ('TC', 1))
         self.assertEqual(imp_funcs[1], ('TC', 3))

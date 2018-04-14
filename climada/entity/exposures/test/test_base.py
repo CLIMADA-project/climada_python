@@ -8,7 +8,7 @@ import numpy as np
 from climada.entity.exposures.base import Exposures
 from climada.hazard.base import Hazard
 from climada.util.coordinates import IrregularGrid
-from climada.util.constants import ENT_DEMO_XLS, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS
 
 def good_exposures():
     """Followng values are defined for each exposure"""
@@ -191,10 +191,10 @@ class TestReadParallel(unittest.TestCase):
     """Check read function with several files"""
 
     def test_read_two_pass(self):
-        """Both files are readed and appended."""
-        descriptions = ['desc1','desc2']
-        expo = Exposures([ENT_DEMO_XLS, ENT_DEMO_XLS], descriptions)
-        self.assertEqual(expo.tag.file_name, [ENT_DEMO_XLS, ENT_DEMO_XLS])
+        """Both files are read and appended."""
+        descriptions = ['desc1', 'desc2']
+        expo = Exposures([ENT_TEST_XLS, ENT_TEST_XLS], descriptions)
+        self.assertEqual(expo.tag.file_name, [ENT_TEST_XLS, ENT_TEST_XLS])
         self.assertEqual(expo.tag.description, descriptions)
         self.assertEqual(expo.id.size, 2*50)
 
@@ -203,7 +203,7 @@ class TestReadParallel(unittest.TestCase):
         expo = Exposures()
         with self.assertLogs('climada.entity.exposures', level='ERROR') as cm:
             with self.assertRaises(ValueError):
-                expo.read([ENT_DEMO_XLS, ENT_TEMPLATE_XLS])
+                expo.read([ENT_TEST_XLS, ENT_TEMPLATE_XLS])
         self.assertIn('Append not possible. Different reference years.', \
                          cm.output[0])
         
