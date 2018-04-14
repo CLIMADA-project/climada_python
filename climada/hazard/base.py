@@ -4,79 +4,96 @@ Define Hazard.
 
 __all__ = ['Hazard']
 
-#from datetime import date
+import os
+import copy
 from array import array
 import logging
-import itertools
-from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
-from climada.hazard.source import read  as read_source
-from climada.util.files_handler import to_str_list, get_file_names
+from climada.hazard.source import read_mat, read_excel
+from climada.util.files_handler import to_list, get_file_names
 import climada.util.plot as plot
 import climada.util.checker as check
 
 LOGGER = logging.getLogger(__name__)
 
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
+RETURN_PER = np.array([25, 50, 100, 250])
+""" Default return periods in statistics"""
+
+INTENSITY_THRES = {'TC': 10
+                  }
+""" Intensity threshold used to filter lower intensities in statistics """
+
+# TODO: add original events array. year set?
+
 class Hazard(object):
-    """Contains events of some hazard type defined at centroids. Interface.
+    """Contains events of some hazard type defined at centroids. Loads from
+    files with format defined in FILE_EXT.
 
     Attributes:
         tag (TagHazard): information about the source
         units (str): units of the intensity
         centroids (Centroids): centroids of the events
         event_id (np.array): id (>0) of each event
-        event_name (list): name of each event (set as event_id if no provided)
+        event_name (list(str)): name of each event (default: event_id)
+        date (np.array): date integer date corresponding to the proleptic
+            Gregorian ordinal, where January 1 of year 1 has ordinal 1
+            (ordinal format of datetime library)
         frequency (np.array): frequency of each event in seconds
         intensity (sparse.csr_matrix): intensity of the events at centroids
         fraction (sparse.csr_matrix): fraction of affected exposures for each
             event at each centroid
     """
 
-    def __init__(self, file_name='', haz_type='NA', description='', \
+    def __init__(self, haz_type='NA', file_name='', description='', \
                  centroids=None):
         """Initialize values from given file, if given.
 
         Parameters:
+            haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
             file_name (str or list(str), optional): absolute file name(s) or \
                 folder name containing the files to read
-            haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
 
         Raises:
             ValueError
-            
+
         Examples:
             Fill hazard values by hand:
-            
+
             >>> haz = Hazard()
             >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
             >>> ...
 
             Take hazard values from file:
 
-            >>> haz = Hazard(HAZ_DEMO_XLS, 'TC')
-            
+            >>> haz = Hazard('TC', HAZ_TEST_XLS)
+
             Take centriods from a different source:
-            
-            >>> centr = Centroids(HAZ_DEMO_XLS, 'Centroids demo')
-            >>> haz = Hazard(HAZ_DEMO_XLS, 'TC', 'Demo hazard.', centr)
+
+            >>> centr = Centroids(HAZ_TEST_XLS, 'Centroids demo')
+            >>> haz = Hazard('TC', HAZ_TEST_XLS, 'Demo hazard.', centr)
         """
         self.clear()
+        self.tag.haz_type = haz_type
         if file_name != '':
             if haz_type == 'NA':
-                LOGGER.error("Provide hazard type acronym.")
-                raise ValueError
-            else:
-                self.read(file_name, haz_type, description, centroids)
+                LOGGER.warning("Hazard type acronym not provided.")
+            self.read(file_name, description, centroids)
 
     def clear(self):
-        """Reinitialize attributes."""    
+        """Reinitialize attributes."""
         self.tag = TagHazard()
         self.units = 'NA'
         # following values are defined for each event
@@ -84,13 +101,13 @@ class Hazard(object):
         self.event_id = np.array([], int)
         self.frequency = np.array([])
         self.event_name = list()
-        #self.date = [date(1,1,1)]  # size: num_events
+        self.date = np.array([], int)
         # following values are defined for each event and centroid
         self.intensity = sparse.csr_matrix([]) # events x centroids
         self.fraction = sparse.csr_matrix([])  # events x centroids
 
     def check(self):
-        """ Check if the attributes contain consistent data.
+        """Check if the attributes contain consistent data.
 
         Raises:
             ValueError
@@ -98,41 +115,51 @@ class Hazard(object):
         self.centroids.check()
         self._check_events()
 
-    def read(self, files, haz_type, description='', centroids=None, \
-             var_names=None):
-        """Read and check hazard, and centroids if not provided. Parallel 
-        through files.
+    def read(self, files, description='', centroids=None, var_names=None):
+        """Set and check hazard, and centroids if not provided, from file.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
-            haz_type (str, optional): acronym of the hazard type (e.g. 'TC')
             description (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
-            var_names (dict or list(dict), default): name of the variables in 
+            var_names (dict or list(dict), default): name of the variables in
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises:
             ValueError
         """
+        haz_type = self.tag.haz_type
         # Construct absolute path file names
         all_files = get_file_names(files)
-        num_files = len(all_files)
-        desc_list = to_str_list(num_files, description, 'description')
-        centr_list = to_str_list(num_files, centroids, 'centroids')
-        var_list = to_str_list(num_files, var_names, 'var_names')
+        desc_list = to_list(len(all_files), description, 'description')
+        centr_list = to_list(len(all_files), centroids, 'centroids')
+        var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        haz_part = Pool().map(self._read_one, all_files, \
-            itertools.repeat(haz_type, num_files), desc_list, centr_list, \
-            var_list)
-        for haz, file in zip(haz_part, all_files):
-            LOGGER.info('Read file: %s', file)    
-            self.append(haz)
+        for file, desc, centr, var in zip(all_files, desc_list, centr_list,
+                                          var_list):
+            self.append(self._read_one(file, haz_type, desc, centr, var))
+            LOGGER.info('Read file: %s', file)
 
-    def plot_stats(self):
-        """Plots describing hazard."""
-        # TODO
+    def plot_stats(self, return_periods=RETURN_PER):
+        """Compute and plot hazard intensity maps for different return periods.
+
+        Parameters:
+            return_periods (np.array, optional): return periods to consider
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
+            np.ndarray (return_periods.size x num_centroids)
+        """
+        inten_stats = self._compute_stats(return_periods)
+        colbar_name = 'Wind intensity (' + self.units + ')'
+        title = list()
+        for ret in return_periods:
+            title.append('Return period ' + str(ret))
+        fig, axis = plot.geo_im_from_array(inten_stats, self.centroids.coord, \
+                                           colbar_name, title)
+        return fig, axis, inten_stats
 
     def plot_intensity(self, event=None, centr_id=None):
         """Plot intensity values for a selected event or centroid.
@@ -149,7 +176,7 @@ class Hazard(object):
                 are reached.
 
         Returns:
-            matplotlib.figure.Figure
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
@@ -162,7 +189,7 @@ class Hazard(object):
             return self._event_plot(event, self.intensity, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.intensity, col_label)
-        
+
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
@@ -181,7 +208,7 @@ class Hazard(object):
                 are reached.
 
         Returns:
-            matplotlib.figure.Figure
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
@@ -193,7 +220,7 @@ class Hazard(object):
             return self._event_plot(event, self.fraction, col_label)
         elif centr_id is not None:
             return self._centr_plot(centr_id, self.fraction, col_label)
-        
+
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
@@ -215,14 +242,10 @@ class Hazard(object):
             LOGGER.error("No event with name: %s", event_name)
             raise ValueError
 
-    def calc_future(self, conf):
-        """ Compute the future hazard following the configuration """
-        # TODO
-
     def append(self, hazard):
-        """Check and append variables of input Hazard to current Hazard. 
+        """Check and append variables of input Hazard to current Hazard.
         Repeated events and centroids will be overwritten.
-        
+
         Parameters:
             hazard (Hazard): Hazard instance to append to current
 
@@ -231,9 +254,10 @@ class Hazard(object):
         """
         hazard._check_events()
         if self.event_id.size == 0:
-            self.__dict__ = hazard.__dict__.copy()
+            for key in hazard.__dict__:
+                self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
-        
+
         n_ini_cen = self.centroids.id.size
         n_ini_ev = self.event_id.size
         self.tag.append(hazard.tag)
@@ -246,23 +270,26 @@ class Hazard(object):
             LOGGER.error("Hazards with different units can't be appended"\
                              + ": %s != %s.", self.units, hazard.units)
             raise ValueError
-        
+
         # Add not repeated centroids
         # for each input centroid, position in the final centroid vector
         new_cen_pos = self.centroids.append(hazard.centroids)
         n_add_cen = np.where(np.array(new_cen_pos) >= n_ini_cen)[0].size
         if n_add_cen:
             self.intensity = sparse.hstack([self.intensity, \
-                np.zeros((self.intensity.shape[0], n_add_cen))]).tolil()
+                sparse.lil_matrix((self.intensity.shape[0], n_add_cen))], \
+                format='lil')
             self.fraction = sparse.hstack([self.fraction, \
-                np.zeros((self.fraction.shape[0], n_add_cen))]).tolil()
+                sparse.lil_matrix((self.fraction.shape[0], n_add_cen))], \
+                format='lil')
 
         # Add not repeated events
         # for each input event, position in the final event vector
         new_ev_pos = array('l')
-        new_name = []
+        new_name = list()
+        new_dt = array('L')
         new_id = array('L')
-        self._append_events(hazard, new_ev_pos, new_name, new_id)
+        self._append_events(hazard, new_ev_pos, new_name, new_id, new_dt)
         n_add_ev = np.where(np.array(new_ev_pos) >= n_ini_ev)[0].size
         sparse_add = n_add_ev - 1
         if n_ini_cen != 0 or n_ini_ev != 0:
@@ -271,11 +298,16 @@ class Hazard(object):
             self.event_name = self.event_name + new_name
             self.event_id = np.append(self.event_id, np.array(new_id)).\
                 astype(int, copy=False)
+            self.date = np.append(self.date, np.array(new_dt)).\
+                astype(int, copy=False)
             self.intensity = sparse.vstack([self.intensity, \
-                np.zeros((sparse_add, self.fraction.shape[1]))]).tolil()   
+                sparse.lil_matrix((sparse_add, self.fraction.shape[1]))], \
+                format='lil')
             self.fraction = sparse.vstack([self.fraction, \
-                np.zeros((sparse_add, self.fraction.shape[1]))]).tolil()
+                sparse.lil_matrix((sparse_add, self.fraction.shape[1]))], \
+                format='lil')
             self.frequency = np.append(self.frequency, np.zeros(n_add_ev))
+
         # fill intensity, fraction and frequency
         for i_ev in range(hazard.event_id.size):
             self.intensity[new_ev_pos[i_ev], new_cen_pos] = \
@@ -286,12 +318,16 @@ class Hazard(object):
 
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
-    
+
+    def calc_probabilistic(self):
+        """Compute and append probabilistic events from current historical."""
+        LOGGER.error('Probabilistic set not implemented yet in %s.', self)
+        raise NotImplementedError
+
     @staticmethod
     def _read_one(file_name, haz_type, description='', centroids=None, \
                   var_names=None):
-        """ Read input file. If centroids are not provided, they are read
-        from file_name.
+        """ Read hazard, and centroids if not provided, from input file.
 
         Parameters:
             file_name (str): name of the source file
@@ -299,18 +335,34 @@ class Hazard(object):
             description (str, optional): description of the source data
             centroids (Centroids, optional): Centroids instance
             var_names (dict, optional): name of the variables in the file
-            
+
         Raises:
             ValueError, KeyError
-            
+
         Returns:
             Hazard
         """
         new_haz = Hazard()
-        read_source(new_haz, file_name, haz_type, description, centroids, \
-                    var_names)
+        new_haz.tag = TagHazard(haz_type, file_name, description)
+        extension = os.path.splitext(file_name)[1]
+        if extension == FILE_EXT['MAT']:
+            try:
+                read_mat(new_haz, file_name, haz_type, centroids, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
+            try:
+                read_excel(new_haz, file_name, centroids, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        else:
+            LOGGER.error("Input file extension not supported: %s.", extension)
+            raise ValueError
+
         return new_haz
-            
+
     def _check_events(self):
         """ Check that all attributes but centroids contain consistent data.
 
@@ -331,14 +383,17 @@ class Hazard(object):
             check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
         check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
                             list(self.event_id))
-    
-    def _append_events(self, hazard, new_ev_pos, new_name, new_id):
+        self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
+                            np.ones(self.event_id.shape, dtype=int))
+
+    def _append_events(self, hazard, new_ev_pos, new_name, new_id, new_dt):
         """Iterate over hazard events and collect their new position"""
         try:
             max_id = int(np.max(self.event_id))
         except ValueError:
             max_id = 0
-        for ev_id, ev_name in zip(hazard.event_id, hazard.event_name):
+        for ev_id, ev_name, ev_dt in zip(hazard.event_id, hazard.event_name,
+                                         hazard.date):
             try:
                 found = self.event_name.index(ev_name)
                 new_ev_pos.append(found)
@@ -352,13 +407,14 @@ class Hazard(object):
             except ValueError:
                 new_ev_pos.append(len(self.event_id) + len(new_name))
                 new_name.append(ev_name)
+                new_dt.append(ev_dt)
                 if (ev_id in self.event_id) or (ev_id in new_id):
                     max_id += 1
                     new_id.append(max_id)
                 else:
                     new_id.append(ev_id)
                     max_id = max(max_id, ev_id)
-    
+
     def _event_plot(self, event_id, mat_var, col_name):
         """"Plot an event of the input matrix.
 
@@ -393,8 +449,8 @@ class Hazard(object):
             array_val = np.max(mat_var, axis=0).todense().transpose()
             title = '%s max intensity at each point' % self.tag.haz_type
 
-        return plot.geo_im_from_array(self.centroids.coord, array_val, \
-                                   col_name, title)
+        return plot.geo_im_from_array(array_val, self.centroids.coord, \
+                                      col_name, title)
 
     def _centr_plot(self, centr_id, mat_var, col_name):
         """"Plot a centroid of the input matrix.
@@ -440,3 +496,51 @@ class Hazard(object):
         graph.add_curve(range(len(array_val)), array_val, 'b')
         graph.set_x_lim(range(len(array_val)))
         return graph.get_elems()
+
+    def _compute_stats(self, return_periods=RETURN_PER):
+        """ Compute intensity map for given return periods.
+
+        Parameters:
+            return_periods (np.array, optional): return periods to consider
+
+        Returns:
+            np.array
+        """
+        inten_stats = np.zeros((len(return_periods), self.intensity.shape[1]))
+        for cen_pos in range(self.intensity.shape[1]):
+            inten_loc = self._loc_return_inten(return_periods, cen_pos)
+            inten_stats[:, cen_pos] = inten_loc
+        return inten_stats
+
+    def _loc_return_inten(self, return_periods, cen_pos):
+        """ Compute local intensity for given return period.
+
+        Parameters:
+            return_periods (np.array, optional): return periods to consider
+            cen_pos (int): centroid position
+
+        Returns:
+            np.array
+        """
+        inten_pos = np.argwhere(self.intensity[:, cen_pos] > \
+                                INTENSITY_THRES[self.tag.haz_type])[:, 0]
+        if inten_pos.size == 0:
+            LOGGER.warning('No intensities over threshold %s for centroid '\
+                           '%s.', INTENSITY_THRES[self.tag.haz_type], cen_pos)
+            return np.zeros((return_periods.size, ))
+        inten_nz = np.asarray(self.intensity[inten_pos, cen_pos]. \
+                              todense()).squeeze()
+        sort_pos = inten_nz.argsort()[::-1]
+        inten_sort = inten_nz[sort_pos]
+        freq_sort = self.frequency[inten_pos[sort_pos]]
+        np.cumsum(freq_sort, out=freq_sort)
+        pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
+        inten_fit = np.polyval(pol_coef, np.log(1/return_periods))
+        wrong_inten = np.logical_and(return_periods > np.max(1/freq_sort), \
+                    np.isnan(inten_fit))
+        return inten_fit[np.logical_not(wrong_inten)]
+
+    def __str__(self):
+        return self.tag.__str__()
+
+    __repr__ = __str__

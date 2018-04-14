@@ -1,22 +1,21 @@
 """
-Define Hazard reader function from a file with extension defined in 
+Define Hazard reader functions from a file with extension defined in
 constant FILE_EXT.
 """
 
 __all__ = ['DEF_VAR_MAT',
            'DEF_VAR_EXCEL',
-           'read'
+           'read_mat',
+           'read_excel'
           ]
 
-import os
 import logging
+import datetime as dt
 import numpy as np
 import pandas
 from scipy import sparse
 
 from climada.hazard.centroids.base import Centroids
-from climada.hazard.tag import Tag as TagHazard
-from climada.util.constants import FILE_EXT
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_MAT = {'field_name': 'hazard',
@@ -27,7 +26,8 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             'inten': 'intensity',
                             'unit': 'units',
                             'frac': 'fraction',
-                            'comment': 'comment'
+                            'comment': 'comment',
+                            'datenum': 'datenum'
                            },
                'var_cent': {'field_names': ['centroids', 'hazard'],
                             'var_name': {'cen_id' : 'centroid_ID',
@@ -36,6 +36,7 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                                         }
                            }
               }
+""" MATLAB variable names """
 
 DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
                                 'freq' : 'hazard_frequency'
@@ -51,40 +52,9 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
                                                }
                                   }
                 }
+""" Excel variable names """
 
 LOGGER = logging.getLogger(__name__)
-
-def read(hazard, file_name, haz_type, description='', centroids=None, \
-         var_names=None):
-    """Read file and fill hazard.
-
-    Parameters:
-        hazard (Hazard): hazard to fill
-        file_name (str): absolute path of the file to read
-        description (str, optional): description of the data
-        var_names (dict, optional): names of the variables in the file
-            
-    Raises:
-        KeyError, ValueError
-    """ 
-    hazard.tag = TagHazard(file_name, haz_type, description)
-
-    extension = os.path.splitext(file_name)[1]
-    if extension == FILE_EXT['MAT']:
-        try:
-            read_mat(hazard, file_name, haz_type, centroids, var_names)
-        except KeyError as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-        try:
-            read_excel(hazard, file_name, centroids, var_names)
-        except KeyError as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    else:
-        LOGGER.error("Input file extension not supported: %s.", extension)
-        raise ValueError
 
 def read_mat(hazard, file_name, haz_type, centroids, var_names):
     """Read MATLAB file and store variables in hazard."""
@@ -99,8 +69,9 @@ def read_mat(hazard, file_name, haz_type, centroids, var_names):
 
     new_haz = hdf5.get_string(data[var_names['var_name']['per_id']])
     if new_haz != haz_type:
-        LOGGER.error('Hazard read is not of type: ' + haz_type)
-        raise ValueError
+        LOGGER.warning('Hazard read is of type %s and not %s.', new_haz, \
+                       haz_type)
+        hazard.tag.haz_type = new_haz
 
     read_centroids(hazard, centroids, var_names['var_cent'])
 
@@ -135,6 +106,11 @@ def read_mat(hazard, file_name, haz_type, centroids, var_names):
         hazard.tag.description += ' ' + comment
     except KeyError:
         pass
+
+    datenum = data[var_names['var_name']['datenum']].squeeze()
+    hazard.date = np.array([(dt.datetime.fromordinal(int(date)) + \
+         dt.timedelta(days=date%1)- \
+         dt.timedelta(days=366)).toordinal() for date in datenum])
 
 def read_excel(hazard, file_name, centroids, var_names):
     """Read excel file and store variables in hazard. """
