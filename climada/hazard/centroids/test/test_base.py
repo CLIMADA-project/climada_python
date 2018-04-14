@@ -71,6 +71,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(new_pos), array)
         self.assertTrue(type(centr1.region_id), np.ndarray)
+        self.assertTrue(type(centr1.dist_coast), np.ndarray)
 
     def test_append_empty_fill(self):
         """Append the same centroids."""
@@ -90,6 +91,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, []))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
+        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_append_to_empty_fill(self):
         """Append to empty centroids."""
@@ -109,6 +111,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2]))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
+        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_same_centroids_pass(self):
         """Append the same centroids."""
@@ -130,6 +133,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2]))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
+        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_new_elem_pass(self):
         """Append a centroids with a new element."""
@@ -138,12 +142,14 @@ class TestAppend(unittest.TestCase):
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
         centr1.region_id = np.array([1, 2, 3])
+        centr1.dist_coast = np.array([1.5, 2.6, 3.5])
         
         centr2 = Centroids()
         centr2.tag = Tag('file_2.mat', 'description 2')
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
         centr2.id = np.array([6, 7, 9, 1])
         centr2.region_id = np.array([3, 4, 5, 6])
+        centr2.dist_coast = np.array([4.5, 5.6, 6.5, 7.8])
         
         new_pos = centr1.append(centr2)
         self.assertEqual(len(centr1.tag.file_name), 2)
@@ -154,10 +160,10 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.coord[2, :], [5, 6]))
         self.assertTrue(np.array_equal(centr1.coord[3, :], [7, 8]))
         self.assertEqual(centr1.id.shape, (4,))
-        self.assertTrue(\
-                         np.array_equal(centr1.id, np.array([6, 7, 9, 1])))
-        self.assertTrue(\
-                         np.array_equal(centr1.region_id, np.array([3, 4, 5, 6])))
+        self.assertTrue(np.array_equal(centr1.id, np.array([6, 7, 9, 1])))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([3, 4, 5, 6])))
+        self.assertTrue(np.array_equal(centr1.dist_coast, 
+                                       np.array([4.5, 5.6, 6.5, 7.8])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2, 3]))
 
     def test_all_new_elem_pass(self):

@@ -1,10 +1,11 @@
 """
-Define Centroids reader function from a file with extension defined in 
+Define Centroids reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
 __all__ = ['DEF_VAR_EXCEL',
            'DEF_VAR_MAT',
+           'FILE_EXT',
            'read']
 
 import os
@@ -14,7 +15,6 @@ import numpy as np
 
 from climada.hazard.centroids.tag import Tag
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import FILE_EXT
 from climada.util.coordinates import IrregularGrid
 
 DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
@@ -28,6 +28,7 @@ DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                             'region_id': 'NatId'
                            }
               }
+""" MATLAB variable names """
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                  'col_name': {'cen_id' : 'centroid_ID',
@@ -35,6 +36,13 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                               'lon' : 'Longitude',
                              }
                 }
+""" Excel variable names """
+
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,12 +54,12 @@ def read(centroids, file_name, description='', var_names=None):
         file_name (str): absolute path of the file to read
         description (str, optional): description of the data
         var_names (dict, optional): names of the variables in the file
-            
+
     Raises:
         TypeError, KeyError, ValueError
-    """ 
+    """
     centroids.tag = Tag(file_name, description)
-    
+
     extension = os.path.splitext(file_name)[1]
     if extension == FILE_EXT['MAT']:
         try:
@@ -73,9 +81,9 @@ def read_excel(centroids, file_name, var_names):
     """Read excel file and store variables in centroids. """
     if var_names is None:
         var_names = DEF_VAR_EXCEL
-         
+
     dfr = pandas.read_excel(file_name, var_names['sheet_name'])
-    
+
     coord_cols = [var_names['col_name']['lat'], \
                   var_names['col_name']['lon']]
 
@@ -84,10 +92,10 @@ def read_excel(centroids, file_name, var_names):
                     astype(int, copy=False)
 
 def read_mat(centroids, file_name, var_names):
-    """Read MATLAB file and store variables in hazard. """
+    """Read MATLAB file and store variables in centroids. """
     if var_names is None:
         var_names = DEF_VAR_MAT
-    
+
     cent = hdf5.read(file_name)
     # Try open encapsulating variable FIELD_NAMES
     num_try = 0
