@@ -12,12 +12,11 @@ LOGGER = logging.getLogger(__name__)
 
 def save(out_file_name, var):
     """Save variable with provided file name.
-            
+
     Parameters:
         out_file_name (str): file name (absolute path or relative to configured
             save_dir)
         var (object): variable to save in pickle format
-    
     """
     abs_path = out_file_name
     if not os.path.isabs(abs_path):
