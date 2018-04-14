@@ -43,6 +43,18 @@ def def_ref_50():
                      46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, \
                      45, 45, 45, 45, 45, 45, 45, 45])
 
+class TestDistance(unittest.TestCase):
+    """ Test distance functions. """
+    def test_dist_approx_pass(self):
+        """ Test against matlab reference. """
+        lats1 = 45.5
+        lons1 = -32.2
+        cos_lats1 = np.cos(lats1)
+        lats2 = 14
+        lons2 = 56
+        self.assertAlmostEqual(1.014158436624449e+03,
+            interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2))
+
 class TestInterpIndex(unittest.TestCase):
     ''' Test interpol_index function's interface'''
 
@@ -158,4 +170,5 @@ class TestNN(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
