@@ -27,15 +27,15 @@ def check_conf():
         abspath = path
         if not os.path.isabs(abspath):
             abspath = os.path.abspath(os.path.join(WORKING_DIR, \
-                                                   os.path.expanduser(path)))    
+                                                   os.path.expanduser(path)))
         if (key == "entity_def") and \
         ((path == "") or not os.path.isfile(abspath)):
             abspath = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
-        
+
         if (key == "repository") and \
         ((path == "") or not os.path.isfile(abspath)):
-            abspath = os.path.join(DATA_DIR, 'demo')
-    
+            abspath = os.path.join(DATA_DIR)
+
         CONFIG['local_data'][key] = abspath
 
 CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))
@@ -70,7 +70,7 @@ def setup_logging(default_level=logging.INFO):
     if os.path.isfile(user_file):
         path = user_file
         logging.debug('Loading user logging config: %s ...', user_file)
-    
+
     if os.path.exists(path):
         with open(path, 'rt') as log_file:
             config_log = json.load(log_file)
@@ -86,20 +86,23 @@ def setup_conf_user():
     and user_file != WINDOWS_END + conf_name:
         user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
                                                  os.pardir, conf_name))
-    
+
     if os.path.isfile(user_file):
         logging.debug('Loading user config: %s ...', user_file)
-        
+
         with open(user_file) as conf_file:
             userconfig = json.load(conf_file)
-    
+
         if 'local_data' in userconfig.keys():
             CONFIG['local_data'].update(userconfig['local_data'])
-    
+
         if 'present_ref_year' in userconfig.keys():
             CONFIG['present_ref_year'] = userconfig['present_ref_year']
 
         if 'future_ref_year' in userconfig.keys():
             CONFIG['future_ref_year'] = userconfig['future_ref_year']
 
-        check_conf()  
+        if 'min_time_step' in userconfig.keys():
+            CONFIG['tc_time_step_h'] = userconfig['tc_time_step_h']
+
+        check_conf()
