@@ -5,16 +5,15 @@ constant FILE_EXT.
 
 __all__ = ['DEF_VAR_EXCEL',
            'DEF_VAR_MAT',
-           'read'
+           'read_mat',
+           'read_excel'
           ]
 
-import os
 import logging
 import pandas
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func import ImpactFunc
-from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
@@ -42,44 +41,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """ MATLAB variable names """
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
-           }
-""" Supported files format to read from """
-
 LOGGER = logging.getLogger(__name__)
-
-def read(imp_funcs, file_name, description='', var_names=None):
-    """Read file and fill impact functions.
-
-    Parameters:
-        imp_funcs (ImpactFuncSet): impact functions to fill
-        file_name (str): absolute path of the file to read
-        description (str, optional): description of the data
-        var_names (dict, optional): names of the variables in the file
-
-    Raises:
-        KeyError, ValueError
-    """
-    imp_funcs.tag = Tag(file_name, description)
-
-    extension = os.path.splitext(file_name)[1]
-    if extension == FILE_EXT['MAT']:
-        try:
-            read_mat(imp_funcs, file_name, var_names)
-        except KeyError as err:
-            LOGGER.error("Not existing variable." + str(err))
-            raise err
-    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-        try:
-            read_excel(imp_funcs, file_name, var_names)
-        except KeyError as err:
-            LOGGER.error("Not existing variable." + str(err))
-            raise err
-    else:
-        LOGGER.error('Input file extension not supported: %s.', extension)
-        raise ValueError
 
 def read_excel(imp_funcs, file_name, var_names):
     """Read excel file and store variables in imp_funcs. """

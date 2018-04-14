@@ -5,18 +5,10 @@ Test DiscRates from Excel.
 import unittest
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.disc_rates import source as source
 from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
 
 class TestReaderExcel(unittest.TestCase):
     """Test excel reader for discount rates"""
-
-    def tearDown(self):
-        source.DEF_VAR_EXCEL = {'sheet_name': 'discount',
-                                'col_name': {'year' : 'year',
-                                             'disc' : 'discount_rate'
-                                            }
-                               }
                              
     def test_demo_file_pass(self):
         """ Read demo excel file."""      
@@ -60,23 +52,8 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(disc_rate.tag.description, '')
 
-    def test_wrong_file_fail(self):
-        """ Read file without year column, fail."""
-        new_var_name = source.DEF_VAR_EXCEL
-        new_var_name['col_name']['year'] = 'wrong col'
-        disc_rate = DiscRates()
-        with self.assertRaises(KeyError):
-            disc_rate.read(ENT_TEST_XLS, var_names=new_var_name)
-
 class TestReaderMat(unittest.TestCase):
     """Test mat reader for discount rates"""
-    def tearDown(self):
-        source.DEF_VAR_MAT = {'sup_field_name': 'entity',
-                              'field_name': 'discount',
-                              'var_name': {'year' : 'year',
-                                           'disc' : 'discount_rate'
-                                          }
-                             }
     
     def test_demo_file_pass(self):
         """ Read demo mat file"""
@@ -100,14 +77,6 @@ class TestReaderMat(unittest.TestCase):
 
         self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_MAT)
         self.assertEqual(disc_rate.tag.description, description)
-
-    def test_wrong_file_fail(self):
-        """ Read file without year column, fail."""
-        new_var_name = source.DEF_VAR_MAT
-        new_var_name['var_name']['year'] = 'wrong col'
-        disc_rate = DiscRates()
-        with self.assertRaises(KeyError):
-            disc_rate.read(ENT_DEMO_MAT, var_names=new_var_name)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel)

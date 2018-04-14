@@ -6,10 +6,9 @@ __all__ = ['Exposures']
 
 import os
 import logging
-from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
-from climada.entity.exposures.source import read as read_source
+from climada.entity.exposures.source import read_mat, read_excel
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
@@ -20,8 +19,15 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
 class Exposures(object):
-    """Defines exposures attributes and basic methods.
+    """Defines exposures attributes and basic methods. Loads from
+    files with format defined in FILE_EXT.
 
     Attributes:
         tag (Tag): information about the source data
@@ -135,7 +141,7 @@ class Exposures(object):
             self.tag.file_name))[0])
 
     def read(self, files, descriptions='', var_names=None):
-        """Read and check exposures in parallel through files.
+        """Read and check exposures.
 
         Parameters:
             file_name (str or list(str), optional): absolute file name(s) or
@@ -153,10 +159,9 @@ class Exposures(object):
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        expo_part = Pool().map(self._read_one, all_files, desc_list, var_list)
-        for expo, file in zip(expo_part, all_files):
+        for file, desc, var in zip(all_files, desc_list, var_list):
+            self.append(self._read_one(file, desc, var))
             LOGGER.info('Read file: %s', file)
-            self.append(expo)
 
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
@@ -227,7 +232,24 @@ class Exposures(object):
             Exposures
         """
         new_exp = Exposures()
-        read_source(new_exp, file_name, description, var_names)
+        new_exp.tag = Tag(file_name, description)
+        extension = os.path.splitext(file_name)[1]
+        if extension == FILE_EXT['MAT']:
+            try:
+                read_mat(new_exp, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
+            try:
+                read_excel(new_exp, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        else:
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
+
         return new_exp
 
     @staticmethod

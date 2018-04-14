@@ -133,18 +133,6 @@ class TestGetsMat(unittest.TestCase):
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
-    def tearDown(self):
-        DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
-                        'col_name': {'func_id' : 'DamageFunID',
-                                     'inten' : 'Intensity',
-                                     'mdd' : 'MDD',
-                                     'paa' : 'PAA',
-                                     'name' : 'name',
-                                     'unit' : 'Intensity_unit',
-                                     'peril' : 'peril_ID'
-                                    }
-                       }
-
     def test_demo_file_pass(self):
         """ Read demo excel file"""
         # Read demo excel file
@@ -228,14 +216,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(len(imp_funcs._data['TC'][3].paa), 9)
         self.assertEqual(len(imp_funcs._data['EQ'][1].intensity), 14)
         self.assertEqual(len(imp_funcs._data['HS'][1].mdd), 16)
-
-    def test_wrong_file_fail(self):
-        """ Read file intensity, fail."""
-        new_var_names = DEF_VAR_EXCEL
-        new_var_names['col_name']['inten'] = 'wrong name'
-        imp_funcs = ImpactFuncSet()
-        with self.assertRaises(KeyError):
-            imp_funcs.read(ENT_TEST_XLS, var_names=new_var_names)
             
 class TestFuncsExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""

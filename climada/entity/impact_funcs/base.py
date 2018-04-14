@@ -4,10 +4,10 @@ Define ImpactFuncSet class.
 
 __all__ = ['ImpactFuncSet']
 
+import os
 import logging
-from pathos.multiprocessing import ProcessingPool as Pool
 
-from climada.entity.impact_funcs.source import read as read_source
+from climada.entity.impact_funcs.source import read_mat, read_excel
 from climada.util.files_handler import to_list, get_file_names
 from climada.entity.impact_funcs.impact_func import ImpactFunc
 from climada.entity.tag import Tag
@@ -15,8 +15,15 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
 class ImpactFuncSet(object):
-    """Contains impact functions of type ImpactFunc.
+    """Contains impact functions of type ImpactFunc. Loads from
+    files with format defined in FILE_EXT.
 
     Attributes:
         tag (Tag): information about the source data
@@ -221,7 +228,7 @@ class ImpactFuncSet(object):
                 vul.check()
 
     def read(self, files, descriptions='', var_names=None):
-        """Read and check impact functions in parallel through files.
+        """Read and check impact functions.
 
         Parameters:
             file_name (str or list(str), optional): absolute file name(s) or
@@ -239,10 +246,9 @@ class ImpactFuncSet(object):
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        imp_part = Pool().map(self._read_one, all_files, desc_list, var_list)
-        for imp, file in zip(imp_part, all_files):
+        for file, desc, var in zip(all_files, desc_list, var_list):
+            self.append(self._read_one(file, desc, var))
             LOGGER.info('Read file: %s', file)
-            self.append(imp)
 
     def append(self, impact_funcs):
         """Check and append impact functions of input ImpactFuncSet to current
@@ -309,7 +315,25 @@ class ImpactFuncSet(object):
             ImpactFuncSet
         """
         new_imp = ImpactFuncSet()
-        read_source(new_imp, file_name, description, var_names)
+        new_imp.tag = Tag(file_name, description)
+
+        extension = os.path.splitext(file_name)[1]
+        if extension == FILE_EXT['MAT']:
+            try:
+                read_mat(new_imp, file_name, var_names)
+            except KeyError as err:
+                LOGGER.error("Not existing variable." + str(err))
+                raise err
+        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
+            try:
+                read_excel(new_imp, file_name, var_names)
+            except KeyError as err:
+                LOGGER.error("Not existing variable." + str(err))
+                raise err
+        else:
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
+
         return new_imp
 
     def __str__(self):

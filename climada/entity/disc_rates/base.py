@@ -4,20 +4,27 @@ Define DiscRates class.
 
 __all__ = ['DiscRates']
 
+import os
 from array import array
 import logging
-from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
-from climada.entity.disc_rates.source import read as read_source
+from climada.entity.disc_rates.source import read_mat, read_excel
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
 class DiscRates(object):
-    """Defines discount rates and basic methods.
+    """Defines discount rates and basic methods. Loads from
+    files with format defined in FILE_EXT.
 
     Attributes:
         tag (Tag): information about the source data
@@ -69,7 +76,7 @@ class DiscRates(object):
         check.size(len(self.years), self.rates, 'DiscRates.rates')
 
     def read(self, files, descriptions='', var_names=None):
-        """Read and check discount rates in parallel through files.
+        """Read and check discount rates.
 
         Parameters:
             file_name (str or list(str), optional): absolute file name(s) or
@@ -87,10 +94,9 @@ class DiscRates(object):
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        disc_part = Pool().map(self._read_one, all_files, desc_list, var_list)
-        for disc, file in zip(disc_part, all_files):
+        for file, desc, var in zip(all_files, desc_list, var_list):
+            self.append(self._read_one(file, desc, var))
             LOGGER.info('Read file: %s', file)
-            self.append(disc)
 
     def append(self, disc_rates):
         """Check and append discount rates to current DiscRates. Overwrite
@@ -138,7 +144,24 @@ class DiscRates(object):
             DiscRates
         """
         new_disc = DiscRates()
-        read_source(new_disc, file_name, description, var_names)
+        new_disc.tag = Tag(file_name, description)
+        extension = os.path.splitext(file_name)[1]
+        if extension == FILE_EXT['MAT']:
+            try:
+                read_mat(new_disc, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
+            try:
+                read_excel(new_disc, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        else:
+            LOGGER.error('Not supported file extension: %s.', extension)
+            raise ValueError
+
         return new_disc
 
     def __str__(self):

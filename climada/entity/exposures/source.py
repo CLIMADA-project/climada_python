@@ -5,16 +5,15 @@ constant FILE_EXT.
 
 __all__ = ['DEF_VAR_EXCEL',
            'DEF_VAR_MAT',
-           'read'
+           'read_mat',
+           'read_excel'
           ]
 
-import os
 import logging
 from xlrd import XLRDError
 import numpy as np
 import pandas
 
-from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.config import CONFIG
 from climada.util.coordinates import IrregularGrid
@@ -55,44 +54,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """ MATLAB variable names """
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
-           }
-""" Supported files format to read from """
-
 LOGGER = logging.getLogger(__name__)
-
-def read(exposures, file_name, description='', var_names=None):
-    """Read file and fill exposures.
-
-    Parameters:
-        exposures (Exposures): exposures to fill
-        file_name (str): absolute path of the file to read
-        description (str, optional): description of the data
-        var_names (dict, optional): names of the variables in the file
-
-    Raises:
-        KeyError, ValueError
-    """
-    exposures.tag = Tag(file_name, description)
-
-    extension = os.path.splitext(file_name)[1]
-    if extension == FILE_EXT['MAT']:
-        try:
-            read_mat(exposures, file_name, var_names)
-        except KeyError as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-        try:
-            read_excel(exposures, file_name, var_names)
-        except KeyError as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    else:
-        LOGGER.error('Input file extension not supported: %s.', extension)
-        raise ValueError
 
 def read_mat(exposures, file_name, var_names=None):
     """Read MATLAB file and store variables in exposures. """

@@ -4,18 +4,25 @@ Define MeasureSet class.
 
 __all__ = ['MeasureSet']
 
+import os
 import logging
-from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.entity.measures.measure import Measure
-from climada.entity.measures.source import read as read_source
+from climada.entity.measures.source import read_mat, read_excel
 from climada.util.files_handler import to_list, get_file_names
 from climada.entity.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
+
 class MeasureSet(object):
-    """Contains measures of type Measure.
+    """Contains measures of type Measure. Loads from
+    files with format defined in FILE_EXT.
 
     Attributes:
         tag (Taf): information about the source data
@@ -135,7 +142,7 @@ class MeasureSet(object):
             act.check()
 
     def read(self, files, descriptions='', var_names=None):
-        """Read and check MeasureSet in parallel through files.
+        """Read and check MeasureSet.
 
         Parameters:
             file_name (str or list(str), optional): absolute file name(s) or
@@ -152,10 +159,9 @@ class MeasureSet(object):
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        meas_part = Pool().map(self._read_one, all_files, desc_list, var_list)
-        for meas, file in zip(meas_part, all_files):
+        for file, desc, var in zip(all_files, desc_list, var_list):
+            self.append(self._read_one(file, desc, var))
             LOGGER.info('Read file: %s', file)
-            self.append(meas)
 
     def append(self, meas):
         """Check and append measures of input MeasureSet to current MeasureSet.
@@ -192,7 +198,23 @@ class MeasureSet(object):
             MeasureSet
         """
         new_meas = MeasureSet()
-        read_source(new_meas, file_name, description, var_names)
+        new_meas.tag = Tag(file_name, description)
+        extension = os.path.splitext(file_name)[1]
+        if extension == FILE_EXT['MAT']:
+            try:
+                read_mat(new_meas, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
+            try:
+                read_excel(new_meas, file_name, var_names)
+            except KeyError as var_err:
+                LOGGER.error("Not existing variable. " + str(var_err))
+                raise var_err
+        else:
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
         return new_meas
 
     def __str__(self):

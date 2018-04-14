@@ -5,29 +5,11 @@ Test Measures from Excel file.
 import unittest
 import numpy as np
 
-from climada.entity.measures import source as source
 from climada.entity.measures.base import MeasureSet
 from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
  
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
-
-    def tearDown(self):
-        source.DEF_VAR_EXCEL = {'sheet_name': 'measures',
-                                'col_name': {'name' : 'name',
-                                             'color' : 'color',
-                                             'cost' : 'cost',
-                                             'haz_int' : 'hazard intensity impact',
-                                             'haz_frq' : 'hazard high frequency cutoff',
-                                             'haz_set' : 'hazard event set',
-                                             'mdd_a' : 'MDD impact a',
-                                             'mdd_b' : 'MDD impact b',
-                                             'paa_a' : 'PAA impact a',
-                                             'paa_b' : 'PAA impact b',
-                                             'risk_att' : 'risk transfer attachement',
-                                             'risk_cov' : 'risk transfer cover'
-                                            }
-                               }
 
     def test_demo_file(self):
         """ Read demo excel file"""
@@ -84,36 +66,8 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.mdd_impact, (0.9, -0.1))
         self.assertEqual(act_buil.hazard_intensity, (1, -2))
 
-    def test_wrong_file_fail(self):
-        """ Read file intensity, fail."""
-        new_var_names = source.DEF_VAR_EXCEL
-        new_var_names['col_name']['mdd_a'] = 'wrong name'
-        meas = MeasureSet()
-        with self.assertRaises(KeyError):
-            meas.read(ENT_TEST_XLS, var_names=new_var_names)
-
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the MeasuresMat class"""
-
-    def tearDown(self):
-        source.DEF_VAR_MAT = {
-                'sup_field_name': 'entity',      
-                'field_name': 'measures',
-                'var_name': {'name' : 'name',
-                             'color' : 'color',
-                             'cost' : 'cost',
-                             'haz_int_a' : 'hazard_intensity_impact_a',
-                             'haz_int_b' : 'hazard_intensity_impact_b',
-                             'haz_frq' : 'hazard_high_frequency_cutoff',
-                             'haz_set' : 'hazard_event_set',
-                             'mdd_a' : 'MDD_impact_a',
-                             'mdd_b' : 'MDD_impact_b',
-                             'paa_a' : 'PAA_impact_a',
-                             'paa_b' : 'PAA_impact_b',
-                             'risk_att' : 'risk_transfer_attachement',
-                             'risk_cov' : 'risk_transfer_cover'
-                            }
-               }
 
     def test_demo_file(self):
         # Read demo excel file
@@ -160,14 +114,6 @@ class TestReaderMat(unittest.TestCase):
 
         self.assertEqual(meas.tag.file_name, ENT_DEMO_MAT)
         self.assertEqual(meas.tag.description, description)
-
-    def test_wrong_file_fail(self):
-        """ Read file intensity, fail."""
-        new_var_names = source.DEF_VAR_MAT
-        meas = MeasureSet()
-        new_var_names['var_name']['mdd_a'] = 'wrong name'
-        with self.assertRaises(KeyError):
-            meas.read(ENT_DEMO_MAT, var_names=new_var_names)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderMat)
