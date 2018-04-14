@@ -10,7 +10,7 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.base import ImpactFuncSet
 from climada.entity.measures.base import MeasureSet
-from climada.util.constants import ENT_DEMO_XLS, ENT_DEMO_MAT, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEST_XLS, ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the Entity class"""
@@ -18,7 +18,7 @@ class TestReader(unittest.TestCase):
     def test_default_pass(self):
         """Instantiating the Entity class the default entity file is loaded"""
         # Set demo file as default
-        Entity.def_file = ENT_DEMO_XLS
+        Entity.def_file = ENT_TEST_XLS
         def_entity = Entity()
 
         # Check default demo excel file has been loaded
@@ -58,14 +58,14 @@ class TestReader(unittest.TestCase):
         """Read in parallel two entities."""
         with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
-                Entity([ENT_DEMO_XLS, ENT_TEMPLATE_XLS], ['demo', 'template'])
+                Entity([ENT_TEST_XLS, ENT_TEMPLATE_XLS], ['demo', 'template'])
         self.assertIn('Append not possible. Different reference years.', \
                          cm.output[0])
         
-        ent = Entity([ENT_DEMO_XLS, ENT_DEMO_XLS], ['demo', 'demo'])
+        ent = Entity([ENT_TEST_XLS, ENT_TEST_XLS], ['demo', 'demo'])
         self.assertEqual(ent.exposures.id.size, 100)
         self.assertEqual(ent.exposures.tag.file_name, \
-                         [ENT_DEMO_XLS, ENT_DEMO_XLS])
+                         [ENT_TEST_XLS, ENT_TEST_XLS])
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""
