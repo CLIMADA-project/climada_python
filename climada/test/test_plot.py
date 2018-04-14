@@ -10,7 +10,7 @@ from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.base import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_XLS
+from climada.util.constants import HAZ_DEMO_MAT, ENT_TEST_XLS
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -80,13 +80,13 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = Exposures(ENT_DEMO_XLS)
+        myexp = Exposures(ENT_TEST_XLS)
         _, myax= myexp.plot_value()
         self.assertIn('demo_today', myax.get_title())
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncSet(ENT_DEMO_XLS)
+        myfuncs = ImpactFuncSet(ENT_TEST_XLS)
         _, myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1 Tropical cyclone default', \
@@ -95,7 +95,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
-        myent = Entity(ENT_DEMO_XLS)
+        myent = Entity(ENT_TEST_XLS)
         myhaz = Hazard(HAZ_DEMO_MAT, 'TC')
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
