@@ -23,22 +23,22 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
+        hazard = Hazard('TC', HAZ_DEMO_MAT)
         _, myax = hazard.plot_intensity(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         _, myax = hazard.plot_intensity(event=-1)
         self.assertIn('1-largest Event. ID 3899: NNN_1190604_gen8', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         _, myax = hazard.plot_intensity(event=-4)
         self.assertIn('4-largest Event. ID 5489: NNN_1192804_gen8', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         _, myax = hazard.plot_intensity(event=0)
         self.assertIn('TC max intensity at each point', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         myfig, _ = hazard.plot_intensity(centr_id=59)
         self.assertIn('Centroid ID 59: (29.0, -79.0)', \
@@ -57,18 +57,18 @@ class TestPlotter(unittest.TestCase):
                       myfig._suptitle.get_text())
 
         _, myax = hazard.plot_intensity(event='NNN_1192804_gen8')
-        self.assertIn('NNN_1192804_gen8', myax.get_title())
+        self.assertIn('NNN_1192804_gen8', myax[0][0].get_title())
 
     def test_hazard_fraction_pass(self):
         """Generate all possible plots of the hazard fraction."""
-        hazard = Hazard(HAZ_DEMO_MAT, 'TC')
+        hazard = Hazard('TC', HAZ_DEMO_MAT)
         _, myax = hazard.plot_fraction(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         _, myax = hazard.plot_fraction(event=-1)
         self.assertIn('1-largest Event. ID 11898: GORDON_gen7', \
-                      myax.get_title())
+                      myax[0][0].get_title())
 
         myfig, _ = hazard.plot_fraction(centr_id=59)
         self.assertIn('Centroid ID 59: (29.0, -79.0)', \
@@ -82,7 +82,7 @@ class TestPlotter(unittest.TestCase):
         """Plot exposures values."""
         myexp = Exposures(ENT_TEST_XLS)
         _, myax= myexp.plot_value()
-        self.assertIn('demo_today', myax.get_title())
+        self.assertIn('demo_today', myax[0][0].get_title())
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
@@ -96,7 +96,7 @@ class TestPlotter(unittest.TestCase):
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
         myent = Entity(ENT_TEST_XLS)
-        myhaz = Hazard(HAZ_DEMO_MAT, 'TC')
+        myhaz = Hazard('TC', HAZ_DEMO_MAT)
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()
