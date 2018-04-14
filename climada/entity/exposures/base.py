@@ -10,7 +10,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 import numpy as np
 
 from climada.entity.exposures.source import read as read_source
-from climada.util.files_handler import to_str_list, get_file_names
+from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.coordinates import Coordinates
@@ -46,7 +46,7 @@ class Exposures(object):
         """Fill values from file, if provided.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
@@ -65,8 +65,8 @@ class Exposures(object):
             >>> exp_city.check()
 
             Read exposures from Zurich.mat and checks consistency data.
-            
-            >>> exp_city = Exposures(ENT_DEMO_XLS)
+
+            >>> exp_city = Exposures(ENT_TEST_XLS)
         """
         self.clear()
         if file_name != '':
@@ -91,7 +91,7 @@ class Exposures(object):
         self.category_id = np.array([], int)
         self.region_id = np.array([], int)
         self.assigned = dict()
-        
+
     def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[0]):
         """Compute the hazard centroids ids affecting to each exposure.
 
@@ -126,24 +126,23 @@ class Exposures(object):
 
     def plot_value(self):
         """Plot exposures values binned over Earth's map.
-        
+
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        return plot.geo_bin_from_array(self.coord, self.value, 'Value (%s)' % \
-                                self.value_unit, \
-                                os.path.splitext(os.path.basename( \
-                                    self.tag.file_name))[0])
+        return plot.geo_bin_from_array(self.value, self.coord, 'Value (%s)' % \
+            self.value_unit, os.path.splitext(os.path.basename( \
+            self.tag.file_name))[0])
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures in parallel through files.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
+            var_names (dict or list(dict), default): name of the variables in
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises:
@@ -151,30 +150,29 @@ class Exposures(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
-        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_str_list(len(all_files), var_names, 'var_names')
+        desc_list = to_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         expo_part = Pool().map(self._read_one, all_files, desc_list, var_list)
         for expo, file in zip(expo_part, all_files):
-            LOGGER.info('Read file: %s', file)    
+            LOGGER.info('Read file: %s', file)
             self.append(expo)
 
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
-        
+
         Parameters:
             exposures (Exposures): Exposures instance to append to current
 
         Raises:
             ValueError
         """
-
         self._check_defaults(len(self.id))
         exposures.check()
         if self.id.size == 0:
             self.__dict__ = exposures.__dict__.copy()
             return
-        
+
         self.tag.append(exposures.tag)
         if self.ref_year != exposures.ref_year:
             LOGGER.error("Append not possible. Different reference years.")
@@ -188,7 +186,7 @@ class Exposures(object):
             LOGGER.error("Append not possible. Different units: %s != %s.", \
                              self.value_unit, exposures.value_unit)
             raise ValueError
-        
+
         self.coord = np.append(self.coord, exposures.coord, axis=0)
         self.value = np.append(self.value, exposures.value)
         self.impact_id = np.append(self.impact_id, exposures.impact_id)
@@ -205,14 +203,14 @@ class Exposures(object):
             else:
                 self.assigned[ass_haz] = self._append_optional( \
                                          self.assigned[ass_haz], ass)
-    
+
         # provide new ids to repeated ones
         _, indices = np.unique(self.id, return_index=True)
         new_id = np.max(self.id) + 1
         for dup_id in np.delete(np.arange(self.id.size), indices):
             self.id[dup_id] = new_id
             new_id += 1
-            
+
     @staticmethod
     def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
@@ -231,12 +229,12 @@ class Exposures(object):
         new_exp = Exposures()
         read_source(new_exp, file_name, description, var_names)
         return new_exp
-     
+
     @staticmethod
     def _append_optional(ini, to_add):
         """Append variable only if both are filled."""
         if (ini.size != 0) and (to_add.size != 0):
-            ini = np.append(ini, to_add)    
+            ini = np.append(ini, to_add)
         else:
             ini = np.array([], float)
         return ini
@@ -267,3 +265,8 @@ class Exposures(object):
                 LOGGER.warning('Exposures.assigned: assigned hazard type ' \
                                'not set.')
             check.array_optional(num_exp, ass, 'Exposures.assigned')
+
+    def __str__(self):
+        return self.tag.__str__()
+
+    __repr__ = __str__

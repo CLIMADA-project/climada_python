@@ -16,7 +16,7 @@ class ImpactFunc(object):
     """Contains the definition of one impact function.
 
     Attributes:
-        haz_type (str): hazard type    
+        haz_type (str): hazard type
         id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
         name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
@@ -63,7 +63,7 @@ class ImpactFunc(object):
         Parameters:
             graph (Graph2D, optional): graph where to add the plots
             show (bool, optional): bool to execute plt.show(). Default: True
-            
+
         Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """

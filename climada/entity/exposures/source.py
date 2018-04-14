@@ -1,5 +1,5 @@
 """
-Define Exposures reader function from a file with extension defined in 
+Define Exposures reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
@@ -17,7 +17,6 @@ import pandas
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.config import CONFIG
-from climada.util.constants import FILE_EXT
 from climada.util.coordinates import IrregularGrid
 
 DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
@@ -37,6 +36,7 @@ DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
                               'item' : 'Item'
                              }
                 }
+""" Excel variable names """
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
@@ -53,6 +53,13 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'ref' : 'reference_year'
                            }
               }
+""" MATLAB variable names """
+
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,12 +71,12 @@ def read(exposures, file_name, description='', var_names=None):
         file_name (str): absolute path of the file to read
         description (str, optional): description of the data
         var_names (dict, optional): names of the variables in the file
-            
+
     Raises:
         KeyError, ValueError
-    """ 
+    """
     exposures.tag = Tag(file_name, description)
-    
+
     extension = os.path.splitext(file_name)[1]
     if extension == FILE_EXT['MAT']:
         try:
@@ -85,7 +92,7 @@ def read(exposures, file_name, description='', var_names=None):
             raise var_err
     else:
         LOGGER.error('Input file extension not supported: %s.', extension)
-        raise ValueError 
+        raise ValueError
 
 def read_mat(exposures, file_name, var_names=None):
     """Read MATLAB file and store variables in exposures. """

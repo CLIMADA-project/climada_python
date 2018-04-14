@@ -1,5 +1,5 @@
 """
-Define DiscRates reader function from a file with extension defined in 
+Define DiscRates reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
@@ -15,10 +15,9 @@ import pandas
 
 from climada.entity.measures.measure import Measure
 from climada.entity.tag import Tag
-from climada.util.constants import FILE_EXT
 import climada.util.hdf5_handler as hdf5
 
-DEF_VAR_MAT = {'sup_field_name': 'entity',      
+DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'measures',
                'var_name': {'name' : 'name',
                             'color' : 'color',
@@ -35,6 +34,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'risk_cov' : 'risk_transfer_cover'
                            }
               }
+""" MATLAB variable names """
 
 DEF_VAR_EXCEL = {'sheet_name': 'measures',
                  'col_name': {'name' : 'name',
@@ -51,6 +51,13 @@ DEF_VAR_EXCEL = {'sheet_name': 'measures',
                               'risk_cov' : 'risk transfer cover'
                              }
                 }
+""" Excel variable names """
+
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,12 +69,12 @@ def read(meas, file_name, description='', var_names=None):
         file_name (str): absolute path of the file to read
         description (str, optional): description of the data
         var_names (dict, optional): names of the variables in the file
-            
+
     Raises:
         KeyError, ValueError
-    """ 
+    """
     meas.tag = Tag(file_name, description)
-    
+
     extension = os.path.splitext(file_name)[1]
     if extension == FILE_EXT['MAT']:
         try:
@@ -80,7 +87,7 @@ def read(meas, file_name, description='', var_names=None):
             read_excel(meas, file_name, var_names)
         except KeyError as var_err:
             LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err    
+            raise var_err
     else:
         LOGGER.error('Input file extension not supported: %s.', extension)
         raise ValueError
@@ -89,7 +96,7 @@ def read_mat(measures, file_name, var_names):
     """Read MATLAB file and store variables in measures."""
     if var_names is None:
         var_names = DEF_VAR_MAT
-        
+
     data = hdf5.read(file_name)
     try:
         data = data[var_names['sup_field_name']]

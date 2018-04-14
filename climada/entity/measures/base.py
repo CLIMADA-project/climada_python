@@ -9,7 +9,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.entity.measures.measure import Measure
 from climada.entity.measures.source import read as read_source
-from climada.util.files_handler import to_str_list, get_file_names
+from climada.util.files_handler import to_list, get_file_names
 from climada.entity.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class MeasureSet(object):
         """Fill values from file, if provided.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
@@ -37,7 +37,7 @@ class MeasureSet(object):
 
         Examples:
             Fill MeasureSet with values and check consistency data:
-            
+
             >>> act_1 = Measure()
             >>> act_1.name = 'Seawall'
             >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
@@ -48,23 +48,23 @@ class MeasureSet(object):
             >>> meas.add_Measure(act_1)
             >>> meas.tag.description = "my dummy MeasureSet."
             >>> meas.check()
-            
+
             Read measures from file and checks consistency data:
-            
-            >>> meas = MeasureSet(ENT_DEMO_XLS)
+
+            >>> meas = MeasureSet(ENT_TEST_XLS)
         """
         self.clear()
         if file_name != '':
             self.read(file_name, description)
 
     def clear(self):
-        """Reinitialize attributes.""" 
+        """Reinitialize attributes."""
         self.tag = Tag()
         self._data = dict() # {name: Measure()}
-        
+
     def add_measure(self, meas):
         """Add an Measure.
-        
+
         Parameters:
             meas (Measure): Measure instance
 
@@ -82,7 +82,7 @@ class MeasureSet(object):
     def remove_measure(self, name=None):
         """Remove Measure with provided name. Delete all Measures if no input
         name
-        
+
         Parameters:
             name (str, optional): measure name
 
@@ -99,7 +99,7 @@ class MeasureSet(object):
 
     def get_measure(self, name=None):
         """Get Measure with input name. Get all if no name provided.
-        
+
         Parameters:
             name (str, optional): measure name
 
@@ -138,29 +138,29 @@ class MeasureSet(object):
         """Read and check MeasureSet in parallel through files.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
+            var_names (dict or list(dict), default): name of the variables in
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises:
             ValueError
         """
         all_files = get_file_names(files)
-        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_str_list(len(all_files), var_names, 'var_names')
-        self.clear()       
+        desc_list = to_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_list(len(all_files), var_names, 'var_names')
+        self.clear()
         meas_part = Pool().map(self._read_one, all_files, desc_list, var_list)
         for meas, file in zip(meas_part, all_files):
-            LOGGER.info('Read file: %s', file)    
+            LOGGER.info('Read file: %s', file)
             self.append(meas)
-        
+
     def append(self, meas):
-        """Check and append measures of input MeasureSet to current MeasureSet. 
+        """Check and append measures of input MeasureSet to current MeasureSet.
         Overwrite Measure if same name.
-        
+
         Parameters:
             meas (MeasureSet): MeasureSet instance to append
 
@@ -171,7 +171,7 @@ class MeasureSet(object):
         if self.num_measures() == 0:
             self.__dict__ = meas.__dict__.copy()
             return
-        
+
         self.tag.append(meas.tag)
         for measure in meas.get_measure():
             self.add_measure(measure)
@@ -187,10 +187,15 @@ class MeasureSet(object):
 
         Raises:
             ValueError
-            
+
         Returns:
             MeasureSet
         """
         new_meas = MeasureSet()
         read_source(new_meas, file_name, description, var_names)
         return new_meas
+
+    def __str__(self):
+        return self.tag.__str__()
+
+    __repr__ = __str__

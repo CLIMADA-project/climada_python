@@ -8,7 +8,7 @@ import logging
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.entity.impact_funcs.source import read as read_source
-from climada.util.files_handler import to_str_list, get_file_names
+from climada.util.files_handler import to_list, get_file_names
 from climada.entity.impact_funcs.impact_func import ImpactFunc
 from climada.entity.tag import Tag
 import climada.util.plot as plot
@@ -28,7 +28,7 @@ class ImpactFuncSet(object):
         """Fill values from file, if provided.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
@@ -37,8 +37,8 @@ class ImpactFuncSet(object):
             ValueError
 
         Examples:
-            Fill impact functions with values and check consistency data:           
-            
+            Fill impact functions with values and check consistency data:
+
             >>> fun_1 = ImpactFunc()
             >>> fun_1.haz_type = 'TC'
             >>> fun_1.id = 3
@@ -48,17 +48,17 @@ class ImpactFuncSet(object):
             >>> imp_fun = ImpactFuncSet()
             >>> imp_fun.add_func(fun_1)
             >>> imp_fun.check()
-            
+
             Read impact functions from file and checks consistency data.
-            
-            >>> imp_fun = ImpactFuncSet(ENT_DEMO_XLS)
+
+            >>> imp_fun = ImpactFuncSet(ENT_TEST_XLS)
         """
         self.clear()
         if file_name != '':
             self.read(file_name, description)
 
     def clear(self):
-        """Reinitialize attributes."""        
+        """Reinitialize attributes."""
         self.tag = Tag()
         self._data = dict() # {hazard_id : {id:ImpactFunc}}
 
@@ -87,7 +87,7 @@ class ImpactFuncSet(object):
     def remove_func(self, haz_type=None, fun_id=None):
         """Remove vulenerability(ies) with provided hazard type and/or id.
         If no input provided, all impact functions are removed.
-        
+
         Parameters:
             haz_type (str, optional): all impact functions with this hazard
             fun_id (int, optional): all impact functions with this id
@@ -195,13 +195,13 @@ class ImpactFuncSet(object):
             fun_id (int, optional): ImpactFunc id
 
         Returns:
-            int      
+            int
         """
         if (haz_type != None) or (fun_id != None):
             return len(self.get_func(haz_type, fun_id))
 
         return sum(len(vul_list) for vul_list in self.get_ids().values())
-        
+
     def check(self):
         """Check instance attributes.
 
@@ -224,11 +224,11 @@ class ImpactFuncSet(object):
         """Read and check impact functions in parallel through files.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or 
+            file_name (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in 
+            var_names (dict or list(dict), default): name of the variables in
                 the file (default: DEF_VAR_NAME defined in the source modules)
 
         Raises:
@@ -236,18 +236,18 @@ class ImpactFuncSet(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
-        desc_list = to_str_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_str_list(len(all_files), var_names, 'var_names')
+        desc_list = to_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         imp_part = Pool().map(self._read_one, all_files, desc_list, var_list)
         for imp, file in zip(imp_part, all_files):
-            LOGGER.info('Read file: %s', file)    
+            LOGGER.info('Read file: %s', file)
             self.append(imp)
 
     def append(self, impact_funcs):
         """Check and append impact functions of input ImpactFuncSet to current
         ImpactFuncSet. Overwrite ImpactFunc if same id.
-        
+
         Parameters:
             impact_funcs (ImpactFuncSet): ImpactFuncSet instance to append
 
@@ -258,9 +258,9 @@ class ImpactFuncSet(object):
         if self.num_funcs() == 0:
             self.__dict__ = impact_funcs.__dict__.copy()
             return
-        
+
         self.tag.append(impact_funcs.tag)
-        
+
         new_func = impact_funcs.get_func()
         for _, vul_dict in new_func.items():
             for _, vul in vul_dict.items():
@@ -304,10 +304,15 @@ class ImpactFuncSet(object):
 
         Raises:
             ValueError
-            
+
         Returns:
             ImpactFuncSet
         """
         new_imp = ImpactFuncSet()
         read_source(new_imp, file_name, description, var_names)
         return new_imp
+
+    def __str__(self):
+        return self.tag.__str__()
+
+    __repr__ = __str__

@@ -1,5 +1,5 @@
 """
-Define ImpactFuncSet reader function from a file with extension defined in 
+Define ImpactFuncSet reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
@@ -15,7 +15,6 @@ import numpy as np
 
 from climada.entity.impact_funcs.impact_func import ImpactFunc
 from climada.entity.tag import Tag
-from climada.util.constants import FILE_EXT
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
@@ -28,7 +27,8 @@ DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
                               'peril' : 'peril_ID'
                              }
                 }
-                
+""" Excel variable names """
+
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'damagefunctions',
                'var_name': {'fun_id' : 'DamageFunID',
@@ -40,6 +40,13 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'peril' : 'peril_ID'
                            }
               }
+""" MATLAB variable names """
+
+FILE_EXT = {'MAT':  '.mat',
+            'XLS':  '.xls',
+            'XLSX': '.xlsx'
+           }
+""" Supported files format to read from """
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,12 +58,12 @@ def read(imp_funcs, file_name, description='', var_names=None):
         file_name (str): absolute path of the file to read
         description (str, optional): description of the data
         var_names (dict, optional): names of the variables in the file
-            
+
     Raises:
         KeyError, ValueError
-    """ 
+    """
     imp_funcs.tag = Tag(file_name, description)
-    
+
     extension = os.path.splitext(file_name)[1]
     if extension == FILE_EXT['MAT']:
         try:
@@ -73,14 +80,14 @@ def read(imp_funcs, file_name, description='', var_names=None):
     else:
         LOGGER.error('Input file extension not supported: %s.', extension)
         raise ValueError
-    
+
 def read_excel(imp_funcs, file_name, var_names):
     """Read excel file and store variables in imp_funcs. """
     if var_names is None:
         var_names = DEF_VAR_EXCEL
 
     dfr = pandas.read_excel(file_name, var_names['sheet_name'])
-    
+
     dist_func = _get_xls_funcs(dfr, var_names)
     for haz_type, imp_id in dist_func:
         df_func = dfr[dfr[var_names['col_name']['peril']] == haz_type]
@@ -103,11 +110,11 @@ def read_excel(imp_funcs, file_name, var_names):
                             df_func[var_names['col_name']['unit']].values[0]
         except KeyError:
             pass
-    
+
         func.intensity = df_func[var_names['col_name']['inten']].values
         func.mdd = df_func[var_names['col_name']['mdd']].values
         func.paa = df_func[var_names['col_name']['paa']].values
-    
+
         imp_funcs.add_func(func)
 
 def read_mat(imp_funcs, file_name, var_names):
@@ -122,7 +129,7 @@ def read_mat(imp_funcs, file_name, var_names):
         pass
 
     imp = imp[var_names['field_name']]
-    
+
     funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
     for imp_key, imp_rows in funcs_idx.items():
         func = ImpactFunc()
@@ -136,7 +143,7 @@ def read_mat(imp_funcs, file_name, var_names):
             pass
         # check that this function only has one name
         func.name = _get_hdf5_name(imp, imp_rows, \
-                                                file_name, var_names)        
+                                                file_name, var_names)
         func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
         func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
         func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
