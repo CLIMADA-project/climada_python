@@ -15,7 +15,7 @@ from climada.util.config import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 class Entity(object):
-    """Collects exposures, impact functions, measures and discount rates. 
+    """Collects exposures, impact functions, measures and discount rates.
     Default values set when empty constructor.
 
     Attributes:
@@ -42,18 +42,18 @@ class Entity(object):
 
         Examples:
             Builds Entity with values obtained from configurable entity_def:
-            
+
             >>> Entity()
-            
+
             Builds Entity with the values obtained from file:
-            
-            >>> Entity(ENT_DEMO_XLS)
-            
+
+            >>> Entity(ENT_TEST_XLS)
+
             Builds Entity with exposures and discount rates from configurable
             entity_def file, and the given impact functions and measures:
-            
+
             >>> Entity(impact_funcs=myimpact_funcs, measures=mymeasures)
-            
+
         """
         if file_name is None:
             self.exposures = Exposures(self.def_file)
@@ -67,7 +67,7 @@ class Entity(object):
         """Read and check input file.
 
         Parameters:
-            file_name (str or list(str), optional): file name(s) or folder name 
+            file_name (str or list(str), optional): file name(s) or folder name
                 containing the files to read
             description (str or list(str), optional): one description of the
                 data or a description of each data file
@@ -114,6 +114,6 @@ class Entity(object):
                 raise ValueError
         elif name == "disc_rates":
             if not isinstance(value, DiscRates):
-                LOGGER.error("Input value is not (sub)class of DiscRates.")                
+                LOGGER.error("Input value is not (sub)class of DiscRates.")
                 raise ValueError
         super().__setattr__(name, value)
