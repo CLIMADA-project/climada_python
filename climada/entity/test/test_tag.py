@@ -47,6 +47,12 @@ class TestTag(unittest.TestCase):
         self.assertEqual('file_name1.mat', tag1.file_name)
         self.assertEqual('dummy file 1', tag1.description)
 
+    def test_str_pass(self):
+        """ Test __str__ method """
+        tag = Tag('file_name1.mat', 'dummy file 1')
+        self.assertEqual(str(tag), ' File: file_name1.mat\n Description: dummy file 1')
+        
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTag)
 unittest.TextTestRunner(verbosity=2).run(TESTS)

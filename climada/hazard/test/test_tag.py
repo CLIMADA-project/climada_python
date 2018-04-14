@@ -11,12 +11,12 @@ class TestTag(unittest.TestCase):
 
     def test_append_right_pass(self):
         """Appends an other tag correctly."""
-        tag1 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
+        tag1 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         self.assertEqual('file_name1.mat', tag1.file_name)
         self.assertEqual('dummy file 1', tag1.description)
         self.assertEqual('TC', tag1.haz_type)
 
-        tag2 = TagHazard('file_name2.mat', 'TC', 'dummy file 2')
+        tag2 = TagHazard('TC', 'file_name2.mat', 'dummy file 2')
         
         tag1.append(tag2)
         
@@ -26,8 +26,8 @@ class TestTag(unittest.TestCase):
 
     def test_append_wrong_pass(self):
         """Appends an other tag correctly."""
-        tag1 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
-        tag2 = TagHazard('file_name2.mat', 'EQ', 'dummy file 2')
+        tag1 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
+        tag2 = TagHazard('EQ', 'file_name2.mat', 'dummy file 2')
         with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 tag1.append(tag2)
@@ -36,8 +36,8 @@ class TestTag(unittest.TestCase):
 
     def test_equal_same(self):
         """Appends an other tag correctly."""
-        tag1 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
-        tag2 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
+        tag1 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
+        tag2 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         tag1.append(tag2)        
         self.assertEqual('file_name1.mat', tag1.file_name)
         self.assertEqual('dummy file 1', tag1.description)
@@ -45,7 +45,7 @@ class TestTag(unittest.TestCase):
         
     def test_append_empty(self):
         """Appends an other tag correctly."""
-        tag1 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
+        tag1 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         tag2 = TagHazard()
         tag2.haz_type = 'TC'
         
@@ -55,11 +55,16 @@ class TestTag(unittest.TestCase):
         
         tag1 = TagHazard()
         tag1.haz_type = 'TC'
-        tag2 = TagHazard('file_name1.mat', 'TC', 'dummy file 1')
+        tag2 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         
         tag1.append(tag2)
         self.assertEqual('file_name1.mat', tag1.file_name)
         self.assertEqual('dummy file 1', tag1.description)
+
+    def test_str_pass(self):
+        """ Test __str__ method """
+        tag = TagHazard('EQ', 'file_name1.mat', 'dummy file 1')
+        self.assertEqual(str(tag), ' Type: EQ\n File: file_name1.mat\n Description: dummy file 1')
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTag)
