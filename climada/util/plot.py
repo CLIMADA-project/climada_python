@@ -23,6 +23,8 @@ from climada.util.files_handler import to_list
 RESOLUTION = 250
 # Degrees to add in the border
 BUFFER_DEG = 1.0
+# Maximum number of bins in geo_bin_from_array
+MAX_BINS = 500
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title):
     """Plot array values binned over input coordinates.
@@ -68,9 +70,11 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title):
         add_shapes(axis)
         add_populated(axis, extent)
 
+        num_bins = int(array_im.size/2)
+        if num_bins > MAX_BINS:
+            num_bins = MAX_BINS
         hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im, \
-            cmap='Wistia', gridsize=int(array_im.size/2), \
-            transform=ccrs.PlateCarree())
+            cmap='Wistia', gridsize=num_bins, transform=ccrs.PlateCarree())
 
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
