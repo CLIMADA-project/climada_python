@@ -12,13 +12,10 @@ import datetime as dt
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.base import Centroids
-from climada.util.config import CONFIG
-from climada.util.constants import HAZ_TEST_MAT, GLB_CENTROIDS, CENTR_TEST_BRB
+from climada.util.constants import DATA_DIR, HAZ_TEST_MAT, GLB_CENTROIDS_MAT, CENTR_TEST_BRB
 
-TEST_TRACK = os.path.join(CONFIG['local_data']['repository'], 'test', 
-                          "trac_brb_test.csv")
-TEST_TRACK_SHORT = os.path.join(CONFIG['local_data']['repository'], 'test',
-                                "trac_short_test.csv")
+TEST_TRACK = os.path.join(DATA_DIR, 'test', "trac_brb_test.csv")
+TEST_TRACK_SHORT = os.path.join(DATA_DIR, 'test', "trac_short_test.csv")
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
@@ -27,13 +24,12 @@ class TestReader(unittest.TestCase):
         """Test _set_one function."""
         centroids = None
         tc_haz = TropCyclone._set_one(TEST_TRACK_SHORT, '', centroids)
-        tc_haz.check()
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, TEST_TRACK_SHORT)
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name, GLB_CENTROIDS)
+        self.assertEqual(tc_haz.centroids.tag.file_name, GLB_CENTROIDS_MAT)
         self.assertEqual(tc_haz.centroids.id.size, 1656093)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.date.size, 1)
@@ -311,7 +307,7 @@ class TestIBTracs(unittest.TestCase):
 
     def test_coastal_centroids_pass(self):
         """ Test selection of centroids close to coast. MATLAB reference. """
-        centroids = Centroids(GLB_CENTROIDS)
+        centroids = Centroids(GLB_CENTROIDS_MAT)
         coastal = tc._coastal_centr_idx(centroids)
 
         self.assertEqual(coastal.size, 1044882)
@@ -339,7 +335,7 @@ class TestIBTracs(unittest.TestCase):
         int_track = tc.interp_track(track)
         int_track['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
                 int_track, ureg))
-        centroids = Centroids(GLB_CENTROIDS)
+        centroids = Centroids(GLB_CENTROIDS_MAT)
         coast_centr = tc._coastal_centr_idx(centroids)
         new_centr = centroids.coord[coast_centr]
         r_arr = np.array([286.4938638337190, 290.5930935802884,
@@ -392,7 +388,7 @@ class TestIBTracs(unittest.TestCase):
         int_track['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
                 int_track, ureg))
         int_track = int_track.sel(time=slice('1951-08-27', '1951-08-28'))
-        centroids = Centroids(GLB_CENTROIDS)
+        centroids = Centroids(GLB_CENTROIDS_MAT)
         coast_centr = tc._coastal_centr_idx(centroids)
         new_centr = centroids.coord[coast_centr]
 
@@ -429,7 +425,7 @@ class TestIBTracs(unittest.TestCase):
     def test_gust_from_track(self):
         """ Test gust_from_track function. Compare to MATLAB reference. """
         track = tc.read_ibtracs(TEST_TRACK_SHORT)
-        centroids = Centroids(GLB_CENTROIDS)
+        centroids = Centroids(GLB_CENTROIDS_MAT)
         intensity = tc.gust_from_track(track, centroids, model='H08')
 
         self.assertTrue(isinstance(intensity, sparse.csr.csr_matrix))
@@ -458,7 +454,6 @@ class TestIBTracs(unittest.TestCase):
                                    intensity[0, 1630877]))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIBTracs)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
