@@ -5,7 +5,7 @@ Test Centroids from MATLAB class.
 import unittest
 
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import HAZ_TEST_MAT, HAZ_TEST_XLS, GLB_CENTROIDS
+from climada.util.constants import HAZ_TEST_MAT, HAZ_TEST_XLS, GLB_CENTROIDS_MAT
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of MATLAB files'''
@@ -29,7 +29,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(centroids.id[n_centroids-1], 100)
             
     def test_nat_global_pass(self):
-        glb_cent = Centroids(GLB_CENTROIDS)
+        glb_cent = Centroids(GLB_CENTROIDS_MAT)
         self.assertEqual(glb_cent.region_id[1062443], 35)
         self.assertEqual(glb_cent.region_id[170825], 28)
         self.assertAlmostEqual(glb_cent.dist_coast[9], 21.366461094662913)

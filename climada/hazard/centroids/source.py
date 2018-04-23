@@ -10,7 +10,7 @@ __all__ = ['DEF_VAR_EXCEL',
 
 import os
 import logging
-import pandas
+import pandas as pd
 import numpy as np
 
 from climada.hazard.centroids.tag import Tag
@@ -82,7 +82,7 @@ def read_excel(centroids, file_name, var_names):
     if var_names is None:
         var_names = DEF_VAR_EXCEL
 
-    dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+    dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
     coord_cols = [var_names['col_name']['lat'], \
                   var_names['col_name']['lon']]
