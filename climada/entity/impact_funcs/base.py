@@ -170,7 +170,6 @@ class ImpactFuncSet(object):
 
         Returns:
             list(ImpactFunc) (if haz_type and/or fun_id)
-            list(ImpactFunc) (if haz_type and/or fun_id)
             {ImpactFunc.haz_type : {ImpactFunc.id : ImpactFunc}}
                 (if None)
         """

@@ -16,14 +16,15 @@ class ImpactFunc(object):
     """Contains the definition of one impact function.
 
     Attributes:
-        haz_type (str): hazard type
+        haz_type (str): hazard type acronym (e.g. 'TC')
         id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
         name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
-        mdd (np.array): mean damage (impact) degree for each intensity
+        mdd (np.array): mean damage (impact) degree for each intensity (numbers
+            in [0,1])
         paa (np.array): percentage of affected assets (exposures) for each
-            intensity
+            intensity (numbers in [0,1])
     """
     def __init__(self):
         """ Empty initialization."""
@@ -44,6 +45,9 @@ class ImpactFunc(object):
                 interpolated values.
             attribute (str): defines the impact function attribute to
                 interpolate. Possbile values: 'mdd' or 'paa'.
+
+        Returns:
+            np.array
 
         Raises:
             ValueError

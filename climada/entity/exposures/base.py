@@ -130,15 +130,23 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot_value(self):
+    def plot_value(self, ignore_null=False):
         """Plot exposures values binned over Earth's map.
+
+        Parameters:
+            ignore_null (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default is False.
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        return plot.geo_bin_from_array(self.value, self.coord, 'Value (%s)' % \
-            self.value_unit, os.path.splitext(os.path.basename( \
-            self.tag.file_name))[0])
+        if ignore_null:
+            pos_vals = self.value > 0
+        else:
+            pos_vals = np.ones((self.value.size,), dtype=bool)
+        return plot.geo_bin_from_array(self.value[pos_vals], \
+            self.coord[pos_vals], 'Value (%s)' % self.value_unit, \
+            os.path.splitext(os.path.basename(self.tag.file_name))[0])
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.
