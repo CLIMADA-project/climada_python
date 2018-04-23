@@ -63,7 +63,7 @@ def array_optional(exp_len, var, var_name):
         Raises:
             ValueError
     """
-    if len(var) == 0:
+    if len(var) == 0 and exp_len > 0:
         LOGGER.warning("%s not set. ", var_name)
     else:
         size(exp_len, var, var_name)
@@ -84,7 +84,7 @@ def array_default(exp_len, var, var_name, def_val):
             Filled array
     """
     res = var
-    if len(var) == 0:
+    if len(var) == 0 and exp_len > 0:
         LOGGER.warning("%s not set. Default values set.", var_name)
         res = def_val
     else:
