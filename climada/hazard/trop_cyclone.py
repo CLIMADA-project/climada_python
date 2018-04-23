@@ -22,7 +22,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
 from climada.util.config import CONFIG
-from climada.util.constants import GLB_CENTROIDS, ONE_LAT_KM
+from climada.util.constants import GLB_CENTROIDS_MAT, ONE_LAT_KM
 from climada.util.interpolation import dist_sqr_approx
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.plot as plot
@@ -155,15 +155,17 @@ class TropCyclone(Hazard):
         Parameters:
             file_name (str): name of the source file
             description (str, optional): description of the source data
-            centroids (Centroids, optional): Centroids instance
+            centroids (Centroids, optional): Centroids instance. Use global
+                centroids if not provided.
             model (str, optional): model to compute gust. Default Holland2008.
 
         Raises:
             ValueError, KeyError
+
+        Returns:
+            TropicalCyclone
         """
         new_haz = TropCyclone()
-        if centroids is None:
-            centroids = Centroids(GLB_CENTROIDS, 'Global Nat centroids')
         new_haz.tag = TagHazard(HAZ_TYPE, file_name, description)
 
         try:
@@ -172,6 +174,10 @@ class TropCyclone(Hazard):
             LOGGER.error('Provide a IBTraCS file in csv format containing'\
                          ' one TC track.')
             raise ValueError
+
+        if centroids is None:
+            centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+
         new_haz.intensity = gust_from_track(track, centroids, model)
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
@@ -238,16 +244,22 @@ def read_ibtracs(file_name):
 
     return track_ds
 
-def gust_from_track(track, centroids, model='H08'):
-    """ Compute wind gusts at centroids from track.
+def gust_from_track(track, centroids=None, model='H08'):
+    """ Compute wind gusts at centroids from track. Track is interpolated to
+    configured time step.
 
     Parameters:
         track (xr.Dataset): track infomation
-        centroids(Centroids): centroids where gusts are computed
+        centroids(Centroids, optional): centroids where gusts are computed. Use
+            global centroids if not provided.
+        model (str, optional): model to compute gust. Default Holland2008.
 
     Returns:
         sparse.csr_matrix
     """
+    if centroids is None:
+        centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+
     # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
     coastal_centr = _coastal_centr_idx(centroids)
 
