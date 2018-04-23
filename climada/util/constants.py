@@ -13,7 +13,7 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS',
            'CENTR_TEST_BRB',
-           'GLB_CENTROIDS']
+           'GLB_CENTROIDS_MAT']
 
 import os
 
@@ -42,7 +42,7 @@ ENT_TEMPLATE_XLS = os.path.join(DATA_DIR, 'entity_template.xlsx')
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 """ Entity demo in mat format."""
 
-GLB_CENTROIDS = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
+GLB_CENTROIDS_MAT = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """ Global centroids."""
 
 CENTR_TEST_BRB = os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat')
