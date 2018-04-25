@@ -76,15 +76,6 @@ climada\.util\.save module
     :undoc-members:
     :show-inheritance:
 
-climada\.util\.utils module
----------------------------
-
-.. automodule:: climada.util.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 
