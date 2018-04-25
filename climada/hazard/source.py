@@ -162,7 +162,7 @@ def read_centroids(hazard, centroids, var_names):
     """Read centroids file if no centroids provided"""
     if centroids is None:
         hazard.centroids = Centroids()
-        hazard.centroids.read_one(hazard.tag.file_name, \
-                          hazard.tag.description, var_names)
+        hazard.centroids.read(hazard.tag.file_name, hazard.tag.description,
+                              var_names)
     else:
         hazard.centroids = centroids
