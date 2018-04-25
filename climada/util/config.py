@@ -7,19 +7,33 @@ __all__ = ['CONFIG',
            'setup_conf_user'
           ]
 
+import sys
 import os
 import json
 import logging
-import logging.config
 from pkg_resources import Requirement, resource_filename
 
 from climada.util.constants import SOURCE_DIR, DATA_DIR
 
 WORKING_DIR = os.getcwd()
-logging.basicConfig(level=logging.DEBUG)
-
 WINDOWS_END = 'C:\\'
 UNIX_END = '/'
+
+def remove_handlers(logger):
+    """Remove logger handlers."""
+    if logger.hasHandlers():
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+
+LOGGER = logging.getLogger('climada')
+LOGGER.setLevel(logging.DEBUG)
+LOGGER.propagate = False
+remove_handlers(LOGGER)
+FORMATTER = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+CONSOLE = logging.StreamHandler(stream=sys.stdout)
+CONSOLE.setFormatter(FORMATTER)
+LOGGER.addHandler(CONSOLE)
 
 def check_conf():
     """Check configuration files presence and generate folders if needed."""
@@ -44,39 +58,18 @@ DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
 if not os.path.isfile(DEFAULT_PATH):
     DEFAULT_PATH = resource_filename(Requirement.parse('climada'), \
                                      'defaults.conf')
-logging.debug('Loading config default file: %s', DEFAULT_PATH)
-
 with open(DEFAULT_PATH) as def_file:
+    LOGGER.debug('Loading default config file: %s', DEFAULT_PATH)
     CONFIG = json.load(def_file)
 
 check_conf()
 
-
-def setup_logging(default_level=logging.INFO):
+def setup_logging(log_level='DEBUG'):
     """Setup logging configuration"""
-    default_path = os.path.abspath(os.path.join(CONFIG_DIR, 'logging.conf'))
-    if not os.path.isfile(default_path):
-        default_path = resource_filename(Requirement.parse('climada'), \
-                                         'logging.conf')
-    logging.debug('Loading logging config default file: %s', DEFAULT_PATH)
-
-    path = default_path
-    log_name = 'climada_log.conf'
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, log_name))
-    while not os.path.isfile(user_file) and user_file != UNIX_END + log_name \
-    and user_file != WINDOWS_END + log_name:
-        user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
-                                            os.pardir, log_name))
-    if os.path.isfile(user_file):
-        path = user_file
-        logging.debug('Loading user logging config: %s ...', user_file)
-
-    if os.path.exists(path):
-        with open(path, 'rt') as log_file:
-            config_log = json.load(log_file)
-        logging.config.dictConfig(config_log)
-    else:
-        logging.basicConfig(level=default_level)
+    remove_handlers(LOGGER)
+    LOGGER.propagate = False
+    LOGGER.setLevel(getattr(logging, log_level))
+    LOGGER.addHandler(CONSOLE)
 
 def setup_conf_user():
     """Setup climada configuration"""
@@ -88,7 +81,7 @@ def setup_conf_user():
                                                  os.pardir, conf_name))
 
     if os.path.isfile(user_file):
-        logging.debug('Loading user config: %s ...', user_file)
+        LOGGER.debug('Loading user config file: %s ...', user_file)
 
         with open(user_file) as conf_file:
             userconfig = json.load(conf_file)
@@ -104,5 +97,8 @@ def setup_conf_user():
 
         if 'min_time_step' in userconfig.keys():
             CONFIG['tc_time_step_h'] = userconfig['tc_time_step_h']
+
+        if 'log_level' in userconfig.keys():
+            CONFIG['log_level'] = userconfig['log_level']
 
         check_conf()
