@@ -24,9 +24,10 @@ RESOLUTION = 250
 # Degrees to add in the border
 BUFFER_DEG = 1.0
 # Maximum number of bins in geo_bin_from_array
-MAX_BINS = 500
+MAX_BINS = 200
 
-def geo_bin_from_array(array_sub, geo_coord, var_name, title):
+def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True, 
+                       **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -42,6 +43,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title):
         title (str or list(str)): subplot title. If one provided, the same is
             used for all subplots. Otherwise provide as many as subplots in
             array_sub.
+        pop_name (bool, optional): add names of the populated places.
+        kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -54,6 +57,9 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title):
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
+
+    if 'cmap' not in kwargs:
+        kwargs['cmap'] = 'Wistia'
 
     # Generate each subplot
     fig, axis_sub = make_map(num_im)
@@ -68,13 +74,13 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title):
                    BUFFER_DEG, extent[3] + BUFFER_DEG])
         axis.set_extent((extent))
         add_shapes(axis)
-        add_populated(axis, extent)
+        if pop_name:
+            add_populated(axis, extent)
 
-        num_bins = int(array_im.size/2)
-        if num_bins > MAX_BINS:
-            num_bins = MAX_BINS
+        if 'gridsize' not in kwargs:
+            kwargs['gridsize'] = min(int(array_im.size/2), MAX_BINS)
         hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im, \
-            cmap='Wistia', gridsize=num_bins, transform=ccrs.PlateCarree())
+            transform=ccrs.PlateCarree(), **kwargs)
 
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
@@ -269,7 +275,7 @@ def add_shapes(axis, projection=ccrs.PlateCarree()):
                             edgecolor='black')
 
 def add_populated(axis, extent, projection=ccrs.PlateCarree()):
-    """Add cities names.
+    """Add city names.
 
     Parameters:
         axis (cartopy.mpl.geoaxes.GeoAxesSubplot): cartopy axis.
