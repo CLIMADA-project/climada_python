@@ -3,17 +3,12 @@ Define Centroids reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_EXCEL',
-           'DEF_VAR_MAT',
-           'FILE_EXT',
-           'read']
+__all__ = ['READ_SET']
 
-import os
 import logging
 import pandas as pd
 import numpy as np
 
-from climada.hazard.centroids.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import IrregularGrid
 
@@ -38,44 +33,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                 }
 """ Excel variable names """
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
-           }
-""" Supported files format to read from """
-
 LOGGER = logging.getLogger(__name__)
-
-def read(centroids, file_name, description='', var_names=None):
-    """Read file and fill centroids.
-
-    Parameters:
-        centroids (Centroids): hazard to fill
-        file_name (str): absolute path of the file to read
-        description (str, optional): description of the data
-        var_names (dict, optional): names of the variables in the file
-
-    Raises:
-        TypeError, KeyError, ValueError
-    """
-    centroids.tag = Tag(file_name, description)
-
-    extension = os.path.splitext(file_name)[1]
-    if extension == FILE_EXT['MAT']:
-        try:
-            read_mat(centroids, file_name, var_names)
-        except (TypeError, KeyError) as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-        try:
-            read_excel(centroids, file_name, var_names)
-        except (TypeError, KeyError) as var_err:
-            LOGGER.error("Not existing variable. " + str(var_err))
-            raise var_err
-    else:
-        LOGGER.error("Input file extension not supported: %s.", extension)
-        raise ValueError
 
 def read_excel(centroids, file_name, var_names):
     """Read excel file and store variables in centroids. """
@@ -141,3 +99,7 @@ def read_mat(centroids, file_name, var_names):
                         np.squeeze(cent[var_names['var_name']['region_id']])
     except KeyError:
         pass
+
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }

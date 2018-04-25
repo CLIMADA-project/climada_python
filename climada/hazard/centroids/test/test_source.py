@@ -15,7 +15,7 @@ class TestReaderMat(unittest.TestCase):
         # Read demo mat file
         description = 'One single file.'
         centroids = Centroids()
-        centroids.read_one(HAZ_TEST_MAT, description)
+        centroids.read(HAZ_TEST_MAT, description)
 
         n_centroids = 100
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))
@@ -57,8 +57,19 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(centroids.id[0], 4001)
         self.assertEqual(centroids.id[n_centroids-1], 4045)
 
+class TestReaderMix(unittest.TestCase):
+    ''' Test reader several files. '''
+    
+    def test_xls_mat_pass(self):
+        """Read xls and matlab files."""
+        files = [HAZ_TEST_MAT, HAZ_TEST_XLS]
+        centroids = Centroids(files)
+        
+        self.assertEqual(centroids.id.size, 145)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderMat)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMix))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
         

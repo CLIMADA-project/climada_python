@@ -4,17 +4,26 @@ Define Centroids class.
 
 __all__ = ['Centroids']
 
+import os
+import copy
 import logging
 from array import array
 import numpy as np
 
 from climada.hazard.centroids.tag import Tag
-from climada.hazard.centroids.source import read as read_source
+from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
 from climada.util.coordinates import Coordinates
 import climada.util.plot as plot
+from climada.util.files_handler import to_list, get_file_names
 
 LOGGER = logging.getLogger(__name__)
+
+FILE_EXT = {'.mat':  'MAT',
+            '.xls':  'XLS',
+            '.xlsx': 'XLS'
+           }
+""" Supported files format to read from """
 
 class Centroids(object):
     """Definition of the hazard coordinates.
@@ -53,8 +62,7 @@ class Centroids(object):
         """
         self.clear()
         if file_name != '':
-            self.read_one(file_name, description)
-            self.check()
+            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -82,18 +90,27 @@ class Centroids(object):
         check.array_optional(num_exp, self.dist_coast, \
                                  'Centroids.dist_coast')
 
-    def read_one(self, file_name, description='', var_names=None):
-        """ Read input file.
+    def read(self, files, descriptions='', var_names=None):
+        """ Read and check centroids.
 
         Parameters:
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            files (str or list(str)): absolute file name(s) or folder name
+                containing the files to read
+            descriptions (str or list(str), optional): one description of the
+                data or a description of each data file
+            var_names (dict or list(dict), default): name of the variables in
+                the file (default: check def_source_vars() function)
 
         Raises:
             TypeError, ValueError
         """
-        read_source(self, file_name, description, var_names)
-        LOGGER.info('Read file: %s', file_name)
+        all_files = get_file_names(files)
+        desc_list = to_list(len(all_files), descriptions, 'descriptions')
+        var_list = to_list(len(all_files), var_names, 'var_names')
+        self.clear()
+        for file, desc, var in zip(all_files, desc_list, var_list):
+            LOGGER.info('Reading file: %s', file)
+            self.append(Centroids._read_one(file, desc, var))
 
     def append(self, centroids):
         """Append input centroids coordinates to current. Id is perserved if
@@ -149,20 +166,24 @@ class Centroids(object):
         LOGGER.error('Dist_to_coast not implemented yet in %s: ', self)
         raise NotImplementedError
 
-    def plot(self):
+    def plot(self, **kwargs):
         """ Plot centroids points over earth.
+
+        Parameters:
+            kwargs (optional): arguments for scatter matplotlib function
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         fig, axis = plot.make_map()
         axis = axis[0][0]
-        min_lat, max_lat = np.min(self.lat), np.max(self.lat)
-        min_lon, max_lon = np.min(self.lon), np.max(self.lon)
-        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]))
+        min_lat, max_lat = self.lat.min(), self.lat.max()
+        min_lon, max_lon = self.lon.min(), self.lon.max()
+        axis.set_extent(([int(min_lon), int(max_lon),
+                          int(min_lat), int(max_lat)]))
         plot.add_shapes(axis)
-        axis.set_title('Centroids' + ''.join(self.tag.description))
-        axis.scatter(self.lon, self.lat)
+        axis.set_title(self.tag.join_file_names())
+        axis.scatter(self.lon, self.lat, **kwargs)
 
         return fig, axis
 
@@ -175,6 +196,61 @@ class Centroids(object):
     def lon(self):
         """ Get longitude from coord array """
         return self.coord[:, 1]
+
+    @staticmethod
+    def get_sup_file_format():
+        """ Get supported file extensions that can be read.
+
+        Returns:
+            list(str)
+        """
+        return list(FILE_EXT.keys())
+
+    @staticmethod
+    def get_def_file_var_names(src_format):
+        """Get default variable names for given file format.
+
+        Parameters:
+            src_format (str): extension of the file, e.g. '.xls', '.mat'.
+
+        Returns:
+            dict: dictionary with variable names
+        """
+        try:
+            if '.' not in src_format:
+                src_format = '.' + src_format
+            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
+        except KeyError:
+            LOGGER.error('File extension not supported: %s.', src_format)
+            raise ValueError
+
+    @staticmethod
+    def _read_one(file_name, description='', var_names=None):
+        """Read input file.
+
+        Parameters:
+            file_name (str): name of the source file
+            description (str, optional): description of the source data
+            var_names (dict, optional): name of the variables in the file
+
+        Raises:
+            ValueError
+
+        Returns:
+            ImpactFuncSet
+        """
+        new_cent = Centroids()
+        new_cent.tag = Tag(file_name, description)
+
+        extension = os.path.splitext(file_name)[1]
+        try:
+            reader = READ_SET[FILE_EXT[extension]][1]
+        except KeyError:
+            LOGGER.error('Input file extension not supported: %s.', extension)
+            raise ValueError
+        reader(new_cent, file_name, var_names)
+
+        return new_cent
 
     def _append_one(self, centroids, regions, dist):
         """Append one by one centroid."""

@@ -7,6 +7,7 @@ from array import array
 import numpy as np
 
 from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
 
 class TestLoader(unittest.TestCase):
@@ -53,6 +54,13 @@ class TestLoader(unittest.TestCase):
                 cen.check()
         self.assertIn('There are centroids with the same identifier.', \
                          cm.output[0])
+
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(Centroids.get_def_file_var_names('xls') == 
+                        READ_SET['XLS'][0])
+        self.assertTrue(Centroids.get_def_file_var_names('.mat') == 
+                        READ_SET['MAT'][0])
 
 class TestAppend(unittest.TestCase):
     """Test append function."""
