@@ -139,9 +139,8 @@ class Hazard(object):
         self.clear()
         for file, desc, centr, var in zip(all_files, desc_list, centr_list,
                                           var_list):
+            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, haz_type, desc, centr, var))
-            LOGGER.info('Read file: %s', file)
-        self.check()
 
     def plot_stats(self, return_periods=RETURN_PER):
         """Compute and plot hazard intensity maps for different return periods.
