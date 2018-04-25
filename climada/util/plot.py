@@ -26,7 +26,7 @@ BUFFER_DEG = 1.0
 # Maximum number of bins in geo_bin_from_array
 MAX_BINS = 200
 
-def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True, 
+def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
                        **kwargs):
     """Plot array values binned over input coordinates.
 
@@ -89,8 +89,6 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         cbar.set_label(name)
         axis.set_title(tit)
 
-    plt.tight_layout()
-
     return fig, axis_sub
 
 def geo_im_from_array(array_sub, geo_coord, var_name, title):
@@ -148,8 +146,6 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title):
                 cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
-
-    plt.tight_layout()
 
     return fig, axis_sub
 
@@ -257,6 +253,13 @@ def make_map(num_sub=1, projection=ccrs.PlateCarree()):
         grid.xlabels_top = grid.ylabels_right = False
         grid.xformatter = LONGITUDE_FORMATTER
         grid.yformatter = LATITUDE_FORMATTER
+
+    fig.tight_layout()
+    if num_col > 1:
+        fig.subplots_adjust(wspace=0.3)
+    if num_row > 1:
+        fig.subplots_adjust(hspace=-0.5)
+
     return fig, axis_sub
 
 def add_shapes(axis, projection=ccrs.PlateCarree()):
