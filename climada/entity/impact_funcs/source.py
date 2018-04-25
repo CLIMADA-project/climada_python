@@ -3,11 +3,7 @@ Define ImpactFuncSet reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_EXCEL',
-           'DEF_VAR_MAT',
-           'read_mat',
-           'read_excel'
-          ]
+__all__ = ['READ_SET']
 
 import logging
 import pandas
@@ -168,3 +164,7 @@ def _get_hdf5_name(imp, idxs, file_name, var_names):
             LOGGER.error("Impact function with two different names.")
             raise ValueError
     return prev_name
+
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }

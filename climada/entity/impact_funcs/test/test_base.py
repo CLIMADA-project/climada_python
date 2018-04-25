@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFuncSet, ImpactFunc
+from climada.entity.impact_funcs.source import READ_SET
 from climada.util.constants import ENT_TEMPLATE_XLS
 
 class TestConstructor(unittest.TestCase):
@@ -24,6 +25,13 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(vulner_1, 'intensity_unit'))
         self.assertTrue(hasattr(vulner_1, 'mdd'))
         self.assertTrue(hasattr(vulner_1, 'paa'))
+
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(ImpactFuncSet.get_def_file_var_names('xls') == 
+                        READ_SET['XLS'][0])
+        self.assertTrue(ImpactFuncSet.get_def_file_var_names('mat') == 
+                        READ_SET['MAT'][0])
 
 class TestContainer(unittest.TestCase):
     """Test ImpactFuncSet as container."""

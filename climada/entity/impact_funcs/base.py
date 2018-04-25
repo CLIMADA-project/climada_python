@@ -5,9 +5,10 @@ Define ImpactFuncSet class.
 __all__ = ['ImpactFuncSet']
 
 import os
+import copy
 import logging
 
-from climada.entity.impact_funcs.source import read_mat, read_excel
+from climada.entity.impact_funcs.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
 from climada.entity.impact_funcs.impact_func import ImpactFunc
 from climada.entity.tag import Tag
@@ -15,9 +16,9 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
+FILE_EXT = {'.mat':  'MAT',
+            '.xls':  'XLS',
+            '.xlsx': 'XLS'
            }
 """ Supported files format to read from """
 
@@ -230,12 +231,12 @@ class ImpactFuncSet(object):
         """Read and check impact functions.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
+            files (str or list(str)): absolute file name(s) or folder name
+                containing the files to read
+            descriptions (str or list(str), optional): one description of the
                 data or a description of each data file
             var_names (dict or list(dict), default): name of the variables in
-                the file (default: DEF_VAR_NAME defined in the source modules)
+                the file (default: check def_source_vars() function)
 
         Raises:
             ValueError
@@ -246,8 +247,8 @@ class ImpactFuncSet(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
+            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, desc, var))
-            LOGGER.info('Read file: %s', file)
 
     def append(self, impact_funcs):
         """Check and append impact functions of input ImpactFuncSet to current
@@ -299,6 +300,33 @@ class ImpactFuncSet(object):
         return graph.get_elems()
 
     @staticmethod
+    def get_sup_file_format():
+        """ Get supported file extensions that can be read.
+
+        Returns:
+            list(str)
+        """
+        return list(FILE_EXT.keys())
+
+    @staticmethod
+    def get_def_file_var_names(src_format):
+        """Get default variable names for given file format.
+
+        Parameters:
+            src_format (str): extension of the file, e.g. '.xls', '.mat'
+
+        Returns:
+            dict: dictionary with variable names
+        """
+        try:
+            if '.' not in src_format:
+                src_format = '.' + src_format
+            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
+        except KeyError:
+            LOGGER.error('File extension not supported: %s.', src_format)
+            raise ValueError
+
+    @staticmethod
     def _read_one(file_name, description='', var_names=None):
         """Read input file.
 
@@ -317,21 +345,12 @@ class ImpactFuncSet(object):
         new_imp.tag = Tag(file_name, description)
 
         extension = os.path.splitext(file_name)[1]
-        if extension == FILE_EXT['MAT']:
-            try:
-                read_mat(new_imp, file_name, var_names)
-            except KeyError as err:
-                LOGGER.error("Not existing variable." + str(err))
-                raise err
-        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-            try:
-                read_excel(new_imp, file_name, var_names)
-            except KeyError as err:
-                LOGGER.error("Not existing variable." + str(err))
-                raise err
-        else:
+        try:
+            reader = READ_SET[FILE_EXT[extension]][1]
+        except KeyError:
             LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
+        reader(new_imp, file_name, var_names)
 
         return new_imp
 

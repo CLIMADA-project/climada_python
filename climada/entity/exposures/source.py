@@ -3,11 +3,7 @@ Define Exposures reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_EXCEL',
-           'DEF_VAR_MAT',
-           'read_mat',
-           'read_excel'
-          ]
+__all__ = ['READ_SET']
 
 import logging
 from xlrd import XLRDError
@@ -58,33 +54,42 @@ LOGGER = logging.getLogger(__name__)
 
 def read_mat(exposures, file_name, var_names=None):
     """Read MATLAB file and store variables in exposures. """
-    # set variable names in source file
-    if var_names is None:
-        var_names = DEF_VAR_MAT
-
-    # Load mat data
-    data = hdf5.read(file_name)
     try:
-        data = data[var_names['sup_field_name']]
-    except KeyError:
-        pass
-    data = data[var_names['field_name']]
+        # set variable names in source file
+        if var_names is None:
+            var_names = DEF_VAR_MAT
 
-    # Fill variables
-    _read_mat_obligatory(exposures, data, var_names)
-    _read_mat_default(exposures, data, var_names)
-    _read_mat_optional(exposures, data, file_name, var_names)
+        # Load mat data
+        data = hdf5.read(file_name)
+        try:
+            data = data[var_names['sup_field_name']]
+        except KeyError:
+            pass
+        data = data[var_names['field_name']]
+
+        # Fill variables
+        _read_mat_obligatory(exposures, data, var_names)
+        _read_mat_default(exposures, data, var_names)
+        _read_mat_optional(exposures, data, file_name, var_names)
+
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable: " + str(var_err))
+        raise var_err
 
 def read_excel(exposures, file_name, var_names):
     """Read excel file and store variables in exposures. """
-    if var_names is None:
-        var_names = DEF_VAR_EXCEL
+    try:
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
 
-    dfr = pandas.read_excel(file_name, var_names['sheet_name']['exp'])
-    # get variables
-    _read_xls_obligatory(exposures, dfr, var_names)
-    _read_xls_default(exposures, dfr, var_names)
-    _read_xls_optional(exposures, dfr, file_name, var_names)
+        dfr = pandas.read_excel(file_name, var_names['sheet_name']['exp'])
+        # get variables
+        _read_xls_obligatory(exposures, dfr, var_names)
+        _read_xls_default(exposures, dfr, var_names)
+        _read_xls_optional(exposures, dfr, file_name, var_names)
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable: " + str(var_err))
+        raise var_err
 
 def _read_xls_obligatory(exposures, dfr, var_names):
     """Fill obligatory variables."""
@@ -228,3 +233,7 @@ def _parse_mat_default(hdf, var_name, def_val):
     except KeyError:
         res = def_val
     return res
+
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }

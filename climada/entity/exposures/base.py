@@ -5,10 +5,12 @@ Define Exposures class.
 __all__ = ['Exposures']
 
 import os
+import copy
 import logging
 import numpy as np
 
-from climada.entity.exposures.source import read_mat, read_excel
+from climada.entity.exposures.source import READ_SET
+#from climada.entity.exposures.source import DEF_VAR_EXCEL, DEF_VAR_MAT
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
@@ -19,9 +21,9 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
+FILE_EXT = {'.mat':  'MAT',
+            '.xls':  'XLS',
+            '.xlsx': 'XLS'
            }
 """ Supported files format to read from """
 
@@ -130,12 +132,14 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot_value(self, ignore_null=False):
-        """Plot exposures values binned over Earth's map.
+    def plot_value(self, ignore_null=False, pop_name=True, **kwargs):
+        """Plot exposures values sum binned over Earth's map.
 
         Parameters:
             ignore_null (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default is False.
+            pop_name (bool, optional): add names of the populated places.
+            kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -144,20 +148,23 @@ class Exposures(object):
             pos_vals = self.value > 0
         else:
             pos_vals = np.ones((self.value.size,), dtype=bool)
+        title = self.tag.join_file_names()
+        cbar_label = 'Value (%s)' % self.value_unit
+        if 'reduce_C_function' not in kwargs:
+            kwargs['reduce_C_function'] = np.sum
         return plot.geo_bin_from_array(self.value[pos_vals], \
-            self.coord[pos_vals], 'Value (%s)' % self.value_unit, \
-            os.path.splitext(os.path.basename(self.tag.file_name))[0])
+            self.coord[pos_vals], cbar_label, title, pop_name, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
+            files (str or list(str)): absolute file name(s) or folder name
+                containing the files to read
+            descriptions (str or list(str), optional): one description of the
                 data or a description of each data file
             var_names (dict or list(dict), default): name of the variables in
-                the file (default: DEF_VAR_NAME defined in the source modules)
+                the file (default: check def_source_vars() function)
 
         Raises:
             ValueError
@@ -168,8 +175,8 @@ class Exposures(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            self.append(self._read_one(file, desc, var))
-            LOGGER.info('Read file: %s', file)
+            LOGGER.info('Reading file: %s', file)
+            self.append(Exposures._read_one(file, desc, var))
 
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
@@ -191,10 +198,10 @@ class Exposures(object):
             LOGGER.error("Append not possible. Different reference years.")
             raise ValueError
         if (self.value_unit == 'NA') and (exposures.value_unit != 'NA'):
-            LOGGER.warning("Initial exposures does not have units.")
             self.value_unit = exposures.value_unit
+            LOGGER.warning("Exposures units set to %s.", self.value_unit)
         elif exposures.value_unit == 'NA':
-            LOGGER.warning("Appended exposures does not have units.")
+            LOGGER.warning("Exposures units set to %s.", self.value_unit)
         elif self.value_unit != exposures.value_unit:
             LOGGER.error("Append not possible. Different units: %s != %s.", \
                              self.value_unit, exposures.value_unit)
@@ -225,6 +232,43 @@ class Exposures(object):
             new_id += 1
 
     @staticmethod
+    def get_sup_file_format():
+        """ Get supported file extensions that can be read.
+
+        Returns:
+            list(str)
+        """
+        return list(FILE_EXT.keys())
+
+    @staticmethod
+    def get_def_file_var_names(src_format):
+        """Get default variable names for given file format.
+
+        Parameters:
+            src_format (str): extension of the file, e.g. '.xls', '.mat'
+
+        Returns:
+            dict: dictionary with variable names
+        """
+        try:
+            if '.' not in src_format:
+                src_format = '.' + src_format
+            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
+        except KeyError:
+            LOGGER.error('File extension not supported: %s.', src_format)
+            raise ValueError
+
+    @property
+    def lat(self):
+        """ Get latitude from coord array """
+        return self.coord[:, 0]
+
+    @property
+    def lon(self):
+        """ Get longitude from coord array """
+        return self.coord[:, 1]
+
+    @staticmethod
     def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
 
@@ -241,22 +285,14 @@ class Exposures(object):
         """
         new_exp = Exposures()
         new_exp.tag = Tag(file_name, description)
+
         extension = os.path.splitext(file_name)[1]
-        if extension == FILE_EXT['MAT']:
-            try:
-                read_mat(new_exp, file_name, var_names)
-            except KeyError as var_err:
-                LOGGER.error("Not existing variable. " + str(var_err))
-                raise var_err
-        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-            try:
-                read_excel(new_exp, file_name, var_names)
-            except KeyError as var_err:
-                LOGGER.error("Not existing variable. " + str(var_err))
-                raise var_err
-        else:
+        try:
+            reader = READ_SET[FILE_EXT[extension]][1]
+        except KeyError:
             LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
+        reader(new_exp, file_name, var_names)
 
         return new_exp
 

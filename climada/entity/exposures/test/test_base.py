@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 
 from climada.entity.exposures.base import Exposures
+from climada.entity.exposures.source import READ_SET
 from climada.hazard.base import Hazard
 from climada.util.coordinates import IrregularGrid
 from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS
@@ -29,6 +30,8 @@ class TestConstructor(unittest.TestCase):
     def test_attributes_all(self):
         """All attributes are defined"""
         expo = Exposures()
+        
+        self.assertEqual(len(expo.__dict__), 12)
         self.assertTrue(hasattr(expo, 'id'))
         self.assertTrue(hasattr(expo, 'coord'))
         self.assertTrue(hasattr(expo, 'value'))
@@ -42,6 +45,13 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(expo, 'value_unit'))
         self.assertTrue(hasattr(expo, 'ref_year'))
 
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(Exposures.get_def_file_var_names('.xls') == 
+                        READ_SET['XLS'][0])
+        self.assertTrue(Exposures.get_def_file_var_names('.mat') == 
+                        READ_SET['MAT'][0])
+        
 class TestAppend(unittest.TestCase):
     """Check append function"""
     def test_assign_diff(self):
