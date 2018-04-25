@@ -145,9 +145,9 @@ class MeasureSet(object):
         """Read and check MeasureSet.
 
         Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
+            files (str or list(str)): absolute file name(s) or folder name
+                containing the files to read
+            descriptions (str or list(str), optional): one description of the
                 data or a description of each data file
             var_names (dict or list(dict), default): name of the variables in
                 the file (default: DEF_VAR_NAME defined in the source modules)
@@ -160,8 +160,8 @@ class MeasureSet(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
+            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, desc, var))
-            LOGGER.info('Read file: %s', file)
 
     def append(self, meas):
         """Check and append measures of input MeasureSet to current MeasureSet.

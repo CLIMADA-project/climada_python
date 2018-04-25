@@ -1,5 +1,5 @@
 """
-Define DiscRates reader function from a file with extension defined in
+Define Measures reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
