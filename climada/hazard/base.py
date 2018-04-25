@@ -45,7 +45,7 @@ class Hazard(object):
         centroids (Centroids): centroids of the events
         event_id (np.array): id (>0) of each event
         event_name (list(str)): name of each event (default: event_id)
-        date (np.array): date integer date corresponding to the proleptic
+        date (np.array): integer date corresponding to the proleptic
             Gregorian ordinal, where January 1 of year 1 has ordinal 1
             (ordinal format of datetime library)
         frequency (np.array): frequency of each event in seconds

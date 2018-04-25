@@ -45,10 +45,10 @@ MIN_WIND_THRES_KN = 34
 """ Minimum windspeed stored in knots (for storage management reasons)"""
 
 class TropCyclone(Hazard):
-    """Contains Tropical Cyclones hazards from a csv IbTrac file.
+    """Contains tropical cyclone events obtained from a csv IBTrACS file.
 
     Attributes:
-        track (list(xarray.Dataset)): list of tropical cyclone tracks
+        tracks (list(xarray.Dataset)): list of tropical cyclone tracks
     """
 
     def __init__(self, file_name='', description='', centroids=None):
@@ -70,12 +70,12 @@ class TropCyclone(Hazard):
 
     def set(self, files, descriptions='', centroids=None, model='H08'):
         """Set and check hazard, and centroids if not provided, from input
-        file. Parallel through files.
+        csv IBTrACS file. Parallel through files.
 
         Parameters:
             files (str or list(str), optional): absolute file name(s) or
                 folder name containing the files to read
-            description (str or list(str), optional): one description of the
+            descriptions (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
             model (str, optional): model to compute gust. Default Holland2008.
@@ -116,7 +116,7 @@ class TropCyclone(Hazard):
         if hasattr(hazard, 'tracks'):
             self.tracks.extend(hazard.tracks)
 
-    def plot_track(self):
+    def plot_tracks(self):
         """Plot track over earth.
 
         Returns:
@@ -137,7 +137,7 @@ class TropCyclone(Hazard):
                                 max(max_lon, np.max(track.lon.values))
         axis.set_extent(([min_lon, max_lon, min_lat, max_lat]))
         plot.add_shapes(axis)
-        axis.set_title('IbTrac tracks' + ''.join(self.tag.description))
+        axis.set_title('TC tracks' + ''.join(self.tag.description))
         color = iter(cm.rainbow(np.linspace(0, 1, len(self.tracks))))
         for track in self.tracks:
             axis.plot(track.lon.values, track.lat.values, c=next(color))
