@@ -2,9 +2,10 @@
 Define Tag class.
 """
 
-import logging
-
 __all__ = ['Tag']
+
+import logging
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,8 +53,27 @@ class Tag(object):
                 self.description = [self.description]
             self.description.append(tag.description)
 
+    def join_file_names(self):
+        """ Get a string with the joined file names. """
+        if not isinstance(self.file_name, list):
+            join_file = os.path.splitext(os.path.basename(self.file_name))[0]
+        else:
+            join_file = ' + '.join([os.path.splitext(
+                os.path.basename(file))[0] for file in self.file_name])
+        return join_file
+
+    def join_descriptions(self):
+        """ Get a string with the joined descriptions. """
+        if not isinstance(self.file_name, list):
+            join_desc = os.path.splitext(os.path.basename(self.description))[0]
+        else:
+            join_desc = ' + '.join([os.path.splitext(
+                os.path.basename(file))[0] for file in self.description])
+        return join_desc
+
     def __str__(self):
-        return ' Type: ' + self.haz_type + '\n File: ' + self.file_name +\
-            '\n Description: ' + self.description
+        return ' Type: ' + self.haz_type + '\n File: ' + \
+            self.join_file_names() + '\n Description: ' + \
+            self.join_descriptions()
 
     __repr__ = __str__
