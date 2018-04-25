@@ -54,36 +54,32 @@ LOGGER = logging.getLogger(__name__)
 
 def read_mat(exposures, file_name, var_names=None):
     """Read MATLAB file and store variables in exposures. """
-    try:
-        # set variable names in source file
-        if var_names is None:
-            var_names = DEF_VAR_MAT
+    if var_names is None:
+        var_names = DEF_VAR_MAT
 
-        # Load mat data
-        data = hdf5.read(file_name)
-        try:
-            data = data[var_names['sup_field_name']]
-        except KeyError:
-            pass
+    data = hdf5.read(file_name)
+    try:
+        data = data[var_names['sup_field_name']]
+    except KeyError:
+        pass
+
+    try:
         data = data[var_names['field_name']]
 
-        # Fill variables
         _read_mat_obligatory(exposures, data, var_names)
         _read_mat_default(exposures, data, var_names)
         _read_mat_optional(exposures, data, file_name, var_names)
-
     except KeyError as var_err:
         LOGGER.error("Not existing variable: " + str(var_err))
         raise var_err
 
 def read_excel(exposures, file_name, var_names):
     """Read excel file and store variables in exposures. """
+    if var_names is None:
+        var_names = DEF_VAR_EXCEL
     try:
-        if var_names is None:
-            var_names = DEF_VAR_EXCEL
-
         dfr = pandas.read_excel(file_name, var_names['sheet_name']['exp'])
-        # get variables
+
         _read_xls_obligatory(exposures, dfr, var_names)
         _read_xls_default(exposures, dfr, var_names)
         _read_xls_optional(exposures, dfr, file_name, var_names)

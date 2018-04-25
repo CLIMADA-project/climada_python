@@ -44,8 +44,34 @@ def read_excel(imp_funcs, file_name, var_names):
     if var_names is None:
         var_names = DEF_VAR_EXCEL
 
-    dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+    try:
+        dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+        read_att_excel(imp_funcs, dfr, var_names)
+    except KeyError as err:
+        LOGGER.error("Not existing variable." + str(err))
+        raise err
 
+def read_mat(imp_funcs, file_name, var_names):
+    """Read MATLAB file and store variables in imp_funcs. """
+    if var_names is None:
+        var_names = DEF_VAR_MAT
+
+    imp = hdf5.read(file_name)
+
+    try:
+        imp = imp[var_names['sup_field_name']]
+    except KeyError:
+        pass
+
+    try:
+        imp = imp[var_names['field_name']]
+        read_att_mat(imp_funcs, imp, file_name, var_names)
+    except KeyError as err:
+        LOGGER.error("Not existing variable." + str(err))
+        raise err
+
+def read_att_excel(imp_funcs, dfr, var_names):
+    """Read impact functions' attributes from Excel file"""
     dist_func = _get_xls_funcs(dfr, var_names)
     for haz_type, imp_id in dist_func:
         df_func = dfr[dfr[var_names['col_name']['peril']] == haz_type]
@@ -75,19 +101,8 @@ def read_excel(imp_funcs, file_name, var_names):
 
         imp_funcs.add_func(func)
 
-def read_mat(imp_funcs, file_name, var_names):
-    """Read MATLAB file and store variables in imp_funcs. """
-    if var_names is None:
-        var_names = DEF_VAR_MAT
-
-    imp = hdf5.read(file_name)
-    try:
-        imp = imp[var_names['sup_field_name']]
-    except KeyError:
-        pass
-
-    imp = imp[var_names['field_name']]
-
+def read_att_mat(imp_funcs, imp, file_name, var_names):
+    """Read impact functions' attributes from MATLAB file"""
     funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
     for imp_key, imp_rows in funcs_idx.items():
         func = ImpactFunc()
@@ -100,8 +115,7 @@ def read_mat(imp_funcs, file_name, var_names):
         except KeyError:
             pass
         # check that this function only has one name
-        func.name = _get_hdf5_name(imp, imp_rows, \
-                                                file_name, var_names)
+        func.name = _get_hdf5_name(imp, imp_rows, file_name, var_names)
         func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
         func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
         func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
