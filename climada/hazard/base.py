@@ -13,27 +13,27 @@ from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
-from climada.hazard.source import read_mat, read_excel
+from climada.hazard.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.plot as plot
 import climada.util.checker as check
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'MAT':  '.mat',
-            'XLS':  '.xls',
-            'XLSX': '.xlsx'
+FILE_EXT = {'.mat':  'MAT',
+            '.xls':  'XLS',
+            '.xlsx': 'XLS'
            }
 """ Supported files format to read from """
 
-RETURN_PER = np.array([25, 50, 100, 250])
+RETURN_PER = (25, 50, 100, 250)
 """ Default return periods in statistics"""
 
 INTENSITY_THRES = {'TC': 10
                   }
 """ Intensity threshold used to filter lower intensities in statistics """
 
-# TODO: add original events array. year set?
+# TODO: add original events array.
 
 class Hazard(object):
     """Contains events of some hazard type defined at centroids. Loads from
@@ -146,13 +146,13 @@ class Hazard(object):
         """Compute and plot hazard intensity maps for different return periods.
 
         Parameters:
-            return_periods (np.array, optional): return periods to consider
+            return_periods (tuple(int), optional): return periods to consider
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
-        inten_stats = self._compute_stats(return_periods)
+        inten_stats = self._compute_stats(np.array(return_periods))
         colbar_name = 'Wind intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
@@ -325,6 +325,33 @@ class Hazard(object):
         raise NotImplementedError
 
     @staticmethod
+    def get_sup_file_format():
+        """ Get supported file extensions that can be read.
+
+        Returns:
+            list(str)
+        """
+        return list(FILE_EXT.keys())
+
+    @staticmethod
+    def get_def_file_var_names(src_format):
+        """Get default variable names for given file format.
+
+        Parameters:
+            src_format (str): extension of the file, e.g. '.xls', '.mat'
+
+        Returns:
+            dict: dictionary with variable names
+        """
+        try:
+            if '.' not in src_format:
+                src_format = '.' + src_format
+            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
+        except KeyError:
+            LOGGER.error('File extension not supported: %s.', src_format)
+            raise ValueError
+
+    @staticmethod
     def _read_one(file_name, haz_type, description='', centroids=None, \
                   var_names=None):
         """ Read hazard, and centroids if not provided, from input file.
@@ -344,22 +371,14 @@ class Hazard(object):
         """
         new_haz = Hazard()
         new_haz.tag = TagHazard(haz_type, file_name, description)
+
         extension = os.path.splitext(file_name)[1]
-        if extension == FILE_EXT['MAT']:
-            try:
-                read_mat(new_haz, file_name, haz_type, centroids, var_names)
-            except KeyError as var_err:
-                LOGGER.error("Not existing variable. " + str(var_err))
-                raise var_err
-        elif (extension == FILE_EXT['XLS']) or (extension == FILE_EXT['XLSX']):
-            try:
-                read_excel(new_haz, file_name, centroids, var_names)
-            except KeyError as var_err:
-                LOGGER.error("Not existing variable. " + str(var_err))
-                raise var_err
-        else:
-            LOGGER.error("Input file extension not supported: %s.", extension)
+        try:
+            reader = READ_SET[FILE_EXT[extension]][1]
+        except KeyError:
+            LOGGER.error('Input file extension not supported: %s.', extension)
             raise ValueError
+        reader(new_haz, file_name, centroids, var_names)
 
         return new_haz
 
@@ -497,11 +516,11 @@ class Hazard(object):
         graph.set_x_lim(range(len(array_val)))
         return graph.get_elems()
 
-    def _compute_stats(self, return_periods=RETURN_PER):
+    def _compute_stats(self, return_periods):
         """ Compute intensity map for given return periods.
 
         Parameters:
-            return_periods (np.array, optional): return periods to consider
+            return_periods (np.array): return periods to consider
 
         Returns:
             np.array
@@ -516,7 +535,7 @@ class Hazard(object):
         """ Compute local intensity for given return period.
 
         Parameters:
-            return_periods (np.array, optional): return periods to consider
+            return_periods (np.array): return periods to consider
             cen_pos (int): centroid position
 
         Returns:

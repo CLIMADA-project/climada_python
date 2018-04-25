@@ -7,6 +7,7 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard.base import Hazard
+from climada.hazard.source import READ_SET
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
@@ -96,6 +97,13 @@ class TestLoader(unittest.TestCase):
                 haz.check()
         self.assertIn('There are events with the same identifier.', \
                          cm.output[0])
+
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(Hazard.get_def_file_var_names('xls') == 
+                        READ_SET['XLS'][0])
+        self.assertTrue(Hazard.get_def_file_var_names('.mat') == 
+                        READ_SET['MAT'][0])
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
@@ -484,14 +492,16 @@ class TestStats(unittest.TestCase):
     def test_degenerate_pass(self):
         """ Test degenerate call. """
         haz = Hazard('TC', HAZ_TEST_MAT)
+        return_period = np.array([25, 50, 100, 250])
         haz.intensity = np.zeros(haz.intensity.shape)
-        inten_stats = haz._compute_stats()
+        inten_stats = haz._compute_stats(return_period)
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
     def test_ref_pass(self):
         """Compare against reference."""        
         haz = Hazard(file_name=HAZ_TEST_MAT)
-        inten_stats = haz._compute_stats()
+        return_period = np.array([25, 50, 100, 250])
+        inten_stats = haz._compute_stats(return_period)
         self.assertAlmostEqual(inten_stats[0][0], 55.424015590131290)
         self.assertAlmostEqual(inten_stats[1][0], 67.221687644669998)
         self.assertAlmostEqual(inten_stats[2][0], 79.019359699208721)

@@ -3,11 +3,7 @@ Define Hazard reader functions from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_MAT',
-           'DEF_VAR_EXCEL',
-           'read_mat',
-           'read_excel'
-          ]
+__all__ = ['READ_SET']
 
 import logging
 import datetime as dt
@@ -56,25 +52,40 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
 
 LOGGER = logging.getLogger(__name__)
 
-def read_mat(hazard, file_name, haz_type, centroids, var_names):
+def read_mat(hazard, file_name, centroids, var_names):
     """Read MATLAB file and store variables in hazard."""
     if var_names is None:
         var_names = DEF_VAR_MAT
-
-    data = hdf5.read(file_name)
     try:
-        data = data[var_names['field_name']]
-    except KeyError:
-        pass
+        data = hdf5.read(file_name)
+        try:
+            data = data[var_names['field_name']]
+        except KeyError:
+            pass
 
-    new_haz = hdf5.get_string(data[var_names['var_name']['per_id']])
-    if new_haz != haz_type:
-        LOGGER.warning('Hazard read is of type %s and not %s.', new_haz, \
-                       haz_type)
+        new_haz = hdf5.get_string(data[var_names['var_name']['per_id']])
         hazard.tag.haz_type = new_haz
 
-    read_centroids(hazard, centroids, var_names['var_cent'])
+        read_centroids(hazard, centroids, var_names['var_cent'])
 
+        read_att_mat(hazard, data, file_name, var_names)
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable. " + str(var_err))
+        raise var_err
+
+def read_excel(hazard, file_name, centroids, var_names):
+    """Read excel file and store variables in hazard. """
+    if var_names is None:
+        var_names = DEF_VAR_EXCEL
+    try:
+        read_centroids(hazard, centroids, var_names['col_centroids'])
+        read_att_excel(hazard, file_name, var_names)
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable. " + str(var_err))
+        raise var_err
+
+def read_att_mat(hazard, data, file_name, var_names):
+    """ Read MATLAB hazard's attributes. """
     hazard.frequency = np.squeeze(data[var_names['var_name']['freq']])
     hazard.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
                                  astype(np.int, copy=False))
@@ -112,13 +123,8 @@ def read_mat(hazard, file_name, haz_type, centroids, var_names):
          dt.timedelta(days=date%1)- \
          dt.timedelta(days=366)).toordinal() for date in datenum])
 
-def read_excel(hazard, file_name, centroids, var_names):
-    """Read excel file and store variables in hazard. """
-    if var_names is None:
-        var_names = DEF_VAR_EXCEL
-
-    read_centroids(hazard, centroids, var_names['col_centroids'])
-
+def read_att_excel(hazard, file_name, var_names):
+    """ Read Excel hazard's attributes. """
     num_cen = len(hazard.centroids.id)
 
     dfr = pandas.read_excel(file_name, var_names['sheet_name']['freq'])
@@ -166,3 +172,7 @@ def read_centroids(hazard, centroids, var_names):
                               var_names)
     else:
         hazard.centroids = centroids
+
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }
