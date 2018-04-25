@@ -1,5 +1,5 @@
 """
-Test Measures from Excel file.
+Test MeasureSet from Excel file.
 """
 
 import unittest
@@ -7,7 +7,7 @@ import numpy as np
 
 from climada.entity.measures.base import MeasureSet
 from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
- 
+
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
@@ -17,11 +17,11 @@ class TestReaderExcel(unittest.TestCase):
         description = 'One single file.'
         meas.read(ENT_TEST_XLS, description)
 
-        # Check results        
+        # Check results
         n_meas = 4
-        
+
         self.assertEqual(len(meas.get_measure()), n_meas)
-        
+
         act_man = meas.get_measure('Mangroves')
         self.assertEqual(act_man.name, 'Mangroves')
         self.assertEqual(type(act_man.color_rgb), np.ndarray)
@@ -75,11 +75,11 @@ class TestReaderMat(unittest.TestCase):
         description = 'One single file.'
         meas.read(ENT_DEMO_MAT, description)
 
-        # Check results        
+        # Check results
         n_meas = 4
-        
+
         self.assertEqual(len(meas.get_measure()), n_meas)
-        
+
         act_man = meas.get_measure('Mangroves')
         self.assertEqual(act_man.name, 'Mangroves')
         self.assertEqual(type(act_man.color_rgb), np.ndarray)

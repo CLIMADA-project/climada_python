@@ -3,11 +3,7 @@ Define DiscRates reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_MAT',
-           'DEF_VAR_EXCEL',
-           'read_mat',
-           'read_excel'
-          ]
+__all__ = ['READ_SET']
 
 import logging
 import numpy as np
@@ -42,11 +38,15 @@ def read_mat(disc_rates, file_name, var_names):
         disc = disc[var_names['sup_field_name']]
     except KeyError:
         pass
-    disc = disc[var_names['field_name']]
 
-    disc_rates.years = np.squeeze(disc[var_names['var_name']['year']]). \
+    try:
+        disc = disc[var_names['field_name']]
+        disc_rates.years = np.squeeze(disc[var_names['var_name']['year']]). \
                         astype(int, copy=False)
-    disc_rates.rates = np.squeeze(disc[var_names['var_name']['disc']])
+        disc_rates.rates = np.squeeze(disc[var_names['var_name']['disc']])
+    except KeyError as err:
+        LOGGER.error("Not existing variable. " + str(err))
+        raise err
 
 def read_excel(disc_rates, file_name, var_names):
     """Read excel file and store variables in disc_rates. """
@@ -54,8 +54,15 @@ def read_excel(disc_rates, file_name, var_names):
     if var_names is None:
         var_names = DEF_VAR_EXCEL
 
-    dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+    try:
+        dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+        disc_rates.years = dfr[var_names['col_name']['year']].values. \
+                            astype(int, copy=False)
+        disc_rates.rates = dfr[var_names['col_name']['disc']].values
+    except KeyError as err:
+        LOGGER.error("Not existing variable. " + str(err))
+        raise err
 
-    disc_rates.years = dfr[var_names['col_name']['year']].values. \
-                        astype(int, copy=False)
-    disc_rates.rates = dfr[var_names['col_name']['disc']].values
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }

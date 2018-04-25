@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.entity.disc_rates.source import READ_SET
 from climada.util.constants import ENT_TEST_XLS
 
 class TestChecker(unittest.TestCase):
@@ -29,6 +30,13 @@ class TestConstructor(unittest.TestCase):
         disc_rate = DiscRates()
         self.assertTrue(hasattr(disc_rate, 'years'))
         self.assertTrue(hasattr(disc_rate, 'rates'))
+
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(DiscRates.get_def_file_var_names('xls') == 
+                        READ_SET['XLS'][0])
+        self.assertTrue(DiscRates.get_def_file_var_names('.mat') == 
+                        READ_SET['MAT'][0])
 
 class TestAppend(unittest.TestCase):
     """Check append function"""

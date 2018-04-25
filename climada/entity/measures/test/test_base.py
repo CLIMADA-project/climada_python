@@ -1,11 +1,12 @@
 """
-Test Measures class.
+Test MeasureSet class.
 """
 
 import unittest
 import numpy
 
 from climada.entity.measures.base import MeasureSet, Measure
+from climada.entity.measures.source import READ_SET
 from climada.util.constants import ENT_TEMPLATE_XLS
 
 class TestConstructor(unittest.TestCase):
@@ -26,7 +27,14 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(act_1, 'paa_impact'))
         self.assertTrue(hasattr(act_1, 'risk_transf_attach'))
         self.assertTrue(hasattr(act_1, 'risk_transf_cover'))
-        
+
+    def test_get_def_vars(self):
+        """ Test def_source_vars function."""
+        self.assertTrue(MeasureSet.get_def_file_var_names('xls') ==
+                        READ_SET['XLS'][0])
+        self.assertTrue(MeasureSet.get_def_file_var_names('.mat') ==
+                        READ_SET['MAT'][0])
+
 class TestContainer(unittest.TestCase):
     """Test MeasureSet as container."""
     def test_add_wrong_error(self):
@@ -130,7 +138,7 @@ class TestChecker(unittest.TestCase):
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
         meas.add_measure(act_1)
-        
+
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
@@ -147,7 +155,7 @@ class TestChecker(unittest.TestCase):
         act_1.paa_impact = (1, 2)
         act_1.hazard_intensity = (1, 2)
         meas.add_measure(act_1)
-        
+
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
@@ -179,7 +187,7 @@ class TestChecker(unittest.TestCase):
         act_1.paa_impact = (1, 2, 3, 4)
         act_1.hazard_intensity = (1, 2)
         meas.add_measure(act_1)
-        
+
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
@@ -199,7 +207,7 @@ class TestChecker(unittest.TestCase):
 class TestAppend(unittest.TestCase):
     """Check append function"""
     def test_append_to_empty_same(self):
-        """Append MeasureSet to empty one.""" 
+        """Append MeasureSet to empty one."""
         meas = MeasureSet()
         meas_add = MeasureSet()
         act_1 = Measure()
@@ -209,15 +217,15 @@ class TestAppend(unittest.TestCase):
         act_1.paa_impact = (1, 2)
         act_1.hazard_intensity = (1, 2)
         meas_add.add_measure(act_1)
-        
+
         meas.append(meas_add)
         meas.check()
-        
+
         self.assertEqual(meas.num_measures(), 1)
         self.assertEqual(meas.get_names(), [act_1.name])
 
     def test_append_equal_same(self):
-        """Append the same MeasureSet. The inital MeasureSet is obtained."""     
+        """Append the same MeasureSet. The inital MeasureSet is obtained."""
         meas = MeasureSet()
         meas_add = MeasureSet()
         act_1 = Measure()
@@ -228,7 +236,7 @@ class TestAppend(unittest.TestCase):
         act_1.hazard_intensity = (1, 2)
         meas.add_measure(act_1)
         meas_add.add_measure(act_1)
-        
+
         meas.append(meas_add)
         meas.check()
 
@@ -244,27 +252,27 @@ class TestAppend(unittest.TestCase):
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
         act_1.hazard_intensity = (1, 2)
-        
+
         act_11 = Measure()
         act_11.name = 'Mangrove'
         act_11.color_rgb = numpy.array([1, 1, 1])
         act_11.mdd_impact = (1, 2)
         act_11.paa_impact = (1, 3)
         act_11.hazard_intensity = (1, 2)
-        
+
         act_2 = Measure()
         act_2.name = 'Anything'
         act_2.color_rgb = numpy.array([1, 1, 1])
         act_2.mdd_impact = (1, 2)
         act_2.paa_impact = (1, 2)
         act_2.hazard_intensity = (1, 2)
-        
+
         meas = MeasureSet()
         meas.add_measure(act_1)
         meas_add = MeasureSet()
         meas_add.add_measure(act_11)
         meas_add.add_measure(act_2)
-        
+
         meas.append(meas_add)
         meas.check()
 

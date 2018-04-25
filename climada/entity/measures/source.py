@@ -3,11 +3,7 @@ Define Measures reader function from a file with extension defined in
 constant FILE_EXT.
 """
 
-__all__ = ['DEF_VAR_MAT',
-           'DEF_VAR_EXCEL',
-           'read_mat',
-           'read_excel'
-          ]
+__all__ = ['READ_SET']
 
 import logging
 import numpy as np
@@ -64,8 +60,28 @@ def read_mat(measures, file_name, var_names):
         data = data[var_names['sup_field_name']]
     except KeyError:
         pass
-    data = data[var_names['field_name']]
 
+    try:
+        data = data[var_names['field_name']]
+        read_att_mat(measures, data, file_name, var_names)
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable. " + str(var_err))
+        raise var_err
+
+def read_excel(measures, file_name, var_names):
+    """Read excel file and store variables in measures."""
+    if var_names is None:
+        var_names = DEF_VAR_EXCEL
+
+    try:
+        dfr = pandas.read_excel(file_name, var_names['sheet_name'])
+        read_att_excel(measures, dfr, var_names)
+    except KeyError as var_err:
+        LOGGER.error("Not existing variable. " + str(var_err))
+        raise var_err
+
+def read_att_mat(measures, data, file_name, var_names):
+    """Read MATLAB measures attributes"""
     num_mes = len(data[var_names['var_name']['name']])
     for idx in range(0, num_mes):
         meas = Measure()
@@ -95,13 +111,8 @@ def read_mat(measures, file_name, var_names):
 
         measures.add_measure(meas)
 
-def read_excel(measures, file_name, var_names):
-    """Read excel file and store variables in measures."""
-    if var_names is None:
-        var_names = DEF_VAR_EXCEL
-
-    dfr = pandas.read_excel(file_name, var_names['sheet_name'])
-
+def read_att_excel(measures, dfr, var_names):
+    """Read Excel measures attributes"""
     num_mes = len(dfr.index)
     for idx in range(0, num_mes):
         meas = Measure()
@@ -129,3 +140,7 @@ def read_excel(measures, file_name, var_names):
         meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
 
         measures.add_measure(meas)
+
+READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
+            'MAT': (DEF_VAR_MAT, read_mat)
+           }
