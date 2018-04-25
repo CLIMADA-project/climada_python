@@ -4,6 +4,8 @@ Define Tag class.
 
 __all__ = ['Tag']
 
+import os
+
 class Tag(object):
     """Source data tag for Exposures, DiscRates, ImpactFuncSet, MeasureSet.
 
@@ -36,6 +38,15 @@ class Tag(object):
             if not isinstance(self.description, list):
                 self.description = [self.description]
             self.description.append(tag.description)
+
+    def join_file_names(self):
+        """ Get a string with the joined file names. """
+        if not isinstance(self.file_name, list):
+            join_file = os.path.splitext(os.path.basename(self.file_name))[0]
+        else:
+            join_file = ' + '.join([os.path.splitext(
+                    os.path.basename(file))[0] for file in self.file_name])
+        return join_file
 
     def __str__(self):
         return ' File: ' + self.file_name + '\n Description: ' + \
