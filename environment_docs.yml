@@ -1,34 +1,27 @@
 name: climada_env
 channels:
-  - conda-forge
-  - anaconda
+  - defaults
 dependencies:
   - alabaster=0.7.10
   - asn1crypto=0.22.0
   - astroid=1.5.3
   - babel=2.5.0
-  - backcall=0.1.0
   - bleach=2.0.0
-  - bzip2=1.0.6
-  - ca-certificates=2018.03.07
+  - ca-certificates=2017.08.26
   - cartopy=0.16.0
-  - certifi=2018.4.16
+  - certifi=2018.1.18
   - cffi=1.10.0
   - chardet=3.0.4
   - cryptography=2.0.3
-  - curl=7.59.0
   - cycler=0.10.0
-  - dbus=1.10.22
+  - dill==0.2.7.1
   - decorator=4.1.2
   - docutils=0.14
   - entrypoints=0.2.3
   - expat=2.2.5
   - freetype=2.8
   - geos=3.6.2
-  - gettext=0.19.8.1
-  - glib=2.53.6
   - h5py=2.7.1
-  - hdf4=4.2.13
   - hdf5=1.10.1
   - html5lib=0.999999999
   - icu=58.2
@@ -45,39 +38,26 @@ dependencies:
   - jsonschema=2.6.0
   - jupyter_client=5.2.2
   - jupyter_core=4.4.0
-  - kiwisolver=1.0.1
   - lazy-object-proxy=1.3.1
-  - libcurl=7.59.0
-  - libcxx=4.0.1
-  - libcxxabi=4.0.1
-  - libedit=3.1
-  - libffi=3.2.1
-  - libgfortran=3.0.1
   - libiconv=1.15
-  - libnetcdf=4.5.0
-  - libpng=1.6.34
-  - libsodium=1.0.13
-  - libssh2=1.8.0
+  - libpng=1.6.32
   - libtiff=4.0.9
   - libxml2=2.9.7
   - libxslt=1.1.32
   - lxml=4.1.1
   - markupsafe=1.0
-  - matplotlib=2.2.2
+  - matplotlib=2.1.1
   - mccabe=0.6.1
   - mistune=0.8.1
   - mkl=2018.0.1
   - nbconvert=5.3.1
   - nbformat=4.4.0
-  - ncurses=6.0
-  - netcdf4=1.3.1
   - notebook=5.3.1
   - numpy=1.13.3
   - numpydoc=0.7.0
   - olefile=0.45.1
-  - openssl=1.0.2o
+  - openssl=1.0.2n
   - owslib=0.16.0
-  - packaging=17.1
   - pandas=0.21.1
   - pandoc=1.19.2.1
   - pandocfilters=1.4.2
@@ -89,7 +69,6 @@ dependencies:
   - proj4=4.9.3
   - prompt_toolkit=1.0.15
   - psutil=5.4.0
-  - ptyprocess=0.5.2
   - pycodestyle=2.3.1
   - pycparser=2.18
   - pyepsg=0.3.2
@@ -104,14 +83,12 @@ dependencies:
   - pysocks=1.6.7
   - python=3.6.3
   - python-dateutil=2.6.1
-  - python.app=2
   - pytz=2017.2
   - pyzmq=16.0.2
   - qt=5.6.2
   - qtawesome=0.4.4
   - qtconsole=4.3.1
   - qtpy=1.3.1
-  - readline=7.0
   - requests=2.18.4
   - rope=0.10.5
   - scikit-learn=0.19.1
@@ -139,18 +116,17 @@ dependencies:
   - webencodings=0.5.1
   - wheel=0.29.0
   - wrapt=1.10.11
+  - xarray==0.10.2
   - xlrd=1.1.0
   - xz=5.2.3
   - zeromq=4.2.2
   - zlib=1.2.11
   - pip:
     - coverage==4.4.2
-    - dill==0.2.7.1
     - multiprocess==0.70.5
     - pathos==0.2.1
     - pint==0.8.1
     - pox==0.2.3
     - ppft==1.6.4.7.1
-    - xarray==0.10.2
     - xmlrunner==1.7.7
 
