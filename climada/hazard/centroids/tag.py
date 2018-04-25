@@ -45,11 +45,20 @@ class Tag(object):
             join_file = os.path.splitext(os.path.basename(self.file_name))[0]
         else:
             join_file = ' + '.join([os.path.splitext(
-                    os.path.basename(file))[0] for file in self.file_name])
+                os.path.basename(file))[0] for file in self.file_name])
         return join_file
 
+    def join_descriptions(self):
+        """ Get a string with the joined descriptions. """
+        if not isinstance(self.file_name, list):
+            join_desc = os.path.splitext(os.path.basename(self.description))[0]
+        else:
+            join_desc = ' + '.join([os.path.splitext(
+                os.path.basename(file))[0] for file in self.description])
+        return join_desc
+
     def __str__(self):
-        return ' File: ' + self.file_name + '\n Description: ' + \
-            self.description
+        return ' File: ' + self.join_file_names() + '\n Description: ' + \
+            self.join_descriptions()
 
     __repr__ = __str__
