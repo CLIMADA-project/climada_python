@@ -324,7 +324,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(centroids.lat[coastal[1000000]], 60.900000000000006)
 
         self.assertEqual(centroids.lat[coastal[1044881]], 60.049999999999997)
-        self.assertEqual(centroids.lon[coastal[1044881]],  180.0500000000000)
+        self.assertEqual(centroids.lon[coastal[1044881]],  180.0000000000000)
         self.assertEqual(centroids.id[coastal[1044881]], 3043681)
 
     def test_vtrans_holland(self):
