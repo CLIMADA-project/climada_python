@@ -50,21 +50,21 @@ class TestLoader(unittest.TestCase):
         cen = self.good_centroids()
         cen.id = np.array([1, 2, 2])
         with self.assertLogs('climada.hazard.centroids.base', level='ERROR') as cm:
-            with self.assertRaises(ValueError): 
+            with self.assertRaises(ValueError):
                 cen.check()
         self.assertIn('There are centroids with the same identifier.', \
                          cm.output[0])
 
     def test_get_def_vars(self):
         """ Test def_source_vars function."""
-        self.assertTrue(Centroids.get_def_file_var_names('xls') == 
+        self.assertTrue(Centroids.get_def_file_var_names('xls') ==
                         READ_SET['XLS'][0])
-        self.assertTrue(Centroids.get_def_file_var_names('.mat') == 
+        self.assertTrue(Centroids.get_def_file_var_names('.mat') ==
                         READ_SET['MAT'][0])
 
 class TestAppend(unittest.TestCase):
     """Test append function."""
-   
+
     def test_appended_type(self):
         """Append the same centroids."""
         centr1 = Centroids()
@@ -127,9 +127,9 @@ class TestAppend(unittest.TestCase):
         centr1.tag = Tag('file_1.mat', 'description 1')
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
-        
+
         centr2 = centr1
-        
+
         new_pos = centr1.append(centr2)
         self.assertEqual(centr1.tag.file_name, 'file_1.mat')
         self.assertEqual(centr1.tag.description, 'description 1')
@@ -151,14 +151,14 @@ class TestAppend(unittest.TestCase):
         centr1.id = np.array([5, 7, 9])
         centr1.region_id = np.array([1, 2, 3])
         centr1.dist_coast = np.array([1.5, 2.6, 3.5])
-        
+
         centr2 = Centroids()
         centr2.tag = Tag('file_2.mat', 'description 2')
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
         centr2.id = np.array([6, 7, 9, 1])
         centr2.region_id = np.array([3, 4, 5, 6])
         centr2.dist_coast = np.array([4.5, 5.6, 6.5, 7.8])
-        
+
         new_pos = centr1.append(centr2)
         self.assertEqual(len(centr1.tag.file_name), 2)
         self.assertEqual(len(centr1.tag.description), 2)
@@ -170,7 +170,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (4,))
         self.assertTrue(np.array_equal(centr1.id, np.array([6, 7, 9, 1])))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([3, 4, 5, 6])))
-        self.assertTrue(np.array_equal(centr1.dist_coast, 
+        self.assertTrue(np.array_equal(centr1.dist_coast,
                                        np.array([4.5, 5.6, 6.5, 7.8])))
         self.assertTrue(np.array_equal(new_pos, [0, 1, 2, 3]))
 
@@ -180,12 +180,12 @@ class TestAppend(unittest.TestCase):
         centr1.tag = Tag('file_1.mat', 'description 1')
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
-        
+
         centr2 = Centroids()
         centr2.tag = Tag('file_2.mat', 'description 2')
         centr2.coord = np.array([[7, 8], [1, 5]])
         centr2.id = np.array([5, 7])
-        
+
         new_pos = centr1.append(centr2)
         self.assertEqual(len(centr1.tag.file_name), 2)
         self.assertEqual(len(centr1.tag.description), 2)
@@ -207,13 +207,13 @@ class TestAppend(unittest.TestCase):
         centr1.tag = Tag('file_1.mat', 'description 1')
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
-        
+
         centr2 = Centroids()
         centr2.tag = Tag('file_2.mat', 'description 2')
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr2.id = np.array([5, 7, 9])
         centr2.region_id = np.array([1, 1, 1])
-        
+
         with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
@@ -225,12 +225,12 @@ class TestAppend(unittest.TestCase):
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
         centr1.region_id = np.array([1, 1, 1])
-        
+
         centr2 = Centroids()
         centr2.tag = Tag('file_2.mat', 'description 2')
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr2.id = np.array([5, 7, 9])
-        
+
         with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
             centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
@@ -244,9 +244,9 @@ class TestAppend(unittest.TestCase):
         centr1.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr1.id = np.array([5, 7, 9])
         centr1.region_id = np.array([1, 1, 1])
-        
+
         centr2 = centr1
-        
+
         centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, \
                                               np.array([1, 1, 1])))

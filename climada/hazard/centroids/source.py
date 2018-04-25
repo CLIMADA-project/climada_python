@@ -40,14 +40,17 @@ def read_excel(centroids, file_name, var_names):
     if var_names is None:
         var_names = DEF_VAR_EXCEL
 
-    dfr = pd.read_excel(file_name, var_names['sheet_name'])
-
-    coord_cols = [var_names['col_name']['lat'], \
+    try:
+        dfr = pd.read_excel(file_name, var_names['sheet_name'])
+        coord_cols = [var_names['col_name']['lat'], \
                   var_names['col_name']['lon']]
 
-    centroids.coord = IrregularGrid(np.array(dfr[coord_cols]))
-    centroids.id = dfr[var_names['col_name']['cen_id']].values. \
+        centroids.coord = IrregularGrid(np.array(dfr[coord_cols]))
+        centroids.id = dfr[var_names['col_name']['cen_id']].values. \
                     astype(int, copy=False)
+    except KeyError as err:
+        LOGGER.error("Not existing variable." + str(err))
+        raise err
 
 def read_mat(centroids, file_name, var_names):
     """Read MATLAB file and store variables in centroids. """
@@ -67,6 +70,14 @@ def read_mat(centroids, file_name, var_names):
         LOGGER.warning("Variables are not under: %s.", \
                        var_names['field_names'])
 
+    try:
+        read_att_mat(centroids, cent, num_try, var_names)
+    except KeyError as err:
+        LOGGER.error("Not existing variable." + str(err))
+        raise err
+
+def read_att_mat(centroids, cent, num_try, var_names):
+    """Read impact functions' attributes from MATLAB file"""
     cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
     cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
     centroids.coord = IrregularGrid(np.array([cen_lat, cen_lon]).transpose())
