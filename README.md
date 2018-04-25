@@ -26,15 +26,15 @@ Configuration options
 The program searches for a local configuration file located in the current 
 working directory. A static default configuration file is supplied by the package 
 and used as fallback. The local configuration file needs to be called 
-``climada.conf``. All other files will be ignored. The same strategy is
-used for the logging configuration. The local logging configuration file needs to
-be called ``climada_log.conf``.
+``climada.conf``. All other files will be ignored.
 
 The climada configuration file is a JSON file and consists of the following values:
 
 - ``local_data``
 - ``present_ref_year``
 - ``future_ref_year``
+- ``tc_time_step_h``
+- ``log_level``
 
 A minimal configuration file looks something like this:
 
@@ -49,7 +49,11 @@ A minimal configuration file looks something like this:
     
     "present_ref_year": 2016,
     
-    "future_ref_year": 2030
+    "future_ref_year": 2030,
+
+    "tc_time_step_h": 1,
+
+    "log_level": "INFO"
 }
 ```
 
@@ -68,4 +72,10 @@ Default present reference year used in the entity.
 
 ### future_ref_year
 Default future reference year used in the entity.
+
+### tc_time_step_h
+Time step (in hours) used to interpolate tropical cyclone tracks.
+
+### log_level
+Minimum log level showed by logging. DEBUG, INFO, WARNING, ERROR and CRITICAL are the different levels.
 
