@@ -95,10 +95,12 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
+        self.assertTrue(np.array_equal(tc_haz.orig, np.array([True])))
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
+        self.assertEqual(len(tc_haz.tracks), 2)
         
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
@@ -120,7 +122,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz2.intensity.shape, (14451, 396))
 
 class TestIBTracs(unittest.TestCase):
-    """Test loading funcions from the TropCyclone class"""
+    """Test reading and model of TC from IBTrACS files"""
 
     def test_category_pass(self):
         """Test category computation."""
@@ -453,7 +455,64 @@ class TestIBTracs(unittest.TestCase):
         self.assertTrue(np.isclose(17.525880201507256,
                                    intensity[0, 1630877]))
 
+class TestRndWalk(unittest.TestCase):
+    """Test random walk for probabilistic tropical cyclone generation"""
+
+    def tearDown(self):
+        tc.ENS_SIZE = 9
+
+    def test_ref_pass(self):
+        """Test against MATLAB reference."""
+        tc.ENS_SIZE = 2
+        track = tc.read_ibtracs(TEST_TRACK_SHORT)
+        rnd_ini = np.array([[0.9649, 0.1576], [0.7922, 0.9595]])
+        rnd_ang = np.array([0.3922, 0.6555, 0.1712, 0.7060, 0.0318, 0.2769, \
+                            0.0462, 0.0971, 0.8235, 0.6948, 0.3171, 0.9502, \
+                            0.0344, 0.4387, 0.3816, 0.7655, 0.7952, 0.1869])
+        track_ens = tc.calc_random_walk(track, rnd_ini, rnd_ang)
+
+        self.assertEqual(len(track_ens), 2)
+        
+        self.assertFalse(track_ens[0].orig_event_flag)
+        self.assertEqual(track_ens[0].name, '1951239N12334_gen1')
+        self.assertEqual(track_ens[0].id_no, 1.951239012334010e+12)
+        self.assertEqual(track_ens[0].lon[0], -24.90265000000000)
+        self.assertEqual(track_ens[0].lon[1], -25.899653369275331)
+        self.assertEqual(track_ens[0].lon[2], -26.917223719188879)
+        self.assertEqual(track_ens[0].lon[3], -28.021940640460727)
+        self.assertEqual(track_ens[0].lon[4], -29.155418047711304)
+        self.assertEqual(track_ens[0].lon[8], -34.529188419229598)
+        
+        self.assertEqual(track_ens[0].lat[0], 12.73830000000000)
+        self.assertEqual(track_ens[0].lat[4], 13.130817937897319)
+        self.assertEqual(track_ens[0].lat[5], 13.219446057176036)
+        self.assertEqual(track_ens[0].lat[6], 13.291468242391597)
+        self.assertEqual(track_ens[0].lat[7], 13.343819850233439)
+        self.assertEqual(track_ens[0].lat[8], 13.412292879644005)
+
+        self.assertFalse(track_ens[1].orig_event_flag)
+        self.assertEqual(track_ens[1].name, '1951239N12334_gen2')
+        self.assertEqual(track_ens[1].id_no, 1.951239012334020e+12)
+        self.assertEqual(track_ens[1].lon[0], -26.11360000000000)
+        self.assertEqual(track_ens[1].lon[3], -29.409222264217661)
+        self.assertEqual(track_ens[1].lon[4], -30.584828633621079)
+        self.assertEqual(track_ens[1].lon[8], -35.959133410163332)
+        
+        self.assertEqual(track_ens[1].lat[0], 12.989250000000000)
+        self.assertEqual(track_ens[1].lat[6], 13.410297633704376)
+        self.assertEqual(track_ens[1].lat[7], 13.493978269787220)
+        self.assertEqual(track_ens[1].lat[8], 13.565343427825237)
+    
+    def test_from_class_pass(self):
+        """ Test call from class."""
+        tc_haz = TropCyclone()
+        tc_haz.set(TEST_TRACK_SHORT)
+        tc_haz.set_random_walk()
+
+        self.assertEqual(len(tc_haz.tracks), 10)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRndWalk))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
