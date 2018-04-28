@@ -2,7 +2,8 @@
 Define Hazard.
 """
 
-__all__ = ['Hazard']
+__all__ = ['Hazard',
+           'FILE_EXT']
 
 import os
 import copy
@@ -33,8 +34,6 @@ INTENSITY_THRES = {'TC': 10
                   }
 """ Intensity threshold used to filter lower intensities in statistics """
 
-# TODO: add original events array.
-
 class Hazard(object):
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
@@ -48,6 +47,8 @@ class Hazard(object):
         date (np.array): integer date corresponding to the proleptic
             Gregorian ordinal, where January 1 of year 1 has ordinal 1
             (ordinal format of datetime library)
+        orig (np.array): flags indicating historical events (True)
+            or probabilistic (False)
         frequency (np.array): frequency of each event in seconds
         intensity (sparse.csr_matrix): intensity of the events at centroids
         fraction (sparse.csr_matrix): fraction of affected exposures for each
@@ -102,6 +103,7 @@ class Hazard(object):
         self.frequency = np.array([])
         self.event_name = list()
         self.date = np.array([], int)
+        self.orig = np.array([], bool)
         # following values are defined for each event and centroid
         self.intensity = sparse.csr_matrix([]) # events x centroids
         self.fraction = sparse.csr_matrix([])  # events x centroids
@@ -139,20 +141,20 @@ class Hazard(object):
         self.clear()
         for file, desc, centr, var in zip(all_files, desc_list, centr_list,
                                           var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, haz_type, desc, centr, var))
 
-    def plot_stats(self, return_periods=RETURN_PER):
+    def plot_stats(self, return_periods=RETURN_PER, orig=False):
         """Compute and plot hazard intensity maps for different return periods.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
+            orig (bool, optional): if true, only historical events considered
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
-        inten_stats = self._compute_stats(np.array(return_periods))
+        inten_stats = self._compute_stats(np.array(return_periods), orig)
         colbar_name = 'Wind intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
@@ -289,7 +291,9 @@ class Hazard(object):
         new_name = list()
         new_dt = array('L')
         new_id = array('L')
-        self._append_events(hazard, new_ev_pos, new_name, new_id, new_dt)
+        new_orig = array('B')
+        self._append_events(hazard, new_ev_pos, new_name, new_id, new_dt,
+                            new_orig)
         n_add_ev = np.where(np.array(new_ev_pos) >= n_ini_ev)[0].size
         sparse_add = n_add_ev - 1
         if n_ini_cen != 0 or n_ini_ev != 0:
@@ -300,6 +304,8 @@ class Hazard(object):
                 astype(int, copy=False)
             self.date = np.append(self.date, np.array(new_dt)).\
                 astype(int, copy=False)
+            self.orig = np.append(self.orig, np.array(new_orig)).\
+                astype(bool, copy=False)
             self.intensity = sparse.vstack([self.intensity, \
                 sparse.lil_matrix((sparse_add, self.fraction.shape[1]))], \
                 format='lil')
@@ -319,10 +325,9 @@ class Hazard(object):
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
 
-    def calc_probabilistic(self):
-        """Compute and append probabilistic events from current historical."""
-        LOGGER.error('Probabilistic set not implemented yet in %s.', self)
-        raise NotImplementedError
+    def calc_year_set(self):
+        """ From dates and original event flags, compute yearly events """
+        # TODO
 
     @staticmethod
     def get_sup_file_format():
@@ -369,6 +374,7 @@ class Hazard(object):
         Returns:
             Hazard
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_haz = Hazard()
         new_haz.tag = TagHazard(haz_type, file_name, description)
 
@@ -384,6 +390,7 @@ class Hazard(object):
 
     def _check_events(self):
         """ Check that all attributes but centroids contain consistent data.
+        Put default date, event_name and orig if not provided.
 
         Raises:
             ValueError
@@ -400,19 +407,22 @@ class Hazard(object):
         else:
             check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
             check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
-        check.array_default(num_ev, self.event_name, 'Hazard.event_name', \
-                            list(self.event_id))
+        self.event_name = check.array_default(num_ev, self.event_name, \
+            'Hazard.event_name', list(self.event_id))
         self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
                             np.ones(self.event_id.shape, dtype=int))
+        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig', \
+                            np.zeros(self.event_id.shape, dtype=bool))
 
-    def _append_events(self, hazard, new_ev_pos, new_name, new_id, new_dt):
+    def _append_events(self, hazard, new_ev_pos, new_name, new_id, new_dt,
+                       new_orig):
         """Iterate over hazard events and collect their new position"""
         try:
             max_id = int(np.max(self.event_id))
         except ValueError:
             max_id = 0
-        for ev_id, ev_name, ev_dt in zip(hazard.event_id, hazard.event_name,
-                                         hazard.date):
+        for ev_id, ev_name, ev_dt, ev_orig in zip(hazard.event_id, \
+        hazard.event_name, hazard.date, hazard.orig):
             try:
                 found = self.event_name.index(ev_name)
                 new_ev_pos.append(found)
@@ -427,6 +437,7 @@ class Hazard(object):
                 new_ev_pos.append(len(self.event_id) + len(new_name))
                 new_name.append(ev_name)
                 new_dt.append(ev_dt)
+                new_orig.append(ev_orig)
                 if (ev_id in self.event_id) or (ev_id in new_id):
                     max_id += 1
                     new_id.append(max_id)
@@ -516,22 +527,29 @@ class Hazard(object):
         graph.set_x_lim(range(len(array_val)))
         return graph.get_elems()
 
-    def _compute_stats(self, return_periods):
+    def _compute_stats(self, return_periods, orig=False):
         """ Compute intensity map for given return periods.
 
         Parameters:
             return_periods (np.array): return periods to consider
+            orig (bool, optional): if true, only historical events considered
 
         Returns:
             np.array
         """
         inten_stats = np.zeros((len(return_periods), self.intensity.shape[1]))
+        inten = self.intensity
+        freq = self.frequency
+        if orig:
+            inten = inten[self.orig, :]
+            freq = freq[self.orig]*self.event_id.size/self.orig.nonzero()[0].size
         for cen_pos in range(self.intensity.shape[1]):
-            inten_loc = self._loc_return_inten(return_periods, cen_pos)
+            inten_loc = self._loc_return_inten(return_periods, cen_pos,
+                                               inten, freq, self.tag.haz_type)
             inten_stats[:, cen_pos] = inten_loc
         return inten_stats
 
-    def _loc_return_inten(self, return_periods, cen_pos):
+    def _loc_return_inten(self, return_periods, cen_pos, inten, freq, haz_type):
         """ Compute local intensity for given return period.
 
         Parameters:
@@ -541,17 +559,16 @@ class Hazard(object):
         Returns:
             np.array
         """
-        inten_pos = np.argwhere(self.intensity[:, cen_pos] > \
-                                INTENSITY_THRES[self.tag.haz_type])[:, 0]
+        inten_pos = np.argwhere(inten[:, cen_pos] >
+                                INTENSITY_THRES[haz_type])[:, 0]
         if inten_pos.size == 0:
             LOGGER.warning('No intensities over threshold %s for centroid '\
                            '%s.', INTENSITY_THRES[self.tag.haz_type], cen_pos)
             return np.zeros((return_periods.size, ))
-        inten_nz = np.asarray(self.intensity[inten_pos, cen_pos]. \
-                              todense()).squeeze()
+        inten_nz = np.asarray(inten[inten_pos, cen_pos].todense()).squeeze()
         sort_pos = inten_nz.argsort()[::-1]
         inten_sort = inten_nz[sort_pos]
-        freq_sort = self.frequency[inten_pos[sort_pos]]
+        freq_sort = freq[inten_pos[sort_pos]]
         np.cumsum(freq_sort, out=freq_sort)
         pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
         inten_fit = np.polyval(pol_coef, np.log(1/return_periods))
