@@ -2,7 +2,8 @@
 Define Exposures class.
 """
 
-__all__ = ['Exposures']
+__all__ = ['Exposures',
+           'FILE_EXT']
 
 import os
 import copy
@@ -132,11 +133,11 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot_value(self, ignore_null=False, pop_name=True, **kwargs):
+    def plot(self, ignore_null=False, pop_name=True, **kwargs):
         """Plot exposures values sum binned over Earth's map.
 
         Parameters:
-            ignore_null (bool, optional): flag to indicate if zero and 
+            ignore_null (bool, optional): flag to indicate if zero and
                 negative values are ignored in plot. Default is False.
             pop_name (bool, optional): add names of the populated places.
             kwargs (optional): arguments for hexbin matplotlib function
@@ -175,7 +176,6 @@ class Exposures(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(Exposures._read_one(file, desc, var))
 
     def append(self, exposures):
@@ -283,6 +283,7 @@ class Exposures(object):
         Returns:
             Exposures
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_exp = Exposures()
         new_exp.tag = Tag(file_name, description)
 
