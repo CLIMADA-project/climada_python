@@ -2,7 +2,8 @@
 Define Centroids class.
 """
 
-__all__ = ['Centroids']
+__all__ = ['Centroids',
+           'FILE_EXT']
 
 import os
 import copy
@@ -109,7 +110,6 @@ class Centroids(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(Centroids._read_one(file, desc, var))
 
     def append(self, centroids):
@@ -239,6 +239,7 @@ class Centroids(object):
         Returns:
             ImpactFuncSet
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_cent = Centroids()
         new_cent.tag = Tag(file_name, description)
 
