@@ -2,7 +2,8 @@
 Define DiscRates class.
 """
 
-__all__ = ['DiscRates']
+__all__ = ['DiscRates',
+           'FILE_EXT']
 
 import os
 import copy
@@ -14,6 +15,7 @@ from climada.entity.disc_rates.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
+import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -96,7 +98,6 @@ class DiscRates(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, desc, var))
 
     def append(self, disc_rates):
@@ -138,6 +139,14 @@ class DiscRates(object):
         """
         return list(FILE_EXT.keys())
 
+    def plot(self):
+        """Plot discount rates per year."""
+        graph = plot.Graph2D('Discount rates')
+        graph.add_subplot('Year', 'discount rate (%)', '')
+        graph.add_curve(self.years, self.rates * 100, 'b')
+        graph.set_x_lim(self.years)
+        return graph.get_elems()
+
     @staticmethod
     def get_def_file_var_names(src_format):
         """Get default variable names for given file format.
@@ -171,6 +180,7 @@ class DiscRates(object):
         Returns:
             DiscRates
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_disc = DiscRates()
         new_disc.tag = Tag(file_name, description)
 
