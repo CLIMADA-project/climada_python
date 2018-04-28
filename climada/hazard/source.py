@@ -23,7 +23,8 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             'unit': 'units',
                             'frac': 'fraction',
                             'comment': 'comment',
-                            'datenum': 'datenum'
+                            'datenum': 'datenum',
+                            'orig': 'orig_event_flag'
                            },
                'var_cent': {'field_names': ['centroids', 'hazard'],
                             'var_name': {'cen_id' : 'centroid_ID',
@@ -39,7 +40,8 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
                                },
                  'col_name': {'cen_id' : 'centroid_ID',
                               'even_id' : 'event_ID',
-                              'freq' : 'frequency'
+                              'freq' : 'frequency',
+                              'orig': 'orig_event_flag'
                              },
                  'col_centroids': {'sheet_name': 'centroids',
                                    'col_name': {'cen_id' : 'centroid_ID',
@@ -87,6 +89,7 @@ def read_excel(hazard, file_name, centroids, var_names):
 def read_att_mat(hazard, data, file_name, var_names):
     """ Read MATLAB hazard's attributes. """
     hazard.frequency = np.squeeze(data[var_names['var_name']['freq']])
+    hazard.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
     hazard.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
                                  astype(np.int, copy=False))
     hazard.units = hdf5.get_string(data[var_names['var_name']['unit']])
@@ -132,6 +135,7 @@ def read_att_excel(hazard, file_name, var_names):
     num_events = dfr.shape[0]
 
     hazard.frequency = dfr[var_names['col_name']['freq']].values
+    hazard.orig = dfr[var_names['col_name']['orig']].values.astype(bool)
     hazard.event_id = dfr[var_names['col_name']['even_id']].values. \
                         astype(int, copy=False)
 
