@@ -2,7 +2,8 @@
 Define ImpactFuncSet class.
 """
 
-__all__ = ['ImpactFuncSet']
+__all__ = ['ImpactFuncSet',
+           'FILE_EXT']
 
 import os
 import copy
@@ -247,7 +248,6 @@ class ImpactFuncSet(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, desc, var))
 
     def append(self, impact_funcs):
@@ -341,6 +341,7 @@ class ImpactFuncSet(object):
         Returns:
             ImpactFuncSet
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_imp = ImpactFuncSet()
         new_imp.tag = Tag(file_name, description)
 

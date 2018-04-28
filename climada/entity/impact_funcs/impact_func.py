@@ -73,9 +73,11 @@ class ImpactFunc(object):
         """
         if graph is None:
             graph = plot.Graph2D('', 1)
+        title = '%s %s' % (self.haz_type, str(self.id))
+        if self.name != str(self.id):
+            title += ': %s' % self.name
         graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
-                         'Percentage (%)', \
-                         '%s %s %s' % (self.haz_type, str(self.id), self.name))
+                         'Percentage (%)', title)
         graph.add_curve(self.intensity, self.mdd * 100, 'b', 'MDD')
         graph.add_curve(self.intensity, self.paa * 100, 'r', 'PAA')
         graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \
