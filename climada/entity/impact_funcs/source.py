@@ -115,7 +115,10 @@ def read_att_mat(imp_funcs, imp, file_name, var_names):
         except KeyError:
             pass
         # check that this function only has one name
-        func.name = _get_hdf5_name(imp, imp_rows, file_name, var_names)
+        try:
+            func.name = _get_hdf5_name(imp, imp_rows, file_name, var_names)
+        except KeyError:
+            func.name = str(func.id)
         func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
         func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
         func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
@@ -134,10 +137,10 @@ def _get_hdf5_funcs(imp, file_name, var_names):
     """Get rows that fill every impact function and its name."""
     func_pos = dict()
     for row, (fun_id, fun_type) in enumerate(zip( \
-    imp[var_names['var_name']['fun_id']], \
-    imp[var_names['var_name']['peril']])):
-        type_str = hdf5.get_str_from_ref(file_name, fun_type[0])
-        key = (type_str, fun_id[0])
+    imp[var_names['var_name']['fun_id']].squeeze(), \
+    imp[var_names['var_name']['peril']].squeeze())):
+        type_str = hdf5.get_str_from_ref(file_name, fun_type)
+        key = (type_str, int(fun_id))
         if key not in func_pos:
             func_pos[key] = list()
         func_pos[key].append(row)
