@@ -98,6 +98,28 @@ class TestLoader(unittest.TestCase):
         self.assertIn('There are events with the same identifier.', \
                          cm.output[0])
 
+    def test_check_wrong_date_fail(self):
+        """Wrong hazard definition"""
+        haz = self.good_hazard()
+        haz.date = np.array([1, 2])
+
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.date size: 3 != 2.', \
+                         cm.output[0])
+
+    def test_check_wrong_orig_fail(self):
+        """Wrong hazard definition"""
+        haz = self.good_hazard()
+        haz.orig = np.array([1, 2, 3, 4])
+
+        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.check()
+        self.assertIn('Invalid Hazard.orig size: 3 != 4.', \
+                         cm.output[0])
+
     def test_get_def_vars(self):
         """ Test def_source_vars function."""
         self.assertTrue(Hazard.get_def_file_var_names('xls') == 
@@ -119,6 +141,7 @@ class TestAppend(unittest.TestCase):
         hazard.event_id = np.array([1, 2, 3, 4])
         hazard.event_name = ['ev1', 'ev2', 'ev3', 'ev4']
         hazard.date = np.array([1, 2, 3, 4])
+        hazard.orig = np.array([True, False, False, True])
         hazard.frequency = np.array([0.1, 0.5, 0.5, 0.2])
         hazard.fraction = sparse.csr_matrix([[0.02, 0.03, 0.04], \
                                               [0.01, 0.01, 0.01], \
@@ -144,6 +167,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.event_name, haz1_orig.event_name)
         self.assertTrue(np.array_equal(haz1.event_id, haz1_orig.event_id))
         self.assertTrue(np.array_equal(haz1.date, haz1_orig.date))
+        self.assertTrue(np.array_equal(haz1.orig, haz1_orig.orig))
         self.assertTrue(np.array_equal(haz1.frequency, haz1_orig.frequency))
         self.assertTrue((haz1.intensity != haz1_orig.intensity).nnz == 0)
         self.assertTrue((haz1.fraction != haz1_orig.fraction).nnz == 0)
@@ -165,6 +189,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz1.event_id, haz1_orig.event_id))
         self.assertTrue(np.array_equal(haz1.frequency, haz1_orig.frequency))
         self.assertTrue(np.array_equal(haz1.date, haz1_orig.date))
+        self.assertTrue(np.array_equal(haz1.orig, haz1_orig.orig))
         self.assertTrue((haz1.intensity != haz1_orig.intensity).nnz == 0)
         self.assertTrue((haz1.fraction != haz1_orig.fraction).nnz == 0)
         self.assertEqual(haz1.units, haz1_orig.units)
@@ -183,6 +208,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz1.event_id, haz2.event_id))
         self.assertTrue(np.array_equal(haz1.frequency, haz2.frequency))
         self.assertTrue(np.array_equal(haz1.date, haz2.date))
+        self.assertTrue(np.array_equal(haz1.orig, haz2.orig))
         self.assertTrue((haz1.intensity != haz2.intensity).nnz == 0)
         self.assertTrue((haz1.fraction != haz2.fraction).nnz == 0)
         self.assertEqual(haz1.units, haz2.units)
@@ -233,6 +259,8 @@ class TestAppend(unittest.TestCase):
                          haz1_orig.event_name + haz2.event_name)
         self.assertTrue(np.array_equal(haz1.date, \
                          np.append(haz1_orig.date, haz2.date)))
+        self.assertTrue(np.array_equal(haz1.orig, \
+                         np.append(haz1_orig.orig, haz2.orig)))
         self.assertTrue(np.array_equal(haz1.centroids.id, \
             np.append(haz1_orig.centroids.id, haz2.centroids.id)))
         self.assertTrue(np.array_equal(haz1.event_id, \
@@ -288,6 +316,8 @@ class TestAppend(unittest.TestCase):
                          haz1_orig.event_name + haz2.event_name)
         self.assertTrue(np.array_equal(haz1.date, \
                          np.append(haz1_orig.date, haz2.date)))
+        self.assertTrue(np.array_equal(haz1.orig, \
+                         np.append(haz1_orig.orig, haz2.orig)))
         self.assertTrue(np.array_equal(haz1.event_id, \
             np.append(haz1_orig.event_id, haz2.event_id)))
         self.assertTrue(np.array_equal(haz1.centroids.id, \
@@ -345,6 +375,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(sparse.isspmatrix_csr(haz1.fraction))
         self.assertEqual(haz1.event_name, haz1_orig.event_name)
         self.assertTrue(np.array_equal(haz1.date, haz1_orig.date))
+        self.assertTrue(np.array_equal(haz1.orig, haz1_orig.orig))
         self.assertTrue(np.array_equal(haz1.event_id, \
                                               haz1_orig.event_id))
         self.assertTrue(np.array_equal(haz1.centroids.id, \
@@ -433,6 +464,8 @@ class TestAppend(unittest.TestCase):
                                               np.array([1, 2, 6, 4, 5, 7, 8])))
         self.assertTrue(np.array_equal(haz1.date, \
                                       np.array([ 1, 2, 3, 4, 1, 1, 1])))
+        self.assertTrue(np.array_equal(haz1.orig, \
+                np.array([True, False, False, True, False, False, False])))
         self.assertTrue(np.array_equal(haz1.centroids.id, \
             np.array([5, 10, 9, 11, 12])))
         self.assertTrue(np.array_equal(haz1.frequency, exp_freq))
@@ -497,11 +530,12 @@ class TestStats(unittest.TestCase):
         inten_stats = haz._compute_stats(return_period)
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
-    def test_ref_pass(self):
+    def test_ref_all_pass(self):
         """Compare against reference."""        
         haz = Hazard(file_name=HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         inten_stats = haz._compute_stats(return_period)
+
         self.assertAlmostEqual(inten_stats[0][0], 55.424015590131290)
         self.assertAlmostEqual(inten_stats[1][0], 67.221687644669998)
         self.assertAlmostEqual(inten_stats[2][0], 79.019359699208721)
@@ -510,6 +544,17 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[1][66], 70.608592953031405)
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
+
+    def test_ref_orig_pass(self):
+        """Compare against reference."""        
+        haz = Hazard(file_name=HAZ_TEST_MAT)
+        return_period = np.array([25, 50, 100, 250])
+        inten_stats = haz._compute_stats(return_period, True)
+
+        self.assertAlmostEqual(inten_stats[0][0], 55.763055630205507)
+        self.assertAlmostEqual(inten_stats[0][82], 51.142476557641359)
+        self.assertAlmostEqual(inten_stats[2][96], 79.651362050077225)
+        self.assertAlmostEqual(inten_stats[1][20], 66.439658831126991)
     
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)

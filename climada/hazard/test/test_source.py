@@ -57,6 +57,13 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(dt.datetime.fromordinal(hazard.date[-1]).month, 11)
         self.assertEqual(dt.datetime.fromordinal(hazard.date[-1]).day, 6)
 
+        self.assertTrue(hazard.orig[0])
+        self.assertTrue(hazard.orig[11580])
+        self.assertTrue(hazard.orig[4940])
+        self.assertFalse(hazard.orig[3551])
+        self.assertFalse(hazard.orig[10651])
+        self.assertFalse(hazard.orig[4818])
+
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_TEST_MAT)
         self.assertEqual(hazard.tag.description, \
@@ -151,6 +158,8 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.fraction[0, 0], 1)
         self.assertEqual(hazard.fraction[10, 19], 1)
         self.assertEqual(hazard.fraction[n_events-1, n_centroids-1], 1)
+
+        self.assertTrue(np.all(hazard.orig))
 
         # tag hazard
         self.assertEqual(hazard.tag.file_name, HAZ_TEST_XLS)
