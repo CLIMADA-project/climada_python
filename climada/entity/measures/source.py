@@ -97,9 +97,13 @@ def read_att_mat(measures, data, file_name, var_names):
                                 data[var_names['var_name']['haz_frq']][idx][0]
         meas.hazard_event_set = hdf5.get_str_from_ref(
             file_name, data[var_names['var_name']['haz_set']][idx][0])
-        meas.hazard_intensity = ( \
+        try:
+            meas.hazard_intensity = ( \
                 data[var_names['var_name']['haz_int_a']][idx][0], \
                 data[var_names['var_name']['haz_int_b']][0][idx])
+        except KeyError:
+            meas.hazard_intensity = ( \
+                data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
         meas.mdd_impact = (data[var_names['var_name']['mdd_a']][idx][0],
                            data[var_names['var_name']['mdd_b']][idx][0])
         meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
