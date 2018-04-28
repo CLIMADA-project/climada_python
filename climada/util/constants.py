@@ -13,7 +13,9 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS',
            'CENTR_TEST_BRB',
-           'GLB_CENTROIDS_MAT']
+           'GLB_CENTROIDS_MAT',
+           'ENT_FL_MAT',
+           'TC_ANDREW_FL']
 
 import os
 
@@ -41,6 +43,14 @@ ENT_TEMPLATE_XLS = os.path.join(DATA_DIR, 'entity_template.xlsx')
 
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 """ Entity demo in mat format."""
+
+ENT_FL_MAT = os.path.join(DATA_DIR, 'demo',
+                          'USA_UnitedStates_Florida_entity.mat')
+""" Entity for Florida """
+
+TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
+                            'ibtracs_global_intp-None_1992230N11325.csv')
+""" Tropical cyclone Andrew in Florida """
 
 GLB_CENTROIDS_MAT = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """ Global centroids."""
