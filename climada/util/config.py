@@ -13,7 +13,7 @@ import json
 import logging
 from pkg_resources import Requirement, resource_filename
 
-from climada.util.constants import SOURCE_DIR, DATA_DIR
+from climada.util.constants import SOURCE_DIR, DATA_DIR, ENT_TEMPLATE_XLS
 
 WORKING_DIR = os.getcwd()
 WINDOWS_END = 'C:\\'
@@ -40,15 +40,23 @@ def check_conf():
     for key, path in CONFIG['local_data'].items():
         abspath = path
         if not os.path.isabs(abspath):
-            abspath = os.path.abspath(os.path.join(WORKING_DIR, \
+            abspath = os.path.abspath(os.path.join(WORKING_DIR,
                                                    os.path.expanduser(path)))
-        if (key == "entity_def") and \
-        ((path == "") or not os.path.isfile(abspath)):
-            abspath = os.path.join(DATA_DIR, 'demo', 'entity_template.xlsx')
+        if key == "entity_def":
+            def_file = ENT_TEMPLATE_XLS
+        elif key == "repository":
+            def_file = os.path.join(DATA_DIR)
+        elif key == "save_dir":
+            def_file = os.path.join(WORKING_DIR, "results")
+        else:
+            LOGGER.error("Configuration option %s not found.", key)
 
-        if (key == "repository") and \
-        ((path == "") or not os.path.isfile(abspath)):
-            abspath = os.path.join(DATA_DIR)
+        if path == "":
+            abspath = def_file
+        elif not os.path.exists(abspath) and key != "save_dir":
+            LOGGER.warning('Path %s not found. Default used: %s', abspath,
+                           def_file)
+            abspath = def_file
 
         CONFIG['local_data'][key] = abspath
 
@@ -58,9 +66,9 @@ DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
 if not os.path.isfile(DEFAULT_PATH):
     DEFAULT_PATH = resource_filename(Requirement.parse('climada'), \
                                      'defaults.conf')
-with open(DEFAULT_PATH) as def_file:
+with open(DEFAULT_PATH) as def_conf:
     LOGGER.debug('Loading default config file: %s', DEFAULT_PATH)
-    CONFIG = json.load(def_file)
+    CONFIG = json.load(def_conf)
 
 check_conf()
 
@@ -81,7 +89,7 @@ def setup_conf_user():
                                                  os.pardir, conf_name))
 
     if os.path.isfile(user_file):
-        LOGGER.debug('Loading user config file: %s ...', user_file)
+        LOGGER.debug('Loading user config file: %s', user_file)
 
         with open(user_file) as conf_file:
             userconfig = json.load(conf_file)
