@@ -2,7 +2,8 @@
 Define MeasureSet class.
 """
 
-__all__ = ['MeasureSet']
+__all__ = ['MeasureSet',
+           'FILE_EXT']
 
 import os
 import copy
@@ -26,7 +27,7 @@ class MeasureSet(object):
     files with format defined in FILE_EXT.
 
     Attributes:
-        tag (Taf): information about the source data
+        tag (Tag): information about the source data
         _data (dict): cotains Measure classes. It's not suppossed to be
             directly accessed. Use the class methods instead.
     """
@@ -161,7 +162,6 @@ class MeasureSet(object):
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
-            LOGGER.info('Reading file: %s', file)
             self.append(self._read_one(file, desc, var))
 
     def append(self, meas):
@@ -225,6 +225,7 @@ class MeasureSet(object):
         Returns:
             MeasureSet
         """
+        LOGGER.info('Reading file: %s', file_name)
         new_meas = MeasureSet()
         new_meas.tag = Tag(file_name, description)
 
