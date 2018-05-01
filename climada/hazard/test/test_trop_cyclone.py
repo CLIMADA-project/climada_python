@@ -23,7 +23,8 @@ class TestReader(unittest.TestCase):
     def test_set_one_pass(self):
         """Test _set_one function."""
         centroids = None
-        tc_haz = TropCyclone._set_one(TEST_TRACK_SHORT, '', centroids)
+        tc_haz = TropCyclone._hazard_from_track(TEST_TRACK_SHORT, '', 
+                                                centroids)
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
@@ -57,7 +58,7 @@ class TestReader(unittest.TestCase):
         """ Test set function with one input."""
         tc_haz = TropCyclone()
         centr = Centroids(CENTR_TEST_BRB)
-        tc_haz.set(TEST_TRACK_SHORT, centroids=centr)
+        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=centr)
         tc_haz.check()
         
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
@@ -82,7 +83,8 @@ class TestReader(unittest.TestCase):
         """ Test construct tropical cyclone from two IbTracs."""
         tc_haz = TropCyclone()
         centr = Centroids(CENTR_TEST_BRB)
-        tc_haz.set([TEST_TRACK_SHORT, TEST_TRACK_SHORT], centroids=centr)
+        tc_haz.set_from_tracks([TEST_TRACK_SHORT, TEST_TRACK_SHORT], 
+                               centroids=centr)
         tc_haz.check()
         
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
@@ -100,15 +102,10 @@ class TestReader(unittest.TestCase):
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
-        self.assertEqual(len(tc_haz.tracks), 2)
+        self.assertEqual(len(tc_haz.tracks), 1)
         
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
-
-    def test_read_hazard_file_pass(self):
-        """ Construct Tropical Cyclone from a Hazard file. """
-        tc_haz = TropCyclone(HAZ_TEST_MAT)
-        tc_haz.check()
 
     def test_read_haz_and_tc_pass(self):
         """ Read a hazard file and a IbTrac in parallel. """
@@ -116,7 +113,7 @@ class TestReader(unittest.TestCase):
         tc_haz1 = TropCyclone()
         tc_haz1.read(HAZ_TEST_MAT)
         tc_haz2 = TropCyclone()
-        tc_haz2.set(TEST_TRACK_SHORT, centroids=centr)
+        tc_haz2.set_from_tracks(TEST_TRACK_SHORT, centroids=centr)
         tc_haz2.append(tc_haz1)
         tc_haz2.check()
         self.assertEqual(tc_haz2.intensity.shape, (14451, 396))
@@ -458,20 +455,17 @@ class TestIBTracs(unittest.TestCase):
 class TestRndWalk(unittest.TestCase):
     """Test random walk for probabilistic tropical cyclone generation"""
 
-    def tearDown(self):
-        tc.ENS_SIZE = 9
-
     def test_ref_pass(self):
         """Test against MATLAB reference."""
-        tc.ENS_SIZE = 2
         track = tc.read_ibtracs(TEST_TRACK_SHORT)
         rnd_ini = np.array([[0.9649, 0.1576], [0.7922, 0.9595]])
         rnd_ang = np.array([0.3922, 0.6555, 0.1712, 0.7060, 0.0318, 0.2769, \
                             0.0462, 0.0971, 0.8235, 0.6948, 0.3171, 0.9502, \
                             0.0344, 0.4387, 0.3816, 0.7655, 0.7952, 0.1869])
-        track_ens = tc.calc_random_walk(track, rnd_ini, rnd_ang)
+        ens_size=2
+        track_ens = tc.calc_random_walk(track, ens_size, rnd_ini, rnd_ang)
 
-        self.assertEqual(len(track_ens), 2)
+        self.assertEqual(len(track_ens), ens_size)
         
         self.assertFalse(track_ens[0].orig_event_flag)
         self.assertEqual(track_ens[0].name, '1951239N12334_gen1')
@@ -505,11 +499,15 @@ class TestRndWalk(unittest.TestCase):
     
     def test_from_class_pass(self):
         """ Test call from class."""
-        tc_haz = TropCyclone()
-        tc_haz.set(TEST_TRACK_SHORT)
-        tc_haz.set_random_walk()
+        centr_brb = Centroids(CENTR_TEST_BRB)
+        ens_size=3
+        tc_haz = tc.TropCyclone()
+        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=centr_brb)
+        tc_haz.set_random_walk(ens_size, centroids=centr_brb)
 
-        self.assertEqual(len(tc_haz.tracks), 10)
+        self.assertEqual(len(tc_haz.tracks), ens_size+1)
+        self.assertEqual(tc_haz.event_id.size, ens_size+1)
+        tc_haz.check()
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
