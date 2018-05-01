@@ -9,6 +9,7 @@ import os
 import copy
 from array import array
 import logging
+import datetime as dt
 import numpy as np
 from scipy import sparse
 
@@ -30,9 +31,19 @@ FILE_EXT = {'.mat':  'MAT',
 RETURN_PER = (25, 50, 100, 250)
 """ Default return periods in statistics"""
 
-INTENSITY_THRES = {'TC': 10
+INTENSITY_THRES = {'TC': 10,
+                   'WS': 10,
+                   'EQ': 10,
+                   'FL': 10,
+                   'VQ': 10,
+                   'TS': 10,
+                   'TR': 10,
+                   'LS': 10,
+                   'HS': 10,
+                   'BF': 10
                   }
-""" Intensity threshold used to filter lower intensities in statistics """
+""" Intensity threshold per hazard used to filter lower intensities in
+statistics """
 
 class Hazard(object):
     """Contains events of some hazard type defined at centroids. Loads from
@@ -87,6 +98,9 @@ class Hazard(object):
             >>> haz = Hazard('TC', HAZ_TEST_XLS, 'Demo hazard.', centr)
         """
         self.clear()
+        if '.' in haz_type and file_name == '':
+            LOGGER.error("Provide hazard type.")
+            raise ValueError
         self.tag.haz_type = haz_type
         if file_name != '':
             if haz_type == 'NA':
@@ -163,19 +177,22 @@ class Hazard(object):
                                            colbar_name, title)
         return fig, axis, inten_stats
 
-    def plot_intensity(self, event=None, centr_id=None):
+    def plot_intensity(self, event=None, centr=None, **kwargs):
         """Plot intensity values for a selected event or centroid.
 
         Parameters:
             event (int or str, optional): If event > 0, plot intensities of
                 event with id = event. If event = 0, plot maximum intensity in
                 each centroid. If event < 0, plot abs(event)-largest event. If
-                event is string, plot event with name in event.
-            centr_id (int, optional): If centr_id > 0, plot intensities
-                of all events at centroid with id = centr_id. If centr_id = 0,
-                plot maximum intensity of each event. If centr_id < 0,
-                plot abs(centr_id)-largest centroid where higher intensities
-                are reached.
+                event is string, plot events with that name.
+            centr (int or tuple, optional): If centr > 0, plot intensity
+                of all events at centroid with id = centr. If centr = 0,
+                plot maximum intensity of each event. If centr < 0,
+                plot abs(centr)-largest centroid where higher intensities
+                are reached. If tuple with (lat, lon) plot intensity of nearest
+                centroid.
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -188,26 +205,31 @@ class Hazard(object):
         if event is not None:
             if isinstance(event, str):
                 event = self.event_name_to_id(event)
-            return self._event_plot(event, self.intensity, col_label)
-        elif centr_id is not None:
-            return self._centr_plot(centr_id, self.intensity, col_label)
+            return self._event_plot(event, self.intensity, col_label, **kwargs)
+        elif centr is not None:
+            if isinstance(centr, tuple):
+                centr = self.centroids.get_nearest_id(centr[0], centr[1])
+            return self._centr_plot(centr, self.intensity, col_label)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
-    def plot_fraction(self, event=None, centr_id=None):
+    def plot_fraction(self, event=None, centr=None, **kwargs):
         """Plot fraction values for a selected event or centroid.
 
         Parameters:
             event (int or str, optional): If event > 0, plot fraction of event
                 with id = event. If event = 0, plot maximum fraction in each
                 centroid. If event < 0, plot abs(event)-largest event. If event
-                is string, plot event with name in event.
-            centr_id (int, optional): If centr_id > 0, plot fraction
-                of all events at centroid with id = centr_id. If centr_id = 0,
-                plot maximum fraction of each event. If centr_id < 0,
-                plot abs(centr_id)-largest centroid where highest fractions
-                are reached.
+                is string, plot events with that name.
+            centr (int or tuple, optional): If centr > 0, plot fraction
+                of all events at centroid with id = centr. If centr = 0,
+                plot maximum fraction of each event. If centr < 0,
+                plot abs(centr)-largest centroid where highest fractions
+                are reached. If tuple with (lat, lon) plot fraction of nearest
+                centroid.
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -219,29 +241,49 @@ class Hazard(object):
         if event is not None:
             if isinstance(event, str):
                 event = self.event_name_to_id(event)
-            return self._event_plot(event, self.fraction, col_label)
-        elif centr_id is not None:
-            return self._centr_plot(centr_id, self.fraction, col_label)
+            return self._event_plot(event, self.fraction, col_label, **kwargs)
+        elif centr is not None:
+            if isinstance(centr, tuple):
+                centr = self.centroids.get_nearest_id(centr[0], centr[1])
+            return self._centr_plot(centr, self.fraction, col_label)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
     def event_name_to_id(self, event_name):
-        """"Get an event id from its name.
+        """"Get an event id from its name. Several events might have the same
+        name.
 
         Parameters:
             event_name (str): Event name
 
         Returns:
-            int
+            np.array(int)
+        """
+        list_id = self.event_id[[i_name for i_name, val_name \
+            in enumerate(self.event_name) if val_name == event_name]]
+        if list_id.size == 0:
+            LOGGER.error("No event with name: %s", event_name)
+            raise ValueError
+        return list_id
+
+    def event_id_to_name(self, event_id):
+        """"Get the name of an event id.
+
+        Parameters:
+            event_id (id): id of the event
+
+        Returns:
+            str
 
         Raises:
             ValueError
         """
         try:
-            return self.event_id[self.event_name.index(event_name)]
-        except (ValueError, IndexError):
-            LOGGER.error("No event with name: %s", event_name)
+            return self.event_name[np.argwhere(
+                self.event_id == event_id)[0][0]]
+        except IndexError:
+            LOGGER.error("No event with id: %s", event_id)
             raise ValueError
 
     def append(self, hazard):
@@ -326,8 +368,40 @@ class Hazard(object):
         self.fraction = self.fraction.tocsr()
 
     def calc_year_set(self):
-        """ From dates and original event flags, compute yearly events """
-        # TODO
+        """ From dates and original event flags, compute yearly events
+
+        Returns:
+            dict: key are years, values array with event_ids of that year
+
+        """
+        orig_year = np.array([dt.datetime.fromordinal(date).year
+                              for date in self.date[self.orig]])
+        orig_yearset = {}
+        for year in np.unique(orig_year):
+            orig_yearset[year] = self.event_id[self.orig][orig_year == year]
+        return orig_yearset
+
+    def get_date_strings(self, event=None):
+        """ Return list of date strings for given event or for all events,
+        if no event provided.
+
+        Parameters:
+            event (str or int, optional): event name or id.
+
+        Returns:
+            list(str)
+        """
+        if event is None:
+            l_dates = [self._date_to_str(date) for date in self.date]
+        elif isinstance(event, str):
+            ev_ids = self.event_name_to_id(event)
+            l_dates = [self._date_to_str(self.date[ \
+                       np.argwhere(self.event_id == ev_id)[0][0]]) \
+                       for ev_id in ev_ids]
+        else:
+            ev_idx = np.argwhere(self.event_id == event)[0][0]
+            l_dates = [self._date_to_str(self.date[ev_idx])]
+        return l_dates
 
     @staticmethod
     def get_sup_file_format():
@@ -355,6 +429,11 @@ class Hazard(object):
         except KeyError:
             LOGGER.error('File extension not supported: %s.', src_format)
             raise ValueError
+
+    @staticmethod
+    def _date_to_str(date):
+        """ Compute date string from input datetime ordinal int. """
+        return dt.date.fromordinal(date).isoformat()
 
     @staticmethod
     def _read_one(file_name, haz_type, description='', centroids=None, \
@@ -425,7 +504,14 @@ class Hazard(object):
         hazard.event_name, hazard.date, hazard.orig):
             try:
                 found = self.event_name.index(ev_name)
-                new_ev_pos.append(found)
+                if self.date[found] != ev_dt: # check date is also the same
+                    i_val = 0
+                    for i_val, x_val in enumerate(self.event_name):
+                        if x_val == ev_name and self.date[i_val] == ev_dt:
+                            found = i_val
+                            break
+                    if i_val == len(self.event_name) - 1 and found != i_val:
+                        raise ValueError
                 if ((ev_id in self.event_id) or (ev_id in new_id)) and \
                 (ev_id != self.event_id[found]):
                     max_id += 1
@@ -433,6 +519,7 @@ class Hazard(object):
                 else:
                     self.event_id[found] = ev_id
                     max_id = max(max_id, ev_id)
+                new_ev_pos.append(found)
             except ValueError:
                 new_ev_pos.append(len(self.event_id) + len(new_name))
                 new_name.append(ev_name)
@@ -445,42 +532,51 @@ class Hazard(object):
                     new_id.append(ev_id)
                     max_id = max(max_id, ev_id)
 
-    def _event_plot(self, event_id, mat_var, col_name):
+    def _event_plot(self, event_id, mat_var, col_name, **kwargs):
         """"Plot an event of the input matrix.
 
         Parameters:
-            event_id (int): If event_id > 0, plot mat_var of
+            event_id (int or np.array(int)): If event_id > 0, plot mat_var of
                 event with id = event_id. If event_id = 0, plot maximum
                 mat_var in each centroid. If event_id < 0, plot
                 abs(event_id)-largest event.
             mat_var (sparse matrix): Sparse matrix where each row is an event
             col_name (sparse matrix): Colorbar label
+            kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
-        if event_id > 0:
-            try:
-                event_pos = np.where(self.event_id == event_id)[0][0]
-            except IndexError:
-                LOGGER.error('Wrong event id: %s.', event_id)
-                raise ValueError from IndexError
-            array_val = mat_var[event_pos, :].todense().transpose()
-            title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
-                                      self.event_name[event_pos])
-        elif event_id < 0:
-            max_inten = np.squeeze(np.asarray(np.sum(mat_var, axis=1)))
-            event_pos = np.argpartition(max_inten, event_id)[event_id:]
-            event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
-            array_val = mat_var[event_pos, :].todense().transpose()
-            title = '%s-largest Event. ID %s: %s' % (np.abs(event_id), \
-                str(self.event_id[event_pos]), self.event_name[event_pos])
-        else:
-            array_val = np.max(mat_var, axis=0).todense().transpose()
-            title = '%s max intensity at each point' % self.tag.haz_type
+        if not isinstance(event_id, np.ndarray):
+            event_id = np.array([event_id])
+        array_val = list()
+        l_title = list()
+        for ev_id in event_id:
+            if ev_id > 0:
+                try:
+                    event_pos = np.where(self.event_id == ev_id)[0][0]
+                except IndexError:
+                    LOGGER.error('Wrong event id: %s.', ev_id)
+                    raise ValueError from IndexError
+                im_val = mat_var[event_pos, :].todense().transpose()
+                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
+                                          self.event_name[event_pos])
+            elif ev_id < 0:
+                max_inten = np.squeeze(np.asarray(np.sum(mat_var, axis=1)))
+                event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
+                event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
+                im_val = mat_var[event_pos, :].todense().transpose()
+                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id), \
+                    str(self.event_id[event_pos]), self.event_name[event_pos])
+            else:
+                im_val = np.max(mat_var, axis=0).todense().transpose()
+                title = '%s max intensity at each point' % self.tag.haz_type
 
-        return plot.geo_im_from_array(array_val, self.centroids.coord, \
-                                      col_name, title)
+            array_val.append(im_val)
+            l_title.append(title)
+
+        return plot.geo_im_from_array(array_val, self.centroids.coord,
+                                      col_name, l_title, **kwargs)
 
     def _centr_plot(self, centr_id, mat_var, col_name):
         """"Plot a centroid of the input matrix.
@@ -542,35 +638,44 @@ class Hazard(object):
         freq = self.frequency
         if orig:
             inten = inten[self.orig, :]
-            freq = freq[self.orig]*self.event_id.size/self.orig.nonzero()[0].size
+            freq = freq[self.orig] * self.event_id.size / \
+                self.orig.nonzero()[0].size
         for cen_pos in range(self.intensity.shape[1]):
             inten_loc = self._loc_return_inten(return_periods, cen_pos,
-                                               inten, freq, self.tag.haz_type)
+                                               inten, freq)
             inten_stats[:, cen_pos] = inten_loc
         return inten_stats
 
-    def _loc_return_inten(self, return_periods, cen_pos, inten, freq, haz_type):
+    def _loc_return_inten(self, return_periods, cen_pos, inten, freq):
         """ Compute local intensity for given return period.
 
         Parameters:
             return_periods (np.array): return periods to consider
             cen_pos (int): centroid position
-
+            inten (sparse.csr_matrix): intensity of the events at centroids
+            freq (np.array): events frequncy
         Returns:
             np.array
         """
         inten_pos = np.argwhere(inten[:, cen_pos] >
-                                INTENSITY_THRES[haz_type])[:, 0]
+                                INTENSITY_THRES[self.tag.haz_type])[:, 0]
         if inten_pos.size == 0:
-            LOGGER.warning('No intensities over threshold %s for centroid '\
-                           '%s.', INTENSITY_THRES[self.tag.haz_type], cen_pos)
             return np.zeros((return_periods.size, ))
         inten_nz = np.asarray(inten[inten_pos, cen_pos].todense()).squeeze()
         sort_pos = inten_nz.argsort()[::-1]
-        inten_sort = inten_nz[sort_pos]
+        try:
+            inten_sort = inten_nz[sort_pos]
+        except IndexError as err:
+            if inten_nz.shape == () and inten_nz.size == 1:
+                inten_sort = np.array([inten_nz])
+            else:
+                raise err
         freq_sort = freq[inten_pos[sort_pos]]
         np.cumsum(freq_sort, out=freq_sort)
-        pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
+        try:
+            pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
+        except ValueError:
+            pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=0)
         inten_fit = np.polyval(pol_coef, np.log(1/return_periods))
         wrong_inten = np.logical_and(return_periods > np.max(1/freq_sort), \
                     np.isnan(inten_fit))
