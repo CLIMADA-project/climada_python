@@ -62,7 +62,8 @@ class ImpactFunc(object):
             raise ValueError
 
     def plot(self, graph=None):
-        """Plot the impact functions MDD, MDR and PAA in one graph.
+        """Plot the impact functions MDD, MDR and PAA in one graph, where
+        MDR = PAA * MDD.
 
         Parameters:
             graph (Graph2D, optional): graph where to add the plots
