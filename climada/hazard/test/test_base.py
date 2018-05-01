@@ -3,6 +3,7 @@ Test Hazard base class.
 """
 
 import unittest
+import datetime as dt
 import numpy as np
 from scipy import sparse
 
@@ -126,6 +127,56 @@ class TestLoader(unittest.TestCase):
                         READ_SET['XLS'][0])
         self.assertTrue(Hazard.get_def_file_var_names('.mat') == 
                         READ_SET['MAT'][0])
+
+    def test_event_name_to_id_pass(self):
+        """ Test event_name_to_id function."""
+        haz = Hazard('TC', HAZ_TEST_XLS)
+        self.assertEqual(haz.event_name_to_id('event001')[0], 1)
+        self.assertEqual(haz.event_name_to_id('event084')[0], 84)
+
+    def test_event_name_to_id_fail(self):
+        """ Test event_name_to_id function."""
+        haz = Hazard('TC', HAZ_TEST_XLS)
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.event_name_to_id('1050')
+        self.assertIn('No event with name: 1050', cm.output[0])
+
+    def test_event_id_to_name_pass(self):
+        """ Test event_id_to_name function."""
+        haz = Hazard('TC', HAZ_TEST_XLS)
+        self.assertEqual(haz.event_id_to_name(2), 'event002')
+        self.assertEqual(haz.event_id_to_name(48), 'event048')
+
+    def test_event_id_to_name_fail(self):
+        """ Test event_id_to_name function."""
+        haz = Hazard('TC', HAZ_TEST_XLS)
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                haz.event_id_to_name(1050)
+        self.assertIn('No event with id: 1050', cm.output[0])
+
+    def test_date_to_str(self):
+        """ Test _date_to_str function"""
+        ordinal_date = dt.datetime.toordinal(dt.datetime(2018, 4, 6))
+        self.assertEqual('2018-04-06', Hazard._date_to_str(ordinal_date))
+
+    def test_get_date_strings_pass(self):
+        haz = Hazard('TC', HAZ_TEST_MAT)
+        haz.event_name[5] = 'HAZEL'
+        haz.event_name[10] = 'HAZEL'
+
+        self.assertEqual(len(haz.get_date_strings('HAZEL')), 2)
+        self.assertEqual(haz.get_date_strings('HAZEL')[0], 
+                         haz._date_to_str(haz.date[5]))
+        self.assertEqual(haz.get_date_strings('HAZEL')[1], 
+                         haz._date_to_str(haz.date[10]))
+        
+        self.assertEqual(haz.get_date_strings(2)[0], haz._date_to_str(haz.date[1]))
+
+        self.assertEqual(len(haz.get_date_strings()), haz.date.size)
+        self.assertEqual(haz.get_date_strings()[560], 
+                         haz._date_to_str(haz.date[560]))
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
@@ -346,6 +397,7 @@ class TestAppend(unittest.TestCase):
         haz2.event_id = haz1.event_id
         haz2.event_name = haz1.event_name
         haz2.frequency = haz1.frequency
+        haz2.date = haz1.date
         haz2.fraction = sparse.csr_matrix([[0.22, 0.32, 0.44], \
                                            [0.11, 0.11, 0.11], \
                                            [0.32, 0.11, 0.99], \
@@ -403,6 +455,7 @@ class TestAppend(unittest.TestCase):
         haz2.event_id = np.array([5, 6, 7, 8])
         haz2.event_name = ['ev5', 'ev3', 'ev6', 'ev7']
         haz2.frequency = np.array([1, 2, 3, 4])
+        haz2.date = np.array([1, 3, 4, 5])
         haz2.fraction = sparse.csr_matrix([[1, 2, 3], \
                                            [4, 5, 6], \
                                            [7, 8, 9], \
@@ -463,7 +516,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz1.event_id, \
                                               np.array([1, 2, 6, 4, 5, 7, 8])))
         self.assertTrue(np.array_equal(haz1.date, \
-                                      np.array([ 1, 2, 3, 4, 1, 1, 1])))
+                                      np.array([ 1, 2, 3, 4, 1, 4, 5])))
         self.assertTrue(np.array_equal(haz1.orig, \
                 np.array([True, False, False, True, False, False, False])))
         self.assertTrue(np.array_equal(haz1.centroids.id, \
@@ -555,10 +608,34 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[0][82], 51.142476557641359)
         self.assertAlmostEqual(inten_stats[2][96], 79.651362050077225)
         self.assertAlmostEqual(inten_stats[1][20], 66.439658831126991)
-    
+
+class TestYearset(unittest.TestCase):
+    """Test return period statistics"""
+
+    def test_ref_pass(self):
+        """ Test against matlab reference. """
+        haz = Hazard('TC', HAZ_TEST_MAT)
+        orig_year_set = haz.calc_year_set()
+        
+        self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())), 
+                                       np.arange(1851, 2012)))
+        self.assertTrue(np.array_equal(orig_year_set[1851], 
+                                       np.array([1,11,21,31])))
+        self.assertTrue(np.array_equal(orig_year_set[1958], 
+                                       np.array([8421,8431,8441,8451,8461,8471,8481,8491,8501,8511])))
+        self.assertTrue(np.array_equal(orig_year_set[1986], 
+                                       np.array([11101,11111,11121,11131,11141,11151])))
+        self.assertTrue(np.array_equal(orig_year_set[1997], 
+                                       np.array([12221,12231,12241,12251,12261,12271,12281,12291])))
+        self.assertTrue(np.array_equal(orig_year_set[2006], 
+                                       np.array([13571,13581,13591,13601,13611,13621,13631,13641,13651,13661])))
+        self.assertTrue(np.array_equal(orig_year_set[2010], 
+                                       np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
