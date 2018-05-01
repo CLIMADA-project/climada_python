@@ -2,14 +2,13 @@
 Define coordinates class
 """
 
-__all__ = ['Coordinates',
-           'IrregularGrid',
+__all__ = ['IrregularGrid',
            'RegularGrid'
           ]
 
 import numpy as np
 
-import climada.util.interpolation as interp
+from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
 
 class Coordinates(object):
     """Interface for Coordinates definition as regular or irregular grid."""
@@ -18,8 +17,8 @@ class Coordinates(object):
         """Set emtpy shape for 2D array."""
         return (0, 2)
 
-    def resample(self, coord, method=interp.METHOD[0], \
-                    distance=interp.DIST_DEF[1]):
+    def resample(self, coord, method=METHOD[0], \
+                    distance=DIST_DEF[1]):
         """ Input coordinates are resampled to current grid.
 
         Parameters:
@@ -46,8 +45,7 @@ class IrregularGrid(np.ndarray, Coordinates):
         if obj is None:
             return
 
-    def resample(self, coord, method=interp.METHOD[0], \
-                    distance=interp.DIST_DEF[0]):
+    def resample(self, coord, method=METHOD[0], distance=DIST_DEF[1]):
         """ Input coordinates are resampled to current grid.
 
         Parameters:
@@ -60,7 +58,7 @@ class IrregularGrid(np.ndarray, Coordinates):
         Returns:
             np.array
         """
-        return interp.interpol_index(self, coord, method, distance)
+        return interpol_index(self, coord, method, distance)
 
 class RegularGrid(Coordinates):
     """Define regular grid."""
