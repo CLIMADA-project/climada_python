@@ -91,7 +91,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     return fig, axis_sub
 
-def geo_im_from_array(array_sub, geo_coord, var_name, title):
+def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
     Parameters:
@@ -107,6 +107,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title):
         title (str or list(str)): subplot title. If one provided, the same is
             used for all subplots. Otherwise provide as many as subplots in
             array_sub.
+        kwargs (optional): arguments for pcolormesh matplotlib function
 
     Returns:
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -142,7 +143,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title):
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
             pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar( \
-                axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im)), \
+                axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im), **kwargs),
                 cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
@@ -221,12 +222,16 @@ def get_collection_arrays(array_sub):
         num_im (int), list_arr (2d np.ndarray or list(1d np.array))
     """
     num_im = 1
-    if len(array_sub.shape) == 1 or array_sub.shape[1] == 1:
-        list_arr = list()
-        list_arr.append(array_sub)
+    if not isinstance(array_sub, list):
+        if len(array_sub.shape) == 1 or array_sub.shape[1] == 1:
+            list_arr = list()
+            list_arr.append(array_sub)
+        else:
+            list_arr = array_sub
+            num_im = array_sub.shape[0]
     else:
+        num_im = len(array_sub)
         list_arr = array_sub
-        num_im = array_sub.shape[0]
 
     return num_im, list_arr
 
@@ -332,5 +337,8 @@ def get_borders(geo_coord):
     Returns:
         np.array
     """
-    return [np.min(geo_coord[:, 1]), np.max(geo_coord[:, 1]), \
-        np.min(geo_coord[:, 0]), np.max(geo_coord[:, 0])]
+    min_lon = max(np.min(geo_coord[:, 1]), -180)
+    max_lon = min(np.max(geo_coord[:, 1]), 180)
+    min_lat = max(np.min(geo_coord[:, 0]), -90)
+    max_lat = min(np.max(geo_coord[:, 0]), 90)
+    return [min_lon, max_lon, min_lat, max_lat]
