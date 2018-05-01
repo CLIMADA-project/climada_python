@@ -5,10 +5,12 @@ Define TropCyclone class and IBTracs reader.
 __all__ = ['TropCyclone',
            'read_ibtracs',
            'gust_from_track',
-           'interp_track']
+           'interp_track',
+           'calc_random_walk']
 
 import logging
 import datetime as dt
+import itertools
 import pandas as pd
 import xarray as xr
 import numpy as np
@@ -43,9 +45,6 @@ CENTR_NODE_MAX_DIST_KM = 300
 MIN_WIND_THRES_KN = 34
 """ Minimum windspeed stored in knots (for storage management reasons)"""
 
-ENS_SIZE = 9
-"""Number of created tracks per original track """
-
 class TropCyclone(Hazard):
     """Contains tropical cyclone events obtained from a csv IBTrACS file.
 
@@ -70,13 +69,17 @@ class TropCyclone(Hazard):
         """
         Hazard.__init__(self, HAZ_TYPE, file_name, description, centroids)
 
-    def set(self, files, descriptions='', centroids=None, model='H08'):
-        """Set and check hazard, and centroids if not provided, from input
-        csv IBTrACS file. Parallel through files.
+    def set_from_tracks(self, files=None, descriptions='', centroids=None,
+                        model='H08'):
+        """Clear, set and check hazard, and centroids if not provided, from
+        input csv IBTrACS file. If file not provided, don't clear and set
+        hazard from stored tracks that have not been processed yet.
+        Parallel process.
 
         Parameters:
             files (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
+                folder name containing the files to read. If None, internal
+                not processed tracks are modelled to hazard.
             descriptions (str or list(str), optional): one description of the
                 data or a description of each data file
             centroids (Centroids or list(Centroids), optional): Centroids
@@ -85,26 +88,27 @@ class TropCyclone(Hazard):
         Raises:
             ValueError
         """
-        all_files = get_file_names(files)
-        desc_list = to_list(len(all_files), descriptions, 'descriptions')
-        centr_list = to_list(len(all_files), centroids, 'centroids')
-        model_list = to_list(len(all_files), model, 'model')
-        self.clear()
-        tc_part = Pool().map(self._set_one, all_files, desc_list, centr_list,
-                             model_list)
+        if files is not None:
+            all_tracks = get_file_names(files)
+            self.clear()
+        else:
+            all_tracks = list()
+            for track in self.tracks:
+                if track.name not in self.event_name:
+                    all_tracks.append(track)
+
+        desc_list = to_list(len(all_tracks), descriptions, 'descriptions')
+        centr_list = to_list(len(all_tracks), centroids, 'centroids')
+        model_list = to_list(len(all_tracks), model, 'model')
+
+        tc_part = list()
+        tc_part = Pool().map(self._hazard_from_track, all_tracks, desc_list,
+                             centr_list, model_list)
+
         for tc_haz in tc_part:
             self.append(tc_haz)
 
-        # Compute events frequency
-        delta_time = \
-            np.max([track.time.dt.year for track in self.tracks]) - \
-            np.min([track.time.dt.year for track in self.tracks]) + 1
-        num_orig = self.orig.nonzero()[0].size
-        if num_orig > 0:
-            ens_size = self.event_id.size / num_orig
-        else:
-            ens_size = 1
-        self.frequency = self.frequency / delta_time / ens_size
+        self._set_frequency()
 
     def append(self, hazard):
         """Check and append variables of input TropCyclone to current.
@@ -117,13 +121,9 @@ class TropCyclone(Hazard):
         Raises:
             ValueError
         """
-        start = False
-        if self.event_id.size == 0:
-            start = True
         super(TropCyclone, self).append(hazard)
-        # the first append has already copied all the attributes
-        if hasattr(hazard, 'tracks') and not start:
-            self.tracks.extend(hazard.tracks)
+        if hasattr(hazard, 'tracks'):
+            self._append_tracks(hazard.tracks)
 
     def plot_tracks(self):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -135,6 +135,7 @@ class TropCyclone(Hazard):
             LOGGER.warning('Number of tracks %s != number of events %s.',
                            len(self.tracks), self.event_id.size)
 
+        deg_border = 0.5
         _, axis = plot.make_map()
         axis = axis[0][0]
         min_lat, max_lat = 10000, -10000
@@ -144,7 +145,8 @@ class TropCyclone(Hazard):
                                 max(max_lat, np.max(track.lat.values))
             min_lon, max_lon = min(min_lon, np.min(track.lon.values)), \
                                 max(max_lon, np.max(track.lon.values))
-        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]))
+        axis.set_extent(([min_lon-deg_border, max_lon+deg_border,
+                          min_lat-deg_border, max_lat+deg_border]))
         plot.add_shapes(axis)
         axis.set_title('TC tracks' + ''.join(self.tag.description))
         for track in self.tracks:
@@ -159,19 +161,45 @@ class TropCyclone(Hazard):
         super(TropCyclone, self).clear()
         self.tracks = list() # [xr.Dataset()]
 
-    def set_random_walk(self):
-        """ For every track, compute ENS_SIZE probable tracks """
-        prob_tracks = Pool().map(calc_random_walk, self.tracks)
+    def set_random_walk(self, ens_size=9, description='', centroids=None,
+                        model='H08'):
+        """For every historical track, compute ens_size probable tracks and
+        model hazard for each of them, if they have not been previously
+        computed.
+
+        Parameters:
+            ens_size (int, optional): number of created tracks per original
+                track. Default 9.
+            description (str, optional): description of the produced data
+            centroids (Centroids, optional): Centroids instance. Use global
+                centroids if not provided.
+            model (str, optional): model to compute gust. Default Holland2008.
+        """
+        hist_track = [track for track in self.tracks if track.orig_event_flag]
+        prob_tracks = Pool().map(calc_random_walk, hist_track,
+                                 itertools.repeat(ens_size))
         for tracks in prob_tracks:
-            self.tracks.extend(tracks)
+            self._append_tracks(tracks)
+        self.set_from_tracks(descriptions=description, centroids=centroids,
+                             model=model)
+
+    def _append_tracks(self, l_track):
+        """ Append input tracks that are not contained in this hazard.
+
+        Parameters:
+            tracks (list(xr.Dataset)): list of tracks
+        """
+        self.tracks.extend([track for track in l_track
+                            if track.name not in self.event_name])
 
     @staticmethod
-    def _set_one(file_name, description='', centroids=None, model='H08'):
+    def _hazard_from_track(file_track, description='', centroids=None,
+                           model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
 
         Parameters:
-            file_name (str): name of the source file
+            file_name (str or xr.Dataset): name of the source file or track.
             description (str, optional): description of the source data
             centroids (Centroids, optional): Centroids instance. Use global
                 centroids if not provided.
@@ -183,20 +211,29 @@ class TropCyclone(Hazard):
         Returns:
             TropicalCyclone
         """
-        new_haz = TropCyclone()
-        new_haz.tag = TagHazard(HAZ_TYPE, file_name, description)
-
-        try:
-            track = read_ibtracs(file_name)
-        except pd.errors.ParserError:
-            LOGGER.error('Provide a IBTraCS file in csv format containing'\
-                         ' one TC track.')
+        if isinstance(file_track, str):
+            file_name = file_track
+            try:
+                track = read_ibtracs(file_name)
+                LOGGER.info('Setting TC event from file: %s', file_name)
+            except pd.errors.ParserError:
+                LOGGER.error('Provide a IBTraCS file in csv format containing'
+                             ' one TC track.')
+                raise ValueError
+        elif isinstance(file_track, xr.Dataset):
+            file_name = ''
+            track = file_track
+            LOGGER.info('Setting probabilistic event: %s', track.name)
+        else:
+            LOGGER.error('input for _hazard_from_track not valid: %s',
+                         type(file_track))
             raise ValueError
 
         if centroids is None:
             centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
 
-        LOGGER.info('Setting TC event from file: %s', file_name)
+        new_haz = TropCyclone()
+        new_haz.tag = TagHazard(HAZ_TYPE, file_name, description)
         new_haz.intensity = gust_from_track(track, centroids, model)
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
@@ -213,6 +250,18 @@ class TropCyclone(Hazard):
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.tracks.append(track)
         return new_haz
+
+    def _set_frequency(self):
+        """Set hazard frequency from tracks data. """
+        delta_time = \
+            np.max([track.time.dt.year for track in self.tracks]) - \
+            np.min([track.time.dt.year for track in self.tracks]) + 1
+        num_orig = self.orig.nonzero()[0].size
+        if num_orig > 0:
+            ens_size = self.event_id.size / num_orig
+        else:
+            ens_size = 1
+        self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
 def read_ibtracs(file_name):
     """Read IBTrACS track file.
@@ -313,15 +362,18 @@ def interp_track(track):
 
     return track_int
 
-def calc_random_walk(track, rand_unif_ini=None, rand_unif_ang=None):
+def calc_random_walk(track, ens_size=9, rand_unif_ini=None,
+                     rand_unif_ang=None):
     """ Generate random tracks from input track.
 
     Parameters:
         track (xr.Dataset): TC track
+        ens_size (int, optional): number of created tracks per original track.
+            Default 9.
         rand_unif_ini (np.array, optional): array of uniform [0,1) random
             numbers of size 2
         rand_unif_ang (np.array, optional): array of uniform [0,1) random
-            numbers of size ENS_SIZE x size track
+            numbers of size ens_size x size track
 
     Returns:
         list(xr.Dataset)
@@ -334,19 +386,19 @@ def calc_random_walk(track, rand_unif_ini=None, rand_unif_ang=None):
     ens_amp = 0.1
 
     n_dat = track.time.size
-    if rand_unif_ini is None or rand_unif_ini.shape != (2, ENS_SIZE):
-        rand_unif_ini = np.random.uniform(size=(2, ENS_SIZE))
-    if rand_unif_ang is None or rand_unif_ang.size != ENS_SIZE*n_dat:
-        rand_unif_ang = np.random.uniform(size=ENS_SIZE*n_dat)
+    if rand_unif_ini is None or rand_unif_ini.shape != (2, ens_size):
+        rand_unif_ini = np.random.uniform(size=(2, ens_size))
+    if rand_unif_ang is None or rand_unif_ang.size != ens_size*n_dat:
+        rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
 
     xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
     tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
-    coord_xy = np.empty((2, ENS_SIZE * n_dat))
+    coord_xy = np.empty((2, ens_size * n_dat))
     coord_xy[0] = np.cumsum(ens_amp * np.sin(tmp_ang))
     coord_xy[1] = np.cumsum(ens_amp * np.cos(tmp_ang))
 
     ens_track = list()
-    for i_ens in range(ENS_SIZE):
+    for i_ens in range(ens_size):
         i_track = track.copy(True)
 
         d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
@@ -452,11 +504,17 @@ def _windfield_holland(track, centroids, model='H08'):
 def _coastal_centr_idx(centroids):
     """ Compute centroids indices which are inside INLAND_MAX_DIST_KM and
     with lat < 61 """
-    if centroids.dist_coast.size == 0:
-        centroids.calc_dist_to_coast()
+    # TODO: remove try when calc_dist_to_coast implemented
+    try:
+        if centroids.dist_coast.size == 0:
+            centroids.calc_dist_to_coast()
 
-    return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
-                          centroids.lat < 61).nonzero()[0]
+        return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
+                              centroids.lat < 61).nonzero()[0]
+    except NotImplementedError:
+        # Return all centroids
+        return np.arange(centroids.lat.size)
+
 
 def _extra_rad_max_wind(track, ureg):
     """ Extrapolate RadiusMaxWind from pressure.
