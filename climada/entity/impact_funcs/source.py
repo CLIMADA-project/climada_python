@@ -48,7 +48,7 @@ def read_excel(imp_funcs, file_name, var_names):
         dfr = pandas.read_excel(file_name, var_names['sheet_name'])
         read_att_excel(imp_funcs, dfr, var_names)
     except KeyError as err:
-        LOGGER.error("Not existing variable." + str(err))
+        LOGGER.error("Not existing variable " + str(err))
         raise err
 
 def read_mat(imp_funcs, file_name, var_names):
@@ -67,7 +67,7 @@ def read_mat(imp_funcs, file_name, var_names):
         imp = imp[var_names['field_name']]
         read_att_mat(imp_funcs, imp, file_name, var_names)
     except KeyError as err:
-        LOGGER.error("Not existing variable." + str(err))
+        LOGGER.error("Not existing variable " + str(err))
         raise err
 
 def read_att_excel(imp_funcs, dfr, var_names):
@@ -82,9 +82,13 @@ def read_att_excel(imp_funcs, dfr, var_names):
         func.haz_type = haz_type
         func.id = imp_id
         # check that the unit of the intensity is the same
-        if len(df_func[var_names['col_name']['name']].unique()) is not 1:
-            raise ValueError('Impact function with two different names.')
-        func.name = df_func[var_names['col_name']['name']].values[0]
+        try:
+            if len(df_func[var_names['col_name']['name']].unique()) is not 1:
+                raise ValueError('Impact function with two different names.')
+            func.name = df_func[var_names['col_name']['name']].values[0]
+        except KeyError:
+            func.name = str(func.id)
+
         # check that the unit of the intensity is the same, if provided
         try:
             if len(df_func[var_names['col_name']['unit']].unique()) is not 1:
