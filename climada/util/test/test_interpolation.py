@@ -63,7 +63,7 @@ class TestInterpIndex(unittest.TestCase):
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
         self.assertIn('Interpolation using method' + \
-            ' with distance approx is not supported.', cm.output[0])
+            ' with distance haversine is not supported.', cm.output[0])
 
     def test_wrong_distance_fail(self):
         ''' Check exception is thrown when wrong distance is given'''
@@ -76,12 +76,20 @@ class TestInterpIndex(unittest.TestCase):
     def test_wrong_centroid_fail(self):
         ''' Check exception is thrown when centroids missing one dimension'''
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)))
+            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)), 
+                                  distance='approx')
+        with self.assertRaises(ValueError):
+            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
+                                  distance='haversine')
 
     def test_wrong_coord_fail(self):
         ''' Check exception is thrown when coordinates missing one dimension'''
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)))
+            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)), 
+                                  distance='approx')
+        with self.assertRaises(ValueError):
+            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
+                                  distance='haversine')
 
 class TestNN(unittest.TestCase):
     '''Test interpolator neareast neighbor with approximate distance'''
