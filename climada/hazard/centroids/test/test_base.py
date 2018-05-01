@@ -6,7 +6,7 @@ import unittest
 from array import array
 import numpy as np
 
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.base import Centroids, IrregularGrid
 from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
 
@@ -62,6 +62,18 @@ class TestLoader(unittest.TestCase):
         self.assertTrue(Centroids.get_def_file_var_names('.mat') ==
                         READ_SET['MAT'][0])
 
+    def test_get_nearest_id_pass(self):
+        """ Get id of nearest centroids."""
+        cen = self.good_centroids()
+        lat, lon = 4.9, 6.1
+        self.assertEqual(cen.get_nearest_id(lat, lon), cen.id[2])
+
+        lat, lon = 0.1, 1.2
+        self.assertEqual(cen.get_nearest_id(lat, lon), cen.id[0])
+
+        lat, lon = 0.1, 4.1
+        self.assertEqual(cen.get_nearest_id(lat, lon), cen.id[0])
+
 class TestAppend(unittest.TestCase):
     """Test append function."""
 
@@ -75,7 +87,7 @@ class TestAppend(unittest.TestCase):
         new_pos = centr1.append(centr2)
         self.assertEqual(type(centr1.tag.file_name), str)
         self.assertEqual(type(centr1.tag.description), str)
-        self.assertEqual(type(centr1.coord), np.ndarray)
+        self.assertEqual(type(centr1.coord), IrregularGrid)
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(new_pos), array)
         self.assertTrue(type(centr1.region_id), np.ndarray)
@@ -214,11 +226,8 @@ class TestAppend(unittest.TestCase):
         centr2.id = np.array([5, 7, 9])
         centr2.region_id = np.array([1, 1, 1])
 
-        with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
-            centr1.append(centr2)
+        centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertIn("Centroids.region_id is not going to be set.", \
-                      cm.output[0])
 
         centr1 = Centroids()
         centr1.tag = Tag('file_1.mat', 'description 1')
@@ -231,11 +240,8 @@ class TestAppend(unittest.TestCase):
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr2.id = np.array([5, 7, 9])
 
-        with self.assertLogs('climada.hazard.centroids.base', level='WARNING') as cm:
-            centr1.append(centr2)
+        centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertIn("Centroids.region_id is not going to be set.", \
-                      cm.output[0])
 
     def test_with_region_pass(self):
         """Append the same centroids with region id."""
