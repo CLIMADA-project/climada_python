@@ -10,6 +10,8 @@ Date: 2018-03-02
 
 Version: 0.0.1
 
+See [Technical documentation](http://climada-python.readthedocs.io/en/latest/).
+
 Introduction
 ------------
 
