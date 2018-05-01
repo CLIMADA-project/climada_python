@@ -3,7 +3,9 @@ Define interpolation functions using different metrics.
 """
 
 __all__ = ['interpol_index',
-           'dist_sqr_approx']
+           'dist_sqr_approx',
+           'DIST_DEF',
+           'METHOD']
 
 import logging
 import numpy as np
@@ -14,15 +16,21 @@ from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS
 LOGGER = logging.getLogger(__name__)
 
 DIST_DEF = ['approx', 'haversine']
+""" Distances """
+
 METHOD = ['NN']
+""" Interpolation methods """
+
 THRESHOLD = 100
+""" Distance threshold in km. Nearest neighbors with greater distances are
+not considered. """
 
 def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     """ Compute approximated squared distance between two points."""
     return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
-                   distance=DIST_DEF[0]):
+                   distance=DIST_DEF[1]):
     """ Returns for each coordinate the centroids indexes used for
     interpolation
 
@@ -31,8 +39,8 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
-        method (str): interpolation method to use
-        distance (str): distance to use
+        method (str, optional): interpolation method to use. NN default.
+        distance (str, optional): distance to use. Haversine default.
 
     Returns:
         numpy array with so many rows as coordinates containing the
@@ -122,7 +130,7 @@ def index_nn_haversine(centroids, coordinates):
     num_warn = np.sum(dist*EARTH_RADIUS > THRESHOLD)
     if num_warn > 0:
         LOGGER.warning('Distance to closest centroid is greater than %s' \
-            ' for %s coordinates.', THRESHOLD, num_warn)
+            'km for %s coordinates.', THRESHOLD, num_warn)
         assigned[dist*EARTH_RADIUS > THRESHOLD] = -1
 
     # Copy result to all exposures and return value
