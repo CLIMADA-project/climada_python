@@ -37,7 +37,9 @@ class Exposures(object):
         ref_year (int): reference year
         value_unit (str): unit of the exposures values
         id (np.array): an id for each exposure
-        coord (Coordinates): Coordinates instance (in degrees)
+        coord (np.array or Coordinates): 2d array with lat in first column and
+            lon in second, or Coordinates instance. "lat" and "lon" are
+            descriptors of the latitude and longitude respectively.
         value (np.array): a value for each exposure
         impact_id (np.array): impact function id corresponding to each
             exposure
@@ -101,17 +103,18 @@ class Exposures(object):
         self.region_id = np.array([], int)
         self.assigned = dict()
 
-    def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[0]):
-        """Compute the hazard centroids ids affecting to each exposure.
+    def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[1]):
+        """Compute the hazard centroids affecting to each exposure. The
+        position of the centroids are provided, not their ids.
 
         Parameters:
             hazard (subclass Hazard): one hazard
             method (str, optional): interpolation method, neareast neighbor by
                 default. The different options are provided by the class
                 constant 'METHOD' of the interpolation module
-            dist (str, optional): distance used, euclidian approximation by
-                default. The different options are provided by the class
-                constant 'DIST_DEF' of the interpolation module
+            dist (str, optional): distance used, haversine by default.
+                The different options are provided by the constant 'DIST_DEF'
+                of the interpolation module.
 
         Raises:
             ValueError
