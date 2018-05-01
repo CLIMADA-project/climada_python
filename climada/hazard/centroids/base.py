@@ -14,7 +14,7 @@ import numpy as np
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import Coordinates, IrregularGrid
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
 
@@ -31,7 +31,9 @@ class Centroids(object):
 
     Attributes:
         tag (Tag): information about the source
-        coord (Coordinates): Coordinates instance
+        coord (np.array or Coordinates): 2d array with lat in first column and
+            lon in second, or Coordinates instance. "lat" and "lon" are
+            descriptors of the latitude and longitude respectively.
         id (np.array): an id for each centroid
         region_id (np.array, optional): region id for each centroid
             (when defined)
@@ -54,7 +56,7 @@ class Centroids(object):
             Fill centroids attributes by hand:
 
             >>> centr = Centroids()
-            >>> centr.coord = IrregularGrid([[0,-1], [0, -2]])
+            >>> centr.coord = np.array([[0,-1], [0, -2]])
             >>> ...
 
             Read centroids from file:
@@ -86,10 +88,10 @@ class Centroids(object):
             LOGGER.error("There are centroids with the same identifier.")
             raise ValueError
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
-        check.array_optional(num_exp, self.region_id, \
-                                 'Centroids.region_id')
-        check.array_optional(num_exp, self.dist_coast, \
-                                 'Centroids.dist_coast')
+        check.array_optional(num_exp, self.region_id,
+                             'Centroids.region_id')
+        check.array_optional(num_exp, self.dist_coast,
+                             'Centroids.dist_coast')
 
     def read(self, files, descriptions='', var_names=None):
         """ Read and check centroids.
@@ -123,11 +125,10 @@ class Centroids(object):
         Returns:
             array
         """
-        centroids.check()
-
         self.tag.append(centroids.tag)
 
         if self.id.size == 0:
+            centroids.check()
             self.__dict__ = centroids.__dict__.copy()
             return np.arange(centroids.id.size)
         elif centroids.id.size == 0:
@@ -138,20 +139,18 @@ class Centroids(object):
         if (self.region_id.size == 0) | (centroids.region_id.size == 0):
             regions = False
             self.region_id = np.array([], int)
-            LOGGER.warning("Centroids.region_id is not going to be set.")
 
         # Check if dist to coast need to be considered
         dist = True
         if (self.dist_coast.size == 0) | (centroids.dist_coast.size == 0):
             dist = False
             self.dist_coast = np.array([], float)
-            LOGGER.warning("Centroids.dist_coast is not going to be set.")
 
         new_pos, new_id, new_reg, new_dist, new_lat, new_lon = \
             self._append_one(centroids, regions, dist)
 
         self.coord = np.append(self.coord, np.transpose( \
-                np.array([new_lat, new_lon])), axis=0)
+                               np.array([new_lat, new_lon])), axis=0)
         self.id = np.append(self.id, new_id).astype(int)
         if regions:
             self.region_id = np.append(self.region_id, new_reg)
@@ -163,7 +162,6 @@ class Centroids(object):
     def calc_dist_to_coast(self):
         """ Compute dist_coast value."""
         # TODO: climada//code/helper_functions/climada_distance2coast_km.m
-        LOGGER.error('Dist_to_coast not implemented yet in %s: ', self)
         raise NotImplementedError
 
     def plot(self, **kwargs):
@@ -175,6 +173,8 @@ class Centroids(object):
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
+        if 's' not in kwargs:
+            kwargs['s'] = 1
         fig, axis = plot.make_map()
         axis = axis[0][0]
         min_lat, max_lat = self.lat.min(), self.lat.max()
@@ -186,6 +186,19 @@ class Centroids(object):
         axis.scatter(self.lon, self.lat, **kwargs)
 
         return fig, axis
+
+    def get_nearest_id(self, lat, lon):
+        """Get id of nearest centroid coordinate.
+
+        Parameters:
+            lat (float): latitude
+            lon (float): longitude
+
+        Returns:
+            int
+        """
+        idx = np.linalg.norm(np.abs(self.coord-[lat, lon]), axis=1).argmin()
+        return self.id[idx]
 
     @property
     def lat(self):
@@ -223,6 +236,20 @@ class Centroids(object):
         except KeyError:
             LOGGER.error('File extension not supported: %s.', src_format)
             raise ValueError
+
+    @property
+    def coord(self):
+        """ Return coord"""
+        return self._coord
+
+    @coord.setter
+    def coord(self, value):
+        """ If it is not a Coordinates instance, put it as IrregularGrid."""
+        if not isinstance(value, Coordinates):
+            # Set coordinates as irregular grid
+            self._coord = IrregularGrid(value)
+        else:
+            self._coord = value
 
     @staticmethod
     def _read_one(file_name, description='', var_names=None):
@@ -267,6 +294,7 @@ class Centroids(object):
                 set(centroids.lon).issubset(set(self.lon)):
             new_pos = np.arange(self.id.size)
             return new_pos, new_id, new_reg, new_dist, new_lat, new_lon
+        centroids.check()
         # TODO speedup select only new centroids
         for cnt, (centr_id, centr) \
         in enumerate(zip(centroids.id, centroids.coord)):
