@@ -2,6 +2,8 @@
 define save functionalities
 """
 
+__all__ = ['save']
+
 import os
 import pickle
 import logging
