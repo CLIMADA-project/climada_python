@@ -92,7 +92,10 @@ def read_att_mat(hazard, data, file_name, var_names):
     hazard.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
     hazard.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
                                  astype(np.int, copy=False))
-    hazard.units = hdf5.get_string(data[var_names['var_name']['unit']])
+    try:
+        hazard.units = hdf5.get_string(data[var_names['var_name']['unit']])
+    except KeyError:
+        pass
 
     n_cen = len(hazard.centroids.id)
     n_event = len(hazard.event_id)
@@ -121,10 +124,13 @@ def read_att_mat(hazard, data, file_name, var_names):
     except KeyError:
         pass
 
-    datenum = data[var_names['var_name']['datenum']].squeeze()
-    hazard.date = np.array([(dt.datetime.fromordinal(int(date)) + \
-         dt.timedelta(days=date%1)- \
-         dt.timedelta(days=366)).toordinal() for date in datenum])
+    try:
+        datenum = data[var_names['var_name']['datenum']].squeeze()
+        hazard.date = np.array([(dt.datetime.fromordinal(int(date)) + \
+            dt.timedelta(days=date%1)- \
+            dt.timedelta(days=366)).toordinal() for date in datenum])
+    except KeyError:
+        pass
 
 def read_att_excel(hazard, file_name, var_names):
     """ Read Excel hazard's attributes. """
