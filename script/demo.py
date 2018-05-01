@@ -4,27 +4,27 @@ climada demo
 
 # Import classes
 from climada import Entity, Hazard, Impact, Exposures
-from climada import HAZ_DEMO_MAT, ENT_DEMO_XLS, ENT_DEMO_MAT
+from climada import HAZ_DEMO_MAT, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
 
 def calc_plot_impact():
     """Compute impact from demo entity and hazard."""
     # Load entity
-    ent_demo = Entity(ENT_DEMO_XLS)
+    ent_demo = Entity(ENT_TEMPLATE_XLS)
     
     # Plot exposures values
-    ent_demo.exposures.plot_value()
+    ent_demo.exposures.plot()
     
     # Plot impact functions
     ent_demo.impact_funcs.plot()
    
     # Load Hazard
-    haz_demo = Hazard(HAZ_DEMO_MAT, 'TC')
+    haz_demo = Hazard('TC', HAZ_DEMO_MAT)
     
     # Plot some events
     haz_demo.plot_intensity(event=5489)
     haz_demo.plot_intensity(event=-1)
     haz_demo.plot_intensity(event='DONNA')
-    haz_demo.plot_intensity(centr_id=46)
+    haz_demo.plot_intensity(centr=46)
     haz_demo.plot_fraction(event=-1)
     
     # Plot impact exceedence frequency curve
