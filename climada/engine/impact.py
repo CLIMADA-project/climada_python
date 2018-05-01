@@ -105,8 +105,9 @@ class Impact(object):
         ifc.return_per = 1/exceed_freq
         ifc.impact = self.at_event[sort_idxs]
         ifc.unit = self.unit
-        ifc.label = os.path.basename(self.exposures_tag.file_name) + ' x ' +\
-            os.path.basename(self.hazard_tag.file_name)
+        ifc.label = os.path.splitext(os.path.basename( \
+            self.exposures_tag.file_name))[0] + ' x ' + \
+            os.path.splitext(os.path.basename(self.hazard_tag.file_name))[0]
         return ifc
 
     def calc(self, exposures, impact_funcs, hazard):
@@ -158,6 +159,8 @@ class Impact(object):
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
             return
+        LOGGER.info('Calculating damage for %s assets (>0) and %s events.',
+                    exp_idx.size, hazard.event_id.size)
 
         # Get hazard type
         haz_type = hazard.tag.haz_type
@@ -171,7 +174,7 @@ class Impact(object):
             exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
 
             # loop over selected exposures
-            for iexp in exp_iimp:
+            for iexp in exp_idx[exp_iimp]:
                 # compute impact on exposure
                 event_row, impact = self._one_exposure(iexp, exposures, \
                                                         hazard, imp_fun)
@@ -184,16 +187,26 @@ class Impact(object):
 
         self.tot = sum(self.at_event * hazard.frequency)
 
-    def plot_at_exposure(self):
+    def plot_at_exposure(self, ignore_null=True, **kwargs):
         """Plot accumulated impact at each exposure.
+
+        Parameters:
+            ignore_null (bool): ignore zero impact values at exposures
+            kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         title = 'Accumulated impact'
         col_name = 'Impact ' + self.unit
-        return plot.geo_bin_from_array(self.at_exp, self.exp_coord, col_name, \
-                                title)
+        if ignore_null:
+            pos_vals = self.at_exp > 0
+        else:
+            pos_vals = np.ones((self.at_exp.size,), dtype=bool)
+        if 'reduce_C_function' not in kwargs:
+            kwargs['reduce_C_function'] = np.sum
+        return plot.geo_bin_from_array(self.at_exp[pos_vals], \
+            self.exp_coord[pos_vals], col_name, title, **kwargs)
 
     @staticmethod
     def _one_exposure(iexp, exposures, hazard, imp_fun):
