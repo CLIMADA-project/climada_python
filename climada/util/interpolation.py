@@ -9,6 +9,7 @@ __all__ = ['interpol_index',
 
 import logging
 import numpy as np
+from numba import jit
 
 from sklearn.neighbors import BallTree
 from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS
@@ -25,6 +26,7 @@ THRESHOLD = 100
 """ Distance threshold in km. Nearest neighbors with greater distances are
 not considered. """
 
+@jit
 def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     """ Compute approximated squared distance between two points."""
     return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
