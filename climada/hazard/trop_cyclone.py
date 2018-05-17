@@ -98,14 +98,23 @@ class TropCyclone(Hazard):
                     all_tracks.append(track)
 
         desc_list = to_list(len(all_tracks), descriptions, 'descriptions')
-        centr_list = to_list(len(all_tracks), centroids, 'centroids')
-        model_list = to_list(len(all_tracks), model, 'model')
 
-        tc_part = list()
-        tc_part = Pool().map(self._hazard_from_track, all_tracks, desc_list,
-                             centr_list, model_list)
+        if centroids is None:
+            centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+            centr_list = itertools.repeat(centroids, len(all_tracks))
+        else:
+            centr_list = to_list(len(all_tracks), centroids, 'centroids')
+            if isinstance(centr_list[0], str) and \
+            centr_list.count(centr_list[0]) == len(centr_list):
+                centroids = Centroids(centr_list[0])
+                centr_list = itertools.repeat(centroids, len(all_tracks))
 
-        for tc_haz in tc_part:
+        chunksize = 1
+        if len(all_tracks) > 1000:
+            chunksize = 2
+        for tc_haz in Pool().map(self._hazard_from_track, all_tracks, \
+                                 desc_list, centr_list, itertools.repeat( \
+                                 model, len(all_tracks)), chunksize=chunksize):
             self.append(tc_haz)
 
         self._set_frequency()
@@ -189,19 +198,19 @@ class TropCyclone(Hazard):
         Parameters:
             tracks (list(xr.Dataset)): list of tracks
         """
+        tracks_name = [track.name for track in self.tracks]
         self.tracks.extend([track for track in l_track
-                            if track.name not in self.event_name])
+                            if track.name not in tracks_name])
 
     @staticmethod
-    def _hazard_from_track(file_track, description='', centroids=None,
-                           model='H08'):
+    def _hazard_from_track(file_track, description, centroids, model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
 
         Parameters:
             file_name (str or xr.Dataset): name of the source file or track.
-            description (str, optional): description of the source data
-            centroids (Centroids, optional): Centroids instance. Use global
+            description (str): description of the source data
+            centroids (Centroids): Centroids instance. Use global
                 centroids if not provided.
             model (str, optional): model to compute gust. Default Holland2008.
 
@@ -229,9 +238,6 @@ class TropCyclone(Hazard):
                          type(file_track))
             raise ValueError
 
-        if centroids is None:
-            centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
-
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, file_name, description)
         new_haz.intensity = gust_from_track(track, centroids, model)
@@ -254,8 +260,10 @@ class TropCyclone(Hazard):
     def _set_frequency(self):
         """Set hazard frequency from tracks data. """
         delta_time = \
-            np.max([track.time.dt.year for track in self.tracks]) - \
-            np.min([track.time.dt.year for track in self.tracks]) + 1
+            np.max([np.max(track.time.dt.year.values) \
+                    for track in self.tracks]) - \
+            np.min([np.min(track.time.dt.year.values) \
+                    for track in self.tracks]) + 1
         num_orig = self.orig.nonzero()[0].size
         if num_orig > 0:
             ens_size = self.event_id.size / num_orig
@@ -350,15 +358,19 @@ def interp_track(track):
     Returns:
         xr.Dataset
     """
-    time_step = str(CONFIG['tc_time_step_h']) + 'H'
-    track_int = track.resample(time=time_step).interpolate('linear')
-    track_int['time_step'] = ('time', \
-                             track_int.time.size * [CONFIG['tc_time_step_h']])
-    track_int.coords['lat'] = track.lat.resample(time=time_step).\
-                                interpolate('cubic')
-    track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                                interpolate('cubic')
-    track_int.attrs = track.attrs
+    if track.time.size > 3:
+        time_step = str(CONFIG['tc_time_step_h']) + 'H'
+        track_int = track.resample(time=time_step).interpolate('linear')
+        track_int['time_step'] = ('time', track_int.time.size *
+                                  [CONFIG['tc_time_step_h']])
+        track_int.coords['lat'] = track.lat.resample(time=time_step).\
+                                  interpolate('cubic')
+        track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                                  interpolate('cubic')
+        track_int.attrs = track.attrs
+    else:
+        LOGGER.warning('Track interpolation not done. Not enough elements: %s',
+                       track.time.size)
 
     return track_int
 
@@ -483,17 +495,21 @@ def _windfield_holland(track, centroids, model='H08'):
             track.lon.values[i_node])) * ONE_LAT_KM
 
         # Choose centroids that are close enough
-        close_centr = np.argwhere(r_arr < CENTR_NODE_MAX_DIST_KM)
+        close_centr = np.argwhere(r_arr < CENTR_NODE_MAX_DIST_KM).squeeze()
         r_arr = r_arr[close_centr]
 
         # m/s
-        v_trans, v_trans_corr = _vtrans_holland(track, i_node, centroids,
-                                                close_centr, r_arr, ureg)
+        v_trans, v_trans_corr = _vtrans_holland(track, i_node, \
+            centroids[close_centr, :], r_arr, ureg)
         v_ang = _vang_holland(track, i_node, r_arr, v_trans, model)
 
         v_full = v_trans_corr + v_ang
         v_full[np.isnan(v_full)] = 0
         v_full[v_full < min_wind_threshold] = 0
+
+        # keep maximum instantaneous wind
+        intensity[0, close_centr] = np.maximum(
+            intensity[0, close_centr].todense(), v_full)
 
         # keep maximum instantaneous wind
         intensity[0, close_centr] = np.maximum(
@@ -552,7 +568,6 @@ def _extra_rad_max_wind(track, ureg):
 
 def _vtrans(track, i_node, ureg):
     """ Compute Hollands translation wind without correction  in m/s.
-
     Parameters:
         track (xr.Dataset): contains TC track information
         i_node (int): track node (point) to compute
@@ -574,14 +589,13 @@ def _vtrans(track, i_node, ureg):
     # to m/s
     return (v_trans * ureg.knot).to(ureg.meter / ureg.second).magnitude
 
-def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
-    """ Compute Hollands translation wind. Returns gust in m/s.
+def _vtrans_holland(track, i_node, close_centr, r_arr, ureg):
+    """ Compute Hollands translation wind corrections. Returns factor.
 
     Parameters:
         track (xr.Dataset): contains TC track information
         i_node (int): track node (point) to compute
-        centroids(2d np.array): each row is a centroid [lat, lon]
-        close_centr (np.array): indices of selected centroids, the coastal ones
+        close_centr (np.array): each row is a centroid [lat, lon] that is close
         r_arr (np.array): distance between coastal centroids and track node
         ureg (UnitRegistry): units handler
 
@@ -590,14 +604,6 @@ def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     """
     v_trans = _vtrans(track, i_node, ureg)
 
-    if i_node == track.lon.size - 1:
-        node_dx = (track.lon[i_node] - track.lon[i_node]).values
-        node_dy = (track.lat[i_node] - track.lat[i_node]).values
-    else:
-        node_dx = (track.lon[i_node + 1] - track.lon[i_node]).values
-        node_dy = (track.lat[i_node + 1] - track.lat[i_node]).values
-    node_dlen = LA.norm([node_dx, node_dy])
-
     # we use the scalar product of the track forward vector and the vector
     # towards each centroid to figure the angle between and hence whether
     # the translational wind needs to be added (on the right side of the
@@ -605,22 +611,21 @@ def _vtrans_holland(track, i_node, centroids, close_centr, r_arr, ureg):
     # to the right of the track, zero in front of the track)
 
     # hence, rotate track forward vector 90 degrees clockwise, i.e.
-    node_tmp = node_dx
-    node_dx = node_dy
-    node_dy = -node_tmp
+    node_dx = 0
+    node_dy = 0
+    if i_node < track.lon.size - 1:
+        node_dy = (-track.lon[i_node + 1] + track.lon[i_node]).values
+        node_dx = (track.lat[i_node + 1] - track.lat[i_node]).values
+    node_dlen = LA.norm([node_dx, node_dy])
 
     # the vector towards each centroid
-    centroids_dlon = centroids[close_centr, 1] - track.lon[i_node].values
-    centroids_dlat = centroids[close_centr, 0] - track.lat[i_node].values
+    centroids_dlon = close_centr[:, 1] - track.lon[i_node].values
+    centroids_dlat = close_centr[:, 0] - track.lat[i_node].values
 
     # scalar product, a*b=|a|*|b|*cos(phi), phi angle between vectors
-    if node_dlen > 0:
-        with np.errstate(invalid='print'):
-            cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
-                LA.norm([centroids_dlon, centroids_dlat], axis=0) / node_dlen
-    else:
-        cos_phi = np.empty((close_centr.size, 1))
-        cos_phi[:] = np.nan
+    with np.errstate(invalid='print'):
+        cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
+            LA.norm([centroids_dlon, centroids_dlat], axis=0) / node_dlen
 
     # southern hemisphere
     if track.lat[i_node] < 0:
@@ -671,17 +676,12 @@ def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
     """
     rho = 1.15
     f_val = 2 * 0.0000729 * np.sin(np.abs(ycoord) * np.pi / 180)
+    r_arr_mult = 0.5 * 1000 * r_arr * f_val
     # units are m/s
-    v_arr = np.zeros(r_arr.shape)
     with np.errstate(all='ignore'):
-        for i_vel in range(v_arr.size):
-            v_arr[i_vel] = np.sqrt(
-                100 * hol_b / rho * (r_max / r_arr[i_vel])**hol_b *
-                (penv - pcen) * np.exp(-(r_max/r_arr[i_vel])**hol_b) +
-                (1000 * 0.5 * r_arr[i_vel] * f_val)**2
-                ) - 0.5 * 1000 * r_arr[i_vel] * f_val
-
-    return v_arr
+        r_max_norm = (r_max/r_arr)**hol_b
+        return np.sqrt(100 * hol_b / rho * r_max_norm * (penv - pcen) *
+                       np.exp(-r_max_norm) + r_arr_mult**2) - r_arr_mult
 
 def _vang_holland(track, i_node, r_arr, v_trans, model='H08'):
     """ Compute Hollands angular wind filed.
@@ -696,22 +696,21 @@ def _vang_holland(track, i_node, r_arr, v_trans, model='H08'):
         np.array
     """
     # data for windfield calculation
-    penv = track.environmental_pressure[i_node]
-    pcen = track.central_pressure[i_node]
-    ycoord = track.lat[i_node]
+    penv = track.environmental_pressure.values[i_node]
+    pcen = track.central_pressure.values[i_node]
+    ycoord = track.lat.values[i_node]
 
     hol_xx = 0.6 * (1. - (penv - pcen) / 215)
     if model == 'H08':
         # adjust pressure at previous track point
-        pre_pcen = track.central_pressure[i_node - 1]
+        pre_pcen = track.central_pressure.values[i_node - 1]
         if pre_pcen < 850:
-            pre_pcen = track.central_pressure[i_node]
-
+            pre_pcen = track.central_pressure.values[i_node]
         hol_b = _bs_value(v_trans, penv, pcen, pre_pcen, \
-                           ycoord, hol_xx, track.time_step[i_node])
+                           ycoord, hol_xx, track.time_step.values[i_node])
     else:
         # TODO H80: b=b_value(v_trans,vmax,penv,pcen,rho);
         raise NotImplementedError
 
     return _stat_holland(r_arr, track.radius_max_wind.values[i_node],
-                         hol_b.values, penv.values, pcen.values, ycoord.values)
+                         hol_b, penv, pcen, ycoord)
