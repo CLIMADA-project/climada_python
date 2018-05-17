@@ -57,9 +57,9 @@ def _process_one_file_name(name, file_list):
     """Apend to input list the file contained in name"""
     if os.path.splitext(name)[1] == '':
         tmp_files = os.listdir(name)
-        # append only files, not folders
+        # append only files (absolute path), not folders
         for file in tmp_files:
             if os.path.splitext(file)[1] != '':
-                file_list.append(file)
+                file_list.append(os.path.join(name, file))
     else:
         file_list.append(name)
