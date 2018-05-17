@@ -224,9 +224,8 @@ class TestAppend(unittest.TestCase):
         centr2.id = np.array([5, 7, 9])
         centr2.region_id = np.array([1, 1, 1])
 
-        new_pos = centr1.append(centr2)
+        centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertEqual(new_pos, [])
 
         centr1 = Centroids()
         centr1.tag = Tag('file_1.mat', 'description 1')
@@ -239,9 +238,8 @@ class TestAppend(unittest.TestCase):
         centr2.coord = np.array([[1, 2], [3, 4], [5, 6]])
         centr2.id = np.array([5, 7, 9])
 
-        new_pos = centr1.append(centr2)
+        centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([1, 1, 1])))
-        self.assertEqual(new_pos, [])
 
     def test_with_region_pass(self):
         """Append the same centroids with region id."""
