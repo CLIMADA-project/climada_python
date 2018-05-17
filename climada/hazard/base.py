@@ -7,8 +7,8 @@ __all__ = ['Hazard',
 
 import os
 import copy
-from array import array
 import logging
+from operator import itemgetter
 import datetime as dt
 import numpy as np
 from scipy import sparse
@@ -287,8 +287,9 @@ class Hazard(object):
             raise ValueError
 
     def append(self, hazard):
-        """Check and append variables of input Hazard to current Hazard.
-        Repeated events and centroids will be overwritten.
+        """Append variables of the NEW events (i.e event name and date) in
+        hazard. Id is perserved if not present in current hazard.
+        Otherwise, a new id is provided.
 
         Parameters:
             hazard (Hazard): Hazard instance to append to current
@@ -296,15 +297,13 @@ class Hazard(object):
         Raises:
             ValueError
         """
-        hazard._check_events()
+        self.tag.append(hazard.tag)
         if self.event_id.size == 0:
+            hazard._check_events()
             for key in hazard.__dict__:
                 self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
 
-        n_ini_cen = self.centroids.id.size
-        n_ini_ev = self.event_id.size
-        self.tag.append(hazard.tag)
         if (self.units == 'NA') and (hazard.units != 'NA'):
             LOGGER.warning("Initial hazard does not have units.")
             self.units = hazard.units
@@ -315,57 +314,51 @@ class Hazard(object):
                              + ": %s != %s.", self.units, hazard.units)
             raise ValueError
 
-        # Add not repeated centroids
-        # for each input centroid, position in the final centroid vector
-        new_cen_pos = self.centroids.append(hazard.centroids)
-        n_add_cen = np.where(np.array(new_cen_pos) >= n_ini_cen)[0].size
-        if n_add_cen:
-            self.intensity = sparse.hstack([self.intensity, \
-                sparse.lil_matrix((self.intensity.shape[0], n_add_cen))], \
-                format='lil')
-            self.fraction = sparse.hstack([self.fraction, \
-                sparse.lil_matrix((self.fraction.shape[0], n_add_cen))], \
-                format='lil')
-
         # Add not repeated events
-        # for each input event, position in the final event vector
-        new_ev_pos = array('l')
-        new_name = list()
-        new_dt = array('L')
-        new_id = array('L')
-        new_orig = array('B')
-        self._append_events(hazard, new_ev_pos, new_name, new_id, new_dt,
-                            new_orig)
-        n_add_ev = np.where(np.array(new_ev_pos) >= n_ini_ev)[0].size
-        sparse_add = n_add_ev - 1
-        if n_ini_cen != 0 or n_ini_ev != 0:
-            sparse_add = n_add_ev
+        hazard._check_events()
+        n_ini_ev = self.event_id.size
+        new_pos = self._append_events(hazard)
+        n_add_ev = len(new_pos)
         if n_add_ev:
-            self.event_name = self.event_name + new_name
-            self.event_id = np.append(self.event_id, np.array(new_id)).\
+            part_name = itemgetter(*new_pos)(hazard.event_name)
+            if isinstance(part_name, tuple):
+                part_name = list(part_name)
+            elif isinstance(part_name, str):
+                part_name = [part_name]
+            self.event_name = self.event_name + part_name
+            self.event_id = np.append(self.event_id, \
+                hazard.event_id[new_pos]).astype(int, copy=False)
+            self.date = np.append(self.date, hazard.date[new_pos]).\
                 astype(int, copy=False)
-            self.date = np.append(self.date, np.array(new_dt)).\
-                astype(int, copy=False)
-            self.orig = np.append(self.orig, np.array(new_orig)).\
+            self.orig = np.append(self.orig, hazard.orig[new_pos]).\
                 astype(bool, copy=False)
+            self.frequency = np.append(self.frequency, \
+                hazard.frequency[new_pos]).astype(float, copy=False)
             self.intensity = sparse.vstack([self.intensity, \
-                sparse.lil_matrix((sparse_add, self.fraction.shape[1]))], \
+                sparse.lil_matrix((n_add_ev, self.fraction.shape[1]))], \
                 format='lil')
             self.fraction = sparse.vstack([self.fraction, \
-                sparse.lil_matrix((sparse_add, self.fraction.shape[1]))], \
+                sparse.lil_matrix((n_add_ev, self.fraction.shape[1]))], \
                 format='lil')
-            self.frequency = np.append(self.frequency, np.zeros(n_add_ev))
 
-        # fill intensity, fraction and frequency
-        for i_ev in range(hazard.event_id.size):
-            self.intensity[new_ev_pos[i_ev], new_cen_pos] = \
-            hazard.intensity[i_ev, :]
-            self.fraction[new_ev_pos[i_ev], new_cen_pos] = \
-            hazard.fraction[i_ev, :]
-            self.frequency[new_ev_pos[i_ev]] = hazard.frequency[i_ev]
+            # Add centroids
+            cen_self, cen_haz = self._append_haz_cent(hazard.centroids)
 
-        self.intensity = self.intensity.tocsr()
-        self.fraction = self.fraction.tocsr()
+            for i_ev in range(n_add_ev):
+                self.intensity[n_ini_ev + i_ev, cen_self] = \
+                    hazard.intensity[new_pos[i_ev], cen_haz]
+                self.fraction[n_ini_ev + i_ev, cen_self] = \
+                    hazard.fraction[new_pos[i_ev], cen_haz]
+
+            self.intensity = self.intensity.tocsr()
+            self.fraction = self.fraction.tocsr()
+
+            # Check event id
+            _, unique_idx = np.unique(self.event_id, return_index=True)
+            rep_id = [pos for pos in range(self.event_id.size)
+                      if pos not in unique_idx]
+            sup_id = np.max(self.event_id) + 1
+            self.event_id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
 
     def calc_year_set(self):
         """ From dates and original event flags, compute yearly events
@@ -430,6 +423,67 @@ class Hazard(object):
             LOGGER.error('File extension not supported: %s.', src_format)
             raise ValueError
 
+    def _append_events(self, hazard):
+        """ Get events of hazard not present in self.
+
+        Parameters:
+            hazard: hazard to append
+
+        Returns:
+            list
+        """
+        set_self = self._events_set()
+        set_haz = hazard._events_set()
+        new_ev = set_haz.difference(set_self)
+
+        new_pos = list()
+        if np.unique(hazard.date).size == 1:
+            for ev_tup in new_ev:
+                new_pos.append(hazard.event_name.index(ev_tup[0]))
+            return new_pos
+
+        for ev_tup in new_ev:
+            date_pos = np.argwhere(ev_tup[1] == hazard.date).squeeze(axis=1)
+            for pos_cand in date_pos:
+                if hazard.event_name[pos_cand] == ev_tup[0]:
+                    new_pos.append(pos_cand)
+                    break
+        return new_pos
+
+    def _append_haz_cent(self, centroids):
+        """Append centroids. Get positions of new centroids.
+
+        Parameters:
+            centroids (Centroids): centroids to append
+        Returns:
+            cen_self (np.array): positions in self of new centroids
+            cen_haz (np.array): corresponding positions in centroids
+        """
+        # append different centroids
+        n_ini_cen = self.centroids.id.size
+        self.centroids.append(centroids)
+
+        self.intensity = sparse.hstack([self.intensity, \
+            sparse.lil_matrix((self.intensity.shape[0], \
+            self.centroids.id.size - n_ini_cen))], format='lil')
+        self.fraction = sparse.hstack([self.fraction, \
+            sparse.lil_matrix((self.fraction.shape[0], \
+            self.centroids.id.size - n_ini_cen))], format='lil')
+
+        # compute positions of repeated and different centroids
+        if np.array_equal(self.centroids.coord, centroids.coord):
+            cen_self = np.arange(self.centroids.id.size)
+            cen_haz = cen_self
+        else:
+            cen_self_sort = np.argsort(self.centroids.coord, axis=0)[:, 0]
+            cen_haz = np.argsort(centroids.coord, axis=0)[:, 0]
+            dtype = {'names':['f{}'.format(i) for i in range(2)],
+                     'formats':2 * [centroids.coord.dtype]}
+            cen_self = np.in1d(self.centroids.coord[cen_self_sort].view(dtype),
+                               centroids.coord[cen_haz].view(dtype))
+            cen_self = cen_self_sort[cen_self]
+        return cen_self, cen_haz
+
     @staticmethod
     def _date_to_str(date):
         """ Compute date string from input datetime ordinal int. """
@@ -467,9 +521,17 @@ class Hazard(object):
 
         return new_haz
 
+    def _events_set(self):
+        """Generate set of tuples with (event_name, event_date) """
+        ev_set = set()
+        for ev_name, ev_date in zip(self.event_name, self.date):
+            ev_set.add((ev_name, ev_date))
+        return ev_set
+
     def _check_events(self):
         """ Check that all attributes but centroids contain consistent data.
-        Put default date, event_name and orig if not provided.
+        Put default date, event_name and orig if not provided. Check not
+        repeated events (i.e. with same date and name)
 
         Raises:
             ValueError
@@ -479,6 +541,7 @@ class Hazard(object):
         if np.unique(self.event_id).size != num_ev:
             LOGGER.error("There are events with the same identifier.")
             raise ValueError
+
         check.size(num_ev, self.frequency, 'Hazard.frequency')
         if num_ev == 0 and num_cen == 0:
             check.shape(1, num_cen, self.intensity, 'Hazard.intensity')
@@ -492,45 +555,9 @@ class Hazard(object):
                             np.ones(self.event_id.shape, dtype=int))
         self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig', \
                             np.zeros(self.event_id.shape, dtype=bool))
-
-    def _append_events(self, hazard, new_ev_pos, new_name, new_id, new_dt,
-                       new_orig):
-        """Iterate over hazard events and collect their new position"""
-        try:
-            max_id = int(np.max(self.event_id))
-        except ValueError:
-            max_id = 0
-        for ev_id, ev_name, ev_dt, ev_orig in zip(hazard.event_id, \
-        hazard.event_name, hazard.date, hazard.orig):
-            try:
-                found = self.event_name.index(ev_name)
-                if self.date[found] != ev_dt: # check date is also the same
-                    i_val = 0
-                    for i_val, x_val in enumerate(self.event_name):
-                        if x_val == ev_name and self.date[i_val] == ev_dt:
-                            found = i_val
-                            break
-                    if i_val == len(self.event_name) - 1 and found != i_val:
-                        raise ValueError
-                if ((ev_id in self.event_id) or (ev_id in new_id)) and \
-                (ev_id != self.event_id[found]):
-                    max_id += 1
-                    self.event_id[found] = max_id
-                else:
-                    self.event_id[found] = ev_id
-                    max_id = max(max_id, ev_id)
-                new_ev_pos.append(found)
-            except ValueError:
-                new_ev_pos.append(len(self.event_id) + len(new_name))
-                new_name.append(ev_name)
-                new_dt.append(ev_dt)
-                new_orig.append(ev_orig)
-                if (ev_id in self.event_id) or (ev_id in new_id):
-                    max_id += 1
-                    new_id.append(max_id)
-                else:
-                    new_id.append(ev_id)
-                    max_id = max(max_id, ev_id)
+        if len(self._events_set()) != num_ev:
+            LOGGER.error("There are events with same date and name.")
+            raise ValueError
 
     def _event_plot(self, event_id, mat_var, col_name, **kwargs):
         """"Plot an event of the input matrix.

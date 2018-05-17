@@ -8,7 +8,6 @@ __all__ = ['Centroids',
 import os
 import copy
 import logging
-from array import array
 import numpy as np
 
 from climada.hazard.centroids.tag import Tag
@@ -78,7 +77,7 @@ class Centroids(object):
         self.admin0_iso3 = ''
 
     def check(self):
-        """Check instance attributes.
+        """Check instance attributes. Ids are unique.
 
         Raises:
             ValueError
@@ -88,6 +87,9 @@ class Centroids(object):
             LOGGER.error("There are centroids with the same identifier.")
             raise ValueError
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
+        if np.unique(self.coord, axis=1).size != 2*num_exp:
+            LOGGER.error("There centroids with the same coordinates.")
+            raise ValueError
         check.array_optional(num_exp, self.region_id,
                              'Centroids.region_id')
         check.array_optional(num_exp, self.dist_coast,
@@ -115,49 +117,53 @@ class Centroids(object):
             self.append(Centroids._read_one(file, desc, var))
 
     def append(self, centroids):
-        """Append input centroids coordinates to current. Id is perserved if
+        """Append centroids values with NEW coordinates. Id is perserved if
         not present in current centroids. Otherwise, a new id is provided.
-        Returns the array position of each appended centroid.
 
         Parameters:
             centroids (Centroids): Centroids instance to append
-
-        Returns:
-            array
         """
         self.tag.append(centroids.tag)
 
         if self.id.size == 0:
             centroids.check()
             self.__dict__ = centroids.__dict__.copy()
-            return np.arange(centroids.id.size)
+            return list(range(centroids.id.size))
         elif centroids.id.size == 0:
-            return np.array([])
+            return list()
+        elif np.array_equal(centroids.coord, self.coord):
+            return list()
 
-        # Check if region id need to be considered
-        regions = True
+        # coordinates of centroids that are not in self
+        dtype = {'names':['f{}'.format(i) for i in range(2)],
+                 'formats':2 * [centroids.coord.dtype]}
+        new_pos = np.in1d(centroids.coord.copy().view(dtype),
+                          self.coord.copy().view(dtype), invert=True)
+        new_pos = np.argwhere(new_pos).squeeze(axis=1)
+        if not new_pos.size:
+            return list()
+
+        centroids.check()
+        self.coord = np.append(self.coord, centroids.coord[new_pos, :], axis=0)
+        self.id = np.append(self.id, centroids.id[new_pos], axis=0)
+
         if (self.region_id.size == 0) | (centroids.region_id.size == 0):
-            regions = False
             self.region_id = np.array([], int)
+        else:
+            self.region_id = np.append(self.region_id,
+                                       centroids.region_id[new_pos])
 
-        # Check if dist to coast need to be considered
-        dist = True
         if (self.dist_coast.size == 0) | (centroids.dist_coast.size == 0):
-            dist = False
             self.dist_coast = np.array([], float)
+        else:
+            self.dist_coast = np.append(self.dist_coast,
+                                        centroids.dist_coast[new_pos])
 
-        new_pos, new_id, new_reg, new_dist, new_lat, new_lon = \
-            self._append_one(centroids, regions, dist)
-
-        self.coord = np.append(self.coord, np.transpose( \
-                               np.array([new_lat, new_lon])), axis=0)
-        self.id = np.append(self.id, new_id).astype(int)
-        if regions:
-            self.region_id = np.append(self.region_id, new_reg)
-        if dist:
-            self.dist_coast = np.append(self.dist_coast, new_dist)
-
-        return new_pos
+        # Check id
+        _, unique_idx = np.unique(self.id, return_index=True)
+        rep_id = [pos for pos in range(self.id.size) if pos not in unique_idx]
+        sup_id = np.max(self.id) + 1
+        self.id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
 
     def calc_dist_to_coast(self):
         """ Compute dist_coast value."""
@@ -279,54 +285,6 @@ class Centroids(object):
         reader(new_cent, file_name, var_names)
 
         return new_cent
-
-    def _append_one(self, centroids, regions, dist):
-        """Append one by one centroid."""
-        new_pos = array('l')
-        new_id = array('L')
-        new_reg = array('l')
-        new_lat = array('d')
-        new_lon = array('d')
-        new_dist = array('d')
-        max_id = int(np.max(self.id))
-        # Check if new coordinates are all contained in self
-        if set(centroids.lat).issubset(set(self.lat)) and \
-                set(centroids.lon).issubset(set(self.lon)):
-            new_pos = np.arange(self.id.size)
-            return new_pos, new_id, new_reg, new_dist, new_lat, new_lon
-        centroids.check()
-        # TODO speedup select only new centroids
-        for cnt, (centr_id, centr) \
-        in enumerate(zip(centroids.id, centroids.coord)):
-            found = np.where((centr == self.coord).all(axis=1))[0]
-            if found.size > 0:
-                new_pos.append(found[0])
-                if (centr_id in self.id) and \
-                (centr_id != self.id[found[0]]):
-                    max_id += 1
-                    self.id[found[0]] = max_id
-                else:
-                    self.id[found[0]] = centr_id
-                    max_id = max(max_id, centr_id)
-                if regions:
-                    self.region_id[found[0]] = centroids.region_id[cnt]
-                if dist:
-                    self.dist_coast[found[0]] = centroids.dist_coast[cnt]
-            else:
-                new_pos.append(self.coord.shape[0] + len(new_lat))
-                new_lat.append(centr[0])
-                new_lon.append(centr[1])
-                if centr_id in self.id:
-                    max_id += 1
-                    new_id.append(max_id)
-                else:
-                    new_id.append(centr_id)
-                    max_id = max(max_id, centr_id)
-                if regions:
-                    new_reg.append(centroids.region_id[cnt])
-                if dist:
-                    new_dist.append(centroids.dist_coast[cnt])
-        return new_pos, new_id, new_reg, new_dist, new_lat, new_lon
 
     def __str__(self):
         return self.tag.__str__()
