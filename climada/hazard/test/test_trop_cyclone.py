@@ -17,14 +17,14 @@ from climada.util.constants import DATA_DIR, HAZ_TEST_MAT, GLB_CENTROIDS_MAT, CE
 TEST_TRACK = os.path.join(DATA_DIR, 'test', "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, 'test', "trac_short_test.csv")
 
+CENT_CLB = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
 
     def test_set_one_pass(self):
         """Test _set_one function."""
-        centroids = None
-        tc_haz = TropCyclone._hazard_from_track(TEST_TRACK_SHORT, '', 
-                                                centroids)
+        tc_haz = TropCyclone._hazard_from_track(TEST_TRACK_SHORT, '', CENT_CLB)
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
@@ -306,25 +306,24 @@ class TestIBTracs(unittest.TestCase):
 
     def test_coastal_centroids_pass(self):
         """ Test selection of centroids close to coast. MATLAB reference. """
-        centroids = Centroids(GLB_CENTROIDS_MAT)
-        coastal = tc._coastal_centr_idx(centroids)
+        coastal = tc._coastal_centr_idx(CENT_CLB)
 
         self.assertEqual(coastal.size, 1044882)
-        self.assertEqual(centroids.lat[coastal[0]], -55.800000000000004)
-        self.assertEqual(centroids.lon[coastal[0]],  -68.200000000000003)
-        self.assertEqual(centroids.id[coastal[0]], 1)
+        self.assertEqual(CENT_CLB.lat[coastal[0]], -55.800000000000004)
+        self.assertEqual(CENT_CLB.lon[coastal[0]],  -68.200000000000003)
+        self.assertEqual(CENT_CLB.id[coastal[0]], 1)
 
-        self.assertEqual(centroids.lat[coastal[5]], -55.700000000000003)
-        self.assertEqual(centroids.lat[coastal[10]],  -55.700000000000003)
-        self.assertEqual(centroids.lat[coastal[100]], -55.300000000000004)
-        self.assertEqual(centroids.lat[coastal[1000]], -53.900000000000006)
-        self.assertEqual(centroids.lat[coastal[10000]], -44.400000000000006)
-        self.assertEqual(centroids.lat[coastal[100000]], -25)
-        self.assertEqual(centroids.lat[coastal[1000000]], 60.900000000000006)
+        self.assertEqual(CENT_CLB.lat[coastal[5]], -55.700000000000003)
+        self.assertEqual(CENT_CLB.lat[coastal[10]],  -55.700000000000003)
+        self.assertEqual(CENT_CLB.lat[coastal[100]], -55.300000000000004)
+        self.assertEqual(CENT_CLB.lat[coastal[1000]], -53.900000000000006)
+        self.assertEqual(CENT_CLB.lat[coastal[10000]], -44.400000000000006)
+        self.assertEqual(CENT_CLB.lat[coastal[100000]], -25)
+        self.assertEqual(CENT_CLB.lat[coastal[1000000]], 60.900000000000006)
 
-        self.assertEqual(centroids.lat[coastal[1044881]], 60.049999999999997)
-        self.assertEqual(centroids.lon[coastal[1044881]],  180.0000000000000)
-        self.assertEqual(centroids.id[coastal[1044881]], 3043681)
+        self.assertEqual(CENT_CLB.lat[coastal[1044881]], 60.049999999999997)
+        self.assertEqual(CENT_CLB.lon[coastal[1044881]],  180.0000000000000)
+        self.assertEqual(CENT_CLB.id[coastal[1044881]], 3043681)
 
     def test_vtrans_holland(self):
         """ Test _vtrans_holland function. Compare to MATLAB reference."""
@@ -334,9 +333,8 @@ class TestIBTracs(unittest.TestCase):
         int_track = tc.interp_track(track)
         int_track['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
                 int_track, ureg))
-        centroids = Centroids(GLB_CENTROIDS_MAT)
-        coast_centr = tc._coastal_centr_idx(centroids)
-        new_centr = centroids.coord[coast_centr]
+        coast_centr = tc._coastal_centr_idx(CENT_CLB)
+        new_centr = CENT_CLB.coord[coast_centr]
         r_arr = np.array([286.4938638337190, 290.5930935802884,
                           295.0271327746536, 299.7811253637995,
                           296.8484825705515, 274.9892882245964])
@@ -344,7 +342,7 @@ class TestIBTracs(unittest.TestCase):
                                 1019665]) - 1
 
         v_trans, v_trans_corr = tc._vtrans_holland(int_track, i_node,
-            new_centr, close_centr, r_arr, ureg)
+            new_centr[close_centr, :], r_arr, ureg)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
         self.assertAlmostEqual(v_trans * to_kn, 10.191466256012880)
@@ -387,9 +385,8 @@ class TestIBTracs(unittest.TestCase):
         int_track['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
                 int_track, ureg))
         int_track = int_track.sel(time=slice('1951-08-27', '1951-08-28'))
-        centroids = Centroids(GLB_CENTROIDS_MAT)
-        coast_centr = tc._coastal_centr_idx(centroids)
-        new_centr = centroids.coord[coast_centr]
+        coast_centr = tc._coastal_centr_idx(CENT_CLB)
+        new_centr = CENT_CLB.coord[coast_centr]
 
         wind = tc._windfield_holland(int_track, new_centr, model='H08')
 
@@ -424,8 +421,7 @@ class TestIBTracs(unittest.TestCase):
     def test_gust_from_track(self):
         """ Test gust_from_track function. Compare to MATLAB reference. """
         track = tc.read_ibtracs(TEST_TRACK_SHORT)
-        centroids = Centroids(GLB_CENTROIDS_MAT)
-        intensity = tc.gust_from_track(track, centroids, model='H08')
+        intensity = tc.gust_from_track(track, CENT_CLB, model='H08')
 
         self.assertTrue(isinstance(intensity, sparse.csr.csr_matrix))
         self.assertEqual(intensity.shape, (1, 1656093))
