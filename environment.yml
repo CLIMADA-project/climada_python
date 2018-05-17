@@ -6,27 +6,27 @@ dependencies:
   - dill==0.2.7.1
   - geos=3.6.2
   - h5py=2.7.1
-  - ipython=6.1.0
+  - ipython=6.4.0
   - jsonschema=2.6.0
-  - jupyter_client=5.2.2
+  - jupyter_client=5.2.3
   - jupyter_core=4.4.0
-  - matplotlib=2.1.1
+  - matplotlib=2.2.2
   - mccabe=0.6.1
-  - notebook=5.3.1
+  - notebook=5.5.0
   - numba=0.37.0
-  - numpy=1.13.3
-  - pandas=0.21.1
-  - pip=9.0.1
+  - numpy=1.14.2
+  - pandas=0.23.0
+  - pip=10.0.1
   - proj4=4.9.3
-  - pylint=1.7.4
+  - pylint=1.8.4
   - pyproj=1.9.5.1
-  - python=3.6.3
+  - python=3.6.5
   - scikit-learn=0.19.1
-  - scipy=1.0.0
-  - setuptools=36.5.0
-  - shapely=1.6.2
-  - sphinx=1.6.3
-  - spyder=3.2.4
+  - scipy=1.1.0
+  - setuptools=39.1.0
+  - shapely=1.6.4
+  - sphinx=1.7.4
+  - spyder=3.2.8
   - xarray==0.10.2
   - xlrd=1.1.0
   - pip:
