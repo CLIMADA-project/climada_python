@@ -183,13 +183,23 @@ class Graph2D(object):
         new_ax.grid(on_grid)
         self.axs.append(new_ax)
 
-    def add_curve(self, var_x, var_y, var_style, var_label=None):
-        """Add (x, y) curve to current subplot."""
+    def add_curve(self, var_x, var_y, fmt=None, **kwargs):
+        """Add (x, y) curve to current subplot.
+
+        Parameters:
+            var_x (array): abcissa values
+            var_Y (array): ordinate values
+            fmt (str, optional): format e.g 'k--'
+            kwargs (optional): arguments for plot matplotlib function
+        """
         if self.curr_ax == -1:
             raise ValueError('Add a subplot first!')
         axis = self.axs[self.curr_ax]
-        axis.plot(var_x, var_y, var_style, label=var_label)
-        if var_label is not None:
+        if fmt is not None:
+            axis.plot(var_x, var_y, fmt, **kwargs)
+        else:
+            axis.plot(var_x, var_y, **kwargs)
+        if 'label' in kwargs:
             axis.legend(loc='best')
         axis.grid(True)
 

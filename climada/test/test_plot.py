@@ -91,7 +91,7 @@ class TestPlotter(unittest.TestCase):
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1: Tropical cyclone default', \
                       myax[0].title.get_text())
-        self.assertIn('TC 3 TC Building code', myax[1].title.get_text())
+        self.assertIn('TC 3: TC Building code', myax[1].title.get_text())
 
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""

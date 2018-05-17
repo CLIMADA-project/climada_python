@@ -52,8 +52,8 @@ class ImpactFreqCurve(object):
                          self.unit, ifc.unit)
         graph = plot.Graph2D('', 2)
         graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
-        graph.add_curve(self.return_per, self.impact, 'b', self.label)
-        graph.add_curve(ifc.return_per, ifc.impact, 'r', ifc.label)
+        graph.add_curve(self.return_per, self.impact, 'b', label=self.label)
+        graph.add_curve(ifc.return_per, ifc.impact, 'r', label=ifc.label)
         return graph.get_elems()
 
 class Impact(object):

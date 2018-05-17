@@ -79,10 +79,10 @@ class ImpactFunc(object):
             title += ': %s' % self.name
         graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
                          'Percentage (%)', title)
-        graph.add_curve(self.intensity, self.mdd * 100, 'b', 'MDD')
-        graph.add_curve(self.intensity, self.paa * 100, 'r', 'PAA')
+        graph.add_curve(self.intensity, self.mdd * 100, 'b', label='MDD')
+        graph.add_curve(self.intensity, self.paa * 100, 'r', label='PAA')
         graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \
-                        'MDR')
+                        label='MDR')
         graph.set_x_lim(self.intensity)
         return graph.get_elems()
 
