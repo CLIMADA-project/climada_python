@@ -45,7 +45,7 @@ def read_mat(disc_rates, file_name, var_names):
                         astype(int, copy=False)
         disc_rates.rates = np.squeeze(disc[var_names['var_name']['disc']])
     except KeyError as err:
-        LOGGER.error("Not existing variable. " + str(err))
+        LOGGER.error("Not existing variable: %s", str(err))
         raise err
 
 def read_excel(disc_rates, file_name, var_names):
@@ -60,7 +60,7 @@ def read_excel(disc_rates, file_name, var_names):
                             astype(int, copy=False)
         disc_rates.rates = dfr[var_names['col_name']['disc']].values
     except KeyError as err:
-        LOGGER.error("Not existing variable. " + str(err))
+        LOGGER.error("Not existing variable: %s", str(err))
         raise err
 
 READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),

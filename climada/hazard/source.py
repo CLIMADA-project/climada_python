@@ -72,7 +72,7 @@ def read_mat(hazard, file_name, centroids, var_names):
 
         read_att_mat(hazard, data, file_name, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable. " + str(var_err))
+        LOGGER.error("Not existing variable: %s", str(var_err))
         raise var_err
 
 def read_excel(hazard, file_name, centroids, var_names):
@@ -83,7 +83,7 @@ def read_excel(hazard, file_name, centroids, var_names):
         read_centroids(hazard, centroids, var_names['col_centroids'])
         read_att_excel(hazard, file_name, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable. " + str(var_err))
+        LOGGER.error("Not existing variable: %s", str(var_err))
         raise var_err
 
 def read_att_mat(hazard, data, file_name, var_names):
@@ -171,7 +171,7 @@ def read_att_excel(hazard, file_name, var_names):
     hazard.intensity = sparse.csr_matrix(hazard.intensity)
 
     # Set fraction matrix to default value of 1
-    hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape,
+    hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape, \
                                         dtype=np.float))
 
 def read_centroids(hazard, centroids, var_names):

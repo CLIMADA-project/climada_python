@@ -65,7 +65,7 @@ def read_mat(measures, file_name, var_names):
         data = data[var_names['field_name']]
         read_att_mat(measures, data, file_name, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable. " + str(var_err))
+        LOGGER.error("Not existing variable %s", str(var_err))
         raise var_err
 
 def read_excel(measures, file_name, var_names):
@@ -77,7 +77,7 @@ def read_excel(measures, file_name, var_names):
         dfr = pandas.read_excel(file_name, var_names['sheet_name'])
         read_att_excel(measures, dfr, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable. " + str(var_err))
+        LOGGER.error("Not existing variable: %s", str(var_err))
         raise var_err
 
 def read_att_mat(measures, data, file_name, var_names):

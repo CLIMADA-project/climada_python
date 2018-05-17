@@ -49,7 +49,7 @@ def read_excel(centroids, file_name, var_names):
         centroids.id = dfr[var_names['col_name']['cen_id']].values. \
                     astype(int, copy=False)
     except KeyError as err:
-        LOGGER.error("Not existing variable." + str(err))
+        LOGGER.error("Not existing variable: %s", str(err))
         raise err
 
 def read_mat(centroids, file_name, var_names):
@@ -73,7 +73,7 @@ def read_mat(centroids, file_name, var_names):
     try:
         read_att_mat(centroids, cent, num_try, var_names)
     except KeyError as err:
-        LOGGER.error("Not existing variable." + str(err))
+        LOGGER.error("Not existing variable: %s", str(err))
         raise err
 
 def read_att_mat(centroids, cent, num_try, var_names):

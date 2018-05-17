@@ -70,7 +70,7 @@ def read_mat(exposures, file_name, var_names=None):
         _read_mat_default(exposures, data, var_names)
         _read_mat_optional(exposures, data, file_name, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable: " + str(var_err))
+        LOGGER.error("Not existing variable: %s", str(var_err))
         raise var_err
 
 def read_excel(exposures, file_name, var_names):
@@ -84,7 +84,7 @@ def read_excel(exposures, file_name, var_names):
         _read_xls_default(exposures, dfr, var_names)
         _read_xls_optional(exposures, dfr, file_name, var_names)
     except KeyError as var_err:
-        LOGGER.error("Not existing variable: " + str(var_err))
+        LOGGER.error("Not existing variable: %s", str(var_err))
         raise var_err
 
 def _read_xls_obligatory(exposures, dfr, var_names):
