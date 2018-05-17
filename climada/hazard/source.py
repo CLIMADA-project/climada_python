@@ -171,8 +171,8 @@ def read_att_excel(hazard, file_name, var_names):
     hazard.intensity = sparse.csr_matrix(hazard.intensity)
 
     # Set fraction matrix to default value of 1
-    hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape, \
-                                      dtype=np.float))
+    hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape,
+                                        dtype=np.float))
 
 def read_centroids(hazard, centroids, var_names):
     """Read centroids file if no centroids provided"""
