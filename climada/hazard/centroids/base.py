@@ -128,11 +128,11 @@ class Centroids(object):
         if self.id.size == 0:
             centroids.check()
             self.__dict__ = centroids.__dict__.copy()
-            return list(range(centroids.id.size))
+            return
         elif centroids.id.size == 0:
-            return list()
+            return
         elif np.array_equal(centroids.coord, self.coord):
-            return list()
+            return
 
         # coordinates of centroids that are not in self
         dtype = {'names':['f{}'.format(i) for i in range(2)],
@@ -141,7 +141,7 @@ class Centroids(object):
                           self.coord.copy().view(dtype), invert=True)
         new_pos = np.argwhere(new_pos).squeeze(axis=1)
         if not new_pos.size:
-            return list()
+            return
 
         centroids.check()
         self.coord = np.append(self.coord, centroids.coord[new_pos, :], axis=0)
