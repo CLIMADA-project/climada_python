@@ -271,6 +271,19 @@ class Exposures(object):
         """ Get longitude from coord array """
         return self.coord[:, 1]
 
+    @property
+    def coord(self):
+        """ Return coord"""
+        return self._coord
+
+    @coord.setter
+    def coord(self, value):
+        """ If it is not a Coordinates instance, put it."""
+        if not isinstance(value, Coordinates):
+            self._coord = Coordinates(value)
+        else:
+            self._coord = value
+
     @staticmethod
     def _read_one(file_name, description='', var_names=None):
         """Read one file and fill attributes.
