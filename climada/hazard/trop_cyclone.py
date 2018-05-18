@@ -371,6 +371,7 @@ def interp_track(track):
     else:
         LOGGER.warning('Track interpolation not done. Not enough elements: %s',
                        track.time.size)
+        track_int = track
 
     return track_int
 
@@ -495,7 +496,7 @@ def _windfield_holland(track, centroids, model='H08'):
             track.lon.values[i_node])) * ONE_LAT_KM
 
         # Choose centroids that are close enough
-        close_centr = np.argwhere(r_arr < CENTR_NODE_MAX_DIST_KM).squeeze()
+        close_centr = np.argwhere(r_arr < CENTR_NODE_MAX_DIST_KM).reshape(-1,)
         r_arr = r_arr[close_centr]
 
         # m/s
