@@ -2,12 +2,15 @@
 Test Centroids base class.
 """
 
+import os
 import unittest
 import numpy as np
 
-from climada.hazard.centroids.base import Centroids, IrregularGrid
+from climada.util.constants import DATA_DIR
+from climada.hazard.centroids.base import Centroids
 from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
+from climada.util.coordinates import Coordinates
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Centroids class"""
@@ -87,7 +90,7 @@ class TestAppend(unittest.TestCase):
         centr1.append(centr2)
         self.assertEqual(type(centr1.tag.file_name), str)
         self.assertEqual(type(centr1.tag.description), str)
-        self.assertEqual(type(centr1.coord), IrregularGrid)
+        self.assertEqual(type(centr1.coord), Coordinates)
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(centr1.region_id), np.ndarray)
         self.assertTrue(type(centr1.dist_coast), np.ndarray)
@@ -252,10 +255,21 @@ class TestAppend(unittest.TestCase):
         centr2 = centr1
 
         centr1.append(centr2)
-        self.assertTrue(np.array_equal(centr1.region_id, \
-                                              np.array([1, 1, 1])))
+        self.assertTrue(np.array_equal(centr1.region_id, np.array([1, 1, 1])))
+
+class TestMethods(unittest.TestCase):
+    """Test additional methods."""
+
+    def test_calc_dist_coast_pass(self):
+        """Test against reference data."""
+        centr_brb = Centroids(os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat'))
+        centr_brb.calc_dist_to_coast()
+        self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
+        self.assertEqual(5.7988200982894105, centr_brb.dist_coast[1])
+        self.assertEqual(166.36505441711506, centr_brb.dist_coast[-2])        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestMethods))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

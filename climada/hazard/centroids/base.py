@@ -9,11 +9,13 @@ import os
 import copy
 import logging
 import numpy as np
+from sklearn.neighbors import BallTree
 
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import Coordinates, IrregularGrid
+from climada.util.coordinates import Coordinates
+from climada.util.constants import EARTH_RADIUS
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
 
@@ -60,7 +62,7 @@ class Centroids(object):
 
             Read centroids from file:
 
-            >>> centr = Centroids(HAZ_TEST_XLS, 'Centroids demo')
+            >>> centr = Centroids(HAZ_DEMO_MAT, 'Centroids demo')
         """
         self.clear()
         if file_name != '':
@@ -166,9 +168,20 @@ class Centroids(object):
         self.id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
 
     def calc_dist_to_coast(self):
-        """ Compute dist_coast value."""
-        # TODO: climada//code/helper_functions/climada_distance2coast_km.m
-        raise NotImplementedError
+        """Compute distance to coast for each centroids (dist_coast variable).
+        No distinction between sea and land centroids."""
+        # Get coastline points which are close to the centroids
+        marg = 10
+        lat, lon = plot.get_coastlines((np.min(self.lon) - marg, \
+            np.max(self.lon) + marg, np.min(self.lat) - marg, \
+            np.max(self.lat) + marg))
+
+        tree = BallTree(np.array([lat, lon]).transpose()/180*np.pi, \
+                        metric='haversine')
+        self.dist_coast, _ = tree.query(self.coord/180*np.pi, k=1, \
+                                return_distance=True, dualtree=True, \
+                                breadth_first=False)
+        self.dist_coast = self.dist_coast.reshape(-1,) * EARTH_RADIUS
 
     def plot(self, **kwargs):
         """ Plot centroids points over earth.
@@ -250,10 +263,9 @@ class Centroids(object):
 
     @coord.setter
     def coord(self, value):
-        """ If it is not a Coordinates instance, put it as IrregularGrid."""
+        """ If it is not a Coordinates instance, put it."""
         if not isinstance(value, Coordinates):
-            # Set coordinates as irregular grid
-            self._coord = IrregularGrid(value)
+            self._coord = Coordinates(value)
         else:
             self._coord = value
 
