@@ -29,7 +29,7 @@ extra_files.append(here + '/climada/conf/logging.conf')
 setup(
     name='climada',
 
-    version='0.0.1',
+    version='0.1.0',
 
     description='CLIMADA in Python',
 

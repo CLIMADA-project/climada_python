@@ -6,9 +6,9 @@ TEST version of core CLIMADA in Python - please use https://github.com/davidnbre
 
 Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz.ch>
 
-Date: 2018-03-02
+Date: 2018-05-20
 
-Version: 0.0.1
+Version: 0.1.0
 
 See [Technical documentation](http://climada-python.readthedocs.io/en/latest/).
 
