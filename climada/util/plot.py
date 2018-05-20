@@ -134,7 +134,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
             extent[0] : extent[1] : complex(0, RESOLUTION),
             extent[2] : extent[3] : complex(0, RESOLUTION)]
         grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
-                                 (grid_x, grid_y))
+                           (grid_x, grid_y))
 
         # Add coastline to axis
         axis.set_extent((extent))
@@ -352,3 +352,34 @@ def get_borders(geo_coord):
     min_lat = max(np.min(geo_coord[:, 0]), -90)
     max_lat = min(np.max(geo_coord[:, 0]), 90)
     return [min_lon, max_lon, min_lat, max_lat]
+
+def get_coastlines(border=None):
+    """Get latitudes and longitudes of the coast lines inside border. All
+    earth if no border.
+
+    Parameters:
+        border (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
+
+    Returns:
+        lat (np.array), lon(np.array)
+    """
+    shp_file = shapereader.natural_earth(resolution='10m',
+                                         category='physical', name='coastline')
+    shp = shapereader.Reader(shp_file)
+    geoms = list(shp.geometries())
+    # TODO avoid construct geoms every time?
+    coast_lon = list()
+    coast_lat = list()
+    for multi_line in geoms:
+        coast_lon += multi_line.geoms[0].xy[0]
+        coast_lat += multi_line.geoms[0].xy[1]
+    coast_lon = np.array(coast_lon)
+    coast_lat = np.array(coast_lat)
+    if border is None:
+        in_point = np.ones(coast_lon.size, dtype=bool)
+    else:
+        in_lon = np.logical_and(coast_lon >= border[0], coast_lon <= border[1])
+        in_lat = np.logical_and(coast_lat >= border[2], coast_lat <= border[3])
+        in_point = np.logical_and(in_lon, in_lat)
+
+    return coast_lat[in_point], coast_lon[in_point]
