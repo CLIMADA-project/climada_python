@@ -34,7 +34,7 @@ def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
 def interpol_index(centroids, coordinates, method=METHOD[0], \
                    distance=DIST_DEF[1]):
     """ Returns for each coordinate the centroids indexes used for
-    interpolation
+    interpolation.
 
     Parameters:
         centroids (2d array): First column contains latitude, second
