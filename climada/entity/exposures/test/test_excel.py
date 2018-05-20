@@ -1,15 +1,17 @@
 """
 Test Exposures from Excel file.
 """
-
+import os
 import unittest
 import numpy as np
 import pandas
 
 from climada.entity.exposures import source as source
 from climada.entity.exposures.base import Exposures
-from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS
+from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS
 from climada.util.config import CONFIG
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""

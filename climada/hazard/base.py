@@ -90,7 +90,7 @@ class Hazard(object):
 
             Take hazard values from file:
 
-            >>> haz = Hazard('TC', HAZ_TEST_XLS)
+            >>> haz = Hazard('TC', HAZ_DEMO_MAT)
 
             Take centriods from a different source:
 

@@ -2,8 +2,8 @@
 Test TropCyclone class
 """
 
-import unittest
 import os
+import unittest
 import numpy as np
 from pint import UnitRegistry
 from scipy import sparse
@@ -12,7 +12,9 @@ import datetime as dt
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import DATA_DIR, HAZ_TEST_MAT, GLB_CENTROIDS_MAT
+from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT
+
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
 
 TEST_TRACK = os.path.join(DATA_DIR, 'test', "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, 'test', "trac_short_test.csv")

@@ -1,11 +1,13 @@
 """
 Test DiscRates from Excel.
 """
-
+import os
 import unittest
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
+from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 class TestReaderExcel(unittest.TestCase):
     """Test excel reader for discount rates"""

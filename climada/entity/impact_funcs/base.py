@@ -60,7 +60,7 @@ class ImpactFuncSet(object):
 
             Read impact functions from file and checks consistency data.
 
-            >>> imp_fun = ImpactFuncSet(ENT_TEST_XLS)
+            >>> imp_fun = ImpactFuncSet(ENT_TEMPLATE_XLS)
         """
         self.clear()
         if file_name != '':

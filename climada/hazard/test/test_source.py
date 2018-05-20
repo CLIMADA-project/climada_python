@@ -2,13 +2,17 @@
 Test read Hazard from file.
 """
 
+import os
 import unittest
 import datetime as dt
 import numpy as np
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import HAZ_TEST_MAT, HAZ_TEST_XLS
+from climada.util.constants import DATA_DIR
+
+HAZ_TEST_XLS = os.path.join(DATA_DIR, 'test', 'Excel_hazard.xlsx')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of the ExposuresExcel class'''

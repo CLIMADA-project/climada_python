@@ -1,14 +1,16 @@
 """
 Test interpolation module.
 """
-
+import os
 import unittest
 import numpy as np
 
 from climada.entity.exposures.base import Exposures
 from climada.hazard.centroids.base import Centroids
 import climada.util.interpolation as interp
-from climada.util.constants import ENT_TEST_XLS
+from climada.util.constants import DATA_DIR
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 def def_input_values():
     '''Default input coordinates and centroids values'''

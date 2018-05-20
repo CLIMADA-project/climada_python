@@ -1,7 +1,7 @@
 """
 Test Exposure base class.
 """
-
+import os
 import unittest
 import numpy as np
 
@@ -9,7 +9,9 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.source import READ_SET
 from climada.hazard.base import Hazard
 from climada.util.coordinates import Coordinates
-from climada.util.constants import ENT_TEST_XLS, ENT_TEMPLATE_XLS
+from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 def good_exposures():
     """Followng values are defined for each exposure"""

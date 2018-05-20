@@ -2,10 +2,14 @@
 Test Centroids from MATLAB class.
 """
 
+import os
 import unittest
 
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import HAZ_TEST_MAT, HAZ_TEST_XLS, GLB_CENTROIDS_MAT
+from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT
+
+HAZ_TEST_XLS = os.path.join(DATA_DIR, 'test', 'Excel_hazard.xlsx')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of MATLAB files'''

@@ -77,7 +77,7 @@ class Exposures(object):
 
             Read exposures from Zurich.mat and checks consistency data.
 
-            >>> exp_city = Exposures(ENT_TEST_XLS)
+            >>> exp_city = Exposures(ENT_TEMPLATE_XLS)
         """
         self.clear()
         if file_name != '':

@@ -2,6 +2,7 @@
 Test Hazard base class.
 """
 
+import os
 import unittest
 import datetime as dt
 import numpy as np
@@ -12,7 +13,10 @@ from climada.hazard.source import READ_SET
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import HAZ_TEST_XLS, HAZ_TEST_MAT
+from climada.util.constants import DATA_DIR
+
+HAZ_TEST_XLS = os.path.join(DATA_DIR, 'test', 'Excel_hazard.xlsx')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Hazard class"""

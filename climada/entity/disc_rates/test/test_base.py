@@ -1,13 +1,15 @@
 """
 Test DiscRates class.
 """
-
+import os
 import unittest
 import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.disc_rates.source import READ_SET
-from climada.util.constants import ENT_TEST_XLS
+from climada.util.constants import DATA_DIR
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""

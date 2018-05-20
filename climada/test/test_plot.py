@@ -1,6 +1,7 @@
 """
 test plots
 """
+import os
 import unittest
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +11,9 @@ from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.base import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
-from climada.util.constants import HAZ_DEMO_MAT, ENT_TEST_XLS
+from climada.util.constants import HAZ_DEMO_MAT, DATA_DIR
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""

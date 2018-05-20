@@ -1,12 +1,14 @@
 """
 Test save module.
 """
-
+import os
 import unittest
 
 from climada.util.save import save
 from climada.entity.entity import Entity
-from climada.util.constants import ENT_TEST_XLS
+from climada.util.constants import DATA_DIR
+
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 class TestSave(unittest.TestCase):
     """Test save function"""

@@ -47,7 +47,7 @@ class Entity(object):
 
             Builds Entity with the values obtained from file:
 
-            >>> Entity(ENT_TEST_XLS)
+            >>> Entity(ENT_TEMPLATE_XLS)
 
             Builds Entity with exposures and discount rates from configurable
             entity_def file, and the given impact functions and measures:

@@ -2,12 +2,15 @@
 Test hdf5_handler module.
 """
 
+import os
 import unittest
 import numpy as np
 import h5py
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import HAZ_DEMO_MAT, HAZ_TEST_MAT, ENT_DEMO_MAT
+from climada.util.constants import HAZ_DEMO_MAT, DATA_DIR, ENT_DEMO_MAT
+
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary functions used to retrieve variables from HDF5'''

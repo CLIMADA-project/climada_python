@@ -60,7 +60,7 @@ class MeasureSet(object):
 
             Read measures from file and checks consistency data:
 
-            >>> meas = MeasureSet(ENT_TEST_XLS)
+            >>> meas = MeasureSet(ENT_TEMPLATE_XLS)
         """
         self.clear()
         if file_name != '':

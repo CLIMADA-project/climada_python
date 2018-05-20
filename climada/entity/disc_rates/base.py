@@ -57,7 +57,7 @@ class DiscRates(object):
 
             Read discount rates from year_2050.mat and checks consistency data.
 
-            >>> disc_rates = DiscRates(ENT_TEST_XLS)
+            >>> disc_rates = DiscRates(ENT_TEMPLATE_XLS)
         """
         self.clear()
         if file_name != '':
