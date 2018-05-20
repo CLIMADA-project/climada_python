@@ -521,17 +521,11 @@ def _windfield_holland(track, centroids, model='H08'):
 def _coastal_centr_idx(centroids):
     """ Compute centroids indices which are inside INLAND_MAX_DIST_KM and
     with lat < 61 """
-    # TODO: remove try when calc_dist_to_coast implemented
-    try:
-        if centroids.dist_coast.size == 0:
-            centroids.calc_dist_to_coast()
+    if centroids.dist_coast.size == 0:
+        centroids.calc_dist_to_coast()
 
-        return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
-                              centroids.lat < 61).nonzero()[0]
-    except NotImplementedError:
-        # Return all centroids
-        return np.arange(centroids.lat.size)
-
+    return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
+                          centroids.lat < 61).nonzero()[0]
 
 def _extra_rad_max_wind(track, ureg):
     """ Extrapolate RadiusMaxWind from pressure.
