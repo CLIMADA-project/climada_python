@@ -24,7 +24,7 @@ class TestLoader(unittest.TestCase):
         haz.centroids = Centroids()
         haz.centroids.region_id = np.array([1, 2])
         haz.centroids.id = np.array([1, 2])
-        haz.centroids.coord = np.array([[1, 2], [1, 2]])
+        haz.centroids.coord = np.array([[1, 2], [3, 3]])
         haz.event_id = np.array([1, 2, 3])
         haz.event_name = ['A', 'B', 'C']
         haz.frequency = np.array([1, 2, 3])
@@ -604,7 +604,6 @@ class TestYearset(unittest.TestCase):
                                        np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReadParallel)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
