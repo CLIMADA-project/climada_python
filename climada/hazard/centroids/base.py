@@ -89,7 +89,8 @@ class Centroids(object):
             LOGGER.error("There are centroids with the same identifier.")
             raise ValueError
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
-        if np.unique(self.coord, axis=1).size != 2*num_exp:
+        if num_exp > 0 and np.unique(self.coord, axis=0).size \
+        != 2*self.coord.shape[0]:
             LOGGER.error("There centroids with the same coordinates.")
             raise ValueError
         check.array_optional(num_exp, self.region_id,
