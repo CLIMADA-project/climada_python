@@ -12,7 +12,6 @@ __all__ = ['SOURCE_DIR',
            'ENT_DEMO_MAT',
            'ONE_LAT_KM',
            'EARTH_RADIUS',
-           'CENTR_TEST_BRB',
            'GLB_CENTROIDS_MAT',
            'ENT_FL_MAT',
            'TC_ANDREW_FL']
@@ -53,9 +52,6 @@ TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
 """ Tropical cyclone Andrew in Florida """
 
 GLB_CENTROIDS_MAT = os.path.join(DATA_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
-""" Global centroids."""
-
-CENTR_TEST_BRB = os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat')
 """ Global centroids."""
 
 ONE_LAT_KM = 111.12

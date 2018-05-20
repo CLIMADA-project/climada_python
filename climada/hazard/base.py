@@ -94,8 +94,8 @@ class Hazard(object):
 
             Take centriods from a different source:
 
-            >>> centr = Centroids(HAZ_TEST_XLS, 'Centroids demo')
-            >>> haz = Hazard('TC', HAZ_TEST_XLS, 'Demo hazard.', centr)
+            >>> centr = Centroids(HAZ_DEMO_MAT, 'Centroids demo')
+            >>> haz = Hazard('TC', HAZ_DEMO_MAT, 'Demo hazard.', centr)
         """
         self.clear()
         if '.' in haz_type and file_name == '':

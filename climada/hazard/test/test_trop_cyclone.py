@@ -12,12 +12,14 @@ import datetime as dt
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import DATA_DIR, HAZ_TEST_MAT, GLB_CENTROIDS_MAT, CENTR_TEST_BRB
+from climada.util.constants import DATA_DIR, HAZ_TEST_MAT, GLB_CENTROIDS_MAT
 
 TEST_TRACK = os.path.join(DATA_DIR, 'test', "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, 'test', "trac_short_test.csv")
 
 CENT_CLB = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+
+CENTR_TEST_BRB = Centroids(os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat'))
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
@@ -57,15 +59,15 @@ class TestReader(unittest.TestCase):
     def test_set_one_file_pass(self):
         """ Test set function with one input."""
         tc_haz = TropCyclone()
-        centr = Centroids(CENTR_TEST_BRB)
-        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=centr)
+        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
         tc_haz.check()
         
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, TEST_TRACK_SHORT)
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name, CENTR_TEST_BRB)
+        self.assertEqual(tc_haz.centroids.tag.file_name, 
+                         CENTR_TEST_BRB.tag.file_name)
         self.assertEqual(tc_haz.centroids.id.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
@@ -82,16 +84,16 @@ class TestReader(unittest.TestCase):
     def test_two_files_pass(self):
         """ Test construct tropical cyclone from two IbTracs."""
         tc_haz = TropCyclone()
-        centr = Centroids(CENTR_TEST_BRB)
         tc_haz.set_from_tracks([TEST_TRACK_SHORT, TEST_TRACK_SHORT], 
-                               centroids=centr)
+                               centroids=CENTR_TEST_BRB)
         tc_haz.check()
         
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, TEST_TRACK_SHORT)
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name, CENTR_TEST_BRB)
+        self.assertEqual(tc_haz.centroids.tag.file_name, 
+                         CENTR_TEST_BRB.tag.file_name)
         self.assertEqual(tc_haz.centroids.id.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
@@ -109,11 +111,10 @@ class TestReader(unittest.TestCase):
 
     def test_read_haz_and_tc_pass(self):
         """ Read a hazard file and a IbTrac in parallel. """
-        centr = Centroids(CENTR_TEST_BRB)
         tc_haz1 = TropCyclone()
         tc_haz1.read(HAZ_TEST_MAT)
         tc_haz2 = TropCyclone()
-        tc_haz2.set_from_tracks(TEST_TRACK_SHORT, centroids=centr)
+        tc_haz2.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
         tc_haz2.append(tc_haz1)
         tc_haz2.check()
         self.assertEqual(tc_haz2.intensity.shape, (14451, 396))
@@ -495,11 +496,10 @@ class TestRndWalk(unittest.TestCase):
     
     def test_from_class_pass(self):
         """ Test call from class."""
-        centr_brb = Centroids(CENTR_TEST_BRB)
         ens_size=3
         tc_haz = tc.TropCyclone()
-        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=centr_brb)
-        tc_haz.set_random_walk(ens_size, centroids=centr_brb)
+        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
+        tc_haz.set_random_walk(ens_size, centroids=CENTR_TEST_BRB)
 
         self.assertEqual(len(tc_haz.tracks), ens_size+1)
         self.assertEqual(tc_haz.event_id.size, ens_size+1)

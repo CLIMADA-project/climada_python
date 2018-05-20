@@ -121,7 +121,7 @@ class Impact(object):
         Examples:
             Use Entity class:
 
-            >>> hazard = Hazard(HAZ_TEST_XLS) # Set hazard
+            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
             >>> entity = Entity() # Load entity with default values
             >>> entity.exposures = Exposures(ENT_TEST_XLS) # Set exposures
             >>> tc_impact = Impact()
@@ -129,7 +129,7 @@ class Impact(object):
 
             Specify only exposures and impact functions:
 
-            >>> hazard = Hazard(HAZ_TEST_XLS) # Set hazard
+            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
             >>> funcs = ImpactFuncSet(ENT_TEST_XLS) # Set impact functions
             >>> exposures = Exposures(ENT_TEST_XLS) # Set exposures
             >>> tc_impact = Impact()
