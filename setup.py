@@ -66,6 +66,7 @@ setup(
                       'xlrd',
                       'pint',
                       'numpy',
+                      'numba',
                       'pathos',
                       'xmlrunner'
                      ], 
