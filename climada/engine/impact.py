@@ -66,12 +66,12 @@ class Impact(object):
         hazard_tag (TagHazard): information about the hazard
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
-        exp_coord (Coordinates): exposures coordinates (in degrees)
-        at_exp (np.array): impact for each exposure
+        coord_exp (Coordinates): exposures coordinates (in degrees)
+        eai_exp (np.array): expected annual impact for each exposure
         at_event (np.array): impact for each hazard event
-        frequency (np.arrray): frequency (pro event)
+        frequency (np.arrray): annual frequency of event
         tot_value (float): total exposure value affected
-        tot (float): total expected impact
+        aai_agg (float): average annual impact (aggregated)
         unit (str): value unit used (given by exposures unit)
     """
 
@@ -82,16 +82,17 @@ class Impact(object):
         self.hazard_tag = TagHazard()
         self.event_id = np.array([], int)
         self.event_name = list()
-        self.exp_coord = Coordinates()
-        self.at_exp = np.array([])
+        self.date = np.array([], int)
+        self.coord_exp = Coordinates()
+        self.eai_exp = np.array([])
         self.at_event = np.array([])
         self.frequency = np.array([])
         self.tot_value = 0
-        self.tot = 0
+        self.aai_agg = 0
         self.unit = 'NA'
 
     def calc_freq_curve(self):
-        """Compute and plot impact frequency curve.
+        """Compute impact exceedance frequency curve.
 
         Returns:
             ImpactFreqCurve
@@ -144,10 +145,11 @@ class Impact(object):
         self.unit = exposures.value_unit
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
-        self.exp_coord = exposures.coord
+        self.date = hazard.date
+        self.coord_exp = exposures.coord
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
-        self.at_exp = np.zeros(len(exposures.value))
+        self.eai_exp = np.zeros(len(exposures.value))
         self.tot_value = 0
         self.exposures_tag = exposures.tag
         self.impact_funcs_tag = impact_funcs.tag
@@ -181,14 +183,14 @@ class Impact(object):
 
                 # add values to impact impact
                 self.at_event[event_row] += impact
-                self.at_exp[iexp] += np.squeeze(sum(impact * hazard. \
+                self.eai_exp[iexp] += np.squeeze(sum(impact * hazard. \
                            frequency[event_row]))
                 self.tot_value += exposures.value[iexp]
 
-        self.tot = sum(self.at_event * hazard.frequency)
+        self.aai_agg = sum(self.at_event * hazard.frequency)
 
-    def plot_at_exposure(self, ignore_null=True, **kwargs):
-        """Plot accumulated impact at each exposure.
+    def plot_eai_exposure(self, ignore_null=True, **kwargs):
+        """Plot expected annual impact of each exposure.
 
         Parameters:
             ignore_null (bool): ignore zero impact values at exposures
@@ -197,16 +199,16 @@ class Impact(object):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        title = 'Accumulated impact'
+        title = 'Expected annual impact'
         col_name = 'Impact ' + self.unit
         if ignore_null:
-            pos_vals = self.at_exp > 0
+            pos_vals = self.eai_exp > 0
         else:
-            pos_vals = np.ones((self.at_exp.size,), dtype=bool)
+            pos_vals = np.ones((self.eai_exp.size,), dtype=bool)
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        return plot.geo_bin_from_array(self.at_exp[pos_vals], \
-            self.exp_coord[pos_vals], col_name, title, **kwargs)
+        return plot.geo_bin_from_array(self.eai_exp[pos_vals], \
+            self.coord_exp[pos_vals], col_name, title, **kwargs)
 
     @staticmethod
     def _one_exposure(iexp, exposures, hazard, imp_fun):

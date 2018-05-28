@@ -146,22 +146,22 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
         self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
         self.assertEqual(0, impact.at_event[num_events-1])
-        # impact.at_exp == EDS.ED_at_centroid in MATLAB
-        self.assertEqual(num_exp, len(impact.at_exp))
-        self.assertAlmostEqual(1.518553670803242e+08, impact.at_exp[0])
+        # impact.eai_exp == EDS.ED_at_centroid in MATLAB
+        self.assertEqual(num_exp, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
         self.assertAlmostEqual(1.373490457046383e+08, \
-                               impact.at_exp[int(num_exp/2)], 6)
+                               impact.eai_exp[int(num_exp/2)], 6)
         self.assertTrue(np.isclose(1.373490457046383e+08, \
-                                          impact.at_exp[int(num_exp/2)]))
+                                          impact.eai_exp[int(num_exp/2)]))
         self.assertAlmostEqual(1.066837260150042e+08, \
-                               impact.at_exp[num_exp-1], 6)
+                               impact.eai_exp[num_exp-1], 6)
         self.assertTrue(np.isclose(1.066837260150042e+08, \
-                                          impact.at_exp[int(num_exp-1)]))
+                                          impact.eai_exp[int(num_exp-1)]))
         # impact.tot_value == EDS.Value in MATLAB
-        # impact.tot == EDS.ED in MATLAB
+        # impact.aai_agg == EDS.ED in MATLAB
         self.assertAlmostEqual(6.570532945599104e+11, impact.tot_value)
-        self.assertAlmostEqual(6.512201157564421e+09, impact.tot, 5)
-        self.assertTrue(np.isclose(6.512201157564421e+09, impact.tot))
+        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
+        self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)

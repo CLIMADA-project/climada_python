@@ -60,7 +60,7 @@ class Hazard(object):
             (ordinal format of datetime library)
         orig (np.array): flags indicating historical events (True)
             or probabilistic (False)
-        frequency (np.array): frequency of each event in seconds
+        frequency (np.array): frequency of each event in years
         intensity (sparse.csr_matrix): intensity of the events at centroids
         fraction (sparse.csr_matrix): fraction of affected exposures for each
             event at each centroid
