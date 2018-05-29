@@ -99,19 +99,19 @@ class TropCyclone(Hazard):
 
         desc_list = to_list(len(all_tracks), descriptions, 'descriptions')
 
-        if centroids is None:
-            centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
-            centr_list = itertools.repeat(centroids, len(all_tracks))
-        else:
-            centr_list = to_list(len(all_tracks), centroids, 'centroids')
-            if isinstance(centr_list[0], str) and \
-            centr_list.count(centr_list[0]) == len(centr_list):
-                centroids = Centroids(centr_list[0])
-                centr_list = itertools.repeat(centroids, len(all_tracks))
+        if not isinstance(centroids, list):
+            if centroids is None and self.centroids.id.size == 0:
+                centroids = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+            elif self.centroids.id.size > 0:
+                centroids = self.centroids
+            if centroids.dist_coast.size == 0:
+                centroids.calc_dist_to_coast()
+        centr_list = to_list(len(all_tracks), centroids, 'centroids')
 
         chunksize = 1
         if len(all_tracks) > 1000:
             chunksize = 2
+
         for tc_haz in Pool().map(self._hazard_from_track, all_tracks, \
                                  desc_list, centr_list, itertools.repeat( \
                                  model, len(all_tracks)), chunksize=chunksize):
@@ -180,13 +180,14 @@ class TropCyclone(Hazard):
             ens_size (int, optional): number of created tracks per original
                 track. Default 9.
             description (str, optional): description of the produced data
-            centroids (Centroids, optional): Centroids instance. Use global
-                centroids if not provided.
+            centroids (Centroids, optional): Centroids instance. If None, use
+                hazard centroids. If no hazard centroids, use global centroids.
             model (str, optional): model to compute gust. Default Holland2008.
         """
         hist_track = [track for track in self.tracks if track.orig_event_flag]
         prob_tracks = Pool().map(calc_random_walk, hist_track,
                                  itertools.repeat(ens_size))
+
         for tracks in prob_tracks:
             self._append_tracks(tracks)
         self.set_from_tracks(descriptions=description, centroids=centroids,
