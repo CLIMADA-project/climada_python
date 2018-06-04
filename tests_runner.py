@@ -4,6 +4,7 @@
 import os
 import sys
 import unittest
+import matplotlib
 
 def find_unit_tests():
     suite = unittest.TestLoader().discover('climada.entity.exposures.test')
@@ -35,6 +36,6 @@ def main():
         unittest.TextTestRunner(verbosity=2).run(find_unit_tests())
 
 if __name__ == '__main__':
+    matplotlib.use("Agg")
     sys.path.append(os.getcwd())
-    print(sys.path)
     main()
