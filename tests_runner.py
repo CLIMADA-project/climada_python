@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
 import sys
 import unittest
 
@@ -34,4 +35,5 @@ def main():
         unittest.TextTestRunner(verbosity=2).run(find_unit_tests())
 
 if __name__ == '__main__':
+    sys.path.append(os.getcwd())
     main()
