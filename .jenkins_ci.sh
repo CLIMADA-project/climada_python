@@ -1,6 +1,6 @@
-#!/bin/sh
-. activate climada_env
-conda env update --file requirements/env_developer.yml
+#!/bin/bash -e
+
+source activate climada_env
 make lint
 make unit_test
-. deactivate
+source deactivate
