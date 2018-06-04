@@ -1,0 +1,16 @@
+name: climada_env
+channels:
+  - defaults
+dependencies:
+  - ipython=6.4.0
+  - jupyter_client=5.2.3
+  - jupyter_core=4.4.0
+  - mccabe=0.6.1
+  - notebook=5.5.0
+  - pylint=1.8.4
+  - python=3.6.5
+  - sphinx=1.7.4
+  - spyder=3.2.8
+  - pip:
+    - coverage==4.4.2
+    - xmlrunner==1.7.7

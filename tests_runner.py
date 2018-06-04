@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import sys
 import unittest
-import xmlrunner
 
-def runner(output='python_tests_xml'):
-    return xmlrunner.XMLTestRunner(output=output)
-
-def find_tests():
+def find_unit_tests():
     suite = unittest.TestLoader().discover('climada.entity.exposures.test')
     suite.addTest(unittest.TestLoader().discover('climada.entity.disc_rates.test'))
     suite.addTest(unittest.TestLoader().discover('climada.entity.impact_funcs.test'))
@@ -19,6 +16,22 @@ def find_tests():
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
     return suite
 
+def find_integ_tests():
+    suite = unittest.TestLoader().discover('climada.test')
+    return suite
+
+def main():
+    # print command line arguments
+    if sys.argv[1:]:
+        import xmlrunner
+        arg = sys.argv[1]
+        output = 'tests_xml'
+        if arg == 'unit':
+            xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
+        elif arg == 'integ':
+            xmlrunner.XMLTestRunner(output=output).run(find_integ_tests())
+    else:
+        unittest.TextTestRunner(verbosity=2).run(find_unit_tests())
+
 if __name__ == '__main__':
-    #unittest.TextTestRunner(verbosity=2).run(find_tests())
-    runner().run(find_tests())
+    main()
