@@ -36,4 +36,5 @@ def main():
 
 if __name__ == '__main__':
     sys.path.append(os.getcwd())
+    print(sys.path)
     main()
