@@ -1,5 +1,5 @@
 """
-Test Vulnerability class.
+Test ImpactFunc class.
 """
 
 import unittest

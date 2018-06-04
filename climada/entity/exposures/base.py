@@ -141,8 +141,8 @@ class Exposures(object):
 
         Parameters:
             ignore_null (bool, optional): flag to indicate if zero and
-                negative values are ignored in plot. Default is False.
-            pop_name (bool, optional): add names of the populated places.
+                negative values are ignored in plot. Default is False
+            pop_name (bool, optional): add names of the populated places
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
