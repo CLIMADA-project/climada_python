@@ -19,10 +19,7 @@ class TestPlotter(unittest.TestCase):
     """Test plot functions."""
 
     def setUp(self):
-        plt.ion()
-
-    def tearDown(self):
-        plt.close('all')
+        plt.ioff()
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
