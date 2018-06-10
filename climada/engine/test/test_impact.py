@@ -101,7 +101,7 @@ class TestOneExposure(unittest.TestCase):
         self.assertEqual(0, result[543])
         self.assertEqual(0, result[982])
         self.assertEqual(1.3318063850487845e+08, result[750])
-        self.assertEqual(4.6671085550540835e+06, result[917])
+        self.assertEqual(4.667108555054083e+06, result[917])
         self.assertEqual(6281, event_row[678])
         self.assertEqual(4998, event_row[543])
         self.assertEqual(9527, event_row[982])
@@ -134,7 +134,7 @@ class TestCalc(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
-
+        
         # Check result
         num_events = len(hazard.event_id)
         num_exp = len(ent.exposures.id)

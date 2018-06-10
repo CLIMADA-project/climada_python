@@ -37,29 +37,19 @@ class ImpactFunc(object):
         self.mdd = np.array([])
         self.paa = np.array([])
 
-    def interpolate(self, inten, attribute):
+    def calc_mdr(self, inten):
         """ Interpolate impact function to a given intensity.
 
         Parameters:
             inten (float or np.array): intensity, the x-coordinate of the
                 interpolated values.
-            attribute (str): defines the impact function attribute to
-                interpolate. Possbile values: 'mdd' or 'paa'.
 
         Returns:
             np.array
-
-        Raises:
-            ValueError
         """
-        if attribute == 'mdd':
-            return np.interp(inten, self.intensity, self.mdd)
-        elif attribute == 'paa':
-            return np.interp(inten, self.intensity, self.paa)
-        else:
-            LOGGER.error("Attribute of the impact function not found: %s",\
-                         attribute)
-            raise ValueError
+#        return np.interp(inten, self.intensity, self.mdd * self.paa)
+        return np.interp(inten, self.intensity, self.paa) * \
+            np.interp(inten, self.intensity, self.mdd)
 
     def plot(self, graph=None):
         """Plot the impact functions MDD, MDR and PAA in one graph, where

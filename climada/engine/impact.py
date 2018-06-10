@@ -234,13 +234,10 @@ class Impact(object):
         # get affected fraction for these events
         fract = np.squeeze(hazard.fraction[:, icen].toarray()[event_row])
 
-        # get MDD and PAA for these intensities
-        mdd = imp_fun.interpolate(inten_val, 'mdd')
-        paa = imp_fun.interpolate(inten_val, 'paa') * fract
-
         # impact on this exposure
-        impact = exposures.value[iexp] * mdd * paa
+        impact = exposures.value[iexp] * imp_fun.calc_mdr(inten_val) * fract
         if np.count_nonzero(impact) > 0:
+            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             # TODO: if needed?
             if (exposures.deductible[iexp] > 0) or \
                 (exposures.cover[iexp] < exposures.value[iexp]):
