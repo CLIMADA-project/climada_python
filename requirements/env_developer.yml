@@ -8,7 +8,6 @@ dependencies:
   - mccabe=0.6.1
   - notebook=5.5.0
   - pylint=1.8.4
-  - python=3.6.5
   - sphinx=1.7.4
   - spyder=3.2.8
   - pip:
