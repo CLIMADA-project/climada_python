@@ -42,15 +42,14 @@ INLAND_MAX_DIST_KM = 1000
 CENTR_NODE_MAX_DIST_KM = 300
 """ Maximum distance between centroid and TC track node in km """
 
-MIN_WIND_THRES_KN = 34
-""" Minimum windspeed stored in knots (for storage management reasons)"""
-
 class TropCyclone(Hazard):
     """Contains tropical cyclone events obtained from a csv IBTrACS file.
 
     Attributes:
         tracks (list(xarray.Dataset)): list of tropical cyclone tracks
     """
+    intensity_thres = 17.5
+    """ intensity threshold for storage in m/s """
 
     def __init__(self, file_name='', description='', centroids=None):
         """Initialize values from given file, if given. Input file contains
@@ -476,8 +475,7 @@ def _windfield_holland(track, centroids, model='H08'):
     ureg = UnitRegistry()
 
     # Minimum windspeed to m/s
-    min_wind_threshold = (MIN_WIND_THRES_KN * ureg.knot).to(ureg.meter / \
-                         ureg.second).magnitude
+    min_wind_threshold = TropCyclone.intensity_thres
 
     # Make sure that CentralPressure never exceeds EnvironmentalPressure
     up_pr = np.argwhere(track.central_pressure.values >
