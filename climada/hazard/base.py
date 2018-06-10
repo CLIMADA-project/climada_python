@@ -31,20 +31,6 @@ FILE_EXT = {'.mat':  'MAT',
 RETURN_PER = (25, 50, 100, 250)
 """ Default return periods in statistics"""
 
-INTENSITY_THRES = {'TC': 10,
-                   'WS': 10,
-                   'EQ': 10,
-                   'FL': 10,
-                   'VQ': 10,
-                   'TS': 10,
-                   'TR': 10,
-                   'LS': 10,
-                   'HS': 10,
-                   'BF': 10
-                  }
-""" Intensity threshold per hazard used to filter lower intensities in
-statistics """
-
 class Hazard(object):
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
@@ -65,6 +51,9 @@ class Hazard(object):
         fraction (sparse.csr_matrix): fraction of affected exposures for each
             event at each centroid
     """
+    intensity_thres = 10
+    """ Intensity threshold per hazard used to filter lower intensities. To be
+    set for every hazard type """
 
     def __init__(self, haz_type='NA', file_name='', description='', \
                  centroids=None):
@@ -685,7 +674,7 @@ class Hazard(object):
             np.array
         """
         inten_pos = np.argwhere(inten[:, cen_pos] >
-                                INTENSITY_THRES[self.tag.haz_type])[:, 0]
+                                self.intensity_thres)[:, 0]
         if inten_pos.size == 0:
             return np.zeros((return_periods.size, ))
         inten_nz = np.asarray(inten[inten_pos, cen_pos].todense()).squeeze()
