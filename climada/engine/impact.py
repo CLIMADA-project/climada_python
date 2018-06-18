@@ -237,10 +237,10 @@ class Impact(object):
         # impact on this exposure
         impact = exposures.value[iexp] * imp_fun.calc_mdr(inten_val) * fract
         if np.count_nonzero(impact) > 0:
-            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             # TODO: if needed?
             if (exposures.deductible[iexp] > 0) or \
                 (exposures.cover[iexp] < exposures.value[iexp]):
+                paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
                 impact = np.minimum(np.maximum(impact - \
                                                exposures.deductible[iexp] * \
                                                paa, 0), exposures.cover[iexp])
