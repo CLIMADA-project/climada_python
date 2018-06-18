@@ -12,13 +12,13 @@ class TestFunc(unittest.TestCase):
     def test_get_coastlines_all_pass(self):
         '''Check get_coastlines function over whole earth'''
         lat, lon = plot.get_coastlines()
-        self.assertEqual(410956, lat.size)
+        self.assertEqual(410954, lat.size)
         self.assertEqual(-67.40048593499995, lat[0])
-        self.assertEqual(80.59857819200005, lat[-1])
+        self.assertEqual(-0.004389928165484299, lat[-1])
 
-        self.assertEqual(410956, lon.size)
+        self.assertEqual(410954, lon.size)
         self.assertEqual(59.916026238000086, lon[0])
-        self.assertEqual(-66.77562415299991, lon[-1])
+        self.assertEqual(-0.004789435546374336, lon[-1])
 
     def test_get_coastlines_pass(self):
         '''Check get_coastlines function in defined border'''
@@ -31,8 +31,8 @@ class TestFunc(unittest.TestCase):
             if lat_val < border[2] or lat_val > border[3]:
                 self.assertTrue(False)
 
-        self.assertEqual(85383, lat.size)
-        self.assertTrue(85383, lon.size)
+        self.assertEqual(85381, lat.size)
+        self.assertEqual(85381, lon.size)
 
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
 unittest.TextTestRunner(verbosity=2).run(TESTS)
