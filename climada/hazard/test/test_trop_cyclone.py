@@ -27,8 +27,8 @@ class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
 
     def test_set_one_pass(self):
-        """Test _set_one function."""
-        tc_haz = TropCyclone._hazard_from_track(TEST_TRACK_SHORT, '', CENT_CLB)
+        """Test _hazard_from_track function."""
+        tc_haz = TropCyclone._tc_from_track(TEST_TRACK_SHORT, '', CENT_CLB)
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
@@ -59,7 +59,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 7)
 
     def test_set_one_file_pass(self):
-        """ Test set function with one input."""
+        """ Test set function set_from_tracks with one input."""
         tc_haz = TropCyclone()
         tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
         tc_haz.check()
@@ -84,10 +84,11 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
     def test_two_files_pass(self):
-        """ Test construct tropical cyclone from two IbTracs."""
+        """ Test set function set_from_tracks with two ibtracs."""
         tc_haz = TropCyclone()
         tc_haz.set_from_tracks([TEST_TRACK_SHORT, TEST_TRACK_SHORT], 
                                centroids=CENTR_TEST_BRB)
+        tc_haz.remove_duplicates()
         tc_haz.check()
         
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
@@ -111,7 +112,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
-    def test_read_haz_and_tc_pass(self):
+    def test_read_and_tc_pass(self):
         """ Read a hazard file and a IbTrac in parallel. """
         tc_haz1 = TropCyclone()
         tc_haz1.read(HAZ_TEST_MAT)
@@ -501,14 +502,29 @@ class TestRndWalk(unittest.TestCase):
         ens_size=3
         tc_haz = tc.TropCyclone()
         tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
-        tc_haz.set_random_walk(ens_size, centroids=CENTR_TEST_BRB)
+        tc_haz.set_random_walk(ens_size)
 
         self.assertEqual(len(tc_haz.tracks), ens_size+1)
         self.assertEqual(tc_haz.event_id.size, ens_size+1)
         tc_haz.check()
 
+class TestAppend(unittest.TestCase):
+    """Test append function"""
+
+    def test_append_tracks(self):
+        """ Tracks with different names are appended."""
+        tc_haz = tc.TropCyclone()
+        tc_haz.set_from_tracks(TEST_TRACK_SHORT, centroids=CENTR_TEST_BRB)
+        tc_haz.set_random_walk(3)
+        tc_haz.set_random_walk(3)
+        tc_haz.check()
+        self.assertEqual(len(tc_haz.tracks), 13)
+        self.assertEqual(tc_haz.event_id.size, 13)
+        
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRndWalk))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
