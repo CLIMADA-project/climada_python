@@ -21,15 +21,14 @@ def package_files(directory):
                 paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files = package_files(here + '/climada/test/data/')
+extra_files = package_files(here + '/data/')
 # Add configuration files
 extra_files.append(here + '/climada/conf/defaults.conf')
-extra_files.append(here + '/climada/conf/logging.conf')
 
 setup(
     name='climada',
 
-    version='0.1.0',
+    version='0.1.1',
 
     description='CLIMADA in Python',
 
@@ -68,7 +67,8 @@ setup(
                       'numpy',
                       'numba',
                       'pathos',
-                      'xmlrunner'
+                      'tqdm',
+                      'pycountry'
                      ], 
 
     package_data={'': extra_files },  
