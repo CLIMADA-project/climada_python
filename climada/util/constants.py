@@ -15,8 +15,8 @@ __all__ = ['SOURCE_DIR',
 
 import os
 
-SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), \
-                                           os.pardir))
+SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                          os.pardir))
 """ climada directory """
 
 DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'test', 'data'))
