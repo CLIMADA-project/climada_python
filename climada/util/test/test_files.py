@@ -5,8 +5,16 @@ Test files_handler module.
 import os
 import unittest
 
-from climada.util.files_handler import to_list, get_file_names
+from climada.util.files_handler import to_list, get_file_names, download_file
 from climada.util.constants import DATA_DIR
+
+class TestDownloadUrl(unittest.TestCase):
+    """Test download_file function """
+    def test_wrong_url_fail(self):
+        """Error raised when wrong url."""
+        url = 'https://ngdc.noaa.gov/eog/data/web_data/v4composites/F172012.v4.tar'
+        with self.assertRaises(ValueError):
+            download_file(url)
 
 class TestToStrList(unittest.TestCase):
     """Test to_list function"""
@@ -71,4 +79,5 @@ class TestGetFileNames(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
