@@ -6,11 +6,13 @@ import os
 import unittest
 import numpy as np
 
-from climada.util.constants import DATA_DIR
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
 from climada.util.coordinates import Coordinates
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+CENTR_BRB = os.path.join(DATA_DIR, 'centr_brb_test.mat')
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Centroids class"""
@@ -262,7 +264,7 @@ class TestMethods(unittest.TestCase):
 
     def test_calc_dist_coast_pass(self):
         """Test against reference data."""
-        centr_brb = Centroids(os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat'))
+        centr_brb = Centroids(CENTR_BRB)
         centr_brb.calc_dist_to_coast()
         self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
         self.assertEqual(5.7988200982894105, centr_brb.dist_coast[1])

@@ -12,16 +12,17 @@ import datetime as dt
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT
+from climada.util.constants import GLB_CENTROIDS_MAT
 
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
+TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
+TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
 
-TEST_TRACK = os.path.join(DATA_DIR, 'test', "trac_brb_test.csv")
-TEST_TRACK_SHORT = os.path.join(DATA_DIR, 'test', "trac_short_test.csv")
+CENTR_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'centroids/test/data/')
+CENTR_TEST_BRB = Centroids(os.path.join(CENTR_DIR, 'centr_brb_test.mat'))
 
 CENT_CLB = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
-
-CENTR_TEST_BRB = Centroids(os.path.join(DATA_DIR, 'test', 'centr_brb_test.mat'))
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""

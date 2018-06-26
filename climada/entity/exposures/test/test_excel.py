@@ -8,10 +8,11 @@ import pandas
 
 from climada.entity.exposures import source as source
 from climada.entity.exposures.base import Exposures
-from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEMPLATE_XLS
 from climada.util.config import CONFIG
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
@@ -59,7 +60,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.coord[0][1], -80.12879900000)
         self.assertEqual(expo.coord[n_expos-1][1], -80.15885500000)
 
-        self.assertEqual(expo.ref_year, CONFIG["present_ref_year"])
+        self.assertEqual(expo.ref_year, CONFIG['entity']["present_ref_year"])
         self.assertEqual(expo.value_unit, 'NA')
         self.assertEqual(expo.tag.file_name, ENT_TEST_XLS)
         self.assertEqual(expo.tag.description, description)
@@ -253,7 +254,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
-        self.assertEqual(CONFIG["present_ref_year"], expo.ref_year)
+        self.assertEqual(CONFIG['entity']["present_ref_year"], expo.ref_year)
 
 class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
@@ -336,7 +337,7 @@ class TestParsers(unittest.TestCase):
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
         ref_year = source._parse_xls_ref_year(ENT_TEST_XLS, source.DEF_VAR_EXCEL)
-        self.assertEqual(CONFIG["present_ref_year"], ref_year)      
+        self.assertEqual(CONFIG['entity']["present_ref_year"], ref_year)      
         
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefaults)

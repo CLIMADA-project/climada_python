@@ -7,9 +7,9 @@ import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.disc_rates.source import READ_SET
-from climada.util.constants import DATA_DIR
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""

@@ -97,14 +97,11 @@ def setup_conf_user():
         if 'local_data' in userconfig.keys():
             CONFIG['local_data'].update(userconfig['local_data'])
 
-        if 'present_ref_year' in userconfig.keys():
-            CONFIG['present_ref_year'] = userconfig['present_ref_year']
+        if 'entity' in userconfig.keys():
+            CONFIG['entity'].update(userconfig['entity'])
 
-        if 'future_ref_year' in userconfig.keys():
-            CONFIG['future_ref_year'] = userconfig['future_ref_year']
-
-        if 'min_time_step' in userconfig.keys():
-            CONFIG['tc_time_step_h'] = userconfig['tc_time_step_h']
+        if 'trop_cyclone' in userconfig.keys():
+            CONFIG['trop_cyclone'].update(userconfig['trop_cyclone'])
 
         if 'log_level' in userconfig.keys():
             CONFIG['log_level'] = userconfig['log_level']

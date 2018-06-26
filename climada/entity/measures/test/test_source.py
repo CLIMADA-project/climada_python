@@ -6,9 +6,10 @@ import unittest
 import numpy as np
 
 from climada.entity.measures.base import MeasureSet
-from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS, ENT_DEMO_MAT
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""

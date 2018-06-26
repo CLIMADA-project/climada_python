@@ -6,10 +6,11 @@ import os
 import unittest
 
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT
+from climada.util.constants import GLB_CENTROIDS_MAT
 
-HAZ_TEST_XLS = os.path.join(DATA_DIR, 'test', 'Excel_hazard.xlsx')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
+HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test/data/')
+HAZ_TEST_XLS = os.path.join(HAZ_DIR, 'Excel_hazard.xlsx')
+HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of MATLAB files'''

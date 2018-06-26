@@ -8,9 +8,10 @@ import pandas
 import climada.util.hdf5_handler as hdf5
 from climada.entity.impact_funcs.base import ImpactFuncSet
 from climada.entity.impact_funcs.source import DEF_VAR_MAT, DEF_VAR_EXCEL, _get_xls_funcs, _get_hdf5_funcs, _get_hdf5_unit, _get_hdf5_name
-from climada.util.constants import ENT_DEMO_MAT, DATA_DIR, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""

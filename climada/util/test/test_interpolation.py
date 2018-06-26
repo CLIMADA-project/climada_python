@@ -5,26 +5,69 @@ import os
 import unittest
 import numpy as np
 
-from climada.entity.exposures.base import Exposures
-from climada.hazard.centroids.base import Centroids
 import climada.util.interpolation as interp
-from climada.util.constants import DATA_DIR
-
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
 
 def def_input_values():
     '''Default input coordinates and centroids values'''
     # Load exposures coordinates from demo entity file
-    exposures = Exposures(ENT_TEST_XLS)
+    exposures = np.array([[ 26.933899, -80.128799],
+             [ 26.957203, -80.098284],
+             [ 26.783846, -80.748947],
+             [ 26.645524, -80.550704],
+             [ 26.897796, -80.596929],
+             [ 26.925359, -80.220966],
+             [ 26.914768, -80.07466 ],
+             [ 26.853491, -80.190281],
+             [ 26.845099, -80.083904],
+             [ 26.82651 , -80.213493],
+             [ 26.842772, -80.0591  ],
+             [ 26.825905, -80.630096],
+             [ 26.80465 , -80.075301],
+             [ 26.788649, -80.069885],
+             [ 26.704277, -80.656841],
+             [ 26.71005 , -80.190085],
+             [ 26.755412, -80.08955 ],
+             [ 26.678449, -80.041179],
+             [ 26.725649, -80.1324  ],
+             [ 26.720599, -80.091746],
+             [ 26.71255 , -80.068579],
+             [ 26.6649  , -80.090698],
+             [ 26.664699, -80.1254  ],
+             [ 26.663149, -80.151401],
+             [ 26.66875 , -80.058749],
+             [ 26.638517, -80.283371],
+             [ 26.59309 , -80.206901],
+             [ 26.617449, -80.090649],
+             [ 26.620079, -80.055001],
+             [ 26.596795, -80.128711],
+             [ 26.577049, -80.076435],
+             [ 26.524585, -80.080105],
+             [ 26.524158, -80.06398 ],
+             [ 26.523737, -80.178973],
+             [ 26.520284, -80.110519],
+             [ 26.547349, -80.057701],
+             [ 26.463399, -80.064251],
+             [ 26.45905 , -80.07875 ],
+             [ 26.45558 , -80.139247],
+             [ 26.453699, -80.104316],
+             [ 26.449999, -80.188545],
+             [ 26.397299, -80.21902 ],
+             [ 26.4084  , -80.092391],
+             [ 26.40875 , -80.1575  ],
+             [ 26.379113, -80.102028],
+             [ 26.3809  , -80.16885 ],
+             [ 26.349068, -80.116401],
+             [ 26.346349, -80.08385 ],
+             [ 26.348015, -80.241305],
+             [ 26.347957, -80.158855]])
 
     # Define centroids
-    centroids = Centroids()
-    centroids.coord = np.zeros((100, 2))
+    centroids = np.zeros((100, 2))
     inext = 0
     for ilon in range(10):
         for ilat in range(10):
-            centroids.coord[inext][0] = 20 + ilat + 1
-            centroids.coord[inext][1] = -85 + ilon + 1
+            centroids[inext][0] = 20 + ilat + 1
+            centroids[inext][1] = -85 + ilon + 1
 
             inext = inext + 1
 
@@ -106,13 +149,13 @@ class TestNN(unittest.TestCase):
         exposures, centroids = def_input_values()
 
         # Interpolate with default threshold
-        neighbors = interp.interpol_index(centroids.coord, exposures.coord,
+        neighbors = interp.interpol_index(centroids, exposures,
                                           'NN', dist)
 
         # Reference output
         ref_neighbors = def_ref()
         # Check results
-        self.assertEqual(exposures.coord.shape[0], len(neighbors))
+        self.assertEqual(exposures.shape[0], len(neighbors))
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def normal_warning(self, dist):
@@ -124,11 +167,9 @@ class TestNN(unittest.TestCase):
 
         # Interpolate with lower threshold to raise warnings
         interp.THRESHOLD = 50
-        neighbors = interp.interpol_index(centroids.coord,
-                                  exposures.coord, 'NN', dist)
+        neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
-            neighbors = interp.interpol_index(centroids.coord,
-                                              exposures.coord, 'NN', dist)
+            neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_50()
@@ -142,14 +183,13 @@ class TestNN(unittest.TestCase):
         exposures, centroids = def_input_values()
 
         # Repeat a coordinate
-        exposures.coord[2, :] = exposures.coord[0, :]
+        exposures[2, :] = exposures[0, :]
 
         # Interpolate with default threshold
-        neighbors = interp.interpol_index(centroids.coord, exposures.coord,
-                                          'NN', dist)
+        neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
 
         # Check output neighbors have same size as coordinates
-        self.assertEqual(len(neighbors), exposures.coord.shape[0])
+        self.assertEqual(len(neighbors), exposures.shape[0])
         # Check copied coordinates have same neighbors
         self.assertEqual(neighbors[2], neighbors[0])
 

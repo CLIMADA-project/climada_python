@@ -8,9 +8,9 @@ import numpy as np
 import h5py
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import HAZ_DEMO_MAT, DATA_DIR, ENT_DEMO_MAT
 
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_short_name.mat')
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary functions used to retrieve variables from HDF5'''
@@ -65,19 +65,19 @@ class TestFunc(unittest.TestCase):
 
     def test_get_str_from_ref(self):
         """ Check import string from a HDF5 object reference"""
-        file = h5py.File(ENT_DEMO_MAT, 'r')
-        var = file['entity']['assets']['Value_unit'][0][0]
-        res = hdf5.get_str_from_ref(ENT_DEMO_MAT, var)
-        self.assertEqual('USD', res)
+        file = h5py.File(HAZ_TEST_MAT, 'r')
+        var = file['hazard']['name'][0][0]
+        res = hdf5.get_str_from_ref(HAZ_TEST_MAT, var)
+        self.assertEqual('NNN_1185101', res)
 
     def test_get_list_str_from_ref(self):
         """ Check import string from a HDF5 object reference"""
-        file = h5py.File(HAZ_DEMO_MAT, 'r')
+        file = h5py.File(HAZ_TEST_MAT, 'r')
         var = file['hazard']['name']
-        var_list = hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
-        self.assertEqual('NNN_1185404_gen7', var_list[157])
-        self.assertEqual('ALFA_gen8', var_list[9898])
-        self.assertEqual('ALBERTO_gen6', var_list[12566])
+        var_list = hdf5.get_list_str_from_ref(HAZ_TEST_MAT, var)
+        self.assertEqual('NNN_1185101', var_list[0])
+        self.assertEqual('NNN_1185101_gen1', var_list[1])
+        self.assertEqual('NNN_1185101_gen2', var_list[2])
 
 class TestReader(unittest.TestCase):
     '''Test HDF5 reader'''
@@ -110,7 +110,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue('datenum' in hazard.keys())
         self.assertTrue('scenario' in hazard.keys())
         self.assertTrue('intensity' in hazard.keys())
-        self.assertFalse('name' in hazard.keys())
+        self.assertTrue('name' in hazard.keys())
         self.assertTrue('frequency' in hazard.keys())
         self.assertTrue('matrix_density' in hazard.keys())
         self.assertTrue('windfield_comment' in hazard.keys())
@@ -121,7 +121,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue('units' in hazard.keys())
         self.assertTrue('orig_yearset' in hazard.keys())
         self.assertTrue('fraction' in hazard.keys())
-        self.assertEqual(26, len(hazard.keys()))
+        self.assertEqual(27, len(hazard.keys()))
 
         # Check some random values
         mat_shape = (len(contents['hazard']['event_ID']), \

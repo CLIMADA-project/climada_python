@@ -19,7 +19,7 @@ SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           os.pardir))
 """ climada directory """
 
-DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'test', 'data'))
+DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, os.pardir, 'data'))
 """ Folder containing the data """
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')

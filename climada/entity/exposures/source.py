@@ -144,7 +144,7 @@ def _parse_xls_ref_year(file_name, var_names):
         dfr.index = dfr[var_names['col_name']['item']]
         ref_year = dfr.loc[var_names['col_name']['ref']]['name']
     except (XLRDError, KeyError):
-        ref_year = CONFIG['present_ref_year']
+        ref_year = CONFIG['entity']['present_ref_year']
     return ref_year
 
 def _parse_xls_optional(dfr, var, var_name):

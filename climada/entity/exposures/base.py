@@ -86,7 +86,7 @@ class Exposures(object):
         """Reinitialize attributes."""
         # Optional variables
         self.tag = Tag()
-        self.ref_year = CONFIG["present_ref_year"]
+        self.ref_year = CONFIG['entity']['present_ref_year']
         self.value_unit = 'NA'
         # Following values defined for each exposure
         # Obligatory variables

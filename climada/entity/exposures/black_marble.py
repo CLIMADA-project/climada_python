@@ -9,7 +9,6 @@ import glob
 import tarfile
 import shutil
 import logging
-import warnings
 import re
 import gzip
 import matplotlib.pyplot as plt
@@ -24,11 +23,13 @@ from climada.util.constants import DATA_DIR
 
 LOGGER = logging.getLogger(__name__)
 
+Image.MAX_IMAGE_PIXELS = 1e9
+
 NOAA_SITE = 'https://ngdc.noaa.gov/eog/data/web_data/v4composites/'
 """ URL used to retrieve nightlight satellite images. """
 
 NOAA_RESOLUTION_DEG = (30*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                     magnitude
+                       magnitude
 """ Default coordinates resolution in degrees. """
 
 MIN_LAT = -65
@@ -79,7 +80,7 @@ class CountryBlackMarble(Exposures):
 
         # set other variables
         self.ref_year = ref_year
-        self.tag.description = str(ref_year)   
+        self.tag.description = str(ref_year)
 #        self.tag.file_name = fn_light
         self.value_unit = 'USD'
         self.impact_id = np.ones(self.value.size, int)
@@ -193,7 +194,6 @@ def load_nightlight(ref_year=2013, sat_name=None):
         with open(fn_tif, 'wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
 
-    warnings.simplefilter('ignore', Image.DecompressionBombWarning)
     nightlight = plt.imread(fn_tif)
     os.remove(fn_tif)
 

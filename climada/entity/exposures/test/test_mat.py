@@ -64,7 +64,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.coord[0][1], -80.12879900000)
         self.assertEqual(expo.coord[n_expos-1][1], -80.15885500000)
 
-        self.assertEqual(expo.ref_year, CONFIG["present_ref_year"])
+        self.assertEqual(expo.ref_year, CONFIG['entity']["present_ref_year"])
         self.assertEqual(expo.value_unit, 'USD')
         self.assertEqual(expo.tag.file_name, ENT_DEMO_MAT)
         self.assertEqual(expo.tag.description, description)
@@ -194,7 +194,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertEqual(CONFIG["present_ref_year"], expo.ref_year)
+        self.assertEqual(CONFIG['entity']["present_ref_year"], expo.ref_year)
 
 class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""

@@ -9,9 +9,10 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.source import READ_SET
 from climada.hazard.base import Hazard
 from climada.util.coordinates import Coordinates
-from climada.util.constants import DATA_DIR, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEMPLATE_XLS
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 def good_exposures():
     """Followng values are defined for each exposure"""

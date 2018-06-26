@@ -351,10 +351,10 @@ def interp_track(track):
         xr.Dataset
     """
     if track.time.size > 3:
-        time_step = str(CONFIG['tc_time_step_h']) + 'H'
+        time_step = str(CONFIG['trop_cyclone']['time_step_h']) + 'H'
         track_int = track.resample(time=time_step).interpolate('linear')
         track_int['time_step'] = ('time', track_int.time.size *
-                                  [CONFIG['tc_time_step_h']])
+                                  [CONFIG['trop_cyclone']['time_step_h']])
         track_int.coords['lat'] = track.lat.resample(time=time_step).\
                                   interpolate('cubic')
         track_int.coords['lon'] = track.lon.resample(time=time_step).\

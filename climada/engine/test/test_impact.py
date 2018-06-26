@@ -5,13 +5,14 @@ import os
 import unittest
 import numpy as np
 
-from climada.util.constants import DATA_DIR
 from climada.entity.entity import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'test', 'atl_prob_no_name.mat')
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
+HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+ENT_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'entity/test/data/')
+ENT_TEST_XLS = os.path.join(ENT_DIR, 'demo_today.xlsx')
 
 class TestFreqCurve(unittest.TestCase):
     '''Test exceedence frequency curve computation'''
