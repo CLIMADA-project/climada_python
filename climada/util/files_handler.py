@@ -8,6 +8,39 @@ __all__ = ['to_list',
 
 import os
 import logging
+import math
+import requests
+import tqdm
+
+LOGGER = logging.getLogger(__name__)
+
+def download_file(url):
+    """ Download file from url in current folder and provide absolute file path
+    and name.
+
+    Parameters:
+        url (str): url containing data to download
+
+    Returns:
+        str
+
+    Raises:
+        ValueError
+    """
+    req_file = requests.get(url, stream=True)
+    if req_file.status_code == 404:
+        raise ValueError
+    total_size = int(req_file.headers.get('content-length', 0))
+    block_size = 1024
+    file_name = url.split('/')[-1]
+    file_abs_name = os.path.abspath(os.path.join(os.getcwd(), file_name))
+    LOGGER.info('Downloading temporary file %s', file_abs_name)
+    with open(file_name, 'wb') as file:
+        for data in tqdm.tqdm(req_file.iter_content(block_size),
+                              total=math.ceil(total_size//block_size),
+                              unit='KB', unit_scale=True):
+            file.write(data)
+    return file_abs_name
 
 def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
