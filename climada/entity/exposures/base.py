@@ -11,7 +11,6 @@ import logging
 import numpy as np
 
 from climada.entity.exposures.source import READ_SET
-#from climada.entity.exposures.source import DEF_VAR_EXCEL, DEF_VAR_MAT
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag

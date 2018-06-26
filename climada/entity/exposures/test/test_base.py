@@ -32,7 +32,7 @@ class TestConstructor(unittest.TestCase):
     def test_attributes_all(self):
         """All attributes are defined"""
         expo = Exposures()
-        
+
         self.assertEqual(len(expo.__dict__), 12)
         self.assertTrue(hasattr(expo, 'id'))
         self.assertTrue(hasattr(expo, 'coord'))
@@ -49,39 +49,39 @@ class TestConstructor(unittest.TestCase):
 
     def test_get_def_vars(self):
         """ Test def_source_vars function."""
-        self.assertTrue(Exposures.get_def_file_var_names('.xls') == 
+        self.assertTrue(Exposures.get_def_file_var_names('.xls') ==
                         READ_SET['XLS'][0])
-        self.assertTrue(Exposures.get_def_file_var_names('.mat') == 
+        self.assertTrue(Exposures.get_def_file_var_names('.mat') ==
                         READ_SET['MAT'][0])
-        
+
 class TestAppend(unittest.TestCase):
     """Check append function"""
     def test_assign_diff(self):
-        """Append Exposure to empty one."""        
+        """Append Exposure to empty one."""
         # Fill with dummy values the coordinates
         expo = good_exposures()
-        
+
         expo_app = Exposures()
         expo_app.id = np.arange(4, 9)
         expo_app.value = np.arange(4, 9)
         expo_app.impact_id = np.arange(4, 9)
         expo_app.coord = np.ones((5, 2))
         expo_app.assigned['TC'] = np.ones((5, 2))
-        
+
         expo.append(expo_app)
         self.assertTrue(len(expo.assigned['TC']), 8)
-        
+
         expo_app.assigned['WS'] = np.ones((5, 2))
         expo.append(expo_app)
         self.assertTrue(len(expo.assigned['TC']), 8)
         self.assertTrue(len(expo.assigned['WS']), 5)
-        
+
     def test_append_to_empty_same(self):
-        """Append Exposure to empty one."""        
+        """Append Exposure to empty one."""
         # Fill with dummy values the coordinates
         expo = Exposures()
         expo_app = good_exposures()
-        
+
         expo.append(expo_app)
 
         self.assertTrue(np.array_equal(expo.id, expo_app.id))
@@ -102,15 +102,15 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.ref_year, expo_app.ref_year))
 
     def test_append_equal_increase(self):
-        """Append the same Exposure. All values are appended and new id are 
-        provided for the new values."""        
+        """Append the same Exposure. All values are appended and new id are
+        provided for the new values."""
         # Fill with dummy values the coordinates
         expo = good_exposures()
         expo_app = good_exposures()
-        
+
         expo.append(expo_app)
         expo.check()
-        
+
         expo_check = good_exposures()
         self.assertTrue(np.array_equal(expo.id, \
                         np.array([1, 2, 3, 4, 5, 6])))
@@ -137,8 +137,8 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.ref_year, expo_check.ref_year))
 
     def test_append_different_append(self):
-        """Append Exposure with same and new values. All values are appended 
-        and same ids are substituted by new."""        
+        """Append Exposure with same and new values. All values are appended
+        and same ids are substituted by new."""
         # Fill with dummy values the coordinates
         expo = good_exposures()
         expo_app = Exposures()
@@ -151,10 +151,10 @@ class TestAppend(unittest.TestCase):
         expo_app.category_id = np.array([1, 2, 3, 4, 5])
         expo_app.region_id = np.array([1, 2, 3, 4, 5])
         expo_app.assigned['TC'] = np.array([1, 2, 3, 4, 5])
-        
+
         expo.append(expo_app)
         expo.check()
-        
+
         expo_check = good_exposures()
         self.assertTrue(np.array_equal(expo.id, \
                         np.array([1, 2, 3, 6, 7, 8, 4, 5])))
@@ -218,7 +218,7 @@ class TestReadParallel(unittest.TestCase):
                 expo.read([ENT_TEST_XLS, ENT_TEMPLATE_XLS])
         self.assertIn('Append not possible. Different reference years.', \
                          cm.output[0])
-        
+
 class TestChecker(unittest.TestCase):
     """Test loading funcions from the Exposures class"""
     def test_check_wrongValue_fail(self):
@@ -269,7 +269,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.impact_id size: 3 != 2.', \
+        self.assertIn('Invalid Exposures.impact_id size: 3 != 2.',
                       cm.output[0])
 
     def test_check_wrongCategory_fail(self):
@@ -280,8 +280,8 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.category_id size: 3 != 2.', \
-                         cm.output[0])
+        self.assertIn('Invalid Exposures.category_id size: 3 != 2.',
+                      cm.output[0])
 
     def test_check_wrongRegion_fail(self):
         """Wrong exposures definition"""
@@ -291,8 +291,8 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.region_id size: 3 != 2.', \
-                         cm.output[0])
+        self.assertIn('Invalid Exposures.region_id size: 3 != 2.',
+                      cm.output[0])
 
     def test_check_wrongAssigned_fail(self):
         """Wrong exposures definition"""
@@ -302,8 +302,8 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.assigned size: 3 != 2.',\
-                         cm.output[0])
+        self.assertIn('Invalid Exposures.assigned size: 3 != 2.',
+                      cm.output[0])
 
     def test_check_wrongId_fail(self):
         """Wrong exposures definition"""
@@ -313,8 +313,8 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('There are exposures with the same identifier.',\
-                         cm.output[0])
+        self.assertIn('There are exposures with the same identifier.',
+                      cm.output[0])
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
