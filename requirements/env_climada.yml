@@ -19,6 +19,7 @@ dependencies:
   - scipy=1.1.0
   - setuptools=39.1.0
   - shapely=1.6.4
+  - tqdm=4.23.4
   - xarray==0.10.2
   - xlrd=1.1.0
   - pip:
@@ -27,3 +28,4 @@ dependencies:
     - pint==0.8.1
     - pox==0.2.3
     - ppft==1.6.4.7.1
+    - pycountry==18.5.26
