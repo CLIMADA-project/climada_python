@@ -100,10 +100,26 @@ def country_iso(country_name):
     Returns:
         country_iso (str): ISO alpha_3 country name
     """
+    # TODO: use shapereader ISO_A3 instead of pycountry?
+    tit_name = country_name.title()
     countries = {}
+    options = []
     for country in pycountry.countries:
-        countries[country.name] = country.alpha_3
-    return countries.get(country_name)
+        std_name = country.name.title()
+        if tit_name in std_name:
+            options.append(std_name)
+            std_name = tit_name
+        countries[std_name] = country.alpha_3
+    iso_val = countries.get(tit_name)
+    if iso_val is None:
+        LOGGER.error('Country %s not found. Possible options: %s', tit_name,
+                     countries.keys())
+        raise ValueError
+    elif len(options) > 1:
+        LOGGER.info('More than one possible country: %s', str(options))
+        LOGGER.info('Considered country: %s, with ISO: %s', options.pop(),
+                    iso_val)
+    return iso_val
 
 def untar_stable_nightlight(f_tar_ini):
     """ Move input tar file to DATA_DIR and extract stable light file.
