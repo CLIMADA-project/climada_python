@@ -17,11 +17,11 @@ Install environment with Anaconda
 ---------------------------------
 1. **Anaconda**: Download or update to the latest version of `Anaconda <https://www.anaconda.com/>`_. Execute it.
 
-2. **Install dependencies**: In the *Environments* section, use the *Import* box to create a new virtual environment from a yml file. A dialogue box will ask you for the location of the file. Provide first the path of climada's ``environment.yml``. The default name of the environment, *climada_env*, appears. Click the *Import* button to start the installation. 
+2. **Install dependencies**: In the *Environments* section, use the *Import* box to create a new virtual environment from a yml file. A dialogue box will ask you for the location of the file. Provide first the path of climada's ``requirements/env_climada.yml``. The default name of the environment, *climada_env*, appears. Click the *Import* button to start the installation. 
 
   The installation of the packages will take some minutes. No dialogue box should appear in the meantime. If an error happens, try to solve it looking into the details description.
 
-3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and launch Spyder. Open the file containing all the unit tests, ``unit_tests.py`` in ``climada_python`` folder. If the installation has been successful, an OK will appear at the end of the execution.
+3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and launch Spyder. Open the file containing all the unit tests, ``tests_runner.py`` in ``climada_python`` folder. If the installation has been successful, an OK will appear at the end of the execution.
 
 Install environment with Miniconda
 ----------------------------------
@@ -29,52 +29,15 @@ Install environment with Miniconda
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
-    conda env create -f environment.yml --name climada_env 
+    conda env create -f requirements/env_climada.yml --name climada_env 
 
 3. **Test installation**: Activate the environment, execute the unit tests and deactivate the environment when finished using climada::
 
     source activate climada_env
-    python3 unit_tests.py
+    python3 tests_runner.py
     source deactivate
   
  If the installation has been successful, an OK will appear at the end of the execution.
-
-Install environment with Pip
-----------------------------
-
-.. _Pre-requisites:
-
-Pre-requisites
-++++++++++++++
-
-Following libraries need to be installed:
-
-* GEOS >= 3.5.0
-
-* PROJ4 = 4.9.3
-
-* python = 3.6
-
-Install environment
-+++++++++++++++++++
-
-1. **Install dependencies**: The ``global-option`` can be used to specify the libraries and header files of the C packages GEOS and PROJ4, if they are not installed in the library path::
-
-    pip install --global-option=build_ext --global-option="-I/path_to/proj/4.9.3/x86_64/include/:/path_to/geos/3.5.0/x86_64/include/" --global-option="-L/path_to/proj/4.9.3/x86_64/lib/" -r requirements.txt
-
-  If you get any errors at this point, try to install Cartopy first and then the other requirements as follows::
-
-    pip install --global-option=build_ext --global-option="-I/path_to/proj/4.9.3/x86_64/include/:/path_to/geos/3.5.0/x86_64/include/" --global-option="-L/path_to/proj/4.9.3/x86_64/lib/" Cartopy
-    pip install -r requirements.txt
-
-  If you still get some problems at this point, consider using the Miniconda package manager to install Cartopy.
-
-2. **Test installation**: Execute the unit tests to ensure the installation has been successful as follows::
-
-    PYTHONPATH=. python3 unit_tests.py
-
- If the installation has been successful, an OK will appear at the end of the execution.
-
 
 Developers with Windows
 =======================
@@ -88,21 +51,37 @@ See `Install environment with Anaconda`_.
 Package Installation
 ====================
 
+.. _Pre-requisites:
+
 Pre-requisites
 --------------
 
-See `Pre-requisites`_. 
+Following libraries need to be installed:
 
-Install climada package
------------------------
+* GEOS >= 3.5.0
 
-1. **Install climada**: A distribution contained in the ``dist`` folder is installed as follows::
+* PROJ4 = 4.9.3
 
-    pip install dist/climada-0.0.1.tar.gz
+* python = 3.6
 
-2. **Test installation**: Execute the unit tests to ensure the installation has been successful::
+Install distribution
+--------------------
 
-    PYTHONPATH=. python3 unit_tests.py
+1. **Download distribution**: Download the desired distribution from the GitHub repository `climada_python <https://github.com/davidnbresch/climada_python.git>`_ in the ``releases`` section.
+
+2. **Install climada**: Specifying the correct distribution, install it as follows:
+
+    pip install climada-*.tar.gz
+
+  If errors, try installing Cartopy first. With pip:
+
+    pip install --global-option=build_ext --global-option="-I/path_to/proj/4.9.3/x86_64/include/:/path_to/geos/3.5.0/x86_64/include/" --global-option="-L/path_to/proj/4.9.3/x86_64/lib/" Cartopy
+  or with conda:
+    conda install cartopy
+
+3. **Test installation**: Execute the unit tests to ensure the installation has been successful::
+
+    PYTHONPATH=. python3 tests_runner.py
 
  If the installation has been successful, an OK will appear at the end of the execution.
 

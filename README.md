@@ -33,9 +33,8 @@ and used as fallback. The local configuration file needs to be called
 The climada configuration file is a JSON file and consists of the following values:
 
 - ``local_data``
-- ``present_ref_year``
-- ``future_ref_year``
-- ``tc_time_step_h``
+- ``entity``
+- ``trop_cyclone``
 - ``log_level``
 
 A minimal configuration file looks something like this:
@@ -48,14 +47,19 @@ A minimal configuration file looks something like this:
         "entity_def" : "",
         "repository": ""
     },
-    
-    "present_ref_year": 2016,
-    
-    "future_ref_year": 2030,
 
-    "tc_time_step_h": 1,
+    "log_level": "INFO",
+    
+    "entity":
+    {
+        "present_ref_year": 2016,
+        "future_ref_year": 2030
+    },
 
-    "log_level": "INFO"
+    "trop_cyclone":
+    {
+        "time_step_h": 1
+    }
 }
 ```
 
@@ -69,14 +73,11 @@ A minimal configuration file looks something like this:
 | ``repository`` | Absolute path of climada's data repository. No default path provided. | "" |
 
 
-### present_ref_year
-Default present reference year used in the entity.
+### entity
+Configuration values related to an Entity.
 
-### future_ref_year
-Default future reference year used in the entity.
-
-### tc_time_step_h
-Time step (in hours) used to interpolate tropical cyclone tracks.
+### trop_cyclone
+Configuration values related to tropical cyclones.
 
 ### log_level
 Minimum log level showed by logging. DEBUG, INFO, WARNING, ERROR and CRITICAL are the different levels.
