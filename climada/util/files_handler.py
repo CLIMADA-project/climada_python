@@ -27,7 +27,11 @@ def download_file(url):
     Raises:
         ValueError
     """
-    req_file = requests.get(url, stream=True)
+    try:
+        req_file = requests.get(url, stream=True)
+    except IOError:
+        LOGGER.error('Connection error: check your internet connection.')
+        raise IOError
     if req_file.status_code == 404:
         raise ValueError
     total_size = int(req_file.headers.get('content-length', 0))
