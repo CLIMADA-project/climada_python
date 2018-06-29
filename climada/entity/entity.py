@@ -6,7 +6,7 @@ __all__ = ['Entity']
 
 import logging
 
-from climada.entity.impact_funcs.base  import ImpactFuncSet
+from climada.entity.impact_funcs.impact_func_set  import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.base import MeasureSet
 from climada.entity.exposures.base import Exposures

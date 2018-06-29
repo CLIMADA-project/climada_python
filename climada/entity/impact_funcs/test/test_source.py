@@ -6,7 +6,7 @@ import unittest
 import pandas
 
 import climada.util.hdf5_handler as hdf5
-from climada.entity.impact_funcs.base import ImpactFuncSet
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.source import DEF_VAR_MAT, DEF_VAR_EXCEL, _get_xls_funcs, _get_hdf5_funcs, _get_hdf5_unit, _get_hdf5_name
 from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 

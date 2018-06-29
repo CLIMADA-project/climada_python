@@ -9,7 +9,7 @@ import logging
 import pandas
 import numpy as np
 
-from climada.entity.impact_funcs.impact_func import ImpactFunc
+from climada.entity.impact_funcs.base import ImpactFunc
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
