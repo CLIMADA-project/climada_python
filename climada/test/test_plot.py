@@ -11,9 +11,9 @@ from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
-from climada.util.constants import HAZ_DEMO_MAT, DATA_DIR
+from climada.util.constants import HAZ_DEMO_MAT, SOURCE_DIR
 
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'test', 'demo_today.xlsx')
+ENT_TEST_XLS = os.path.join(SOURCE_DIR, 'entity/test/data', 'demo_today.xlsx')
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
