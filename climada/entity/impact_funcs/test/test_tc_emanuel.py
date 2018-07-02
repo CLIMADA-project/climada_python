@@ -80,6 +80,27 @@ class TestEmanuelFormula(unittest.TestCase):
         self.assertTrue(np.array_equal(imp_fun.mdd[3:], 
                         2 * np.array([0.017857142857142853, 0.11428571428571425, 0.250000000000000])))
 
+    def test_wrong_shape(self):
+        """Set shape parameters."""
+        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1))
+        v_thresh = 2
+        v_half = 1
+        with self.assertRaises(ValueError):
+            imp_fun.set_shape(v_thresh, v_half)
+
+        with self.assertRaises(ValueError):
+            IFEmanuele(v_thresh=v_thresh, v_half=v_half)
+
+    def test_wrong_scale(self):
+        """Set shape parameters."""
+        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1))
+        scale = 2
+        with self.assertRaises(ValueError):
+            imp_fun.set_scale(scale)
+
+        with self.assertRaises(ValueError):
+            IFEmanuele(scale=scale)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmanuelFormula)
 unittest.TextTestRunner(verbosity=2).run(TESTS)

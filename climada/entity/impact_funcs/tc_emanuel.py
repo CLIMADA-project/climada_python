@@ -48,11 +48,16 @@ class IFEmanuele(ImpactFunc):
             v_half (float): second shape parameter, wind speed in m/s
                 at which 50% of max. damage is expected. Default:
                 v_threshold + 49 m/s (mean value of Sealy & Strobl 2017)
+
+        Raises:
+            ValueError
         """
         if v_half <= v_thresh:
             LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
+            raise ValueError
         elif  v_thresh < 0 or v_half < 0:
             LOGGER.error('Negative shape parameter.')
+            raise ValueError
 
         v_temp = (self.intensity - v_thresh) / (v_half - v_thresh)
         v_temp[v_temp < 0] = 0
@@ -64,7 +69,11 @@ class IFEmanuele(ImpactFunc):
         Parameters:
             scale (float): scale parameter, linear scaling of MDD.
                 0<=scale<=1. Default: 1.0
+
+        Raises:
+            ValueError
         """
         if scale > 1 or scale <= 0:
             LOGGER.error('Scale parameter out of range.')
+            raise ValueError
         self.mdd *= scale
