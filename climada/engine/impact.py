@@ -10,7 +10,7 @@ import numpy as np
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import GridPoints
 import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class Impact(object):
         hazard_tag (TagHazard): information about the hazard
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
-        coord_exp (Coordinates): exposures coordinates (in degrees)
+        coord_exp (GridPoints): exposures GridPoints (in degrees)
         eai_exp (np.array): expected annual impact for each exposure
         at_event (np.array): impact for each hazard event
         frequency (np.arrray): annual frequency of event
@@ -83,7 +83,7 @@ class Impact(object):
         self.event_id = np.array([], int)
         self.event_name = list()
         self.date = np.array([], int)
-        self.coord_exp = Coordinates()
+        self.coord_exp = GridPoints()
         self.eai_exp = np.array([])
         self.at_event = np.array([])
         self.frequency = np.array([])

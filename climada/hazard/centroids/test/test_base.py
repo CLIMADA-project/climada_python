@@ -9,7 +9,7 @@ import numpy as np
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import GridPoints
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CENTR_BRB = os.path.join(DATA_DIR, 'centr_brb_test.mat')
@@ -92,7 +92,7 @@ class TestAppend(unittest.TestCase):
         centr1.append(centr2)
         self.assertEqual(type(centr1.tag.file_name), str)
         self.assertEqual(type(centr1.tag.description), str)
-        self.assertEqual(type(centr1.coord), Coordinates)
+        self.assertEqual(type(centr1.coord), GridPoints)
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(centr1.region_id), np.ndarray)
         self.assertTrue(type(centr1.dist_coast), np.ndarray)

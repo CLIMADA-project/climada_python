@@ -64,6 +64,7 @@ class CountryBlackMarble(Exposures):
         Parameters:
             ref_year (int): reference year
         """
+        # TODO: accept input centroids as well
         count_iso = country_iso(country)
         # nightlight intensity for selected country with 30 arcsec resolution
 #        nightlight, lat, lon, fn_light = load_nightlight(ref_year)

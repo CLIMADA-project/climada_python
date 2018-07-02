@@ -8,7 +8,7 @@ import numpy as np
 from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.source import READ_SET
 from climada.hazard.base import Hazard
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import GridPoints
 from climada.util.constants import ENT_TEMPLATE_XLS
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
@@ -59,7 +59,7 @@ class TestAppend(unittest.TestCase):
     """Check append function"""
     def test_assign_diff(self):
         """Append Exposure to empty one."""
-        # Fill with dummy values the coordinates
+        # Fill with dummy values the GridPoints
         expo = good_exposures()
 
         expo_app = Exposures()
@@ -79,7 +79,7 @@ class TestAppend(unittest.TestCase):
 
     def test_append_to_empty_same(self):
         """Append Exposure to empty one."""
-        # Fill with dummy values the coordinates
+        # Fill with dummy values the GridPoints
         expo = Exposures()
         expo_app = good_exposures()
 
@@ -105,7 +105,7 @@ class TestAppend(unittest.TestCase):
     def test_append_equal_increase(self):
         """Append the same Exposure. All values are appended and new id are
         provided for the new values."""
-        # Fill with dummy values the coordinates
+        # Fill with dummy values the GridPoints
         expo = good_exposures()
         expo_app = good_exposures()
 
@@ -140,7 +140,7 @@ class TestAppend(unittest.TestCase):
     def test_append_different_append(self):
         """Append Exposure with same and new values. All values are appended
         and same ids are substituted by new."""
-        # Fill with dummy values the coordinates
+        # Fill with dummy values the GridPoints
         expo = good_exposures()
         expo_app = Exposures()
         expo_app.id = np.array([1, 2, 3, 4, 5])
@@ -186,14 +186,14 @@ class TestAssign(unittest.TestCase):
 
     def test_assign_pass(self):
         """ Check that assigned attribute is correctly set."""
-        # Fill with dummy values the coordinates
+        # Fill with dummy values the GridPoints
         expo = Exposures()
         num_coord = 4
         expo.coord = np.ones((num_coord, 2))
         # Fill with dummy values the centroids
         haz = Hazard()
         haz.tag.haz_type = 'TC'
-        haz.centroids.coord = Coordinates(np.ones((num_coord+6, 2)))
+        haz.centroids.coord = GridPoints(np.ones((num_coord+6, 2)))
         # assign
         expo.assign(haz)
 

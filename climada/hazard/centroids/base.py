@@ -14,7 +14,7 @@ from sklearn.neighbors import BallTree
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import GridPoints
 from climada.util.constants import EARTH_RADIUS
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
@@ -28,12 +28,12 @@ FILE_EXT = {'.mat':  'MAT',
 """ Supported files format to read from """
 
 class Centroids(object):
-    """Definition of the hazard coordinates.
+    """Definition of the hazard GridPoints.
 
     Attributes:
         tag (Tag): information about the source
-        coord (np.array or Coordinates): 2d array with lat in first column and
-            lon in second, or Coordinates instance. "lat" and "lon" are
+        coord (np.array or GridPoints): 2d array with lat in first column and
+            lon in second, or GridPoints instance. "lat" and "lon" are
             descriptors of the latitude and longitude respectively.
         id (np.array): an id for each centroid
         region_id (np.array, optional): region id for each centroid
@@ -71,7 +71,7 @@ class Centroids(object):
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self.coord = Coordinates()
+        self.coord = GridPoints()
         self.id = np.array([], int)
         self.region_id = np.array([], int)
         self.dist_coast = np.array([], float)
@@ -91,7 +91,7 @@ class Centroids(object):
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
         if num_exp > 0 and np.unique(self.coord, axis=0).size \
         != 2*self.coord.shape[0]:
-            LOGGER.error("There centroids with the same coordinates.")
+            LOGGER.error("There centroids with the same GridPoints.")
             raise ValueError
         check.array_optional(num_exp, self.region_id,
                              'Centroids.region_id')
@@ -120,7 +120,7 @@ class Centroids(object):
             self.append(Centroids._read_one(file, desc, var))
 
     def append(self, centroids):
-        """Append centroids values with NEW coordinates. Id is perserved if
+        """Append centroids values with NEW GridPoints. Id is perserved if
         not present in current centroids. Otherwise, a new id is provided.
 
         Parameters:
@@ -137,7 +137,7 @@ class Centroids(object):
         elif np.array_equal(centroids.coord, self.coord):
             return
 
-        # coordinates of centroids that are not in self
+        # GridPoints of centroids that are not in self
         dtype = {'names':['f{}'.format(i) for i in range(2)],
                  'formats':2 * [centroids.coord.dtype]}
         new_pos = np.in1d(centroids.coord.copy().view(dtype),
@@ -264,9 +264,9 @@ class Centroids(object):
 
     @coord.setter
     def coord(self, value):
-        """ If it is not a Coordinates instance, put it."""
-        if not isinstance(value, Coordinates):
-            self._coord = Coordinates(value)
+        """ If it is not a GridPoints instance, put it."""
+        if not isinstance(value, GridPoints):
+            self._coord = GridPoints(value)
         else:
             self._coord = value
 

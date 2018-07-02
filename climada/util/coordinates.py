@@ -1,8 +1,8 @@
 """
-Define coordinates class
+Define GridPoints class
 """
 
-__all__ = ['Coordinates']
+__all__ = ['GridPoints']
 
 import logging
 import numpy as np
@@ -11,7 +11,7 @@ from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
 
 LOGGER = logging.getLogger(__name__)
 
-class Coordinates(np.ndarray):
+class GridPoints(np.ndarray):
     """Define grid using 2d numpy array. Each row is a point. The first column
     is for latitudes and the second for longitudes (in degrees)."""
     def __new__(cls, input_array=None):
@@ -29,12 +29,13 @@ class Coordinates(np.ndarray):
     def check(self):
         """Check shape. Repeated points are allowed"""
         if self.shape[1] != 2:
-            LOGGER.error("Coordinates with wrong shape: %s != %s",
+            LOGGER.error("GridPoints with wrong shape: %s != %s",
                          self.shape[1], 2)
             raise ValueError
 
     def resample(self, coord, method=METHOD[0], distance=DIST_DEF[1]):
-        """ Input coordinates are resampled to current grid.
+        """ Input GridPoints are resampled to current grid by interpolating
+        their values.
 
         Parameters:
             coord (2d array): First column contains latitude, second
@@ -47,6 +48,16 @@ class Coordinates(np.ndarray):
             np.array
         """
         return interpol_index(self, coord, method, distance)
+
+    def resample_agg_to_lower_res(self, coord):
+        """ Input GridPoints are resampled to current grid of lower resolution
+        by aggregating the values of the higher resolution grid.
+
+        Parameters:
+            coord (2d array): First column contains latitude, second
+                column contains longitude. Each row is a geographic point.
+        """
+        raise NotImplementedError
 
     def is_regular(self):
         """Return True if grid is regular."""

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from climada.entity.entity import Entity
 from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
-from climada.entity.impact_funcs.base import ImpactFuncSet
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_MAT, DATA_DIR
 

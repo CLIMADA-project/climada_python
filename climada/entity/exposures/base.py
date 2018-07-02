@@ -14,7 +14,7 @@ from climada.entity.exposures.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
-from climada.util.coordinates import Coordinates
+from climada.util.coordinates import GridPoints
 from climada.util.interpolation import METHOD, DIST_DEF
 from climada.util.config import CONFIG
 import climada.util.plot as plot
@@ -36,8 +36,8 @@ class Exposures(object):
         ref_year (int): reference year
         value_unit (str): unit of the exposures values
         id (np.array): an id for each exposure
-        coord (np.array or Coordinates): 2d array with lat in first column and
-            lon in second, or Coordinates instance. "lat" and "lon" are
+        coord (np.array or GridPoints): 2d array with lat in first column and
+            lon in second, or GridPoints instance. "lat" and "lon" are
             descriptors of the latitude and longitude respectively.
         value (np.array): a value for each exposure
         impact_id (np.array): impact function id corresponding to each
@@ -90,7 +90,7 @@ class Exposures(object):
         self.value_unit = 'NA'
         # Following values defined for each exposure
         # Obligatory variables
-        self.coord = Coordinates()
+        self.coord = GridPoints()
         self.value = np.array([], float)
         self.impact_id = np.array([], int)
         self.id = np.array([], int)
@@ -277,9 +277,9 @@ class Exposures(object):
 
     @coord.setter
     def coord(self, value):
-        """ If it is not a Coordinates instance, put it."""
-        if not isinstance(value, Coordinates):
-            self._coord = Coordinates(value)
+        """ If it is not a GridPoints instance, put it."""
+        if not isinstance(value, GridPoints):
+            self._coord = GridPoints(value)
         else:
             self._coord = value
 
