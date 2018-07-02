@@ -28,6 +28,9 @@ class IFEmanuele(ImpactFunc):
                 v_threshold + 49 m/s (mean value of Sealy & Strobl 2017)
             scale (float, optional): scale parameter, linear scaling of MDD.
                 0<=scale<=1. Default: 1.0
+
+        Raises:
+            ValueError
         """
         ImpactFunc.__init__(self)
         self.name = 'Emanuel 2011'
