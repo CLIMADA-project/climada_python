@@ -42,15 +42,14 @@ class IFEmanuele(ImpactFunc):
         self.set_shape(v_thresh, v_half)
         self.set_scale(scale)
 
-    def set_shape(self, v_thresh, v_half=74.7):
+    def set_shape(self, v_thresh, v_half):
         """ Check values and set vulnerability curve with according shape.
 
         Parameters:
             v_thresh (float): first shape parameter, wind speed in
-                m/s below which there is no damage. Default: 25.7(Emanuel 2011)
+                m/s below which there is no damage.
             v_half (float): second shape parameter, wind speed in m/s
-                at which 50% of max. damage is expected. Default:
-                v_threshold + 49 m/s (mean value of Sealy & Strobl 2017)
+                at which 50% of max. damage is expected.
 
         Raises:
             ValueError
@@ -70,8 +69,7 @@ class IFEmanuele(ImpactFunc):
         """ Multiply vulnerability curve by scale.
 
         Parameters:
-            scale (float): scale parameter, linear scaling of MDD.
-                0<=scale<=1. Default: 1.0
+            scale (float): scale parameter, linear scaling of MDD. 0<=scale<=1.
 
         Raises:
             ValueError
