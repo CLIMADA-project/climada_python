@@ -16,6 +16,7 @@ from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
 from climada.util.coordinates import GridPoints
 from climada.util.constants import EARTH_RADIUS
+from climada.util.coordinates import get_coastlines
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
 
@@ -173,9 +174,9 @@ class Centroids(object):
         No distinction between sea and land centroids."""
         # Get coastline points which are close to the centroids
         marg = 10
-        lat, lon = plot.get_coastlines((np.min(self.lon) - marg, \
-            np.max(self.lon) + marg, np.min(self.lat) - marg, \
-            np.max(self.lat) + marg))
+        lat, lon = get_coastlines((np.min(self.lon) - marg, \
+                   np.max(self.lon) + marg, np.min(self.lat) - marg, \
+                   np.max(self.lat) + marg), 10)
 
         tree = BallTree(np.array([lat, lon]).transpose()/180*np.pi, \
                         metric='haversine')

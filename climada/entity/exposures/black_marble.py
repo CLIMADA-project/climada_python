@@ -19,7 +19,7 @@ from PIL import Image
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ def country_iso(country_name):
     return iso_val
 
 def untar_stable_nightlight(f_tar_ini):
-    """ Move input tar file to DATA_DIR and extract stable light file.
+    """ Move input tar file to SYSTEM_DIR and extract stable light file.
     Returns absolute path of stable light file in format tif.gz.
 
     Parameters:
@@ -132,12 +132,12 @@ def untar_stable_nightlight(f_tar_ini):
     Returns:
         f_tif_gz (str)
     """
-    # move to DATA_DIR
-    f_tar_dest = os.path.abspath(os.path.join(DATA_DIR,
+    # move to SYSTEM_DIR
+    f_tar_dest = os.path.abspath(os.path.join(SYSTEM_DIR,
                                               os.path.basename(f_tar_ini)))
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
-    os.chdir(DATA_DIR)
+    os.chdir(SYSTEM_DIR)
     tar_file = tarfile.open(f_tar_dest)
     file_contents = tar_file.getnames()
     extract_name = os.path.splitext(os.path.basename(f_tar_dest))[0] + \
@@ -157,7 +157,7 @@ def untar_stable_nightlight(f_tar_ini):
     finally:
         tar_file.close()
     os.remove(f_tar_dest)
-    f_tif_gz = os.path.join(os.path.abspath(DATA_DIR), extract_name)
+    f_tif_gz = os.path.join(os.path.abspath(SYSTEM_DIR), extract_name)
     return f_tif_gz
 
 def load_nightlight(ref_year=2013, sat_name=None):
@@ -170,12 +170,12 @@ def load_nightlight(ref_year=2013, sat_name=None):
     Returns:
         nightlight (np.array), lat (np.array), lon (np.array), fn_light (str)
     """
-    # check if file exists in DATA_DIR, download if not
+    # check if file exists in SYSTEM_DIR, download if not
     if sat_name is None:
-        fn_light = os.path.join(os.path.abspath(DATA_DIR), '*' + str(ref_year)
-                                + '*.stable_lights.avg_vis.tif.gz')
+        fn_light = os.path.join(os.path.abspath(SYSTEM_DIR), '*' + \
+                            str(ref_year) + '*.stable_lights.avg_vis.tif.gz')
     else:
-        fn_light = os.path.join(os.path.abspath(DATA_DIR), sat_name + \
+        fn_light = os.path.join(os.path.abspath(SYSTEM_DIR), sat_name + \
                    str(ref_year) + '*.stable_lights.avg_vis.tif.gz')
     # check if file exists, download if not
     if glob.glob(fn_light):
