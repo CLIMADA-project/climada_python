@@ -28,7 +28,8 @@ not considered. """
 
 @jit
 def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
-    """ Compute approximated squared distance between two points."""
+    """ Compute approximated squared distance between two points. Values need
+    sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
     return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
