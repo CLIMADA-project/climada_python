@@ -12,7 +12,7 @@ from climada.util.constants import SYSTEM_DIR
 
 from climada.util.coordinates import GridPoints, get_coastlines, \
 get_countries_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
-GLOBE_COUNTRIES
+GLOBE_COUNTRIES, dist_to_coast
     
 class TestGridPoints(unittest.TestCase):
     ''' Test GridPoints class'''
@@ -161,8 +161,7 @@ class TestFunc(unittest.TestCase):
         """check point on land with 1:50.000.000 resolution."""
         lat = np.array([28.203216, 28.555994, 28.860875])
         lon = np.array([-16.567489, -18.554130, -9.532476])
-        land_profiles = get_countries_geometry(resolution=50)
-        res = coord_on_land(land_profiles, lat, lon)
+        res = coord_on_land(lat, lon)
         self.assertEqual(res.size, 3)
         self.assertTrue(res[0])
         self.assertFalse(res[1])
@@ -183,7 +182,15 @@ class TestFunc(unittest.TestCase):
         res =  shapereader._create_polygon(converted_shape)
         self.assertTrue(res.equals(all_geom))
         self.assertEqual(res.area, all_geom.area)
-
+        
+    def test_dist_to_coast(self):
+        point = (13.208333333333329, -59.625000000000014)
+        res = dist_to_coast(point)
+        self.assertEqual(5.7988200982894105, res)
+        
+        point = (13.958333333333343, -58.125)
+        res = dist_to_coast(point)
+        self.assertEqual(166.36505441711506, res)        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGridPoints)
