@@ -11,9 +11,10 @@ import shapefile
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
+from sklearn.neighbors import BallTree
 
 from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
-from climada.util.constants import SYSTEM_DIR
+from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -128,6 +129,58 @@ def get_coastlines(border=None, resolution=110):
 
     return coast_lat[in_point], coast_lon[in_point]
 
+def dist_to_coast(coord_lat, lon=None):
+    """ Comput distance to coast from input points.
+
+    Parameters:
+        coord_lat (np.array or tuple or float):
+            - np.array with two columns, first for latitude of each point and
+                second with longitude.
+            - np.array with one dimension containing latitudes
+            - tuple with first value latitude, second longitude
+            - float with a latitude value
+        lon (np.array or float, optional):
+            - np.array with one dimension containing longitudes
+            - float with a longitude value
+    Returns:
+    """
+    if lon is None:
+        if isinstance(coord_lat, tuple):
+            coord = np.array([[coord_lat[0], coord_lat[1]]])
+        elif isinstance(coord_lat, np.ndarray):
+            if coord_lat.shape[1] != 2:
+                LOGGER.error('Missing longitude values.')
+                raise ValueError
+            coord = coord_lat
+        else:
+            LOGGER.error('Missing longitude values.')
+            raise ValueError
+    elif isinstance(lon, np.ndarray):
+        if coord_lat.size != lon.size:
+            LOGGER.error('Wrong input coordinates size: %s != %s',
+                         coord_lat.size, lon.size)
+            raise ValueError
+        coord = np.empty((lon.size, 2))
+        coord[:, 0] = coord_lat
+        coord[:, 1] = lon
+    elif isinstance(lon, float):
+        if not isinstance(coord_lat, float):
+            LOGGER.error('Wrong input coordinates values.')
+            raise ValueError
+        coord = np.array([[coord_lat, lon]])
+
+    marg = 10
+    lat = coord[:, 0]
+    lon = coord[:, 1]
+    coast_lat, coast_lon = get_coastlines((np.min(lon) - marg, \
+        np.max(lon) + marg, np.min(lat) - marg, np.max(lat) + marg), 10)
+
+    tree = BallTree(np.array([coast_lat, coast_lon]).transpose()/180*np.pi, \
+                    metric='haversine')
+    dist_coast, _ = tree.query(coord/180*np.pi, k=1, return_distance=True,
+                               dualtree=True, breadth_first=False)
+    return dist_coast.reshape(-1,) * EARTH_RADIUS
+
 def get_countries_geometry(country_names=None, resolution=110):
     """Get union of all the countries or the provided ones.
 
@@ -176,7 +229,7 @@ def get_countries_geometry(country_names=None, resolution=110):
 
     return all_geom
 
-def coord_on_land(land_geometry, lat, lon):
+def coord_on_land(lat, lon):
     """Check if point is on land (True) or water (False) of provided countries.
     All globe considered if no input countries.
 
@@ -193,6 +246,7 @@ def coord_on_land(land_geometry, lat, lon):
         LOGGER.error('Wrong size input coordinates: %s != %s.', lat.size,
                      lon.size)
         raise ValueError
+    land_geometry = get_countries_geometry(resolution=50)
     return shapely.vectorized.contains(land_geometry, lon, lat)
 
 def nat_earth_resolution(resolution):
@@ -214,9 +268,13 @@ def nat_earth_resolution(resolution):
         raise ValueError
     return str(resolution) + 'm'
 
+GEOMETRY_TYPE = {"Null": 0, "Point": 1, "LineString": 3, "Polygon": 5,
+                 "MultiPoint": 8, "MultiLineString": 3, "MultiPolygon": 5}
+
 def shapely_to_pyshp(shapely_geom):
-    """ Shapely geometry to pyshp. Code from https://gis.stackexchange.com/
-    questions/52705/how-to-write-shapely-geometries-to-shapefiles.
+    """ Shapely geometry to pyshp. Code adapted from
+    https://gis.stackexchange.com/questions/52705/
+    how-to-write-shapely-geometries-to-shapefiles.
 
     Parameters:
         shapely_geom(shapely.geometry): shapely geometry to convert
@@ -230,20 +288,7 @@ def shapely_to_pyshp(shapely_geom):
     # create empty pyshp shape
     record = shapefile._Shape()
     # set shapetype
-    if geoj["type"] == "Null":
-        pyshptype = 0
-    elif geoj["type"] == "Point":
-        pyshptype = 1
-    elif geoj["type"] == "LineString":
-        pyshptype = 3
-    elif geoj["type"] == "Polygon":
-        pyshptype = 5
-    elif geoj["type"] == "MultiPoint":
-        pyshptype = 8
-    elif geoj["type"] == "MultiLineString":
-        pyshptype = 3
-    elif geoj["type"] == "MultiPolygon":
-        pyshptype = 5
+    pyshptype = GEOMETRY_TYPE[geoj["type"]]
     record.shapeType = pyshptype
     # set points and parts
     if geoj["type"] == "Point":

@@ -9,14 +9,11 @@ import os
 import copy
 import logging
 import numpy as np
-from sklearn.neighbors import BallTree
 
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import GridPoints
-from climada.util.constants import EARTH_RADIUS
-from climada.util.coordinates import get_coastlines
+from climada.util.coordinates import GridPoints, dist_to_coast
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
 
@@ -172,18 +169,7 @@ class Centroids(object):
     def calc_dist_to_coast(self):
         """Compute distance to coast for each centroids (dist_coast variable).
         No distinction between sea and land centroids."""
-        # Get coastline points which are close to the centroids
-        marg = 10
-        lat, lon = get_coastlines((np.min(self.lon) - marg, \
-                   np.max(self.lon) + marg, np.min(self.lat) - marg, \
-                   np.max(self.lat) + marg), 10)
-
-        tree = BallTree(np.array([lat, lon]).transpose()/180*np.pi, \
-                        metric='haversine')
-        self.dist_coast, _ = tree.query(self.coord/180*np.pi, k=1, \
-                                return_distance=True, dualtree=True, \
-                                breadth_first=False)
-        self.dist_coast = self.dist_coast.reshape(-1,) * EARTH_RADIUS
+        self.dist_coast = dist_to_coast(self.coord)
 
     def plot(self, **kwargs):
         """ Plot centroids points over earth.
