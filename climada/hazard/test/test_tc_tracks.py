@@ -121,6 +121,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_track.data[2].lat[8], 13.565343427825237)
 
     def test_calc_land_decay_pass(self):
+        """ Test calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         v_rel, p_rel = tc_track.calc_land_decay()
@@ -130,12 +131,12 @@ class TestFuncs(unittest.TestCase):
             self.assertTrue(i+1 in v_rel.keys())
             
         for i, val in enumerate(p_rel.values()):
-            self.assertAlmostEqual(val[0], 1.0499941)
-            self.assertAlmostEqual(val[1], 0.007978960200431)
+            self.assertAlmostEqual(val[0], 1.0598491)
+            self.assertAlmostEqual(val[1], 0.004200834277425)
             self.assertTrue(i+1 in v_rel.keys())
 
     def test_decay_values_andrew_pass(self):
-        """ Test _decay_values function."""
+        """ Test _decay_values with central pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
@@ -170,7 +171,7 @@ class TestFuncs(unittest.TestCase):
                               224.76733726289183,  312.14621544207563,  426.6757021862584, \
                               568.9358305779094,  748.3713215157885, 1016.9904230811956])
         self.assertEqual(list(x_val.keys()), [ss_category])
-        self.assertTrue(np.array_equal(x_val[ss_category], x_val_ref))
+        self.assertTrue(np.allclose(x_val[ss_category], x_val_ref))
 
     def test_dist_since_lf_pass(self):
         """ Test _dist_since_lf for andrew tropical cyclone."""

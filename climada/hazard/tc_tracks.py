@@ -210,11 +210,15 @@ class TCTracks(object):
             axis.plot(track.lon.values, track.lat.values, c=color)
         return fig, axis
 
-    def calc_land_decay(self, s_rel=False):
+    def calc_land_decay(self, s_rel=True):
         """Compute wind and pressure decay coefficients for every TC category
         from the historical events according to the formulas:
             - wind decay = exp(-x*A)
             - pressure decay = S-(S-1)*exp(-x*B)
+
+        Parameters:
+            s_rel (bool, optional): use environmental presure to calc S value
+                (true) or central presure (false)
 
         Returns:
             v_rel (dict(category: A)), p_rel (dict(category: (S, B)))
