@@ -274,8 +274,7 @@ class TCTracks(object):
                          'of different TC categories are needed.')
             raise ValueError
 
-        orig_wind = []
-        orig_pres = []
+        orig_wind, orig_pres = [], []
         for track in sy_tracks:
             if check_plot:
                 orig_wind.append(np.copy(track.max_sustained_wind.values))
@@ -598,7 +597,8 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
             track.max_sustained_wind[land_sea:sea_land_idx[idx+1]] += - r_diff
 
     # correct limits
-    track.central_pressure[track.central_pressure > 1015] = 1015
+    cor_p = track.central_pressure.values > track.environmental_pressure.values
+    track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
     track.max_sustained_wind[track.max_sustained_wind < 0] = 0
 
 def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
