@@ -1,9 +1,11 @@
 """
+Test tc_tracks module.
 """
 
 import os
 import unittest
 import array
+import xarray as xr
 import numpy as np
 
 from climada.hazard.tc_tracks import TCTracks
@@ -232,6 +234,105 @@ class TestFuncs(unittest.TestCase):
             self.assertAlmostEqual(val[1], 0.008871782287614)
             self.assertTrue(i+1 in v_rel.keys())
 
+    def test_apply_decay_pass(self):
+        """ Test apply_land_decay against MATLAB reference. """
+        v_rel = { 6: 0.0038950967656296597,
+                  1: 0.0038950967656296597,
+                  2: 0.0038950967656296597,
+                  3: 0.0038950967656296597,
+                  4: 0.0038950967656296597,
+                  5: 0.0038950967656296597,
+                  7: 0.0038950967656296597}
+
+        p_rel = {6: (1.0499941, 0.007978940084158488),
+                 1: (1.0499941, 0.007978940084158488),
+                 2: (1.0499941, 0.007978940084158488),
+                 3: (1.0499941, 0.007978940084158488),
+                 4: (1.0499941, 0.007978940084158488),
+                 5: (1.0499941, 0.007978940084158488),
+                 7: (1.0499941, 0.007978940084158488)}
+
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.data[0]['orig_event_flag'] = False
+        
+        tc_track.apply_land_decay(v_rel, p_rel, s_rel=True, check_plot=False)
+        
+        p_ref = np.array([1.010000000000000, 1.009000000000000, 1.008000000000000,
+                          1.006000000000000, 1.003000000000000, 1.002000000000000,
+                          1.001000000000000, 1.000000000000000, 1.000000000000000,
+                          1.001000000000000, 1.002000000000000, 1.005000000000000,
+                          1.007000000000000, 1.010000000000000, 1.010000000000000,
+                          1.010000000000000, 1.010000000000000, 1.010000000000000,
+                          1.010000000000000, 1.007000000000000, 1.004000000000000,
+                          1.000000000000000, 0.994000000000000, 0.981000000000000,
+                          0.969000000000000, 0.961000000000000, 0.947000000000000,
+                          0.933000000000000, 0.922000000000000, 0.930000000000000,
+                          0.937000000000000, 0.951000000000000, 0.947000000000000,
+                          0.943000000000000, 0.948000000000000, 0.946000000000000,
+                          0.941000000000000, 0.937000000000000, 0.955000000000000,
+                          0.974130898787264, 0.992424391382246, 1.000848406031383,
+                          1.005442668591783, 1.008172565040517, 1.009412671927696,
+                          1.009859686594813, 1.009983545766293])*1e3
+    
+        self.assertTrue(np.allclose(p_ref, tc_track.data[0].central_pressure.values))
+        
+        v_ref = np.array([0.250000000000000, 0.300000000000000, 0.300000000000000,
+                          0.350000000000000, 0.350000000000000, 0.400000000000000,
+                          0.450000000000000, 0.450000000000000, 0.450000000000000,
+                          0.450000000000000, 0.450000000000000, 0.450000000000000,
+                          0.450000000000000, 0.400000000000000, 0.400000000000000,
+                          0.400000000000000, 0.400000000000000, 0.450000000000000,
+                          0.450000000000000, 0.500000000000000, 0.500000000000000,
+                          0.550000000000000, 0.650000000000000, 0.800000000000000,
+                          0.950000000000000, 1.100000000000000, 1.300000000000000,
+                          1.450000000000000, 1.500000000000000, 1.250000000000000,
+                          1.300000000000000, 1.150000000000000, 1.150000000000000,
+                          1.150000000000000, 1.150000000000000, 1.200000000000000,
+                          1.250000000000000, 1.250000000000000, 1.200000000000000,
+                          0.973993114226405, 0.687567272842666, 0.499989104599683,
+                          0.355753160722606, 0.227723844887591, 0.130845432533431,
+                          0.065046221803497, 0.022846563865522])*1e2
+        
+        self.assertTrue(np.allclose(v_ref, tc_track.data[0].max_sustained_wind.values))
+    
+    def test_func_decay_p_pass(self):
+        """ Test decay function for pressure with its inverse."""
+        s_coef = 1.05
+        b_coef = 0.04
+        x_val = np.arange(0, 100, 10)
+        res = tc._decay_p_function(s_coef, b_coef, x_val)
+        b_coef_res = tc._solve_decay_p_function(s_coef, res, x_val)
+
+        self.assertTrue(np.allclose(b_coef_res[1:], np.ones((x_val.size-1,))*b_coef))
+        self.assertTrue(np.isnan(b_coef_res[0]))
+
+    def test_func_decay_v_pass(self):
+        """ Test decay function for wind with its inverse."""
+        a_coef = 0.04
+        x_val = np.arange(0, 100, 10)
+        res = tc._decay_v_function(a_coef, x_val)
+        a_coef_res = tc._solve_decay_v_function(res, x_val)
+
+        self.assertTrue(np.allclose(a_coef_res[1:], np.ones((x_val.size-1,))*a_coef))
+        self.assertTrue(np.isnan(a_coef_res[0]))
+
+    def test_decay_ps_value(self):
+        """Test the calculation of S in pressure decay."""
+        on_land_idx = 5
+        tr_ds = xr.Dataset()
+        tr_ds.coords['time'] = ('time', np.arange(10))
+        tr_ds['central_pressure'] = ('time', np.arange(10, 20))
+        tr_ds['environmental_pressure'] = ('time', np.arange(20, 30))
+        tr_ds['on_land'] = ('time', np.zeros((10,)).astype(bool))
+        tr_ds.on_land[on_land_idx] = True
+        p_landfall = 100
+        
+        res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=True)
+        self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx]/p_landfall))
+        res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=False)
+        self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx]/p_landfall))
+        
     def test_category_pass(self):
         """Test category computation."""
         max_sus_wind = np.array([25, 30, 35, 40, 45, 45, 45, 45, 35, 25])
@@ -290,25 +391,7 @@ class TestFuncs(unittest.TestCase):
                             990.4395])
         np.testing.assert_array_almost_equal(ref_res, out_pres)
 
-    def test_apply_decay_pass(self):
-        """ Test apply_land_decay against MATLAB reference. """
-        v_rel = { 6: 0.0038950967656296597,
-                  1: 0.0038950967656296597,
-                  2: 0.0038950967656296597,
-                  3: 0.0038950967656296597,
-                  4: 0.0038950967656296597,
-                  5: 0.0038950967656296597,
-                  7: 0.0038950967656296597}
-
-        p_rel = {6: (1.0499941, 0.007978940084158488),
-                 1: (1.0499941, 0.007978940084158488),
-                 2: (1.0499941, 0.007978940084158488),
-                 3: (1.0499941, 0.007978940084158488),
-                 4: (1.0499941, 0.007978940084158488),
-                 5: (1.0499941, 0.007978940084158488),
-                 7: (1.0499941, 0.007978940084158488)}
-
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIBTracs)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
