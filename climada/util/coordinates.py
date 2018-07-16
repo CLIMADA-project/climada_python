@@ -11,6 +11,7 @@ import shapefile
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
+from shapely.geometry import LineString
 from sklearn.neighbors import BallTree
 
 from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
@@ -21,6 +22,10 @@ LOGGER = logging.getLogger(__name__)
 GLOBE_COUNTRIES = "global_country_borders"
 """ Name of the earth's country borders shape file generated in function
 get_countries_geometry"""
+
+GLOBE_COASTLINES = "global_coastlines"
+""" Name of the earth's coastlines shape file generated in function
+get_coastlines"""
 
 class GridPoints(np.ndarray):
     """Define grid using 2d numpy array. Each row is a point. The first column
@@ -104,30 +109,42 @@ def get_coastlines(border=None, resolution=110):
     Returns:
         lat (np.array), lon(np.array)
     """
-    # TODO add writer to load if present
     resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='physical',
-                                         name='coastline')
-    shp = shapereader.Reader(shp_file)
-    geoms = list(shp.geometries())
+    file_globe = os.path.join(SYSTEM_DIR, GLOBE_COASTLINES + "_" + resolution +
+                              ".shp")
+    if not os.path.isfile(file_globe):
+        shp_file = shapereader.natural_earth(resolution=resolution,
+                                             category='physical',
+                                             name='coastline')
+        shp = shapereader.Reader(shp_file)
 
-    coast_lon = list()
-    coast_lat = list()
-    for multi_line in geoms:
-        coast_lon += multi_line.geoms[0].xy[0]
-        coast_lat += multi_line.geoms[0].xy[1]
-    coast_lon = np.array(coast_lon)
-    coast_lat = np.array(coast_lat)
+        coast_lon, coast_lat = [], []
+        for multi_line in list(shp.geometries()):
+            coast_lon += multi_line.geoms[0].xy[0]
+            coast_lat += multi_line.geoms[0].xy[1]
+        coast = np.array((coast_lat, coast_lon)).transpose()
+
+        LOGGER.info('Writing file %s', file_globe)
+
+        shapewriter = shapefile.Writer()
+        shapewriter.field("global_coastline")
+        converted_shape = shapely_to_pyshp(LineString(coast))
+        shapewriter._shapes.append(converted_shape)
+        shapewriter.record(["empty record"])
+        shapewriter.save(file_globe)
+
+        LOGGER.info('Written file %s', file_globe)
+    else:
+        reader = shapereader.Reader(file_globe)
+        all_geom = list(reader.geometries())[0].geoms[0]
+        coast = np.array((all_geom.xy)).transpose()
 
     if border is None:
-        in_point = np.ones(coast_lon.size, dtype=bool)
-    else:
-        in_lon = np.logical_and(coast_lon >= border[0], coast_lon <= border[1])
-        in_lat = np.logical_and(coast_lat >= border[2], coast_lat <= border[3])
-        in_point = np.logical_and(in_lon, in_lat)
+        return coast
 
-    return coast_lat[in_point], coast_lon[in_point]
+    in_lon = np.logical_and(coast[:, 1] >= border[0], coast[:, 1] <= border[1])
+    in_lat = np.logical_and(coast[:, 0] >= border[2], coast[:, 0] <= border[3])
+    return coast[np.logical_and(in_lon, in_lat)].reshape(-1, 2)
 
 def dist_to_coast(coord_lat, lon=None):
     """ Comput distance to coast from input points.
@@ -172,11 +189,10 @@ def dist_to_coast(coord_lat, lon=None):
     marg = 10
     lat = coord[:, 0]
     lon = coord[:, 1]
-    coast_lat, coast_lon = get_coastlines((np.min(lon) - marg, \
-        np.max(lon) + marg, np.min(lat) - marg, np.max(lat) + marg), 10)
+    coast = get_coastlines((np.min(lon) - marg, np.max(lon) + marg,
+                            np.min(lat) - marg, np.max(lat) + marg), 10)
 
-    tree = BallTree(np.array([coast_lat, coast_lon]).transpose()/180*np.pi, \
-                    metric='haversine')
+    tree = BallTree(coast/180*np.pi, metric='haversine')
     dist_coast, _ = tree.query(coord/180*np.pi, k=1, return_distance=True,
                                dualtree=True, breadth_first=False)
     return dist_coast.reshape(-1,) * EARTH_RADIUS
@@ -216,7 +232,6 @@ def get_countries_geometry(country_names=None, resolution=110):
 
             shapewriter = shapefile.Writer()
             shapewriter.field("global_country_borders")
-            shapely_to_pyshp(all_geom)
             converted_shape = shapely_to_pyshp(all_geom)
             shapewriter._shapes.append(converted_shape)
             shapewriter.record(["empty record"])
@@ -294,7 +309,7 @@ def shapely_to_pyshp(shapely_geom):
     if geoj["type"] == "Point":
         record.points = geoj["coordinates"]
         record.parts = [0]
-    elif geoj["type"] in ("MultiPoint", "Linestring"):
+    elif geoj["type"] in ("MultiPoint", "LineString"):
         record.points = geoj["coordinates"]
         record.parts = [0]
     elif geoj["type"] == "Polygon":

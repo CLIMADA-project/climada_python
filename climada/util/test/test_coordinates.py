@@ -91,28 +91,27 @@ class TestFunc(unittest.TestCase):
         
     def test_get_coastlines_all_pass(self):
         '''Check get_coastlines function over whole earth'''
-        lat, lon = get_coastlines(resolution=110)
-        self.assertEqual(5128, lat.size)
-        self.assertEqual(-78.59566741324154, lat[0])
-        self.assertEqual(73.60000000000001, lat[-1])
+        coast = get_coastlines(resolution=110)
+        self.assertEqual((5128, 2), coast.shape)
+        
+        self.assertEqual(-78.59566741324154, coast[0][0])
+        self.assertEqual(73.60000000000001, coast[-1][0])
 
-        self.assertEqual(5128, lon.size)
-        self.assertEqual(-163.7128956777287, lon[0])
-        self.assertEqual(-106.6, lon[-1])
+        self.assertEqual(-163.7128956777287, coast[0][1])
+        self.assertEqual(-106.6, coast[-1][1])
 
     def test_get_coastlines_pass(self):
         '''Check get_coastlines function in defined border'''
         border = (-100, 95, -55, 35)
-        lat, lon = get_coastlines(border, resolution=110)
+        coast = get_coastlines(border, resolution=110)
 
-        for lat_val, lon_val in zip(lat, lon):
+        for lat_val, lon_val in coast:
             if lon_val < border[0] or lon_val > border[1]:
                 self.assertTrue(False)
             if lat_val < border[2] or lat_val > border[3]:
                 self.assertTrue(False)
 
-        self.assertEqual(1234, lat.size)
-        self.assertEqual(1234, lon.size)
+        self.assertEqual((1234, 2), coast.shape)
 
     def test_get_countries_geometry_country_pass(self):
         """get_countries_geometry with selected countries."""
