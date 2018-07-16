@@ -183,18 +183,22 @@ class Graph2D(object):
         new_ax.grid(on_grid)
         self.axs.append(new_ax)
 
-    def add_curve(self, var_x, var_y, fmt=None, **kwargs):
+    def add_curve(self, var_x, var_y, fmt=None, ax_num=None, **kwargs):
         """Add (x, y) curve to current subplot.
 
         Parameters:
             var_x (array): abcissa values
-            var_Y (array): ordinate values
+            var_y (array): ordinate values
             fmt (str, optional): format e.g 'k--'
+            ax_num (int, optional): number of axis to plot. Current if None.
             kwargs (optional): arguments for plot matplotlib function
         """
         if self.curr_ax == -1:
             raise ValueError('Add a subplot first!')
-        axis = self.axs[self.curr_ax]
+        if ax_num is None:
+            axis = self.axs[self.curr_ax]
+        else:
+            axis = self.axs[ax_num]
         if fmt is not None:
             axis.plot(var_x, var_y, fmt, **kwargs)
         else:
@@ -203,14 +207,30 @@ class Graph2D(object):
             axis.legend(loc='best')
         axis.grid(True)
 
-    def set_x_lim(self, var_x):
-        """Set x axis limits from minimum and maximum provided values."""
-        axis = self.axs[self.curr_ax]
+    def set_x_lim(self, var_x, ax_num=None):
+        """Set x axis limits from minimum and maximum provided values.
+
+        Parameters:
+            var_x (array): abcissa values
+            ax_num (int, optional): number of axis to plot. Current if None.
+        """
+        if ax_num is None:
+            axis = self.axs[self.curr_ax]
+        else:
+            axis = self.axs[ax_num]
         axis.set_xlim([np.min(var_x), np.max(var_x)])
 
-    def set_y_lim(self, var_y):
-        """Set y axis limits from minimum and maximum provided values."""
-        axis = self.axs[self.curr_ax]
+    def set_y_lim(self, var_y, ax_num=None):
+        """Set y axis limits from minimum and maximum provided values.
+
+        Parameters:
+            var_y (array): ordinate values
+            ax_num (int, optional): number of axis to plot. Current if None.
+        """
+        if ax_num is None:
+            axis = self.axs[self.curr_ax]
+        else:
+            axis = self.axs[ax_num]
         axis.set_ylim([np.min(var_y), np.max(var_y)])
 
     def get_elems(self):
