@@ -126,7 +126,7 @@ class TestFuncs(unittest.TestCase):
         """ Test calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
-        v_rel, p_rel = tc_track.calc_land_decay()
+        v_rel, p_rel = tc_track.calc_land_decay(check_plot=False)
         
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.003895096731429)
