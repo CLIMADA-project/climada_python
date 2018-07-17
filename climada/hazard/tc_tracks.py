@@ -10,6 +10,8 @@ import array
 import numpy as np
 import matplotlib.cm as cm
 from matplotlib.lines import Line2D
+from matplotlib.collections import LineCollection
+from matplotlib.colors import BoundaryNorm, ListedColormap
 import pandas as pd
 import xarray as xr
 from pint import UnitRegistry
@@ -30,6 +32,9 @@ CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',
              5: 'Hurrican Cat. 3', 6: 'Hurrican Cat. 4', 7: 'Hurrican Cat. 5'}
 """ Saffir-Simpson category names. """
+
+CAT_COLORS = cm.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
+""" Color scale to plot the Saffir-Simpson scale."""
 
 class TCTracks(object):
     """Contains tropical cyclone tracks.
@@ -124,6 +129,12 @@ class TCTracks(object):
                 track_int.coords['lon'] = track.lon.resample(time=time_step).\
                                           interpolate('cubic')
                 track_int.attrs = track.attrs
+                if 'on_land' in track:
+                    track['on_land'] = ('time', coord_util.coord_on_land( \
+                        track.lat.values, track.lon.values))
+                if 'dist_since_lf' in track:
+                    track['dist_since_lf'] = ('time', _dist_since_lf(track))
+
             else:
                 LOGGER.warning('Track interpolation not done. ' +
                                'Not enough elements for %s', track.name)
@@ -132,32 +143,29 @@ class TCTracks(object):
 
         self.data = new_list
 
-    def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10,
-                         ens_amp=0.1, rand_unif_ini=None,
-                         rand_unif_ang=None):
+    def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
+        ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed']):
         """ Generate random tracks for every track contained.
 
         Parameters:
             ens_size (int, optional): number of created tracks per original
                 track. Default 9.
-            rand_unif_ini (np.array, optional): array of uniform [0,1) random
-                numbers of size 2
-            rand_unif_ang (np.array, optional): array of uniform [0,1) random
-                numbers of size ens_size x size track
             ens_amp0 (float, optional): amplitude of max random starting point
                 shift degree longitude. Default: 1.5
             max_angle (float, optional): maximum angle of variation, =pi is
                 like undirected, pi/4 means one quadrant. Default: pi/10
             ens_amp (float, optional): amplitude of random walk wiggles in
                 degree longitude for 'directed'. Default: 0.1
+            seed (int, optional): random number generator seed. Put negative
+                value if you don't want to use it. Default: configuration file
         """
         ens_track = list()
+        if seed >= 0:
+            np.random.seed(seed)
         for track in self.data:
             n_dat = track.time.size
-            if rand_unif_ini is None or rand_unif_ini.shape != (2, ens_size):
-                rand_unif_ini = np.random.uniform(size=(2, ens_size))
-            if rand_unif_ang is None or rand_unif_ang.size != ens_size*n_dat:
-                rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
+            rand_unif_ini = np.random.uniform(size=(2, ens_size))
+            rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
 
             xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
             tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
@@ -207,14 +215,28 @@ class TCTracks(object):
         axis.set_extent(([min_lon-deg_border, max_lon+deg_border,
                           min_lat-deg_border, max_lat+deg_border]))
         plot.add_shapes(axis)
+
+        cmap = ListedColormap(colors=CAT_COLORS)
+        norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         if title:
             axis.set_title(title)
         for track in self.data:
+            points = np.array([track.lon.values,
+                               track.lat.values]).T.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
             if track.orig_event_flag:
-                color = 'b'
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
+                                          linestyle='solid')
             else:
-                color = 'k'
-            axis.plot(track.lon.values, track.lat.values, c=color)
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
+                                          linestyle='dashed')
+            track_lc.set_array(track.max_sustained_wind.values)
+            axis.add_collection(track_lc)
+
+        leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
+                     for i_col in range(len(SAFFIR_SIM_CAT))]
+        leg_names = [CAT_NAMES[i_col] for i_col in range(1, len(SAFFIR_SIM_CAT)+1)]
+        axis.legend(leg_lines, leg_names)
         return fig, axis
 
     def calc_land_decay(self, s_rel=True, check_plot=True):
@@ -439,7 +461,7 @@ def _decay_values(s_rel, track, v_lf, p_lf, x_val):
             pressure/central pressure at landfall
         x_val (dict): key is Saffir-Simpson scale, values are arrays with
             the values used as "x" in the coefficient fitting, the
-            distance since
+            distance since landfall
     """
     # Index in land that comes from previous sea index
     sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
@@ -466,13 +488,14 @@ def _decay_values(s_rel, track, v_lf, p_lf, x_val):
                 v_lf[ss_scale_idx] = array.array('f', v_land)
                 p_lf[ss_scale_idx] = (array.array('f', p_land_s),
                                       array.array('f', p_land))
+                x_val[ss_scale_idx] = array.array('f', \
+                                      track.dist_since_lf[sea_land:land_sea])
             else:
                 v_lf[ss_scale_idx].extend(v_land)
                 p_lf[ss_scale_idx][0].extend(p_land_s)
                 p_lf[ss_scale_idx][1].extend(p_land)
-
-        x_val[ss_scale_idx] = track.dist_since_lf[
-            np.isfinite(track.dist_since_lf)].values
+                x_val[ss_scale_idx].extend(track.dist_since_lf[ \
+                                           sea_land:land_sea])
 
 def _decay_calc_coeff(x_val, v_lf, p_lf):
     """ From track's relative velocity and pressure, compute the decay
@@ -496,18 +519,19 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     v_rel = dict()
     p_rel = dict()
     for ss_scale, val_lf in v_lf.items():
-        v_y_val = np.array(val_lf)
-        v_coef = _solve_decay_v_function(v_y_val, x_val[ss_scale])
+        x_val_ss = np.array(x_val[ss_scale])
+
+        y_val = np.array(val_lf)
+        v_coef = _solve_decay_v_function(y_val, x_val_ss)
 
         ps_y_val = np.array(p_lf[ss_scale][0])
-        p_y_val = np.array(p_lf[ss_scale][1])
-        p_y_val[ps_y_val <= p_y_val] = np.nan
-        p_y_val[ps_y_val <= 1] = np.nan
-        valid_p = np.isfinite(p_y_val)
+        y_val = np.array(p_lf[ss_scale][1])
+        y_val[ps_y_val <= y_val] = np.nan
+        y_val[ps_y_val <= 1] = np.nan
+        valid_p = np.isfinite(y_val)
         ps_y_val = ps_y_val[valid_p]
-        p_y_val = p_y_val[valid_p]
-        p_coef = _solve_decay_p_function(ps_y_val, p_y_val,
-                                         x_val[ss_scale][valid_p])
+        y_val = y_val[valid_p]
+        p_coef = _solve_decay_p_function(ps_y_val, y_val, x_val_ss[valid_p])
 
         v_rel[ss_scale] = np.mean(v_coef)
         p_rel[ss_scale] = (np.mean(ps_y_val), np.mean(p_coef))
@@ -515,11 +539,10 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     scale_full = np.array(list(p_rel.keys()))
     for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
         if ss_scale not in p_rel:
-            close_scale = scale_full[np.argmin(np.abs(
-                scale_full-ss_scale))]
+            close_scale = scale_full[np.argmin(np.abs(scale_full-ss_scale))]
             LOGGER.info('No historical track of category %s. Decay ' +
-                        'parameters from category %s taken.', ss_scale,
-                        close_scale)
+                        'parameters from category %s taken.',
+                        CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
 
@@ -604,21 +627,19 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
 def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
     """ Plot wind and presure before and after correction for synthetic tracks.
     Plot wind and presure for unchanged historical tracks."""
-    color_map = cm.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
-
     # Plot synthetic tracks
     sy_tracks = [track for track in all_tracks if not track.orig_event_flag]
     graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a = \
-    _check_apply_decay_syn_plot(color_map, sy_tracks, syn_orig_wind,
+    _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                 syn_orig_pres)
 
     # Plot historic tracks
     hist_tracks = [track for track in all_tracks if track.orig_event_flag]
     graph_hv, graph_hp, graph_hpd_a, graph_hped_a = \
-    _check_apply_decay_hist_plot(color_map, hist_tracks)
+    _check_apply_decay_hist_plot(hist_tracks)
 
     # Put legend and fix size
-    leg_lines = [Line2D([0], [0], color=color_map[i_col], lw=2)
+    leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                  for i_col in range(len(SAFFIR_SIM_CAT))]
     leg_lines.append(Line2D([0], [0], color='k', lw=2))
     leg_names = [CAT_NAMES[i_col] for i_col in range(1, len(SAFFIR_SIM_CAT)+1)]
@@ -630,7 +651,7 @@ def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
         fig, _ = graph.get_elems()
         fig.set_size_inches(18.5, 10.5)
 
-def _check_apply_decay_syn_plot(color_map, sy_tracks, syn_orig_wind,
+def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                 syn_orig_pres):
     """Plot winds and pressures of synthetic tracks before and after
     correction."""
@@ -668,20 +689,20 @@ def _check_apply_decay_syn_plot(color_map, sy_tracks, syn_orig_wind,
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
                 graph_v_a.add_curve(on_land, track.max_sustained_wind[on_land],
-                                    'o', c=color_map[ss_scale])
+                                    'o', c=CAT_COLORS[ss_scale])
                 graph_v_b.add_curve(on_land, orig_wind[on_land],
-                                    'o', c=color_map[ss_scale])
+                                    'o', c=CAT_COLORS[ss_scale])
                 graph_p_a.add_curve(on_land, track.central_pressure[on_land],
-                                    'o', c=color_map[ss_scale])
+                                    'o', c=CAT_COLORS[ss_scale])
                 graph_p_b.add_curve(on_land, orig_pres[on_land],
-                                    'o', c=color_map[ss_scale])
+                                    'o', c=CAT_COLORS[ss_scale])
                 graph_pd_a.add_curve(track.dist_since_lf[on_land],
                                      track.central_pressure[on_land]/p_lf,
-                                     'o', c=color_map[ss_scale])
+                                     'o', c=CAT_COLORS[ss_scale])
                 graph_ped_a.add_curve(track.dist_since_lf[on_land],
                                       track.environmental_pressure[on_land]-
                                       track.central_pressure[on_land],
-                                      'o', c=color_map[ss_scale])
+                                      'o', c=CAT_COLORS[ss_scale])
 
             on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
             graph_v_a.add_curve(on_sea, track.max_sustained_wind[on_sea],
@@ -695,7 +716,7 @@ def _check_apply_decay_syn_plot(color_map, sy_tracks, syn_orig_wind,
 
     return graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a
 
-def _check_apply_decay_hist_plot(color_map, hist_tracks):
+def _check_apply_decay_hist_plot(hist_tracks):
     """Plot winds and pressures of historical tracks."""
     graph_hv = plot.Graph2D('Historical wind')
     graph_hv.add_subplot('Node number', 'Max sustained wind (kn)')
@@ -727,22 +748,22 @@ def _check_apply_decay_hist_plot(color_map, hist_tracks):
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
                 graph_hv.add_curve(on_land, track.max_sustained_wind[on_land],
-                                   'o', c=color_map[scale])
+                                   'o', c=CAT_COLORS[scale])
                 graph_hp.add_curve(on_land, track.central_pressure[on_land],
-                                   'o', c=color_map[scale])
+                                   'o', c=CAT_COLORS[scale])
                 graph_hpd_a.add_curve(track.dist_since_lf[on_land],
                                       track.central_pressure[on_land]/p_lf,
-                                      'o', c=color_map[scale])
+                                      'o', c=CAT_COLORS[scale])
                 graph_hped_a.add_curve(track.dist_since_lf[on_land],
                                        track.environmental_pressure[on_land]-
                                        track.central_pressure[on_land],
-                                       'o', c=color_map[scale])
+                                       'o', c=CAT_COLORS[scale])
 
             on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
             graph_hp.add_curve(on_sea, track.central_pressure[on_sea],
-                               'o', c=color_map[scale])
+                               'o', c='k', markersize=5)
             graph_hv.add_curve(on_sea, track.max_sustained_wind[on_sea],
-                               'o', c=color_map[scale])
+                               'o', c='k', markersize=5)
 
     return graph_hv, graph_hp, graph_hpd_a, graph_hped_a
 

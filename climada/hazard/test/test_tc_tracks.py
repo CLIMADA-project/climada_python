@@ -82,45 +82,40 @@ class TestFuncs(unittest.TestCase):
         """Test against MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
-        rnd_ini = np.array([[0.9649, 0.1576], [0.7922, 0.9595]])
-        rnd_ang = np.array([0.3922, 0.6555, 0.1712, 0.7060, 0.0318, 0.2769, \
-                            0.0462, 0.0971, 0.8235, 0.6948, 0.3171, 0.9502, \
-                            0.0344, 0.4387, 0.3816, 0.7655, 0.7952, 0.1869])
         ens_size=2
-        tc_track.calc_random_walk(ens_size, rand_unif_ini=rnd_ini,
-                                  rand_unif_ang=rnd_ang)
+        tc_track.calc_random_walk(ens_size, seed=25)
 
         self.assertEqual(len(tc_track.data), ens_size+1)
 
         self.assertFalse(tc_track.data[1].orig_event_flag)
         self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
         self.assertEqual(tc_track.data[1].id_no, 1.951239012334010e+12)
-        self.assertEqual(tc_track.data[1].lon[0], -24.90265000000000)
-        self.assertEqual(tc_track.data[1].lon[1], -25.899653369275331)
-        self.assertEqual(tc_track.data[1].lon[2], -26.917223719188879)
-        self.assertEqual(tc_track.data[1].lon[3], -28.021940640460727)
-        self.assertEqual(tc_track.data[1].lon[4], -29.155418047711304)
-        self.assertEqual(tc_track.data[1].lon[8], -34.529188419229598)
+        self.assertAlmostEqual(tc_track.data[1].lon[0].values, -25.0448138)
+        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -26.07400903)
+        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -27.09191673)
+        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -28.21366632)
+        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -29.33195465)
+        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -34.6016857)
 
-        self.assertEqual(tc_track.data[1].lat[0], 12.73830000000000)
-        self.assertEqual(tc_track.data[1].lat[4], 13.130817937897319)
-        self.assertEqual(tc_track.data[1].lat[5], 13.219446057176036)
-        self.assertEqual(tc_track.data[1].lat[6], 13.291468242391597)
-        self.assertEqual(tc_track.data[1].lat[7], 13.343819850233439)
-        self.assertEqual(tc_track.data[1].lat[8], 13.412292879644005)
+        self.assertAlmostEqual(tc_track.data[1].lat[0].values, 11.96825841)
+        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 12.35820479)
+        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 12.45465)
+        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 12.5492937)
+        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 12.6333804)
+        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 12.71561952)
 
         self.assertFalse(tc_track.data[2].orig_event_flag)
         self.assertEqual(tc_track.data[2].name, '1951239N12334_gen2')
-        self.assertEqual(tc_track.data[2].id_no, 1.951239012334020e+12)
-        self.assertEqual(tc_track.data[2].lon[0], -26.11360000000000)
-        self.assertEqual(tc_track.data[2].lon[3], -29.409222264217661)
-        self.assertEqual(tc_track.data[2].lon[4], -30.584828633621079)
-        self.assertEqual(tc_track.data[2].lon[8], -35.959133410163332)
+        self.assertAlmostEqual(tc_track.data[2].id_no, 1.951239012334020e+12)
+        self.assertAlmostEqual(tc_track.data[2].lon[0].values, -25.47658461)
+        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.78978084)
+        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -29.9568406)
+        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -35.30222604)
 
-        self.assertEqual(tc_track.data[2].lat[0], 12.989250000000000)
-        self.assertEqual(tc_track.data[2].lat[6], 13.410297633704376)
-        self.assertEqual(tc_track.data[2].lat[7], 13.493978269787220)
-        self.assertEqual(tc_track.data[2].lat[8], 13.565343427825237)
+        self.assertAlmostEqual(tc_track.data[2].lat[0].values, 11.82886685)
+        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 12.26400422)
+        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 12.3454308)
+        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 12.42745488)
 
     def test_calc_land_decay_pass(self):
         """ Test calc_land_decay with environmental pressure function."""
