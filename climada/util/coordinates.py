@@ -252,7 +252,7 @@ def coord_on_land(lat, lon):
         land_geometry (shapely.geometry.multipolygon.MultiPolygon): profiles of
             land.
         lat (np.array): latitude of points
-        lon (np.array): longiture of points
+        lon (np.array): longitude of points
 
     Returns:
         np.array(bool)
