@@ -264,7 +264,7 @@ def cut_nightlight_country(country_isos, nl_lat, nl_lon):
         nl_lon (np.array): longitudes of earth's nightlight
 
     Returns:
-        in_lat (np.array(int)), in_lon (np.array(int))
+        in_lat (dict(np.array(int))), in_lon (dict(np.array(int)))
     """
     shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                          name='admin_0_countries')
