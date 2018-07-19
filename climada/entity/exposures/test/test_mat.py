@@ -71,7 +71,7 @@ class TestReader(unittest.TestCase):
 
     def test_check_demo_warning(self):
         """Check warning centroids when demo read."""
-        with self.assertLogs('climada.util.checker', level='WARNING') as cm:
+        with self.assertLogs('climada.util.checker', level='INFO') as cm:
             Exposures(ENT_DEMO_MAT)
         self.assertIn("Exposures.region_id not set.", cm.output[0])
         
