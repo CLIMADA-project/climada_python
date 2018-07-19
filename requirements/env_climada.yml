@@ -28,4 +28,3 @@ dependencies:
     - pint==0.8.1
     - pox==0.2.3
     - ppft==1.6.4.7.1
-    - pycountry==18.5.26

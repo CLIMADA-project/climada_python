@@ -131,4 +131,3 @@ dependencies:
     - pox==0.2.3
     - ppft==1.6.4.7.1
     - xmlrunner==1.7.7
-    - pycountry==18.5.26
