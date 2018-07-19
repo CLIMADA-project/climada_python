@@ -11,8 +11,8 @@ from cartopy.io import shapereader
 from climada.util.constants import SYSTEM_DIR
 
 from climada.util.coordinates import GridPoints, get_coastlines, \
-get_countries_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
-GLOBE_COUNTRIES, dist_to_coast
+get_land_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
+GLOBE_LAND, dist_to_coast
     
 class TestGridPoints(unittest.TestCase):
     ''' Test GridPoints class'''
@@ -113,48 +113,31 @@ class TestFunc(unittest.TestCase):
 
         self.assertEqual((1234, 2), coast.shape)
 
-    def test_get_countries_geometry_country_pass(self):
-        """get_countries_geometry with selected countries."""
+    def test_get_land_geometry_country_pass(self):
+        """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
-        res = get_countries_geometry(iso_countries, 110)
+        res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(res[0].area, 28.552628470049843)
-        self.assertEqual(res[1].area, 45.92359430736882)
+        self.assertEqual(res.bounds, (5.852489868000106, 8.565578518000152, 
+                                      109.47242272200018, 55.06533437700001))
 
         iso_countries = ['ESP']
-        res = get_countries_geometry(iso_countries, 110)
-        self.assertIsInstance(res, shapely.geometry.polygon.Polygon)
-        self.assertEqual(res.area, 53.26842501104215)
-        
-    def test_get_countries_geometry_write_1_pass(self):
-        """Test global country borders. Test file is generated if it does not
-        exists and read if it does."""
-        resolution = 50
-        file_globe = os.path.join(SYSTEM_DIR, GLOBE_COUNTRIES + "_" + str(resolution) + "m.shp")
-        if not os.path.isfile(file_globe):
-            res = get_countries_geometry(resolution=resolution)
-            self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-            self.assertEqual(res.area, 21418.326284781666)
-            self.assertTrue(os.path.isfile(file_globe))
-        else:
-            res = get_countries_geometry(resolution=resolution)
-            self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-            self.assertEqual(res.area, 21418.326284781666)
+        res = get_land_geometry(iso_countries, 110)
+        self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
+        self.assertEqual(res.bounds, (-18.16722571499986, 27.64223867400007, 
+                                      4.337087436000104, 43.793443100999994))
 
-    def test_get_countries_geometry_write_2_pass(self):
-        """Test global country borders. Test file is generated if it does not
-        exists and read if it does."""
-        resolution = 50
-        file_globe = os.path.join(SYSTEM_DIR, GLOBE_COUNTRIES + "_" + str(resolution) + "m.shp")
-        if not os.path.isfile(file_globe):
-            res = get_countries_geometry(resolution=resolution)
-            self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-            self.assertEqual(res.area, 21418.326284781666)
-            self.assertTrue(os.path.isfile(file_globe))
-        else:
-            res = get_countries_geometry(resolution=resolution)
-            self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-            self.assertEqual(res.area, 21418.326284781666)
+    def test_get_land_geometry_border_pass(self):
+        """get_land_geometry with selected countries."""
+        lat = np.array([28.203216, 28.555994, 28.860875])
+        lon = np.array([-16.567489, -18.554130, -9.532476])
+        res = get_land_geometry(border=(np.min(lon), np.max(lon),
+                                np.min(lat), np.max(lat)), resolution=10)
+        self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
+        self.assertAlmostEqual(res.bounds[0], -18.002186653)
+        self.assertAlmostEqual(res.bounds[1], lat[0])
+        self.assertAlmostEqual(res.bounds[2], np.max(lon))
+        self.assertAlmostEqual(res.bounds[3], np.max(lat))
 
     def test_on_land_pass(self):
         """check point on land with 1:50.000.000 resolution."""
