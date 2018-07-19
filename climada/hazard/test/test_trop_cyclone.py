@@ -120,8 +120,9 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
-    def test_read_and_tc_pass(self):
-        """ Read a hazard file and a IbTrac in parallel. """
+    def test_read_and_tc_fail(self):
+        """ Append Hazard and Tropical Cyclone. Fail because of missing 
+        category in hazard. """
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
 
@@ -132,8 +133,9 @@ class TestReader(unittest.TestCase):
         tc_haz2.set_from_tracks(tc_track, CENTR_TEST_BRB)
 
         tc_haz2.append(tc_haz1)
-        tc_haz2.check()
         self.assertEqual(tc_haz2.intensity.shape, (14451, 396))
+        with self.assertRaises(ValueError):
+            tc_haz2.check()
 
 class TestModel(unittest.TestCase):
     """Test modelling of tropical cyclone"""

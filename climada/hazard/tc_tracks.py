@@ -2,7 +2,7 @@
 Define TCTracks: IBTracs reader and tracks manager.
 """
 
-__all__ = ['SAFFIR_SIM_CAT', 'TCTracks']
+__all__ = ['SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 import logging
 import datetime as dt
@@ -134,6 +134,9 @@ class TCTracks(object):
                         track.lat.values, track.lon.values))
                 if 'dist_since_lf' in track:
                     track['dist_since_lf'] = ('time', _dist_since_lf(track))
+                track.attrs['category'] = set_category( \
+                    track.max_sustained_wind.values, \
+                    track.max_sustained_wind_unit)
 
             else:
                 LOGGER.warning('Track interpolation not done. ' +
@@ -235,7 +238,8 @@ class TCTracks(object):
 
         leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                      for i_col in range(len(SAFFIR_SIM_CAT))]
-        leg_names = [CAT_NAMES[i_col] for i_col in range(1, len(SAFFIR_SIM_CAT)+1)]
+        leg_names = [CAT_NAMES[i_col] for i_col
+                     in range(1, len(SAFFIR_SIM_CAT)+1)]
         axis.legend(leg_lines, leg_names)
         return fig, axis
 
@@ -359,7 +363,7 @@ class TCTracks(object):
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
         tr_ds.attrs['id_no'] = float(name.replace('N', '0'). replace('S', '1'))
-        tr_ds.attrs['category'] = _set_category(max_sus_wind, \
+        tr_ds.attrs['category'] = set_category(max_sus_wind, \
                    max_sus_wind_unit)
 
         self.data.append(tr_ds)
@@ -623,6 +627,8 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
     cor_p = track.central_pressure.values > track.environmental_pressure.values
     track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
     track.max_sustained_wind[track.max_sustained_wind < 0] = 0
+    track.attrs['category'] = set_category(track.max_sustained_wind.values,
+                                           track.max_sustained_wind_unit)
 
 def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
     """ Plot wind and presure before and after correction for synthetic tracks.
@@ -773,7 +779,7 @@ def _missing_pressure(cen_pres, v_max, lat, lon):
         cen_pres = 1024.388 + 0.047*lat - 0.029*lon - 0.818*v_max
     return cen_pres
 
-def _set_category(max_sus_wind, max_sus_wind_unit):
+def set_category(max_sus_wind, max_sus_wind_unit):
     """Add storm category according to saffir-simpson hurricane scale
    -1 tropical depression
     0 tropical storm
@@ -782,6 +788,13 @@ def _set_category(max_sus_wind, max_sus_wind_unit):
     3 Hurrican category 3
     4 Hurrican category 4
     5 Hurrican category 5
+
+    Parameters:
+        max_sus_wind (np.array): max sustained wind
+        max_sus_wind_unit (str): units of max sustained wind
+
+    Returns:
+        double
     """
     ureg = UnitRegistry()
     if (max_sus_wind_unit == 'kn') or (max_sus_wind_unit == 'kt'):

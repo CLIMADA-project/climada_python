@@ -33,13 +33,28 @@ CENTR_NODE_MAX_DIST_KM = 300
 
 class TropCyclone(Hazard):
     """Contains tropical cyclone events obtained from a csv IBTrACS file.
+
+    Attributes:
+        category (np.array(int)): for every event, the TC category using the
+            Saffir-Simpson scale:
+                -1 tropical depression
+                 0 tropical storm
+                 1 Hurrican category 1
+                 2 Hurrican category 2
+                 3 Hurrican category 3
+                 4 Hurrican category 4
+                 5 Hurrican category 5
     """
     intensity_thres = 17.5
     """ intensity threshold for storage in m/s """
 
+    vars_opt = Hazard.vars_opt.union({'category'})
+    """Name of the variables that aren't need to compute the impact."""
+
     def __init__(self):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
+        self.category = np.array([], int)
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08'):
@@ -113,6 +128,7 @@ class TropCyclone(Hazard):
             track.time.dt.year[0], track.time.dt.month[0],
             track.time.dt.day[0]).toordinal()])
         new_haz.orig = np.array([track.orig_event_flag])
+        new_haz.category = np.array([track.category])
         return new_haz
 
     def _set_frequency(self, tracks):

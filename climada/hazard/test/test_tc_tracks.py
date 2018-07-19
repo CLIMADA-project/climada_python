@@ -8,7 +8,7 @@ import array
 import xarray as xr
 import numpy as np
 
-from climada.hazard.tc_tracks import TCTracks
+from climada.hazard.tc_tracks import TCTracks, SAFFIR_SIM_CAT
 import climada.hazard.tc_tracks as tc
 from climada.util.constants import TC_ANDREW_FL
 from climada.util.coordinates import coord_on_land, dist_to_coast
@@ -290,6 +290,9 @@ class TestFuncs(unittest.TestCase):
                           0.065046221803497, 0.022846563865522])*1e2
         
         self.assertTrue(np.allclose(v_ref, tc_track.data[0].max_sustained_wind.values))
+        
+        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values, tc_track.data[0].max_sustained_wind_unit)    
+        self.assertEqual(cat_ref, tc_track.data[0].category)
     
     def test_func_decay_p_pass(self):
         """ Test decay function for pressure with its inverse."""
@@ -332,25 +335,25 @@ class TestFuncs(unittest.TestCase):
         """Test category computation."""
         max_sus_wind = np.array([25, 30, 35, 40, 45, 45, 45, 45, 35, 25])
         max_sus_wind_unit = 'kn'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(0, cat)
 
         max_sus_wind = np.array([25, 25, 25, 30, 30, 30, 30, 30, 25, 25, 20])
         max_sus_wind_unit = 'kn'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(-1, cat)
 
         max_sus_wind = np.array([80, 90, 100, 115, 120, 125, 130,
                                  120, 110, 80, 75, 80, 65])
         max_sus_wind_unit = 'kn'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
 
         max_sus_wind = np.array([28.769475, 34.52337, 40.277265,
                                  46.03116, 51.785055, 51.785055, 51.785055,
                                  51.785055, 40.277265, 28.769475])
         max_sus_wind_unit = 'mph'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(0, cat)
 
         max_sus_wind = np.array([12.86111437, 12.86111437, 12.86111437,
@@ -358,14 +361,14 @@ class TestFuncs(unittest.TestCase):
                                  15.43333724, 15.43333724, 12.86111437,
                                  12.86111437, 10.2888915])
         max_sus_wind_unit = 'm/s'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(-1, cat)
 
         max_sus_wind = np.array([148.16, 166.68, 185.2, 212.98, 222.24, 231.5,
                                  240.76, 222.24, 203.72, 148.16, 138.9, 148.16,
                                  120.38])
         max_sus_wind_unit = 'km/h'
-        cat = tc._set_category(max_sus_wind, max_sus_wind_unit)
+        cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
 
     def test_missing_pres_pass(self):

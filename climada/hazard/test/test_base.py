@@ -530,7 +530,7 @@ class TestAppend(unittest.TestCase):
         haz2.centroids.id = np.array([5, 7, 9])
 
         haz2.event_id = haz1.event_id
-        haz2.event_name = haz1.event_name
+        haz2.event_name = haz1.event_name.copy()
         haz2.frequency = haz1.frequency
         haz2.date = haz1.date
         haz2.fraction = sparse.csr_matrix([[0.22, 0.32, 0.44], \
@@ -547,11 +547,11 @@ class TestAppend(unittest.TestCase):
 
         # expected values
         haz1_ori = dummy_hazard()
-        res_inten = sparse.csr_matrix(np.zeros((8, 6)))
+        res_inten = sparse.lil_matrix(np.zeros((8, 6)))
         res_inten[0:4, 0:3] = haz1_ori.intensity
         res_inten[4:, 3:] = haz2.intensity
         
-        res_frac = sparse.csr_matrix(np.zeros((8, 6)))
+        res_frac = sparse.lil_matrix(np.zeros((8, 6)))
         res_frac[0:4, 0:3] = haz1_ori.fraction
         res_frac[4:, 3:] = haz2.fraction
         
@@ -608,12 +608,12 @@ class TestAppend(unittest.TestCase):
     
         # expected values
         haz1_ori = dummy_hazard()
-        res_inten = sparse.csr_matrix(np.zeros((8, 5)))
+        res_inten = sparse.lil_matrix(np.zeros((8, 5)))
         res_inten[0:4, 0:3] = haz1_ori.intensity
         res_inten[4:, 3:] = haz2.intensity[:, 1:]
         res_inten[4:, 1] = haz2.intensity[:, 0]
         
-        res_frac = sparse.csr_matrix(np.zeros((8, 5)))
+        res_frac = sparse.lil_matrix(np.zeros((8, 5)))
         res_frac[0:4, 0:3] = haz1_ori.fraction
         res_frac[4:, 3:] = haz2.fraction[:, 1:]
         res_frac[4:, 1] = haz2.fraction[:, 0]
