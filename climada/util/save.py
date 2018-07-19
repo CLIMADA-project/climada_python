@@ -31,7 +31,7 @@ def save(out_file_name, var):
             os.mkdir(folder_path)
             LOGGER.info('Created folder %s.', folder_path)
         with open(abs_path, 'wb') as file:
-            pickle.dump(var, file)
+            pickle.dump(var, file, pickle.HIGHEST_PROTOCOL)
             LOGGER.info('Written file %s', abs_path)
     except FileNotFoundError:
         LOGGER.error('Folder not found: %s', folder_path)
