@@ -5,6 +5,7 @@ import unittest
 import numpy as np
 
 from climada.entity.exposures.black_marble import country_iso, cut_nightlight_country, load_nightlight
+from climada.entity.exposures.black_marble import MIN_LAT, MAX_LAT, MIN_LON, MAX_LON, NOAA_RESOLUTION_DEG
 
 class TestCountryIso(unittest.TestCase):
     """Test country_iso function."""
@@ -51,7 +52,8 @@ class TestNightLight(unittest.TestCase):
     def test_cut_nightlight_country_pass(self):
         """Test cut_nightlight_country for three countries."""
         country_isos = ['HTI', 'ZMB', 'ESP']    
-        nl, nl_lat, nl_lon, fn = load_nightlight()
+        nl_lat = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 16801)
+        nl_lon = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 43201)
         in_lat, in_lon = cut_nightlight_country(country_isos, nl_lat, nl_lon)
         
         bounds = dict()
