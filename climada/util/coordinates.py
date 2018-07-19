@@ -11,7 +11,7 @@ import shapefile
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Polygon
 from sklearn.neighbors import BallTree
 
 from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
@@ -19,9 +19,9 @@ from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS
 
 LOGGER = logging.getLogger(__name__)
 
-GLOBE_COUNTRIES = "global_country_borders"
+GLOBE_LAND = "global_country_borders"
 """ Name of the earth's country borders shape file generated in function
-get_countries_geometry"""
+get_land_geometry"""
 
 GLOBE_COASTLINES = "global_coastlines"
 """ Name of the earth's coastlines shape file generated in function
@@ -197,52 +197,67 @@ def dist_to_coast(coord_lat, lon=None):
                                dualtree=True, breadth_first=False)
     return dist_coast.reshape(-1,) * EARTH_RADIUS
 
-def get_countries_geometry(country_names=None, resolution=110):
-    """Get union of all the countries or the provided ones.
+def get_land_geometry(country_names=None, border=None, resolution=10):
+    """Get union of all the countries or the provided ones or the points inside
+    the border. If all the countries are selected, write shp file in SYSTEM
+    folder which can be directly read in following computations.
 
     Parameters:
         country_names (list, optional): list with ISO3 names of countries, e.g
             ['ZWE', 'GBR', 'VNM', 'UZB']
+        border (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
         resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
-            110m, i.e. 1:110.000.000
+            10m, i.e. 1:10.000.000
 
     Returns:
         shapely.geometry.multipolygon.MultiPolygon
     """
     resolution = nat_earth_resolution(resolution)
-    file_globe = os.path.join(SYSTEM_DIR, GLOBE_COUNTRIES + "_" + resolution +
+    shp_file = shapereader.natural_earth(resolution=resolution,
+                                         category='cultural',
+                                         name='admin_0_countries')
+    reader = shapereader.Reader(shp_file)
+    file_globe = os.path.join(SYSTEM_DIR, GLOBE_LAND + "_" + resolution +
                               ".shp")
-    if not os.path.isfile(file_globe) or country_names is not None:
-        shp_file = shapereader.natural_earth(resolution=resolution,
-                                             category='cultural',
-                                             name='admin_0_countries')
-        reader = shapereader.Reader(shp_file)
+    geom = Polygon()
+    if (not os.path.isfile(file_globe)) and (country_names is None) and \
+    (border is None):
+        LOGGER.info("Computing earth's land geometry ...")
+        geom = [cntry_geom for cntry_geom in reader.geometries()]
+        geom = shapely.ops.cascaded_union(geom)
+
+        LOGGER.info('Writing file %s', file_globe)
+
+        shapewriter = shapefile.Writer()
+        shapewriter.field("global_country_borders")
+        converted_shape = shapely_to_pyshp(geom)
+        shapewriter._shapes.append(converted_shape)
+        shapewriter.record(["empty record"])
+        shapewriter.save(file_globe)
+
+        LOGGER.info('Written file %s', file_globe)
+
+    elif country_names:
         countries = list(reader.records())
+        geom = [country.geometry for country in countries
+                if country.attributes['ISO_A3'] in country_names]
+        geom = shapely.ops.cascaded_union(geom)
 
-        if country_names is None:
-            cntry_geom = [country.geometry for country in countries]
-        else:
-            cntry_geom = [country.geometry for country in countries
-                          if country.attributes['ISO_A3'] in country_names]
+    elif border:
+        border_poly = Polygon([(border[0], border[2]), (border[0], border[3]),
+                               (border[1], border[3]), (border[1], border[2])])
+        geom = []
+        for cntry_geom in reader.geometries():
+            inter_poly = cntry_geom.intersection(border_poly)
+            if not inter_poly.is_empty:
+                geom.append(inter_poly)
+        geom = shapely.ops.cascaded_union(geom)
 
-        all_geom = shapely.ops.cascaded_union(cntry_geom)
-
-        if country_names is None:
-            LOGGER.info('Writing file %s', file_globe)
-
-            shapewriter = shapefile.Writer()
-            shapewriter.field("global_country_borders")
-            converted_shape = shapely_to_pyshp(all_geom)
-            shapewriter._shapes.append(converted_shape)
-            shapewriter.record(["empty record"])
-            shapewriter.save(file_globe)
-
-            LOGGER.info('Written file %s', file_globe)
     else:
         reader = shapereader.Reader(file_globe)
-        all_geom = list(reader.geometries())[0]
+        geom = list(reader.geometries())[0]
 
-    return all_geom
+    return geom
 
 def coord_on_land(lat, lon):
     """Check if point is on land (True) or water (False) of provided countries.
@@ -261,7 +276,10 @@ def coord_on_land(lat, lon):
         LOGGER.error('Wrong size input coordinates: %s != %s.', lat.size,
                      lon.size)
         raise ValueError
-    land_geometry = get_countries_geometry(resolution=50)
+    delta_deg = 1
+    land_geometry = get_land_geometry(border=(np.min(lon)-delta_deg, \
+        np.max(lon)+delta_deg, np.min(lat)-delta_deg, np.max(lat)+delta_deg), \
+        resolution=10)
     return shapely.vectorized.contains(land_geometry, lon, lat)
 
 def nat_earth_resolution(resolution):
