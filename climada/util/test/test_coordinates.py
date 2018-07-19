@@ -118,15 +118,17 @@ class TestFunc(unittest.TestCase):
         iso_countries = ['DEU', 'VNM']
         res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(res.bounds, (5.852489868000106, 8.565578518000152, 
-                                      109.47242272200018, 55.06533437700001))
+        for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800, 
+                                         109.47242272200, 55.065334377000)):
+            self.assertAlmostEqual(res, ref)
 
         iso_countries = ['ESP']
         res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(res.bounds, (-18.16722571499986, 27.64223867400007, 
-                                      4.337087436000104, 43.793443100999994))
-
+        for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000, 
+                                         4.337087436000, 43.793443101)):
+            self.assertAlmostEqual(res, ref)
+            
     def test_get_land_geometry_border_pass(self):
         """get_land_geometry with selected countries."""
         lat = np.array([28.203216, 28.555994, 28.860875])

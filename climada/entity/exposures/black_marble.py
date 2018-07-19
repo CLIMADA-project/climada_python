@@ -264,7 +264,7 @@ def cut_nightlight_country(country_isos, nl_lat, nl_lon):
         nl_lon (np.array): longitudes of earth's nightlight
 
     Returns:
-        np.array(int)
+        in_lat (np.array(int)), in_lon (np.array(int))
     """
     shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                          name='admin_0_countries')
@@ -279,7 +279,6 @@ def cut_nightlight_country(country_isos, nl_lat, nl_lon):
 
     in_lat, in_lon = {}, {}
     for cntry_iso, cntry_geom in all_geom.items():
-        print(cntry_iso, cntry_geom.bounds)
         in_lon[cntry_iso] = np.argwhere(np.logical_and( \
             nl_lon >= cntry_geom.bounds[0], nl_lon <= cntry_geom.bounds[2]))
         in_lat[cntry_iso] = np.argwhere(np.logical_and( \
