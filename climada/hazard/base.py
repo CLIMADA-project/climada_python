@@ -51,6 +51,31 @@ class Hazard(object):
     """ Intensity threshold per hazard used to filter lower intensities. To be
     set for every hazard type """
 
+    vars_oblig = {'tag',
+                  'units',
+                  'centroids',
+                  'event_id',
+                  'frequency',
+                  'intensity',
+                  'fraction'
+                 }
+    """Name of the variables need to compute the impact. Types: scalar, string,
+    list, 1dim np.array of size num_events, scipy.sparse matrix of shape
+    num_events x num_centroids, Centroids and Tag."""
+
+    vars_def = {'date',
+                'orig',
+                'event_name'
+               }
+    """Name of the variables used in impact calculation whose value is
+    descriptive and can therefore be set with default values. Types: scalar,
+    string, list, 1dim np.array of size num_events.
+    """
+
+    vars_opt = set()
+    """Name of the variables that aren't need to compute the impact. Types:
+    scalar, string, list, 1dim np.array of size num_events."""
+
     def __init__(self, haz_type='NA', file_name='', description='', \
                  centroids=None):
         """Initialize values from given file, if given.
@@ -309,6 +334,7 @@ class Hazard(object):
     def append(self, hazard):
         """Append events in hazard. Id is perserved if not present in current
         hazard. Otherwise, a new id is provided. Calls Centroids.append.
+        All arrays and lists of the instances are appended.
 
         Parameters:
             hazard (Hazard): Hazard instance to append to current
@@ -323,10 +349,10 @@ class Hazard(object):
             return
 
         if (self.units == 'NA') and (hazard.units != 'NA'):
-            LOGGER.warning("Initial hazard does not have units.")
+            LOGGER.info("Initial hazard does not have units.")
             self.units = hazard.units
         elif hazard.units == 'NA':
-            LOGGER.warning("Appended hazard does not have units.")
+            LOGGER.info("Appended hazard does not have units.")
         elif self.units != hazard.units:
             LOGGER.error("Hazards with different units can't be appended"\
                              + ": %s != %s.", self.units, hazard.units)
@@ -334,16 +360,16 @@ class Hazard(object):
 
         self.tag.append(hazard.tag)
         n_ini_ev = self.event_id.size
-        self.event_name = self.event_name + hazard.event_name
-        self.event_id = np.append(self.event_id, \
-            hazard.event_id).astype(int, copy=False)
-        self.date = np.append(self.date, hazard.date).\
-            astype(int, copy=False)
-        self.orig = np.append(self.orig, hazard.orig).\
-            astype(bool, copy=False)
-        self.frequency = np.append(self.frequency, \
-            hazard.frequency).astype(float, copy=False)
+        # append all 1-dim variables
+        for (var_name, var_val), haz_val in zip(self.__dict__.items(),
+                                                hazard.__dict__.values()):
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.append(var_val, haz_val). \
+                        astype(var_val.dtype, copy=False))
+            elif isinstance(var_val, list):
+                setattr(self, var_name, var_val + haz_val)
 
+        # append intensity and fraction:
         # if same centroids, just append events
         # else, check centroids correct column
         if np.array_equal(self.centroids.coord, hazard.centroids.coord):
@@ -383,11 +409,12 @@ class Hazard(object):
             set_ev.add((ev_name, ev_date))
         if len(set_ev) == self.event_id.size:
             return
-        self.event_name = np.delete(self.event_name, dup_pos).tolist()
-        self.event_id = np.delete(self.event_id, dup_pos)
-        self.date = np.delete(self.date, dup_pos)
-        self.orig = np.delete(self.orig, dup_pos)
-        self.frequency = np.delete(self.frequency, dup_pos)
+
+        for var_name, var_val in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.delete(var_val, dup_pos))
+            elif isinstance(var_val, list):
+                setattr(self, var_name, np.delete(var_val, dup_pos).tolist())
 
         mask = np.ones(self.intensity.shape, dtype=bool)
         mask[dup_pos, :] = False
@@ -511,9 +538,9 @@ class Hazard(object):
             LOGGER.error("There are events with the same identifier.")
             raise ValueError
 
-        check.size(num_ev, self.frequency, 'Hazard.frequency')
-        check.shape(num_ev, num_cen, self.intensity, 'Hazard.intensity')
-        check.shape(num_ev, num_cen, self.fraction, 'Hazard.fraction')
+        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+                                num_ev, num_ev, num_cen)
+        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
         self.event_name = check.array_default(num_ev, self.event_name, \
             'Hazard.event_name', list(self.event_id))
         self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
