@@ -15,6 +15,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sparse
+import shapely.vectorized
 from pint import UnitRegistry
 from PIL import Image
 from cartopy.io import shapereader
@@ -24,13 +25,14 @@ from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 from climada.util.config import CONFIG
 from climada.util.save import save
+from climada.util.coordinates import GridPoints
 
 LOGGER = logging.getLogger(__name__)
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
-NOAA_SITE = CONFIG['entity']['black_marble']['nightlight_url']
-""" URL used to retrieve nightlight satellite images. """
+NOAA_SITE = CONFIG['entity']['black_marble']['nl_noaa_url']
+""" NOAA's URL used to retrieve nightlight satellite images. """
 
 NOAA_RESOLUTION_DEG = (30*UnitRegistry().arc_second).to(UnitRegistry().deg). \
                        magnitude
@@ -48,6 +50,9 @@ MIN_LON = -180
 MAX_LON = 180
 """ Maximum longitude """
 
+DEF_RES_KM = 1
+""" Default approximate resolution in km."""
+
 class BlackMarble(Exposures):
     """Defines exposures from night light intensity and GDP.
     """
@@ -56,40 +61,25 @@ class BlackMarble(Exposures):
         """ Empty initializer. """
         Exposures.__init__(self)
 
-    def clear(self):
-        """Clear and reinitialize all data."""
-        super(BlackMarble, self).clear()
-        self.admin0_name = ''
-        self.admin0_iso3 = ''
-
-    def set_countries(self, countries, ref_year=2013, resolution=1):
+    def set_countries(self, countries, ref_year=2013, res_km=DEF_RES_KM):
         """ Model using values of ref_year.
 
         Parameters:
             ref_year (int): reference year
         """
-        country_isos = country_iso(countries)
+        shp_file = shapereader.natural_earth(resolution='10m', \
+            category='cultural', name='admin_0_countries')
+        shp_file = shapereader.Reader(shp_file)
+        country_info = country_iso_geom(countries, shp_file)
         # nightlight intensity for selected country with 30 arcsec resolution
-        nightlight, nl_lat, nl_lon, fn_light = load_nightlight(ref_year)
-        in_lat, in_lon = cut_nightlight_country(country_isos, nl_lat, nl_lon)
-#        nl_cntry = transform_nightlight(nightlight, in_lat, in_lon)
-#        nl_cntry, lat_cntry, lon_cnrty = resample_resolution(nl_lat, nl_lon,
-#            in_lat, in_lon, nl_cntry, resolution)
-#        # obtain GDP data in selected country
-#        gdp_cntry = load_gdp(count_iso, ref_year)
-#        # Interpolate GDP over nightlight map
-#        self.coord, self.value = interpol_light_gdp(nl_cntry, lat_cntry, lon_cnrty,
-#                                                    gdp_cntry)
+        nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(ref_year)
+        fill_gdp(ref_year, country_info)
 
-        # set other variables
-        self.ref_year = ref_year
-        self.tag.description = str(ref_year)
-        self.tag.file_name = fn_light
-        self.value_unit = 'USD'
-        self.impact_id = np.ones(self.value.size, int)
-        self.id = np.arange(1, self.value.size + 1)
-        self.admin0_name = countries
-        self.admin0_iso3 = country_isos
+        # TODO parallize per thread?
+        for cntry in country_info.values():
+            LOGGER.info('Processing country %s', cntry[1])
+            self.append(self._set_one_country(cntry, res_km, nightlight,
+                                              lon_nl, lat_nl, fn_nl))
 
     def set_region(self, centroids, ref_year=2013, resolution=1):
         """ Model a specific region given by centroids."""
@@ -101,38 +91,73 @@ class BlackMarble(Exposures):
         # add sea in lower resolution
         raise NotImplementedError
 
-def country_iso(country_name):
+    @staticmethod
+    def _set_one_country(country_info, res_km, nightlight, lon_nl, lat_nl,
+                         fn_nl):
+        """ Model one country.
+
+        Parameters:
+            country_info (lsit): [cntry_id, cnytry_name, cntry_geometry,
+                ref_year, gdp, income_group]
+            res_km (float): approx resolution in km
+            nightlight (np.array): nightlight in 30arcsec ~ 1km resolution.
+                Row latitudes, col longitudes
+            lat_nl (np.array): latitudes of nightlight matrix (its first dim)
+            lon_nl (np.array): longitudes of nightlight matrix (its second dim)
+            fn_light (str): file name of considered nightlight with path
+        """
+        exp_bkmrb = BlackMarble()
+
+        in_lat, in_lon, lat_mgrid, lon_mgrid, on_land = _process_land( \
+            exp_bkmrb, country_info[2], country_info[4], country_info[5], \
+            nightlight, lon_nl, lat_nl)
+
+        _resample_land(exp_bkmrb, res_km, lat_nl, lon_nl, in_lat, in_lon,
+                       on_land)
+        _add_surroundings(exp_bkmrb, lat_mgrid, lon_mgrid, on_land)
+
+        exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
+        exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape) * country_info[0]
+        exp_bkmrb.impact_id = np.ones(exp_bkmrb.value.size, int)
+        exp_bkmrb.ref_year = country_info[3]
+        exp_bkmrb.tag.description = str(country_info[3]) + country_info[1]
+        exp_bkmrb.tag.file_name = fn_nl
+        exp_bkmrb.value_unit = 'USD'
+
+        return exp_bkmrb
+
+def country_iso_geom(country_list, shp_file):
     """ Compute country ISO alpha_3 name from country name.
 
     Parameters:
-        country (str): country name
+        country_list (list(str)): list with country names
+        shp_file (cartopy.io.shapereader.Reader): shape file
 
     Returns:
-        country_iso (str): ISO alpha_3 country name
+        country_info (dict): key = ISO alpha_3 country, value = [country id,
+            country name, country geometry]
     """
-    shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
-                                         name='admin_0_countries')
-    shp = shapereader.Reader(shp_file)
-
-    tit_name = country_name.title()
-    countries = {}
-    options = []
-    for info in shp.records():
+    countries_shp = {}
+    list_records = list(shp_file.records())
+    for info_idx, info in enumerate(list_records):
         std_name = info.attributes['ADMIN'].title()
-        if tit_name in std_name:
-            options.append(std_name)
-            std_name = tit_name
-        countries[std_name] = info.attributes['ADM0_A3']
-    iso_val = countries.get(tit_name)
-    if iso_val is None:
-        LOGGER.error('Country %s not found. Possible options: %s', tit_name,
-                     countries.keys())
-        raise ValueError
-    elif len(options) > 1:
-        LOGGER.info('More than one possible country: %s.', str(options))
-        LOGGER.info('Considered country: %s, with ISO: %s.', options.pop(),
-                    iso_val)
-    return iso_val
+        countries_shp[std_name] = info_idx
+
+    country_info = dict()
+    for country_id, country_name in enumerate(country_list):
+        country_tit = country_name.title()
+        country_idx = countries_shp.get(country_tit)
+        if country_idx is None:
+            options = [country_opt for country_opt in countries_shp
+                       if country_tit in country_opt]
+            if not options:
+                options = list(countries_shp.keys())
+            LOGGER.error('Country %s not found. Possible options: %s',
+                         country_name, options)
+            raise ValueError
+        country_info[list_records[country_idx].attributes['ADM0_A3']] = \
+            [country_id+1, country_tit, list_records[country_idx].geometry]
+    return country_info
 
 def untar_stable_nightlight(f_tar_ini):
     """ Move input tar file to SYSTEM_DIR and extract stable light file.
@@ -173,30 +198,10 @@ def untar_stable_nightlight(f_tar_ini):
 
     return f_tif_gz
 
-def _unzip_tif_to_py(file_gz):
-    """ Unzip image file, read it, save values as pickle and remove tif.
-
-    Parameters:
-        file_gz (str): file fith .gz format to unzip
-
-    Returns:
-        str (file_name of unzipped file)
-        sparse.csr_matrix (nightlight)
-    """
-    LOGGER.info("Unzipping file %s.", file_gz)
-    file_name = os.path.splitext(file_gz)[0]
-    with gzip.open(file_gz, 'rb') as f_in:
-        with open(file_name, 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    nightlight = sparse.csr.csr_matrix(plt.imread(file_name))
-    os.remove(file_name)
-    file_name = os.path.splitext(file_name)[0] + ".p"
-    save(file_name, nightlight)
-
-    return file_name, nightlight
-
-def load_nightlight(ref_year=2013, sat_name=None):
-    """ Get nightlight luminosites.
+def load_nightlight_noaa(ref_year=2013, sat_name=None):
+    """ Get nightlight luminosites. Nightlight matrix, lat and lon ordered
+    such that nightlight[1][0] corresponds to lat[1], lon[0] point (the image
+    has been flipped).
 
     Parameters:
         ref_year (int): reference year
@@ -255,65 +260,134 @@ def load_nightlight(ref_year=2013, sat_name=None):
 
     return nightlight, lat, lon, fn_light
 
-def cut_nightlight_country(country_isos, nl_lat, nl_lon):
-    """Get nightlight indexes for every country.
+def fill_gdp(ref_year, country_isos):
+    """ Get GDP data per country. Source: world bank
 
     Parameters:
-        country_isos (list(str)): ISO alpha_3 country names
-        nl_lat (np.array): latitudes of earth's nightlight
-        nl_lon (np.array): longitudes of earth's nightlight
-
-    Returns:
-        in_lat (dict(np.array(int))), in_lon (dict(np.array(int)))
-    """
-    shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
-                                         name='admin_0_countries')
-    shp = shapereader.Reader(shp_file)
-    all_geom = {}
-    for info in shp.records():
-        if info.attributes['ADM0_A3'] in country_isos:
-            all_geom[info.attributes['ADM0_A3']] = info.geometry
-    if not all_geom:
-        LOGGER.error('Countries %s do not exist.', country_isos)
-        raise ValueError
-
-    in_lat, in_lon = {}, {}
-    for cntry_iso, cntry_geom in all_geom.items():
-        in_lon[cntry_iso] = np.argwhere(np.logical_and( \
-            nl_lon >= cntry_geom.bounds[0], nl_lon <= cntry_geom.bounds[2]))
-        in_lat[cntry_iso] = np.argwhere(np.logical_and( \
-            nl_lat >= cntry_geom.bounds[1], nl_lat <= cntry_geom.bounds[3]))
-
-    return in_lat, in_lon
-
-def transform_nightlight():
-    """ Transform nightlight intensity using a polynomial transformation."""
-    return NotImplementedError
-
-def resample_resolution():
-    """ Change resolution."""
-    raise NotImplementedError
-
-def load_gdp():
-    """ Get GDP data. Exactly GDP * (income_group + 1)
-
-    Parameters:
-        country_iso (str): ISO alpha_3 country name
         ref_year (int): reference year
 
     Returns:
-        gdp_count (float)
+        gdp_count (dict), income_grp (dict)
     """
     raise NotImplementedError
 
-def interpol_light_gdp():
-    """ Interpolate GDP data over input nightlight intensities.
+def _unzip_tif_to_py(file_gz):
+    """ Unzip image file, read it, flip the x axis, save values as pickle
+    and remove tif.
 
     Parameters:
-        light_count (): nightlight map
-        gdp_count (float): GDP value to interpolate
+        file_gz (str): file fith .gz format to unzip
 
     Returns:
-        coord (np.array), value (np.array)
+        str (file_name of unzipped file)
+        sparse.csr_matrix (nightlight)
     """
-    raise NotImplementedError
+    LOGGER.info("Unzipping file %s.", file_gz)
+    file_name = os.path.splitext(file_gz)[0]
+    with gzip.open(file_gz, 'rb') as f_in:
+        with open(file_name, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    nightlight = sparse.csc.csc_matrix(plt.imread(file_name))
+    # flip X axis
+    nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
+    nightlight = nightlight.tocsr()
+    os.remove(file_name)
+    file_name = os.path.splitext(file_name)[0] + ".p"
+    save(file_name, nightlight)
+
+    return file_name, nightlight
+
+def _process_land(exp, geom, gdp, income, nightlight, lat_nl, lon_nl):
+    """Model land exposures from nightlight intensities and normalized
+    to GDP * (income_group + 1).
+
+    Parameters:
+        exp(BlackMarble): BlackMarble instance
+        geom (shapely.geometry): geometry of the region to consider
+        gdp (float): GDP to interpolate in the region
+        income (float): index to weight exposures in the region
+        nightlight (sparse.csr_matrix): nichtlight values
+        lat_nl (np.array): latitudes of nightlight matrix (its first dim)
+        lon_nl (np.array): longitudes of nightlight matrix (its second dim)
+
+    Returns:
+        in_lat (tuple) indexes of latitude range in nightlight,
+        in_lon (tuple) indexes of longitude range in nightlight,
+        lat_mgrid (np.array) meshgrid with latitudes in in_lat range,
+        lat_mgrid (np.array) meshgrid with longitudes in in_lat range,
+        on_land (np.array) matrix with onland flags in in_lat, in_lon range
+    """
+    in_lat = np.argwhere(np.logical_and(lat_nl >= geom.bounds[1],
+                                        lat_nl <= geom.bounds[3]))
+    in_lat = (max(0, in_lat[0][0] - 1),
+              min(in_lat[-1][0] + 1, lat_nl.size - 1))
+    in_lon = np.argwhere(np.logical_and(lon_nl >= geom.bounds[0],
+                                        lon_nl <= geom.bounds[2]))
+    in_lon = (max(0, in_lon[0][0] - 1),
+              min(in_lon[-1][0] + 1, lon_nl.size - 1))
+    lat_mgrid, lon_mgrid = np.mgrid[
+        lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, in_lat[1]-in_lat[0]+1),
+        lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, in_lon[1]-in_lon[0]+1)]
+    on_land = shapely.vectorized.contains(geom, lon_mgrid, lat_mgrid)
+
+    exp.value = np.power(np.asarray(nightlight[in_lat[0]:in_lat[-1]+1, :] \
+        [:, in_lon[0]:in_lon[-1]+1][on_land]).ravel(), 3)
+    exp.value = exp.value/exp.value.sum()*gdp*(income+1)
+    exp.coord = np.empty((exp.value.size, 2))
+    exp.coord[:, 0] = lat_mgrid[on_land]
+    exp.coord[:, 1] = lon_mgrid[on_land]
+
+    return in_lat, in_lon, lat_mgrid, lon_mgrid, on_land
+
+def _resample_land(exp, res_km, lat_nl, lon_nl, in_lat, in_lon, on_land):
+    """ Resample exposures values to input resolution.
+
+    Parameters:
+        exp(BlackMarble): BlackMarble instance
+        res_km (float): wished resolution in km
+        lat_nl (np.array): latitudes of nightlight matrix (its first dim)
+        lon_nl (np.array): longitudes of nightlight matrix (its second dim)
+        in_lat (tuple): indexes of latitude range in nightlight
+        in_lon (tuple): indexes of longitude range in nightlight
+        on_land (np.array): matrix with onland flags in in_lat, in_lon range
+    """
+    if res_km == DEF_RES_KM:
+        return
+    if res_km > DEF_RES_KM:
+        amp_fact = int(res_km/DEF_RES_KM)
+        LOGGER.info('Generating resolution of approx %s km', \
+                    amp_fact*DEF_RES_KM)
+
+        new_grid = np.meshgrid(lon_nl[in_lon[0]:in_lon[-1]+1:amp_fact],
+                               lat_nl[in_lat[0]:in_lat[-1]+1:amp_fact])
+        new_onland = on_land[::amp_fact, ::amp_fact]
+
+        new_grid = GridPoints(np.array(
+            [new_grid[1][new_onland].ravel(),
+             new_grid[0][new_onland].ravel()])).transpose()
+
+        assigned = new_grid.resample_nn(exp.coord, threshold=5*res_km)
+        value_new = np.zeros((new_grid.shape[0],))
+        for coord_idx, coord_ass in enumerate(assigned):
+            value_new[coord_ass] += exp.value[coord_idx]
+
+        exp.coord = new_grid
+        exp.value = value_new
+    else:
+        # bilinear interpolation
+        raise NotImplementedError
+
+def _add_surroundings(exp, lat_mgrid, lon_mgrid, on_land):
+    """ Add surroundings of country in a resolution of 50 km.
+
+    Parameters:
+        exp(BlackMarble): BlackMarble instance
+        lat_mgrid (np.array) meshgrid with latitudes in in_lat range,
+        lat_mgrid (np.array) meshgrid with longitudes in in_lat range,
+        on_land (np.array) matrix with onland flags in in_lat, in_lon range
+    """
+    surr_lat = lat_mgrid[np.logical_not(on_land)].ravel()[::50]
+    surr_lon = lon_mgrid[np.logical_not(on_land)][::50]
+    exp.value = np.append(exp.value, surr_lat*0)
+    exp.coord = np.array([np.append(exp.coord.lat, surr_lat), \
+        np.append(exp.coord.lon, surr_lon)]).transpose()

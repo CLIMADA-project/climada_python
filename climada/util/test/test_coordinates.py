@@ -2,17 +2,14 @@
 Test GridPoints module.
 """
 
-import os.path
 import unittest
 import numpy as np
 import shapely
 from cartopy.io import shapereader
 
-from climada.util.constants import SYSTEM_DIR
-
 from climada.util.coordinates import GridPoints, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
-GLOBE_LAND, dist_to_coast
+dist_to_coast
     
 class TestGridPoints(unittest.TestCase):
     ''' Test GridPoints class'''
@@ -33,11 +30,11 @@ class TestGridPoints(unittest.TestCase):
         with self.assertRaises(ValueError):
             GridPoints(np.array([[1, 2], [4.3, 5], [4, 5]]).transpose())
 
-    def test_resample_pass(self):
+    def test_resample_nn_pass(self):
         """Check that resample works correctly."""
         coord_1 = GridPoints(np.array([[1, 2], [4.1, 5.1], [4, 5]]))
         coord_2 = coord_1
-        result = coord_1.resample(coord_2)
+        result = coord_1.resample_nn(coord_2)
         self.assertTrue(np.array_equal(result, np.array([ 0.,  1.,  2.])))
 
     def test_is_regular_pass(self):

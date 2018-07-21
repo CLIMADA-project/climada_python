@@ -33,7 +33,7 @@ def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
-                   distance=DIST_DEF[1]):
+                   distance=DIST_DEF[1], threshold=THRESHOLD):
     """ Returns for each coordinate the centroids indexes used for
     interpolation.
 
@@ -43,7 +43,9 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
         method (str, optional): interpolation method to use. NN default.
-        distance (str, optional): distance to use. Haversine default.
+        distance (str, optional): distance to use. Haversine default
+        threshold (float): distance threshold in km over which no neighbor will
+            be found. Those are assigned with a -1 index
 
     Returns:
         numpy array with so many rows as coordinates containing the
@@ -51,18 +53,18 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
         # Compute for each coordinate the closest centroid
-        interp = index_nn_aprox(centroids, coordinates)
+        interp = index_nn_aprox(centroids, coordinates, threshold)
     elif (method == METHOD[0]) & (distance == DIST_DEF[1]):
         # Compute the nearest centroid for each coordinate using the
         # haversine formula. This is done with a Ball tree.
-        interp = index_nn_haversine(centroids, coordinates)
+        interp = index_nn_haversine(centroids, coordinates, threshold)
     else:
         LOGGER.error('Interpolation using %s with distance %s is not '\
                      'supported.', method, distance)
         interp = np.array([])
     return interp
 
-def index_nn_aprox(centroids, coordinates):
+def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     """ Compute the nearest centroid for each coordinate using the
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
@@ -72,6 +74,8 @@ def index_nn_aprox(centroids, coordinates):
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
+        threshold (float): distance threshold in km over which no neighbor will
+            be found. Those are assigned with a -1 index
 
     Returns:
         array with so many rows as coordinates containing the centroids
@@ -92,7 +96,7 @@ def index_nn_aprox(centroids, coordinates):
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
-        if np.sqrt(dist.min()) * ONE_LAT_KM > THRESHOLD:
+        if np.sqrt(dist.min()) * ONE_LAT_KM > threshold:
             LOGGER.warning('Distance to closest centroid for coordinate ' + \
                 '(%s, %s) is %s.', coordinates[iidx][0], coordinates[iidx][1],\
                 np.sqrt(dist.min()) * ONE_LAT_KM)
@@ -103,7 +107,7 @@ def index_nn_aprox(centroids, coordinates):
 
     return assigned
 
-def index_nn_haversine(centroids, coordinates):
+def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     """ Compute the neareast centroid for each coordinate using a Ball
     tree with haversine distance.
 
@@ -112,6 +116,8 @@ def index_nn_haversine(centroids, coordinates):
             column contains longitude. Each row is a geographic point
         coordinates (2d array): First column contains latitude, second
             column contains longitude. Each row is a geographic point
+        threshold (float): distance threshold in km over which no neighbor will
+            be found. Those are assigned with a -1 index
 
     Returns:
         array with so many rows as coordinates containing the centroids
@@ -130,11 +136,11 @@ def index_nn_haversine(centroids, coordinates):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist*EARTH_RADIUS > THRESHOLD)
+    num_warn = np.sum(dist*EARTH_RADIUS > threshold)
     if num_warn > 0:
         LOGGER.warning('Distance to closest centroid is greater than %s' \
-            'km for %s coordinates.', THRESHOLD, num_warn)
-        assigned[dist*EARTH_RADIUS > THRESHOLD] = -1
+            'km for %s coordinates.', threshold, num_warn)
+        assigned[dist*EARTH_RADIUS > threshold] = -1
 
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])

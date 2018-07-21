@@ -27,7 +27,7 @@ BUFFER_DEG = 1.0
 MAX_BINS = 200
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
-                       **kwargs):
+                       buffer_deg=BUFFER_DEG, **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -44,6 +44,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             used for all subplots. Otherwise provide as many as subplots in
             array_sub.
         pop_name (bool, optional): add names of the populated places.
+        buffer_deg (float, optional): border to add to coordinates
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -70,8 +71,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
                              (coord.shape[0], array_im.size))
         # Binned image with coastlines
         extent = get_borders(coord)
-        extent = ([extent[0] - BUFFER_DEG, extent[1] + BUFFER_DEG, extent[2] -\
-                   BUFFER_DEG, extent[3] + BUFFER_DEG])
+        extent = ([extent[0] - buffer_deg, extent[1] + buffer_deg, extent[2] -\
+                   buffer_deg, extent[3] + buffer_deg])
         axis.set_extent((extent))
         add_shapes(axis)
         if pop_name:

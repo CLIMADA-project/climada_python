@@ -15,7 +15,6 @@ from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.coordinates import GridPoints
-from climada.util.interpolation import METHOD, DIST_DEF
 from climada.util.config import CONFIG
 import climada.util.plot as plot
 
@@ -102,24 +101,18 @@ class Exposures(object):
         self.region_id = np.array([], int)
         self.assigned = dict()
 
-    def assign(self, hazard, method=METHOD[0], dist=DIST_DEF[1]):
+    def assign(self, hazard):
         """Compute the hazard centroids affecting to each exposure. The
         position of the centroids are provided, not their ids.
 
         Parameters:
             hazard (subclass Hazard): one hazard
-            method (str, optional): interpolation method, neareast neighbor by
-                default. The different options are provided by the class
-                constant 'METHOD' of the interpolation module
-            dist (str, optional): distance used, haversine by default.
-                The different options are provided by the constant 'DIST_DEF'
-                of the interpolation module.
 
         Raises:
             ValueError
         """
-        self.assigned[hazard.tag.haz_type] = hazard.centroids.coord.resample(\
-                     self.coord, method, dist)
+        self.assigned[hazard.tag.haz_type] = \
+            hazard.centroids.coord.resample_nn(self.coord)
 
     def check(self):
         """Check instance attributes.
@@ -135,13 +128,16 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot(self, ignore_null=False, pop_name=True, **kwargs):
+    def plot(self, ignore_null=False, pop_name=True, buffer_deg=None,
+             **kwargs):
         """Plot exposures values sum binned over Earth's map.
 
         Parameters:
             ignore_null (bool, optional): flag to indicate if zero and
                 negative values are ignored in plot. Default is False
             pop_name (bool, optional): add names of the populated places
+            buffer_deg (float, optional): border to add to coordinates.
+                Default: BUFFER_DEG=1 in plot module.
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
@@ -155,6 +151,10 @@ class Exposures(object):
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
+        if buffer_deg is not None:
+            return plot.geo_bin_from_array(self.value[pos_vals], \
+                self.coord[pos_vals], cbar_label, title, pop_name, buffer_deg,\
+                **kwargs)
         return plot.geo_bin_from_array(self.value[pos_vals], \
             self.coord[pos_vals], cbar_label, title, pop_name, **kwargs)
 
@@ -201,9 +201,9 @@ class Exposures(object):
             raise ValueError
         if (self.value_unit == 'NA') and (exposures.value_unit != 'NA'):
             self.value_unit = exposures.value_unit
-            LOGGER.warning("Exposures units set to %s.", self.value_unit)
+            LOGGER.info("Exposures units set to %s.", self.value_unit)
         elif exposures.value_unit == 'NA':
-            LOGGER.warning("Exposures units set to %s.", self.value_unit)
+            LOGGER.info("Exposures units set to %s.", self.value_unit)
         elif self.value_unit != exposures.value_unit:
             LOGGER.error("Append not possible. Different units: %s != %s.", \
                              self.value_unit, exposures.value_unit)

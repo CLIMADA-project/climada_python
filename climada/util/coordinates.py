@@ -49,31 +49,25 @@ class GridPoints(np.ndarray):
                          self.shape[1], 2)
             raise ValueError
 
-    def resample(self, coord, method=METHOD[0], distance=DIST_DEF[1]):
-        """ Input GridPoints are resampled to current grid by interpolating
-        their values.
+    def resample_nn(self, coord, threshold=None):
+        """ Input GridPoints are resampled to current grid by calculating the
+        nearest neighbor. For every input coord point, its corresponding
+        GridPoint in self is returned.
 
         Parameters:
             coord (2d array): First column contains latitude, second
                 column contains longitude. Each row is a geographic point.
-            method (str, optional): interpolation method. Default: nearest
-                neighbor.
-            distance (str, optional): metric to use. Default: haversine
-
+            threshold (float, optional): distance threshold in km over which no
+                neighbor will be found. Those are assigned with a -1 index.
+                Default: THRESHOLD in interpolation (100km)
         Returns:
-            np.array
+            np.array (with shape of coord)
         """
-        return interpol_index(self, coord, method, distance)
-
-    def resample_agg_to_lower_res(self, coord):
-        """ Input GridPoints are resampled to current grid of lower resolution
-        by aggregating the values of the higher resolution grid.
-
-        Parameters:
-            coord (2d array): First column contains latitude, second
-                column contains longitude. Each row is a geographic point.
-        """
-        raise NotImplementedError
+        if threshold:
+            return interpol_index(self, coord, method=METHOD[0],
+                                  distance=DIST_DEF[1], threshold=threshold)
+        return interpol_index(self, coord, method=METHOD[0],
+                              distance=DIST_DEF[1])
 
     def is_regular(self):
         """Return True if grid is regular."""

@@ -1,7 +1,6 @@
 """
 Test interpolation module.
 """
-import os
 import unittest
 import numpy as np
 
@@ -144,14 +143,12 @@ class TestNN(unittest.TestCase):
 
     def normal_pass(self, dist):
         '''Checking result against matlab climada_demo_step_by_step'''
-
         # Load input
         exposures, centroids = def_input_values()
 
         # Interpolate with default threshold
         neighbors = interp.interpol_index(centroids, exposures,
                                           'NN', dist)
-
         # Reference output
         ref_neighbors = def_ref()
         # Check results
@@ -161,15 +158,14 @@ class TestNN(unittest.TestCase):
     def normal_warning(self, dist):
         '''Checking that a warning is raised when minimum distance greater
         than threshold'''
-
         # Load input
         exposures, centroids = def_input_values()
 
         # Interpolate with lower threshold to raise warnings
-        interp.THRESHOLD = 50
-        neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
+        threshold = 50
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
-            neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
+            neighbors = interp.interpol_index(centroids, exposures, 'NN', 
+                                              dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_50()
