@@ -60,6 +60,7 @@ dependencies:
   - openssl=1.0.2n
   - owslib=0.16.0
   - pandas=0.21.1
+  - pandas-datareader=0.6.0
   - pandoc=1.19.2.1
   - pandocfilters=1.4.2
   - pcre=8.41
