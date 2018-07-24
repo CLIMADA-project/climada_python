@@ -56,7 +56,7 @@ TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
 
 
 ONE_LAT_KM = 111.12
-""" Mean one latitude in km """
+""" Mean one latitude (in degrees) to km """
 
 EARTH_RADIUS = 6371
 """ Earth radius in km """
