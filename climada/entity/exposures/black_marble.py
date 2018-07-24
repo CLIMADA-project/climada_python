@@ -325,8 +325,8 @@ def fill_econ_indicators(ref_year, country_info, shp_file, **kwargs):
             cntry_val.append(kwargs['inc_grp'][cntry_iso])
 
 def _get_income_group(country_info, ref_year, shp_file):
-    """ Append country's income group from World Bank's data at a given year, or
-    closest year value. If no data, get the natural earth's approximation.
+    """ Append country's income group from World Bank's data at a given year,
+    or closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
         country_info (dict): key = ISO alpha_3 country, value = [country id,
@@ -349,7 +349,7 @@ def _get_income_group(country_info, ref_year, shp_file):
             cntry_dfr = dfr_wb.loc[cntry_iso]
             # select closest not nan value to ref_year
             close_inc = cntry_dfr.iloc[np.abs( \
-                    np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
+                np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
             close_inc_val = int(close_inc.iloc[0])
             LOGGER.info('Income group %s %s: %s.', cntry_iso,
                         close_inc.index[0], close_inc_val)
@@ -363,7 +363,8 @@ def _get_income_group(country_info, ref_year, shp_file):
             try:
                 close_inc_val = INCOME_GRP_NE_TABLE[int(close_inc[0])]
             except (KeyError, IndexError):
-                LOGGER.error("No income group for country %s found.", cntry_iso)
+                LOGGER.error("No income group for country %s found.",
+                             cntry_iso)
                 raise ValueError
             LOGGER.info('Income group %s: %s.', cntry_iso, close_inc_val)
 
@@ -387,7 +388,8 @@ def _get_gdp(country_info, ref_year, shp_file):
                                     start=1960, end=2030)
             years = np.array([int(year) \
                 for year in cntry_gdp.index.get_level_values('year')])
-            close_gdp = cntry_gdp.iloc[np.abs(years-ref_year).argsort()].dropna()
+            close_gdp = cntry_gdp.iloc[ \
+                np.abs(years-ref_year).argsort()].dropna()
             close_gdp_val = float(close_gdp.iloc[0].values)
             LOGGER.info("GDP {} {:d}: {:.3e}".format(cntry_iso, \
                         int(close_gdp.iloc[0].name[1]), close_gdp_val))
