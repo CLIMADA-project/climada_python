@@ -57,7 +57,7 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
 def empty_optional(var, var_name):
     """Check if a data structure is empty."""
     if not var:
-        LOGGER.warning("%s not set. ", var_name)
+        LOGGER.info("%s not set. ", var_name)
 
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
