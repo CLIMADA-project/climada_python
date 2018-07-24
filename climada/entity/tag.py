@@ -51,10 +51,9 @@ class Tag(object):
     def join_descriptions(self):
         """ Get a string with the joined descriptions. """
         if not isinstance(self.file_name, list):
-            join_desc = os.path.splitext(os.path.basename(self.description))[0]
+            join_desc = self.description
         else:
-            join_desc = ' + '.join([os.path.splitext(
-                os.path.basename(file))[0] for file in self.description])
+            join_desc = ' + '.join([desc for desc in self.description])
         return join_desc
 
     def __str__(self):

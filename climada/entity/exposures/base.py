@@ -147,7 +147,7 @@ class Exposures(object):
             pos_vals = self.value > 0
         else:
             pos_vals = np.ones((self.value.size,), dtype=bool)
-        title = self.tag.join_file_names()
+        title = self.tag.join_descriptions()
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
