@@ -33,6 +33,7 @@ def download_file(url):
         LOGGER.error('Connection error: check your internet connection.')
         raise IOError
     if req_file.status_code == 404:
+        LOGGER.error('Error loading page %s.', url)
         raise ValueError
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
