@@ -8,8 +8,8 @@ import shapely
 from cartopy.io import shapereader
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_land, _resample_land, _add_surroundings, _get_gdp, _get_income_group, \
-fill_econ_indicators
+_process_land, _add_surroundings, _get_gdp, _get_income_group, fill_econ_indicators, \
+_set_econ_indicators
 from climada.entity.exposures.black_marble import MIN_LAT, MAX_LAT, MIN_LON, \
 MAX_LON, NOAA_RESOLUTION_DEG
 
@@ -21,7 +21,7 @@ class TestCountryIso(unittest.TestCase):
     """Test country_iso function."""
 
     def test_che_kos_pass(self):
-        """CHE"""
+        """CHE, KOS """
         country_name = ['Switzerland', 'Kosovo']
         iso_name = country_iso_geom(country_name, SHP_FILE)
         
@@ -70,31 +70,25 @@ class TestCountryIso(unittest.TestCase):
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
-    def test_process_land_brb_pass(self):
+    def test_process_land_brb_1km_pass(self):
         """ Test _process_land function with fake Barbados."""
         country_iso = 'BRB'
         exp = BlackMarble()
-        gdp = {country_iso: 4.225e9}
-        income = {country_iso: 4}
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
                 geom = cntry.geometry
-        nightlight = sparse.lil.lil_matrix(np.zeros((16801, 43201)))
-        nightlight[9000:9500, 14000:15000] = np.ones((500, 1000))
-        nightlight[9350:9370, 14440:14450] = 0.4
-        nightlight[9370:9400, 14450:14470] = 0.5
+        nightlight = sparse.lil.lil_matrix(np.ones((500, 1000)))
+        nightlight[275:281, 333:334] = 0.4
+        nightlight[275:281, 334:336] = 0.5
         nightlight = nightlight.tocsr()
-        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT,
-                             nightlight.shape[0])
-        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON,
-                             nightlight.shape[1])
+        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 500)
+        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
 
-        in_lat, in_lon, lat_mgrid, lon_mgrid, on_land = _process_land(exp, \
-            geom, gdp[country_iso], income[country_iso], nightlight, \
-            lat_nl, lon_nl)
+        lat_mgrid, lon_mgrid, on_land = _process_land(exp, \
+            geom, nightlight, lat_nl, lon_nl, 1.0, 1.0)
 
-        self.assertEqual(in_lat, (9366-1, 9400+1))
-        self.assertEqual(in_lon, (14441-1, 14468+1))
+        in_lat = (278, 280)
+        in_lon = (333, 335)
 
         self.assertEqual(lat_mgrid.shape, (in_lat[1] - in_lat[0] + 1,
                          in_lon[1] - in_lon[0] + 1))
@@ -105,77 +99,71 @@ class TestNightLight(unittest.TestCase):
         self.assertEqual(lon_mgrid[0][0], lon_nl[in_lon[0]])
         self.assertEqual(lon_mgrid[0][-1], lon_nl[in_lon[-1]])
 
-        self.assertFalse(on_land[0][0])
-        self.assertFalse(on_land[1][14])
-        self.assertTrue(on_land[1][15])
-        self.assertFalse(on_land[1][16])
+        self.assertFalse(np.all(on_land[0][:]))
+        self.assertFalse(np.all(on_land[2][:]))
+        self.assertFalse(np.all(on_land[:][0]))
+        self.assertFalse(np.all(on_land[:][2]))
+        self.assertFalse(on_land[1][2])
+        self.assertFalse(on_land[1][0])
+        self.assertTrue(on_land[1][1])
 
-        sum_nl = np.power(np.asarray(nightlight[in_lat[0]:in_lat[-1]+1, :] \
-            [:, in_lon[0]:in_lon[-1]+1][on_land]).ravel(), 3).sum()
-        self.assertEqual(exp.value[0],
-            np.power(nightlight[in_lat[0]+1, in_lon[0]+15], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[1],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+15], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[2],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+16], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[3],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+17], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[4],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+18], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[0],
-            np.power(nightlight[in_lat[0]+1, in_lon[0]+15], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[1],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+15], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[2],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+16], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[3],
-            np.power(nightlight[in_lat[0]+2, in_lon[0]+17], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value[-1],
-            np.power(nightlight[in_lat[1], in_lon[1]-17], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
-        self.assertEqual(exp.value.sum(), gdp[country_iso]*(income[country_iso]+1))
+        self.assertAlmostEqual(exp.value[0], nightlight[in_lat[0]+1, in_lon[0]+1])
 
         self.assertEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
         self.assertEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
-        self.assertEqual(exp.coord[-1, 0], lat_mgrid[on_land][-1])
-        self.assertEqual(exp.coord[-1, 1], lon_mgrid[on_land][-1])
 
-    def test_resample_land_pass(self):
-        """ Test _resample_land function with fake Barbados."""
-        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 16801)
-        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 43201)
-        in_lat = (9365, 9401)
-        in_lon = (14440, 14469)
-        on_land = np.zeros((in_lat[1]-in_lat[0]+1, in_lon[1]-in_lon[0]+1)).astype(bool)
-        on_land[10:15, 20:25] = True
-        lat_mgrid, lon_mgrid = np.mgrid[
-                lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, in_lat[1]-in_lat[0]+1),
-                lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, in_lon[1]-in_lon[0]+1)]
-
+    def test_process_land_brb_2km_pass(self):
+        """ Test _process_land function with fake Barbados."""
+        country_iso = 'BRB'
         exp = BlackMarble()
-        exp.value = np.arange(on_land.sum())
-        exp.coord = np.empty((on_land.sum(), 2))
-        exp.coord[:, 0] = lat_mgrid[on_land].ravel()
-        exp.coord[:, 1] = lon_mgrid[on_land].ravel()
-        res_km = 4.5
-        ori_value = exp.value.copy()
-        _resample_land(exp, res_km, lat_nl, lon_nl, in_lat, in_lon, on_land)
+        for cntry in list(SHP_FILE.records()):
+            if cntry.attributes['ADM0_A3'] == country_iso:
+                geom = cntry.geometry
+        nightlight = sparse.lil.lil_matrix(np.ones((500, 1000)))
+        nightlight[275:281, 333:334] = 0.4
+        nightlight[275:281, 334:336] = 0.5
+        nightlight = nightlight.tocsr()
+        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 500)
+        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
 
-        self.assertEqual(exp.coord.shape, (2, 2))
-        self.assertEqual(exp.coord[0][0], lat_mgrid[12, 20])
-        self.assertEqual(exp.coord[1][0], lat_mgrid[12, 24])
-        self.assertEqual(exp.coord[0][1], lon_mgrid[12, 20])
-        self.assertAlmostEqual(exp.coord[1][1], lon_mgrid[12, 24], 13)
+        res_fact = 2.0
+        lat_mgrid, lon_mgrid, on_land = _process_land(exp, \
+            geom, nightlight, lat_nl, lon_nl,res_fact, 0.5)
 
-        ref_assigned = np.array([0, 0, 0, 1, 1,
-                                 0, 0, 0, 1, 1,
-                                 0, 0, 0, 1, 1,
-                                 0, 0, 0, 1, 1,
-                                 0, 0, 0, 1, 1])
-        ref_val = np.empty((2,))
-        ref_val[0] = float(ori_value[ref_assigned == 0].sum())
-        ref_val[1] = float(ori_value[ref_assigned == 1].sum())
-        self.assertTrue(np.array_equal(ref_val, exp.value))
+        in_lat = (278, 280)
+        in_lon = (333, 335)
 
+        self.assertEqual(lat_mgrid.shape, (res_fact*(in_lat[1] - in_lat[0] + 1),
+                         res_fact*(in_lon[1] - in_lon[0] + 1)))
+        self.assertEqual(lon_mgrid.shape, (res_fact*(in_lat[1] - in_lat[0] + 1),
+                         res_fact*(in_lon[1] - in_lon[0] + 1)))
+        self.assertEqual(lat_mgrid[0][0], lat_nl[in_lat[0]])
+        self.assertEqual(lat_mgrid[-1][0], lat_nl[in_lat[-1]])
+        self.assertEqual(lon_mgrid[0][0], lon_nl[in_lon[0]])
+        self.assertEqual(lon_mgrid[0][-1], lon_nl[in_lon[-1]])
+
+        self.assertFalse(np.all(on_land[0][:]))
+        self.assertFalse(np.all(on_land[3][:]))
+        self.assertFalse(np.all(on_land[4][:]))
+        self.assertFalse(np.all(on_land[5][:]))
+        
+        self.assertFalse(np.all(on_land[:][0]))
+        self.assertFalse(np.all(on_land[:][1]))
+        self.assertFalse(np.all(on_land[:][2]))
+        self.assertFalse(np.all(on_land[:][4]))
+        self.assertFalse(np.all(on_land[:][5]))
+        self.assertTrue(on_land[1][3])
+        self.assertTrue(on_land[2][3])
+        
+        self.assertAlmostEqual(exp.value[0], 0.5096)
+        self.assertAlmostEqual(exp.value[1], 0.5096)
+
+        self.assertEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
+        self.assertEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
+
+        self.assertEqual(exp.coord[1, 0], lat_mgrid[on_land][1])
+        self.assertEqual(exp.coord[1, 1], lon_mgrid[on_land][1])
+        
     def test_add_surroundings(self):
         """ Test _add_surroundings function with fake Barbados."""
         lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 16801)
@@ -251,7 +239,7 @@ class TestEconIndices(unittest.TestCase):
             _get_gdp(cntry_info, ref_year, SHP_FILE)
             
         cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 1.754e+08]}
-        self.assertIn('GDP AIA: 1.754e+08', cm.output[0])
+        self.assertIn('GDP AIA 2009: 1.754e+08', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
 
     def test_get_gdp_sxm_2012_pass(self):
@@ -262,7 +250,7 @@ class TestEconIndices(unittest.TestCase):
             _get_gdp(cntry_info, ref_year, SHP_FILE)
         
         cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 3.658e+08]}
-        self.assertIn('GDP SXM: 3.658e+08', cm.output[0])
+        self.assertIn('GDP SXM 2014: 3.658e+08', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
 
     def test_get_gdp_esp_1950_pass(self):
@@ -300,6 +288,16 @@ class TestEconIndices(unittest.TestCase):
                             'ZMB': [2, 'Zambia', 'zmb_geom', 2015, gdp['ZMB'], inc_grp['ZMB']]
                            }
         self.assertEqual(country_isos, country_isos_ref)
+
+    def test_set_econ_indicators_pass(self):
+        """ Test _set_econ_indicators pass."""
+        exp = BlackMarble()
+        exp.value = np.arange(0, 20, 0.1)
+        gdp = 4.225e9
+        inc_grp = 4
+        _set_econ_indicators(exp, gdp, inc_grp)
+        
+        self.assertAlmostEqual(exp.value.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)

@@ -15,6 +15,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sparse
+from scipy import ndimage
 import pandas as pd
 import requests
 import shapely.vectorized
@@ -27,7 +28,6 @@ from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 from climada.util.config import CONFIG
 from climada.util.save import save
-from climada.util.coordinates import GridPoints
 
 # solve version problem in pandas-datareader-0.6.0. see:
 # https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
@@ -62,8 +62,11 @@ MIN_LON = -180
 MAX_LON = 180
 """ Maximum longitude """
 
-DEF_RES_KM = 1
-""" Default approximate resolution in km."""
+DEF_RES_NOAA_KM = 1
+""" Default approximate resolution for NOAA NGDC nightlights in km."""
+
+DEF_RES_NASA_KM = 0.5
+""" Default approximate resolution for NASA's nightlights in km."""
 
 INCOME_GRP_WB_TABLE = {'L' : 1, # low income
                        'LM': 2, # lower middle income
@@ -90,14 +93,13 @@ class BlackMarble(Exposures):
         Exposures.__init__(self)
 
     def set_countries(self, countries, \
-        ref_year=CONFIG['entity']['present_ref_year'], res_km=DEF_RES_KM, \
-        **kwargs):
+        ref_year=CONFIG['entity']['present_ref_year'], res_km=1, **kwargs):
         """ Model countries using values at reference year.
 
         Parameters:
             countries (list): list of country names (admin0)
             ref_year (int): reference year
-            res_km (float): approx resolution in km
+            res_km (float, optional): approx resolution in km. Default: 1km.
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
                 country ISO_alpha3 code. If provided, these are used
         """
@@ -105,15 +107,22 @@ class BlackMarble(Exposures):
             category='cultural', name='admin_0_countries')
         shp_file = shapereader.Reader(shp_file)
         country_info = country_iso_geom(countries, shp_file)
-        # nightlight intensity for selected country with 30 arcsec resolution
-        nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(ref_year)
         fill_econ_indicators(ref_year, country_info, shp_file, **kwargs)
+
+        if ref_year == 2012 or ref_year > 2013:
+            res_fact = DEF_RES_NASA_KM/res_km
+            # nightlight intensity with 15 arcsec resolution
+            raise NotImplementedError
+        else:
+            res_fact = DEF_RES_NOAA_KM/res_km
+            # nightlight intensity with 30 arcsec resolution
+            nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(ref_year)
 
         # TODO parallize per thread?
         for cntry in country_info.values():
             LOGGER.info('Processing country %s', cntry[1])
-            self.append(self._set_one_country(cntry, res_km, nightlight,
-                                              lon_nl, lat_nl, fn_nl))
+            self.append(self._set_one_country(cntry, nightlight, lon_nl,
+                                              lat_nl, fn_nl, res_fact, res_km))
 
     def set_region(self, centroids, ref_year=2013, resolution=1):
         """ Model a specific region given by centroids."""
@@ -126,28 +135,27 @@ class BlackMarble(Exposures):
         raise NotImplementedError
 
     @staticmethod
-    def _set_one_country(country_info, res_km, nightlight, lon_nl, lat_nl,
-                         fn_nl):
+    def _set_one_country(country_info, nightlight, lon_nl, lat_nl,
+                         fn_nl, res_fact, res_km):
         """ Model one country.
 
         Parameters:
             country_info (lsit): [cntry_id, cnytry_name, cntry_geometry,
                 ref_year, gdp, income_group]
-            res_km (float): approx resolution in km
             nightlight (np.array): nightlight in 30arcsec ~ 1km resolution.
                 Row latitudes, col longitudes
             lat_nl (np.array): latitudes of nightlight matrix (its first dim)
             lon_nl (np.array): longitudes of nightlight matrix (its second dim)
             fn_light (str): file name of considered nightlight with path
+            res_fact (float): resampling factor
+            res_km (float): wished resolution in km
         """
         exp_bkmrb = BlackMarble()
 
-        in_lat, in_lon, lat_mgrid, lon_mgrid, on_land = _process_land( \
-            exp_bkmrb, country_info[2], country_info[4], country_info[5], \
-            nightlight, lat_nl, lon_nl)
+        lat_mgrid, lon_mgrid, on_land = _process_land(exp_bkmrb, \
+            country_info[2], nightlight, lat_nl, lon_nl, res_fact, res_km)
 
-        _resample_land(exp_bkmrb, res_km, lat_nl, lon_nl, in_lat, in_lon,
-                       on_land)
+        _set_econ_indicators(exp_bkmrb, country_info[4], country_info[5])
         _add_surroundings(exp_bkmrb, lat_mgrid, lon_mgrid, on_land)
 
         exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
@@ -399,11 +407,13 @@ def _get_gdp(country_info, ref_year, shp_file):
             for info in list_records:
                 if info.attributes['ADM0_A3'] == cntry_iso:
                     close_gdp_val = info.attributes['GDP_MD_EST']
+                    close_gdp_year = info.attributes['GDP_YEAR']
             if close_gdp_val == -99.0:
                 LOGGER.error("No GDP for country %s found.", cntry_iso)
                 raise ValueError
             close_gdp_val *= 1e6
-            LOGGER.info("GDP {}: {:.3e}".format(cntry_iso, close_gdp_val))
+            LOGGER.info("GDP {} {:d}: {:.3e}".format(cntry_iso, \
+                        close_gdp_year, close_gdp_val))
 
         except requests.exceptions.ConnectionError:
             LOGGER.error('Connection error: check your internet connection.')
@@ -437,24 +447,22 @@ def _unzip_tif_to_py(file_gz):
 
     return file_name, nightlight
 
-def _process_land(exp, geom, gdp, income, nightlight, lat_nl, lon_nl):
+def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
     """Model land exposures from nightlight intensities and normalized
     to GDP * (income_group + 1).
 
     Parameters:
         exp(BlackMarble): BlackMarble instance
         geom (shapely.geometry): geometry of the region to consider
-        gdp (float): GDP to interpolate in the region
-        income (float): index to weight exposures in the region
         nightlight (sparse.csr_matrix): nichtlight values
         lat_nl (np.array): latitudes of nightlight matrix (its first dim)
         lon_nl (np.array): longitudes of nightlight matrix (its second dim)
+        res_fact (float): resampling factor
+        res_km (float): wished resolution in km
 
     Returns:
-        in_lat (tuple) indexes of latitude range in nightlight,
-        in_lon (tuple) indexes of longitude range in nightlight,
-        lat_mgrid (np.array) meshgrid with latitudes in in_lat range,
-        lat_mgrid (np.array) meshgrid with longitudes in in_lat range,
+        lat_res (np.array) meshgrid with latitudes in in_lat range,
+        lon_res (np.array) meshgrid with longitudes in in_lat range,
         on_land (np.array) matrix with onland flags in in_lat, in_lon range
     """
     in_lat = np.argwhere(np.logical_and(lat_nl >= geom.bounds[1],
@@ -465,57 +473,34 @@ def _process_land(exp, geom, gdp, income, nightlight, lat_nl, lon_nl):
                                         lon_nl <= geom.bounds[2]))
     in_lon = (max(0, in_lon[0][0] - 1),
               min(in_lon[-1][0] + 1, lon_nl.size - 1))
-    lat_mgrid, lon_mgrid = np.mgrid[
-        lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, in_lat[1]-in_lat[0]+1),
-        lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, in_lon[1]-in_lon[0]+1)]
-    on_land = shapely.vectorized.contains(geom, lon_mgrid, lat_mgrid)
 
-    exp.value = np.power(np.asarray(nightlight[in_lat[0]:in_lat[-1]+1, :] \
-        [:, in_lon[0]:in_lon[-1]+1][on_land]).ravel(), 3)
-    exp.value = exp.value/exp.value.sum()*gdp*(income+1)
+    LOGGER.info('Generating resolution of approx %s km', res_km)
+    nightlight_res = ndimage.zoom(nightlight[in_lat[0]:in_lat[-1]+1, :] \
+        [:, in_lon[0]:in_lon[-1]+1].todense(), res_fact)
+    lat_res, lon_res = np.mgrid[
+        lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, nightlight_res.shape[0]),
+        lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, nightlight_res.shape[1])]
+
+    on_land = shapely.vectorized.contains(geom, lon_res, lat_res)
+
+    exp.value = nightlight_res[on_land].ravel()
     exp.coord = np.empty((exp.value.size, 2))
-    exp.coord[:, 0] = lat_mgrid[on_land]
-    exp.coord[:, 1] = lon_mgrid[on_land]
+    exp.coord[:, 0] = lat_res[on_land]
+    exp.coord[:, 1] = lon_res[on_land]
 
-    return in_lat, in_lon, lat_mgrid, lon_mgrid, on_land
+    return lat_res, lon_res, on_land
 
-def _resample_land(exp, res_km, lat_nl, lon_nl, in_lat, in_lon, on_land):
-    """ Resample exposures values to input resolution.
+def _set_econ_indicators(exp, gdp, inc_grp):
+    """Model land exposures from nightlight intensities and normalized
+    to GDP * (income_group + 1)
 
     Parameters:
-        exp(BlackMarble): BlackMarble instance
-        res_km (float): wished resolution in km
-        lat_nl (np.array): latitudes of nightlight matrix (its first dim)
-        lon_nl (np.array): longitudes of nightlight matrix (its second dim)
-        in_lat (tuple): indexes of latitude range in nightlight
-        in_lon (tuple): indexes of longitude range in nightlight
-        on_land (np.array): matrix with onland flags in in_lat, in_lon range
+        exp(BlackMarble): BlackMarble instance with value = nightlight
+        gdp (float): GDP to interpolate in the region
+        inc_grp (float): index to weight exposures in the region
     """
-    if res_km == DEF_RES_KM:
-        return
-    if res_km > DEF_RES_KM:
-        amp_fact = int(res_km/DEF_RES_KM)
-        LOGGER.info('Generating resolution of approx %s km', \
-                    amp_fact*DEF_RES_KM)
-
-        new_grid = np.meshgrid(lon_nl[in_lon[0]:in_lon[-1]+1:amp_fact],
-                               lat_nl[in_lat[0]:in_lat[-1]+1:amp_fact])
-        new_onland = on_land[::amp_fact, ::amp_fact]
-
-        new_grid = GridPoints(np.array(
-            [new_grid[1][new_onland].ravel(),
-             new_grid[0][new_onland].ravel()])).transpose()
-
-        assigned = new_grid.resample_nn(exp.coord, threshold=5*res_km)
-        value_new = np.zeros((new_grid.shape[0],))
-        for coord_idx, coord_ass in enumerate(assigned):
-            value_new[coord_ass] += exp.value[coord_idx]
-
-        exp.coord = new_grid
-        exp.value = value_new
-    else:
-        # bilinear interpolation
-        raise NotImplementedError
+    exp.value = np.power(exp.value, 3)
+    exp.value = exp.value/exp.value.sum()* gdp * (inc_grp+1)
 
 def _add_surroundings(exp, lat_mgrid, lon_mgrid, on_land):
     """ Add surroundings of country in a resolution of 50 km.
@@ -526,6 +511,7 @@ def _add_surroundings(exp, lat_mgrid, lon_mgrid, on_land):
         lat_mgrid (np.array) meshgrid with longitudes in in_lat range,
         on_land (np.array) matrix with onland flags in in_lat, in_lon range
     """
+    LOGGER.info("Adding country's surroundings.")
     surr_lat = lat_mgrid[np.logical_not(on_land)].ravel()[::50]
     surr_lon = lon_mgrid[np.logical_not(on_land)][::50]
     exp.value = np.append(exp.value, surr_lat*0)
