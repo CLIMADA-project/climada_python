@@ -8,7 +8,8 @@ import shapely
 from cartopy.io import shapereader
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_land, _resample_land, _add_surroundings
+_process_land, _resample_land, _add_surroundings, _get_gdp, _get_income_group, \
+fill_econ_indicators
 from climada.entity.exposures.black_marble import MIN_LAT, MAX_LAT, MIN_LON, \
 MAX_LON, NOAA_RESOLUTION_DEG
 
@@ -131,6 +132,7 @@ class TestNightLight(unittest.TestCase):
             np.power(nightlight[in_lat[0]+2, in_lon[0]+17], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
         self.assertEqual(exp.value[-1],
             np.power(nightlight[in_lat[1], in_lon[1]-17], 3)/sum_nl*gdp[country_iso]*(income[country_iso]+1))
+        self.assertEqual(exp.value.sum(), gdp[country_iso]*(income[country_iso]+1))
 
         self.assertEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
         self.assertEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
@@ -205,13 +207,102 @@ class TestNightLight(unittest.TestCase):
         self.assertTrue(np.array_equal(exp.coord.lat[-surr_lat.size:], surr_lat))
         self.assertTrue(np.array_equal(exp.coord.lon[-surr_lat.size:], surr_lon))
 
-#    def test_pinto(self):
-#        import matplotlib.pyplot as plt
-#        plt.figure(figsize=(20,10))
-#        nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa()
-#        plt.imshow(np.flip(np.power(nightlight.todense(), 1),0))
+class TestEconIndices(unittest.TestCase):
+    """Test functions to get economic indices."""
+    
+    def test_income_grp_aia_pass(self):
+        """ Test _get_income_group function Anguilla."""
+        cntry_info = {'AIA': [1, 'Anguilla', 'geom']}
+        ref_year = 2012
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_income_group(cntry_info, ref_year, SHP_FILE)
+            
+        cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 3]}
+        self.assertIn('Income group AIA: 3', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+
+    def test_income_grp_sxm_2012_pass(self):
+        """ Test _get_income_group function Sint Maarten."""
+        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
+        ref_year = 2012
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_income_group(cntry_info, ref_year, SHP_FILE)
+        
+        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
+        self.assertIn('Income group SXM 2012: 4.', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+
+    def test_income_grp_sxm_1999_pass(self):
+        """ Test _get_income_group function Sint Maarten."""
+        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
+        ref_year = 1999
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_income_group(cntry_info, ref_year, SHP_FILE)
+            
+        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
+        self.assertIn('Income group SXM 2010: 4.', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+
+    def test_get_gdp_aia_2012_pass(self):
+        """ Test _get_gdp function Anguilla."""
+        cntry_info = {'AIA': [1, 'Anguilla', 'geom']}
+        ref_year = 2012
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_gdp(cntry_info, ref_year, SHP_FILE)
+            
+        cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 1.754e+08]}
+        self.assertIn('GDP AIA: 1.754e+08', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+
+    def test_get_gdp_sxm_2012_pass(self):
+        """ Test _get_gdp function Sint Maarten."""
+        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
+        ref_year = 2012
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_gdp(cntry_info, ref_year, SHP_FILE)
+        
+        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 3.658e+08]}
+        self.assertIn('GDP SXM: 3.658e+08', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+
+    def test_get_gdp_esp_1950_pass(self):
+        """ Test _get_gdp function Sint Maarten."""
+        cntry_info = {'ESP': [1, 'Spain', 'geom']}
+        ref_year = 1950
+        with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
+            _get_gdp(cntry_info, ref_year, SHP_FILE)
+            
+        cntry_info_ref = {'ESP': [1, 'Spain', 'geom', 12072126075.397]}
+        self.assertIn('GDP ESP 1960: 1.207e+10', cm.output[0])
+        self.assertEqual(cntry_info, cntry_info_ref)
+        
+    def test_fill_econ_indicators_pass(self):
+        ref_year = 2015
+        country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
+                        'ZMB': [2, 'Zambia', 'zmb_geom']
+                       }
+        fill_econ_indicators(ref_year, country_isos, SHP_FILE)
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679289166858.236, 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21154394545.895, 2]
+                           }
+        self.assertEqual(country_isos, country_isos_ref)
+
+    def test_fill_econ_indicators_kwargs_pass(self):
+        ref_year = 2015
+        country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
+                        'ZMB': [2, 'Zambia', 'zmb_geom']
+                       }
+        gdp = {'CHE': 1.2, 'ZMB': 1.3}
+        inc_grp = {'CHE': 3, 'ZMB': 4}
+        kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
+        fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], inc_grp['CHE']],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, gdp['ZMB'], inc_grp['ZMB']]
+                           }
+        self.assertEqual(country_isos, country_isos_ref)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCountryIso)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

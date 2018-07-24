@@ -11,6 +11,7 @@ dependencies:
   - numba=0.37.0
   - numpy=1.14.2
   - pandas=0.23.0
+  - pandas-datareader=0.6.0
   - pip=10.0.1
   - proj4=4.9.3
   - pyproj=1.9.5.1
