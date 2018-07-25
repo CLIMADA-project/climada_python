@@ -25,9 +25,10 @@ from cartopy.io import shapereader
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
-from climada.util.constants import SYSTEM_DIR
+from climada.util.constants import SYSTEM_DIR, ONE_LAT_KM
 from climada.util.config import CONFIG
 from climada.util.save import save
+from climada.util.coordinates import coord_on_land
 
 # solve version problem in pandas-datareader-0.6.0. see:
 # https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
@@ -93,36 +94,38 @@ class BlackMarble(Exposures):
         Exposures.__init__(self)
 
     def set_countries(self, countries, \
-        ref_year=CONFIG['entity']['present_ref_year'], res_km=1, **kwargs):
+        ref_year=CONFIG['entity']['present_ref_year'], res_km=1, \
+        sea_res=(0, 1), **kwargs):
         """ Model countries using values at reference year.
 
         Parameters:
             countries (list): list of country names (admin0)
-            ref_year (int): reference year
+            ref_year (int, optional): reference year. Default: present_ref_year
+                in configuration.
             res_km (float, optional): approx resolution in km. Default: 1km.
+            sea_res (tuple, optional): (sea_coast_km, sea_res_km), where first
+                parameter is distance from coast to fill with water and second
+                parameter is resolution between sea points
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
                 country ISO_alpha3 code. If provided, these are used
         """
-        shp_file = shapereader.natural_earth(resolution='10m', \
-            category='cultural', name='admin_0_countries')
+        shp_file = shapereader.natural_earth(resolution='10m',
+                                             category='cultural',
+                                             name='admin_0_countries')
         shp_file = shapereader.Reader(shp_file)
         country_info = country_iso_geom(countries, shp_file)
         fill_econ_indicators(ref_year, country_info, shp_file, **kwargs)
 
-        if ref_year == 2012 or ref_year > 2013:
-            res_fact = DEF_RES_NASA_KM/res_km
-            # nightlight intensity with 15 arcsec resolution
-            raise NotImplementedError
-        else:
-            res_fact = DEF_RES_NOAA_KM/res_km
-            # nightlight intensity with 30 arcsec resolution
-            nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(ref_year)
+        nightlight, lat_nl, lon_nl, fn_nl, res_fact = get_nightlight(ref_year,
+                                                                     res_km)
 
         # TODO parallize per thread?
         for cntry in country_info.values():
             LOGGER.info('Processing country %s', cntry[1])
-            self.append(self._set_one_country(cntry, nightlight, lon_nl,
-                                              lat_nl, fn_nl, res_fact, res_km))
+            self.append(self._set_one_country(cntry, nightlight, lat_nl,
+                                              lon_nl, fn_nl, res_fact, res_km))
+
+        add_sea(self, sea_res)
 
     def set_region(self, centroids, ref_year=2013, resolution=1):
         """ Model a specific region given by centroids."""
@@ -135,7 +138,7 @@ class BlackMarble(Exposures):
         raise NotImplementedError
 
     @staticmethod
-    def _set_one_country(country_info, nightlight, lon_nl, lat_nl,
+    def _set_one_country(country_info, nightlight, lat_nl, lon_nl,
                          fn_nl, res_fact, res_km):
         """ Model one country.
 
@@ -152,11 +155,10 @@ class BlackMarble(Exposures):
         """
         exp_bkmrb = BlackMarble()
 
-        lat_mgrid, lon_mgrid, on_land = _process_land(exp_bkmrb, \
-            country_info[2], nightlight, lat_nl, lon_nl, res_fact, res_km)
+        _process_land(exp_bkmrb, country_info[2], nightlight, lat_nl,
+                      lon_nl, res_fact, res_km)
 
         _set_econ_indicators(exp_bkmrb, country_info[4], country_info[5])
-        _add_surroundings(exp_bkmrb, lat_mgrid, lon_mgrid, on_land)
 
         exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
         exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape) * country_info[0]
@@ -202,6 +204,37 @@ def country_iso_geom(country_list, shp_file):
         country_info[list_records[country_idx].attributes['ADM0_A3']] = \
             [country_id+1, country_tit, list_records[country_idx].geometry]
     return country_info
+
+def get_nightlight(ref_year, res_km):
+    """ Obtain nightlight from different sources depending on reference year.
+    Compute resolution factor used at resampling depending on source.
+
+    Parameters:
+        ref_year (int): reference year
+    Returns:
+        nightlight (sparse.csr_matrix), lat_nl (np.array), lon_nl (np.array),
+        fn_nl (str), res_fact (float)
+    """
+    if ref_year == 2012 or ref_year > 2013:
+        nl_year = ref_year
+        if ref_year > 2013:
+            nl_year = 2016
+        LOGGER.info("Nightlights from NASA's earth observatory for " + \
+                    "year %s.", nl_year)
+        res_fact = DEF_RES_NASA_KM/res_km
+        # nightlight intensity with 15 arcsec resolution
+        raise NotImplementedError
+    else:
+        nl_year = ref_year
+        if ref_year < 1992:
+            nl_year = 1992
+        LOGGER.info("Nightlights from NOAA's earth observation group "+ \
+                    "for year %s.", nl_year)
+        res_fact = DEF_RES_NOAA_KM/res_km
+        # nightlight intensity with 30 arcsec resolution
+        nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(nl_year)
+
+    return nightlight, lat_nl, lon_nl, fn_nl, res_fact
 
 def untar_stable_nightlight(f_tar_ini):
     """ Move input tar file to SYSTEM_DIR and extract stable light file.
@@ -399,7 +432,7 @@ def _get_gdp(country_info, ref_year, shp_file):
             close_gdp = cntry_gdp.iloc[ \
                 np.abs(years-ref_year).argsort()].dropna()
             close_gdp_val = float(close_gdp.iloc[0].values)
-            LOGGER.info("GDP {} {:d}: {:.3e}".format(cntry_iso, \
+            LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
                         int(close_gdp.iloc[0].name[1]), close_gdp_val))
 
         except (ValueError, IndexError):
@@ -412,7 +445,7 @@ def _get_gdp(country_info, ref_year, shp_file):
                 LOGGER.error("No GDP for country %s found.", cntry_iso)
                 raise ValueError
             close_gdp_val *= 1e6
-            LOGGER.info("GDP {} {:d}: {:.3e}".format(cntry_iso, \
+            LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
                         close_gdp_year, close_gdp_val))
 
         except requests.exceptions.ConnectionError:
@@ -459,11 +492,6 @@ def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
         lon_nl (np.array): longitudes of nightlight matrix (its second dim)
         res_fact (float): resampling factor
         res_km (float): wished resolution in km
-
-    Returns:
-        lat_res (np.array) meshgrid with latitudes in in_lat range,
-        lon_res (np.array) meshgrid with longitudes in in_lat range,
-        on_land (np.array) matrix with onland flags in in_lat, in_lon range
     """
     in_lat = np.argwhere(np.logical_and(lat_nl >= geom.bounds[1],
                                         lat_nl <= geom.bounds[3]))
@@ -488,8 +516,6 @@ def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
     exp.coord[:, 0] = lat_res[on_land]
     exp.coord[:, 1] = lon_res[on_land]
 
-    return lat_res, lon_res, on_land
-
 def _set_econ_indicators(exp, gdp, inc_grp):
     """Model land exposures from nightlight intensities and normalized
     to GDP * (income_group + 1)
@@ -502,18 +528,35 @@ def _set_econ_indicators(exp, gdp, inc_grp):
     exp.value = np.power(exp.value, 3)
     exp.value = exp.value/exp.value.sum()* gdp * (inc_grp+1)
 
-def _add_surroundings(exp, lat_mgrid, lon_mgrid, on_land):
-    """ Add surroundings of country in a resolution of 50 km.
+def add_sea(exp, sea_res):
+    """ Add sea to geometry's surroundings with given resolution.
 
     Parameters:
         exp(BlackMarble): BlackMarble instance
-        lat_mgrid (np.array) meshgrid with latitudes in in_lat range,
-        lat_mgrid (np.array) meshgrid with longitudes in in_lat range,
-        on_land (np.array) matrix with onland flags in in_lat, in_lon range
+        sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
+            is distance from coast to fill with water and second parameter
+            is resolution between sea points
     """
-    LOGGER.info("Adding country's surroundings.")
-    surr_lat = lat_mgrid[np.logical_not(on_land)].ravel()[::50]
-    surr_lon = lon_mgrid[np.logical_not(on_land)][::50]
-    exp.value = np.append(exp.value, surr_lat*0)
-    exp.coord = np.array([np.append(exp.coord.lat, surr_lat), \
-        np.append(exp.coord.lon, surr_lon)]).transpose()
+    if sea_res[0] == 0:
+        return
+
+    LOGGER.info("Adding sea at %s km resolution and %s km distance from " + \
+        "coast.", sea_res[1], sea_res[0])
+
+    sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
+
+    min_lat = max(-90, float(np.min(exp.coord.lat)) - sea_res[0])
+    max_lat = min(90, float(np.max(exp.coord.lat)) + sea_res[0])
+    min_lon = max(-180, float(np.min(exp.coord.lon)) - sea_res[0])
+    max_lon = min(180, float(np.max(exp.coord.lon)) + sea_res[0])
+
+    lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
+    lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
+
+    lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
+    lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
+    on_land = np.logical_not(coord_on_land(lat_mgrid, lon_mgrid))
+
+    exp.coord = np.array([np.append(exp.coord.lat, lat_mgrid[on_land]), \
+        np.append(exp.coord.lon, lon_mgrid[on_land])]).transpose()
+    exp.value = np.append(exp.value, lat_mgrid[on_land]*0)

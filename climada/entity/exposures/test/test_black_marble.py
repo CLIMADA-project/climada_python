@@ -6,12 +6,15 @@ import numpy as np
 import scipy.sparse as sparse
 import shapely
 from cartopy.io import shapereader
+from sklearn.neighbors import DistanceMetric
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_land, _add_surroundings, _get_gdp, _get_income_group, fill_econ_indicators, \
+_process_land, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
 _set_econ_indicators
 from climada.entity.exposures.black_marble import MIN_LAT, MAX_LAT, MIN_LON, \
 MAX_LON, NOAA_RESOLUTION_DEG
+from climada.util.constants import ONE_LAT_KM
+from climada.util.coordinates import coord_on_land
 
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
@@ -84,34 +87,28 @@ class TestNightLight(unittest.TestCase):
         lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 500)
         lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
 
-        lat_mgrid, lon_mgrid, on_land = _process_land(exp, \
-            geom, nightlight, lat_nl, lon_nl, 1.0, 1.0)
+        res_fact = 1.0
+        res_km = 1.0
+        _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km)
 
+        lat_mgrid = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
+                              [13.28022712, 13.28022712, 13.28022712],
+                              [13.56077154, 13.56077154, 13.56077154]])
+
+        lon_mgrid = np.array([[-59.99444444, -59.63409243, -59.27374041],
+                              [-59.99444444, -59.63409243, -59.27374041],
+                              [-59.99444444, -59.63409243, -59.27374041]])
+    
+        on_land = np.array([[False, False, False],
+                            [False,  True, False],
+                            [False, False, False]])
+    
         in_lat = (278, 280)
         in_lon = (333, 335)
-
-        self.assertEqual(lat_mgrid.shape, (in_lat[1] - in_lat[0] + 1,
-                         in_lon[1] - in_lon[0] + 1))
-        self.assertEqual(lon_mgrid.shape, (in_lat[1] - in_lat[0] + 1,
-                         in_lon[1] - in_lon[0] + 1))
-        self.assertEqual(lat_mgrid[0][0], lat_nl[in_lat[0]])
-        self.assertEqual(lat_mgrid[-1][0], lat_nl[in_lat[-1]])
-        self.assertEqual(lon_mgrid[0][0], lon_nl[in_lon[0]])
-        self.assertEqual(lon_mgrid[0][-1], lon_nl[in_lon[-1]])
-
-        self.assertFalse(np.all(on_land[0][:]))
-        self.assertFalse(np.all(on_land[2][:]))
-        self.assertFalse(np.all(on_land[:][0]))
-        self.assertFalse(np.all(on_land[:][2]))
-        self.assertFalse(on_land[1][2])
-        self.assertFalse(on_land[1][0])
-        self.assertTrue(on_land[1][1])
-
         self.assertAlmostEqual(exp.value[0], nightlight[in_lat[0]+1, in_lon[0]+1])
-
-        self.assertEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
-        self.assertEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
-
+        self.assertAlmostEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
+        self.assertAlmostEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
+        
     def test_process_land_brb_2km_pass(self):
         """ Test _process_land function with fake Barbados."""
         country_iso = 'BRB'
@@ -127,73 +124,76 @@ class TestNightLight(unittest.TestCase):
         lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
 
         res_fact = 2.0
-        lat_mgrid, lon_mgrid, on_land = _process_land(exp, \
-            geom, nightlight, lat_nl, lon_nl,res_fact, 0.5)
+        res_km = 0.5
+        _process_land(exp, geom, nightlight, lat_nl, lon_nl,res_fact, res_km)
 
-        in_lat = (278, 280)
-        in_lon = (333, 335)
+        lat_mgrid = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
+                              [13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047],
+                              [13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824],
+                              [13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601],
+                              [13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377],
+                              [13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154]])
 
-        self.assertEqual(lat_mgrid.shape, (res_fact*(in_lat[1] - in_lat[0] + 1),
-                         res_fact*(in_lon[1] - in_lon[0] + 1)))
-        self.assertEqual(lon_mgrid.shape, (res_fact*(in_lat[1] - in_lat[0] + 1),
-                         res_fact*(in_lon[1] - in_lon[0] + 1)))
-        self.assertEqual(lat_mgrid[0][0], lat_nl[in_lat[0]])
-        self.assertEqual(lat_mgrid[-1][0], lat_nl[in_lat[-1]])
-        self.assertEqual(lon_mgrid[0][0], lon_nl[in_lon[0]])
-        self.assertEqual(lon_mgrid[0][-1], lon_nl[in_lon[-1]])
+        lon_mgrid = np.array([[-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041]])
+    
+        on_land = np.array([[False, False, False, False, False, False],
+                            [False, False, False,  True, False, False],
+                            [False, False, False,  True, False, False],
+                            [False, False, False, False, False, False],
+                            [False, False, False, False, False, False],
+                            [False, False, False, False, False, False]])
 
-        self.assertFalse(np.all(on_land[0][:]))
-        self.assertFalse(np.all(on_land[3][:]))
-        self.assertFalse(np.all(on_land[4][:]))
-        self.assertFalse(np.all(on_land[5][:]))
-        
-        self.assertFalse(np.all(on_land[:][0]))
-        self.assertFalse(np.all(on_land[:][1]))
-        self.assertFalse(np.all(on_land[:][2]))
-        self.assertFalse(np.all(on_land[:][4]))
-        self.assertFalse(np.all(on_land[:][5]))
-        self.assertTrue(on_land[1][3])
-        self.assertTrue(on_land[2][3])
-        
         self.assertAlmostEqual(exp.value[0], 0.5096)
         self.assertAlmostEqual(exp.value[1], 0.5096)
 
-        self.assertEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
-        self.assertEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
+        self.assertAlmostEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
+        self.assertAlmostEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
 
-        self.assertEqual(exp.coord[1, 0], lat_mgrid[on_land][1])
-        self.assertEqual(exp.coord[1, 1], lon_mgrid[on_land][1])
-        
-    def test_add_surroundings(self):
-        """ Test _add_surroundings function with fake Barbados."""
-        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 16801)
-        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 43201)
-        in_lat = (9365, 9401)
-        in_lon = (14440, 14469)
-        on_land = np.zeros((in_lat[1]-in_lat[0]+1, in_lon[1]-in_lon[0]+1)).astype(bool)
-        on_land[10:15, 20:25] = True
-        lat_mgrid, lon_mgrid = np.mgrid[
-                lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, in_lat[1]-in_lat[0]+1),
-                lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, in_lon[1]-in_lon[0]+1)]
+        self.assertAlmostEqual(exp.coord[1, 0], lat_mgrid[on_land][1])
+        self.assertAlmostEqual(exp.coord[1, 1], lon_mgrid[on_land][1])
 
+    def test_add_sea(self):
+        """Test add_sea function with fake data."""
         exp = BlackMarble()
-        exp.value = np.arange(on_land.sum())
-        exp.coord = np.empty((on_land.sum(), 2))
-        exp.coord[:, 0] = lat_mgrid[on_land].ravel()
-        exp.coord[:, 1] = lon_mgrid[on_land].ravel()
-        ori_value = exp.value.copy()
-        _add_surroundings(exp, lat_mgrid, lon_mgrid, on_land)
         
-        # every 50km
-        surr_lat = lat_mgrid[np.logical_not(on_land)].ravel()[::50]
-        surr_lon = lon_mgrid[np.logical_not(on_land)].ravel()[::50]
+        exp.value = np.arange(0, 1.0e6, 1.0e5)
         
-        self.assertEqual(exp.value.size, ori_value.size + surr_lat.size)
-        self.assertTrue(np.array_equal(exp.value[-surr_lat.size:], np.zeros(surr_lat.size,)))
-
-        self.assertEqual(exp.coord.shape[0], ori_value.size + surr_lat.size)
-        self.assertTrue(np.array_equal(exp.coord.lat[-surr_lat.size:], surr_lat))
-        self.assertTrue(np.array_equal(exp.coord.lon[-surr_lat.size:], surr_lon))
+        min_lat, max_lat = 27.5, 30
+        min_lon, max_lon = -18, -12
+        exp.coord = np.zeros((10, 2))
+        exp.coord[:, 0] = np.linspace(min_lat, max_lat, 10)
+        exp.coord[:, 1] = np.linspace(min_lon, max_lon, 10)
+        
+        sea_coast = 100
+        sea_res_km = 50
+        sea_res = (sea_coast, sea_res_km)
+        add_sea(exp, sea_res)
+       
+        sea_coast /= ONE_LAT_KM
+        sea_res_km /= ONE_LAT_KM
+        
+        min_lat = min_lat - sea_coast
+        max_lat = max_lat + sea_coast
+        min_lon = min_lon - sea_coast
+        max_lon = max_lon + sea_coast
+        self.assertEqual(np.min(exp.coord.lat), min_lat)
+        self.assertEqual(np.min(exp.coord.lon), min_lon)
+        self.assertTrue(np.array_equal(exp.value[:10], np.arange(0, 1.0e6, 1.0e5)))
+        
+        on_sea_lat = exp.coord[11:, 0]
+        on_sea_lon = exp.coord[11:, 1]
+        res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
+        res_on_sea = np.logical_not(res_on_sea)
+        self.assertTrue(np.all(res_on_sea))
+        
+        dist = DistanceMetric.get_metric('haversine')
+        self.assertAlmostEqual(dist.pairwise([[exp.coord[-1][1], exp.coord[-1][0]],
+            [exp.coord[-2][1], exp.coord[-2][0]]])[0][1], sea_res_km)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""
