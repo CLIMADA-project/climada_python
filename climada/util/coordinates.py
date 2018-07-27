@@ -246,14 +246,13 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
         geom = shapely.ops.cascaded_union(geom)
-
     else:
-        reader = shapereader.Reader(file_globe)
-        geom = list(reader.geometries())[0]
+        geom = list(reader.geometries())
+        geom = shapely.ops.cascaded_union(geom)
 
     return geom
 
-def coord_on_land(lat, lon):
+def coord_on_land(lat, lon, land_geom=None):
     """Check if point is on land (True) or water (False) of provided countries.
     All globe considered if no input countries.
 
@@ -271,10 +270,11 @@ def coord_on_land(lat, lon):
                      lon.size)
         raise ValueError
     delta_deg = 1
-    land_geometry = get_land_geometry(border=(np.min(lon)-delta_deg, \
-        np.max(lon)+delta_deg, np.min(lat)-delta_deg, np.max(lat)+delta_deg), \
-        resolution=10)
-    return shapely.vectorized.contains(land_geometry, lon, lat)
+    if land_geom is None:
+        land_geom = get_land_geometry(border=(np.min(lon)-delta_deg, \
+            np.max(lon)+delta_deg, np.min(lat)-delta_deg, \
+            np.max(lat)+delta_deg), resolution=10)
+    return shapely.vectorized.contains(land_geom, lon, lat)
 
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.

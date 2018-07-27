@@ -138,6 +138,12 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(res.bounds[2], np.max(lon))
         self.assertAlmostEqual(res.bounds[3], np.max(lat))
 
+    def test_get_land_geometry_all_pass(self):
+        """get_land_geometry with all earth."""
+        res = get_land_geometry(resolution=110)
+        self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
+        self.assertEqual(res.area, 21496.99098799273)
+
     def test_on_land_pass(self):
         """check point on land with 1:50.000.000 resolution."""
         lat = np.array([28.203216, 28.555994, 28.860875])
