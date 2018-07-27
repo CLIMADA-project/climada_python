@@ -133,8 +133,8 @@ class Exposures(object):
         """Plot exposures values sum binned over Earth's map.
 
         Parameters:
-            ignore_null (bool, optional): flag to indicate if zero and
-                negative values are ignored in plot. Default is False
+            ignore_null (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
             buffer_deg (float, optional): border to add to coordinates.
                 Default: BUFFER_DEG=1 in plot module.
@@ -333,7 +333,7 @@ class Exposures(object):
         self.deductible = check.array_default(num_exp, self.deductible, \
                                  'Exposures.deductible', np.zeros(num_exp))
         self.cover = check.array_default(num_exp, self.cover, \
-                                 'Exposures.cover', self.value)
+                                 'Exposures.cover', self.value.copy())
 
     def _check_optionals(self, num_exp):
         """Check coherence optional variables. Warn if empty."""

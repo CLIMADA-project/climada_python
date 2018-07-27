@@ -39,8 +39,8 @@ class TestAppend(unittest.TestCase):
         tag1 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         tag2 = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
         tag1.append(tag2)        
-        self.assertEqual('file_name1.mat', tag1.file_name)
-        self.assertEqual('dummy file 1', tag1.description)
+        self.assertEqual(['file_name1.mat', 'file_name1.mat'], tag1.file_name)
+        self.assertEqual(['dummy file 1', 'dummy file 1'], tag1.description)
         self.assertEqual('TC', tag1.haz_type)
         
     def test_append_empty(self):

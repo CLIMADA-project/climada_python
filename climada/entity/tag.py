@@ -30,14 +30,22 @@ class Tag(object):
         if self.file_name == '':
             self.file_name = tag.file_name
             self.description = tag.description
+        elif tag.file_name == '':
+            return
         else:
             if not isinstance(self.file_name, list):
                 self.file_name = [self.file_name]
-            self.file_name.append(tag.file_name)
+            if not isinstance(tag.file_name, list):
+                to_add = [tag.file_name]
+            else:
+                to_add = tag.file_name
+            self.file_name.extend(to_add)
 
             if not isinstance(self.description, list):
                 self.description = [self.description]
-            self.description.append(tag.description)
+            if not isinstance(tag.description, list):
+                tag.description = [tag.description]
+            self.description.extend(tag.description)
 
     def join_file_names(self):
         """ Get a string with the joined file names. """

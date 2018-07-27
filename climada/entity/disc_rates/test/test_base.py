@@ -82,8 +82,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(disc_rate.rates, disc_rate_add.rates))
         self.assertTrue(np.array_equal(disc_rate.tag.file_name, \
                [disc_rate_add.tag.file_name, disc_rate_add.tag.file_name]))
-        self.assertTrue(np.array_equal(disc_rate.tag.description, \
-               [disc_rate_add.tag.description, disc_rate_add.tag.description]))
+        self.assertEqual(disc_rate.tag.description, ['descr1', 'descr1'])
 
     def test_append_different_append(self):
         """Append DiscRates with same and new values. The rates with repeated

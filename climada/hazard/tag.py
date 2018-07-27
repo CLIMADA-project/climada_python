@@ -44,14 +44,24 @@ class Tag(object):
         if self.file_name == '':
             self.file_name = tag.file_name
             self.description = tag.description
-        elif tag.file_name not in self.file_name:
+        elif tag.file_name == '':
+            return
+        else:
             if not isinstance(self.file_name, list):
                 self.file_name = [self.file_name]
-            self.file_name.append(tag.file_name)
+            if not isinstance(tag.file_name, list):
+                to_add = [tag.file_name]
+            else:
+                to_add = tag.file_name
+            self.file_name.extend(to_add)
 
             if not isinstance(self.description, list):
                 self.description = [self.description]
-            self.description.append(tag.description)
+            if not isinstance(tag.description, list):
+                to_add = [tag.description]
+            else:
+                to_add = tag.description
+            self.description.extend(to_add)
 
     def join_file_names(self):
         """ Get a string with the joined file names. """
@@ -65,10 +75,9 @@ class Tag(object):
     def join_descriptions(self):
         """ Get a string with the joined descriptions. """
         if not isinstance(self.file_name, list):
-            join_desc = os.path.splitext(os.path.basename(self.description))[0]
+            join_desc = self.description
         else:
-            join_desc = ' + '.join([os.path.splitext(
-                os.path.basename(file))[0] for file in self.description])
+            join_desc = ' + '.join([file for file in self.description])
         return join_desc
 
     def __str__(self):
