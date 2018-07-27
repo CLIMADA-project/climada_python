@@ -10,7 +10,7 @@ Date: 2018-05-20
 
 Version: 0.1.0
 
-See [Technical documentation](http://climada-python.readthedocs.io/en/latest/).
+See [technical documentation](http://climada-python.readthedocs.io/en/latest/) and `tutorial <https://github.com/davidnbresch/climada_python/tree/master/script/tutorial>`_.
 
 Introduction
 ------------
