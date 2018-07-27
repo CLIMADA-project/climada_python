@@ -43,6 +43,14 @@ climada\.hazard\.trop\_cyclone module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.tc\_tracks module
+-------------------------------------
+
+.. automodule:: climada.hazard.tc_tracks
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Module contents
 ---------------
 

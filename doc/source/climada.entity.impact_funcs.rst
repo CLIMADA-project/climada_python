@@ -13,7 +13,7 @@ climada\.entity\.impact\_funcs\.base module
     :show-inheritance:
 
 climada\.entity\.impact\_funcs\.impact\_func\_set module
----------------------------------------------------
+--------------------------------------------------------
 
 .. automodule:: climada.entity.impact_funcs.impact_func_set
     :members:
@@ -29,7 +29,7 @@ climada\.entity\.impact\_funcs\.source module
     :show-inheritance:
 
 climada\.entity\.impact\_funcs\.tc\_emanuel module
----------------------------------------------
+--------------------------------------------------
 
 .. automodule:: climada.entity.impact_funcs.tc_emanuel
     :members:

@@ -21,7 +21,7 @@ climada\.entity\.exposures\.source module
     :show-inheritance:
 
 climada\.entity\.exposures\.black_marble module
------------------------------------------
+-----------------------------------------------
 
 .. automodule:: climada.entity.exposures.black_marble
     :members:
