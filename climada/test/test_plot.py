@@ -80,7 +80,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = Exposures(ENT_TEST_XLS)
+        myexp = Exposures(ENT_TEST_XLS, description='demo_today')
         _, myax= myexp.plot()
         self.assertIn('demo_today', myax[0][0].get_title())
 
