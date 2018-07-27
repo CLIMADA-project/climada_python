@@ -17,6 +17,7 @@ class IFEmanuele(ImpactFunc):
     def __init__(self, if_id=1, intensity=np.arange(0, 121, 5), v_thresh=25.7,
                  v_half=74.7, scale=1.0):
         """ Empty initialization.
+
         Parameters:
             if_id (int, optional): impact function id. Default: 1
             intensity (np.array, optional): intensity array in m/s. Default:
