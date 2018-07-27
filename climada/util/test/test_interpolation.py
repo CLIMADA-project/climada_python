@@ -5,6 +5,7 @@ import unittest
 import numpy as np
 
 import climada.util.interpolation as interp
+from climada.util.constants import ONE_LAT_KM
 
 def def_input_values():
     '''Default input coordinates and centroids values'''
@@ -93,11 +94,11 @@ class TestDistance(unittest.TestCase):
         """ Test against matlab reference. """
         lats1 = 45.5
         lons1 = -32.2
-        cos_lats1 = np.cos(lats1)
+        cos_lats1 = np.cos(lats1/180*np.pi)
         lats2 = 14
         lons2 = 56
-        self.assertAlmostEqual(1.014158436624449e+03,
-            interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2))
+        self.assertAlmostEqual(7709.827814738594,
+            np.sqrt(interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2))*ONE_LAT_KM)
 
 class TestInterpIndex(unittest.TestCase):
     ''' Test interpol_index function's interface'''
