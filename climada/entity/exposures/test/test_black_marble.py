@@ -31,10 +31,10 @@ class TestCountryIso(unittest.TestCase):
         self.assertEqual(len(iso_name), len(country_name))
         self.assertTrue('CHE'in iso_name)
         self.assertTrue('KOS'in iso_name)
-        self.assertEqual(iso_name['CHE'][0], 1)
+        self.assertEqual(iso_name['CHE'][0], 93)
         self.assertEqual(iso_name['CHE'][1], 'Switzerland')
         self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(iso_name['KOS'][0], 2)
+        self.assertEqual(iso_name['KOS'][0], 66)
         self.assertEqual(iso_name['KOS'][1], 'Kosovo')
         self.assertIsInstance(iso_name['KOS'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -44,7 +44,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['HTI'][0], 1)
+        self.assertEqual(iso_name['HTI'][0], 113)
         self.assertEqual(iso_name['HTI'][1], 'Haiti')
         self.assertIsInstance(iso_name['HTI'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -60,7 +60,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['BOL'][0], 1)
+        self.assertEqual(iso_name['BOL'][0], 4)
         self.assertEqual(iso_name['BOL'][1], 'Bolivia')
         self.assertIsInstance(iso_name['BOL'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -157,7 +157,7 @@ class TestNightLight(unittest.TestCase):
         self.assertAlmostEqual(exp.coord[1, 0], lat_mgrid[on_land][1])
         self.assertAlmostEqual(exp.coord[1, 1], lon_mgrid[on_land][1])
 
-    def test_add_sea(self):
+    def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = BlackMarble()
         
@@ -168,11 +168,13 @@ class TestNightLight(unittest.TestCase):
         exp.coord = np.zeros((10, 2))
         exp.coord[:, 0] = np.linspace(min_lat, max_lat, 10)
         exp.coord[:, 1] = np.linspace(min_lon, max_lon, 10)
+        exp.region_id = np.ones(10)
         
         sea_coast = 100
         sea_res_km = 50
         sea_res = (sea_coast, sea_res_km)
         add_sea(exp, sea_res)
+        exp.check()
        
         sea_coast /= ONE_LAT_KM
         sea_res_km /= ONE_LAT_KM
