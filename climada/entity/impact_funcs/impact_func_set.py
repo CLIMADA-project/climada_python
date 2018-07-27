@@ -171,9 +171,8 @@ class ImpactFuncSet(object):
             fun_id (int, optional): ImpactFunc id
 
         Returns:
-            list(ImpactFunc) (if haz_type and/or fun_id)
-            {ImpactFunc.haz_type : {ImpactFunc.id : ImpactFunc}}
-                (if None)
+            list(ImpactFunc) (if haz_type and/or fun_id), {ImpactFunc.haz_type:
+            {ImpactFunc.id : ImpactFunc}} (if None)
         """
         if (haz_type is not None) and (fun_id is not None):
             try:
