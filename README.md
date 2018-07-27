@@ -58,7 +58,8 @@ A minimal configuration file looks something like this:
 
     "trop_cyclone":
     {
-        "time_step_h": 1
+        "time_step_h": 1,
+        "random_seed": 54
     }
 }
 ```
