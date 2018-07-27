@@ -14,14 +14,13 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 import pandas as pd
 import xarray as xr
+from sklearn.neighbors import DistanceMetric
 from pint import UnitRegistry
 
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
 from climada.util.files_handler import get_file_names
 import climada.util.plot as plot
-from climada.util.constants import ONE_LAT_KM
-from climada.util.interpolation import dist_sqr_approx
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +57,9 @@ class TCTracks(object):
                 - basin (attrs)
                 - id_no (attrs)
                 - category (attrs)
+            computed during processing:
+                - on_land
+                - dist_since_lf
     """
     def __init__(self):
         """Empty constructor. Read csv IBTrACS files if provided. """
@@ -73,20 +75,22 @@ class TCTracks(object):
             tracks = [tracks]
         self.data.extend(tracks)
 
-    def get_track(self, name_ev=None, date_ev=None):
-        """Get all tracks with provided name that happened at provided date.
+    def get_track(self, track_name=None):
+        """Get track with provided name. Return all tracks if no name provided.
 
         Parameters:
-            name_ev (str, optional): name of event
-            date_ev (str, optional): date of the event in format
+            track_name (str, optional): name of track (ibtracsID for IBTrACS)
 
         Returns:
-            xarray.Dataset
+            xarray.Dataset or [xarray.Dataset]
         """
-        if not name_ev and not date_ev:
-            return self.data[0]
-        else:
-            raise NotImplementedError
+        if track_name is None:
+            if len(self.data) == 1:
+                return self.data[0]
+            return self.data
+        for track in self.data:
+            if track.name == track_name:
+                return track
 
     def read_ibtracs_csv(self, file_names):
         """Clear and model tropical cyclone from input csv IBTrACS file.
@@ -129,11 +133,6 @@ class TCTracks(object):
                 track_int.coords['lon'] = track.lon.resample(time=time_step).\
                                           interpolate('cubic')
                 track_int.attrs = track.attrs
-                if 'on_land' in track:
-                    track['on_land'] = ('time', coord_util.coord_on_land( \
-                        track.lat.values, track.lon.values))
-                if 'dist_since_lf' in track:
-                    track['dist_since_lf'] = ('time', _dist_since_lf(track))
                 track.attrs['category'] = set_category( \
                     track.max_sustained_wind.values, \
                     track.max_sustained_wind_unit)
@@ -145,9 +144,10 @@ class TCTracks(object):
             new_list.append(track_int)
 
         self.data = new_list
+        self._calc_space_params()
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
-        ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed']):
+        ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
         """ Generate random tracks for every track contained.
 
         Parameters:
@@ -161,6 +161,8 @@ class TCTracks(object):
                 degree longitude for 'directed'. Default: 0.1
             seed (int, optional): random number generator seed. Put negative
                 value if you don't want to use it. Default: configuration file
+            decay (bool, optional): compute land decay in probabilistic tracks.
+                Default: True
         """
         ens_track = list()
         if seed >= 0:
@@ -195,6 +197,10 @@ class TCTracks(object):
                 ens_track.append(i_track)
 
         self.data = ens_track
+        self._calc_space_params()
+        if decay:
+            v_rel, p_rel = self._calc_land_decay()
+            self._apply_land_decay(v_rel, p_rel)
 
     def plot(self, title=None):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -243,7 +249,7 @@ class TCTracks(object):
         axis.legend(leg_lines, leg_names)
         return fig, axis
 
-    def calc_land_decay(self, s_rel=True, check_plot=True):
+    def _calc_land_decay(self, s_rel=True, check_plot=False):
         """Compute wind and pressure decay coefficients for every TC category
         from the historical events according to the formulas:
             - wind decay = exp(-x*A)
@@ -252,7 +258,8 @@ class TCTracks(object):
         Parameters:
             s_rel (bool, optional): use environmental presure to calc S value
                 (true) or central presure (false)
-            check_plot (bool, optional): visualize computed coefficients
+            check_plot (bool, optional): visualize computed coefficients.
+                Default: False
 
         Returns:
             v_rel (dict(category: A)), p_rel (dict(category: (S, B)))
@@ -260,7 +267,7 @@ class TCTracks(object):
         hist_tracks = [track for track in self.data if track.orig_event_flag]
         if not hist_tracks:
             LOGGER.error('No historical tracks contained. Historical tracks' +
-                         'of different TC categories are needed.')
+                         ' are needed.')
             raise ValueError
 
         # Key is Saffir-Simpson scale
@@ -271,11 +278,12 @@ class TCTracks(object):
         p_lf = dict()
         # x-scale values to compute landfall decay
         x_val = dict()
-        for track in hist_tracks:
-            track['on_land'] = ('time', coord_util.coord_on_land(
-                track.lat.values, track.lon.values))
-            track['dist_since_lf'] = ('time', _dist_since_lf(track))
-            _decay_values(s_rel, track, v_lf, p_lf, x_val)
+        try:
+            for track in hist_tracks:
+                _decay_values(s_rel, track, v_lf, p_lf, x_val)
+        except AttributeError:
+            LOGGER.error('Execute _calc_space_params() first.')
+            raise ValueError
 
         v_rel, p_rel = _decay_calc_coeff(x_val, v_lf, p_lf)
         if check_plot:
@@ -283,13 +291,13 @@ class TCTracks(object):
 
         return v_rel, p_rel
 
-    def apply_land_decay(self, v_rel, p_rel, s_rel=True, check_plot=True):
+    def _apply_land_decay(self, v_rel, p_rel, s_rel=True, check_plot=False):
         """Compute wind and pressure decay due to landfall in synthetic tracks.
 
         Parameters:
             v_rel (dict): {category: A}, where wind decay = exp(-x*A)
-            p_rel (dict): (category: (S, B)},
-                where pressure decay = S-(S-1)*exp(-x*B)
+            p_rel (dict): (category: (S, B)}, where pressure decay
+                = S-(S-1)*exp(-x*B)
             s_rel (bool, optional): use environmental presure to calc S value
                 (true) or central presure (false)
             check_plot (bool, optional): visualize computed changes
@@ -297,20 +305,21 @@ class TCTracks(object):
         sy_tracks = [track for track in self.data if not track.orig_event_flag]
         if not sy_tracks:
             LOGGER.error('No synthetic tracks contained. Synthetic tracks' +
-                         'of different TC categories are needed.')
+                         ' are needed.')
             raise ValueError
+        if not v_rel or not p_rel:
+            return
 
         orig_wind, orig_pres = [], []
-        for track in sy_tracks:
-            if check_plot:
-                orig_wind.append(np.copy(track.max_sustained_wind.values))
-                orig_pres.append(np.copy(track.central_pressure.values))
-            if 'on_land' not in track.keys():
-                track['on_land'] = ('time', coord_util.coord_on_land(
-                    track.lat.values, track.lon.values))
-            if 'dist_since_lf' not in track.keys():
-                track['dist_since_lf'] = ('time', _dist_since_lf(track))
-            _apply_decay_coeffs(track, v_rel, p_rel, s_rel)
+        try:
+            for track in sy_tracks:
+                if check_plot:
+                    orig_wind.append(np.copy(track.max_sustained_wind.values))
+                    orig_pres.append(np.copy(track.central_pressure.values))
+                _apply_decay_coeffs(track, v_rel, p_rel, s_rel)
+        except AttributeError:
+            LOGGER.error('Execute _calc_space_params() first.')
+            raise ValueError
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)
@@ -319,6 +328,34 @@ class TCTracks(object):
     def size(self):
         """ Get longitude from coord array """
         return len(self.data)
+
+    def _calc_space_params(self):
+        """Compute tracks attributes dependent on their coordinates:
+        on_land and dist_since_lf.
+
+            Parameters:
+                only_syn (bool, optional): consider only synthetic tracks.
+                    Default: False.
+        """
+        deg_buffer = 0.1
+        min_lat = np.min([np.min(track.lat.values) for track in self.data])
+        min_lat = max(min_lat-deg_buffer, -90)
+
+        max_lat = np.max([np.max(track.lat.values) for track in self.data])
+        max_lat = min(max_lat+deg_buffer, 90)
+
+        min_lon = np.min([np.min(track.lon.values) for track in self.data])
+        min_lon = max(min_lon-deg_buffer, -180)
+
+        max_lon = np.max([np.max(track.lon.values) for track in self.data])
+        max_lon = min(max_lon+deg_buffer, 180)
+
+        land_geom = coord_util.get_land_geometry(border=(min_lon, max_lon, \
+            min_lat, max_lat), resolution=10)
+        for track in self.data:
+            track['on_land'] = ('time', coord_util.coord_on_land( \
+                track.lat.values, track.lon.values, land_geom))
+            track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
     def _read_one_csv(self, file_name):
         """Read IBTrACS track file.
@@ -378,29 +415,35 @@ def _dist_since_lf(track):
     Returns:
         np.arrray
     """
+    dist_since_lf = np.zeros(track.time.values.shape)
+
     # Index in sea that follows a land index
     sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]
+    if not sea_land_idx.size:
+        return (dist_since_lf+1)*np.nan
+
+    # Index in sea that comes from previous land index
+    land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
+    if track.on_land[-1]:
+        land_sea_idx = np.append(land_sea_idx, track.time.size)
     orig_lf = _calc_orig_lf(track, sea_land_idx)
 
-    dist_since_lf = np.empty(track.time.values.shape)
-    for idx in np.argwhere(track.on_land.values)[:, 0]:
-        try:
-            orig_idx = np.argwhere(idx > sea_land_idx)[-1]
-        except IndexError:
-            track.on_land[idx] = False
-            continue
-        if idx == sea_land_idx[orig_idx] + 1:
-            orig_coord = orig_lf[orig_idx].squeeze()
-            dist_since_lf[idx] = np.sqrt(dist_sqr_approx(
-                track.lat[idx], track.lon[idx],
-                np.cos(track.lat[idx] / 180 * np.pi),
-                orig_coord[0], orig_coord[1]))*ONE_LAT_KM
-        elif idx > sea_land_idx[orig_idx]:
-            dist_since_lf[idx] = dist_since_lf[idx-1] + \
-                np.sqrt(dist_sqr_approx(track.lat[idx], track.lon[idx], \
-                np.cos(track.lat[idx] / 180 * np.pi), track.lat[idx-1], \
-                track.lon[idx-1]))*ONE_LAT_KM
+    dist = DistanceMetric.get_metric('haversine')
+    nodes1 = np.array([track.lat.values[1:],
+                       track.lon.values[1:]]).transpose()/180*np.pi
+    nodes0 = np.array([track.lat.values[:-1],
+                       track.lon.values[:-1]]).transpose()/180*np.pi
+    dist_since_lf[1:] = dist.pairwise(nodes1, nodes0).diagonal()
+    dist_since_lf[np.logical_not(track.on_land.values)] = 0.0
+    nodes1 = np.array([track.lat.values[sea_land_idx+1],
+                       track.lon.values[sea_land_idx+1]]).transpose()/180*np.pi
+    dist_since_lf[sea_land_idx+1] = \
+        dist.pairwise(nodes1, orig_lf/180*np.pi).diagonal()
+    for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
+        dist_since_lf[sea_land+1:land_sea] = \
+            np.cumsum(dist_since_lf[sea_land+1:land_sea])
 
+    dist_since_lf *= 6371
     dist_since_lf[np.logical_not(track.on_land)] = np.nan
 
     return dist_since_lf
@@ -540,10 +583,13 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
         v_rel[ss_scale] = np.mean(v_coef)
         p_rel[ss_scale] = (np.mean(ps_y_val), np.mean(p_coef))
 
-    scale_full = np.array(list(p_rel.keys()))
+    scale_fill = np.array(list(p_rel.keys()))
+    if not scale_fill.size:
+        LOGGER.info('No historical track with landfall.')
+        return v_rel, p_rel
     for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
         if ss_scale not in p_rel:
-            close_scale = scale_full[np.argmin(np.abs(scale_full-ss_scale))]
+            close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
             LOGGER.info('No historical track of category %s. Decay ' +
                         'parameters from category %s taken.',
                         CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
@@ -612,7 +658,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea between two landfalls
-        if land_sea < track.time.size:
+        if land_sea < track.time.size and idx+1 < sea_land_idx.size:
             rndn = 0.1 * float(np.abs(np.random.normal(size=1)*5)+6)
             r_diff = track.central_pressure[land_sea].values - \
                 track.central_pressure[land_sea-1].values + rndn
@@ -737,9 +783,6 @@ def _check_apply_decay_hist_plot(hist_tracks):
     graph_hped_a.add_subplot('Distance from landfall (km)',
                              'Environmental pressure - Central pressure (mb)')
     for track in hist_tracks:
-        if 'on_land' not in track.keys():
-            track['on_land'] = ('time', coord_util.coord_on_land(
-                track.lat.values, track.lon.values))
         # Index in land that comes from previous sea index
         sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]+1
         # Index in sea that comes from previous land index
@@ -781,13 +824,14 @@ def _missing_pressure(cen_pres, v_max, lat, lon):
 
 def set_category(max_sus_wind, max_sus_wind_unit):
     """Add storm category according to saffir-simpson hurricane scale
-   -1 tropical depression
-    0 tropical storm
-    1 Hurrican category 1
-    2 Hurrican category 2
-    3 Hurrican category 3
-    4 Hurrican category 4
-    5 Hurrican category 5
+
+      - -1 tropical depression
+      - 0 tropical storm
+      - 1 Hurrican category 1
+      - 2 Hurrican category 2
+      - 3 Hurrican category 3
+      - 4 Hurrican category 4
+      - 5 Hurrican category 5
 
     Parameters:
         max_sus_wind (np.array): max sustained wind

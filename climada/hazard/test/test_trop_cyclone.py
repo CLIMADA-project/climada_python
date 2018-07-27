@@ -102,7 +102,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.tag.file_name, 'IBTrACS: 1951239N12334')
+        self.assertEqual(tc_haz.tag.file_name, ['IBTrACS: 1951239N12334', 'IBTrACS: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.tag.file_name,
                          CENTR_TEST_BRB.tag.file_name)

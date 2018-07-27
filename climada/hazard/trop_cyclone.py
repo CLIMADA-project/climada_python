@@ -32,7 +32,7 @@ CENTR_NODE_MAX_DIST_KM = 300
 """ Maximum distance between centroid and TC track node in km """
 
 class TropCyclone(Hazard):
-    """Contains tropical cyclone events obtained from a csv IBTrACS file.
+    """Contains tropical cyclone events.
 
     Attributes:
         category (np.array(int)): for every event, the TC category using the
@@ -58,7 +58,7 @@ class TropCyclone(Hazard):
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08'):
-        """Clear and model tropical cyclone from input csv IBTrACS file.
+        """Clear and model tropical cyclone from input IBTrACS tracks.
         Parallel process.
 
         Parameters:

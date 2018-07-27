@@ -363,9 +363,9 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertTrue((haz1.intensity != haz2.intensity).nnz == 0)
         self.assertTrue((haz1.fraction != haz2.fraction).nnz == 0)
         self.assertEqual(haz1.units, haz2.units)
-        self.assertEqual(haz1.tag.file_name, haz2.tag.file_name)
+        self.assertEqual(haz1.tag.file_name, [haz2.tag.file_name, haz2.tag.file_name])
         self.assertEqual(haz1.tag.haz_type, haz2.tag.haz_type)
-        self.assertEqual(haz1.tag.description, haz2.tag.description)
+        self.assertEqual(haz1.tag.description, [haz2.tag.description, haz2.tag.description])
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
