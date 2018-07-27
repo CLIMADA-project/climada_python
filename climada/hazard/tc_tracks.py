@@ -88,9 +88,11 @@ class TCTracks(object):
             if len(self.data) == 1:
                 return self.data[0]
             return self.data
+
         for track in self.data:
             if track.name == track_name:
                 return track
+        return self.data
 
     def read_ibtracs_csv(self, file_names):
         """Clear and model tropical cyclone from input csv IBTrACS file.
