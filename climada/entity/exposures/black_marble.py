@@ -40,7 +40,7 @@ LOGGER = logging.getLogger(__name__)
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
-NOAA_SITE = CONFIG['entity']['black_marble']['nl_noaa_url']
+NOAA_SITE = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/"
 """ NOAA's URL used to retrieve nightlight satellite images. """
 
 WORLD_BANK_INC_GRP = \
@@ -86,7 +86,7 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
 """ Meaning of values of natural earth's income groups. """
 
 class BlackMarble(Exposures):
-    """Defines exposures from night light intensity and GDP.
+    """Defines exposures from night light intensity, GDP and income group.
     """
 
     def __init__(self):
@@ -96,7 +96,9 @@ class BlackMarble(Exposures):
     def set_countries(self, countries, \
         ref_year=CONFIG['entity']['present_ref_year'], res_km=1, \
         sea_res=(0, 1), **kwargs):
-        """ Model countries using values at reference year.
+        """ Model countries using values at reference year. If GDP or income
+        group not available for that year, consider the value of the closest
+        available year.
 
         Parameters:
             countries (list): list of country names (admin0)
@@ -121,7 +123,7 @@ class BlackMarble(Exposures):
 
         # TODO parallize per thread?
         for cntry in country_info.values():
-            LOGGER.info('Processing country %s', cntry[1])
+            LOGGER.info('Processing country %s.', cntry[1])
             self.append(self._set_one_country(cntry, nightlight, lat_nl,
                                               lon_nl, fn_nl, res_fact, res_km))
 
@@ -173,7 +175,8 @@ class BlackMarble(Exposures):
         return exp_bkmrb
 
 def country_iso_geom(country_list, shp_file):
-    """ Compute country ISO alpha_3 name from country name.
+    """ Get country ISO alpha_3, country id (defined as country appearance
+    order in natural earth shape file) and country's geometry.
 
     Parameters:
         country_list (list(str)): list with country names
@@ -190,7 +193,7 @@ def country_iso_geom(country_list, shp_file):
         countries_shp[std_name] = info_idx
 
     country_info = dict()
-    for country_id, country_name in enumerate(country_list):
+    for country_name in country_list:
         country_tit = country_name.title()
         country_idx = countries_shp.get(country_tit)
         if country_idx is None:
@@ -202,7 +205,7 @@ def country_iso_geom(country_list, shp_file):
                          country_name, options)
             raise ValueError
         country_info[list_records[country_idx].attributes['ADM0_A3']] = \
-            [country_id+1, country_tit, list_records[country_idx].geometry]
+            [country_idx+1, country_tit, list_records[country_idx].geometry]
     return country_info
 
 def get_nightlight(ref_year, res_km):
@@ -440,7 +443,7 @@ def _get_gdp(country_info, ref_year, shp_file):
             for info in list_records:
                 if info.attributes['ADM0_A3'] == cntry_iso:
                     close_gdp_val = info.attributes['GDP_MD_EST']
-                    close_gdp_year = info.attributes['GDP_YEAR']
+                    close_gdp_year = int(info.attributes['GDP_YEAR'])
             if close_gdp_val == -99.0:
                 LOGGER.error("No GDP for country %s found.", cntry_iso)
                 raise ValueError
@@ -502,7 +505,7 @@ def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
     in_lon = (max(0, in_lon[0][0] - 1),
               min(in_lon[-1][0] + 1, lon_nl.size - 1))
 
-    LOGGER.info('Generating resolution of approx %s km', res_km)
+    LOGGER.info('Generating resolution of approx %s km.', res_km)
     nightlight_res = ndimage.zoom(nightlight[in_lat[0]:in_lat[-1]+1, :] \
         [:, in_lon[0]:in_lon[-1]+1].todense(), res_fact)
     lat_res, lon_res = np.mgrid[
@@ -560,3 +563,8 @@ def add_sea(exp, sea_res):
     exp.coord = np.array([np.append(exp.coord.lat, lat_mgrid[on_land]), \
         np.append(exp.coord.lon, lon_mgrid[on_land])]).transpose()
     exp.value = np.append(exp.value, lat_mgrid[on_land]*0)
+    exp.id = np.arange(1, exp.value.size+1)
+    exp.region_id = np.append(exp.region_id, lat_mgrid[on_land]*0-1)
+    exp.impact_id = np.ones(exp.value.size, int)
+    exp.deductible = np.zeros(exp.value.size)
+    exp.cover = exp.value.copy()
