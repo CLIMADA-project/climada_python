@@ -364,9 +364,10 @@ def _bs_value(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
     Returns:
         float
     """
-    return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv-pcen) + \
-        0.03 * (pcen - prepcen) / tint - \
-        0.014 * abs(lat) + 0.15 * v_trans**hol_xx + 1.0
+    with np.errstate(all='ignore'):
+        return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv-pcen) + \
+            0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
+            0.15 * v_trans**hol_xx + 1.0
 
 def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
     """ Holland symmetric and static wind field (in m/s) according to
