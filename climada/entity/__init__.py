@@ -6,4 +6,4 @@ from .exposures import *
 from .impact_funcs import *
 from .measures import *
 from .tag import *
-from .entity import *
+from .entity_def import *
