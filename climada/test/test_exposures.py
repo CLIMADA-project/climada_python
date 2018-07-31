@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 from cartopy.io import shapereader
 
-from climada.entity.exposures.black_marble import BlackMarble, \
-load_nightlight_nasa, load_nightlight_noaa, NOAA_BORDER
+from climada.entity.exposures.black_marble import BlackMarble
+from climada.entity.exposures.nightlight import load_nightlight_nasa, load_nightlight_noaa, NOAA_BORDER
 from climada.entity.exposures import nightlight as nl_utils
 
 class Test2013(unittest.TestCase):
@@ -96,9 +96,9 @@ class BMFuncs(unittest.TestCase):
             if info.attributes['ADM0_A3'] == 'ESP':
                 bounds = info.bounds
         
-        req_files = nl_utils.check_required_nightlight_files(bounds)
-        files_exist, _ = nl_utils.check_nightlight_local_file_exists(req_files)
-        nl_utils.download_nightlight_files(req_files, files_exist)
+        req_files = nl_utils.check_required_nl_files(bounds)
+        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
+        nl_utils.download_nl_files(req_files, files_exist)
         
         nightlight, coord_nl = load_nightlight_nasa(bounds, req_files, 2016)
    

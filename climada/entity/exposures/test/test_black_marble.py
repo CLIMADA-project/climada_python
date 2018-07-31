@@ -11,7 +11,7 @@ from sklearn.neighbors import DistanceMetric
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
 _process_land, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
 _set_econ_indicators
-from climada.entity.exposures.black_marble import NOAA_BORDER, NOAA_RESOLUTION_DEG
+from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
 
@@ -25,7 +25,7 @@ class TestCountryIso(unittest.TestCase):
     def test_che_kos_pass(self):
         """CHE, KOS """
         country_name = ['Switzerland', 'Kosovo']
-        iso_name = country_iso_geom(country_name, SHP_FILE)
+        iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
         self.assertTrue('CHE'in iso_name)
@@ -40,7 +40,7 @@ class TestCountryIso(unittest.TestCase):
     def test_haiti_pass(self):
         """HTI"""
         country_name = ['HaITi']
-        iso_name = country_iso_geom(country_name, SHP_FILE)
+        iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
         self.assertEqual(iso_name['HTI'][0], 113)
@@ -56,7 +56,7 @@ class TestCountryIso(unittest.TestCase):
     def test_bolivia_pass(self):
         """BOL"""
         country_name = ['Bolivia']
-        iso_name = country_iso_geom(country_name, SHP_FILE)
+        iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
         self.assertEqual(iso_name['BOL'][0], 4)
