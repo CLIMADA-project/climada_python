@@ -29,10 +29,11 @@ def main():
     if sys.argv[1:]:
         import xmlrunner
         arg = sys.argv[1]
-        output = 'tests_xml'
         if arg == 'unit':
+            output = 'tests_xml'
             xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
         elif arg == 'integ':
+            output = 'tests_xml_integ'
             xmlrunner.XMLTestRunner(output=output).run(find_integ_tests())
     else:
         # execute without xml reports
