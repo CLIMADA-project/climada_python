@@ -5,7 +5,7 @@ import os
 import unittest
 import numpy as np
 
-from climada.entity.entity import Entity
+from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
@@ -81,7 +81,7 @@ class TestCheck(unittest.TestCase):
                 ent.check()
         self.assertIn('Exposures.cover', cm.output[0])
 
-        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 ent.exposures = MeasureSet()
         self.assertIn('Exposures', cm.output[0])
@@ -96,7 +96,7 @@ class TestCheck(unittest.TestCase):
                 ent.check()
         self.assertIn('Measure.color_rgb', cm.output[0])
 
-        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 ent.measures = Exposures()
         self.assertIn('MeasureSet', cm.output[0])
@@ -110,7 +110,7 @@ class TestCheck(unittest.TestCase):
                 ent.check()
         self.assertIn('ImpactFunc.paa', cm.output[0])
 
-        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 ent.impact_funcs = Exposures()
         self.assertIn('ImpactFuncSet', cm.output[0])
@@ -124,7 +124,7 @@ class TestCheck(unittest.TestCase):
                 ent.check()
         self.assertIn('DiscRates.rates', cm.output[0])
 
-        with self.assertLogs('climada.entity.entity', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 ent.disc_rates = Exposures()
         self.assertIn('DiscRates', cm.output[0])
