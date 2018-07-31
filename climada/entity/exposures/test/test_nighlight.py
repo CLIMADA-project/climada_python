@@ -4,7 +4,7 @@ Test Nightlight module.
 import unittest
 import numpy as np
 from climada.entity.exposures import nightlight
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR
 
 BM_FILENAMES = nightlight.BM_FILENAMES
 
@@ -62,7 +62,7 @@ class TestNightLight(unittest.TestCase):
         np.testing.assert_array_equal(nightlight.check_nightlight_local_file_exists(np.ones\
                        (np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0],\
                         nightlight.check_nightlight_local_file_exists(np.ones\
-                      (np.count_nonzero(BM_FILENAMES)), DATA_DIR)[0])
+                      (np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR)[0])
 
     def test_download_nightlight_files(self):
         """ Test check_nightlight_local_file_exists"""

@@ -12,6 +12,7 @@ import logging
 import re
 import gzip
 import pickle
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sparse
@@ -29,6 +30,7 @@ from climada.util.constants import SYSTEM_DIR, ONE_LAT_KM
 from climada.util.config import CONFIG
 from climada.util.save import save
 from climada.util.coordinates import coord_on_land
+from . import nightlight as nl_utils
 
 # solve version problem in pandas-datareader-0.6.0. see:
 # https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
@@ -49,19 +51,14 @@ WORLD_BANK_INC_GRP = \
 
 NOAA_RESOLUTION_DEG = (30*UnitRegistry().arc_second).to(UnitRegistry().deg). \
                        magnitude
-""" Default coordinates resolution in degrees. """
+""" NOAA nightlights coordinates resolution in degrees. """
 
-MIN_LAT = -65
-""" Minimum latitude """
+NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
+                       magnitude
+""" NASA nightlights coordinates resolution in degrees. """
 
-MAX_LAT = 75
-""" Maximum latitude """
-
-MIN_LON = -180
-""" Minimum longitude """
-
-MAX_LON = 180
-""" Maximum longitude """
+NOAA_BORDER = (-180, -65, 180, 75)
+""" NOAA nightlights border (min_lon, min_lat, max_lon, max_lat) """
 
 DEF_RES_NOAA_KM = 1
 """ Default approximate resolution for NOAA NGDC nightlights in km."""
@@ -95,7 +92,7 @@ class BlackMarble(Exposures):
 
     def set_countries(self, countries, \
         ref_year=CONFIG['entity']['present_ref_year'], res_km=1, \
-        sea_res=(0, 1), **kwargs):
+        sea_res=(0, 1), from_hr=None, **kwargs):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -108,6 +105,7 @@ class BlackMarble(Exposures):
             sea_res (tuple, optional): (sea_coast_km, sea_res_km), where first
                 parameter is distance from coast to fill with water and second
                 parameter is resolution between sea points
+            from_hr (bool, optional)
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
                 country ISO_alpha3 code. If provided, these are used
         """
@@ -118,14 +116,14 @@ class BlackMarble(Exposures):
         country_info = country_iso_geom(countries, shp_file)
         fill_econ_indicators(ref_year, country_info, shp_file, **kwargs)
 
-        nightlight, lat_nl, lon_nl, fn_nl, res_fact = get_nightlight(ref_year,
-                                                                     res_km)
+        nightlight, coord_nl, fn_nl, res_fact = get_nightlight(ref_year,\
+            country_info, res_km, from_hr)
 
         # TODO parallize per thread?
         for cntry in country_info.values():
             LOGGER.info('Processing country %s.', cntry[1])
-            self.append(self._set_one_country(cntry, nightlight, lat_nl,
-                                              lon_nl, fn_nl, res_fact, res_km))
+            self.append(self._set_one_country(cntry, nightlight, coord_nl,
+                                              fn_nl, res_fact, res_km))
 
         add_sea(self, sea_res)
 
@@ -140,8 +138,8 @@ class BlackMarble(Exposures):
         raise NotImplementedError
 
     @staticmethod
-    def _set_one_country(country_info, nightlight, lat_nl, lon_nl,
-                         fn_nl, res_fact, res_km):
+    def _set_one_country(country_info, nightlight, coord_nl, fn_nl, res_fact,
+                         res_km):
         """ Model one country.
 
         Parameters:
@@ -149,16 +147,16 @@ class BlackMarble(Exposures):
                 ref_year, gdp, income_group]
             nightlight (np.array): nightlight in 30arcsec ~ 1km resolution.
                 Row latitudes, col longitudes
-            lat_nl (np.array): latitudes of nightlight matrix (its first dim)
-            lon_nl (np.array): longitudes of nightlight matrix (its second dim)
-            fn_light (str): file name of considered nightlight with path
+            coord_nl (np.array): nightlight coordinates: [[min_lat, lat_step],
+                [min_lon, lon_step]]
+            fn_nl (str): file name of considered nightlight with path
             res_fact (float): resampling factor
             res_km (float): wished resolution in km
         """
         exp_bkmrb = BlackMarble()
 
-        _process_land(exp_bkmrb, country_info[2], nightlight, lat_nl,
-                      lon_nl, res_fact, res_km)
+        _process_land(exp_bkmrb, country_info[2], nightlight, coord_nl,
+                      res_fact, res_km)
 
         _set_econ_indicators(exp_bkmrb, country_info[4], country_info[5])
 
@@ -208,36 +206,58 @@ def country_iso_geom(country_list, shp_file):
             [country_idx+1, country_tit, list_records[country_idx].geometry]
     return country_info
 
-def get_nightlight(ref_year, res_km):
+def get_nightlight(ref_year, country_info, res_km, from_hr=None):
     """ Obtain nightlight from different sources depending on reference year.
     Compute resolution factor used at resampling depending on source.
 
     Parameters:
         ref_year (int): reference year
+        country_info (dict): key = ISO alpha_3 country, value = [country id,
+            country name, country geometry]
+        res_km (float): approx resolution in km.
+        from_hr (bool, optional):
     Returns:
-        nightlight (sparse.csr_matrix), lat_nl (np.array), lon_nl (np.array),
-        fn_nl (str), res_fact (float)
+        nightlight (sparse.csr_matrix), coord_nl (np.array), fn_nl (str),
+        res_fact (float)
     """
-    if ref_year == 2012 or ref_year > 2013:
+    if from_hr is None and ref_year > 2013:
+        from_hr = True
+    elif from_hr is None and ref_year <= 2013:
+        from_hr = False
+
+    if from_hr:
         nl_year = ref_year
         if ref_year > 2013:
             nl_year = 2016
+        else:
+            nl_year = 2012
         LOGGER.info("Nightlights from NASA's earth observatory for " + \
                     "year %s.", nl_year)
         res_fact = DEF_RES_NASA_KM/res_km
-        # nightlight intensity with 15 arcsec resolution
-        raise NotImplementedError
+        geom = [info[2] for info in country_info.values()]
+        geom = shapely.ops.cascaded_union(geom)
+        req_files = nl_utils.check_required_nightlight_files(geom.bounds)
+        files_exist, _ = nl_utils.check_nightlight_local_file_exists(req_files)
+        nl_utils.download_nightlight_files(req_files, files_exist,
+                                           SYSTEM_DIR, nl_year)
+
+        nightlight, coord_nl = load_nightlight_nasa(geom.bounds,
+                                                    req_files, nl_year)
+        fn_nl = [file.replace('*', str(nl_year)) for idx, file \
+                 in enumerate(nl_utils.BM_FILENAMES) if req_files[idx]]
     else:
         nl_year = ref_year
         if ref_year < 1992:
             nl_year = 1992
+        elif ref_year > 2013:
+            nl_year = 2013
         LOGGER.info("Nightlights from NOAA's earth observation group "+ \
                     "for year %s.", nl_year)
         res_fact = DEF_RES_NOAA_KM/res_km
         # nightlight intensity with 30 arcsec resolution
-        nightlight, lat_nl, lon_nl, fn_nl = load_nightlight_noaa(nl_year)
+        nightlight, coord_nl, fn_nl = load_nightlight_noaa(nl_year)
 
-    return nightlight, lat_nl, lon_nl, fn_nl, res_fact
+    return nightlight, coord_nl, fn_nl, res_fact
 
 def untar_stable_nightlight(f_tar_ini):
     """ Move input tar file to SYSTEM_DIR and extract stable light file.
@@ -288,7 +308,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         sat_name (str, optional): satellite provider (e.g. 'F10', 'F18', ...)
 
     Returns:
-        nightlight (sparse.csr_matrix), lat (np.array), lon (np.array),
+        nightlight (sparse.csr_matrix), coord_nl (np.array),
         fn_light (str)
     """
     if sat_name is None:
@@ -331,14 +351,12 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         fn_light = untar_stable_nightlight(file_down)
         fn_light, nightlight = _unzip_tif_to_py(fn_light)
 
-    # The products are 30 arc second grids, spanning -180 to 180 degrees
-    # longitude and -65 to 75 degrees latitude.
-    lat = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT,
-                      nightlight.shape[0])
-    lon = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON,
-                      nightlight.shape[1])
+    # first point and step
+    coord_nl = np.empty((2, 2))
+    coord_nl[0, :] = [NOAA_BORDER[1], NOAA_RESOLUTION_DEG]
+    coord_nl[1, :] = [NOAA_BORDER[0], NOAA_RESOLUTION_DEG]
 
-    return nightlight, lat, lon, fn_light
+    return nightlight, coord_nl, fn_light
 
 def fill_econ_indicators(ref_year, country_info, shp_file, **kwargs):
     """ Get GDP and income group per country in reference year, or it closest
@@ -367,6 +385,83 @@ def fill_econ_indicators(ref_year, country_info, shp_file, **kwargs):
     else:
         for cntry_iso, cntry_val in country_info.items():
             cntry_val.append(kwargs['inc_grp'][cntry_iso])
+
+
+def load_nightlight_nasa(bounds, req_files, year):
+    """ Get nightlight from NASA repository that contain input boundary.
+
+    Parameters:
+        bounds (tuple): nmin_lon, min_lat, max_lon, max_lat
+        req_files (np.array): array with flags for NASA files needed
+        year (int): nightlight year
+
+    Returns:
+        nightlight (sparse.csr_matrix), coord_nl (np.array)
+    """
+    coord_nl = np.empty((2, 2))
+    coord_nl[0, :] = [-90+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
+    coord_nl[1, :] = [-180+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
+
+    in_lat = math.floor((bounds[1] - coord_nl[0, 0])/coord_nl[0, 1]), \
+             math.ceil((bounds[3] - coord_nl[0, 0])/coord_nl[0, 1])
+    # Upper (0) or lower (1) latitude range for min and max latitude
+    in_lat_nb = (math.floor(in_lat[0]/21600)+1)%2, \
+                (math.floor(in_lat[1]/21600)+1)%2
+
+    in_lon = math.floor((bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
+             math.ceil((bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
+    # 0, 1, 2, 3 longitude range for min and max longitude
+    in_lon_nb = math.floor(in_lon[0]/21600), math.floor(in_lon[1]/21600)
+
+    prev_idx = -1
+    for idx, file in enumerate(nl_utils.BM_FILENAMES):
+        if not req_files[idx]:
+            continue
+
+        aux_nl = sparse.csc.csc_matrix(plt.imread(os.path.join(
+            SYSTEM_DIR, file.replace('*', str(year))))[:, :, 0])
+        # flip X axis
+        aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
+        aux_nl = aux_nl.tolil()
+
+        aux_bnd = []
+        if idx/2 % 4 == in_lon_nb[0]:
+            aux_bnd.append(int(in_lon[0] - (idx/2%4)*21600))
+        else:
+            aux_bnd.append(0)
+
+        if idx % 2 == in_lat_nb[0]:
+            aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
+        else:
+            aux_bnd.append(0)
+
+        if idx/2 % 4 == in_lon_nb[1]:
+            aux_bnd.append(int(in_lon[1] - (idx/2%4)*21600) + 1)
+        else:
+            aux_bnd.append(21600)
+
+        if idx % 2 == in_lat_nb[1]:
+            aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
+        else:
+            aux_bnd.append(21600)
+
+        if prev_idx == -1:
+            nightlight = sparse.lil.lil_matrix((aux_bnd[3]-aux_bnd[1],
+                                                aux_bnd[2]-aux_bnd[0]))
+            nightlight = aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
+        elif idx%2 == prev_idx%2:
+            nightlight = sparse.hstack([nightlight, \
+                aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]])
+        else:
+            nightlight = sparse.vstack([nightlight, \
+                aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]])
+
+        prev_idx = idx
+
+    coord_nl[0, 0] = coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]
+    coord_nl[1, 0] = coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]
+
+    return nightlight.tocsr(), coord_nl
 
 def _get_income_group(country_info, ref_year, shp_file):
     """ Append country's income group from World Bank's data at a given year,
@@ -483,7 +578,7 @@ def _unzip_tif_to_py(file_gz):
 
     return file_name, nightlight
 
-def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
+def _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km):
     """Model land exposures from nightlight intensities and normalized
     to GDP * (income_group + 1).
 
@@ -491,26 +586,26 @@ def _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km):
         exp(BlackMarble): BlackMarble instance
         geom (shapely.geometry): geometry of the region to consider
         nightlight (sparse.csr_matrix): nichtlight values
-        lat_nl (np.array): latitudes of nightlight matrix (its first dim)
-        lon_nl (np.array): longitudes of nightlight matrix (its second dim)
+        coord_nl (np.array): nightlight coordinates: [[min_lat, lat_step],
+            [min_lon, lon_step]]
         res_fact (float): resampling factor
         res_km (float): wished resolution in km
     """
-    in_lat = np.argwhere(np.logical_and(lat_nl >= geom.bounds[1],
-                                        lat_nl <= geom.bounds[3]))
-    in_lat = (max(0, in_lat[0][0] - 1),
-              min(in_lat[-1][0] + 1, lat_nl.size - 1))
-    in_lon = np.argwhere(np.logical_and(lon_nl >= geom.bounds[0],
-                                        lon_nl <= geom.bounds[2]))
-    in_lon = (max(0, in_lon[0][0] - 1),
-              min(in_lon[-1][0] + 1, lon_nl.size - 1))
+    in_lat = math.floor((geom.bounds[1] - coord_nl[0, 0])/coord_nl[0, 1]), \
+             math.ceil((geom.bounds[3] - coord_nl[0, 0])/coord_nl[0, 1])
+    in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
+             math.ceil((geom.bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
 
     LOGGER.info('Generating resolution of approx %s km.', res_km)
     nightlight_res = ndimage.zoom(nightlight[in_lat[0]:in_lat[-1]+1, :] \
         [:, in_lon[0]:in_lon[-1]+1].todense(), res_fact)
     lat_res, lon_res = np.mgrid[
-        lat_nl[in_lat[0]]:lat_nl[in_lat[1]]:complex(0, nightlight_res.shape[0]),
-        lon_nl[in_lon[0]]:lon_nl[in_lon[1]]:complex(0, nightlight_res.shape[1])]
+        coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
+        coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
+        complex(0, nightlight_res.shape[0]),
+        coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]:
+        coord_nl[1, 0] + in_lon[1]*coord_nl[1, 1]:
+        complex(0, nightlight_res.shape[1])]
 
     on_land = shapely.vectorized.contains(geom, lon_res, lat_res)
 

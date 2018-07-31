@@ -11,8 +11,7 @@ from sklearn.neighbors import DistanceMetric
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
 _process_land, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
 _set_econ_indicators
-from climada.entity.exposures.black_marble import MIN_LAT, MAX_LAT, MIN_LON, \
-MAX_LON, NOAA_RESOLUTION_DEG
+from climada.entity.exposures.black_marble import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
 
@@ -84,12 +83,16 @@ class TestNightLight(unittest.TestCase):
         nightlight[275:281, 333:334] = 0.4
         nightlight[275:281, 334:336] = 0.5
         nightlight = nightlight.tocsr()
-        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 500)
-        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
+
+        coord_nl = np.empty((2, 2))
+        coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
+                          0.2805444221776838]
+        coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
+                          0.3603520186853473]
 
         res_fact = 1.0
         res_km = 1.0
-        _process_land(exp, geom, nightlight, lat_nl, lon_nl, res_fact, res_km)
+        _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km)
 
         lat_mgrid = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
                               [13.28022712, 13.28022712, 13.28022712],
@@ -120,12 +123,16 @@ class TestNightLight(unittest.TestCase):
         nightlight[275:281, 333:334] = 0.4
         nightlight[275:281, 334:336] = 0.5
         nightlight = nightlight.tocsr()
-        lat_nl = np.linspace(MIN_LAT + NOAA_RESOLUTION_DEG, MAX_LAT, 500)
-        lon_nl = np.linspace(MIN_LON + NOAA_RESOLUTION_DEG, MAX_LON, 1000)
+
+        coord_nl = np.empty((2, 2))
+        coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
+                          0.2805444221776838]
+        coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
+                          0.3603520186853473]
 
         res_fact = 2.0
         res_km = 0.5
-        _process_land(exp, geom, nightlight, lat_nl, lon_nl,res_fact, res_km)
+        _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km)
 
         lat_mgrid = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
                               [13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047],

@@ -6,20 +6,28 @@ Created on Tue Jul 24 16:25:07 2018
 """
 from os import path, getcwd, chdir
 import logging
+import glob
 import numpy as np
-from climada.util.constants import DATA_DIR
 
-logging.root.setLevel(logging.DEBUG)
+from climada.util.constants import SYSTEM_DIR
+from climada.util.files_handler import download_file
+
 LOGGER = logging.getLogger(__name__)
 
-BM_FILENAMES = ['BlackMarble_2016_A1_geo_gray.tif', \
-                    'BlackMarble_2016_A2_geo_gray.tif', \
-                    'BlackMarble_2016_B1_geo_gray.tif', \
-                    'BlackMarble_2016_B2_geo_gray.tif', \
-                    'BlackMarble_2016_C1_geo_gray.tif', \
-                    'BlackMarble_2016_C2_geo_gray.tif', \
-                    'BlackMarble_2016_D1_geo_gray.tif', \
-                    'BlackMarble_2016_D2_geo_gray.tif']
+NASA_SITE = 'https://www.nasa.gov/specials/blackmarble/*/tiles/georeferrenced/'
+"""NASA nightlight web url."""
+
+
+BM_FILENAMES = ['BlackMarble_*_A1_geo_gray.tif',
+                'BlackMarble_*_A2_geo_gray.tif',
+                'BlackMarble_*_B1_geo_gray.tif',
+                'BlackMarble_*_B2_geo_gray.tif',
+                'BlackMarble_*_C1_geo_gray.tif',
+                'BlackMarble_*_C2_geo_gray.tif',
+                'BlackMarble_*_D1_geo_gray.tif',
+                'BlackMarble_*_D2_geo_gray.tif'
+               ]
+"""Nightlight NASA files which generate the whole earth when put together."""
 
 def check_required_nightlight_files(bbox, *coords):
     """ Determines which of the satellite pictures are neccessary for
@@ -29,7 +37,7 @@ def check_required_nightlight_files(bbox, *coords):
         either:
             bbox (1x4 tuple): bounding box from shape (min_lon, min_lat, max_lon, max_lat)
         or:
-            bbox (float): (=min_lon) Western-most point in decimal degrees
+            min_lon (float): (=min_lon) Western-most point in decimal degrees
             min_lat (float): Southern-most point in decimal degrees
             max_lon (float): Eastern-most point in decimal degrees
             max_lat (float): Northern-most point in decimal degrees
@@ -84,11 +92,11 @@ def check_required_nightlight_files(bbox, *coords):
 
 
 def check_nightlight_local_file_exists(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
-                                  check_path=DATA_DIR):
+                                  check_path=SYSTEM_DIR):
     """ Checks if BM Satellite files are avaialbe and returns a vector denoting the missing files.
 
     Parameters:
-        check_path (str): absolute path where files are stored. Default: DATA_DIR
+        check_path (str): absolute path where files are stored. Default: SYSTEM_DIR
         required_files (array): Boolean array of dimension (8,) with which some files can
             be skipped. Only files with value 1 are checked, with value zero are skipped.
 
@@ -99,15 +107,15 @@ def check_nightlight_local_file_exists(required_files=np.ones(np.count_nonzero(B
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
         LOGGER.warning('The parameter \'required_files\' was too short and is ignored.')
     if not path.exists(check_path):
-        check_path = DATA_DIR
+        check_path = SYSTEM_DIR
         LOGGER.warning('The given path does not exist and is ignored. ' +\
-                       DATA_DIR + ' is checked instead.')
+                       SYSTEM_DIR + ' is checked instead.')
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
         if required_files[num_check] == 0:
             continue
         curr_file = path.join(check_path, name_check)
-        if path.isfile(curr_file):
+        if glob.glob(curr_file):
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
@@ -124,7 +132,9 @@ def check_nightlight_local_file_exists(required_files=np.ones(np.count_nonzero(B
 
 
 def download_nightlight_files(req_files=np.ones(np.count_nonzero(BM_FILENAMES),), \
-                      files_exist=np.zeros(np.count_nonzero(BM_FILENAMES),), dwnl_path=DATA_DIR):
+                      files_exist=np.zeros(np.count_nonzero(BM_FILENAMES),), 
+                      dwnl_path=SYSTEM_DIR,
+                      year=2016):
     """ Attempts to download nightlight files from NASA webpage.
 
     Parameters:
@@ -144,7 +154,7 @@ def download_nightlight_files(req_files=np.ones(np.count_nonzero(BM_FILENAMES),)
                          'must both be as long as there are files to download ('\
                                                 + str(len(BM_FILENAMES)) + ').')
     if not path.exists(dwnl_path):
-        dwnl_path = DATA_DIR
+        dwnl_path = SYSTEM_DIR
         if not path.exists(dwnl_path):
             raise ValueError('The folder does not exist. Operation aborted.')
         else:
@@ -156,8 +166,6 @@ def download_nightlight_files(req_files=np.ones(np.count_nonzero(BM_FILENAMES),)
     try:
         curr_wd = getcwd()
         chdir(dwnl_path)
-        from climada.util.files_handler import download_file
-        url_first_part = 'https://www.nasa.gov/specials/blackmarble/2016/tiles/georeferrenced/'
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
             if req_files[num_files] == 0:
                 continue
@@ -165,7 +173,8 @@ def download_nightlight_files(req_files=np.ones(np.count_nonzero(BM_FILENAMES),)
                 if files_exist[num_files] == 1:
                     continue
                 else:
-                    curr_file = url_first_part + BM_FILENAMES[num_files]
+                    curr_file = NASA_SITE + BM_FILENAMES[num_files]
+                    curr_file.replace('*', str(year))
                     LOGGER.info('Attempting to download file from %s', curr_file)
                     path_dwn = download_file(curr_file)
                     path_str = path.dirname(path_dwn)
