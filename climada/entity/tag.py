@@ -58,7 +58,7 @@ class Tag(object):
 
     def join_descriptions(self):
         """ Get a string with the joined descriptions. """
-        if not isinstance(self.file_name, list):
+        if not isinstance(self.description, list):
             join_desc = self.description
         else:
             join_desc = ' + '.join([desc for desc in self.description])
