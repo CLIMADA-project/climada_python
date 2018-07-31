@@ -5,7 +5,7 @@ import os
 import unittest
 import numpy as np
 
-from climada.entity.entity import Entity
+from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 
