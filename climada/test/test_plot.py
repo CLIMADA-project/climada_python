@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-from climada.entity.entity import Entity
+from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
