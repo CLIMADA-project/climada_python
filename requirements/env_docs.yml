@@ -6,6 +6,8 @@ dependencies:
   - dill==0.2.7.1
   - geos=3.6.2
   - h5py=2.7.1
+  - ipython=6.3.1
+  - ipython_genutils=0.2.0
   - jsonschema=2.6.0
   - matplotlib=2.2.2
   - numba=0.37.0
