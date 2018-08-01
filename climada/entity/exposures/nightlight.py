@@ -250,8 +250,8 @@ def load_nightlight_nasa(bounds, req_files, year):
         if not req_files[idx]:
             continue
 
-        aux_nl = sparse.csc.csc_matrix(plt.imread(path.join(SYSTEM_DIR, \
-            file.replace('*', str(year))))[:, :, 0])
+        aux_nl = Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year))))
+        aux_nl = sparse.csc.csc_matrix(aux_nl.getchannel(0))
         # flip X axis
         aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
         aux_nl = aux_nl.tolil()
