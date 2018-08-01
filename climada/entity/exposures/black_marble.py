@@ -262,7 +262,7 @@ def get_nightlight(ref_year, cntry_info, res_km, from_hr=None):
         files_exist, _ = nl_utils.check_nl_local_file_exists(req_files, \
             SYSTEM_DIR, nl_year)
         nl_utils.download_nl_files(req_files, files_exist, SYSTEM_DIR, nl_year)
-
+        # nightlight intensity with 15 arcsec resolution
         nightlight, coord_nl = nl_utils.load_nightlight_nasa(geom.bounds, \
             req_files, nl_year)
         fn_nl = [file.replace('*', str(nl_year)) for idx, file \
