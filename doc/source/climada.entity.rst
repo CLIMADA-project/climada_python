@@ -14,10 +14,10 @@ Subpackages
 Submodules
 ----------
 
-climada\.entity\.entity module
-------------------------------
+climada\.entity\.entity_def module
+----------------------------------
 
-.. automodule:: climada.entity.entity
+.. automodule:: climada.entity.entity_def
     :members:
     :undoc-members:
     :show-inheritance:
