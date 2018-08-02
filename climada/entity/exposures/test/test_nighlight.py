@@ -95,7 +95,7 @@ class TestNightLight(unittest.TestCase):
         
         idx_info[0] = 3
         idx_info[1] = 2
-        aux_nl = np.zeros((21600, 21600))
+        aux_nl[21599, 21599] = 0
         aux_nl[0, 21599] = 101
         nightlight.cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
                                         in_lon, in_lat_nb, in_lon_nb)
@@ -106,7 +106,7 @@ class TestNightLight(unittest.TestCase):
         
         idx_info[0] = 4
         idx_info[1] = 3
-        aux_nl = np.zeros((21600, 21600))
+        aux_nl[0, 21599] = 0
         aux_nl[21599, 0] = 102
         nightlight.cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
                                         in_lon, in_lat_nb, in_lon_nb)
@@ -118,7 +118,7 @@ class TestNightLight(unittest.TestCase):
 
         idx_info[0] = 5
         idx_info[1] = 4
-        aux_nl = np.zeros((21600, 21600))
+        aux_nl[21599, 0] = 0
         aux_nl[0, 0] = 103
         nightlight.cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
                                         in_lon, in_lat_nb, in_lon_nb)
@@ -150,7 +150,7 @@ class TestNightLight(unittest.TestCase):
         
         idx_info[0] = 5
         idx_info[1] = 3
-        aux_nl = np.zeros((21600, 21600))
+        aux_nl[0, 21599] = 0
         aux_nl[0, 0] = 101
         nightlight.cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
                                         in_lon, in_lat_nb, in_lon_nb)
@@ -180,7 +180,7 @@ class TestNightLight(unittest.TestCase):
         
         idx_info[0] = 4
         idx_info[1] = 2
-        aux_nl = np.zeros((21600, 21600))
+        aux_nl[21599, 21599] = 0
         aux_nl[21599, 0] = 101
         nightlight.cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
                                         in_lon, in_lat_nb, in_lon_nb)
