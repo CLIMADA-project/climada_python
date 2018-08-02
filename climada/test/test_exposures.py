@@ -78,6 +78,7 @@ class Test2012(unittest.TestCase):
                 size2 = ent.value.size
                 self.assertTrue(size1 < size2)
         except TypeError:
+            print('MemoryError caught')
             pass
     
         ent = BlackMarble()
@@ -108,6 +109,7 @@ class BMFuncs(unittest.TestCase):
         try:
             nightlight, coord_nl = load_nightlight_nasa(bounds, req_files, 2016)
         except TypeError:
+            print('MemoryError caught')
             return
     
         self.assertTrue(coord_nl[0, 0] < bounds[1])
@@ -197,7 +199,7 @@ class BMFuncs(unittest.TestCase):
             self.assertEqual(nl_mat.tocsr()[0, 1], 102.0)
             self.assertEqual(nl_mat.tocsr()[1, 1], 103.0)
         except MemoryError:
-            print('caught MemoryError')
+            print('MemoryError caught')
             pass
         
     def test_cut_nl_nasa_2_pass(self):
@@ -231,7 +233,7 @@ class BMFuncs(unittest.TestCase):
             self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
             self.assertEqual(nl_mat.tocsr()[0, 1], 101.0)
         except MemoryError:
-            print('caught MemoryError')
+            print('MemoryError caught')
             pass
 
     def test_cut_nl_nasa_3_pass(self):
@@ -265,7 +267,7 @@ class BMFuncs(unittest.TestCase):
             self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
             self.assertEqual(nl_mat.tocsr()[0, 1], 101.0)
         except MemoryError:
-            print('caught MemoryError')
+            print('MemoryError caught')
             pass
 
 # Execute Tests
