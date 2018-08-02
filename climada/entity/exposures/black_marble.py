@@ -388,7 +388,7 @@ def _get_income_group(cntry_info, ref_year, shp_file):
         LOGGER.warning('Internet connection failed while downloading ' +
                        'historical income groups.')
         dfr_wb = pd.DataFrame()
-        
+
     for cntry_iso, cntry_val in cntry_info.items():
         try:
             cntry_dfr = dfr_wb.loc[cntry_iso]

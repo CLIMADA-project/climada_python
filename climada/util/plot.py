@@ -77,7 +77,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             kwargs_cbar = {'extend':'min'}
         else:
             kwargs_cbar = {}
-            
+
         # Binned image with coastlines
         extent = get_borders(coord)
         extent = ([extent[0] - buffer_deg, extent[1] + buffer_deg, extent[2] -\
@@ -95,7 +95,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
             pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical', 
+        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
                             **kwargs_cbar)
         cbar.set_label(name)
         axis.set_title(tit)
