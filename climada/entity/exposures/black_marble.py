@@ -172,18 +172,19 @@ def country_iso_geom(countries, shp_file):
     for info_idx, info in enumerate(list_records):
         countries_shp[info.attributes['ADMIN'].title()] = info_idx
 
-    admin1_rec = shapereader.natural_earth(resolution='10m',
-                                           category='cultural',
-                                           name='admin_1_states_provinces')
-    admin1_rec = shapereader.Reader(admin1_rec)
-    admin1_rec = list(admin1_rec.records())
-
     num_codes = [iso3 for iso3 in wb.country_codes if len(iso3) == 3]
 
     cntry_info = dict()
     cntry_admin1 = dict()
     if isinstance(countries, list):
         countries = {cntry: [] for cntry in countries}
+        admin1_rec = list()
+    else:
+        admin1_rec = shapereader.natural_earth(resolution='10m',
+                                               category='cultural',
+                                               name='admin_1_states_provinces')
+        admin1_rec = shapereader.Reader(admin1_rec)
+        admin1_rec = list(admin1_rec.records())
 
     for country_name, prov_list in countries.items():
         country_idx = countries_shp.get(country_name.title())
@@ -336,13 +337,15 @@ def _fill_admin1_geom(iso3, admin1_rec, prov_list):
         list
     """
     prov_geom = list()
+
     for prov in prov_list:
         found = False
         for rec in admin1_rec:
-            if prov in rec.attributes['name'] and \
+            if prov == rec.attributes['name'] and \
             rec.attributes['adm0_a3'] == iso3:
                 found = True
                 prov_geom.append(rec.geometry)
+                break
         if not found:
             options = [rec.attributes['name'] for rec in admin1_rec \
                        if rec.attributes['adm0_a3'] == iso3]
@@ -372,14 +375,20 @@ def _get_income_group(cntry_info, ref_year, shp_file):
             attribute for every country.
     """
     # check if file with income groups exists in SYSTEM_DIR, download if not
-    fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
-    if not glob.glob(fn_ig):
-        file_down = download_file(WORLD_BANK_INC_GRP)
-        shutil.move(file_down, fn_ig)
-    dfr_wb = pd.read_excel(fn_ig, 'Country Analytical History', skiprows=5)
-    dfr_wb = dfr_wb.drop(dfr_wb.index[0:5]).set_index('Unnamed: 0')
-    dfr_wb = dfr_wb.replace(INCOME_GRP_WB_TABLE.keys(),
-                            INCOME_GRP_WB_TABLE.values())
+    try:
+        fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
+        if not glob.glob(fn_ig):
+            file_down = download_file(WORLD_BANK_INC_GRP)
+            shutil.move(file_down, fn_ig)
+        dfr_wb = pd.read_excel(fn_ig, 'Country Analytical History', skiprows=5)
+        dfr_wb = dfr_wb.drop(dfr_wb.index[0:5]).set_index('Unnamed: 0')
+        dfr_wb = dfr_wb.replace(INCOME_GRP_WB_TABLE.keys(),
+                                INCOME_GRP_WB_TABLE.values())
+    except (IOError, requests.exceptions.ConnectionError):
+        LOGGER.warning('Internet connection failed while downloading ' +
+                       'historical income groups.')
+        dfr_wb = pd.DataFrame()
+        
     for cntry_iso, cntry_val in cntry_info.items():
         try:
             cntry_dfr = dfr_wb.loc[cntry_iso]
@@ -430,7 +439,11 @@ def _get_gdp(cntry_info, ref_year, shp_file):
             LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
                         int(close_gdp.iloc[0].name[1]), close_gdp_val))
 
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, requests.exceptions.ConnectionError) \
+        as err:
+            if isinstance(err, requests.exceptions.ConnectionError):
+                LOGGER.warning('Internet connection failed while ' +
+                               'retrieving GDPs.')
             list_records = list(shp_file.records())
             for info in list_records:
                 if info.attributes['ADM0_A3'] == cntry_iso:
@@ -442,10 +455,6 @@ def _get_gdp(cntry_info, ref_year, shp_file):
             close_gdp_val *= 1e6
             LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
                         close_gdp_year, close_gdp_val))
-
-        except requests.exceptions.ConnectionError:
-            LOGGER.error('Connection error: check your internet connection.')
-            raise ConnectionError
 
         cntry_val.append(close_gdp_val)
 
