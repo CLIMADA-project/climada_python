@@ -375,8 +375,9 @@ def _get_income_group(cntry_info, ref_year, shp_file):
             attribute for every country.
     """
     # check if file with income groups exists in SYSTEM_DIR, download if not
+    fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
+    dfr_wb = pd.DataFrame()
     try:
-        fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
         if not glob.glob(fn_ig):
             file_down = download_file(WORLD_BANK_INC_GRP)
             shutil.move(file_down, fn_ig)
@@ -387,8 +388,8 @@ def _get_income_group(cntry_info, ref_year, shp_file):
     except (IOError, requests.exceptions.ConnectionError):
         LOGGER.warning('Internet connection failed while downloading ' +
                        'historical income groups.')
-        dfr_wb = pd.DataFrame()
 
+    list_records = list(shp_file.records())
     for cntry_iso, cntry_val in cntry_info.items():
         try:
             cntry_dfr = dfr_wb.loc[cntry_iso]
@@ -401,13 +402,12 @@ def _get_income_group(cntry_info, ref_year, shp_file):
 
         except (KeyError, IndexError):
             # take value from natural earth repository
-            list_records = list(shp_file.records())
             for info in list_records:
                 if info.attributes['ADM0_A3'] == cntry_iso:
                     close_inc = info.attributes['INCOME_GRP']
-            try:
-                close_inc_val = INCOME_GRP_NE_TABLE[int(close_inc[0])]
-            except (KeyError, IndexError):
+                    break
+            close_inc_val = INCOME_GRP_NE_TABLE.get(int(close_inc[0]))
+            if close_inc_val is None:
                 LOGGER.error("No income group for country %s found.",
                              cntry_iso)
                 raise ValueError

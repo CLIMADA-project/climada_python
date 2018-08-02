@@ -148,8 +148,8 @@ class Exposures(object):
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
 
-        return plot.geo_bin_from_array(self.value, self.coord, cbar_label,
-                title, pop_name, buffer_deg, ignore_zero, **kwargs)
+        return plot.geo_bin_from_array(self.value, self.coord, cbar_label, \
+            title, pop_name, buffer_deg, ignore_zero, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.
