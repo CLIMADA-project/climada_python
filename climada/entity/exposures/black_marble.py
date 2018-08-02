@@ -117,7 +117,7 @@ class BlackMarble(Exposures):
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, fn_nl, res_fact,
-                         res_km, admin1=None):
+                         res_km, admin1):
         """ Model one country.
 
         Parameters:
@@ -130,7 +130,7 @@ class BlackMarble(Exposures):
             fn_nl (str): file name of considered nightlight with path
             res_fact (float): resampling factor
             res_km (float): wished resolution in km
-            admin1 (list, optional): list of admin1 to filter
+            admin1 (list): list of admin1 to filter
         """
         exp_bkmrb = BlackMarble()
 
@@ -139,7 +139,7 @@ class BlackMarble(Exposures):
 
         _set_econ_indicators(exp_bkmrb, cntry_info[4], cntry_info[5])
 
-        if admin1 is not None:
+        if admin1:
             _filter_admin1(exp_bkmrb, admin1)
 
         exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
@@ -170,33 +170,39 @@ def country_iso_geom(countries, shp_file):
     countries_shp = {}
     list_records = list(shp_file.records())
     for info_idx, info in enumerate(list_records):
-        std_name = info.attributes['ADMIN'].title()
-        countries_shp[std_name] = info_idx
+        countries_shp[info.attributes['ADMIN'].title()] = info_idx
 
-    if isinstance(countries, list):
-        cntry_list = countries
-    else:
-        cntry_list = countries.keys()
+    admin1_rec = shapereader.natural_earth(resolution='10m',
+                                           category='cultural',
+                                           name='admin_1_states_provinces')
+    admin1_rec = shapereader.Reader(admin1_rec)
+    admin1_rec = list(admin1_rec.records())
+
+    num_codes = [iso3 for iso3 in wb.country_codes if len(iso3) == 3]
 
     cntry_info = dict()
     cntry_admin1 = dict()
-    for country_name in cntry_list:
-        country_tit = country_name.title()
-        country_idx = countries_shp.get(country_tit)
+    if isinstance(countries, list):
+        countries = {cntry: [] for cntry in countries}
+
+    for country_name, prov_list in countries.items():
+        country_idx = countries_shp.get(country_name.title())
         if country_idx is None:
             options = [country_opt for country_opt in countries_shp
-                       if country_tit in country_opt]
+                       if country_name.title() in country_opt]
             if not options:
                 options = list(countries_shp.keys())
             LOGGER.error('Country %s not found. Possible options: %s',
                          country_name, options)
             raise ValueError
         iso3 = list_records[country_idx].attributes['ADM0_A3']
-        cntry_info[iso3] = [country_idx+1, country_tit, \
-            list_records[country_idx].geometry]
-        cntry_admin1[iso3] = None
-        if isinstance(countries, dict):
-            cntry_admin1[iso3] = _fill_admin1_geom(countries[country_name])
+        try:
+            iso_num = num_codes.index(iso3)
+        except ValueError:
+            iso_num = len(num_codes)
+        cntry_info[iso3] = [iso_num, country_name.title(),
+                            list_records[country_idx].geometry]
+        cntry_admin1[iso3] = _fill_admin1_geom(iso3, admin1_rec, prov_list)
 
     return cntry_info, cntry_admin1
 
@@ -319,19 +325,40 @@ def add_sea(exp, sea_res):
     exp.deductible = np.zeros(exp.value.size)
     exp.cover = exp.value.copy()
 
-def _fill_admin1_geom(countries):
-    """Get admin1 polygons for each country.
+def _fill_admin1_geom(iso3, admin1_rec, prov_list):
+    """Get admin1 polygons for each input province of country iso3.
 
     Parameters:
-
+        iso3 (str): admin0 country name in alpha3
+        admin1_rec (list): list of admin1 records
+        prov_list (list): province names
     Returns:
-
+        list
     """
-    raise NotImplementedError
+    prov_geom = list()
+    for prov in prov_list:
+        found = False
+        for rec in admin1_rec:
+            if prov in rec.attributes['name'] and \
+            rec.attributes['adm0_a3'] == iso3:
+                found = True
+                prov_geom.append(rec.geometry)
+        if not found:
+            options = [rec.attributes['name'] for rec in admin1_rec \
+                       if rec.attributes['adm0_a3'] == iso3]
+            LOGGER.error('%s not found. Possible provinces of %s are: %s',
+                         prov, iso3, options)
+            raise ValueError
 
-def _filter_admin1(exp_bkmrb, admin1):
+    return prov_geom
+
+def _filter_admin1(exp_bkmrb, admin1_geom):
     """ Filter points contained in admin1 geometries."""
-    raise NotImplementedError
+    prov_geom = shapely.ops.cascaded_union(admin1_geom)
+    on_prov = shapely.vectorized.contains(prov_geom, exp_bkmrb.coord.lon,
+                                          exp_bkmrb.coord.lat)
+    exp_bkmrb.value = exp_bkmrb.value[on_prov]
+    exp_bkmrb.coord = exp_bkmrb.coord[on_prov]
 
 def _get_income_group(cntry_info, ref_year, shp_file):
     """ Append country's income group from World Bank's data at a given year,
