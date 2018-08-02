@@ -39,7 +39,7 @@ def download_file(url):
     block_size = 1024
     file_name = url.split('/')[-1]
     file_abs_name = os.path.abspath(os.path.join(os.getcwd(), file_name))
-    LOGGER.info('Downloading temporary file %s', file_abs_name)
+    LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
         for data in tqdm.tqdm(req_file.iter_content(block_size),
                               total=math.ceil(total_size//block_size),
