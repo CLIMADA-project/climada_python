@@ -245,55 +245,85 @@ def load_nightlight_nasa(bounds, req_files, year):
     # 0, 1, 2, 3 longitude range for min and max longitude
     in_lon_nb = math.floor(in_lon[0]/21600), math.floor(in_lon[1]/21600)
 
-    prev_idx = -1
+    nightlight = sparse.lil.lil_matrix([])
+    idx_info = [0, -1, False] # idx, prev_idx and row added flag
     for idx, file in enumerate(BM_FILENAMES):
+        idx_info[0] = idx
         if not req_files[idx]:
             continue
 
-        aux_nl = Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year))))
-        aux_nl = sparse.csc.csc_matrix(aux_nl.getchannel(0))
-        # flip X axis
-        aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
-        aux_nl = aux_nl.tolil()
+        with Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year)))) \
+        as im_nl:
+            aux_nl = im_nl.getchannel(0)
+            cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon,
+                        in_lat_nb, in_lon_nb)
 
-        aux_bnd = []
-        if idx/2 % 4 == in_lon_nb[0]:
-            aux_bnd.append(int(in_lon[0] - (idx/2%4)*21600))
-        else:
-            aux_bnd.append(0)
-
-        if idx % 2 == in_lat_nb[0]:
-            aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
-        else:
-            aux_bnd.append(0)
-
-        if idx/2 % 4 == in_lon_nb[1]:
-            aux_bnd.append(int(in_lon[1] - (idx/2%4)*21600) + 1)
-        else:
-            aux_bnd.append(21600)
-
-        if idx % 2 == in_lat_nb[1]:
-            aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
-        else:
-            aux_bnd.append(21600)
-
-        if prev_idx == -1:
-            nightlight = sparse.lil.lil_matrix((aux_bnd[3]-aux_bnd[1],
-                                                aux_bnd[2]-aux_bnd[0]))
-            nightlight = aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
-        elif idx%2 == prev_idx%2:
-            nightlight = sparse.hstack([nightlight, \
-                aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]])
-        else:
-            nightlight = sparse.vstack([nightlight, \
-                aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]])
-
-        prev_idx = idx
+        idx_info[1] = idx
 
     coord_nl[0, 0] = coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]
     coord_nl[1, 0] = coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]
 
     return nightlight.tocsr(), coord_nl
+
+def cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon, in_lat_nb,
+                in_lon_nb):
+    """Cut nasa's nightlight image piece (1-8) to bounds and append to final
+    matrix.
+
+    Parameters:
+        aux_nl (PIL.Image): nasa's nightlight part (1-8)
+        idx_info (list): idx (0-7), prev_idx (0-7) and row_added flag (bool).
+        nightlight (sprse.lil_matrix): matrix with nightlight that is expanded
+        in_lat (tuple): min and max latitude indexes in the whole nasa's image
+        in_lon (tuple): min and max longitude indexes in the whole nasa's image
+        in_lat_nb (tuple): for min and max latitude, range where they belong
+            to: upper (0) or lower (1) row of nasa's images.
+        on_lon_nb (tuple): for min and max longitude, range where they belong
+            to: 0, 1, 2 or 3 column of nasa's images.
+    """
+    idx, prev_idx, row_added = idx_info
+    aux_nl = sparse.csc.csc_matrix(aux_nl)
+    # flip X axis
+    aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
+
+    aux_bnd = []
+    if int(idx/2) % 4 == in_lon_nb[0]:
+        aux_bnd.append(int(in_lon[0] - (int(idx/2)%4)*21600))
+    else:
+        aux_bnd.append(0)
+
+    if idx % 2 == in_lat_nb[0]:
+        aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
+    else:
+        aux_bnd.append(0)
+
+    if int(idx/2) % 4 == in_lon_nb[1]:
+        aux_bnd.append(int(in_lon[1] - (int(idx/2)%4)*21600) + 1)
+    else:
+        aux_bnd.append(21600)
+
+    if idx % 2 == in_lat_nb[1]:
+        aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
+    else:
+        aux_bnd.append(21600)
+
+    if prev_idx == -1:
+        nightlight.resize((aux_bnd[3]-aux_bnd[1], aux_bnd[2]-aux_bnd[0]))
+        nightlight[:, :] = aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
+    elif idx%2 == prev_idx%2 or prev_idx%2 == 1:
+        # append horizontally in first rows e.g 0->2 or 1->2
+        nightlight.resize((nightlight.shape[0],
+                           nightlight.shape[1] + aux_bnd[2]-aux_bnd[0]))
+        nightlight[:aux_bnd[3]-aux_bnd[1], -aux_bnd[2]+aux_bnd[0]:] = \
+            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
+    else:
+        # append vertically in lasts rows and columns e.g 0->1 or 2->3
+        if not row_added:
+            nightlight.resize((nightlight.shape[0] + aux_bnd[3] - aux_bnd[1],
+                               nightlight.shape[1]))
+            idx_info[2] = True
+        nightlight[-aux_bnd[3]+aux_bnd[1]:, -aux_bnd[2]+aux_bnd[0]:] = \
+            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
 
 def unzip_tif_to_py(file_gz):
     """ Unzip image file, read it, flip the x axis, save values as pickle
