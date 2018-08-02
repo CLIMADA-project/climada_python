@@ -27,7 +27,7 @@ BUFFER_DEG = 1.0
 MAX_BINS = 200
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
-                       buffer_deg=BUFFER_DEG, **kwargs):
+                       buffer_deg=BUFFER_DEG, ignore_zero=False, **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -45,6 +45,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             array_sub.
         pop_name (bool, optional): add names of the populated places.
         buffer_deg (float, optional): border to add to coordinates
+        ignore_zero (bool, optional): ignore zero and negative values
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -69,6 +70,14 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         if coord.shape[0] != array_im.size:
             raise ValueError("Size mismatch in input array: %s != %s." % \
                              (coord.shape[0], array_im.size))
+        if ignore_zero:
+            pos_vals = array_im > 0
+            array_im = array_im[pos_vals]
+            coord = coord[pos_vals, :]
+            kwargs_cbar = {'extend':'min'}
+        else:
+            kwargs_cbar = {}
+            
         # Binned image with coastlines
         extent = get_borders(coord)
         extent = ([extent[0] - buffer_deg, extent[1] + buffer_deg, extent[2] -\
@@ -86,7 +95,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
             pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical')
+        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical', 
+                            **kwargs_cbar)
         cbar.set_label(name)
         axis.set_title(tit)
 

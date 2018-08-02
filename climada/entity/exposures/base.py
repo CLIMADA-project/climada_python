@@ -128,35 +128,28 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot(self, ignore_null=True, pop_name=True, buffer_deg=None,
+    def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
              **kwargs):
         """Plot exposures values sum binned over Earth's map.
 
         Parameters:
-            ignore_null (bool, optional): flag to indicate if zero and negative
+            ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
             buffer_deg (float, optional): border to add to coordinates.
-                Default: BUFFER_DEG=1 in plot module.
+                Default: 1.0.
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if ignore_null:
-            pos_vals = self.value > 0
-        else:
-            pos_vals = np.ones((self.value.size,), dtype=bool)
         title = self.tag.join_descriptions()
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        if buffer_deg is not None:
-            return plot.geo_bin_from_array(self.value[pos_vals], \
-                self.coord[pos_vals], cbar_label, title, pop_name, buffer_deg,\
-                **kwargs)
-        return plot.geo_bin_from_array(self.value[pos_vals], \
-            self.coord[pos_vals], cbar_label, title, pop_name, **kwargs)
+
+        return plot.geo_bin_from_array(self.value, self.coord, cbar_label,
+                title, pop_name, buffer_deg, ignore_zero, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.
