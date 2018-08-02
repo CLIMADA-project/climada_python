@@ -332,7 +332,7 @@ def _vtrans_holland(track, i_node, close_centr, r_arr, ureg):
     centroids_dlat = close_centr[:, 0] - track.lat[i_node].values
 
     # scalar product, a*b=|a|*|b|*cos(phi), phi angle between vectors
-    with np.errstate(invalid='print'):
+    with np.errstate(invalid='ignore'):
         cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
             LA.norm([centroids_dlon, centroids_dlat], axis=0) / node_dlen
 
@@ -343,7 +343,7 @@ def _vtrans_holland(track, i_node, close_centr, r_arr, ureg):
     # calculate v_trans wind field array assuming that
     # - effect of v_trans decreases with distance from eye (r_arr_normed)
     # - v_trans is added 100% to the right of the track, 0% in front (cos_phi)
-    with np.errstate(all='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         r_arr_normed = track.radius_max_wind[i_node].values / r_arr
     r_arr_normed[r_arr_normed > 1] = 1
 
@@ -364,7 +364,7 @@ def _bs_value(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
     Returns:
         float
     """
-    with np.errstate(all='ignore'):
+    with np.errstate(invalid='ignore', divide='ignore'):
         return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv-pcen) + \
             0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
             0.15 * v_trans**hol_xx + 1.0
@@ -388,7 +388,7 @@ def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
     f_val = 2 * 0.0000729 * np.sin(np.abs(ycoord) * np.pi / 180)
     r_arr_mult = 0.5 * 1000 * r_arr * f_val
     # units are m/s
-    with np.errstate(all='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         r_max_norm = (r_max/r_arr)**hol_b
         return np.sqrt(100 * hol_b / rho * r_max_norm * (penv - pcen) *
                        np.exp(-r_max_norm) + r_arr_mult**2) - r_arr_mult
