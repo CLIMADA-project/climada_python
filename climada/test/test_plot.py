@@ -84,6 +84,10 @@ class TestPlotter(unittest.TestCase):
         _, myax= myexp.plot()
         self.assertIn('demo_today', myax[0][0].get_title())
 
+        myexp = Exposures(ENT_TEST_XLS)
+        _, myax= myexp.plot()
+        self.assertIn('', myax[0][0].get_title())
+
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
         myfuncs = ImpactFuncSet(ENT_TEST_XLS)
