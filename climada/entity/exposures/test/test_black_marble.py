@@ -10,7 +10,7 @@ from sklearn.neighbors import DistanceMetric
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
 _process_land, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
-_set_econ_indicators
+_set_econ_indicators, _fill_admin1_geom, _filter_admin1
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
@@ -18,6 +18,11 @@ from climada.util.coordinates import coord_on_land
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
 SHP_FILE = shapereader.Reader(SHP_FN)
+
+ADM1_FILE = shapereader.natural_earth(resolution='10m',
+                                      category='cultural',
+                                      name='admin_1_states_provinces')
+ADM1_FILE = shapereader.Reader(ADM1_FILE)
 
 class TestCountryIso(unittest.TestCase):
     """Test country_iso function."""
@@ -30,10 +35,10 @@ class TestCountryIso(unittest.TestCase):
         self.assertEqual(len(iso_name), len(country_name))
         self.assertTrue('CHE'in iso_name)
         self.assertTrue('KOS'in iso_name)
-        self.assertEqual(iso_name['CHE'][0], 93)
+        self.assertEqual(iso_name['CHE'][0], 41)
         self.assertEqual(iso_name['CHE'][1], 'Switzerland')
         self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(iso_name['KOS'][0], 66)
+        self.assertEqual(iso_name['KOS'][0], 252)
         self.assertEqual(iso_name['KOS'][1], 'Kosovo')
         self.assertIsInstance(iso_name['KOS'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -43,7 +48,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['HTI'][0], 113)
+        self.assertEqual(iso_name['HTI'][0], 100)
         self.assertEqual(iso_name['HTI'][1], 'Haiti')
         self.assertIsInstance(iso_name['HTI'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -59,7 +64,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['BOL'][0], 4)
+        self.assertEqual(iso_name['BOL'][0], 31)
         self.assertEqual(iso_name['BOL'][1], 'Bolivia')
         self.assertIsInstance(iso_name['BOL'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -68,6 +73,67 @@ class TestCountryIso(unittest.TestCase):
         country_name = ['Korea']
         with self.assertRaises(ValueError):
             country_iso_geom(country_name, SHP_FILE)
+
+class TestProvinces(unittest.TestCase):
+    """Tst black marble with admin1."""
+    def test_fill_admin1_geom_pass(self):
+        """Test function _fill_admin1_geom pass."""
+        iso3 = 'ESP'
+        admin1_rec = list(ADM1_FILE.records())
+
+        prov_list = ['Barcelona']
+        res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
+        self.assertEqual(len(res_bcn), 1)
+        self.assertIsInstance(res_bcn[0], shapely.geometry.multipolygon.MultiPolygon)
+        
+        prov_list = ['Barcelona', 'Tarragona']
+        res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
+        self.assertEqual(len(res_bcn), 2)
+        self.assertIsInstance(res_bcn[0], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(res_bcn[1], shapely.geometry.multipolygon.MultiPolygon)
+
+    def test_fill_admin1_geom_fail(self):
+        """Test function _fill_admin1_geom fail."""
+        iso3 = 'CHE'
+        admin1_rec = list(ADM1_FILE.records())
+
+        prov_list = ['Barcelona']
+        with self.assertRaises(ValueError):
+            with self.assertLogs('climada.entity.exposures.black_marble', level='ERROR') as cm:
+                _fill_admin1_geom(iso3, admin1_rec, prov_list)
+        self.assertIn('Barcelona not found. Possible provinces of CHE are: ', cm.output[0])
+        
+    def test_country_iso_geom_pass(self):
+        """Test country_iso_geom pass."""
+        countries = {'Switzerland': []}
+        _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
+        self.assertEqual(cntry_admin1, {'CHE': []})
+
+        countries = ['Switzerland']
+        _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
+        self.assertEqual(cntry_admin1, {'CHE': []})
+        self.assertIsInstance(countries, list)
+
+        countries = {'Switzerland': 'Zürich'}
+        _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
+        self.assertEqual(len(cntry_admin1), 1)
+        self.assertIsInstance(cntry_admin1['CHE'][0], shapely.geometry.multipolygon.MultiPolygon)
+
+    def test_filter_admin1_pass(self):
+        """Test _filter_admin1 pass."""
+        exp_bkmrb = BlackMarble()
+        exp_bkmrb.value = np.arange(100)
+        exp_bkmrb.coord = np.empty((100, 2))
+        exp_bkmrb.coord[:, 0] = 41.39
+        exp_bkmrb.coord[:, 1] = np.linspace(0, 3, 100)
+        admin1_rec = list(ADM1_FILE.records())
+        for rec in admin1_rec:
+            if 'Barcelona' in rec.attributes['name']:
+                bcn_geom = rec.geometry
+
+        _filter_admin1(exp_bkmrb, bcn_geom)
+        for coord in exp_bkmrb.coord:
+            self.assertTrue(bcn_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
 
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
@@ -312,4 +378,5 @@ class TestEconIndices(unittest.TestCase):
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
