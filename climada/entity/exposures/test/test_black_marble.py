@@ -114,9 +114,9 @@ class TestProvinces(unittest.TestCase):
         self.assertEqual(cntry_admin1, {'CHE': []})
         self.assertIsInstance(countries, list)
 
-        countries = {'Switzerland': 'Zürich'}
+        countries = {'Switzerland': ['Zürich']}
         _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
-        self.assertEqual(len(cntry_admin1), 1)
+        self.assertEqual(len(cntry_admin1['CHE']), 1)
         self.assertIsInstance(cntry_admin1['CHE'][0], shapely.geometry.multipolygon.MultiPolygon)
 
     def test_filter_admin1_pass(self):
@@ -375,6 +375,7 @@ class TestEconIndices(unittest.TestCase):
         self.assertAlmostEqual(exp.value.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestProvinces)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
