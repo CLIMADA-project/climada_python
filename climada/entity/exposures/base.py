@@ -128,7 +128,7 @@ class Exposures(object):
         self._check_optionals(num_exp)
         self._check_defaults(num_exp)
 
-    def plot(self, ignore_null=False, pop_name=True, buffer_deg=None,
+    def plot(self, ignore_null=True, pop_name=True, buffer_deg=None,
              **kwargs):
         """Plot exposures values sum binned over Earth's map.
 
