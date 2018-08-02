@@ -93,7 +93,7 @@ class BMFuncs(unittest.TestCase):
         shp_file = shapereader.Reader(shp_fn)
         list_records = list(shp_file.records())
         for info_idx, info in enumerate(list_records):
-            if info.attributes['ADM0_A3'] == 'ESP':
+            if info.attributes['ADM0_A3'] == 'AIA':
                 bounds = info.bounds
         
         req_files = nl_utils.check_required_nl_files(bounds)
