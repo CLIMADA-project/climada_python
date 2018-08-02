@@ -254,8 +254,7 @@ def load_nightlight_nasa(bounds, req_files, year):
 
         with Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year)))) \
         as im_nl:
-            aux_nl = im_nl.getchannel(0)
-            cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon,
+            cut_nl_nasa(im_nl.getchannel(0), idx_info, nightlight, in_lat, in_lon,
                         in_lat_nb, in_lon_nb)
 
         idx_info[1] = idx
