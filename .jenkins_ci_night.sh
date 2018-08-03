@@ -3,5 +3,5 @@
 source activate climada_env
 conda env update --file requirements/env_developer.yml
 make lint
-make test
+make integ_test
 source deactivate
