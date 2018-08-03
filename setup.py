@@ -68,7 +68,8 @@ setup(
                       'numba',
                       'pathos',
                       'tqdm',
-                      'pycountry'
+                      'pandas-datareader',
+                      'pillow'
                      ], 
 
     package_data={'': extra_files },  
