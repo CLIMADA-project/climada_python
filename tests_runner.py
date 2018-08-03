@@ -33,7 +33,7 @@ def main():
             output = 'tests_xml'
             xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
         elif arg == 'integ':
-            output = 'tests_xml_integ'
+            output = 'tests_xml'
             xmlrunner.XMLTestRunner(output=output).run(find_integ_tests())
     else:
         # execute without xml reports

@@ -27,8 +27,6 @@ test : ## Unit and integration tests execution with coverage and xml reports
 	python -m coverage combine
 	python -m coverage xml -o coverage.xml
 	python -m coverage html -d coverage
-	mv tests_xml_integ/* tests_xml/
-	rm -r tests_xml_integ
 
 .PHONY : ci-clean
 ci-clean :
