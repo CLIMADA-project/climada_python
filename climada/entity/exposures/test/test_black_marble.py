@@ -105,10 +105,6 @@ class TestProvinces(unittest.TestCase):
         
     def test_country_iso_geom_pass(self):
         """Test country_iso_geom pass."""
-        countries = {'Switzerland': []}
-        _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
-        self.assertEqual(cntry_admin1, {'CHE': []})
-
         countries = ['Switzerland']
         _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
         self.assertEqual(cntry_admin1, {'CHE': []})
@@ -375,7 +371,6 @@ class TestEconIndices(unittest.TestCase):
         self.assertAlmostEqual(exp.value.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestProvinces)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
