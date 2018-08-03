@@ -19,6 +19,8 @@ unit_test : ## Unit tests execution with coverage and xml reports
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
 	python -m coverage run --concurrency=multiprocessing tests_runner.py integ
+	python -m coverage xml -o coverage.xml
+	python -m coverage html -d coverage
 
 .PHONY : test
 test : ## Unit and integration tests execution with coverage and xml reports
