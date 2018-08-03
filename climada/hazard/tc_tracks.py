@@ -115,13 +115,13 @@ class TCTracks(object):
         """
         raise NotImplementedError
 
-    def equal_timestep(self, time_step_h=
-                       CONFIG['trop_cyclone']['time_step_h']):
+    def equal_timestep(self, time_step_h=CONFIG['trop_cyclone']['time_step_h']):
         """ Generate interpolated track values to time steps of min_time_step.
 
         Parameters:
             time_step_h (float): time step in hours to which to interpolate
         """
+        land_param = False
         new_list = list()
         for track in self.data:
             if track.time.size > 3:
@@ -138,7 +138,8 @@ class TCTracks(object):
                 track.attrs['category'] = set_category( \
                     track.max_sustained_wind.values, \
                     track.max_sustained_wind_unit)
-
+                if 'on_land' in track_int or 'dist_since_lf' in track_int:
+                    land_param = True
             else:
                 LOGGER.warning('Track interpolation not done. ' +
                                'Not enough elements for %s', track.name)
@@ -146,7 +147,8 @@ class TCTracks(object):
             new_list.append(track_int)
 
         self.data = new_list
-        self._calc_space_params()
+        if land_param:
+            self._calc_land_params()
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
         ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
@@ -199,7 +201,7 @@ class TCTracks(object):
                 ens_track.append(i_track)
 
         self.data = ens_track
-        self._calc_space_params()
+        self._calc_land_params()
         if decay:
             v_rel, p_rel = self._calc_land_decay()
             self._apply_land_decay(v_rel, p_rel)
@@ -284,7 +286,7 @@ class TCTracks(object):
             for track in hist_tracks:
                 _decay_values(s_rel, track, v_lf, p_lf, x_val)
         except AttributeError:
-            LOGGER.error('Execute _calc_space_params() first.')
+            LOGGER.error('Execute _calc_land_params() first.')
             raise ValueError
 
         v_rel, p_rel = _decay_calc_coeff(x_val, v_lf, p_lf)
@@ -320,7 +322,7 @@ class TCTracks(object):
                     orig_pres.append(np.copy(track.central_pressure.values))
                 _apply_decay_coeffs(track, v_rel, p_rel, s_rel)
         except AttributeError:
-            LOGGER.error('Execute _calc_space_params() first.')
+            LOGGER.error('Execute _calc_land_params() first.')
             raise ValueError
 
         if check_plot:
@@ -331,7 +333,7 @@ class TCTracks(object):
         """ Get longitude from coord array """
         return len(self.data)
 
-    def _calc_space_params(self):
+    def _calc_land_params(self):
         """Compute tracks attributes dependent on their coordinates:
         on_land and dist_since_lf.
 

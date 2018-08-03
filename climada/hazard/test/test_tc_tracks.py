@@ -90,8 +90,6 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.isnan(tc_track.data[0].basin))
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
-        self.assertTrue(np.all(np.logical_not(tc_track.data[0].on_land.values)))
-        self.assertTrue(np.all(np.isnan(tc_track.data[0].dist_since_lf.values)))
 
     def test_random_no_landfall_pass(self):
         """ Test calc_random_walk with decay and no historical tracks with landfall """
@@ -158,7 +156,7 @@ class TestFuncs(unittest.TestCase):
         """ Test _calc_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
-        tc_track._calc_space_params()
+        tc_track._calc_land_params()
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
             tc_track._calc_land_decay()
         self.assertIn('No historical track with landfall.', cm.output[0])
@@ -167,7 +165,7 @@ class TestFuncs(unittest.TestCase):
         """ Test _calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
-        tc_track._calc_space_params()
+        tc_track._calc_land_params()
         v_rel, p_rel = tc_track._calc_land_decay()
         
         for i, val in enumerate(v_rel.values()):
@@ -281,7 +279,7 @@ class TestFuncs(unittest.TestCase):
         """ Test _apply_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
-        tc_track._calc_space_params()
+        tc_track._calc_land_params()
         tc_track.data[0]['orig_event_flag']=False
         tc_ref = tc_track.data[0].copy()
         tc_track._apply_land_decay(dict(), dict())
@@ -312,7 +310,7 @@ class TestFuncs(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
-        tc_track._calc_space_params()
+        tc_track._calc_land_params()
         tc_track._apply_land_decay(v_rel, p_rel, s_rel=True, check_plot=False)
         
         p_ref = np.array([1.010000000000000, 1.009000000000000, 1.008000000000000,
