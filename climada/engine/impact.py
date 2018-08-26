@@ -4,7 +4,6 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-import os
 import logging
 import numpy as np
 
