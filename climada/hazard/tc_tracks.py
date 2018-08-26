@@ -596,7 +596,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
             close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
             LOGGER.debug('No historical track of category %s. Decay ' +
                          'parameters from category %s taken.',
-                        CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
+                         CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
 
