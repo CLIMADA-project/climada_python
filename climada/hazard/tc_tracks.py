@@ -594,8 +594,8 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
         if ss_scale not in p_rel:
             close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
-            LOGGER.info('No historical track of category %s. Decay ' +
-                        'parameters from category %s taken.',
+            LOGGER.debug('No historical track of category %s. Decay ' +
+                         'parameters from category %s taken.',
                         CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
