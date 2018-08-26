@@ -167,12 +167,15 @@ class Hazard(object):
                                           var_list):
             self.append(self._read_one(file, haz_type, desc, centr, var))
 
-    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), orig=False):
+    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), orig=False,
+                          **kwargs):
         """Compute and plot hazard intensity maps for different return periods.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
             orig (bool, optional): if true, only historical events considered
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
@@ -182,9 +185,9 @@ class Hazard(object):
         colbar_name = 'Wind intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
-            title.append('Return period ' + str(ret))
+            title.append('Return period: ' + str(ret) + ' years')
         fig, axis = plot.geo_im_from_array(inten_stats, self.centroids.coord, \
-                                           colbar_name, title)
+                                           colbar_name, title, **kwargs)
         return fig, axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, **kwargs):
