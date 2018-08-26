@@ -62,13 +62,6 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
-    if 'vmin' not in kwargs:
-        if ignore_zero:
-            kwargs['vmin'] = np.min(array_sub[array_sub > 0])
-        else:
-            kwargs['vmin'] = np.min(array_sub)
-    if 'vmax' not in kwargs:
-        kwargs['vmax'] = np.max(array_sub)
 
     # Generate each subplot
     fig, axis_sub = make_map(num_im)
