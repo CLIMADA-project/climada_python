@@ -143,7 +143,7 @@ class TestFuncs(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         ens_size=2
-        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+        with self.assertLogs('climada.hazard.tc_tracks', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size, seed=25, decay=True)
         self.assertIn('No historical track of category Tropical Depression.', cm.output[0])
         self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[1])
