@@ -56,7 +56,7 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual(0.400665463736549e9, ifc.impact[7])
         self.assertEqual(0.381063674256423e9, ifc.impact[8])
         self.assertEqual(0, ifc.impact[9])
-        self.assertEqual(' x ', ifc.label)
+        self.assertEqual('Exceedance frequency curve', ifc.label)
         self.assertEqual('USD', ifc.unit)
 
 class TestOneExposure(unittest.TestCase):
