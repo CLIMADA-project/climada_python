@@ -106,9 +106,7 @@ class Impact(object):
         ifc.return_per = 1/exceed_freq
         ifc.impact = self.at_event[sort_idxs]
         ifc.unit = self.unit
-        ifc.label = os.path.splitext(os.path.basename( \
-            self.exposures_tag.file_name))[0] + ' x ' + \
-            os.path.splitext(os.path.basename(self.hazard_tag.file_name))[0]
+        ifc.label = 'Exceedance frequency curve'
         return ifc
 
     def calc(self, exposures, impact_funcs, hazard):
