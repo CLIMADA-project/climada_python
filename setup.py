@@ -33,14 +33,14 @@ setup(
     description='CLIMADA in Python',
 
     long_description=long_description,
-    
+
     url='https://github.com/davidnbresch/climada_python',
 
     author='ETH',
 
     license='GNU General Public License',
 
-    classifiers=[ 
+    classifiers=[
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
@@ -49,9 +49,9 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
 
-    keywords='climate adaptation',  
+    keywords='climate adaptation',
 
-    packages=find_packages(where='.'), 
+    packages=find_packages(where='.'),
 
     install_requires=['cartopy==0.16.0',
                       'shapely==1.6.2',
@@ -70,9 +70,9 @@ setup(
                       'tqdm',
                       'pandas-datareader',
                       'pillow'
-                     ], 
+                     ],
 
-    package_data={'': extra_files },  
-    
+    package_data={'': extra_files },
+
     include_package_data=True
 )
