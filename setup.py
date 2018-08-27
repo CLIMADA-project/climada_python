@@ -60,7 +60,7 @@ setup(
                       'matplotlib',
                       'pandas',
                       'h5py',
-                      'scipy',
+                      'scipy==1.1.0',
                       'scikit-learn',
                       'xlrd',
                       'pint',
@@ -73,4 +73,6 @@ setup(
                      ], 
 
     package_data={'': extra_files },  
+    
+    include_package_data=True
 )
