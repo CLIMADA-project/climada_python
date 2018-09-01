@@ -85,7 +85,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         axis.set_extent((extent))
         add_shapes(axis)
         if pop_name:
-            add_populated(axis, extent)
+            add_populated_places(axis, extent)
 
         if 'gridsize' not in kwargs:
             kwargs['gridsize'] = min(int(array_im.size/2), MAX_BINS)
@@ -158,9 +158,9 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
             pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar( \
-                axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im), **kwargs),
-                cax=cbax, orientation='vertical')
+        cbar = plt.colorbar(axis.pcolormesh(grid_x, grid_y, \
+            np.squeeze(grid_im), transform=ccrs.PlateCarree(), **kwargs), \
+            cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
 
@@ -328,12 +328,12 @@ def add_shapes(axis, projection=ccrs.PlateCarree()):
         axis.add_geometries([geometry], projection, facecolor='', \
                             edgecolor='black')
 
-def add_populated(axis, extent, projection=ccrs.PlateCarree()):
+def add_populated_places(axis, extent, projection=ccrs.PlateCarree()):
     """Add city names.
 
     Parameters:
         axis (cartopy.mpl.geoaxes.GeoAxesSubplot): cartopy axis.
-        extent (): geographical limits.
+        extent (list): geographical limits.
         projection (cartopy.crs projection, optional): geographical projection,
             PlateCarree default.
 
@@ -342,15 +342,37 @@ def add_populated(axis, extent, projection=ccrs.PlateCarree()):
                            category='cultural', name='populated_places_simple')
 
     shp = shapereader.Reader(shp_file)
-    cnt = 0
     for rec, point in zip(shp.records(), shp.geometries()):
-        cnt += 1
         if (point.x <= extent[1]) and (point.x > extent[0]):
             if (point.y <= extent[3]) and (point.y > extent[2]):
                 axis.plot(point.x, point.y, 'ko', markersize=7, \
                           transform=projection)
                 axis.text(point.x, point.y, rec.attributes['name'], \
                     horizontalalignment='right', verticalalignment='bottom', \
+                    transform=projection, fontsize=14)
+
+def add_cntry_names(axis, extent, projection=ccrs.PlateCarree()):
+    """Add country names.
+
+    Parameters:
+        axis (cartopy.mpl.geoaxes.GeoAxesSubplot): cartopy axis.
+        extent (list): geographical limits.
+        projection (cartopy.crs projection, optional): geographical projection,
+            PlateCarree default.
+
+    """
+    shp_file = shapereader.natural_earth(resolution='10m', \
+                           category='cultural', name='admin_0_countries')
+
+    shp = shapereader.Reader(shp_file)
+    for rec, point in zip(shp.records(), shp.geometries()):
+        point_x = point.centroid.xy[0][0]
+        point_y = point.centroid.xy[1][0]
+        if (point_x <= extent[1]) and (point_x > extent[0]):
+            if (point_y <= extent[3]) and (point_y > extent[2]):
+                if 'Sint' not in rec.attributes['NAME']:
+                    axis.text(point_x, point_y, rec.attributes['NAME'], \
+                    horizontalalignment='center', verticalalignment='center', \
                     transform=projection, fontsize=14)
 
 def get_row_col_size(num_sub):
