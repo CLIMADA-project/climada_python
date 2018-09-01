@@ -12,6 +12,7 @@ import matplotlib.cm as cm
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
+import cartopy.crs as ccrs
 import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
@@ -92,7 +93,9 @@ class TCTracks(object):
         for track in self.data:
             if track.name == track_name:
                 return track
-        return self.data
+
+        LOGGER.info('No track with name %s found.', track_name)
+        return []
 
     def read_ibtracs_csv(self, file_names):
         """Clear and model tropical cyclone from input csv IBTrACS file.
@@ -203,8 +206,12 @@ class TCTracks(object):
         self.data = ens_track
         self._calc_land_params()
         if decay:
-            v_rel, p_rel = self._calc_land_decay()
-            self._apply_land_decay(v_rel, p_rel)
+            try:
+                v_rel, p_rel = self._calc_land_decay()
+                self._apply_land_decay(v_rel, p_rel)
+            except ValueError as err:
+                LOGGER.info('No land decay coefficients could be applied. %s',\
+                            str(err))
 
     def plot(self, title=None):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -215,6 +222,10 @@ class TCTracks(object):
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
+        if not self.size:
+            LOGGER.info('No tracks to plot')
+            return
+
         deg_border = 0.5
         fig, axis = plot.make_map()
         axis = axis[0][0]
@@ -238,11 +249,11 @@ class TCTracks(object):
                                track.lat.values]).T.reshape(-1, 1, 2)
             segments = np.concatenate([points[:-1], points[1:]], axis=1)
             if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='solid')
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
+                    linestyle='solid', transform=ccrs.PlateCarree(), lw=2)
             else:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='dashed')
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
+                    linestyle=':', transform=ccrs.PlateCarree(), lw=2)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -341,6 +352,8 @@ class TCTracks(object):
                 only_syn (bool, optional): consider only synthetic tracks.
                     Default: False.
         """
+        if not self.size:
+            return
         deg_buffer = 0.1
         min_lat = np.min([np.min(track.lat.values) for track in self.data])
         min_lat = max(min_lat-deg_buffer, -90)
@@ -381,10 +394,10 @@ class TCTracks(object):
             datetimes.append(dt.datetime(int(year), int(month), int(day), \
                                          int(hour)))
 
-        lat = dfr['cgps_lat'].values
-        lon = dfr['cgps_lon'].values
-        cen_pres = dfr['pcen'].values
-        max_sus_wind = dfr['vmax'].values
+        lat = dfr['cgps_lat'].values.astype('float')
+        lon = dfr['cgps_lon'].values.astype('float')
+        cen_pres = dfr['pcen'].values.astype('float')
+        max_sus_wind = dfr['vmax'].values.astype('float')
         max_sus_wind_unit = 'kn'
         cen_pres = _missing_pressure(cen_pres, max_sus_wind, lat, lon)
 
@@ -393,17 +406,23 @@ class TCTracks(object):
         tr_ds.coords['lat'] = ('time', lat)
         tr_ds.coords['lon'] = ('time', lon)
         tr_ds['time_step'] = ('time', dfr['tint'].values)
-        tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values)
+        tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values.astype('float'))
         tr_ds['max_sustained_wind'] = ('time', max_sus_wind)
         tr_ds['central_pressure'] = ('time', cen_pres)
-        tr_ds['environmental_pressure'] = ('time', dfr['penv'].values)
+        tr_ds['environmental_pressure'] = ('time', \
+                                           dfr['penv'].values.astype('float'))
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
         tr_ds.attrs['name'] = name
         tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
-        tr_ds.attrs['id_no'] = float(name.replace('N', '0'). replace('S', '1'))
+        try:
+            tr_ds.attrs['id_no'] = float(name.replace('N', '0'). \
+                                         replace('S', '1'))
+        except ValueError:
+            tr_ds.attrs['id_no'] = float(str(datetimes[0].date()). \
+                                         replace('-', ''))
         tr_ds.attrs['category'] = set_category(max_sus_wind, \
                    max_sus_wind_unit)
 
@@ -822,8 +841,9 @@ def _check_apply_decay_hist_plot(hist_tracks):
 
 def _missing_pressure(cen_pres, v_max, lat, lon):
     """Deal with missing central pressures."""
-    if np.argwhere(cen_pres < 0).size > 0:
-        cen_pres = 1024.388 + 0.047*lat - 0.029*lon - 0.818*v_max
+    if np.argwhere(cen_pres <= 0).size > 0:
+        cen_pres = 1024.388 + 0.047*lat - 0.029*lon - 0.818*v_max # ibtracs 1980 -2013 (r2=0.91)
+#        cen_pres = 1024.688+0.055*lat-0.028*lon-0.815*v_max      # peduzzi
     return cen_pres
 
 def set_category(max_sus_wind, max_sus_wind_unit):
