@@ -152,13 +152,13 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
-        LOGGER.info('Found all required satellite data (' +
+        LOGGER.debug('Found all required satellite data (' +
                     str(int(sum(required_files))) + ' files) in folder ' +
                     check_path)
     elif sum(files_exist) == 0:
         LOGGER.info('No satellite files found locally in %s', check_path)
     else:
-        LOGGER.info('Not all satellite files available. Found ' +
+        LOGGER.debug('Not all satellite files available. Found ' +
                     str(int(sum(files_exist))) + ' out of ' +
                     str(int(sum(required_files))) + ' required files in ' +
                     check_path)
@@ -194,7 +194,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
             LOGGER.warning('The given folder does not exist using the ' + \
                 'Climada data directory instead.')
     if np.all(req_files == files_exist):
-        LOGGER.info('All required files already exist. ' +
+        LOGGER.debug('All required files already exist. ' +
                     'No downloads neccessary.')
         return None
     try:
