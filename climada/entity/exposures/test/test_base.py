@@ -220,6 +220,36 @@ class TestReadParallel(unittest.TestCase):
         self.assertIn('Append not possible. Different reference years.', \
                          cm.output[0])
 
+class TestRemove(unittest.TestCase):
+    """Check read function with several files"""
+
+    def test_read_one_pass(self):
+        """Remove an exposure of existing id."""
+        expo = good_exposures()
+        expo.remove(1)
+        expo.check()
+        self.assertEqual(expo.size, 2)
+
+    def test_read_two_pass(self):
+        """Remove an exposure of existing id."""
+        expo = good_exposures()
+        expo.remove([1,3])
+        expo.check()
+        self.assertEqual(expo.size, 1)
+
+    def test_read_three_pass(self):
+        """Remove an exposure of existing id."""
+        expo = good_exposures()
+        expo.remove([1,3, 2])
+        expo.check()
+        self.assertEqual(expo.size, 0)
+
+    def test_read_wrong_one_pass(self):
+        """Remove exposure that does not exist."""
+        expo = good_exposures()
+        expo.remove(5)
+        self.assertEqual(expo.size, 3)
+
 class TestChecker(unittest.TestCase):
     """Test loading funcions from the Exposures class"""
     def test_check_wrongValue_fail(self):
@@ -323,4 +353,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemove))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

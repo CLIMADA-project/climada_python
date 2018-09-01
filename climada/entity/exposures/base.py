@@ -173,6 +173,37 @@ class Exposures(object):
         for file, desc, var in zip(all_files, desc_list, var_list):
             self.append(Exposures._read_one(file, desc, var))
 
+    def remove(self, exp_id):
+        """Remove one exposure with given id.
+
+        Parameters:
+            exp_id (list(int) or int): exposure ids.
+        """
+        if not isinstance(exp_id, list):
+            exp_id = [exp_id]
+        try:
+            pos_del = []
+            for one_id in exp_id:
+                pos_del.append(np.argwhere(self.id == one_id)[0][0])
+        except IndexError:
+            LOGGER.info('No exposure with id %s.', exp_id)
+            return
+        self.coord = np.delete(self.coord, pos_del, axis=0)
+        self.value = np.delete(self.value, pos_del)
+        self.impact_id = np.delete(self.impact_id, pos_del)
+        self.id = np.delete(self.id, pos_del)
+        if self.deductible.size:
+            self.deductible = np.delete(self.deductible, pos_del)
+        if self.cover.size:
+            self.cover = np.delete(self.cover, pos_del)
+        if self.category_id.size:
+            self.category_id = np.delete(self.category_id, pos_del)
+        if self.region_id.size:
+            self.region_id = np.delete(self.region_id, pos_del)
+        old_assigned = self.assigned.copy()
+        for key, val in old_assigned.items():
+            self.assigned[key] = np.delete(val, pos_del)
+
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
 
@@ -275,6 +306,12 @@ class Exposures(object):
             self._coord = GridPoints(value)
         else:
             self._coord = value
+
+    @property
+    def size(self):
+        """ Get longitude from coord array """
+        self.check()
+        return self.value.size
 
     @staticmethod
     def _read_one(file_name, description='', var_names=None):
