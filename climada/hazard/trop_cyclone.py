@@ -137,6 +137,8 @@ class TropCyclone(Hazard):
         Parameters:
             tracks (list(xr.Dataset))
         """
+        if not len(tracks):
+            return
         delta_time = \
             np.max([np.max(track.time.dt.year.values) \
                     for track in tracks]) - \
