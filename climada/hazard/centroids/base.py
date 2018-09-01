@@ -184,10 +184,6 @@ class Centroids(object):
             kwargs['s'] = 1
         fig, axis = plot.make_map()
         axis = axis[0][0]
-        min_lat, max_lat = self.lat.min(), self.lat.max()
-        min_lon, max_lon = self.lon.min(), self.lon.max()
-        axis.set_extent(([int(min_lon), int(max_lon),
-                          int(min_lat), int(max_lat)]))
         plot.add_shapes(axis)
         axis.set_title(self.tag.join_file_names())
         axis.scatter(self.lon, self.lat, **kwargs)
