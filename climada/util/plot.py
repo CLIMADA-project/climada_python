@@ -364,8 +364,7 @@ def add_cntry_names(axis, extent, projection=ccrs.PlateCarree()):
         point_y = point.centroid.xy[1][0]
         if (point_x <= extent[1]) and (point_x > extent[0]):
             if (point_y <= extent[3]) and (point_y > extent[2]):
-                if 'Sint' not in rec.attributes['NAME']:
-                    axis.text(point_x, point_y, rec.attributes['NAME'], \
+                axis.text(point_x, point_y, rec.attributes['NAME'], \
                     horizontalalignment='center', verticalalignment='center', \
                     transform=projection, fontsize=14)
 
