@@ -153,15 +153,15 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
 
     if sum(files_exist) == sum(required_files):
         LOGGER.debug('Found all required satellite data (' +
-                    str(int(sum(required_files))) + ' files) in folder ' +
-                    check_path)
+                     str(int(sum(required_files))) + ' files) in folder ' +
+                     check_path)
     elif sum(files_exist) == 0:
         LOGGER.info('No satellite files found locally in %s', check_path)
     else:
         LOGGER.debug('Not all satellite files available. Found ' +
-                    str(int(sum(files_exist))) + ' out of ' +
-                    str(int(sum(required_files))) + ' required files in ' +
-                    check_path)
+                     str(int(sum(files_exist))) + ' out of ' +
+                     str(int(sum(required_files))) + ' required files in ' +
+                     check_path)
 
     return (files_exist, check_path)
 
@@ -195,7 +195,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
                 'Climada data directory instead.')
     if np.all(req_files == files_exist):
         LOGGER.debug('All required files already exist. ' +
-                    'No downloads neccessary.')
+                     'No downloads neccessary.')
         return None
     try:
         curr_wd = getcwd()
@@ -223,7 +223,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     """ Get nightlight from NASA repository that contain input boundary.
 
     Parameters:
-        bounds (tuple): nmin_lon, min_lat, max_lon, max_lat
+        bounds (tuple): min_lon, min_lat, max_lon, max_lat
         req_files (np.array): array with flags for NASA files needed
         year (int): nightlight year
 
@@ -281,26 +281,31 @@ def cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon, in_lat_nb,
             to: 0, 1, 2 or 3 column of nasa's images.
     """
     idx, prev_idx, row_added = idx_info
+
     aux_nl = sparse.csc.csc_matrix(aux_nl)
     # flip X axis
     aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
 
     aux_bnd = []
+    # in min lon
     if int(idx/2) % 4 == in_lon_nb[0]:
         aux_bnd.append(int(in_lon[0] - (int(idx/2)%4)*21600))
     else:
         aux_bnd.append(0)
 
+    # in min lat
     if idx % 2 == in_lat_nb[0]:
         aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
     else:
         aux_bnd.append(0)
 
+    # in max lon
     if int(idx/2) % 4 == in_lon_nb[1]:
         aux_bnd.append(int(in_lon[1] - (int(idx/2)%4)*21600) + 1)
     else:
         aux_bnd.append(21600)
 
+    # in max lat
     if idx % 2 == in_lat_nb[1]:
         aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
     else:
@@ -313,15 +318,17 @@ def cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon, in_lat_nb,
         # append horizontally in first rows e.g 0->2 or 1->2
         nightlight.resize((nightlight.shape[0],
                            nightlight.shape[1] + aux_bnd[2]-aux_bnd[0]))
-        nightlight[:aux_bnd[3]-aux_bnd[1], -aux_bnd[2]+aux_bnd[0]:] = \
+        nightlight[-aux_bnd[3]+aux_bnd[1]:, -aux_bnd[2]+aux_bnd[0]:] = \
             aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
     else:
-        # append vertically in lasts rows and columns e.g 0->1 or 2->3
+        # append vertically in firsts rows and columns e.g 0->1 or 2->3
         if not row_added:
-            nightlight.resize((nightlight.shape[0] + aux_bnd[3] - aux_bnd[1],
-                               nightlight.shape[1]))
+            old_shape = nightlight.shape
+            nightlight.resize((old_shape[0] + aux_bnd[3] - aux_bnd[1],
+                               old_shape[1]))
+            nightlight[-old_shape[0]:, :] = nightlight[:old_shape[0], :]
             idx_info[2] = True
-        nightlight[-aux_bnd[3]+aux_bnd[1]:, -aux_bnd[2]+aux_bnd[0]:] = \
+        nightlight[:aux_bnd[3]-aux_bnd[1], -aux_bnd[2]+aux_bnd[0]:] = \
             aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
 
 def unzip_tif_to_py(file_gz):
