@@ -479,6 +479,8 @@ def _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km):
     LOGGER.info('Generating resolution of approx %s km.', res_km)
     nightlight_res = ndimage.zoom(nightlight[in_lat[0]:in_lat[-1]+1, :] \
         [:, in_lon[0]:in_lon[-1]+1].todense(), res_fact)
+    nightlight_res[nightlight_res < 0.0] = 0.0
+
     lat_res, lon_res = np.mgrid[
         coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
         coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
