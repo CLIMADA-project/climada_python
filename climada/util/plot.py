@@ -26,8 +26,8 @@ BUFFER_DEG = 1.0
 # Maximum number of bins in geo_bin_from_array
 MAX_BINS = 200
 
-def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
-                       buffer_deg=BUFFER_DEG, ignore_zero=False, **kwargs):
+def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
+                       buffer_deg=BUFFER_DEG, extend='neither', **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -45,7 +45,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             array_sub.
         pop_name (bool, optional): add names of the populated places.
         buffer_deg (float, optional): border to add to coordinates
-        ignore_zero (bool, optional): ignore zero and negative values
+        extend (str, optional): extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -70,13 +71,6 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         if coord.shape[0] != array_im.size:
             raise ValueError("Size mismatch in input array: %s != %s." % \
                              (coord.shape[0], array_im.size))
-        if ignore_zero and 0 in array_im:
-            pos_vals = array_im > 0
-            array_im = array_im[pos_vals]
-            coord = coord[pos_vals, :]
-            kwargs_cbar = {'extend':'min'}
-        else:
-            kwargs_cbar = {}
 
         # Binned image with coastlines
         extent = get_borders(coord)
@@ -96,7 +90,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
             pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
-                            **kwargs_cbar)
+                            extend=extend)
         cbar.set_label(name)
         axis.set_title(tit)
 

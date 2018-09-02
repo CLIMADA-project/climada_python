@@ -129,7 +129,7 @@ class Exposures(object):
         self._check_defaults(num_exp)
 
     def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
-             **kwargs):
+             extend='neither', **kwargs):
         """Plot exposures values sum binned over Earth's map.
 
         Parameters:
@@ -138,6 +138,8 @@ class Exposures(object):
             pop_name (bool, optional): add names of the populated places
             buffer_deg (float, optional): border to add to coordinates.
                 Default: 1.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
@@ -147,9 +149,13 @@ class Exposures(object):
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-
+        if ignore_zero:
+            pos_vals = self.value > 0
+            return plot.geo_bin_from_array(self.value[pos_vals], \
+                self.coord[pos_vals, :], cbar_label, title, pop_name, \
+                buffer_deg, extend, **kwargs)
         return plot.geo_bin_from_array(self.value, self.coord, cbar_label, \
-            title, pop_name, buffer_deg, ignore_zero, **kwargs)
+            title, pop_name, buffer_deg, extend, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.
