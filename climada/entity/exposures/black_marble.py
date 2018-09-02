@@ -505,8 +505,6 @@ def _set_econ_indicators(exp, gdp, inc_grp):
         gdp (float): GDP to interpolate in the region
         inc_grp (float): index to weight exposures in the region
     """
-    exp.value = np.power(exp.value, 3)
     if exp.value.sum() > 0:
+        exp.value = np.power(exp.value, 3)
         exp.value = exp.value/exp.value.sum()* gdp * (inc_grp+1)
-    else:
-        exp.value = 0.0
