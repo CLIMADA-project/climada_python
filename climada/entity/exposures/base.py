@@ -41,8 +41,8 @@ class Exposures(object):
         value (np.array): a value for each exposure
         impact_id (np.array): impact function id corresponding to each
             exposure
-        deductible (np.array, default): deductible value for each exposure
-        cover (np.array, default): cover value for each exposure
+        deductible (np.array, optional): deductible value for each exposure
+        cover (np.array, optional): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
             (when defined)
         region_id (np.array, optional): region id for each exposure
@@ -93,10 +93,9 @@ class Exposures(object):
         self.value = np.array([], float)
         self.impact_id = np.array([], int)
         self.id = np.array([], int)
-        # Optional variables. Default values set in check if not filled.
+        # Optional variables.
         self.deductible = np.array([], float)
         self.cover = np.array([], float)
-        # Optional variables. No default values set in check if not filled.
         self.category_id = np.array([], int)
         self.region_id = np.array([], int)
         self.assigned = dict()
@@ -126,7 +125,6 @@ class Exposures(object):
             raise ValueError
         self._check_obligatories(num_exp)
         self._check_optionals(num_exp)
-        self._check_defaults(num_exp)
 
     def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
              extend='neither', **kwargs):
@@ -219,7 +217,6 @@ class Exposures(object):
         Raises:
             ValueError
         """
-        self._check_defaults(len(self.id))
         exposures.check()
         if self.id.size == 0:
             self.__dict__ = exposures.__dict__.copy()
@@ -243,8 +240,9 @@ class Exposures(object):
         self.value = np.append(self.value, exposures.value)
         self.impact_id = np.append(self.impact_id, exposures.impact_id)
         self.id = np.append(self.id, exposures.id)
-        self.deductible = np.append(self.deductible, exposures.deductible)
-        self.cover = np.append(self.cover, exposures.cover)
+        self.deductible = self._append_optional(self.deductible,
+                                                exposures.deductible)
+        self.cover = self._append_optional(self.cover, exposures.cover)
         self.category_id = self._append_optional(self.category_id, \
                           exposures.category_id)
         self.region_id = self._append_optional(self.region_id, \
@@ -363,14 +361,6 @@ class Exposures(object):
         check.size(num_exp, self.impact_id, 'Exposures.impact_id')
         check.shape(num_exp, 2, self.coord, 'Exposures.coord')
 
-    def _check_defaults(self, num_exp):
-        """Check coherence optional variables. Warn and set default values \
-        if empty."""
-        self.deductible = check.array_default(num_exp, self.deductible, \
-                                 'Exposures.deductible', np.zeros(num_exp))
-        self.cover = check.array_default(num_exp, self.cover, \
-                                 'Exposures.cover', self.value.copy())
-
     def _check_optionals(self, num_exp):
         """Check coherence optional variables. Warn if empty."""
         check.array_optional(num_exp, self.category_id, \
@@ -378,6 +368,8 @@ class Exposures(object):
         check.array_optional(num_exp, self.region_id, \
                              'Exposures.region_id')
         check.empty_optional(self.assigned, "Exposures.assigned")
+        check.array_optional(num_exp, self.deductible, 'Exposures.deductible')
+        check.array_optional(num_exp, self.cover, 'Exposures.cover')
         for (ass_haz, ass) in self.assigned.items():
             if ass_haz == 'NA':
                 LOGGER.warning('Exposures.assigned: assigned hazard type ' \

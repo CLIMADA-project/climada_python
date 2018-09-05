@@ -122,7 +122,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.deductible, \
                         np.append(expo_check.deductible, expo_app.deductible)))
         self.assertTrue(np.array_equal(expo.cover, \
-                                       np.array([1, 2, 3, 1, 2, 3])))
+                                       np.array([])))
         self.assertTrue(np.array_equal(expo.impact_id, \
                         np.append(expo_check.impact_id, expo_app.impact_id)))
         self.assertTrue(np.array_equal(expo.category_id, \
@@ -166,7 +166,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.deductible, \
                         np.append(expo_check.deductible, expo_app.deductible)))
         self.assertTrue(np.array_equal(expo.cover, \
-                        np.append(expo_check.value, expo_app.value)))
+                        np.array([])))
         self.assertTrue(np.array_equal(expo.impact_id, \
                         np.append(expo_check.impact_id, expo_app.impact_id)))
         self.assertTrue(np.array_equal(expo.category_id, \
