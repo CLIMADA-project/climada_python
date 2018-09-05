@@ -507,4 +507,4 @@ def _set_econ_indicators(exp, gdp, inc_grp):
     """
     if exp.value.sum() > 0:
         exp.value = np.power(exp.value, 3)
-        exp.value = exp.value/exp.value.sum()* gdp * (inc_grp+1)
+        exp.value = exp.value/exp.value.sum() * gdp * (inc_grp+1)
