@@ -14,6 +14,10 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
+MAX_SIZE = 1.0e8
+""" Maximum matrix size for impact caluculation. If the matrix is bigger,
+it is chunked."""
+
 class ImpactFreqCurve(object):
     """ Impact exceedence frequency curve.
 
@@ -166,31 +170,67 @@ class Impact(object):
         # Get damage functions for this hazard
         haz_imp = impact_funcs.get_func(haz_type)
 
+        # Check if deductible and cover should be applied
+        insure_flag = False
+        if exposures.deductible.size and exposures.cover.size:
+            insure_flag = True
+        num_events = hazard.intensity.shape[0]
         # 3. Loop over exposures according to their impact function
         # Loop over impact functions
         for imp_fun in haz_imp:
+            self.imp_fun = imp_fun
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
-
-            # loop over selected exposures
-            for iexp in exp_idx[exp_iimp]:
-                # compute impact on exposure
-                event_row, impact = self._one_exposure(iexp, exposures, \
-                                                        hazard, imp_fun)
-
-                # add values to impact impact
-                self.at_event[event_row] += impact
-                self.eai_exp[iexp] += np.squeeze(sum(impact * hazard. \
-                           frequency[event_row]))
-                self.tot_value += exposures.value[iexp]
+            exp_step = int(MAX_SIZE/num_events)
+            # separte in chunks if too many exposures
+            i = -1
+            for i in range(int(exp_iimp.size/exp_step)):
+                self._exp_impact(exp_idx[exp_iimp[i*exp_step:(i+1)*exp_step]],\
+                    exposures, hazard, imp_fun, insure_flag)
+            self._exp_impact(exp_idx[exp_iimp[(i+1)*exp_step:]],\
+                exposures, hazard, imp_fun, insure_flag)
 
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
-    def plot_eai_exposure(self, ignore_null=True, **kwargs):
+    def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
+        """Compute impact for inpute exposure indexes and impact function.
+
+        Parameters:
+            exp_iimp (np.array): exposures indexes
+            exposures (Exposures): exposures instance
+            hazard (Hazard): hazard instance
+            imp_fun (ImpactFunc): impact function instance
+            insure_flag (bool): consider deductible and cover of exposures
+        """
+        # get assigned centroids
+        icens = exposures.assigned[hazard.tag.haz_type][exp_iimp]
+
+        # get affected intensities
+        inten_val = hazard.intensity[:, icens].todense()
+        # get affected fractions
+        fract = hazard.fraction[:, icens]
+        impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
+            multiply(exposures.value[exp_iimp])
+
+        if insure_flag and impact.nonzero()[0].size:
+            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
+            impact = np.minimum(np.maximum(impact - \
+                exposures.deductible[exp_iimp] * paa, 0), \
+                exposures.cover[exp_iimp])
+            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
+                hazard.frequency.reshape(-1, 1), axis=0)
+        else:
+            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
+                impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
+
+        self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
+        self.tot_value += np.sum(exposures.value[exp_iimp])
+
+    def plot_eai_exposure(self, ignore_zero=True, **kwargs):
         """Plot expected annual impact of each exposure.
 
         Parameters:
-            ignore_null (bool): ignore zero impact values at exposures
+            ignore_zero (bool): ignore zero impact values at exposures
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
@@ -198,7 +238,7 @@ class Impact(object):
         """
         title = 'Expected annual impact'
         col_name = 'Impact ' + self.unit
-        if ignore_null:
+        if ignore_zero:
             pos_vals = self.eai_exp > 0
         else:
             pos_vals = np.ones((self.eai_exp.size,), dtype=bool)
@@ -206,39 +246,3 @@ class Impact(object):
             kwargs['reduce_C_function'] = np.sum
         return plot.geo_bin_from_array(self.eai_exp[pos_vals], \
             self.coord_exp[pos_vals], col_name, title, **kwargs)
-
-    @staticmethod
-    def _one_exposure(iexp, exposures, hazard, imp_fun):
-        """Impact to one exposures.
-
-        Parameters:
-            iexp (int): array index of the exposure computed
-            exposures (Exposures): exposures
-            hazard (Hazard): a hazard
-            imp_fun (ImpactFunc): an impact function
-
-        Returns:
-            event_row (np.array): hazard' events indices affecting exposure
-            impact (np.array): impact for each event in event_row
-        """
-        # get assigned centroid of this exposure
-        icen = int(exposures.assigned[hazard.tag.haz_type][iexp])
-
-        # get intensities for this centroid
-        event_row = hazard.intensity[:, icen].nonzero()[0]
-        inten_val = np.asarray(hazard.intensity[event_row, icen].todense()). \
-                    squeeze()
-        # get affected fraction for these events
-        fract = np.squeeze(hazard.fraction[:, icen].toarray()[event_row])
-
-        # impact on this exposure
-        impact = exposures.value[iexp] * imp_fun.calc_mdr(inten_val) * fract
-        if np.count_nonzero(impact) > 0:
-            # TODO: if needed?
-            if (exposures.deductible[iexp] > 0) or \
-                (exposures.cover[iexp] < exposures.value[iexp]):
-                paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
-                impact = np.minimum(np.maximum(impact - \
-                                               exposures.deductible[iexp] * \
-                                               paa, 0), exposures.cover[iexp])
-        return event_row, impact
