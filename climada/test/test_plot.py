@@ -105,7 +105,7 @@ class TestPlotter(unittest.TestCase):
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()
         myfig, _ = ifc.plot()
-        self.assertIn('demo_today x atl_prob',\
+        self.assertIn('Exceedance frequency curve',\
                       myfig._suptitle.get_text())
 
         ifc2 = ImpactFreqCurve()
