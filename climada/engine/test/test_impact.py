@@ -61,7 +61,7 @@ class TestFreqCurve(unittest.TestCase):
 
 class TestOneExposure(unittest.TestCase):
     '''Test one_exposure function'''
-    def test_ref_value_pass(self):
+    def test_ref_value_insure_pass(self):
         ''' Test result against reference value'''
         # Read demo entity values
         # Set the entity default file to the demo one
@@ -72,6 +72,9 @@ class TestOneExposure(unittest.TestCase):
         hazard = Hazard('TC', HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
+        impact.at_event = np.zeros(hazard.intensity.shape[0])
+        impact.eai_exp = np.zeros(len(ent.exposures.value))
+        impact.tot_value = 0
 
         # Assign centroids to exposures
         ent.exposures.assign(hazard)
@@ -82,40 +85,34 @@ class TestOneExposure(unittest.TestCase):
         imp_id = ent.exposures.impact_id[iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
         # Compute
-        event_row, result = impact._one_exposure(iexp, ent.exposures, \
-                                                  hazard, imp_fun)
-        # Check sizes
-        num_res = 1280
-        self.assertEqual(num_res, len(event_row))
-        self.assertEqual(num_res, len(result))
+        insure_flag = True
+        impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
+        
+        self.assertEqual(impact.eai_exp.size, ent.exposures.size)
+        self.assertEqual(impact.at_event.size, hazard.intensity.shape[0])
+        
+        events_pos = hazard.intensity[:, ent.exposures.assigned['TC'][iexp]].nonzero()[0]
+        res_exp = np.zeros((ent.exposures.size))
+        res_exp[iexp] = np.sum(impact.at_event[events_pos] * hazard.frequency[events_pos])
+        self.assertTrue(np.array_equal(res_exp, impact.eai_exp))
 
+        self.assertEqual(0, impact.at_event[12])
         # Check first 3 values
-        self.assertEqual(0, result[0])
-        self.assertEqual(0, result[1])
-        self.assertEqual(1.0626600695059455e+06, result[2])
-        self.assertEqual(12, event_row[0])
-        self.assertEqual(41, event_row[1])
-        self.assertEqual(44, event_row[2])
+        self.assertEqual(0, impact.at_event[12])
+        self.assertEqual(0, impact.at_event[41])
+        self.assertEqual(1.0626600695059455e+06, impact.at_event[44])
 
         # Check intermediate values
-        self.assertEqual(0, result[678])
-        self.assertEqual(0, result[543])
-        self.assertEqual(0, result[982])
-        self.assertEqual(1.3318063850487845e+08, result[750])
-        self.assertEqual(4.667108555054083e+06, result[917])
-        self.assertEqual(6281, event_row[678])
-        self.assertEqual(4998, event_row[543])
-        self.assertEqual(9527, event_row[982])
-        self.assertEqual(7192, event_row[750])
-        self.assertEqual(8624, event_row[917])
+        self.assertEqual(0, impact.at_event[6281])
+        self.assertEqual(0, impact.at_event[4998])
+        self.assertEqual(0, impact.at_event[9527])
+        self.assertEqual(1.3318063850487845e+08, impact.at_event[7192])
+        self.assertEqual(4.667108555054083e+06, impact.at_event[8624])
 
         # Check last 3 values
-        self.assertEqual(0, result[num_res-1])
-        self.assertEqual(0, result[num_res-2])
-        self.assertEqual(0, result[num_res-3])
-        self.assertEqual(14349, event_row[num_res-1])
-        self.assertEqual(14347, event_row[num_res-2])
-        self.assertEqual(14309, event_row[num_res-3])
+        self.assertEqual(0, impact.at_event[14349])
+        self.assertEqual(0, impact.at_event[14347])
+        self.assertEqual(0, impact.at_event[14309])
 
 class TestCalc(unittest.TestCase):
     ''' Test impact calc method.'''
@@ -145,7 +142,7 @@ class TestCalc(unittest.TestCase):
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[int(num_events/2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
+        self.assertEqual(7.076504723057619e+10, impact.at_event[12147])
         self.assertEqual(0, impact.at_event[num_events-1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
@@ -160,10 +157,11 @@ class TestCalc(unittest.TestCase):
                                           impact.eai_exp[int(num_exp-1)]))
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
-        self.assertAlmostEqual(6.570532945599104e+11, impact.tot_value)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
-
+     
+        
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
