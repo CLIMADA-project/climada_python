@@ -240,6 +240,7 @@ class TCTracks(object):
                           min_lat-deg_border, max_lat+deg_border]))
         plot.add_shapes(axis)
 
+        synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         if title:
@@ -252,6 +253,7 @@ class TCTracks(object):
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
                     linestyle='solid', transform=ccrs.PlateCarree(), lw=2)
             else:
+                synth_flag = True
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
                     linestyle=':', transform=ccrs.PlateCarree(), lw=2)
             track_lc.set_array(track.max_sustained_wind.values)
@@ -261,6 +263,12 @@ class TCTracks(object):
                      for i_col in range(len(SAFFIR_SIM_CAT))]
         leg_names = [CAT_NAMES[i_col] for i_col
                      in range(1, len(SAFFIR_SIM_CAT)+1)]
+        if synth_flag:
+            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
+            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
+            leg_names.append('Historical')
+            leg_names.append('Synthetic')
+
         axis.legend(leg_lines, leg_names)
         return fig, axis
 
