@@ -21,8 +21,10 @@ LOGGER = logging.getLogger(__name__)
 
 FILE_EXT = {'.mat':  'MAT',
             '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
+            '.xlsx': 'XLS',
+            '.csv': 'CSV',
+            }
+
 """ Supported files format to read from """
 
 class Centroids(object):
