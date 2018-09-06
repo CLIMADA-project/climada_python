@@ -213,6 +213,11 @@ class Centroids(object):
         """ Get longitude from coord array """
         return self.coord[:, 1]
 
+    @property
+    def size(self):
+        """ Get count of centroids """
+        return self.id.size
+
     @staticmethod
     def get_sup_file_format():
         """ Get supported file extensions that can be read.
