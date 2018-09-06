@@ -11,6 +11,7 @@ import logging
 import math
 import requests
 import tqdm
+import glob
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,11 +75,14 @@ def to_list(num_exp, values, val_name):
     return val_list
 
 def get_file_names(file_name):
-    """Return list of files contained.
+    """ Return list of files contained. Supports globbing.
 
     Parameters:
-        file_name (str or list(str)): file name, or list of file names or name
-            of the folder containing the files
+        file_name (str or list(str)): Either a single string or a list of
+            strings that are either 
+                - a file path
+                - or the path of the folder containing the files
+                - or a globbing pattern.
 
     Returns:
         list
@@ -92,12 +96,18 @@ def get_file_names(file_name):
     return file_list
 
 def _process_one_file_name(name, file_list):
-    """Apend to input list the file contained in name"""
-    if os.path.splitext(name)[1] == '':
-        tmp_files = os.listdir(name)
-        # append only files (absolute path), not folders
+    """ Apend to input list the file contained in name
+        Tries globbing if name is neither dir nor file.
+    """
+    if os.path.isdir(name):
+        tmp_files = glob.glob(os.path.join(name, '*'))
         for file in tmp_files:
-            if os.path.splitext(file)[1] != '':
-                file_list.append(os.path.join(name, file))
-    else:
+            if os.path.isfile(file):
+                file_list.append(file)
+    if os.path.isfile(name):
         file_list.append(name)
+    else:
+        tmp_files = sorted(glob.glob(name))
+        for file in tmp_files:
+            if os.path.isfile(file):
+                file_list.append(file)
