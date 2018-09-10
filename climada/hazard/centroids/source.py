@@ -33,6 +33,12 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                 }
 """ Excel variable names """
 
+DEF_VAR_CSV = {'lat': 'X',
+               'lon': 'Y',
+               'region_id': 'iso_n3',
+               }
+""" CSV variable names """
+
 LOGGER = logging.getLogger(__name__)
 
 def read_excel(centroids, file_name, var_names):
@@ -111,6 +117,31 @@ def read_att_mat(centroids, cent, num_try, var_names):
     except KeyError:
         pass
 
+def read_csv(centroids, file_name, var_names):
+    """ Read csv centroids representations. Currently only supports lat/lon
+        and region_id.
+    """
+    # TODO iterate over additional variables in var_names
+    if var_names is None:
+        var_names = DEF_VAR_CSV
+    
+    cent_pd = pd.read_csv(file_name)
+
+    centroids.id = np.array(cent_pd.index)
+    centroids.coord = GridPoints(
+        np.array(cent_pd[[
+            var_names['lat'],
+            var_names['lon'],
+        ]])
+    )
+    centroids.region_id = np.array(
+        cent_pd[[var_names['region_id']]]
+    )
+
+    centroids.tag.file_name = file_name
+    centroids.tag.description = 'Read from csv'
+
 READ_SET = {'XLS': (DEF_VAR_EXCEL, read_excel),
-            'MAT': (DEF_VAR_MAT, read_mat)
-           }
+            'MAT': (DEF_VAR_MAT, read_mat),
+            'CSV': (DEF_VAR_CSV, read_csv),
+            }

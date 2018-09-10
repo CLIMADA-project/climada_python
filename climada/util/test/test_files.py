@@ -6,7 +6,7 @@ import os
 import unittest
 
 from climada.util.files_handler import to_list, get_file_names, download_file
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS
 
 class TestDownloadUrl(unittest.TestCase):
     """Test download_file function """
@@ -53,16 +53,17 @@ class TestToStrList(unittest.TestCase):
         self.assertIn("Provide one or 3 values.", cm.output[0])
         
 class TestGetFileNames(unittest.TestCase):
-    """Test get_file_names function"""
+    """ Test get_file_names function. Only works with actually existing
+        files and directories. """
     def test_one_file_copy(self):
         """If input is one file name, return a list with this file name"""
-        file_name = "test.mat"
+        file_name = GLB_CENTROIDS_MAT
         out = get_file_names(file_name)
         self.assertEqual([file_name], out)
 
     def test_several_file_copy(self):
         """If input is a list with several file names, return the same list"""
-        file_name = ["test1.mat", "test2.mat", "test3.mat", "test4.mat"]
+        file_name = [GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS]
         out = get_file_names(file_name)
         self.assertEqual(file_name, out)
 
@@ -78,6 +79,19 @@ class TestGetFileNames(unittest.TestCase):
         out = get_file_names(file_name)
         for file in out:
             self.assertNotEqual('', os.path.splitext(file)[1])
+
+    def test_globbing(self):
+        """ If input is a glob pattern, return a list of matching visible
+            files; omit folders.
+        """
+        file_name = os.path.join(DATA_DIR, 'demo/')
+        out = get_file_names(file_name + '*')
+
+        tmp_files = os.listdir(file_name)
+        tmp_files = [file_name + f for f in tmp_files]
+        tmp_files = [f for f in tmp_files if not os.path.isdir(f) 
+                and not f.startswith('.')]
+        self.assertEqual(tmp_files, out)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)

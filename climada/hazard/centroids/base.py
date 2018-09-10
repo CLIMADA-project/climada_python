@@ -21,8 +21,10 @@ LOGGER = logging.getLogger(__name__)
 
 FILE_EXT = {'.mat':  'MAT',
             '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
+            '.xlsx': 'XLS',
+            '.csv': 'CSV',
+            }
+
 """ Supported files format to read from """
 
 class Centroids(object):
@@ -212,6 +214,11 @@ class Centroids(object):
     def lon(self):
         """ Get longitude from coord array """
         return self.coord[:, 1]
+
+    @property
+    def size(self):
+        """ Get count of centroids """
+        return self.id.size
 
     @staticmethod
     def get_sup_file_format():

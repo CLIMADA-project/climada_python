@@ -6,3 +6,4 @@ from .base import *
 from .tag import *
 from .trop_cyclone import *
 from .tc_tracks import *
+from .storm_europe import *
