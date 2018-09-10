@@ -14,7 +14,6 @@ from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names, to_list
-from climada.util.constants import WISC_CENTROIDS
 
 LOGGER = logging.getLogger(__name__)
 
