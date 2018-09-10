@@ -226,18 +226,20 @@ class Impact(object):
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value[exp_iimp])
 
-    def plot_eai_exposure(self, ignore_zero=True, **kwargs):
+    def plot_eai_exposure(self, ignore_zero=True, var_name=None, **kwargs):
         """Plot expected annual impact of each exposure.
 
         Parameters:
-            ignore_zero (bool): ignore zero impact values at exposures
+            ignore_zero (bool, optional): ignore zero impact values
+            var_name (str, optional): name in colorbar
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         title = 'Expected annual impact'
-        col_name = 'Impact ' + self.unit
+        if var_name is None:
+            var_name = 'Impact (' + self.unit + ')'
         if ignore_zero:
             pos_vals = self.eai_exp > 0
         else:
@@ -245,4 +247,4 @@ class Impact(object):
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         return plot.geo_bin_from_array(self.eai_exp[pos_vals], \
-            self.coord_exp[pos_vals], col_name, title, **kwargs)
+            self.coord_exp[pos_vals], var_name, title, **kwargs)

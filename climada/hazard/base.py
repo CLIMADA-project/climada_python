@@ -669,7 +669,7 @@ class Hazard(object):
         return inten_stats
 
     def _loc_return_inten(self, return_periods, cen_pos, inten, freq):
-        """ Compute local intensity for given return period.
+        """ Compute local exceedence intensity for given return period.
 
         Parameters:
             return_periods (np.array): return periods to consider
