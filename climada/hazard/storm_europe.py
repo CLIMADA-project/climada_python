@@ -72,14 +72,18 @@ class StormEurope(Hazard):
 
         file_names = get_file_names(path)
 
-        if ref_raster is not None and centroids is None:
-            centroids = self._centroids_from_nc(ref_raster)
-        elif ref_raster is not None and centroids is not None:
+        if ref_raster is not None and centroids is not None:
             LOGGER.warning('Overriding ref_raster with centroids')
-        else:
-            centroids = self._centroids_from_nc(file_name[0])
 
-        files_omit = to_list(files_omit)
+        if centroids is not None:
+            pass
+        elif ref_raster is not None:
+            centroids = self._centroids_from_nc(ref_raster)
+        elif ref_raster is None:
+            centroids = self._centroids_from_nc(file_names[0])
+
+        if isinstance(files_omit, str):
+            files_omit = [files_omit]
 
         for fn in file_names:
             if any(fo in fn for fo in files_omit):

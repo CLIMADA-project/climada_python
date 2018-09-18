@@ -89,7 +89,7 @@ class TestGetFileNames(unittest.TestCase):
 
         tmp_files = os.listdir(file_name)
         tmp_files = [file_name + f for f in tmp_files]
-        tmp_files = [f for f in tmp_files if not os.path.isdir(f) 
+        tmp_files = [f for f in tmp_files if not os.path.isdir(f)
                 and not os.path.basename(os.path.normpath(f)).startswith('.')]
         
         self.assertEqual(len(tmp_files), len(out))
