@@ -23,7 +23,7 @@ FILE_EXT = {'.mat':  'MAT',
             '.xls':  'XLS',
             '.xlsx': 'XLS',
             '.csv': 'CSV',
-            }
+           }
 
 """ Supported files format to read from """
 
