@@ -294,7 +294,7 @@ def make_map(num_sub=1, projection=ccrs.PlateCarree()):
         axis_sub = np.array([[axis_sub]])
 
     for axis in axis_sub.flatten():
-        grid = axis.gridlines(draw_labels=True)
+        grid = axis.gridlines(draw_labels=True, alpha=0.2)
         grid.xlabels_top = grid.ylabels_right = False
         grid.xformatter = LONGITUDE_FORMATTER
         grid.yformatter = LATITUDE_FORMATTER
