@@ -44,7 +44,7 @@ class StormEurope(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
         self.ssi = np.array([], int)
 
-    def read_footprints(self, path, description=None, 
+    def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc'):
         """Clear instance and read WISC footprints. Read Assumes that all
@@ -61,7 +61,7 @@ class StormEurope(Hazard):
             ref_raster (str, optional): Reference netCDF file from which to
                 construct a new barebones Centroids instance. Defaults to the
                 first file in path.
-            centroids (Centroids, optional): A Centroids struct, overriding 
+            centroids (Centroids, optional): A Centroids struct, overriding
                 ref_raster
             files_omit (str, list(str), optional): List of files to omit;
                 defaults to one duplicate storm present in the WISC set as of
