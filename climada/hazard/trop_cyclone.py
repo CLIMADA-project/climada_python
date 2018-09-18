@@ -237,10 +237,6 @@ def _windfield_holland(track, centroids, model='H08'):
         intensity[0, close_centr] = np.maximum(
             intensity[0, close_centr].todense(), v_full)
 
-        # keep maximum instantaneous wind
-        intensity[0, close_centr] = np.maximum(
-            intensity[0, close_centr].todense(), v_full)
-
     return intensity
 
 def _extra_rad_max_wind(track, ureg):
@@ -355,13 +351,13 @@ def _bs_value(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
     """ Halland's 2008 b value computation.
 
     Parameters:
-        v_trans (float): translational wind in m/s
-        penv (float): environmental pressure
-        pcen (float): central pressure
-        prepcen (float): previous central pressure
-        lat (float): latitude
+        v_trans (float): translational wind (m/s)
+        penv (float): environmental pressure (hPa)
+        pcen (float): central pressure (hPa)
+        prepcen (float): previous central pressure (hPa)
+        lat (float): latitude (degrees)
         hol_xx (float): Holland's xx value
-        tint (float): time step
+        tint (float): time step (h)
 
     Returns:
         float
@@ -418,8 +414,8 @@ def _vang_holland(track, i_node, r_arr, v_trans, model='H08'):
         pre_pcen = track.central_pressure.values[i_node - 1]
         if pre_pcen < 850:
             pre_pcen = track.central_pressure.values[i_node]
-        hol_b = _bs_value(v_trans, penv, pcen, pre_pcen, \
-                           ycoord, hol_xx, track.time_step.values[i_node])
+        hol_b = _bs_value(v_trans, penv, pcen, pre_pcen,
+                          ycoord, hol_xx, track.time_step.values[i_node])
     else:
         # TODO H80: b=b_value(v_trans,vmax,penv,pcen,rho);
         raise NotImplementedError
