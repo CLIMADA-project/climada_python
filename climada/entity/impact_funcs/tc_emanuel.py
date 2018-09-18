@@ -2,7 +2,7 @@
 Define impact function for tropical cyclnes using the formula of Emanuele 2011.
 """
 
-__all__ = ['IFEmanuele']
+__all__ = ['IFEmanuelUSA']
 
 import logging
 import numpy as np
@@ -11,7 +11,7 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFEmanuele(ImpactFunc):
+class IFEmanuelUSA(ImpactFunc):
     """Impact function for tropical cyclones according to Emanuele 2011."""
 
     def __init__(self, if_id=1, intensity=np.arange(0, 121, 5), v_thresh=25.7,

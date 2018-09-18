@@ -1,18 +1,18 @@
 """
-Test IFEmanuele class.
+Test IFEmanuelUSA class.
 """
 
 import unittest
 import numpy as np
 
-from climada.entity.impact_funcs.tc_emanuel import IFEmanuele
+from climada.entity.impact_funcs.tc_emanuel import IFEmanuelUSA
 
 class TestEmanuelFormula(unittest.TestCase):
     """Impact function interpolation test"""
 
     def test_default_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = IFEmanuele()
+        imp_fun = IFEmanuelUSA()
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 1)
@@ -31,7 +31,7 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1), v_thresh=2,
+        imp_fun = IFEmanuelUSA(if_id=5, intensity=np.arange(0,6,1), v_thresh=2,
                  v_half=5, scale=0.5)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
@@ -45,7 +45,7 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_set_scale(self):
         """Set scale parameter."""
-        imp_fun = IFEmanuele()
+        imp_fun = IFEmanuelUSA()
         scale = 0.5
         imp_fun.set_scale(scale)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
@@ -66,7 +66,7 @@ class TestEmanuelFormula(unittest.TestCase):
         
     def test_set_shape(self):
         """Set shape parameters."""
-        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1))
+        imp_fun = IFEmanuelUSA(if_id=5, intensity=np.arange(0,6,1))
         v_thresh = 2
         v_half = 5
         imp_fun.set_shape(v_thresh, v_half)
@@ -82,24 +82,24 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_wrong_shape(self):
         """Set shape parameters."""
-        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1))
+        imp_fun = IFEmanuelUSA(if_id=5, intensity=np.arange(0,6,1))
         v_thresh = 2
         v_half = 1
         with self.assertRaises(ValueError):
             imp_fun.set_shape(v_thresh, v_half)
 
         with self.assertRaises(ValueError):
-            IFEmanuele(v_thresh=v_thresh, v_half=v_half)
+            IFEmanuelUSA(v_thresh=v_thresh, v_half=v_half)
 
     def test_wrong_scale(self):
         """Set shape parameters."""
-        imp_fun = IFEmanuele(if_id=5, intensity=np.arange(0,6,1))
+        imp_fun = IFEmanuelUSA(if_id=5, intensity=np.arange(0,6,1))
         scale = 2
         with self.assertRaises(ValueError):
             imp_fun.set_scale(scale)
 
         with self.assertRaises(ValueError):
-            IFEmanuele(scale=scale)
+            IFEmanuelUSA(scale=scale)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmanuelFormula)
