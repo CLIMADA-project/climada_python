@@ -7,11 +7,11 @@ __all__ = ['to_list',
           ]
 
 import os
+import glob
 import logging
 import math
 import requests
 import tqdm
-import glob
 
 LOGGER = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def get_file_names(file_name):
 
     Parameters:
         file_name (str or list(str)): Either a single string or a list of
-            strings that are either 
+            strings that are either
                 - a file path
                 - or the path of the folder containing the files
                 - or a globbing pattern.
