@@ -25,6 +25,7 @@ dependencies:
   - xarray==0.10.2
   - xlrd=1.1.0
   - pip:
+    - iso3166==0.9
     - multiprocess==0.70.5
     - pathos==0.2.1
     - pint==0.8.1
