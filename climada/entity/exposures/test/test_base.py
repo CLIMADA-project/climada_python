@@ -347,6 +347,38 @@ class TestChecker(unittest.TestCase):
         self.assertIn('There are exposures with the same identifier.',
                       cm.output[0])
 
+class TestSelectRegion(unittest.TestCase):
+    """Test select_region from the Exposures class"""
+    def test_sel_reg_pass(self):
+        """Select region"""
+        expo = good_exposures()
+        sel_expo = expo.select_region(1)
+
+        self.assertEqual(sel_expo.value.size, 1)
+        self.assertEqual(sel_expo.value[0], 1)
+        self.assertEqual(sel_expo.id.size, 1)
+        self.assertEqual(sel_expo.id[0], 1)
+        self.assertEqual(sel_expo.impact_id.size, 1)
+        self.assertEqual(sel_expo.impact_id[0], 1)
+        self.assertEqual(sel_expo.deductible.size, 1)
+        self.assertEqual(sel_expo.deductible[0], 1)
+        self.assertEqual(sel_expo.category_id.size, 1)
+        self.assertEqual(sel_expo.category_id[0], 1)
+        self.assertEqual(sel_expo.region_id.size, 1)
+        self.assertEqual(sel_expo.region_id[0], 1)
+        self.assertEqual(sel_expo.cover.size, 0)
+        self.assertEqual(sel_expo.assigned['TC'].size, 1)
+        self.assertEqual(sel_expo.assigned['TC'][0], 1)
+        self.assertEqual(sel_expo.coord.shape[0], 1)
+        self.assertEqual(sel_expo.coord[0, 0], 1)
+        self.assertEqual(sel_expo.coord[0, 1], 2)
+
+    def test_sel_wrong_pass(self):
+        """Select non-existent region"""
+        expo = good_exposures()
+        sel_expo = expo.select_region(5)
+        self.assertEqual(sel_expo, None)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
@@ -354,4 +386,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemove))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelectRegion))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

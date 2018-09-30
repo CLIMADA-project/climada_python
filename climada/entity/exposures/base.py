@@ -16,7 +16,7 @@ import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.coordinates import GridPoints
 from climada.util.config import CONFIG
-import climada.util.plot as plot
+import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ FILE_EXT = {'.mat':  'MAT',
            }
 """ Supported files format to read from """
 
-class Exposures(object):
+class Exposures():
     """Defines exposures attributes and basic methods. Loads from
     files with format defined in FILE_EXT.
 
@@ -149,10 +149,10 @@ class Exposures(object):
             kwargs['reduce_C_function'] = np.sum
         if ignore_zero:
             pos_vals = self.value > 0
-            return plot.geo_bin_from_array(self.value[pos_vals], \
+            return u_plot.geo_bin_from_array(self.value[pos_vals], \
                 self.coord[pos_vals, :], cbar_label, title, pop_name, \
                 buffer_deg, extend, **kwargs)
-        return plot.geo_bin_from_array(self.value, self.coord, cbar_label, \
+        return u_plot.geo_bin_from_array(self.value, self.coord, cbar_label, \
             title, pop_name, buffer_deg, extend, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
@@ -260,6 +260,48 @@ class Exposures(object):
         for dup_id in np.delete(np.arange(self.id.size), indices):
             self.id[dup_id] = new_id
             new_id += 1
+
+    def select_region(self, reg_id):
+        """Return reference exposure of given region.
+
+        Parameters:
+            reg_id (int): region id to select
+
+        Returns:
+            Exposures
+        """
+        sel_idx = np.argwhere(self.region_id == reg_id)
+        if sel_idx.size:
+            sel_idx = sel_idx.reshape((sel_idx.size,))
+        else:
+            LOGGER.info('No exposure with region id %s.', reg_id)
+            return None
+
+        sel_exp = Exposures()
+        sel_exp.tag = self.tag
+        sel_exp.description = 'Region ' + str(reg_id)
+        sel_exp.ref_year = self.ref_year
+        sel_exp.value_unit = self.value_unit
+        # Obligatory variables
+        sel_exp.coord = self.coord[sel_idx, :]
+        sel_exp.value = self.value[sel_idx]
+        sel_exp.impact_id = self.impact_id[sel_idx]
+        sel_exp.id = self.id[sel_idx]
+        # Optional variables.
+        if self.deductible.size:
+            sel_exp.deductible = self.deductible[sel_idx]
+        if self.cover.size:
+            sel_exp.cover = self.cover[sel_idx]
+        if self.category_id.size:
+            sel_exp.category_id = self.category_id[sel_idx]
+        if self.region_id.size:
+            sel_exp.region_id = self.region_id[sel_idx]
+
+        sel_exp.assigned = dict()
+        for key, value in self.assigned.items():
+            sel_exp.assigned[key] = value[sel_idx]
+
+        return sel_exp
 
     @staticmethod
     def get_sup_file_format():

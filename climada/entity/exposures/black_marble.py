@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 import shapely.vectorized
 from cartopy.io import shapereader
+from iso3166 import countries as iso_cntry
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
@@ -59,15 +60,19 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
 
 class BlackMarble(Exposures):
     """Defines exposures from night light intensity, GDP and income group.
+    Attribute region_id is defined as:
+    - United Nations Statistics Division (UNSD) 3-digit equivalent numeric code
+    - 0 if country not found in UNSD.
+    - -1 for water
     """
 
     def __init__(self):
         """ Empty initializer. """
         Exposures.__init__(self)
 
-    def set_countries(self, countries, \
-        ref_year=CONFIG['entity']['present_ref_year'], res_km=1, \
-        sea_res=(0, 1), from_hr=None, **kwargs):
+    def set_countries(self, countries,
+                      ref_year=CONFIG['entity']['present_ref_year'],
+                      res_km=1, sea_res=(0, 1), from_hr=None, **kwargs):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -80,10 +85,11 @@ class BlackMarble(Exposures):
             res_km (float, optional): approx resolution in km. Default: 1km.
             sea_res (tuple, optional): (sea_coast_km, sea_res_km), where first
                 parameter is distance from coast to fill with water and second
-                parameter is resolution between sea points
-            from_hr (bool, optional)
+                parameter is resolution between sea points.
+            from_hr (bool, optional): force to use higher resolution image,
+                independently of its year of acquisition.
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
-                country ISO_alpha3 code. If provided, these are used
+                country ISO_alpha3 code. If provided, these are used.
         """
         self.clear()
         shp_file = shapereader.natural_earth(resolution='10m',
@@ -97,7 +103,6 @@ class BlackMarble(Exposures):
         nightlight, coord_nl, fn_nl, res_fact = get_nightlight(ref_year, \
             cntry_info, res_km, from_hr)
 
-        # TODO parallize per thread?
         for cntry_iso, cntry_val in cntry_info.items():
             LOGGER.info('Processing country %s.', cntry_val[1])
             self.append(self._set_one_country(cntry_val, nightlight, \
@@ -105,15 +110,31 @@ class BlackMarble(Exposures):
 
         add_sea(self, sea_res)
 
-    def set_region(self, centroids, ref_year=2013, resolution=1):
+    def set_region(self, centroids,
+                   ref_year=CONFIG['entity']['present_ref_year'], res_km=1):
         """ Model a specific region given by centroids."""
         # TODO: accept input centroids as well
         raise NotImplementedError
 
-    def fill_centroids(self):
-        """ From coordinates information, generate Centroids instance."""
-        # add sea in lower resolution
-        raise NotImplementedError
+    def select_region(self, reg_id):
+        """ Select exposures with input region.
+
+        Parameters:
+            reg_id (int, str): integer iso equivalent country numeric code or
+                string iso alpha-3 or alpha-2 code or country name.
+
+        Returns:
+            Exposures
+        """
+        if isinstance(reg_id, int):
+            return Exposures.select_region(self, reg_id)
+
+        try:
+            return Exposures.select_region(self, \
+                int(iso_cntry.get(reg_id).numeric))
+        except KeyError:
+            LOGGER.info('No country %s found.', reg_id)
+            return None
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, fn_nl, res_fact,
@@ -155,8 +176,9 @@ class BlackMarble(Exposures):
         return exp_bkmrb
 
 def country_iso_geom(countries, shp_file):
-    """ Get country ISO alpha_3, country id (defined as country appearance
-    order in natural earth shape file) and country's geometry.
+    """ Get country ISO alpha_3, country id (defined as the United Nations
+    Statistics Division (UNSD) 3-digit equivalent numeric codes and 0 if
+    country not found) and country's geometry shape.
 
     Parameters:
         countries (list or dict): list of country names (admin0) or dict
@@ -171,8 +193,6 @@ def country_iso_geom(countries, shp_file):
     list_records = list(shp_file.records())
     for info_idx, info in enumerate(list_records):
         countries_shp[info.attributes['ADMIN'].title()] = info_idx
-
-    num_codes = [iso3 for iso3 in wb.country_codes if len(iso3) == 3]
 
     cntry_info = dict()
     cntry_admin1 = dict()
@@ -198,10 +218,10 @@ def country_iso_geom(countries, shp_file):
             raise ValueError
         iso3 = list_records[country_idx].attributes['ADM0_A3']
         try:
-            iso_num = num_codes.index(iso3)
-        except ValueError:
-            iso_num = len(num_codes)
-        cntry_info[iso3] = [iso_num, country_name.title(),
+            cntry_id = int(iso_cntry.get(iso3).numeric)
+        except KeyError:
+            cntry_id = 0
+        cntry_info[iso3] = [cntry_id, country_name.title(),
                             list_records[country_idx].geometry]
         cntry_admin1[iso3] = _fill_admin1_geom(iso3, admin1_rec, prov_list)
 
@@ -261,7 +281,7 @@ def get_nightlight(ref_year, cntry_info, res_km, from_hr=None):
         else:
             nl_year = 2012
         LOGGER.info("Nightlights from NASA's earth observatory for " + \
-                    "year %s.", nl_year)
+                    "year %s.", str(nl_year))
         res_fact = DEF_RES_NASA_KM/res_km
         geom = [info[2] for info in cntry_info.values()]
         geom = shapely.ops.cascaded_union(geom)
@@ -281,7 +301,7 @@ def get_nightlight(ref_year, cntry_info, res_km, from_hr=None):
         elif ref_year > 2013:
             nl_year = 2013
         LOGGER.info("Nightlights from NOAA's earth observation group "+ \
-                    "for year %s.", nl_year)
+                    "for year %s.", str(nl_year))
         res_fact = DEF_RES_NOAA_KM/res_km
         # nightlight intensity with 30 arcsec resolution
         nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(nl_year)
@@ -301,7 +321,7 @@ def add_sea(exp, sea_res):
         return
 
     LOGGER.info("Adding sea at %s km resolution and %s km distance from " + \
-        "coast.", sea_res[1], sea_res[0])
+        "coast.", str(sea_res[1]), str(sea_res[0]))
 
     sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
 

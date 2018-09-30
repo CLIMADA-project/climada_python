@@ -35,10 +35,10 @@ class TestCountryIso(unittest.TestCase):
         self.assertEqual(len(iso_name), len(country_name))
         self.assertTrue('CHE'in iso_name)
         self.assertTrue('KOS'in iso_name)
-        self.assertEqual(iso_name['CHE'][0], 41)
+        self.assertEqual(iso_name['CHE'][0], 756)
         self.assertEqual(iso_name['CHE'][1], 'Switzerland')
         self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(iso_name['KOS'][0], 252)
+        self.assertEqual(iso_name['KOS'][0], 0)
         self.assertEqual(iso_name['KOS'][1], 'Kosovo')
         self.assertIsInstance(iso_name['KOS'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -48,7 +48,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['HTI'][0], 100)
+        self.assertEqual(iso_name['HTI'][0], 332)
         self.assertEqual(iso_name['HTI'][1], 'Haiti')
         self.assertIsInstance(iso_name['HTI'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -64,7 +64,7 @@ class TestCountryIso(unittest.TestCase):
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
         
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertEqual(iso_name['BOL'][0], 31)
+        self.assertEqual(iso_name['BOL'][0], 68)
         self.assertEqual(iso_name['BOL'][1], 'Bolivia')
         self.assertIsInstance(iso_name['BOL'][2], shapely.geometry.multipolygon.MultiPolygon)
 
@@ -73,6 +73,62 @@ class TestCountryIso(unittest.TestCase):
         country_name = ['Korea']
         with self.assertRaises(ValueError):
             country_iso_geom(country_name, SHP_FILE)
+    
+    def test_select_reg_pass(self):
+        """Select counrty """
+        exp = BlackMarble()
+        exp.value = np.arange(0, 20, 0.1)
+        exp.coord = np.ones((200, 2))
+        exp.impact_id = np.ones((200,))
+        exp.id = np.arange(200)
+        
+        exp.region_id = np.ones((200,))
+        exp.region_id[:101] = exp.region_id[:101]*780
+        exp.region_id[101:] = exp.region_id[101:]*894
+        
+        sel_exp = exp.select_region('TTO')
+        self.assertEqual(sel_exp.value.size, 101)
+        sel_exp = exp.select_region('Trinidad and Tobago')
+        self.assertEqual(sel_exp.value.size, 101)
+        sel_exp = exp.select_region('TT')
+        self.assertEqual(sel_exp.value.size, 101)
+
+        sel_exp = exp.select_region('ZMB')
+        self.assertEqual(sel_exp.value.size, 99)
+        sel_exp = exp.select_region('Zambia')
+        self.assertEqual(sel_exp.value.size, 99)
+        sel_exp = exp.select_region('ZM')
+        self.assertEqual(sel_exp.value.size, 99)
+
+    def test_select_not_included_pass(self):
+        """Select country that is not contained."""
+        exp = BlackMarble()
+        exp.value = np.arange(0, 20, 0.1)
+        exp.coord = np.ones((200, 2))
+        exp.impact_id = np.ones((200,))
+        exp.id = np.arange(200)
+        
+        exp.region_id = np.ones((200,))
+        exp.region_id[:101] = exp.region_id[:101]*780
+        exp.region_id[101:] = exp.region_id[101:]*894
+        
+        sel_exp = exp.select_region('UGA')
+        self.assertEqual(sel_exp, None)
+
+    def test_select_wrong_fail(self):
+        """Select country that is not contained."""
+        exp = BlackMarble()
+        exp.value = np.arange(0, 20, 0.1)
+        exp.coord = np.ones((200, 2))
+        exp.impact_id = np.ones((200,))
+        exp.id = np.arange(200)
+        
+        exp.region_id = np.ones((200,))
+        exp.region_id[:101] = exp.region_id[:101]*780
+        exp.region_id[101:] = exp.region_id[101:]*894
+        
+        sel_exp = exp.select_region('TTU')
+        self.assertEqual(sel_exp, None)
 
 class TestProvinces(unittest.TestCase):
     """Tst black marble with admin1."""
@@ -371,8 +427,9 @@ class TestEconIndices(unittest.TestCase):
         self.assertAlmostEqual(exp.value.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCountryIso)
+#TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
