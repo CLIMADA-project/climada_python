@@ -16,6 +16,7 @@ import requests
 import shapely.vectorized
 from cartopy.io import shapereader
 from iso3166 import countries as iso_cntry
+import warnings
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
@@ -164,7 +165,7 @@ class BlackMarble(Exposures):
             _filter_admin1(exp_bkmrb, admin1)
 
         exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
-        exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape) * cntry_info[0]
+        exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape, int)*cntry_info[0]
         exp_bkmrb.impact_id = np.ones(exp_bkmrb.value.size, int)
         exp_bkmrb.ref_year = cntry_info[3]
         exp_bkmrb.tag.description = ("{} {:d} GDP: {:.3e} income group: {:d}"+\
@@ -341,10 +342,9 @@ def add_sea(exp, sea_res):
         np.append(exp.coord.lon, lon_mgrid[on_land])]).transpose()
     exp.value = np.append(exp.value, lat_mgrid[on_land]*0)
     exp.id = np.arange(1, exp.value.size+1)
-    exp.region_id = np.append(exp.region_id, lat_mgrid[on_land]*0-1)
+    exp.region_id = np.append(exp.region_id, lat_mgrid[on_land].astype(int)*0
+                              - 1)
     exp.impact_id = np.ones(exp.value.size, int)
-    exp.deductible = np.zeros(exp.value.size)
-    exp.cover = exp.value.copy()
 
 def _fill_admin1_geom(iso3, admin1_rec, prov_list):
     """Get admin1 polygons for each input province of country iso3.
@@ -449,7 +449,9 @@ def _get_gdp(cntry_info, ref_year, shp_file):
     wb_gdp_ind = 'NY.GDP.MKTP.CD'
     for cntry_iso, cntry_val in cntry_info.items():
         try:
-            cntry_gdp = wb.download(indicator=wb_gdp_ind, country=cntry_iso,
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                cntry_gdp = wb.download(indicator=wb_gdp_ind, country=cntry_iso,
                                     start=1960, end=2030)
             years = np.array([int(year) \
                 for year in cntry_gdp.index.get_level_values('year')])
