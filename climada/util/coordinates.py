@@ -153,7 +153,9 @@ def dist_to_coast(coord_lat, lon=None):
         lon (np.array or float, optional):
             - np.array with one dimension containing longitudes
             - float with a longitude value
+
     Returns:
+        np.array
     """
     if lon is None:
         if isinstance(coord_lat, tuple):
