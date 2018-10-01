@@ -143,7 +143,7 @@ class Exposures():
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        title = self.tag.join_descriptions()
+        title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
@@ -278,8 +278,8 @@ class Exposures():
             return None
 
         sel_exp = Exposures()
-        sel_exp.tag = self.tag
-        sel_exp.description = 'Region ' + str(reg_id)
+        sel_exp.tag.file_name = self.tag.file_name
+        sel_exp.tag.description = 'Region ' + str(reg_id)
         sel_exp.ref_year = self.ref_year
         sel_exp.value_unit = self.value_unit
         # Obligatory variables
