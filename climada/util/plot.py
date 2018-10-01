@@ -56,7 +56,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
         ValueError
     """
     # Generate array of values used in each subplot
-    num_im, list_arr = get_collection_arrays(array_sub)
+    num_im, list_arr = _get_collection_arrays(array_sub)
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
@@ -73,7 +73,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
                              (coord.shape[0], array_im.size))
 
         # Binned image with coastlines
-        extent = get_borders(coord)
+        extent = _get_borders(coord)
         extent = ([extent[0] - buffer_deg, extent[1] + buffer_deg, extent[2] -\
                    buffer_deg, extent[3] + buffer_deg])
         axis.set_extent((extent))
@@ -121,7 +121,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
         ValueError
     """
     # Generate array of values used in each subplot
-    num_im, list_arr = get_collection_arrays(array_sub)
+    num_im, list_arr = _get_collection_arrays(array_sub)
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
@@ -139,7 +139,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
             raise ValueError("Size mismatch in input array: %s != %s." % \
                              (coord.shape[0], array_im.size))
         # Create regular grid where to interpolate the array
-        extent = get_borders(coord)
+        extent = _get_borders(coord)
         grid_x, grid_y = np.mgrid[
             extent[0] : extent[1] : complex(0, RESOLUTION),
             extent[2] : extent[3] : complex(0, RESOLUTION)]
@@ -160,12 +160,12 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title, **kwargs):
 
     return fig, axis_sub
 
-class Graph2D(object):
+class Graph2D():
     """2D graph object. Handles various subplots and curves."""
     def __init__(self, title='', num_subplots=1, num_row=None, num_col=None):
 
         if (num_row is None) or (num_col is None):
-            self.num_row, self.num_col = get_row_col_size(num_subplots)
+            self.num_row, self.num_col = _get_row_col_size(num_subplots)
         else:
             self.num_row = num_row
             self.num_col = num_col
@@ -251,30 +251,6 @@ class Graph2D(object):
         """
         return self.fig, self.axs
 
-def get_collection_arrays(array_sub):
-    """ Get number of array rows and generate list of array if only one row
-
-    Parameters:
-        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
-            or in  the list) are values at each point in corresponding
-
-    Returns:
-        num_im (int), list_arr (2d np.ndarray or list(1d np.array))
-    """
-    num_im = 1
-    if not isinstance(array_sub, list):
-        if len(array_sub.shape) == 1 or array_sub.shape[1] == 1:
-            list_arr = list()
-            list_arr.append(array_sub)
-        else:
-            list_arr = array_sub
-            num_im = array_sub.shape[0]
-    else:
-        num_im = len(array_sub)
-        list_arr = array_sub
-
-    return num_im, list_arr
-
 def make_map(num_sub=1, projection=ccrs.PlateCarree()):
     """Create map figure with cartopy.
 
@@ -286,7 +262,7 @@ def make_map(num_sub=1, projection=ccrs.PlateCarree()):
     Returns:
         matplotlib.figure.Figure, np.array(cartopy.mpl.geoaxes.GeoAxesSubplot)
     """
-    num_row, num_col = get_row_col_size(num_sub)
+    num_row, num_col = _get_row_col_size(num_sub)
     fig, axis_sub = plt.subplots(num_row, num_col, figsize=(9, 13), \
                         subplot_kw=dict(projection=projection), squeeze=False)
 
@@ -337,8 +313,8 @@ def add_populated_places(axis, extent, projection=ccrs.PlateCarree()):
 
     shp = shapereader.Reader(shp_file)
     for rec, point in zip(shp.records(), shp.geometries()):
-        if (point.x <= extent[1]) and (point.x > extent[0]):
-            if (point.y <= extent[3]) and (point.y > extent[2]):
+        if extent[0] < point.x <= extent[1]:
+            if extent[2] < point.y <= extent[3]:
                 axis.plot(point.x, point.y, 'ko', markersize=7, \
                           transform=projection)
                 axis.text(point.x, point.y, rec.attributes['name'], \
@@ -362,13 +338,37 @@ def add_cntry_names(axis, extent, projection=ccrs.PlateCarree()):
     for rec, point in zip(shp.records(), shp.geometries()):
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
-        if (point_x <= extent[1]) and (point_x > extent[0]):
-            if (point_y <= extent[3]) and (point_y > extent[2]):
+        if extent[0] < point_x <= extent[1]:
+            if extent[2] < point_y <= extent[3]:
                 axis.text(point_x, point_y, rec.attributes['NAME'], \
                     horizontalalignment='center', verticalalignment='center', \
                     transform=projection, fontsize=14)
 
-def get_row_col_size(num_sub):
+def _get_collection_arrays(array_sub):
+    """ Get number of array rows and generate list of array if only one row
+
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are values at each point in corresponding
+
+    Returns:
+        num_im (int), list_arr (2d np.ndarray or list(1d np.array))
+    """
+    num_im = 1
+    if not isinstance(array_sub, list):
+        if len(array_sub.shape) == 1 or array_sub.shape[1] == 1:
+            list_arr = list()
+            list_arr.append(array_sub)
+        else:
+            list_arr = array_sub
+            num_im = array_sub.shape[0]
+    else:
+        num_im = len(array_sub)
+        list_arr = array_sub
+
+    return num_im, list_arr
+
+def _get_row_col_size(num_sub):
     """Compute number of rows and columns of subplots in figure.
 
     Parameters:
@@ -389,7 +389,7 @@ def get_row_col_size(num_sub):
             num_row = int(num_sub/2) + num_sub % 2
     return num_row, num_col
 
-def get_borders(geo_coord):
+def _get_borders(geo_coord):
     """Get min and max longitude and min and max latitude (in this order).
 
     Parameters:
