@@ -9,6 +9,7 @@ import glob
 import shutil
 import logging
 import math
+import warnings
 import numpy as np
 from scipy import ndimage
 import pandas as pd
@@ -16,7 +17,6 @@ import requests
 import shapely.vectorized
 from cartopy.io import shapereader
 from iso3166 import countries as iso_cntry
-import warnings
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
@@ -295,6 +295,7 @@ def get_nightlight(ref_year, cntry_info, res_km, from_hr=None):
             req_files, nl_year)
         fn_nl = [file.replace('*', str(nl_year)) for idx, file \
                  in enumerate(nl_utils.BM_FILENAMES) if req_files[idx]]
+        fn_nl = ' + '.join(fn_nl)
     else:
         nl_year = ref_year
         if ref_year < 1992:
@@ -451,15 +452,15 @@ def _get_gdp(cntry_info, ref_year, shp_file):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                cntry_gdp = wb.download(indicator=wb_gdp_ind, country=cntry_iso,
-                                    start=1960, end=2030)
+                cntry_gdp = wb.download(indicator=wb_gdp_ind, \
+                    country=cntry_iso, start=1960, end=2030)
             years = np.array([int(year) \
                 for year in cntry_gdp.index.get_level_values('year')])
             close_gdp = cntry_gdp.iloc[ \
                 np.abs(years-ref_year).argsort()].dropna()
             close_gdp_val = float(close_gdp.iloc[0].values)
             LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
-                        int(close_gdp.iloc[0].name[1]), close_gdp_val))
+                int(close_gdp.iloc[0].name[1]), close_gdp_val))
 
         except (ValueError, IndexError, requests.exceptions.ConnectionError) \
         as err:
