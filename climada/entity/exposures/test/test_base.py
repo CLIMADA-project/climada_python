@@ -207,8 +207,8 @@ class TestReadParallel(unittest.TestCase):
         """Both files are read and appended."""
         descriptions = ['desc1', 'desc2']
         expo = Exposures([ENT_TEST_XLS, ENT_TEST_XLS], descriptions)
-        self.assertEqual(expo.tag.file_name, [ENT_TEST_XLS, ENT_TEST_XLS])
-        self.assertEqual(expo.tag.description, descriptions)
+        self.assertEqual(expo.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(expo.tag.description, 'desc1 + desc2')
         self.assertEqual(expo.id.size, 2*50)
 
     def test_read_incompatible_fail(self):

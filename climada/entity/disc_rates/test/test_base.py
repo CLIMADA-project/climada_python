@@ -80,9 +80,8 @@ class TestAppend(unittest.TestCase):
 
         self.assertTrue(np.array_equal(disc_rate.years, disc_rate_add.years))
         self.assertTrue(np.array_equal(disc_rate.rates, disc_rate_add.rates))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name, \
-               [disc_rate_add.tag.file_name, disc_rate_add.tag.file_name]))
-        self.assertEqual(disc_rate.tag.description, ['descr1', 'descr1'])
+        self.assertTrue(np.array_equal(disc_rate.tag.file_name, disc_rate_add.tag.file_name))
+        self.assertEqual(disc_rate.tag.description, disc_rate_add.tag.description)
 
     def test_append_different_append(self):
         """Append DiscRates with same and new values. The rates with repeated
@@ -106,10 +105,8 @@ class TestAppend(unittest.TestCase):
                                        np.array([2000, 2001, 2002, 2003])))
         self.assertTrue(np.array_equal(disc_rate.rates, \
                                        np.array([0.11, 0.22, 0.3, 0.33])))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name, \
-               ['file1.txt', 'file2.txt']))
-        self.assertTrue(np.array_equal(disc_rate.tag.description, \
-               ['descr1', 'descr2']))
+        self.assertTrue(np.array_equal(disc_rate.tag.file_name, 'file1.txt + file2.txt'))
+        self.assertTrue(np.array_equal(disc_rate.tag.description, 'descr1 + descr2'))
 
 class TestReadParallel(unittest.TestCase):
     """Check read function with several files"""
@@ -118,8 +115,8 @@ class TestReadParallel(unittest.TestCase):
         """Both files are readed and appended."""
         descriptions = ['desc1','desc2']
         disc_rate = DiscRates([ENT_TEST_XLS, ENT_TEST_XLS], descriptions)
-        self.assertEqual(disc_rate.tag.file_name, [ENT_TEST_XLS, ENT_TEST_XLS])
-        self.assertEqual(disc_rate.tag.description, descriptions)
+        self.assertEqual(disc_rate.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(disc_rate.tag.description, 'desc1 + desc2')
         self.assertEqual(disc_rate.years.size, 51)
 
 # Execute Tests

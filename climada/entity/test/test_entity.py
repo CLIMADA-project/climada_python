@@ -67,8 +67,7 @@ class TestReader(unittest.TestCase):
         
         ent = Entity([ENT_TEST_XLS, ENT_TEST_XLS], ['demo', 'demo'])
         self.assertEqual(ent.exposures.id.size, 100)
-        self.assertEqual(ent.exposures.tag.file_name, \
-                         [ENT_TEST_XLS, ENT_TEST_XLS])
+        self.assertEqual(ent.exposures.tag.file_name, ENT_TEST_XLS)
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""

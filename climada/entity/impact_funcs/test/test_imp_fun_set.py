@@ -425,8 +425,8 @@ class TestReadParallel(unittest.TestCase):
         """Both files are readed and appended."""
         descriptions = ['desc1','desc2']
         imp_funcs = ImpactFuncSet([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
-        self.assertEqual(imp_funcs.tag.file_name, [ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS])
-        self.assertEqual(imp_funcs.tag.description, descriptions)
+        self.assertEqual(imp_funcs.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(imp_funcs.tag.description, 'desc1 + desc2')
         self.assertEqual(imp_funcs.num_funcs(), 11)
 
 # Execute Tests

@@ -287,8 +287,8 @@ class TestReadParallel(unittest.TestCase):
         """Both files are readed and appended."""
         descriptions = ['desc1','desc2']
         meas = MeasureSet([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
-        self.assertEqual(meas.tag.file_name, [ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS])
-        self.assertEqual(meas.tag.description, descriptions)
+        self.assertEqual(meas.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(meas.tag.description, 'desc1 + desc2')
         self.assertEqual(meas.num_measures(), 7)
 
 # Execute Tests
