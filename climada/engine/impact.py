@@ -257,3 +257,16 @@ class Impact(object):
         return plot.geo_bin_from_array(self.eai_exp[pos_vals], \
             self.coord_exp[pos_vals], var_name, title, pop_name, buffer_deg, \
             extend, **kwargs)
+
+    @property
+    def coord_exp(self):
+        """ Return coord"""
+        return self._coord_exp
+
+    @coord_exp.setter
+    def coord_exp(self, value):
+        """ If it is not a GridPoints instance, put it."""
+        if not isinstance(value, GridPoints):
+            self._coord_exp = GridPoints(value)
+        else:
+            self._coord_exp = value
