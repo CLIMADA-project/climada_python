@@ -117,7 +117,7 @@ class BlackMarble(Exposures):
         # TODO: accept input centroids as well
         raise NotImplementedError
 
-    def select_region(self, reg_id):
+    def select(self, reg_id):
         """ Select exposures with input region.
 
         Parameters:
@@ -128,10 +128,10 @@ class BlackMarble(Exposures):
             Exposures
         """
         if isinstance(reg_id, int):
-            return Exposures.select_region(self, reg_id)
+            return Exposures.select(self, reg_id)
 
         try:
-            return Exposures.select_region(self, \
+            return Exposures.select(self, \
                 int(iso_cntry.get(reg_id).numeric))
         except KeyError:
             LOGGER.info('No country %s found.', reg_id)

@@ -261,7 +261,7 @@ class Exposures():
             self.id[dup_id] = new_id
             new_id += 1
 
-    def select_region(self, reg_id):
+    def select(self, reg_id):
         """Return reference exposure of given region.
 
         Parameters:
@@ -277,7 +277,7 @@ class Exposures():
             LOGGER.info('No exposure with region id %s.', reg_id)
             return None
 
-        sel_exp = Exposures()
+        sel_exp = self.__class__()
         sel_exp.tag.file_name = self.tag.file_name
         sel_exp.tag.description = 'Region ' + str(reg_id)
         sel_exp.ref_year = self.ref_year

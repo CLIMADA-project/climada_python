@@ -86,19 +86,21 @@ class TestCountryIso(unittest.TestCase):
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
         
-        sel_exp = exp.select_region('TTO')
+        sel_exp = exp.select('TTO')
         self.assertEqual(sel_exp.value.size, 101)
-        sel_exp = exp.select_region('Trinidad and Tobago')
+        sel_exp = exp.select('Trinidad and Tobago')
         self.assertEqual(sel_exp.value.size, 101)
-        sel_exp = exp.select_region('TT')
+        sel_exp = exp.select('TT')
         self.assertEqual(sel_exp.value.size, 101)
+        self.assertIsInstance(sel_exp, BlackMarble)
 
-        sel_exp = exp.select_region('ZMB')
+        sel_exp = exp.select('ZMB')
         self.assertEqual(sel_exp.value.size, 99)
-        sel_exp = exp.select_region('Zambia')
+        sel_exp = exp.select('Zambia')
         self.assertEqual(sel_exp.value.size, 99)
-        sel_exp = exp.select_region('ZM')
+        sel_exp = exp.select('ZM')
         self.assertEqual(sel_exp.value.size, 99)
+        self.assertIsInstance(sel_exp, BlackMarble)
 
     def test_select_not_included_pass(self):
         """Select country that is not contained."""
@@ -112,7 +114,7 @@ class TestCountryIso(unittest.TestCase):
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
         
-        sel_exp = exp.select_region('UGA')
+        sel_exp = exp.select('UGA')
         self.assertEqual(sel_exp, None)
 
     def test_select_wrong_fail(self):
@@ -127,7 +129,7 @@ class TestCountryIso(unittest.TestCase):
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
         
-        sel_exp = exp.select_region('TTU')
+        sel_exp = exp.select('TTU')
         self.assertEqual(sel_exp, None)
 
 class TestProvinces(unittest.TestCase):

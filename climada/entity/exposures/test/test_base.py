@@ -347,12 +347,12 @@ class TestChecker(unittest.TestCase):
         self.assertIn('There are exposures with the same identifier.',
                       cm.output[0])
 
-class TestSelectRegion(unittest.TestCase):
+class TestSelect(unittest.TestCase):
     """Test select_region from the Exposures class"""
     def test_sel_reg_pass(self):
         """Select region"""
         expo = good_exposures()
-        sel_expo = expo.select_region(1)
+        sel_expo = expo.select(1)
 
         self.assertEqual(sel_expo.value.size, 1)
         self.assertEqual(sel_expo.value[0], 1)
@@ -372,11 +372,12 @@ class TestSelectRegion(unittest.TestCase):
         self.assertEqual(sel_expo.coord.shape[0], 1)
         self.assertEqual(sel_expo.coord[0, 0], 1)
         self.assertEqual(sel_expo.coord[0, 1], 2)
+        self.assertIsInstance(sel_expo, Exposures)
 
     def test_sel_wrong_pass(self):
         """Select non-existent region"""
         expo = good_exposures()
-        sel_expo = expo.select_region(5)
+        sel_expo = expo.select(5)
         self.assertEqual(sel_expo, None)
 
 # Execute Tests
@@ -386,5 +387,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemove))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelectRegion))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
