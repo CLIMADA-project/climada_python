@@ -80,10 +80,8 @@ class TropCyclone(Hazard):
         centr_list = to_list(num_tracks, centroids, 'centroids')
         coast_list = to_list(num_tracks, coastal_centr, 'coast centroids')
 
-        chunksize = 1
-        if num_tracks > 1000:
-            chunksize = 250
-
+        LOGGER.info('Setting %s tracks.', str(num_tracks))
+        chunksize = min(num_tracks, 1000)
         for tc_haz in Pool().map(self._tc_from_track, tracks.data, centr_list,
                                  coast_list,
                                  itertools.repeat(model, num_tracks),
