@@ -9,15 +9,19 @@ import os
 import copy
 import logging
 import datetime as dt
+import itertools
+import warnings
 import numpy as np
 from scipy import sparse
+from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
-import climada.util.plot as plot
+import climada.util.plot as u_plot
 import climada.util.checker as check
+import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +31,7 @@ FILE_EXT = {'.mat':  'MAT',
            }
 """ Supported files format to read from """
 
-class Hazard(object):
+class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
 
@@ -107,7 +111,19 @@ class Hazard(object):
             >>> centr = Centroids(HAZ_DEMO_MAT, 'Centroids demo')
             >>> haz = Hazard('TC', HAZ_DEMO_MAT, 'Demo hazard.', centr)
         """
-        self.clear()
+        self.tag = TagHazard()
+        self.units = 'NA'
+        self.centroids = Centroids()
+        # following values are defined for each event
+        self.event_id = np.array([], int)
+        self.frequency = np.array([], float)
+        self.event_name = list()
+        self.date = np.array([], int)
+        self.orig = np.array([], bool)
+        # following values are defined for each event and centroid
+        self.intensity = sparse.csr_matrix(np.empty((0, 0))) # events x centroids
+        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
+
         if '.' in haz_type and file_name == '':
             LOGGER.error("Provide hazard type.")
             raise ValueError
@@ -121,16 +137,14 @@ class Hazard(object):
         """Reinitialize attributes."""
         self.tag = TagHazard()
         self.units = 'NA'
-        # following values are defined for each event
         self.centroids = Centroids()
-        self.event_id = np.array([], int)
-        self.frequency = np.array([])
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.orig = np.array([], bool)
-        # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0))) # events x centroids
-        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.array([]))
+            elif isinstance(var_val, sparse.csr_matrix):
+                setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
+            elif isinstance(var_val, list):
+                setattr(self, var_name, list())
 
     def check(self):
         """Check if the attributes contain consistent data.
@@ -167,13 +181,79 @@ class Hazard(object):
                                           var_list):
             self.append(self._read_one(file, haz_type, desc, centr, var))
 
-    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), orig=False,
-                          **kwargs):
-        """Compute and plot hazard intensity maps for different return periods.
+    def select(self, date=None, orig=None):
+        """Select events within provided date and/or historical or synthetical.
+        Frequency of the events may need to be recomputed!
+
+        Parameters:
+            date (tuple(str or int), optional): (initial date, final date) in
+                string ISO format or datetime ordinal integer
+            orig (bool, optional): select only historical (True) or only
+                synthetic (False)
+
+        Returns:
+            Hazard or children
+        """
+        haz = self.__class__()
+        sel_idx = np.ones(self.event_id.size, bool)
+
+        if isinstance(date, tuple):
+            date_ini, date_end = date[0], date[1]
+            if isinstance(date_ini, str):
+                date_ini = u_dt.str_to_date(date[0])
+                date_end = u_dt.str_to_date(date[1])
+
+            sel_idx = np.logical_and(date_ini <= self.date,
+                                     self.date <= date_end)
+            if not np.any(sel_idx):
+                LOGGER.info('No hazard in date range %s.', date)
+                return None
+
+        if isinstance(orig, bool):
+            sel_idx = np.logical_and(sel_idx, self.orig.astype(bool) == orig)
+            if not np.any(sel_idx):
+                LOGGER.info('No hazard with %s tracks.', str(orig))
+                return None
+
+        sel_idx = np.argwhere(sel_idx).squeeze()
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(haz, var_name, var_val[sel_idx])
+            elif isinstance(var_val, sparse.csr_matrix):
+                setattr(haz, var_name, var_val[sel_idx, :])
+            elif isinstance(var_val, list):
+                setattr(haz, var_name, [var_val[idx] for idx in sel_idx])
+            else:
+                setattr(haz, var_name, var_val)
+
+        return haz
+
+    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
+        """ Compute exceedance intensity map for given return periods.
+
+        Parameters:
+            return_periods (np.array): return periods to consider
+
+        Returns:
+            np.array
+        """
+        LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
+                    return_periods)
+        cen_pos = range(self.intensity.shape[1])
+        inten_stats = np.zeros((len(return_periods), len(cen_pos)))
+        chunksize = min(len(cen_pos), 1000)
+        for cen_idx, inten_loc in enumerate(Pool().map(self._loc_return_inten,\
+            itertools.repeat(return_periods, len(cen_pos)), cen_pos, \
+            chunksize=chunksize)):
+            inten_stats[:, cen_idx] = inten_loc
+        return inten_stats
+
+    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), **kwargs):
+        """Compute and plot hazard exceedance intensity maps for different
+        return periods. Calls local_exceedance_inten.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
-            orig (bool, optional): if true, only historical events considered
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -181,13 +261,13 @@ class Hazard(object):
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
-        inten_stats = self._compute_stats(np.array(return_periods), orig)
+        inten_stats = self.local_exceedance_inten(np.array(return_periods))
         colbar_name = 'Wind intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        fig, axis = plot.geo_im_from_array(inten_stats, self.centroids.coord, \
-                                           colbar_name, title, **kwargs)
+        fig, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
+                                             colbar_name, title, **kwargs)
         return fig, axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, **kwargs):
@@ -218,7 +298,7 @@ class Hazard(object):
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label, **kwargs)
-        elif centr is not None:
+        if centr is not None:
             if isinstance(centr, tuple):
                 centr = self.centroids.get_nearest_id(centr[0], centr[1])
             return self._centr_plot(centr, self.intensity, col_label)
@@ -254,7 +334,7 @@ class Hazard(object):
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.fraction, col_label, **kwargs)
-        elif centr is not None:
+        if centr is not None:
             if isinstance(centr, tuple):
                 centr = self.centroids.get_nearest_id(centr[0], centr[1])
             return self._centr_plot(centr, self.fraction, col_label)
@@ -283,7 +363,7 @@ class Hazard(object):
         """"Get the name of an event id.
 
         Parameters:
-            event_id (id): id of the event
+            event_id (int): id of the event
 
         Returns:
             str
@@ -309,15 +389,15 @@ class Hazard(object):
             list(str)
         """
         if event is None:
-            l_dates = [self._date_to_str(date) for date in self.date]
+            l_dates = [u_dt.date_to_str(date) for date in self.date]
         elif isinstance(event, str):
             ev_ids = self.get_event_id(event)
-            l_dates = [self._date_to_str(self.date[ \
+            l_dates = [u_dt.date_to_str(self.date[ \
                        np.argwhere(self.event_id == ev_id)[0][0]]) \
                        for ev_id in ev_ids]
         else:
             ev_idx = np.argwhere(self.event_id == event)[0][0]
-            l_dates = [self._date_to_str(self.date[ev_idx])]
+            l_dates = [u_dt.date_to_str(self.date[ev_idx])]
         return l_dates
 
     def calc_year_set(self):
@@ -357,8 +437,8 @@ class Hazard(object):
         elif hazard.units == 'NA':
             LOGGER.info("Appended hazard does not have units.")
         elif self.units != hazard.units:
-            LOGGER.error("Hazards with different units can't be appended"\
-                             + ": %s != %s.", self.units, hazard.units)
+            LOGGER.error("Hazards with different units can't be appended: "
+                         "%s != %s.", self.units, hazard.units)
             raise ValueError
 
         self.tag.append(hazard.tag)
@@ -483,13 +563,8 @@ class Hazard(object):
         cen_self = cen_self_sort[cen_self]
         return cen_self, cen_haz
 
-    @staticmethod
-    def _date_to_str(date):
-        """ Compute date string from input datetime ordinal int. """
-        return dt.date.fromordinal(date).isoformat()
-
-    @staticmethod
-    def _read_one(file_name, haz_type, description='', centroids=None, \
+    @classmethod
+    def _read_one(cls, file_name, haz_type, description='', centroids=None, \
                   var_names=None):
         """ Read hazard, and centroids if not provided, from input file.
 
@@ -504,10 +579,10 @@ class Hazard(object):
             ValueError, KeyError
 
         Returns:
-            Hazard
+            Hazard or children
         """
         LOGGER.info('Reading file: %s', file_name)
-        new_haz = Hazard()
+        new_haz = cls()
         new_haz.tag = TagHazard(haz_type, file_name, description)
 
         extension = os.path.splitext(file_name)[1]
@@ -597,8 +672,8 @@ class Hazard(object):
             array_val.append(im_val)
             l_title.append(title)
 
-        return plot.geo_im_from_array(array_val, self.centroids.coord,
-                                      col_name, l_title, **kwargs)
+        return u_plot.geo_im_from_array(array_val, self.centroids.coord,
+                                        col_name, l_title, **kwargs)
 
     def _centr_plot(self, centr_id, mat_var, col_name):
         """"Plot a centroid of the input matrix.
@@ -639,51 +714,27 @@ class Hazard(object):
             array_val = np.max(mat_var, axis=1).todense()
             title = '%s max intensity at each event' % self.tag.haz_type
 
-        graph = plot.Graph2D(title)
+        graph = u_plot.Graph2D(title)
         graph.add_subplot('Event number', col_name)
         graph.add_curve(range(len(array_val)), array_val, 'b')
         graph.set_x_lim(range(len(array_val)))
         return graph.get_elems()
 
-    def _compute_stats(self, return_periods, orig=False):
-        """ Compute intensity map for given return periods.
-
-        Parameters:
-            return_periods (np.array): return periods to consider
-            orig (bool, optional): if true, only historical events considered
-
-        Returns:
-            np.array
-        """
-        inten_stats = np.zeros((len(return_periods), self.intensity.shape[1]))
-        inten = self.intensity
-        freq = self.frequency
-        if orig:
-            inten = inten[self.orig, :]
-            freq = freq[self.orig] * self.event_id.size / \
-                self.orig.nonzero()[0].size
-        for cen_pos in range(self.intensity.shape[1]):
-            inten_loc = self._loc_return_inten(return_periods, cen_pos,
-                                               inten, freq)
-            inten_stats[:, cen_pos] = inten_loc
-        return inten_stats
-
-    def _loc_return_inten(self, return_periods, cen_pos, inten, freq):
+    def _loc_return_inten(self, return_periods, cen_pos):
         """ Compute local exceedence intensity for given return period.
 
         Parameters:
             return_periods (np.array): return periods to consider
             cen_pos (int): centroid position
-            inten (sparse.csr_matrix): intensity of the events at centroids
-            freq (np.array): events frequncy
         Returns:
             np.array
         """
-        inten_pos = np.argwhere(inten[:, cen_pos] >
+        inten_pos = np.argwhere(self.intensity[:, cen_pos] >
                                 self.intensity_thres)[:, 0]
         if inten_pos.size == 0:
             return np.zeros((return_periods.size, ))
-        inten_nz = np.asarray(inten[inten_pos, cen_pos].todense()).squeeze()
+        inten_nz = np.asarray(self.intensity[inten_pos, cen_pos].todense()). \
+            squeeze()
         sort_pos = inten_nz.argsort()[::-1]
         try:
             inten_sort = inten_nz[sort_pos]
@@ -692,10 +743,12 @@ class Hazard(object):
                 inten_sort = np.array([inten_nz])
             else:
                 raise err
-        freq_sort = freq[inten_pos[sort_pos]]
+        freq_sort = self.frequency[inten_pos[sort_pos]]
         np.cumsum(freq_sort, out=freq_sort)
         try:
-            pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=0)
         inten_fit = np.polyval(pol_coef, np.log(1/return_periods))

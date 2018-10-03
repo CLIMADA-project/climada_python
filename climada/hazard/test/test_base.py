@@ -4,7 +4,6 @@ Test Hazard base class.
 
 import os
 import unittest
-import datetime as dt
 import numpy as np
 from scipy import sparse
 
@@ -13,6 +12,7 @@ from climada.hazard.source import READ_SET
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
+import climada.util.dates_times as u_dt
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 HAZ_TEST_XLS = os.path.join(DATA_DIR, 'Excel_hazard.xlsx')
@@ -184,11 +184,6 @@ class TestLoader(unittest.TestCase):
                 haz.get_event_name(1050)
         self.assertIn('No event with id: 1050', cm.output[0])
 
-    def test_date_to_str(self):
-        """ Test _date_to_str function"""
-        ordinal_date = dt.datetime.toordinal(dt.datetime(2018, 4, 6))
-        self.assertEqual('2018-04-06', Hazard._date_to_str(ordinal_date))
-
     def test_get_date_strings_pass(self):
         haz = Hazard('TC', HAZ_TEST_MAT)
         haz.event_name[5] = 'HAZEL'
@@ -196,15 +191,15 @@ class TestLoader(unittest.TestCase):
 
         self.assertEqual(len(haz.get_event_date('HAZEL')), 2)
         self.assertEqual(haz.get_event_date('HAZEL')[0], 
-                         haz._date_to_str(haz.date[5]))
+                         u_dt.date_to_str(haz.date[5]))
         self.assertEqual(haz.get_event_date('HAZEL')[1], 
-                         haz._date_to_str(haz.date[10]))
+                         u_dt.date_to_str(haz.date[10]))
         
-        self.assertEqual(haz.get_event_date(2)[0], haz._date_to_str(haz.date[1]))
+        self.assertEqual(haz.get_event_date(2)[0], u_dt.date_to_str(haz.date[1]))
 
         self.assertEqual(len(haz.get_event_date()), haz.date.size)
         self.assertEqual(haz.get_event_date()[560], 
-                         haz._date_to_str(haz.date[560]))
+                         u_dt.date_to_str(haz.date[560]))
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""
@@ -366,6 +361,122 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertEqual(haz1.tag.file_name, [haz2.tag.file_name, haz2.tag.file_name])
         self.assertEqual(haz1.tag.haz_type, haz2.tag.haz_type)
         self.assertEqual(haz1.tag.description, [haz2.tag.description, haz2.tag.description])
+
+class TestSelect(unittest.TestCase):
+    """Test select method."""    
+    
+    def test_select_orig_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(orig=True)
+        
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([1, 4])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([1, 4])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.1, 0.2])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.02, 0.03, 0.04], \
+                                          [0.3, 0.2, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.2, 0.3, 0.4], \
+                                          [5.3, 0.2, 1.3]])))
+        self.assertEqual(sel_haz.event_name, ['ev1', 'ev4'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+        
+    def test_select_syn_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(orig=False)
+        
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.01, 0.01, 0.01], \
+                                          [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.1, 0.1, 0.01], \
+                                          [4.3, 2.1, 1.0]])))
+        self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+    def test_select_date_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(date=(2,4))
+        
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([2, 3, 4])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3, 4])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False, True])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5, 0.2])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.01, 0.01, 0.01], \
+                                          [0.3, 0.1, 0.0], \
+                                          [0.3, 0.2, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.1, 0.1, 0.01], \
+                                           [4.3, 2.1, 1.0], \
+                                           [5.3, 0.2, 1.3]])))
+        self.assertEqual(sel_haz.event_name, ['ev2', 'ev3', 'ev4'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+    def test_select_date_str_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(date=('0001-01-02', '0001-01-03'))
+        
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.01, 0.01, 0.01], \
+                                          [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.1, 0.1, 0.01], \
+                                          [4.3, 2.1, 1.0]])))
+        self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+    def test_select_date_and_orig_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(date=(2,4), orig=False)
+        
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.01, 0.01, 0.01], \
+                                          [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.1, 0.1, 0.01], \
+                                          [4.3, 2.1, 1.0]])))
+        self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+    def test_select_date_wrong_pass(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(date=(6,8), orig=False)
+        self.assertEqual(sel_haz, None)
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
@@ -697,14 +808,14 @@ class TestStats(unittest.TestCase):
         haz = Hazard('TC', HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = np.zeros(haz.intensity.shape)
-        inten_stats = haz._compute_stats(return_period)
+        inten_stats = haz.local_exceedance_inten(return_period)
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
     def test_ref_all_pass(self):
         """Compare against reference."""        
         haz = Hazard(file_name=HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
-        inten_stats = haz._compute_stats(return_period)
+        inten_stats = haz.local_exceedance_inten(return_period)
 
         self.assertAlmostEqual(inten_stats[0][0], 55.424015590131290)
         self.assertAlmostEqual(inten_stats[1][0], 67.221687644669998)
@@ -714,17 +825,6 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[1][66], 70.608592953031405)
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
-
-    def test_ref_orig_pass(self):
-        """Compare against reference."""        
-        haz = Hazard(file_name=HAZ_TEST_MAT)
-        return_period = np.array([25, 50, 100, 250])
-        inten_stats = haz._compute_stats(return_period, True)
-
-        self.assertAlmostEqual(inten_stats[0][0], 55.763055630205507)
-        self.assertAlmostEqual(inten_stats[0][82], 51.142476557641359)
-        self.assertAlmostEqual(inten_stats[2][96], 79.651362050077225)
-        self.assertAlmostEqual(inten_stats[1][20], 66.439658831126991)
 
 class TestYearset(unittest.TestCase):
     """Test return period statistics"""
@@ -756,4 +856,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
