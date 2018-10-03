@@ -155,11 +155,12 @@ class TCTracks(object):
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
         ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
-        """ Generate random tracks for every track contained.
+        """ Generate synthetic tracks. An ensamble of tracks is computed for
+        every track contained.
 
         Parameters:
-            ens_size (int, optional): number of created tracks per original
-                track. Default 9.
+            ens_size (int, optional): number of ensamble per original track.
+                Default 9.
             ens_amp0 (float, optional): amplitude of max random starting point
                 shift degree longitude. Default: 1.5
             max_angle (float, optional): maximum angle of variation, =pi is
@@ -212,6 +213,11 @@ class TCTracks(object):
             except ValueError as err:
                 LOGGER.info('No land decay coefficients could be applied. %s',\
                             str(err))
+
+    @property
+    def size(self):
+        """ Get longitude from coord array """
+        return len(self.data)
 
     def plot(self, title=None):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -346,11 +352,6 @@ class TCTracks(object):
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)
-
-    @property
-    def size(self):
-        """ Get longitude from coord array """
-        return len(self.data)
 
     def _calc_land_params(self):
         """Compute tracks attributes dependent on their coordinates:
