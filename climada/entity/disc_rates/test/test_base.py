@@ -35,22 +35,22 @@ class TestConstructor(unittest.TestCase):
 
     def test_get_def_vars(self):
         """ Test def_source_vars function."""
-        self.assertTrue(DiscRates.get_def_file_var_names('xls') == 
+        self.assertTrue(DiscRates.get_def_file_var_names('xls') ==
                         READ_SET['XLS'][0])
-        self.assertTrue(DiscRates.get_def_file_var_names('.mat') == 
+        self.assertTrue(DiscRates.get_def_file_var_names('.mat') ==
                         READ_SET['MAT'][0])
 
 class TestAppend(unittest.TestCase):
     """Check append function"""
     def test_append_to_empty_same(self):
-        """Append DiscRates to empty one."""     
+        """Append DiscRates to empty one."""
         disc_rate = DiscRates()
         disc_rate_add = DiscRates()
         disc_rate_add.tag.file_name = 'file1.txt'
         disc_rate_add.tag.description = 'descr1'
         disc_rate_add.years = np.array([2000, 2001, 2002])
         disc_rate_add.rates = np.array([0.1, 0.2, 0.3])
-        
+
         disc_rate.append(disc_rate_add)
         disc_rate.check()
 
@@ -62,7 +62,7 @@ class TestAppend(unittest.TestCase):
                                        disc_rate_add.tag.description))
 
     def test_append_equal_same(self):
-        """Append the same DiscRates. The inital DiscRates is obtained."""     
+        """Append the same DiscRates. The inital DiscRates is obtained."""
         disc_rate = DiscRates()
         disc_rate.tag.file_name = 'file1.txt'
         disc_rate.tag.description = 'descr1'
@@ -74,7 +74,7 @@ class TestAppend(unittest.TestCase):
         disc_rate_add.tag.description = 'descr1'
         disc_rate_add.years = np.array([2000, 2001, 2002])
         disc_rate_add.rates = np.array([0.1, 0.2, 0.3])
-        
+
         disc_rate.append(disc_rate_add)
         disc_rate.check()
 
@@ -97,7 +97,7 @@ class TestAppend(unittest.TestCase):
         disc_rate_add.tag.description = 'descr2'
         disc_rate_add.years = np.array([2000, 2001, 2003])
         disc_rate_add.rates = np.array([0.11, 0.22, 0.33])
-        
+
         disc_rate.append(disc_rate_add)
         disc_rate.check()
 
@@ -119,9 +119,62 @@ class TestReadParallel(unittest.TestCase):
         self.assertEqual(disc_rate.tag.description, 'desc1 + desc2')
         self.assertEqual(disc_rate.years.size, 51)
 
+class TestSelect(unittest.TestCase):
+    """Test select method """
+    def test_select_pass(self):
+        """Test select right time range."""
+        disc_rate = DiscRates()
+        disc_rate.tag.file_name = 'file1.txt'
+        disc_rate.tag.description = 'descr1'
+        disc_rate.years = np.arange(2000, 2050)
+        disc_rate.rates = np.arange(disc_rate.years.size)
+
+        year_range = np.arange(2010, 2020)
+        sel_disc = disc_rate.select(year_range)
+
+        self.assertTrue(np.array_equal(sel_disc.years, year_range))
+        self.assertTrue(np.array_equal(sel_disc.rates, disc_rate.rates[10:20]))
+
+    def test_select_wrong_pass(self):
+        """Test select wrong time range."""
+        disc_rate = DiscRates()
+        disc_rate.tag.file_name = 'file1.txt'
+        disc_rate.tag.description = 'descr1'
+        disc_rate.years = np.arange(2000, 2050)
+        disc_rate.rates = np.arange(disc_rate.years.size)
+
+        year_range = np.arange(2050, 2060)
+        self.assertEqual(None, disc_rate.select(year_range))
+
+class TestNetPresValue(unittest.TestCase):
+    """Test select method """
+    def test_net_present_value_pass(self):
+        """Test net_present_value right time range."""
+        disc_rate = DiscRates()
+        disc_rate.tag.file_name = 'file1.txt'
+        disc_rate.tag.description = 'descr1'
+        disc_rate.years = np.arange(2000, 2050)
+        disc_rate.rates = np.ones(disc_rate.years.size)*0.02
+
+        val_years = np.ones(23)*6.512201157564418e9
+        res = disc_rate.net_present_value(2018, 2040, val_years)
+        self.assertEqual(res, 1.215049630691397e+11)
+
+    def test_net_present_value_wrong_pass(self):
+        """Test net_present_value wrong time range."""
+        disc_rate = DiscRates()
+        disc_rate.tag.file_name = 'file1.txt'
+        disc_rate.tag.description = 'descr1'
+        disc_rate.years = np.arange(2000, 2050)
+        disc_rate.rates = np.arange(disc_rate.years.size)
+        val_years = np.ones(11)*6.512201157564418e9
+        self.assertEqual(None, disc_rate.net_present_value(2050, 2060, val_years))
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNetPresValue))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
