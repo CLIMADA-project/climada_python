@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import pandas
 
-from climada.entity.measures.measure import Measure
+from climada.entity.measures.base import Measure
 import climada.util.hdf5_handler as hdf5
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
@@ -25,8 +25,12 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'mdd_b' : 'MDD_impact_b',
                             'paa_a' : 'PAA_impact_a',
                             'paa_b' : 'PAA_impact_b',
+                            'fun_map' : 'damagefunctions_map',
+                            'exp_set' : 'assets_file',
+                            'exp_reg' : 'Region_ID',
                             'risk_att' : 'risk_transfer_attachement',
-                            'risk_cov' : 'risk_transfer_cover'
+                            'risk_cov' : 'risk_transfer_cover',
+                            'haz' : 'peril_ID'
                            }
               }
 """ MATLAB variable names """
@@ -35,15 +39,20 @@ DEF_VAR_EXCEL = {'sheet_name': 'measures',
                  'col_name': {'name' : 'name',
                               'color' : 'color',
                               'cost' : 'cost',
-                              'haz_int' : 'hazard intensity impact',
+                              'haz_int_a' : 'hazard intensity impact a',
+                              'haz_int_b' : 'hazard intensity impact b',
                               'haz_frq' : 'hazard high frequency cutoff',
                               'haz_set' : 'hazard event set',
                               'mdd_a' : 'MDD impact a',
                               'mdd_b' : 'MDD impact b',
                               'paa_a' : 'PAA impact a',
                               'paa_b' : 'PAA impact b',
+                              'fun_map' : 'damagefunctions map',
+                              'exp_set' : 'assets file',
+                              'exp_reg' : 'Region_ID',
                               'risk_att' : 'risk transfer attachement',
-                              'risk_cov' : 'risk transfer cover'
+                              'risk_cov' : 'risk transfer cover',
+                              'haz' : 'peril_ID'
                              }
                 }
 """ Excel variable names """
@@ -93,25 +102,32 @@ def read_att_mat(measures, data, file_name, var_names):
             file_name, data[var_names['var_name']['color']][idx][0])
         meas.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
         meas.cost = data[var_names['var_name']['cost']][idx][0]
-        meas.hazard_freq_cutoff = \
-                                data[var_names['var_name']['haz_frq']][idx][0]
-        meas.hazard_event_set = hdf5.get_str_from_ref(
-            file_name, data[var_names['var_name']['haz_set']][idx][0])
+        meas.haz_type = hdf5.get_str_from_ref(
+            file_name, data[var_names['var_name']['haz']][idx][0])
+        meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
+        meas.hazard_set = hdf5.get_str_from_ref(file_name, \
+            data[var_names['var_name']['haz_set']][idx][0])
         try:
-            meas.hazard_intensity = ( \
+            meas.hazard_inten_imp = ( \
                 data[var_names['var_name']['haz_int_a']][idx][0], \
                 data[var_names['var_name']['haz_int_b']][0][idx])
         except KeyError:
-            meas.hazard_intensity = ( \
+            meas.hazard_inten_imp = ( \
                 data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
+
         meas.mdd_impact = (data[var_names['var_name']['mdd_a']][idx][0],
                            data[var_names['var_name']['mdd_b']][idx][0])
         meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
                            data[var_names['var_name']['paa_b']][idx][0])
-        meas.risk_transf_attach = \
-                                data[var_names['var_name']['risk_att']][idx][0]
-        meas.risk_transf_cover = \
-                                data[var_names['var_name']['risk_cov']][idx][0]
+        meas.imp_fun_map = hdf5.get_str_from_ref(file_name, \
+                           data[var_names['var_name']['fun_map']][idx][0])
+
+        meas.exposures_set = hdf5.get_str_from_ref(
+            file_name, data[var_names['var_name']['exp_set']][idx][0])
+        meas.exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
+
+        meas.risk_transf_attach = data[var_names['var_name']['risk_att']][idx][0]
+        meas.risk_transf_cover = data[var_names['var_name']['risk_cov']][idx][0]
 
         measures.add_measure(meas)
 
@@ -122,24 +138,34 @@ def read_att_excel(measures, dfr, var_names):
         meas = Measure()
 
         meas.name = dfr[var_names['col_name']['name']][idx]
+        try:
+            meas.haz_type = dfr[var_names['col_name']['haz']][idx]
+        except KeyError:
+            pass
         meas.color_rgb = np.fromstring( \
             dfr[var_names['col_name']['color']][idx], dtype=float, sep=' ')
         meas.cost = dfr[var_names['col_name']['cost']][idx]
+
         meas.hazard_freq_cutoff = dfr[var_names['col_name']['haz_frq']][idx]
-        meas.hazard_event_set = dfr[var_names['col_name']['haz_set']][idx]
+        meas.hazard_set = dfr[var_names['col_name']['haz_set']][idx]
         # Search for (a, b) values, put a = 1 otherwise
         try:
-            meas.hazard_intensity = (1, dfr[var_names['col_name']['haz_int']]\
-                                    [idx])
+            meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],\
+                                     dfr[var_names['col_name']['haz_int_b']][idx])
         except KeyError:
-            col_name_a = var_names['col_name']['haz_int'] + ' a'
-            col_name_b = var_names['col_name']['haz_int'] + ' b'
-            meas.hazard_intensity = (dfr[col_name_a][idx], \
-                                     dfr[col_name_b][idx])
+            meas.hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
+
+        try:
+            meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
+            meas.exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
+        except KeyError:
+            pass
+
         meas.mdd_impact = (dfr[var_names['col_name']['mdd_a']][idx],
                            dfr[var_names['col_name']['mdd_b']][idx])
         meas.paa_impact = (dfr[var_names['col_name']['paa_a']][idx],
                            dfr[var_names['col_name']['paa_b']][idx])
+        meas.imp_fun_map = dfr[var_names['col_name']['fun_map']][idx]
         meas.risk_transf_attach = dfr[var_names['col_name']['risk_att']][idx]
         meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
 
