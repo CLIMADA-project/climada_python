@@ -63,7 +63,7 @@ class Hazard():
                   'intensity',
                   'fraction'
                  }
-    """Name of the variables need to compute the impact. Types: scalar, string,
+    """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
     num_events x num_centroids, Centroids and Tag."""
 
@@ -80,7 +80,7 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='NA', file_name='', description='', \
+    def __init__(self, haz_type='', file_name='', description='', \
                  centroids=None):
         """Initialize values from given file, if given.
 
@@ -112,7 +112,7 @@ class Hazard():
             >>> haz = Hazard('TC', HAZ_DEMO_MAT, 'Demo hazard.', centr)
         """
         self.tag = TagHazard()
-        self.units = 'NA'
+        self.units = ''
         self.centroids = Centroids()
         # following values are defined for each event
         self.event_id = np.array([], int)
@@ -129,22 +129,19 @@ class Hazard():
             raise ValueError
         self.tag.haz_type = haz_type
         if file_name != '':
-            if haz_type == 'NA':
+            if haz_type == '':
                 LOGGER.warning("Hazard type acronym not provided.")
             self.read(file_name, description, centroids)
 
     def clear(self):
         """Reinitialize attributes."""
-        self.tag = TagHazard()
-        self.units = 'NA'
-        self.centroids = Centroids()
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.array([]))
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
-            elif isinstance(var_val, list):
-                setattr(self, var_name, list())
+            else:
+                setattr(self, var_name, var_val.__class__())
 
     def check(self):
         """Check if the attributes contain consistent data.
@@ -217,11 +214,12 @@ class Hazard():
 
         sel_idx = np.argwhere(sel_idx).squeeze()
         for (var_name, var_val) in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_val.size:
                 setattr(haz, var_name, var_val[sel_idx])
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(haz, var_name, var_val[sel_idx, :])
-            elif isinstance(var_val, list):
+            elif isinstance(var_val, list) and len(var_val):
                 setattr(haz, var_name, [var_val[idx] for idx in sel_idx])
             else:
                 setattr(haz, var_name, var_val)
@@ -431,10 +429,10 @@ class Hazard():
                 self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
 
-        if (self.units == 'NA') and (hazard.units != 'NA'):
+        if (self.units == '') and (hazard.units != ''):
             LOGGER.info("Initial hazard does not have units.")
             self.units = hazard.units
-        elif hazard.units == 'NA':
+        elif hazard.units == '':
             LOGGER.info("Appended hazard does not have units.")
         elif self.units != hazard.units:
             LOGGER.error("Hazards with different units can't be appended: "
@@ -446,10 +444,11 @@ class Hazard():
         # append all 1-dim variables
         for (var_name, var_val), haz_val in zip(self.__dict__.items(),
                                                 hazard.__dict__.values()):
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_val.size:
                 setattr(self, var_name, np.append(var_val, haz_val). \
                         astype(var_val.dtype, copy=False))
-            elif isinstance(var_val, list):
+            elif isinstance(var_val, list) and var_val:
                 setattr(self, var_name, var_val + haz_val)
 
         # append intensity and fraction:
@@ -532,6 +531,12 @@ class Hazard():
         except KeyError:
             LOGGER.error('File extension not supported: %s.', src_format)
             raise ValueError
+
+    @property
+    def size(self):
+        """ Returns number of events """
+        self.check()
+        return self.event_id.size
 
     def _append_haz_cent(self, centroids):
         """Append centroids. Get positions of new centroids.
