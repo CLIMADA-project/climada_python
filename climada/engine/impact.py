@@ -10,56 +10,12 @@ import numpy as np
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.coordinates import GridPoints
-import climada.util.plot as plot
+import climada.util.plot as u_plot
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
-MAX_SIZE = 1.0e8
-""" Maximum matrix size for impact caluculation. If the matrix is bigger,
-it is chunked."""
-
-class ImpactFreqCurve(object):
-    """ Impact exceedence frequency curve.
-
-    Attributes:
-        return_per (np.array): return period
-        impact (np.array): impact exceeding frequency
-        unit (str): value unit used (given by exposures unit)
-        label (str): string describing source data
-    """
-    def __init__(self):
-        self.return_per = np.array([])
-        self.impact = np.array([])
-        self.unit = 'NA'
-        self.label = ''
-
-    def plot(self):
-        """Plot impact frequency curve.
-
-        Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
-        """
-        graph = plot.Graph2D(self.label)
-        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
-        graph.add_curve(self.return_per, self.impact, 'y')
-        return graph.get_elems()
-
-    def plot_compare(self, ifc):
-        """Plot current and input impact frequency curves in a figure.
-
-        Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
-        """
-        if self.unit != ifc.unit:
-            LOGGER.warning("Comparing between two different units: %s and %s",\
-                         self.unit, ifc.unit)
-        graph = plot.Graph2D('', 2)
-        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
-        graph.add_curve(self.return_per, self.impact, 'b', label=self.label)
-        graph.add_curve(ifc.return_per, ifc.impact, 'r', label=ifc.label)
-        return graph.get_elems()
-
-class Impact(object):
+class Impact():
     """Impact definition. Compute from an entity (exposures and impact
     functions) and hazard.
 
@@ -92,7 +48,7 @@ class Impact(object):
         self.frequency = np.array([])
         self.tot_value = 0
         self.aai_agg = 0
-        self.unit = 'NA'
+        self.unit = ''
 
     def calc_freq_curve(self):
         """Compute impact exceedance frequency curve.
@@ -178,53 +134,19 @@ class Impact(object):
         # 3. Loop over exposures according to their impact function
         # Loop over impact functions
         for imp_fun in haz_imp:
-            self.imp_fun = imp_fun
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
-            exp_step = int(MAX_SIZE/num_events)
+            exp_step = int(CONFIG['impact']['max_matrix_size']/num_events)
             # separte in chunks if too many exposures
-            i = -1
-            for i in range(int(exp_iimp.size/exp_step)):
-                self._exp_impact(exp_idx[exp_iimp[i*exp_step:(i+1)*exp_step]],\
+            chk = -1
+            for chk in range(int(exp_iimp.size/exp_step)):
+                self._exp_impact( \
+                    exp_idx[exp_iimp[chk*exp_step:(chk+1)*exp_step]],\
                     exposures, hazard, imp_fun, insure_flag)
-            self._exp_impact(exp_idx[exp_iimp[(i+1)*exp_step:]],\
+            self._exp_impact(exp_idx[exp_iimp[(chk+1)*exp_step:]],\
                 exposures, hazard, imp_fun, insure_flag)
 
         self.aai_agg = sum(self.at_event * hazard.frequency)
-
-    def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
-        """Compute impact for inpute exposure indexes and impact function.
-
-        Parameters:
-            exp_iimp (np.array): exposures indexes
-            exposures (Exposures): exposures instance
-            hazard (Hazard): hazard instance
-            imp_fun (ImpactFunc): impact function instance
-            insure_flag (bool): consider deductible and cover of exposures
-        """
-        # get assigned centroids
-        icens = exposures.assigned[hazard.tag.haz_type][exp_iimp]
-
-        # get affected intensities
-        inten_val = hazard.intensity[:, icens].todense()
-        # get affected fractions
-        fract = hazard.fraction[:, icens]
-        impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
-            multiply(exposures.value[exp_iimp])
-
-        if insure_flag and impact.nonzero()[0].size:
-            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
-            impact = np.minimum(np.maximum(impact - \
-                exposures.deductible[exp_iimp] * paa, 0), \
-                exposures.cover[exp_iimp])
-            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
-                hazard.frequency.reshape(-1, 1), axis=0)
-        else:
-            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
-                impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
-
-        self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
-        self.tot_value += np.sum(exposures.value[exp_iimp])
 
     def plot_eai_exposure(self, ignore_zero=True, pop_name=True,
                           buffer_deg=0.0, extend='neither', var_name=None,
@@ -254,9 +176,44 @@ class Impact(object):
             pos_vals = np.ones((self.eai_exp.size,), dtype=bool)
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        return plot.geo_bin_from_array(self.eai_exp[pos_vals], \
+        return u_plot.geo_bin_from_array(self.eai_exp[pos_vals], \
             self.coord_exp[pos_vals], var_name, title, pop_name, buffer_deg, \
             extend, **kwargs)
+
+    def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
+        """Compute impact for inpute exposure indexes and impact function.
+
+        Parameters:
+            exp_iimp (np.array): exposures indexes
+            exposures (Exposures): exposures instance
+            hazard (Hazard): hazard instance
+            imp_fun (ImpactFunc): impact function instance
+            insure_flag (bool): consider deductible and cover of exposures
+        """
+        # get assigned centroids
+        icens = exposures.assigned[hazard.tag.haz_type][exp_iimp]
+
+        # get affected intensities
+        inten_val = hazard.intensity[:, icens].todense()
+        # get affected fractions
+        fract = hazard.fraction[:, icens]
+        # impact = fraction * mdr * value
+        impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
+            multiply(exposures.value[exp_iimp])
+
+        if insure_flag and impact.nonzero()[0].size:
+            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
+            impact = np.minimum(np.maximum(impact - \
+                exposures.deductible[exp_iimp] * paa, 0), \
+                exposures.cover[exp_iimp])
+            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
+                hazard.frequency.reshape(-1, 1), axis=0)
+        else:
+            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
+                impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
+
+        self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
+        self.tot_value += np.sum(exposures.value[exp_iimp])
 
     @property
     def coord_exp(self):
@@ -270,3 +227,44 @@ class Impact(object):
             self._coord_exp = GridPoints(value)
         else:
             self._coord_exp = value
+
+class ImpactFreqCurve():
+    """ Impact exceedence frequency curve.
+
+    Attributes:
+        return_per (np.array): return period
+        impact (np.array): impact exceeding frequency
+        unit (str): value unit used (given by exposures unit)
+        label (str): string describing source data
+    """
+    def __init__(self):
+        self.return_per = np.array([])
+        self.impact = np.array([])
+        self.unit = ''
+        self.label = ''
+
+    def plot(self):
+        """Plot impact frequency curve.
+
+        Returns:
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        graph = u_plot.Graph2D(self.label)
+        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
+        graph.add_curve(self.return_per, self.impact, 'y')
+        return graph.get_elems()
+
+    def plot_compare(self, ifc):
+        """Plot current and input impact frequency curves in a figure.
+
+        Returns:
+            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+        """
+        if self.unit != ifc.unit:
+            LOGGER.warning("Comparing between two different units: %s and %s",\
+                         self.unit, ifc.unit)
+        graph = u_plot.Graph2D('', 2)
+        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
+        graph.add_curve(self.return_per, self.impact, 'b', label=self.label)
+        graph.add_curve(ifc.return_per, ifc.impact, 'r', label=ifc.label)
+        return graph.get_elems()
