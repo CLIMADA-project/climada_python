@@ -51,10 +51,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.category_id[0], 1)
         self.assertEqual(expo.category_id[n_expos-1], 1)
 
-        self.assertIn('int', str(expo.assigned['NA'].dtype))
-        self.assertEqual(expo.assigned['NA'].shape, (n_expos,))
-        self.assertEqual(expo.assigned['NA'][0], 47)
-        self.assertEqual(expo.assigned['NA'][n_expos-1], 46)
+        self.assertIn('int', str(expo.assigned[''].dtype))
+        self.assertEqual(expo.assigned[''].shape, (n_expos,))
+        self.assertEqual(expo.assigned[''][0], 47)
+        self.assertEqual(expo.assigned[''][n_expos-1], 46)
 
         self.assertEqual(expo.region_id.shape, (0,))
 
@@ -173,7 +173,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertEqual('NA', expo.value_unit)
+        self.assertEqual('', expo.value_unit)
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""

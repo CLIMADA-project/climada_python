@@ -61,7 +61,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.coord[n_expos-1][1], -80.15885500000)
 
         self.assertEqual(expo.ref_year, CONFIG['entity']["present_ref_year"])
-        self.assertEqual(expo.value_unit, 'NA')
+        self.assertEqual(expo.value_unit, '')
         self.assertEqual(expo.tag.file_name, ENT_TEST_XLS)
         self.assertEqual(expo.tag.description, description)
 
@@ -234,7 +234,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
-        self.assertEqual('NA', expo.value_unit)
+        self.assertEqual('', expo.value_unit)
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""
