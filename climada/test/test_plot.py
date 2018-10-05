@@ -111,7 +111,7 @@ class TestPlotter(unittest.TestCase):
         ifc2 = ImpactFreqCurve()
         ifc2.return_per = ifc.return_per
         ifc2.impact = 1.5e11 * np.ones(ifc2.return_per.size)
-        ifc2.unit = 'NA'
+        ifc2.unit = ''
         ifc2.label = 'prove'
         ifc.plot_compare(ifc2)
 
