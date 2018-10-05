@@ -75,7 +75,7 @@ class TestAppend(unittest.TestCase):
         expo_app.assigned['WS'] = np.ones((5, 2))
         expo.append(expo_app)
         self.assertTrue(len(expo.assigned['TC']), 8)
-        self.assertTrue(len(expo.assigned['WS']), 5)
+        self.assertTrue(len(expo.assigned), 1)
 
     def test_append_to_empty_same(self):
         """Append Exposure to empty one."""
@@ -268,7 +268,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.coord row size: 3 != 1.', \
+        self.assertIn('Invalid Exposures._coord row size: 3 != 1.', \
                       cm.output[0])
 
     def test_check_wrongDeduct_fail(self):
