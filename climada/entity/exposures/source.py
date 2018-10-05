@@ -131,7 +131,7 @@ def _read_xls_optional(exposures, dfr, file_name, var_names):
     assigned = _parse_xls_optional(dfr, np.array([]), \
                 var_names['col_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
-        exposures.assigned['NA'] = assigned
+        exposures.assigned[''] = assigned
 
     # check if reference year given under "names" sheet
     # if not, set default present reference year
@@ -207,7 +207,7 @@ def _read_mat_optional(exposures, data, file_name, var_names):
     assigned = _parse_mat_optional(data, np.array([]), \
                 var_names['var_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
-        exposures.assigned['NA'] = assigned
+        exposures.assigned[''] = assigned
     try:
         exposures.value_unit = hdf5.get_str_from_ref(file_name, \
             data[var_names['var_name']['uni']][0][0])
