@@ -1,7 +1,10 @@
 """
 Define functions to handle dates nad times in climada
 """
+import logging
 import datetime as dt
+
+LOGGER = logging.getLogger(__name__)
 
 def date_to_str(date):
     """ Compute date string in ISO format from input datetime ordinal int.
