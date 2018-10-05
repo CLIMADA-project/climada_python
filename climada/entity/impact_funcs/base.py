@@ -28,10 +28,10 @@ class ImpactFunc(object):
     """
     def __init__(self):
         """ Empty initialization."""
-        self.id = 'NA' # int expected
+        self.id = '' # int expected
         self.name = ''
-        self.intensity_unit = 'NA'
-        self.haz_type = 'NA'
+        self.intensity_unit = ''
+        self.haz_type = ''
         # Followng values defined for each intensity value
         self.intensity = np.array([])
         self.mdd = np.array([])
