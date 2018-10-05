@@ -9,7 +9,7 @@ from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.base import MeasureSet
+from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'test', 'data')
