@@ -18,7 +18,7 @@ class Tag(object):
         description (str or list(str)): description(s) of the data
     """
 
-    def __init__(self, haz_type='NA', file_name='', description=''):
+    def __init__(self, haz_type='', file_name='', description=''):
         """Initialize values.
 
         Parameters:
@@ -33,7 +33,7 @@ class Tag(object):
 
     def append(self, tag):
         """Append input Tag instance information to current Tag."""
-        if self.haz_type == 'NA':
+        if self.haz_type == '':
             self.haz_type = tag.haz_type
         if tag.haz_type != self.haz_type:
             LOGGER.error("Hazards of different type can't be appended:"\

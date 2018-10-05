@@ -130,7 +130,7 @@ class TestReaderExcel(unittest.TestCase):
         n_events = 100
         n_centroids = 45
 
-        self.assertEqual(hazard.units, 'NA')
+        self.assertEqual(hazard.units, '')
 
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(hazard.centroids.coord[0][0], -25.95)
