@@ -106,4 +106,10 @@ def setup_conf_user():
         if 'log_level' in userconfig.keys():
             CONFIG['log_level'] = userconfig['log_level']
 
+        if 'impact' in userconfig.keys():
+            CONFIG['impact'] = userconfig['impact']
+
+        if 'adaptation' in userconfig.keys():
+            CONFIG['adaptation'] = userconfig['adaptation']
+
         check_conf()
