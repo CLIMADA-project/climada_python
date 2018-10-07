@@ -136,12 +136,12 @@ class BMFuncs(unittest.TestCase):
         self.assertEqual(np.unique(ent.region_id).size, 2)
         self.assertEqual(np.unique(ent.impact_id).size, 1)
         self.assertEqual(ent.ref_year, 2013)
-        self.assertIn('Switzerland 2013 GDP: ', ent.tag.description[0])
-        self.assertIn('Germany 2013 GDP: ', ent.tag.description[1])
-        self.assertIn('income group: 4', ent.tag.description[0])
-        self.assertIn('income group: 4', ent.tag.description[1])
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name[0])
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name[1])
+        self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
+        self.assertIn('Germany 2013 GDP: ', ent.tag.description)
+        self.assertIn('income group: 4', ent.tag.description)
+        self.assertIn('income group: 4', ent.tag.description)
+        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
+        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
         
     def test_cut_nl_nasa_1_pass(self):
         """Test cut_nl_nasa situation 2->3->4->5."""
@@ -171,8 +171,8 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
             
             idx_info[0] = 4
             idx_info[1] = 3

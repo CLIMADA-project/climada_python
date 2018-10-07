@@ -219,7 +219,7 @@ class Hazard():
                 setattr(haz, var_name, var_val[sel_idx])
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(haz, var_name, var_val[sel_idx, :])
-            elif isinstance(var_val, list) and len(var_val):
+            elif isinstance(var_val, list) and var_val:
                 setattr(haz, var_name, [var_val[idx] for idx in sel_idx])
             else:
                 setattr(haz, var_name, var_val)
@@ -241,7 +241,7 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), len(cen_pos)))
         chunksize = min(len(cen_pos), 1000)
         for cen_idx, inten_loc in enumerate(Pool().map(self._loc_return_inten,\
-            itertools.repeat(return_periods, len(cen_pos)), cen_pos, \
+            itertools.repeat(np.array(return_periods), len(cen_pos)), cen_pos,\
             chunksize=chunksize)):
             inten_stats[:, cen_idx] = inten_loc
         return inten_stats

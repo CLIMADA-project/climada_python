@@ -234,14 +234,11 @@ class Exposures():
             return
 
         for (var_name, var_val) in self.__dict__.items():
-            if var_name in self.vars_oblig:
-                if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                    setattr(self, var_name, np.delete(var_val, pos_del))
-                elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
-                    setattr(self, var_name, np.delete(var_val, pos_del, axis=0))
-            else:
-                if isinstance(var_val, np.ndarray) and var_val.size:
-                    setattr(self, var_name, np.delete(var_val, pos_del))
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
+            and var_val.size:
+                setattr(self, var_name, np.delete(var_val, pos_del))
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
+                setattr(self, var_name, np.delete(var_val, pos_del, axis=0))
 
         old_assigned = self.assigned.copy()
         for key, val in old_assigned.items():
@@ -285,9 +282,10 @@ class Exposures():
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
                 setattr(self, var_name, np.append(var_val, haz_val, axis=0). \
                         astype(var_val.dtype, copy=False))
-            elif isinstance(var_val, list) and len(var_val):
+            elif isinstance(var_val, list) and var_val:
                 setattr(self, var_name, var_val + haz_val)
 
+        self.coord = self._coord
         for (ass_haz, ass) in exposures.assigned.items():
             if ass_haz in self.assigned:
                 self.assigned[ass_haz] = np.append(
@@ -364,12 +362,12 @@ class Exposures():
     @property
     def lat(self):
         """ Get latitude from coord array """
-        return self.coord[:, 0]
+        return self._coord[:, 0]
 
     @property
     def lon(self):
         """ Get longitude from coord array """
-        return self.coord[:, 1]
+        return self._coord[:, 1]
 
     @property
     def coord(self):
