@@ -57,6 +57,9 @@ class Impact():
             ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
+        ifc.exposures_tag = self.exposures_tag
+        ifc.impact_funcs_tag = self.impact_funcs_tag
+        ifc.hazard_tag = self.hazard_tag
         # Sort descendingly the impacts per events
         sort_idxs = np.argsort(self.at_event)[::-1]
         # Calculate exceedence frequency
@@ -137,7 +140,11 @@ class Impact():
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
             exp_step = int(CONFIG['impact']['max_matrix_size']/num_events)
-            # separte in chunks if too many exposures
+            if not exp_step:
+                LOGGER.error('Increase max_matrix_size configuration parameter'\
+                    'to > %s', str(num_events))
+                raise ValueError
+            # separte in chunks
             chk = -1
             for chk in range(int(exp_iimp.size/exp_step)):
                 self._exp_impact( \
@@ -238,6 +245,9 @@ class ImpactFreqCurve():
         label (str): string describing source data
     """
     def __init__(self):
+        self.exposures_tag = Tag()
+        self.impact_funcs_tag = Tag()
+        self.hazard_tag = TagHazard()
         self.return_per = np.array([])
         self.impact = np.array([])
         self.unit = ''
