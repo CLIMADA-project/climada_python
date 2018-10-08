@@ -9,11 +9,9 @@ import os
 import copy
 import logging
 import datetime as dt
-import itertools
 import warnings
 import numpy as np
 from scipy import sparse
-from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
@@ -22,6 +20,7 @@ from climada.util.files_handler import to_list, get_file_names
 import climada.util.plot as u_plot
 import climada.util.checker as check
 import climada.util.dates_times as u_dt
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -237,13 +236,23 @@ class Hazard():
         """
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
-        cen_pos = range(self.intensity.shape[1])
-        inten_stats = np.zeros((len(return_periods), len(cen_pos)))
-        chunksize = min(len(cen_pos), 1000)
-        for cen_idx, inten_loc in enumerate(Pool().map(self._loc_return_inten,\
-            itertools.repeat(np.array(return_periods), len(cen_pos)), cen_pos,\
-            chunksize=chunksize)):
-            inten_stats[:, cen_idx] = inten_loc
+        num_cen = self.intensity.shape[1]
+        inten_stats = np.zeros((len(return_periods), num_cen))
+        cen_step = int(CONFIG['impact']['max_matrix_size']/self.intensity.shape[0])
+        if not cen_step:
+            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+                         ' > %s', str(self.intensity.shape[0]))
+            raise ValueError
+        # separte in chunks
+        chk = -1
+        for chk in range(int(num_cen/cen_step)):
+            self._loc_return_inten(np.array(return_periods), \
+                self.intensity[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                inten_stats[:, chk*cen_step:(chk+1)*cen_step])
+        self._loc_return_inten(np.array(return_periods), \
+            self.intensity[:, (chk+1)*cen_step:].todense(), \
+            inten_stats[:, (chk+1)*cen_step:])
+
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), **kwargs):
@@ -725,41 +734,61 @@ class Hazard():
         graph.set_x_lim(range(len(array_val)))
         return graph.get_elems()
 
-    def _loc_return_inten(self, return_periods, cen_pos):
+    def _loc_return_inten(self, return_periods, inten, exc_inten):
         """ Compute local exceedence intensity for given return period.
 
         Parameters:
             return_periods (np.array): return periods to consider
             cen_pos (int): centroid position
+
         Returns:
             np.array
         """
-        inten_pos = np.argwhere(self.intensity[:, cen_pos] >
-                                self.intensity_thres)[:, 0]
-        if inten_pos.size == 0:
-            return np.zeros((return_periods.size, ))
-        inten_nz = np.asarray(self.intensity[inten_pos, cen_pos].todense()). \
-            squeeze()
-        sort_pos = inten_nz.argsort()[::-1]
-        try:
-            inten_sort = inten_nz[sort_pos]
-        except IndexError as err:
-            if inten_nz.shape == () and inten_nz.size == 1:
-                inten_sort = np.array([inten_nz])
-            else:
-                raise err
-        freq_sort = self.frequency[inten_pos[sort_pos]]
-        np.cumsum(freq_sort, out=freq_sort)
+        # sorted intensity
+        sort_pos = np.argsort(inten, axis=0)[::-1, :]
+        columns = np.ones(inten.shape, int)
+        columns *= np.arange(columns.shape[1])
+        inten_sort = inten[sort_pos, columns]
+        # cummulative frequency at sorted intensity
+        freq_sort = self.frequency[sort_pos]
+        np.cumsum(freq_sort, axis=0, out=freq_sort)
+
+        for cen_idx in range(inten.shape[1]):
+            exc_inten[:, cen_idx] = self._cen_return_inten(
+                inten_sort[:, cen_idx], freq_sort[:, cen_idx],
+                self.intensity_thres, return_periods)
+
+    @staticmethod
+    def _cen_return_inten(inten, freq, inten_th, return_periods):
+        """From ordered intensity and cummulative frequency at centroid, get
+        exceedance intensity at input return periods.
+
+        Parameters:
+            inten (np.array): sorted intensity at centroid
+            freq (np.array): cummulative frequency at centroid
+            inten_th (float): intensity threshold
+            return_periods (np.array): return periods
+
+        Returns:
+            np.array
+        """
+        inten_th = np.asarray(inten > inten_th).squeeze()
+        inten_cen = inten[inten_th]
+        freq_cen = freq[inten_th]
+        if not inten_cen.size:
+            return np.zeros((return_periods.size,))
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=1)
+                pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=1)
         except ValueError:
-            pol_coef = np.polyfit(np.log(freq_sort), inten_sort, deg=0)
+            pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
         inten_fit = np.polyval(pol_coef, np.log(1/return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1/freq_sort), \
-                    np.isnan(inten_fit))
-        return inten_fit[np.logical_not(wrong_inten)]
+        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
+                np.isnan(inten_fit))
+        inten_fit[wrong_inten] = 0.
+
+        return inten_fit
 
     def __str__(self):
         return self.tag.__str__()
