@@ -227,6 +227,19 @@ class Centroids(object):
         area_per_lat = lat_res_km * lon_res_km
         self.area_per_centroid = np.tile(area_per_lat, lon_unique_n)
 
+    def set_on_land(self):
+        """ Add the _on_land attribute, i.e. if a centroid is on land
+        """
+        self._on_land = coord_on_land(self.lat, self.lon)
+
+    @property 
+    def on_land(self):
+        """ Retuns a logical array of centroids on land
+        """
+        if self._on_land is None:
+            self.set_on_land()
+        return self._on_land
+
     @property
     def resolution(self):
         """ Returns a tuple of the resolution in the same unit as the coords.
