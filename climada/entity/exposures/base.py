@@ -330,6 +330,9 @@ class Exposures():
         for key, value in self.assigned.items():
             sel_exp.assigned[key] = value[sel_idx]
 
+        sel_exp.tag = copy.copy(self.tag)
+        sel_exp.tag.description = 'Region: ' + str(reg_id)
+
         return sel_exp
 
     @staticmethod
