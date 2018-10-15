@@ -55,7 +55,7 @@ class TestFuncs(unittest.TestCase):
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
         self.assertIsInstance(tc_track.get_track(), xr.Dataset)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
-        
+
         tc_track_bis = TCTracks()
         tc_track_bis.read_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.append(tc_track_bis)
@@ -66,7 +66,7 @@ class TestFuncs(unittest.TestCase):
         """ Interpolate track to min_time_step. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK)
-        tc_track.equal_timestep()
+        tc_track.equal_timestep(time_step_h=1)
 
         self.assertEqual(tc_track.data[0].time.size, 223)
         self.assertAlmostEqual(tc_track.data[0].lon.values[11], -27.426151640151684)
@@ -97,7 +97,7 @@ class TestFuncs(unittest.TestCase):
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
             tc_track.calc_random_walk()
-        self.assertIn('No historical track with landfall.', cm.output[0])
+        self.assertIn('No historical track with landfall.', cm.output[1])
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
@@ -145,51 +145,50 @@ class TestFuncs(unittest.TestCase):
         ens_size=2
         with self.assertLogs('climada.hazard.tc_tracks', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size, seed=25, decay=True)
-        self.assertIn('No historical track of category Tropical Depression.', cm.output[0])
-        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[1])
-        self.assertIn('No historical track of category Hurrican Cat. 1.', cm.output[2])
-        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[3])
-        self.assertIn('No historical track of category Hurrican Cat. 3. Decay parameters from category Hurrican Cat. 4 taken.', cm.output[4])
-        self.assertIn('No historical track of category Hurrican Cat. 5.', cm.output[5])
+        self.assertIn('No historical track of category Tropical Depression.', cm.output[1])
+        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[2])
+        self.assertIn('No historical track of category Hurrican Cat. 1.', cm.output[3])
+        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[4])
+        self.assertIn('No historical track of category Hurrican Cat. 3. Decay parameters from category Hurrican Cat. 4 taken.', cm.output[5])
+        self.assertIn('No historical track of category Hurrican Cat. 5.', cm.output[6])
 
     def test_calc_decay_no_landfall_pass(self):
         """ Test _calc_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
-        tc_track._calc_land_params()
+        land_geom = tc._calc_land_geom(tc_track.data)
+        tc._track_land_params(tc_track.data[0], land_geom)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
-            tc_track._calc_land_decay()
+            tc_track._calc_land_decay(land_geom)
         self.assertIn('No historical track with landfall.', cm.output[0])
 
     def test_calc_land_decay_pass(self):
         """ Test _calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
-        tc_track._calc_land_params()
-        v_rel, p_rel = tc_track._calc_land_decay()
-        
+        land_geom = tc._calc_land_geom(tc_track.data)
+        tc._track_land_params(tc_track.data[0], land_geom)
+        v_rel, p_rel = tc_track._calc_land_decay(land_geom)
+
+        self.assertEqual(7, len(v_rel))
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.0038894834)
             self.assertTrue(i+1 in v_rel.keys())
-            
+
+        self.assertEqual(7, len(p_rel))
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.0598491)
             self.assertAlmostEqual(val[1], 0.0041949237)
-            self.assertTrue(i+1 in v_rel.keys())
+            self.assertTrue(i+1 in p_rel.keys())
 
     def test_decay_values_andrew_pass(self):
         """ Test _decay_values with central pressure function."""
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
-        track = tc_track.data[0]
-        v_lf = dict()
-        p_lf = dict()
-        x_val = dict()
-        track['on_land'] = ('time', coord_on_land(track.lat.values,
-                            track.lon.values))
-        track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
-        tc._decay_values(s_rel, track, v_lf, p_lf, x_val)
+        land_geom = tc._calc_land_geom(tc_track.data)
+        tc._track_land_params(tc_track.data[0], land_geom)
+        v_lf, p_lf, x_val = tc._decay_values(tc_track.data[0], land_geom, s_rel)
 
         ss_category = 6
         s_cell_1 = 1*[1.0672358591248665]
@@ -209,8 +208,8 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(list(v_lf.keys()), [ss_category])
         self.assertEqual(v_lf[ss_category], array.array('f', v_vs_lf_time_relative))
 
-        x_val_ref = np.array([95.9512939453125, 53.624916076660156, 143.09530639648438, 
-                              225.0262908935547, 312.5832824707031, 427.43109130859375, 
+        x_val_ref = np.array([95.9512939453125, 53.624916076660156, 143.09530639648438,
+                              225.0262908935547, 312.5832824707031, 427.43109130859375,
                               570.1857299804688, 750.3827514648438, 1020.5431518554688])
         self.assertEqual(list(x_val.keys()), [ss_category])
         self.assertTrue(np.allclose(x_val[ss_category], x_val_ref))
@@ -251,25 +250,25 @@ class TestFuncs(unittest.TestCase):
 
     def test_decay_calc_coeff(self):
         """ Test _decay_calc_coeff against MATLAB"""
-        x_val = {6: np.array([53.57314960249573, 142.97903059281566,  
+        x_val = {6: np.array([53.57314960249573, 142.97903059281566,
             224.76733726289183,  312.14621544207563,  426.6757021862584,
             568.9358305779094,  748.3713215157885, 1016.9904230811956])}
-            
+
         v_lf = {6: np.array([0.6666666666666666, 0.4166666666666667, \
-                             0.2916666666666667, 0.250000000000000, 
+                             0.2916666666666667, 0.250000000000000,
                              0.250000000000000, 0.20833333333333334, \
                              0.16666666666666666, 0.16666666666666666])}
-        
+
         p_lf = {6: (8*[1.0471204188481675], np.array([1.018848167539267, 1.037696335078534, \
                     1.0418848167539267, 1.043979057591623, 1.0450261780104713, 1.0460732984293193,
                     1.0471204188481675, 1.0471204188481675]))}
-        
+
         v_rel, p_rel = tc._decay_calc_coeff(x_val, v_lf, p_lf)
 
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.004222091151737)
             self.assertTrue(i+1 in v_rel.keys())
-            
+
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.047120418848168)
             self.assertAlmostEqual(val[1], 0.008871782287614)
@@ -279,11 +278,12 @@ class TestFuncs(unittest.TestCase):
         """ Test _apply_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
-        tc_track._calc_land_params()
+        land_geom = tc._calc_land_geom(tc_track.data)
+        tc._track_land_params(tc_track.data[0], land_geom)
         tc_track.data[0]['orig_event_flag']=False
         tc_ref = tc_track.data[0].copy()
-        tc_track._apply_land_decay(dict(), dict())
-        
+        tc_track._apply_land_decay(dict(), dict(), land_geom)
+
         self.assertTrue(np.array_equal(tc_track.data[0].max_sustained_wind.values, tc_ref.max_sustained_wind.values))
         self.assertTrue(np.array_equal(tc_track.data[0].central_pressure.values, tc_ref.central_pressure.values))
         self.assertTrue(np.array_equal(tc_track.data[0].environmental_pressure.values, tc_ref.environmental_pressure.values))
@@ -310,9 +310,10 @@ class TestFuncs(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
-        tc_track._calc_land_params()
-        tc_track._apply_land_decay(v_rel, p_rel, s_rel=True, check_plot=False)
-        
+        land_geom = tc._calc_land_geom(tc_track.data)
+        tc._track_land_params(tc_track.data[0], land_geom)
+        tc_track._apply_land_decay(v_rel, p_rel, land_geom, s_rel=True, check_plot=False)
+
         p_ref = np.array([1.010000000000000, 1.009000000000000, 1.008000000000000,
                           1.006000000000000, 1.003000000000000, 1.002000000000000,
                           1.001000000000000, 1.000000000000000, 1.000000000000000,
@@ -326,11 +327,11 @@ class TestFuncs(unittest.TestCase):
                           0.937000000000000, 0.951000000000000, 0.947000000000000,
                           0.943000000000000, 0.948000000000000, 0.946000000000000,
                           0.941000000000000, 0.937000000000000, 0.955000000000000,
-                          0.9741457117, 0.99244068917, 1.00086729492, 1.00545853355, 
+                          0.9741457117, 0.99244068917, 1.00086729492, 1.00545853355,
                           1.00818354609, 1.00941850023, 1.00986192053, 1.00998400565])*1e3
-    
+
         self.assertTrue(np.allclose(p_ref, tc_track.data[0].central_pressure.values))
-        
+
         v_ref = np.array([0.250000000000000, 0.300000000000000, 0.300000000000000,
                           0.350000000000000, 0.350000000000000, 0.400000000000000,
                           0.450000000000000, 0.450000000000000, 0.450000000000000,
@@ -344,12 +345,12 @@ class TestFuncs(unittest.TestCase):
                           1.300000000000000, 1.150000000000000, 1.150000000000000,
                           1.150000000000000, 1.150000000000000, 1.200000000000000,
                           1.250000000000000, 1.250000000000000, 1.200000000000000,
-                          0.9737967353, 0.687255951, 0.4994850556, 0.3551480462,  
+                          0.9737967353, 0.687255951, 0.4994850556, 0.3551480462,
                           0.2270548036, 0.1302099557, 0.0645385918, 0.0225325851])*1e2
-        
+
         self.assertTrue(np.allclose(v_ref, tc_track.data[0].max_sustained_wind.values))
-        
-        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values, tc_track.data[0].max_sustained_wind_unit)    
+
+        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values, tc_track.data[0].max_sustained_wind_unit)
         self.assertEqual(cat_ref, tc_track.data[0].category)
 
     def test_func_decay_p_pass(self):
@@ -383,12 +384,12 @@ class TestFuncs(unittest.TestCase):
         tr_ds['on_land'] = ('time', np.zeros((10,)).astype(bool))
         tr_ds.on_land[on_land_idx] = True
         p_landfall = 100
-        
+
         res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=True)
         self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx]/p_landfall))
         res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=False)
         self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx]/p_landfall))
-        
+
     def test_category_pass(self):
         """Test category computation."""
         max_sus_wind = np.array([25, 30, 35, 40, 45, 45, 45, 45, 35, 25])

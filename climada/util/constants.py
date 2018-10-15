@@ -9,7 +9,7 @@ __all__ = ['SOURCE_DIR',
            'ENT_TEMPLATE_XLS',
            'ENT_DEMO_MAT',
            'ONE_LAT_KM',
-           'EARTH_RADIUS',
+           'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
            'ENT_FL_MAT',
            'TC_ANDREW_FL']
@@ -58,5 +58,5 @@ TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
 ONE_LAT_KM = 111.12
 """ Mean one latitude (in degrees) to km """
 
-EARTH_RADIUS = 6371
+EARTH_RADIUS_KM = 6371
 """ Earth radius in km """

@@ -136,7 +136,7 @@ class Hazard():
         """Reinitialize attributes."""
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name, np.array([]))
+                setattr(self, var_name, np.array([], dtype=var_val.dtype))
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
             else:
@@ -547,6 +547,40 @@ class Hazard():
         self.check()
         return self.event_id.size
 
+    def _append_all(self, list_haz_ev):
+        """Append event by event with same centroids.
+
+        Parameters:
+            list_haz_ev (list): Hazard instances with one event and same
+                centroids
+        """
+        self.clear()
+        num_ev = len(list_haz_ev)
+        num_cen = list_haz_ev[0].centroids.size
+        for var_name, var_val in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.zeros((num_ev,), dtype=var_val.dtype))
+            elif isinstance(var_val, sparse.csr.csr_matrix):
+                setattr(self, var_name, sparse.lil_matrix((num_ev, num_cen)))
+
+        for i_ev, haz_ev in enumerate(list_haz_ev):
+            for (var_name, var_val), ev_val in zip(self.__dict__.items(),
+                                                   haz_ev.__dict__.values()):
+                if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                    var_val[i_ev] = ev_val[0]
+                elif isinstance(var_val, list):
+                    var_val.extend(ev_val)
+                elif isinstance(var_val, sparse.lil_matrix):
+                    var_val[i_ev, :] = ev_val[0, :]
+                elif isinstance(var_val, TagHazard):
+                    var_val.append(ev_val)
+
+        self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
+        self.units = list_haz_ev[0].units
+        self.intensity = self.intensity.tocsr()
+        self.fraction = self.fraction.tocsr()
+        self.event_id = np.arange(1, num_ev+1)
+
     def _append_haz_cent(self, centroids):
         """Append centroids. Get positions of new centroids.
 
@@ -615,33 +649,6 @@ class Hazard():
         for ev_name, ev_date in zip(self.event_name, self.date):
             ev_set.add((ev_name, ev_date))
         return ev_set
-
-    def _check_events(self):
-        """ Check that all attributes but centroids contain consistent data.
-        Put default date, event_name and orig if not provided. Check not
-        repeated events (i.e. with same date and name)
-
-        Raises:
-            ValueError
-        """
-        num_ev = len(self.event_id)
-        num_cen = len(self.centroids.id)
-        if np.unique(self.event_id).size != num_ev:
-            LOGGER.error("There are events with the same identifier.")
-            raise ValueError
-
-        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
-                                num_ev, num_ev, num_cen)
-        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = check.array_default(num_ev, self.event_name, \
-            'Hazard.event_name', list(self.event_id))
-        self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
-                            np.ones(self.event_id.shape, dtype=int))
-        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig', \
-                            np.zeros(self.event_id.shape, dtype=bool))
-        if len(self._events_set()) != num_ev:
-            LOGGER.error("There are events with same date and name.")
-            raise ValueError
 
     def _event_plot(self, event_id, mat_var, col_name, **kwargs):
         """"Plot an event of the input matrix.
@@ -757,6 +764,33 @@ class Hazard():
             exc_inten[:, cen_idx] = self._cen_return_inten(
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
+
+    def _check_events(self):
+        """ Check that all attributes but centroids contain consistent data.
+        Put default date, event_name and orig if not provided. Check not
+        repeated events (i.e. with same date and name)
+
+        Raises:
+            ValueError
+        """
+        num_ev = len(self.event_id)
+        num_cen = len(self.centroids.id)
+        if np.unique(self.event_id).size != num_ev:
+            LOGGER.error("There are events with the same identifier.")
+            raise ValueError
+
+        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+                                num_ev, num_ev, num_cen)
+        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
+        self.event_name = check.array_default(num_ev, self.event_name, \
+            'Hazard.event_name', list(self.event_id))
+        self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
+                            np.ones(self.event_id.shape, dtype=int))
+        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig', \
+                            np.zeros(self.event_id.shape, dtype=bool))
+        if len(self._events_set()) != num_ev:
+            LOGGER.error("There are events with same date and name.")
+            raise ValueError
 
     @staticmethod
     def _cen_return_inten(inten, freq, inten_th, return_periods):

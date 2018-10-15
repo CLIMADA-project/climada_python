@@ -267,8 +267,8 @@ class TestMethods(unittest.TestCase):
         centr_brb = Centroids(CENTR_BRB)
         centr_brb.calc_dist_to_coast()
         self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
-        self.assertEqual(5.7988200982894105, centr_brb.dist_coast[1])
-        self.assertEqual(166.36505441711506, centr_brb.dist_coast[-2])        
+        self.assertAlmostEqual(5.7988200982894105, centr_brb.dist_coast[1])
+        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)

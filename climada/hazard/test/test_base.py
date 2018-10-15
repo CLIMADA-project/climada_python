@@ -776,6 +776,63 @@ class TestAppend(unittest.TestCase):
         self.assertIn("Hazards with different units can't be appended: "\
             + 'm/s != km/h.', cm.output[0])
 
+    def test_append_all_pass(self):
+        """Test _append_all function."""
+        haz_1 = Hazard()
+        haz_1.tag = TagHazard('TC', 'file1.mat', 'Description 1')
+        haz_1.centroids = Centroids()
+        haz_1.centroids.tag = Tag('file_1.mat', 'description 1')
+        haz_1.centroids.coord = np.array([[1, 2], [3, 4], [5, 6]])
+        haz_1.centroids.id = np.array([5, 7, 9])
+        haz_1.event_id = np.array([1])
+        haz_1.event_name = ['ev1']
+        haz_1.date = np.array([1])
+        haz_1.orig = np.array([True])
+        haz_1.frequency = np.array([1.0])
+        haz_1.fraction = sparse.csr_matrix([[0.02, 0.03, 0.04]])
+        haz_1.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4]])
+        haz_1.units = 'm/s'
+        
+        haz_2 = Hazard()
+        haz_2.tag = TagHazard('TC', 'file2.mat', 'Description 2')
+        haz_2.centroids = Centroids()
+        haz_2.centroids.tag = Tag('file_2.mat', 'description 2')
+        haz_2.centroids.coord = np.array([[1, 2], [3, 4], [5, 6]])
+        haz_2.centroids.id = np.array([5, 7, 9])
+        haz_2.event_id = np.array([1])
+        haz_2.event_name = ['ev2']
+        haz_2.date = np.array([2])
+        haz_2.orig = np.array([False])
+        haz_2.frequency = np.array([1.0])
+        haz_2.fraction = sparse.csr_matrix([[1.02, 1.03, 1.04]])
+        haz_2.intensity = sparse.csr_matrix([[1.2, 1.3, 1.4]])
+        haz_2.units = 'm/s'
+            
+        haz = Hazard()
+        haz._append_all([haz_1, haz_2])
+        
+        
+        hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04], \
+                                        [1.02, 1.03, 1.04]])
+        hres_inten = sparse.csr_matrix([[0.2, 0.3, 0.4], \
+                                       [1.2, 1.3, 1.4]])    
+    
+        
+        self.assertTrue(sparse.isspmatrix_csr(haz.intensity))
+        self.assertTrue(np.array_equal(haz.intensity.todense(), hres_inten.todense()))
+        self.assertTrue(sparse.isspmatrix_csr(haz.fraction))
+        self.assertTrue(np.array_equal(haz.fraction.todense(), hres_frac.todense()))
+        self.assertEqual(haz.units, haz_2.units)
+        self.assertTrue(np.array_equal(haz.frequency, np.array([1.0, 1.0])))
+        self.assertTrue(np.array_equal(haz.orig, np.array([True, False])))
+        self.assertTrue(np.array_equal(haz.date, np.array([1, 2])))
+        self.assertTrue(np.array_equal(haz.event_id, np.array([1, 2])))
+        self.assertTrue(haz.event_name, ['ev1', 'ev2'])
+        self.assertTrue(np.array_equal(haz.centroids.coord, haz_1.centroids.coord))
+        self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
+        self.assertTrue(haz.tag, 'file_1.mat + file_2.mat')
+        self.assertTrue(haz.tag, 'Description 1 + Description 2')
+
 class TestRead(unittest.TestCase):
     """Test loading funcions from the Hazard class"""
 

@@ -12,7 +12,7 @@ import numpy as np
 from numba import jit
 
 from sklearn.neighbors import BallTree
-from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS
+from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,11 +26,20 @@ THRESHOLD = 100
 """ Distance threshold in km. Nearest neighbors with greater distances are
 not considered. """
 
-@jit
+@jit(nopython=True, parallel=True)
+def dist_approx(lats1, lons1, cos_lats1, lats2, lons2):
+    """Compute equirectangular approximation distance in km."""
+    d_lon = lons1 - lons2
+    d_lat = lats1 - lats2
+    return np.sqrt(d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat) * ONE_LAT_KM
+
+@jit(nopython=True, parallel=True)
 def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
-    """ Compute approximated squared distance between two points. Values need
+    """ Compute squared equirectangular approximation distance. Values need
     to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
-    return ((lons1 - lons2) * cos_lats1)**2 + (lats1 - lats2)**2
+    d_lon = lons1 - lons2
+    d_lat = lats1 - lats2
+    return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
                    distance=DIST_DEF[1], threshold=THRESHOLD):
@@ -90,9 +99,9 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     centr_cos_lat = np.cos(centroids[:, 0] / 180 * np.pi)
     assigned = np.zeros(coordinates.shape[0])
     for icoord, iidx in enumerate(idx):
-        dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1], \
-                                centr_cos_lat, coordinates[iidx, 0], \
-                                coordinates[iidx, 1])
+        dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1],
+                               centr_cos_lat, coordinates[iidx, 0],
+                               coordinates[iidx, 1])
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
@@ -136,11 +145,11 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist*EARTH_RADIUS > threshold)
+    num_warn = np.sum(dist*EARTH_RADIUS_KM > threshold)
     if num_warn > 0:
         LOGGER.warning('Distance to closest centroid is greater than %s' \
             'km for %s coordinates.', threshold, num_warn)
-        assigned[dist*EARTH_RADIUS > threshold] = -1
+        assigned[dist*EARTH_RADIUS_KM > threshold] = -1
 
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])

@@ -173,11 +173,11 @@ class TestFunc(unittest.TestCase):
     def test_dist_to_coast(self):
         point = (13.208333333333329, -59.625000000000014)
         res = dist_to_coast(point)
-        self.assertEqual(5.7988200982894105, res)
+        self.assertAlmostEqual(5.7988200982894105, res[0])
         
         point = (13.958333333333343, -58.125)
         res = dist_to_coast(point)
-        self.assertEqual(166.36505441711506, res)        
+        self.assertAlmostEqual(166.36505441711506, res[0])        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGridPoints)
