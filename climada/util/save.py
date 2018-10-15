@@ -36,3 +36,6 @@ def save(out_file_name, var):
     except FileNotFoundError:
         LOGGER.error('Folder not found: %s', folder_path)
         raise FileNotFoundError
+    except OSError:
+        LOGGER.error('Data is probably too big. Try splitting it.')
+        raise FileNotFoundError
