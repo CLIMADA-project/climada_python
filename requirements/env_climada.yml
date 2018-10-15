@@ -5,20 +5,20 @@ dependencies:
   - blas=1.0
   - cartopy=0.16.0
   - dill=0.2.7.1
-  - gdal=2.3.0
+  - gdal
   - geos=3.6.2
   - h5py=2.7.1
   - matplotlib=2.2.2
   - mkl=2019.0
-  - mkl_fft=1.0.6
-  - mkl_random=1.0.1
-  - netcdf4=1.4.1
+  - mkl_fft
+  - mkl_random
+  - netcdf4
   - numba=0.37.0
   - numpy=1.14.2
   - pandas=0.23.0
   - pandas-datareader=0.6.0
   - pip=10.0.1
-  - proj4=5.0.1
+  - proj4
   - pysocks=1.6.8
   - python=3.6.5
   - requests=2.19.1
