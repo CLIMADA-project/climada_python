@@ -77,8 +77,7 @@ class SpamAgrar(Exposures):
                 'Y'		yield
                 'V_agg'	value of production, aggregated to all crops,
                                  food and non-food (default)
-                 Warning: for P and Y, currently only wheat is considered
-                     (column 8)
+                 Warning: for A, H, P and Y, currently all crops are summed up
 
             spam_technology (str): select one agricultural technology type:
                 'TA'	   all technologies together, ie complete crop (default)
@@ -112,8 +111,8 @@ class SpamAgrar(Exposures):
                                   spam_variable=spam_v, result_mode=1)
 
         # extract country or admin level (if provided)
-        df = self._spam_set_country(df, country_adm0=adm0, name_adm1=adm1, \
-                                    name_adm2=adm2)
+        df, region = self._spam_set_country(df, country_adm0=adm0, \
+                                       name_adm1=adm1, name_adm2=adm2)
 
         # sort by alloc_key to make extraction of lat / lon easier:
         df.sort_values(by=['alloc_key'])
@@ -121,12 +120,21 @@ class SpamAgrar(Exposures):
         lat, lon = self._spam_get_coordinates(df.loc[:, 'alloc_key'], \
                                              data_path=data_p)
 
-        #return df,lat,lon
-        tmp = df.iloc[:, 8]
-        self.value = tmp.values
+        if spam_v == 'V_agg': # total only (coliumn 7)
+            i1 = 7
+            i2 = 8
+        else:
+            i1 = 7 # get sum over all crops (columns 7 to 48)
+            i2 = 48
+        tmp = df.iloc[:, i1:i2] 
+        self.value = tmp.sum(axis=1)
         self.coord = np.empty((self.value.size, 2))
         self.coord[:, 0] = lat.values
         self.coord[:, 1] = lon.values
+        LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(\
+                    np.min(self.coord[:, 0]), np.max(self.coord[:, 0])))
+        LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
+                    np.min(self.coord[:, 1]), np.max(self.coord[:, 1])))
         self.id = np.arange(1, self.value.size+1)
         self.region_id = np.ones(self.value.size, int)
         if reg_id > 1:
@@ -177,8 +185,8 @@ class SpamAgrar(Exposures):
             self.name_adm1 = tmp.values
             #tmp = df.loc[:,'name_adm2']
             #self.name_adm2 = tmp.values
-
-        LOGGER.info('Done. Agriculture exposure initiated.')
+        LOGGER.info('Total {} {} {}: {} {}.'.format(\
+                    spam_v, spam_t, region, self.value.sum(), self.value_unit))
 
 
 
@@ -237,7 +245,7 @@ class SpamAgrar(Exposures):
                                 + 'https://dataverse.harvard.edu/'\
                                 + 'dataset.xhtml?persistentId=doi:'\
                                 + '10.7910/DVN/DHXBJX')
-            LOGGER.info('Now trying to import the file ' + str(fname))
+            LOGGER.debug('Importing ' + str(fname_short))
 
             df = pd.read_csv(fname, sep=',', index_col=None, header=0, \
                              encoding='ISO-8859-1')
@@ -272,7 +280,7 @@ class SpamAgrar(Exposures):
                                 + 'https://dataverse.harvard.edu/'\
                                 + 'dataset.xhtml?persistentId=doi:'\
                                 + '10.7910/DVN/DHXBJX')
-            LOGGER.info('Now trying to import the file ' + str(fname))
+            # LOGGER.debug('Inporting ' + str(fname))
 
             concordance_data = pd.read_csv(fname, sep=',', index_col=None, \
                                            header=0, encoding='ISO-8859-1')
@@ -311,7 +319,7 @@ class SpamAgrar(Exposures):
         adm0 = parameters.get('country_adm0')
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
-
+        signifier = ''
         if not adm0 is None:
             df_tmp = df[df.iso3 == adm0]
             if df_tmp.empty:
@@ -320,15 +328,25 @@ class SpamAgrar(Exposures):
                 df = df_tmp
             if df.empty:
                 LOGGER.error('Country not found in data: ' + str(adm0))
+            else:
+                signifier = signifier + ' ' + adm0
         if not adm1 is None:
             df = df[df.name_adm1 == adm1]
             if df.empty:
                 LOGGER.error('Admin1 not found in data: ' + str(adm1))
+            else:
+                signifier = signifier + ' ' + adm1
         if not adm2 is None:
             df = df[df.name_adm2 == adm2]
             if df.empty:
                 LOGGER.error('Admin2 not found in data: ' + str(adm2))
-        return df
+            else:
+                signifier = signifier + ' ' + adm2
+
+        if signifier == '':
+            signifier = 'global'
+
+        return df, signifier
 
     @staticmethod
     def _spam_download_csv(data_path=SYSTEM_DIR, spam_variable='V_agg'):
@@ -364,13 +382,13 @@ class SpamAgrar(Exposures):
             else:
                 permalinks = pd.read_csv(fname, sep=',', index_col=None, \
                                          header=0)
-                LOGGER.info('Now trying to import the file ' + str(fname))
+                LOGGER.debug('Importing ' + str(fname))
 
             # go to data directory:
             os.chdir(data_path)
             path_dwn = download_file(permalinks.loc[0, spam_variable])
 
-            LOGGER.info('Download complete. Unzipping ' + str(path_dwn))
+            LOGGER.debug('Download complete. Unzipping ' + str(path_dwn))
             zip_ref = zipfile.ZipFile(path_dwn, 'r')
             zip_ref.extractall(data_path)
             zip_ref.close()
