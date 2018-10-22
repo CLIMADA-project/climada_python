@@ -107,27 +107,29 @@ class SpamAgrar(Exposures):
         # fname_short = FILENAME_SPAM+'_'+ spam_var  + '_' + spam_tech + '.csv'
 
         # read data from CSV:
-        df = self._read_spam_file(data_path=data_p, spam_technology=spam_t, \
+        data = self._read_spam_file(data_path=data_p, spam_technology=spam_t, \
                                   spam_variable=spam_v, result_mode=1)
 
         # extract country or admin level (if provided)
-        df, region = self._spam_set_country(df, country_adm0=adm0, \
+        data, region = self._spam_set_country(data, country_adm0=adm0, \
                                        name_adm1=adm1, name_adm2=adm2)
 
         # sort by alloc_key to make extraction of lat / lon easier:
-        df.sort_values(by=['alloc_key'])
+        data.sort_values(by=['alloc_key'])
 
-        lat, lon = self._spam_get_coordinates(df.loc[:, 'alloc_key'], \
+        lat, lon = self._spam_get_coordinates(data.loc[:, 'alloc_key'], \
                                              data_path=data_p)
+        if result_m == 2 or result_m == 4:
+            self.country = data.loc[:, 'iso3'].values
+            self.name_adm1 = data.loc[:, 'name_adm1'].values
 
-        if spam_v == 'V_agg': # total only (coliumn 7)
-            i1 = 7
-            i2 = 8
+        if spam_v == 'V_agg': # total only (column 7)
+            i_1 = 7
+            i_2 = 8
         else:
-            i1 = 7 # get sum over all crops (columns 7 to 48)
-            i2 = 48
-        tmp = df.iloc[:, i1:i2] 
-        self.value = tmp.sum(axis=1)
+            i_1 = 7 # get sum over all crops (columns 7 to 48)
+            i_2 = 49
+        self.value = data.iloc[:, i_1:i_2].sum(axis=1)
         self.coord = np.empty((self.value.size, 2))
         self.coord[:, 0] = lat.values
         self.coord[:, 1] = lon.values
@@ -178,14 +180,8 @@ class SpamAgrar(Exposures):
         else:
             self.value_unit = 'USD'
 
-        if result_m == 2 or result_m == 4:
-            tmp = df.loc[:, 'iso3']
-            self.country = tmp.values
-            tmp = df.loc[:, 'name_adm1']
-            self.name_adm1 = tmp.values
-            #tmp = df.loc[:,'name_adm2']
-            #self.name_adm2 = tmp.values
-        LOGGER.info('Total {} {} {}: {} {}.'.format(\
+
+        LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(\
                     spam_v, spam_t, region, self.value.sum(), self.value_unit))
 
 
@@ -247,7 +243,7 @@ class SpamAgrar(Exposures):
                                 + '10.7910/DVN/DHXBJX')
             LOGGER.debug('Importing ' + str(fname_short))
 
-            df = pd.read_csv(fname, sep=',', index_col=None, header=0, \
+            data = pd.read_csv(fname, sep=',', index_col=None, header=0, \
                              encoding='ISO-8859-1')
 
         except:
@@ -255,9 +251,9 @@ class SpamAgrar(Exposures):
                          + 'Operation aborted.')
             raise
         # remove data points with zero crop production: (works only for TA)
-        # df = df[df.vp_crop_a != 0]
+        # data = data[data.vp_crop_a != 0]
 
-        return df
+        return data
 
     def _spam_get_coordinates(self, alloc_key_array, data_path=SYSTEM_DIR):
         """mapping from cell5m to lat/lon:"""
@@ -300,12 +296,12 @@ class SpamAgrar(Exposures):
         return lat, lon
 
     @staticmethod
-    def _spam_set_country(df, **parameters):
+    def _spam_set_country(data, **parameters):
         """
         restrict data to given country (admin0) or admin1/ admin2.
 
         Input:
-            df: dataframe from _read_spam_file()
+            data: dataframe from _read_spam_file()
 
         Optional parameters:
 
@@ -321,24 +317,23 @@ class SpamAgrar(Exposures):
         adm2 = parameters.get('name_adm2')
         signifier = ''
         if not adm0 is None:
-            df_tmp = df[df.iso3 == adm0]
-            if df_tmp.empty:
-                df = df[df.name_cntr == adm0]
+            if data[data.iso3 == adm0].empty:
+                data = data[data.name_cntr == adm0]
             else:
-                df = df_tmp
-            if df.empty:
+                data = data[data.iso3 == adm0]
+            if data.empty:
                 LOGGER.error('Country not found in data: ' + str(adm0))
             else:
-                signifier = signifier + ' ' + adm0
+                signifier = signifier + adm0
         if not adm1 is None:
-            df = df[df.name_adm1 == adm1]
-            if df.empty:
+            data = data[data.name_adm1 == adm1]
+            if data.empty:
                 LOGGER.error('Admin1 not found in data: ' + str(adm1))
             else:
                 signifier = signifier + ' ' + adm1
         if not adm2 is None:
-            df = df[df.name_adm2 == adm2]
-            if df.empty:
+            data = data[data.name_adm2 == adm2]
+            if data.empty:
                 LOGGER.error('Admin2 not found in data: ' + str(adm2))
             else:
                 signifier = signifier + ' ' + adm2
@@ -346,7 +341,7 @@ class SpamAgrar(Exposures):
         if signifier == '':
             signifier = 'global'
 
-        return df, signifier
+        return data, signifier
 
     @staticmethod
     def _spam_download_csv(data_path=SYSTEM_DIR, spam_variable='V_agg'):
