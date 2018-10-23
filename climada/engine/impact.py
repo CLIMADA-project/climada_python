@@ -120,7 +120,7 @@ class Impact():
         # Warning if no exposures selected
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
-            return None
+            return
         LOGGER.info('Calculating damage for %s assets (>0) and %s events.',
                     exp_idx.size, hazard.event_id.size)
 
@@ -131,7 +131,7 @@ class Impact():
         if haz_type not in exposures.impact_id:
             LOGGER.info('No exposures with impact functions for peril %s', \
                         haz_type)
-            return None
+            return
 
         # Check if deductible and cover should be applied
         insure_flag = False
