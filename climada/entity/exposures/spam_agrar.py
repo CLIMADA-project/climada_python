@@ -254,7 +254,7 @@ class SpamAgrar(Exposures):
                                 + 'https://dataverse.harvard.edu/'\
                                 + 'dataset.xhtml?persistentId=doi:'\
                                 + '10.7910/DVN/DHXBJX')
-            LOGGER.debug('Importing ' + str(fname_short))
+            LOGGER.debug('Importing %s', str(fname_short))
 
             data = pd.read_csv(fname, sep=',', index_col=None, header=0, \
                              encoding='ISO-8859-1')
@@ -289,7 +289,7 @@ class SpamAgrar(Exposures):
                                 + 'https://dataverse.harvard.edu/'\
                                 + 'dataset.xhtml?persistentId=doi:'\
                                 + '10.7910/DVN/DHXBJX')
-            # LOGGER.debug('Inporting ' + str(fname))
+            # LOGGER.debug('Inporting %s', str(fname))
 
             concordance_data = pd.read_csv(fname, sep=',', index_col=None, \
                                            header=0, encoding='ISO-8859-1')
@@ -332,10 +332,10 @@ class SpamAgrar(Exposures):
         if not adm0 is None:
             if data[data.iso3 == adm0].empty:
                 if data[data.name_cntr == adm0].empty:
-                    LOGGER.warning('Country name not found in data: ' \
-                                   + str(adm0) \
+                    LOGGER.warning('Country name not found in data: %s', \
+                                   str(adm0) \
                                + '. Try passing the ISO3-code instead.')
-                else: 
+                else:
                     data = data[data.name_cntr == adm0]
                     signifier = signifier + adm0
             else:
@@ -344,13 +344,13 @@ class SpamAgrar(Exposures):
 
         if not adm1 is None:
             if data[data.name_adm1 == adm1].empty:
-                LOGGER.warning('Admin1 not found in data: ' + str(adm1))
+                LOGGER.warning('Admin1 not found in data: %s', str(adm1))
             else:
                 data = data[data.name_adm1 == adm1]
                 signifier = signifier + ' ' + adm1
         if not adm2 is None:
             if data[data.name_adm2 == adm2].empty:
-                LOGGER.warning('Admin2 not found in data: ' + str(adm2))
+                LOGGER.warning('Admin2 not found in data: %s', str(adm2))
             else:
                 data = data[data.name_adm2 == adm2]
                 signifier = signifier + ' ' + adm2
@@ -394,13 +394,13 @@ class SpamAgrar(Exposures):
             else:
                 permalinks = pd.read_csv(fname, sep=',', index_col=None, \
                                          header=0)
-                LOGGER.debug('Importing ' + str(fname))
+                LOGGER.debug('Importing %s', str(fname))
 
             # go to data directory:
             os.chdir(data_path)
             path_dwn = download_file(permalinks.loc[0, spam_variable])
 
-            LOGGER.debug('Download complete. Unzipping ' + str(path_dwn))
+            LOGGER.debug('Download complete. Unzipping %s', str(path_dwn))
             zip_ref = zipfile.ZipFile(path_dwn, 'r')
             zip_ref.extractall(data_path)
             zip_ref.close()
