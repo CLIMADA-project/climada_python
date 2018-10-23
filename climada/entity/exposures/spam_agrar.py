@@ -104,14 +104,20 @@ class SpamAgrar(Exposures):
         adm2 = parameters.get('name_adm2')
         reg_id = parameters.get('region_id', 1)
         result_m = parameters.get('result_mode', 2)
-        # fname_short = FILENAME_SPAM+'_'+ spam_var  + '_' + spam_tech + '.csv'
+
+        # Test if parameters make sense:
+        if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
+        spam_t not in ['TA', 'TI', 'TH', 'TL', 'TS', 'TR']:
+            LOGGER.error('Invalid input parameter(s).')
+            return
+            # raise ValueError('Invalid input parameter(s).')
 
         # read data from CSV:
         data = self._read_spam_file(data_path=data_p, spam_technology=spam_t, \
                                   spam_variable=spam_v, result_mode=1)
 
         # extract country or admin level (if provided)
-        data, region = self._spam_set_country(data, country_adm0=adm0, \
+        data, region = self._spam_set_country(data, country=adm0, \
                                        name_adm1=adm1, name_adm2=adm2)
 
         # sort by alloc_key to make extraction of lat / lon easier:
@@ -142,31 +148,38 @@ class SpamAgrar(Exposures):
         if reg_id > 1:
             self.region_id = reg_id*self.region_id
 
+        self.ref_year = 2005
+        self.tag.description = ("SPAM agrar exposure for variable "\
+            + spam_v + " and technology " + spam_t)
+
         # assign different damage function ID per technology type:
         if spam_t == 'TA':
             self.impact_id = np.ones(self.value.size, int)
-            self.comment = 'TA: all technologies together, ie complete crop'
+            self.tag.description = self.tag.description + '. '\
+            + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
             self.impact_id = np.ones(self.value.size, int)+1
-            self.comment = 'TI: irrigated portion of crop'
+            self.tag.description = self.tag.description + '. '\
+            + 'irrigated portion of crop'
         elif spam_t == 'TH':
             self.impact_id = np.ones(self.value.size, int)+2
-            self.comment = 'TH: rainfed high inputs portion of crop'
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
             self.impact_id = np.ones(self.value.size, int)+3
-            self.comment = 'TL: rainfed low inputs portion of crop'
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
             self.impact_id = np.ones(self.value.size, int)+4
-            self.comment = 'TS: rainfed subsistence portion of crop'
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
             self.impact_id = np.ones(self.value.size, int)+5
-            self.comment = 'TI: rainfed portion of crop (= TA - TI)'
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed portion of crop (= TA - TI)'
         else:
             self.impact_id = np.ones(self.value.size, int)
 
-        self.ref_year = 2005
-        self.tag.description = ("SPAM agrar exposure for technology "\
-            + spam_t + " and variable " + spam_v)
         self.tag.file_name = (FILENAME_SPAM+'_'+ spam_v\
                               + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
@@ -305,37 +318,41 @@ class SpamAgrar(Exposures):
 
         Optional parameters:
 
-            country_adm0 (str): Three letter country code of country to be cut out.
+            country(str): Three letter country code of country to be cut out.
                 No default (global)
             name_adm1 (str): Name of admin1 (e.g. Federal State) to be cut out.
                 No default
             name_adm2 (str): Name of admin2 to be cut out.
                 No default
         """
-        adm0 = parameters.get('country_adm0')
+        adm0 = parameters.get('country')
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
         signifier = ''
         if not adm0 is None:
             if data[data.iso3 == adm0].empty:
-                data = data[data.name_cntr == adm0]
+                if data[data.name_cntr == adm0].empty:
+                    LOGGER.warning('Country name not found in data: ' \
+                                   + str(adm0) \
+                               + '. Try passing the ISO3-code instead.')
+                else: 
+                    data = data[data.name_cntr == adm0]
+                    signifier = signifier + adm0
             else:
                 data = data[data.iso3 == adm0]
-            if data.empty:
-                LOGGER.error('Country not found in data: ' + str(adm0))
-            else:
                 signifier = signifier + adm0
+
         if not adm1 is None:
-            data = data[data.name_adm1 == adm1]
-            if data.empty:
-                LOGGER.error('Admin1 not found in data: ' + str(adm1))
+            if data[data.name_adm1 == adm1].empty:
+                LOGGER.warning('Admin1 not found in data: ' + str(adm1))
             else:
+                data = data[data.name_adm1 == adm1]
                 signifier = signifier + ' ' + adm1
         if not adm2 is None:
-            data = data[data.name_adm2 == adm2]
-            if data.empty:
-                LOGGER.error('Admin2 not found in data: ' + str(adm2))
+            if data[data.name_adm2 == adm2].empty:
+                LOGGER.warning('Admin2 not found in data: ' + str(adm2))
             else:
+                data = data[data.name_adm2 == adm2]
                 signifier = signifier + ' ' + adm2
 
         if signifier == '':
