@@ -20,9 +20,10 @@ import logging
 import zipfile
 import pandas as pd
 import numpy as np
-from climada import SYSTEM_DIR
+
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
+from climada.util.constants import SYSTEM_DIR
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -261,8 +262,8 @@ class SpamAgrar(Exposures):
                              encoding='ISO-8859-1')
 
         except:
-            LOGGER.error('Importing the SPAM agriculturer file failed. '\
-                         + 'Operation aborted.')
+            LOGGER.error('Importing the SPAM agriculturer file failed. ' \
+                         'Operation aborted.')
             raise
         # remove data points with zero crop production: (works only for TA)
         # data = data[data.vp_crop_a != 0]
@@ -304,8 +305,8 @@ class SpamAgrar(Exposures):
             lon = concordance_data.loc[:, 'x']
 
         except:
-            LOGGER.error('Importing the SPAM cell5m mapping file failed. '\
-                         + 'Operation aborted.')
+            LOGGER.error('Importing the SPAM cell5m mapping file failed. ' \
+                         'Operation aborted.')
             raise
         return lat, lon
 
@@ -407,6 +408,5 @@ class SpamAgrar(Exposures):
             zip_ref.close()
             os.remove(path_dwn)
         except:
-            LOGGER.error('Downloading SPAM data failed. '\
-                             + 'Operation aborted.')
+            LOGGER.error('Downloading SPAM data failed. Operation aborted.')
             raise
