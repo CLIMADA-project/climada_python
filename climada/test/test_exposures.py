@@ -134,7 +134,7 @@ class BMFuncs(unittest.TestCase):
         ent.check()
                 
         self.assertEqual(np.unique(ent.region_id).size, 2)
-        self.assertEqual(np.unique(ent.impact_id).size, 1)
+        self.assertEqual(np.unique(ent.impact_id['NA']).size, 1)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
         self.assertIn('Germany 2013 GDP: ', ent.tag.description)

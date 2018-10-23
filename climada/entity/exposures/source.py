@@ -94,8 +94,8 @@ def _read_xls_obligatory(exposures, dfr, var_names):
     coord_cols = [var_names['col_name']['lat'], var_names['col_name']['lon']]
     exposures.coord = GridPoints(np.array(dfr[coord_cols]))
 
-    exposures.impact_id = dfr[var_names['col_name']['imp']].values. \
-                            astype(int, copy=False)
+    exposures.impact_id['NA'] = dfr[var_names['col_name']['imp']].values. \
+        astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(dfr.index)
@@ -172,8 +172,8 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures.coord = GridPoints(np.concatenate((coord_lat, coord_lon),
                                                 axis=1))
 
-    exposures.impact_id = np.squeeze(data[var_names['var_name']['imp']]). \
-        astype(int, copy=False)
+    exposures.impact_id['NA'] = np.squeeze( \
+        data[var_names['var_name']['imp']]).astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(exposures.value)

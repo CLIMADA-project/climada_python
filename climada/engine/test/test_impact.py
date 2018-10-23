@@ -67,6 +67,7 @@ class TestOneExposure(unittest.TestCase):
         # Set the entity default file to the demo one
         Entity.def_file = ENT_TEST_XLS
         ent = Entity()
+        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('NA')
         
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
@@ -82,7 +83,7 @@ class TestOneExposure(unittest.TestCase):
         # Compute impact for 6th exposure
         iexp = 5
         # Take its impact function
-        imp_id = ent.exposures.impact_id[iexp]
+        imp_id = ent.exposures.impact_id['TC'][iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
         # Compute
         insure_flag = True
@@ -122,6 +123,8 @@ class TestCalc(unittest.TestCase):
         # Read default entity values
         Entity.def_file = ENT_TEST_XLS
         ent = Entity()
+        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('NA')
+
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
         # Create impact object

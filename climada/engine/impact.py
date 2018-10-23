@@ -120,7 +120,7 @@ class Impact():
         # Warning if no exposures selected
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
-            return
+            return None
         LOGGER.info('Calculating damage for %s assets (>0) and %s events.',
                     exp_idx.size, hazard.event_id.size)
 
@@ -128,6 +128,10 @@ class Impact():
         haz_type = hazard.tag.haz_type
         # Get damage functions for this hazard
         haz_imp = impact_funcs.get_func(haz_type)
+        if haz_type not in exposures.impact_id:
+            LOGGER.info('No exposures with impact functions for peril %s', \
+                        haz_type)
+            return None
 
         # Check if deductible and cover should be applied
         insure_flag = False
@@ -136,9 +140,12 @@ class Impact():
         num_events = hazard.intensity.shape[0]
         # 3. Loop over exposures according to their impact function
         # Loop over impact functions
+        tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures.impact_id[exp_idx] == imp_fun.id)[0]
+            exp_iimp = np.where(exposures.impact_id[haz_type][exp_idx] ==
+                                imp_fun.id)[0]
+            tot_exp += exp_iimp.size
             exp_step = int(CONFIG['impact']['max_matrix_size']/num_events)
             if not exp_step:
                 LOGGER.error('Increase max_matrix_size configuration parameter'\
@@ -153,6 +160,8 @@ class Impact():
             self._exp_impact(exp_idx[exp_iimp[(chk+1)*exp_step:]],\
                 exposures, hazard, imp_fun, insure_flag)
 
+        if not tot_exp:
+            LOGGER.info('No impact functions match the exposures.')
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
     def plot_eai_exposure(self, ignore_zero=True, pop_name=True,

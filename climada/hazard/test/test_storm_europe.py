@@ -8,7 +8,8 @@ import datetime as dt
 import numpy as np
 from scipy import sparse
 
-from climada import StormEurope, Centroids, GridPoints, SYSTEM_DIR
+from climada.hazard import StormEurope, Centroids
+from climada.util import GridPoints, SYSTEM_DIR
 
 
 class TestReader(unittest.TestCase):

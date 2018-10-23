@@ -39,8 +39,8 @@ class Exposures():
             lon in second, or GridPoints instance. "lat" and "lon" are
             descriptors of the latitude and longitude respectively.
         value (np.array): a value for each exposure
-        impact_id (np.array): impact function id corresponding to each
-            exposure
+        impact_id (dict): for each hazard (key in dict), np.array of impact
+            function id corresponding to each exposure
         deductible (np.array, optional): deductible value for each exposure
         cover (np.array, optional): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
@@ -94,7 +94,7 @@ class Exposures():
             >>> exp_city = Exposures()
             >>> exp_city.coord = np.array([[40.1, 8], [40.2, 8], [40.3, 8]])
             >>> exp_city.value = np.array([5604, 123, 9005001])
-            >>> exp_city.impact_id = np.array([1, 1, 1])
+            >>> exp_city.impact_id = {'FL': np.array([1, 1, 1])}
             >>> exp_city.id = np.array([11, 12, 13])
             >>> exp_city.check()
 
@@ -109,7 +109,7 @@ class Exposures():
         # Obligatory variables
         self.coord = GridPoints()
         self.value = np.array([], float)
-        self.impact_id = np.array([], int)
+        self.impact_id = dict() # {np.array([], int or str)}
         self.id = np.array([], int)
         # Optional variables.
         self.deductible = np.array([], float)
@@ -156,15 +156,18 @@ class Exposures():
 
         check.check_oligatories(self.__dict__, self.vars_oblig, 'Exposures.',
                                 num_exp, num_exp, 2)
-        check.check_optionals(self.__dict__, self.vars_opt, 'Exposures.', num_exp)
+        if not self.impact_id:
+            LOGGER.error('No impact function id set.')
+        for _, if_id in self.impact_id.items():
+            check.size(num_exp, if_id, 'Exposures.impact_id')
 
+        check.check_optionals(self.__dict__, self.vars_opt, 'Exposures.', num_exp)
         check.empty_optional(self.assigned, "Exposures.assigned")
-        for (ass_haz, ass) in self.assigned.items():
+        for ass_haz, ass in self.assigned.items():
             if not ass_haz:
                 LOGGER.warning('Exposures.assigned: assigned hazard type ' \
                                'not set.')
             check.array_optional(num_exp, ass, 'Exposures.assigned')
-
 
     def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
              extend='neither', **kwargs):
@@ -244,6 +247,10 @@ class Exposures():
         for key, val in old_assigned.items():
             self.assigned[key] = np.delete(val, pos_del)
 
+        old_impact_id = self.impact_id.copy()
+        for key, val in old_impact_id.items():
+            self.impact_id[key] = np.delete(val, pos_del)
+
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
 
@@ -286,10 +293,14 @@ class Exposures():
                 setattr(self, var_name, var_val + haz_val)
 
         self.coord = self._coord
-        for (ass_haz, ass) in exposures.assigned.items():
-            if ass_haz in self.assigned:
-                self.assigned[ass_haz] = np.append(
-                    self.assigned[ass_haz], ass).astype(ass.dtype, copy=False)
+        for key, val in exposures.assigned.items():
+            if key in self.assigned:
+                self.assigned[key] = np.append(
+                    self.assigned[key], val).astype(val.dtype, copy=False)
+        for key, val in exposures.impact_id.items():
+            if key in self.impact_id:
+                self.impact_id[key] = np.append(
+                    self.impact_id[key], val).astype(val.dtype, copy=False)
 
         # provide new ids to repeated ones
         _, indices = np.unique(self.id, return_index=True)
@@ -329,6 +340,10 @@ class Exposures():
         sel_exp.assigned = dict()
         for key, value in self.assigned.items():
             sel_exp.assigned[key] = value[sel_idx]
+
+        sel_exp.impact_id = dict()
+        for key, value in self.impact_id.items():
+            sel_exp.impact_id[key] = value[sel_idx]
 
         sel_exp.tag = copy.copy(self.tag)
         sel_exp.tag.description = 'Region: ' + str(reg_id)

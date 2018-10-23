@@ -166,7 +166,8 @@ class BlackMarble(Exposures):
 
         exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
         exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape, int)*cntry_info[0]
-        exp_bkmrb.impact_id = np.ones(exp_bkmrb.value.size, int)
+        # hazard type TC as default
+        exp_bkmrb.impact_id = {'TC': np.ones(exp_bkmrb.value.size, int)}
         exp_bkmrb.ref_year = cntry_info[3]
         exp_bkmrb.tag.description = ("{} {:d} GDP: {:.3e} income group: {:d}"+\
             "\n").format(cntry_info[1], cntry_info[3], \
@@ -345,7 +346,7 @@ def add_sea(exp, sea_res):
     exp.id = np.arange(1, exp.value.size+1)
     exp.region_id = np.append(exp.region_id, lat_mgrid[on_land].astype(int)*0
                               - 1)
-    exp.impact_id = np.ones(exp.value.size, int)
+    exp.impact_id = {'TC': np.ones(exp.value.size, int)}
 
 def _fill_admin1_geom(iso3, admin1_rec, prov_list):
     """Get admin1 polygons for each input province of country iso3.

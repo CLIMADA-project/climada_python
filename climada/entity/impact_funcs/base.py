@@ -17,7 +17,8 @@ class ImpactFunc(object):
 
     Attributes:
         haz_type (str): hazard type acronym (e.g. 'TC')
-        id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
+        id (int or str): id of the ImpactFunc (wrt vulnerabilities of same
+           hazard). Preferably int, otherwie short string.
         name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
@@ -28,7 +29,7 @@ class ImpactFunc(object):
     """
     def __init__(self):
         """ Empty initialization."""
-        self.id = '' # int expected
+        self.id = ''
         self.name = ''
         self.intensity_unit = ''
         self.haz_type = ''

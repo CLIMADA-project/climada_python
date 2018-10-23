@@ -79,7 +79,7 @@ class TestCountryIso(unittest.TestCase):
         exp = BlackMarble()
         exp.value = np.arange(0, 20, 0.1)
         exp.coord = np.ones((200, 2))
-        exp.impact_id = np.ones((200,))
+        exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
         
         exp.region_id = np.ones((200,))
@@ -107,7 +107,7 @@ class TestCountryIso(unittest.TestCase):
         exp = BlackMarble()
         exp.value = np.arange(0, 20, 0.1)
         exp.coord = np.ones((200, 2))
-        exp.impact_id = np.ones((200,))
+        exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
         
         exp.region_id = np.ones((200,))
@@ -122,7 +122,7 @@ class TestCountryIso(unittest.TestCase):
         exp = BlackMarble()
         exp.value = np.arange(0, 20, 0.1)
         exp.coord = np.ones((200, 2))
-        exp.impact_id = np.ones((200,))
+        exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
         
         exp.region_id = np.ones((200,))
