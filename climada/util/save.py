@@ -38,4 +38,4 @@ def save(out_file_name, var):
         raise FileNotFoundError
     except OSError:
         LOGGER.error('Data is probably too big. Try splitting it.')
-        raise FileNotFoundError
+        raise ValueError
