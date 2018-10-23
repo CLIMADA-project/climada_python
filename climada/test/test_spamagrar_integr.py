@@ -34,8 +34,8 @@ class TestDefault(unittest.TestCase):
 
 class TestOtherVar(unittest.TestCase):
     """Test SPAM exposures based on other variables."""
-    """"def test_switzerland_pass(self):
-        # Test country CHE for non-default parameters:
+    def test_switzerland_pass(self):
+        """Test country CHE for non-default parameters:"""
         country_name = 'CHE'
         tech = 'TI' # irrigated
         var = 'H' # harvest area
@@ -45,7 +45,7 @@ class TestOtherVar(unittest.TestCase):
                                 spam_technology=tech)
         self.assertIn('Lat. range: +45.875 to +47.792.', cm.output[0])
         self.assertIn('Lon. range: +6.042 to +10.375.', cm.output[1])
-        self.assertIn("Total H TI CHE: 28427.1 Ha.", cm.output[2])"""
+        self.assertIn("Total H TI CHE: 28427.1 Ha.", cm.output[2])
 
     def test_ucayali_pass(self):
         """Test admin 2 region Ucayali for non-default parameters:"""

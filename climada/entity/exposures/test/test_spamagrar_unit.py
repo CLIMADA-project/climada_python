@@ -11,60 +11,60 @@ class TestSetCountry(unittest.TestCase):
     def test_iso3_country_name(self):
         """iso3 and country name produce same output:"""
         ent = SpamAgrar()
-        testdata = self.initTestData()
+        testdata = self.init_testdata()
 
         testdata1, teststr1 = ent._spam_set_country(testdata, country='AAA')
         testdata2, teststr2 = ent._spam_set_country(testdata, country='countryA')
-        self.assertFrameEqual(testdata1, testdata2)
+        self.assert_pd_frame_equal(testdata1, testdata2)
         self.assertEqual(teststr1, 'AAA')
         self.assertEqual(teststr2, 'countryA')
 
     def test_all_names_given(self):
         """all names given and returned as string:"""
         ent = SpamAgrar()
-        testdata = self.initTestData()
+        testdata = self.init_testdata()
 
         testdata1, teststr1 = ent._spam_set_country(testdata, name_adm2='municB')
         testdata2, teststr2 = ent._spam_set_country(testdata, country='AAA', \
                                                     name_adm1='kantonB', \
                                                     name_adm2='municB')
-        self.assertFrameEqual(testdata1, testdata2)
+        self.assert_pd_frame_equal(testdata1, testdata2)
         self.assertEqual(teststr1, ' municB')
         self.assertEqual(teststr2, 'AAA kantonB municB')
 
     def test_invalid_country(self):
         """invalid country name produces unchanged dataframe:"""
         ent = SpamAgrar()
-        testdata = self.initTestData()
+        testdata = self.init_testdata()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             testdata1 = ent._spam_set_country(testdata, country='XXX')[0]
         self.assertIn('Country name not found in data: XXX', cm.output[0])
-        self.assertFrameEqual(testdata1, testdata)
+        self.assert_pd_frame_equal(testdata1, testdata)
 
     def test_invalid_adm2(self):
         """invalid admin 2 name produces unchanged dataframe:"""
         ent = SpamAgrar()
-        testdata = self.initTestData()
+        testdata = self.init_testdata()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             testdata1, teststr1 = ent._spam_set_country(testdata, name_adm2='XXX')
         self.assertIn('Admin2 not found in data: XXX', cm.output[0])
-        self.assertFrameEqual(testdata1, testdata)
+        self.assert_pd_frame_equal(testdata1, testdata)
         self.assertEqual(teststr1, 'global')
 
     def test_invalid_adm1(self):
         """invalid admin 1 name produces unchanged dataframe:"""
         ent = SpamAgrar()
-        testdata = self.initTestData()
+        testdata = self.init_testdata()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             testdata1, teststr1 = ent._spam_set_country(testdata, name_adm1='stateC', \
                                                         name_adm2='XXX')
-        testdata2, teststr2 = ent._spam_set_country(testdata, name_adm1='stateC')
+        testdata2 = ent._spam_set_country(testdata, name_adm1='stateC')[0]
         self.assertIn('Admin2 not found in data: XXX', cm.output[0])
-        self.assertFrameEqual(testdata1, testdata2)
+        self.assert_pd_frame_equal(testdata1, testdata2)
         self.assertEqual(teststr1, ' stateC')
 
     @staticmethod
-    def initTestData():
+    def init_testdata():
         testdata = pd.DataFrame(columns=['iso3', 'dat1', 'dat2', \
                                          'name_cntr', 'name_adm1', \
                                          'name_adm2'])
@@ -89,7 +89,7 @@ class TestSetCountry(unittest.TestCase):
         return testdata
 
     @staticmethod
-    def assertFrameEqual(df1, df2, **kwds):
+    def assert_pd_frame_equal(df1, df2, **kwds):
         """ Assert that two dataframes are equal, ignoring ordering of columns"""
         from pandas.util.testing import assert_frame_equal
         return assert_frame_equal(df1.sort_index(axis=1), df2.sort_index(axis=1), \
