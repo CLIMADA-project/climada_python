@@ -96,7 +96,7 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
                             return_inverse=True)
     # Compute cos(lat) for all centroids
-    centr_cos_lat = np.cos(centroids[:, 0] / 180 * np.pi)
+    centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
     assigned = np.zeros(coordinates.shape[0])
     for icoord, iidx in enumerate(idx):
         dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1],
@@ -133,13 +133,13 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
             indexes
     """
     # Construct tree from centroids
-    tree = BallTree(centroids/180*np.pi, metric='haversine')
+    tree = BallTree(np.radians(centroids), metric='haversine')
     # Select unique exposures coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
                             return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
-    dist, assigned = tree.query(coordinates[idx]/180*np.pi, k=1, \
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, \
                                 return_distance=True, dualtree=True, \
                                 breadth_first=False)
 
