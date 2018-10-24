@@ -134,7 +134,7 @@ class BMFuncs(unittest.TestCase):
         ent.check()
                 
         self.assertEqual(np.unique(ent.region_id).size, 2)
-        self.assertEqual(np.unique(ent.impact_id['NA']).size, 1)
+        self.assertEqual(np.unique(ent.impact_id['TC']).size, 1)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
         self.assertIn('Germany 2013 GDP: ', ent.tag.description)
@@ -182,9 +182,10 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 102.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
+            self.assertEqual(nl_mat.tocsr()[0, 1], 0.0)
+            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
     
             idx_info[0] = 5
             idx_info[1] = 4
@@ -194,10 +195,10 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 102.0)
-            self.assertEqual(nl_mat.tocsr()[1, 1], 103.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
+            self.assertEqual(nl_mat.tocsr()[0, 1], 103.0)
+            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
         except MemoryError:
             print('MemoryError caught')
             pass
