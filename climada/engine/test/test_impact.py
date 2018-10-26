@@ -59,6 +59,35 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual('Exceedance frequency curve', ifc.label)
         self.assertEqual('USD', ifc.unit)
 
+    def test_ref_value_rp_pass(self):
+        """Test result against reference value with given return periods """
+        imp = Impact()
+        imp.frequency = np.ones(10) * 6.211180124223603e-04
+        imp.at_event = np.zeros(10)
+        imp.at_event[0] = 0
+        imp.at_event[1] = 0.400665463736549e9
+        imp.at_event[2] = 3.150330960044466e9
+        imp.at_event[3] = 3.715826406781887e9
+        imp.at_event[4] = 2.900244271902339e9
+        imp.at_event[5] = 0.778570745161971e9
+        imp.at_event[6] = 0.698736262566472e9
+        imp.at_event[7] = 0.381063674256423e9
+        imp.at_event[8] = 0.569142464157450e9
+        imp.at_event[9] = 0.467572545849132e9
+        imp.unit = 'USD'
+
+        ifc = imp.calc_freq_curve(np.array([100, 500, 1000]))
+        self.assertEqual(3, len(ifc.return_per))
+        self.assertEqual(100, ifc.return_per[0])
+        self.assertEqual(500, ifc.return_per[1])
+        self.assertEqual(1000, ifc.return_per[2])
+        self.assertEqual(3, len(ifc.impact))
+        self.assertEqual(0, ifc.impact[0])
+        self.assertEqual(2320408028.5695677, ifc.impact[1])
+        self.assertEqual(3287314329.129928, ifc.impact[2])
+        self.assertEqual('Exceedance frequency curve', ifc.label)
+        self.assertEqual('USD', ifc.unit)
+
 class TestOneExposure(unittest.TestCase):
     '''Test one_exposure function'''
     def test_ref_value_insure_pass(self):
@@ -67,7 +96,7 @@ class TestOneExposure(unittest.TestCase):
         # Set the entity default file to the demo one
         Entity.def_file = ENT_TEST_XLS
         ent = Entity()
-        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('NA')
+        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('')
         
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
@@ -123,7 +152,7 @@ class TestCalc(unittest.TestCase):
         # Read default entity values
         Entity.def_file = ENT_TEST_XLS
         ent = Entity()
-        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('NA')
+        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('')
 
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
