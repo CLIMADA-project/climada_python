@@ -39,8 +39,8 @@ class Exposures():
             lon in second, or GridPoints instance. "lat" and "lon" are
             descriptors of the latitude and longitude respectively.
         value (np.array): a value for each exposure
-        impact_id (dict): for each hazard (key in dict), np.array of impact
-            function id corresponding to each exposure
+        impact_id (dict): for each hazard type (key in dict), np.array of
+            impact function id corresponding to each exposure
         deductible (np.array, optional): deductible value for each exposure
         cover (np.array, optional): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
