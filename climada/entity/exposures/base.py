@@ -158,7 +158,10 @@ class Exposures():
                                 num_exp, num_exp, 2)
         if not self.impact_id:
             LOGGER.error('No impact function id set.')
-        for _, if_id in self.impact_id.items():
+        for if_haz, if_id in self.impact_id.items():
+            if not if_haz:
+                LOGGER.warning('Exposures.impact_id: impact_id hazard type ' \
+                               'not set.')
             check.size(num_exp, if_id, 'Exposures.impact_id')
 
         check.check_optionals(self.__dict__, self.vars_opt, 'Exposures.', num_exp)
@@ -214,6 +217,8 @@ class Exposures():
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
