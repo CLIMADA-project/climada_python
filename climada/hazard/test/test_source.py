@@ -20,7 +20,7 @@ class TestReaderMat(unittest.TestCase):
     def test_hazard_pass(self):
         ''' Read a hazard mat file correctly.'''
         # Read demo excel file
-        hazard = Hazard()
+        hazard = Hazard('TC')
         hazard.read(HAZ_TEST_MAT)
 
         # Check results
@@ -85,7 +85,7 @@ class TestReaderMat(unittest.TestCase):
         read_cen = Centroids(HAZ_TEST_MAT)
         read_cen.id = np.ones(12)
         # Read demo excel file
-        hazard = Hazard()
+        hazard = Hazard('TC')
 
         # Expected exception because centroid size is smaller than the
         # one provided in the intensity matrix
