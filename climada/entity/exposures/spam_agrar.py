@@ -1,18 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Fri Oct 19 11:53:44 2018
-
-@author: eberenzs
-
 Creates Agriculture Exposure Set (Entity) based on SPAM
 (Global Spatially-Disaggregated Crop Production Statistics Data for 2005
 Version 3.2 )
 https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
-
-Todos:
-    - integration tests
-    - unit tests
 """
 
 import os
@@ -28,11 +18,20 @@ from climada.util.constants import SYSTEM_DIR
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
+DEF_HAZ_TYPE = 'DR'
+""" Default hazard type used in impact functions id."""
+
 FILENAME_SPAM = 'spam2005V3r2_global'
+""" """
+
 FILENAME_CELL5M = 'cell5m_allockey_xy.csv'
+""" """
+
 FILENAME_PERMALINKS = 'spam2005V3r2_download_permalinks.csv'
+""" """
+
 BUFFER_VAL = -340282306073709652508363335590014353408
-# Hard coded value which is used for NANs in original data
+""" Hard coded value which is used for NANs in original data """
 
 class SpamAgrar(Exposures):
     """Defines exposures from
@@ -156,31 +155,31 @@ class SpamAgrar(Exposures):
         # assign different damage function ID per technology type.
         # hazard type drought as default.
         if spam_t == 'TA':
-            self.impact_id = {'DR': np.ones(self.value.size, int)}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self.impact_id = {'DR': np.ones(self.value.size, int)+1}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+1}
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self.impact_id = {'DR': np.ones(self.value.size, int)+2}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+2}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self.impact_id = {'DR': np.ones(self.value.size, int)+3}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+3}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self.impact_id = {'DR': np.ones(self.value.size, int)+4}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+4}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self.impact_id = {'DR': np.ones(self.value.size, int)+5}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+5}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self.impact_id = {'DR': np.ones(self.value.size, int)}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
 
         self.tag.file_name = (FILENAME_SPAM+'_'+ spam_v\
                               + '_' + spam_t + '.csv')
