@@ -243,6 +243,8 @@ class ImpactFuncSet(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
