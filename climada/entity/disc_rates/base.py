@@ -95,6 +95,8 @@ class DiscRates(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
@@ -165,13 +167,13 @@ class DiscRates(object):
         """
         year_range = np.arange(ini_year, end_year+1)
         if year_range.size != val_years.size:
-            LOGGER.info('Wrong size of yearly values.')
-            return None
+            LOGGER.error('Wrong size of yearly values.')
+            raise ValueError
         sel_disc = self.select(year_range)
         if sel_disc is None:
-            LOGGER.info('No information of discount rates for provided years:'\
+            LOGGER.error('No information of discount rates for provided years:'\
                         ' %s - %s', ini_year, end_year)
-            return None
+            raise ValueError
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)
 

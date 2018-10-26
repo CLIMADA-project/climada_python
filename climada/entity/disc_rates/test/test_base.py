@@ -168,7 +168,8 @@ class TestNetPresValue(unittest.TestCase):
         disc_rate.years = np.arange(2000, 2050)
         disc_rate.rates = np.arange(disc_rate.years.size)
         val_years = np.ones(11)*6.512201157564418e9
-        self.assertEqual(None, disc_rate.net_present_value(2050, 2060, val_years))
+        with self.assertRaises(ValueError):
+            disc_rate.net_present_value(2050, 2060, val_years)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
