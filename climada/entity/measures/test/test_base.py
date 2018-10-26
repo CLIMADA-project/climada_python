@@ -65,8 +65,9 @@ class TestImpact(unittest.TestCase):
         imp_tc.paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
                                0.398500000000000, 0.657000000000000, 1.000000000000000,
                                1.000000000000000, 1.000000000000000])
+        imp_set.add_func(imp_tc)
 
-        hazard = Hazard()
+        hazard = Hazard('XX')
         exposures = Exposures()
         new_exp, new_ifs, new_haz = act_1.implement(exposures, imp_set, hazard)
 
