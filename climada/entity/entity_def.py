@@ -28,7 +28,7 @@ class Entity(object):
 
     def_file = CONFIG['local_data']['entity_def']
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name=None, description=''):
         """Fill values from file. Default file used when no file provided.
 
         Parameters:
@@ -63,7 +63,7 @@ class Entity(object):
         else:
             self.read(file_name, description)
 
-    def read(self, file_name, description=None):
+    def read(self, file_name, description=''):
         """Read and check input file.
 
         Parameters:
