@@ -79,8 +79,7 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', file_name='', description='', \
-                 centroids=None):
+    def __init__(self, haz_type='', file_name='', description='', centroids=None):
         """Initialize values from given file, if given.
 
         Parameters:
@@ -169,6 +168,8 @@ class Hazard():
         haz_type = self.tag.haz_type
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), description, 'description')
         centr_list = to_list(len(all_files), centroids, 'centroids')
         var_list = to_list(len(all_files), var_names, 'var_names')
@@ -238,7 +239,7 @@ class Hazard():
                     return_periods)
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['impact']['max_matrix_size']/self.intensity.shape[0])
+        cen_step = int(CONFIG['global']['max_matrix_size']/self.intensity.shape[0])
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'\
                          ' > %s', str(self.intensity.shape[0]))
