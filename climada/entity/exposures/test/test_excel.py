@@ -44,10 +44,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.cover[0], 13927504367.680632)
         self.assertEqual(expo.cover[n_expos-1], 12624818493.687229)
 
-        self.assertIn('int', str(expo.impact_id['NA'].dtype))
-        self.assertEqual(len(expo.impact_id['NA']), n_expos)
-        self.assertEqual(expo.impact_id['NA'][0], 1)
-        self.assertEqual(expo.impact_id['NA'][n_expos-1], 1)
+        self.assertIn('int', str(expo.impact_id[''][0].dtype))
+        self.assertEqual(len(expo.impact_id['']), n_expos)
+        self.assertEqual(expo.impact_id[''][0], 1)
+        self.assertEqual(expo.impact_id[''][n_expos-1], 1)
 
         self.assertEqual(len(expo.category_id), 0)
         self.assertEqual(len(expo.region_id), 0)
@@ -91,17 +91,17 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.cover[0], 13927504367.680632)
         self.assertEqual(expo.cover[n_expos-1], 12597535489.94726)
 
-        self.assertIn('int', str(expo.impact_id['NA'].dtype))
-        self.assertEqual(expo.impact_id['NA'].shape, (n_expos,))
-        self.assertEqual(expo.impact_id['NA'][0], 1)
-        self.assertEqual(expo.impact_id['NA'][n_expos-1], 1)
+        self.assertIn('int', str(expo.impact_id[''].dtype))
+        self.assertEqual(expo.impact_id[''].shape, (n_expos,))
+        self.assertEqual(expo.impact_id[''][0], 1)
+        self.assertEqual(expo.impact_id[''][n_expos-1], 1)
 
-        self.assertIn('int', str(expo.category_id.dtype))        
+        self.assertIn('int', str(expo.category_id.dtype))
         self.assertEqual(expo.category_id.shape, (n_expos,))
         self.assertEqual(expo.category_id[0], 1)
         self.assertEqual(expo.category_id[n_expos-1], 1)
 
-        self.assertIn('int', str(expo.region_id.dtype)) 
+        self.assertIn('int', str(expo.region_id.dtype))
         self.assertEqual(expo.region_id.shape, (n_expos,))
         self.assertEqual(expo.region_id[0], 1)
         self.assertEqual(expo.region_id[n_expos-1], 1)
@@ -337,8 +337,8 @@ class TestParsers(unittest.TestCase):
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
         ref_year = source._parse_xls_ref_year(ENT_TEST_XLS, source.DEF_VAR_EXCEL)
-        self.assertEqual(CONFIG['entity']["present_ref_year"], ref_year)      
-        
+        self.assertEqual(CONFIG['entity']["present_ref_year"], ref_year)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefaults)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOptionals))
