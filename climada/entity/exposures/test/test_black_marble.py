@@ -26,8 +26,8 @@ from cartopy.io import shapereader
 from sklearn.neighbors import DistanceMetric
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_land, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
-_set_econ_indicators, _fill_admin1_geom, _filter_admin1
+_process_country, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
+_set_econ_indicators, _fill_admin1_geom, _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
@@ -48,7 +48,7 @@ class TestCountryIso(unittest.TestCase):
         """CHE, KOS """
         country_name = ['Switzerland', 'Kosovo']
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
-        
+
         self.assertEqual(len(iso_name), len(country_name))
         self.assertTrue('CHE'in iso_name)
         self.assertTrue('KOS'in iso_name)
@@ -63,7 +63,7 @@ class TestCountryIso(unittest.TestCase):
         """HTI"""
         country_name = ['HaITi']
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
-        
+
         self.assertEqual(len(iso_name), len(country_name))
         self.assertEqual(iso_name['HTI'][0], 332)
         self.assertEqual(iso_name['HTI'][1], 'Haiti')
@@ -79,7 +79,7 @@ class TestCountryIso(unittest.TestCase):
         """BOL"""
         country_name = ['Bolivia']
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
-        
+
         self.assertEqual(len(iso_name), len(country_name))
         self.assertEqual(iso_name['BOL'][0], 68)
         self.assertEqual(iso_name['BOL'][1], 'Bolivia')
@@ -90,7 +90,7 @@ class TestCountryIso(unittest.TestCase):
         country_name = ['Korea']
         with self.assertRaises(ValueError):
             country_iso_geom(country_name, SHP_FILE)
-    
+
     def test_select_reg_pass(self):
         """Select counrty """
         exp = BlackMarble()
@@ -98,11 +98,11 @@ class TestCountryIso(unittest.TestCase):
         exp.coord = np.ones((200, 2))
         exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
-        
+
         exp.region_id = np.ones((200,))
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
-        
+
         sel_exp = exp.select('TTO')
         self.assertEqual(sel_exp.value.size, 101)
         sel_exp = exp.select('Trinidad and Tobago')
@@ -126,11 +126,11 @@ class TestCountryIso(unittest.TestCase):
         exp.coord = np.ones((200, 2))
         exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
-        
+
         exp.region_id = np.ones((200,))
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
-        
+
         sel_exp = exp.select('UGA')
         self.assertEqual(sel_exp, None)
 
@@ -141,11 +141,11 @@ class TestCountryIso(unittest.TestCase):
         exp.coord = np.ones((200, 2))
         exp.impact_id = {'TC': np.ones((200,))}
         exp.id = np.arange(200)
-        
+
         exp.region_id = np.ones((200,))
         exp.region_id[:101] = exp.region_id[:101]*780
         exp.region_id[101:] = exp.region_id[101:]*894
-        
+
         sel_exp = exp.select('TTU')
         self.assertEqual(sel_exp, None)
 
@@ -160,7 +160,7 @@ class TestProvinces(unittest.TestCase):
         res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
         self.assertEqual(len(res_bcn), 1)
         self.assertIsInstance(res_bcn[0], shapely.geometry.multipolygon.MultiPolygon)
-        
+
         prov_list = ['Barcelona', 'Tarragona']
         res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
         self.assertEqual(len(res_bcn), 2)
@@ -177,7 +177,7 @@ class TestProvinces(unittest.TestCase):
             with self.assertLogs('climada.entity.exposures.black_marble', level='ERROR') as cm:
                 _fill_admin1_geom(iso3, admin1_rec, prov_list)
         self.assertIn('Barcelona not found. Possible provinces of CHE are: ', cm.output[0])
-        
+
     def test_country_iso_geom_pass(self):
         """Test country_iso_geom pass."""
         countries = ['Switzerland']
@@ -191,28 +191,40 @@ class TestProvinces(unittest.TestCase):
         self.assertIsInstance(cntry_admin1['CHE'][0], shapely.geometry.multipolygon.MultiPolygon)
 
     def test_filter_admin1_pass(self):
-        """Test _filter_admin1 pass."""
-        exp_bkmrb = BlackMarble()
-        exp_bkmrb.value = np.arange(100)
-        exp_bkmrb.coord = np.empty((100, 2))
-        exp_bkmrb.coord[:, 0] = 41.39
-        exp_bkmrb.coord[:, 1] = np.linspace(0, 3, 100)
+        """Test _cut_admin1 pass."""
+        lat, lon = np.mgrid[35 : 44 : complex(0, 100),
+                             0 : 4 : complex(0, 102)]
+        nightlight = np.arange(102*100).reshape((102, 100))
+
+        coord_nl = np.array([[35, 0.09090909], [0, 0.03960396]])
+        on_land = np.zeros((100, 102), bool)
+
         admin1_rec = list(ADM1_FILE.records())
         for rec in admin1_rec:
             if 'Barcelona' in rec.attributes['name']:
                 bcn_geom = rec.geometry
+            if 'Tarragona' in rec.attributes['name']:
+                tar_geom = rec.geometry
+        admin1_geom = [bcn_geom, tar_geom]
 
-        _filter_admin1(exp_bkmrb, bcn_geom)
-        for coord in exp_bkmrb.coord:
-            self.assertTrue(bcn_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
+        nightlight_reg, lat_reg, lon_reg, all_geom, on_land_reg = _cut_admin1(
+                nightlight, lat, lon, admin1_geom, coord_nl, on_land)
+
+        self.assertEqual(lat_reg.shape, lon_reg.shape)
+        self.assertEqual(lat_reg.shape, nightlight_reg.shape)
+        self.assertEqual(lat_reg.shape, on_land_reg.shape)
+        self.assertTrue(np.array_equal(nightlight[60:82, 4:72], nightlight_reg))
+        for coord in zip(lat_reg[on_land_reg], lon_reg[on_land_reg]):
+            self.assertTrue(bcn_geom.contains(shapely.geometry.Point([coord[1],coord[0]])) or
+                            tar_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
+            self.assertTrue(all_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
 
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
-    def test_process_land_brb_1km_pass(self):
-        """ Test _process_land function with fake Barbados."""
+    def test_process_country_brb_1km_pass(self):
+        """ Test _process_country function with fake Barbados."""
         country_iso = 'BRB'
-        exp = BlackMarble()
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
                 geom = cntry.geometry
@@ -227,32 +239,31 @@ class TestNightLight(unittest.TestCase):
         coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
                           0.3603520186853473]
 
-        res_fact = 1.0
-        res_km = 1.0
-        _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km)
+        nightlight_reg, lat_reg, lon_reg, on_land = _process_country(geom, nightlight, coord_nl)
 
-        lat_mgrid = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
+        lat_ref = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
                               [13.28022712, 13.28022712, 13.28022712],
                               [13.56077154, 13.56077154, 13.56077154]])
-
-        lon_mgrid = np.array([[-59.99444444, -59.63409243, -59.27374041],
+        lon_ref = np.array([[-59.99444444, -59.63409243, -59.27374041],
                               [-59.99444444, -59.63409243, -59.27374041],
                               [-59.99444444, -59.63409243, -59.27374041]])
-    
-        on_land = np.array([[False, False, False],
+        on_ref = np.array([[False, False, False],
                             [False,  True, False],
                             [False, False, False]])
-    
+
         in_lat = (278, 280)
         in_lon = (333, 335)
-        self.assertAlmostEqual(exp.value[0], nightlight[in_lat[0]+1, in_lon[0]+1])
-        self.assertAlmostEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
-        self.assertAlmostEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
-        
-    def test_process_land_brb_2km_pass(self):
-        """ Test _process_land function with fake Barbados."""
+        nightlight_ref = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1].todense()
+        nightlight_ref[np.logical_not(on_ref)] = 0.0
+
+        self.assertTrue(np.allclose(lat_ref, lat_reg))
+        self.assertTrue(np.allclose(lon_ref, lon_reg))
+        self.assertTrue(np.allclose(on_ref, on_land))
+        self.assertTrue(np.allclose(nightlight_ref, nightlight_reg))
+
+    def test_process_country_brb_2km_pass(self):
+        """ Test _resample_land function with fake Barbados."""
         country_iso = 'BRB'
-        exp = BlackMarble()
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
                 geom = cntry.geometry
@@ -268,61 +279,57 @@ class TestNightLight(unittest.TestCase):
                           0.3603520186853473]
 
         res_fact = 2.0
-        res_km = 0.5
-        _process_land(exp, geom, nightlight, coord_nl, res_fact, res_km)
+        nightlight_reg, lat_reg, lon_reg, on_land = _process_country(geom, nightlight, coord_nl)
+        nightlight_res, lat_res, lon_res = _resample_land(geom, nightlight_reg, lat_reg, lon_reg, res_fact, on_land)
 
-        lat_mgrid = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
+        lat_ref = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
                               [13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047],
                               [13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824],
                               [13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601],
                               [13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377],
                               [13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154]])
 
-        lon_mgrid = np.array([[-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+        lon_ref = np.array([[-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
                               [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
                               [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
                               [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
                               [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
                               [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041]])
-    
-        on_land = np.array([[False, False, False, False, False, False],
+
+        on_ref = np.array([[False, False, False, False, False, False],
                             [False, False, False,  True, False, False],
                             [False, False, False,  True, False, False],
                             [False, False, False, False, False, False],
                             [False, False, False, False, False, False],
                             [False, False, False, False, False, False]])
 
-        self.assertAlmostEqual(exp.value[0], 0.5096)
-        self.assertAlmostEqual(exp.value[1], 0.5096)
-
-        self.assertAlmostEqual(exp.coord[0, 0], lat_mgrid[on_land][0])
-        self.assertAlmostEqual(exp.coord[0, 1], lon_mgrid[on_land][0])
-
-        self.assertAlmostEqual(exp.coord[1, 0], lat_mgrid[on_land][1])
-        self.assertAlmostEqual(exp.coord[1, 1], lon_mgrid[on_land][1])
+        self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
+        self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
+        self.assertAlmostEqual(nightlight_res[0], 1.57696000e-01)
+        self.assertAlmostEqual(nightlight_res[1], 4.01408000e-01)
 
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = BlackMarble()
-        
+
         exp.value = np.arange(0, 1.0e6, 1.0e5)
-        
+
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
         exp.coord = np.zeros((10, 2))
         exp.coord[:, 0] = np.linspace(min_lat, max_lat, 10)
         exp.coord[:, 1] = np.linspace(min_lon, max_lon, 10)
         exp.region_id = np.ones(10)
-        
+
         sea_coast = 100
         sea_res_km = 50
         sea_res = (sea_coast, sea_res_km)
         add_sea(exp, sea_res)
         exp.check()
-       
+
         sea_coast /= ONE_LAT_KM
         sea_res_km /= ONE_LAT_KM
-        
+
         min_lat = min_lat - sea_coast
         max_lat = max_lat + sea_coast
         min_lon = min_lon - sea_coast
@@ -330,27 +337,27 @@ class TestNightLight(unittest.TestCase):
         self.assertEqual(np.min(exp.coord.lat), min_lat)
         self.assertEqual(np.min(exp.coord.lon), min_lon)
         self.assertTrue(np.array_equal(exp.value[:10], np.arange(0, 1.0e6, 1.0e5)))
-        
+
         on_sea_lat = exp.coord[11:, 0]
         on_sea_lon = exp.coord[11:, 1]
         res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = np.logical_not(res_on_sea)
         self.assertTrue(np.all(res_on_sea))
-        
+
         dist = DistanceMetric.get_metric('haversine')
         self.assertAlmostEqual(dist.pairwise([[exp.coord[-1][1], exp.coord[-1][0]],
             [exp.coord[-2][1], exp.coord[-2][0]]])[0][1], sea_res_km)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""
-    
+
     def test_income_grp_aia_pass(self):
         """ Test _get_income_group function Anguilla."""
         cntry_info = {'AIA': [1, 'Anguilla', 'geom']}
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_income_group(cntry_info, ref_year, SHP_FILE)
-            
+
         cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 3]}
         self.assertIn('Income group AIA: 3', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
@@ -361,7 +368,7 @@ class TestEconIndices(unittest.TestCase):
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_income_group(cntry_info, ref_year, SHP_FILE)
-        
+
         cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
         self.assertIn('Income group SXM 2012: 4.', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
@@ -372,7 +379,7 @@ class TestEconIndices(unittest.TestCase):
         ref_year = 1999
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_income_group(cntry_info, ref_year, SHP_FILE)
-            
+
         cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
         self.assertIn('Income group SXM 2010: 4.', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
@@ -383,7 +390,7 @@ class TestEconIndices(unittest.TestCase):
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_gdp(cntry_info, ref_year, SHP_FILE)
-            
+
         cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 1.754e+08]}
         self.assertIn('GDP AIA 2009: 1.754e+08', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
@@ -394,7 +401,7 @@ class TestEconIndices(unittest.TestCase):
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_gdp(cntry_info, ref_year, SHP_FILE)
-        
+
         cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 3.658e+08]}
         self.assertIn('GDP SXM 2014: 3.658e+08', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
@@ -405,11 +412,11 @@ class TestEconIndices(unittest.TestCase):
         ref_year = 1950
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
             _get_gdp(cntry_info, ref_year, SHP_FILE)
-            
+
         cntry_info_ref = {'ESP': [1, 'Spain', 'geom', 12072126075.397]}
         self.assertIn('GDP ESP 1960: 1.207e+10', cm.output[0])
         self.assertEqual(cntry_info, cntry_info_ref)
-        
+
     def test_fill_econ_indicators_pass(self):
         ref_year = 2015
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
@@ -437,18 +444,16 @@ class TestEconIndices(unittest.TestCase):
 
     def test_set_econ_indicators_pass(self):
         """ Test _set_econ_indicators pass."""
-        exp = BlackMarble()
-        exp.value = np.arange(0, 20, 0.1)
+        nightlight = np.arange(0, 20, 0.1).reshape((100, 2))
         gdp = 4.225e9
         inc_grp = 4
-        _set_econ_indicators(exp, gdp, inc_grp)
-        
-        self.assertAlmostEqual(exp.value.sum(), gdp*(inc_grp+1), 5)
+        nightlight = _set_econ_indicators(nightlight, gdp, inc_grp)
+
+        self.assertAlmostEqual(nightlight.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCountryIso)
-#TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
