@@ -574,8 +574,6 @@ def _process_country(geom, nightlight, coord_nl):
 
     nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1].\
         todense()
-    nightlight_reg[nightlight_reg < 0.0] = 0.0
-
     lat_reg, lon_reg = np.mgrid[coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
                                 coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
                                 complex(0, nightlight_reg.shape[0]),
@@ -620,12 +618,18 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
     """
     nightlight_res, lat_res, lon_res = nightlight, lat, lon
     if res_fact != 1.0:
-        nightlight_res = ndimage.zoom(nightlight, res_fact)
+        sum_val = nightlight.sum()
+        nightlight_res = ndimage.zoom(nightlight, res_fact, mode='nearest')
+        nightlight_res[nightlight_res < 0.0] = 0.0
+
         lat_res, lon_res = np.mgrid[
             lat[0, 0] : lat[-1, 0] : complex(0, nightlight_res.shape[0]),
             lon[0, 0] : lon[0, -1] : complex(0, nightlight_res.shape[1])]
 
         on_land = shapely.vectorized.contains(geom, lon_res, lat_res)
+
+        nightlight_res[np.logical_not(on_land)] = 0.0
+        nightlight_res = nightlight_res/nightlight_res.sum()*sum_val
 
     return nightlight_res[on_land].ravel(), lat_res[on_land], lon_res[on_land]
 

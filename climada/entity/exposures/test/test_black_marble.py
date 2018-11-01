@@ -305,8 +305,8 @@ class TestNightLight(unittest.TestCase):
 
         self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
-        self.assertAlmostEqual(nightlight_res[0], 1.57696000e-01)
-        self.assertAlmostEqual(nightlight_res[1], 4.01408000e-01)
+        self.assertAlmostEqual(nightlight_res[0], 0.1410256410256411)
+        self.assertAlmostEqual(nightlight_res[1], 0.3589743589743589)
 
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
