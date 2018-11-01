@@ -42,6 +42,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
         self.assertIn("Processing country Spain.", cm.output[3])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[4])
+        self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12*(4+1), 4))
 
     def test_sint_maarten_pass(self):
         country_name = ['Sint Maarten']
@@ -53,6 +54,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
         self.assertIn("Processing country Sint Maarten.", cm.output[3])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[4])
+        self.assertAlmostEqual(ent.value.sum(), 3.658e+08*(4+1))
 
     def test_anguilla_pass(self):
         country_name = ['Anguilla']
@@ -60,6 +62,7 @@ class Test2013(unittest.TestCase):
         ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn("Anguilla 2013 GDP: 1.754e+08 income group: 3", ent.tag.description)
+        self.assertAlmostEqual(ent.value.sum(), 1.754e+08*(3+1))
 
 class Test1968(unittest.TestCase):
     """Test black marble of previous years to 1992."""
@@ -73,6 +76,7 @@ class Test1968(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[2])
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
+        self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10*(4+1), 4))
 
 class Test2012(unittest.TestCase):
     """Test year 2012 flags."""
@@ -86,6 +90,7 @@ class Test2012(unittest.TestCase):
             ent.set_countries(country_name, 2012, res_km=5.0)
         self.assertTrue('NOAA' in cm.output[-3])
         size1 = ent.value.size
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
     
         try:
             ent = BlackMarble()
@@ -94,16 +99,18 @@ class Test2012(unittest.TestCase):
                 self.assertTrue('NASA' in cm.output[-3])
                 size2 = ent.value.size
                 self.assertTrue(size1 < size2)
+                self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
         except TypeError:
             print('MemoryError caught')
             pass
+        
     
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0, from_hr=False)
         self.assertTrue('NOAA' in cm.output[-3])
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
         size3 = ent.value.size
-    
         self.assertEqual(size1, size3)
 
 class BMFuncs(unittest.TestCase):
