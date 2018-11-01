@@ -127,6 +127,8 @@ class Impact():
         # 1. Assign centroids to each exposure if not done
         if (not exposures.assigned) or \
         (hazard.tag.haz_type not in exposures.assigned):
+            LOGGER.info('Matching %s exposures with %s centroids.',
+                        str(exposures.value.size), str(hazard.centroids.size))
             exposures.assign(hazard)
 
         # 2. Initialize values
