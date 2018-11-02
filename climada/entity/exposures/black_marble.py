@@ -130,7 +130,7 @@ class BlackMarble(Exposures):
             self.append(self._set_one_country(cntry_val, nightlight, \
                 coord_nl, fn_nl, res_fact, res_km, cntry_admin1[cntry_iso]))
 
-        add_sea(self, sea_res)
+        self.add_sea(sea_res)
 
     def set_region(self, centroids,
                    ref_year=CONFIG['entity']['present_ref_year'], res_km=1):
@@ -157,6 +157,42 @@ class BlackMarble(Exposures):
         except KeyError:
             LOGGER.info('No country %s found.', reg_id)
             return None
+
+    def add_sea(self, sea_res):
+        """ Add sea to geometry's surroundings with given resolution.
+
+        Parameters:
+            sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
+                is distance from coast to fill with water and second parameter
+                is resolution between sea points
+        """
+        if sea_res[0] == 0:
+            return
+
+        LOGGER.info("Adding sea at %s km resolution and %s km distance from " + \
+            "coast.", str(sea_res[1]), str(sea_res[0]))
+
+        sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
+
+        min_lat = max(-90, float(np.min(self.coord.lat)) - sea_res[0])
+        max_lat = min(90, float(np.max(self.coord.lat)) + sea_res[0])
+        min_lon = max(-180, float(np.min(self.coord.lon)) - sea_res[0])
+        max_lon = min(180, float(np.max(self.coord.lon)) + sea_res[0])
+
+        lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
+        lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
+
+        lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
+        lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
+        on_land = np.logical_not(coord_on_land(lat_mgrid, lon_mgrid))
+
+        self.coord = np.array([np.append(self.coord.lat, lat_mgrid[on_land]), \
+            np.append(self.coord.lon, lon_mgrid[on_land])]).transpose()
+        self.value = np.append(self.value, lat_mgrid[on_land]*0)
+        self.id = np.arange(1, self.value.size+1)
+        self.region_id = np.append(self.region_id,
+                                   lat_mgrid[on_land].astype(int)*0 - 1)
+        self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, fn_nl, res_fact,
@@ -344,43 +380,6 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
         nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(nl_year)
 
     return nightlight, coord_nl, fn_nl, res_fact, res_km
-
-def add_sea(exp, sea_res):
-    """ Add sea to geometry's surroundings with given resolution.
-
-    Parameters:
-        exp(BlackMarble): BlackMarble instance
-        sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
-            is distance from coast to fill with water and second parameter
-            is resolution between sea points
-    """
-    if sea_res[0] == 0:
-        return
-
-    LOGGER.info("Adding sea at %s km resolution and %s km distance from " + \
-        "coast.", str(sea_res[1]), str(sea_res[0]))
-
-    sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
-
-    min_lat = max(-90, float(np.min(exp.coord.lat)) - sea_res[0])
-    max_lat = min(90, float(np.max(exp.coord.lat)) + sea_res[0])
-    min_lon = max(-180, float(np.min(exp.coord.lon)) - sea_res[0])
-    max_lon = min(180, float(np.max(exp.coord.lon)) + sea_res[0])
-
-    lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
-    lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
-
-    lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
-    lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-    on_land = np.logical_not(coord_on_land(lat_mgrid, lon_mgrid))
-
-    exp.coord = np.array([np.append(exp.coord.lat, lat_mgrid[on_land]), \
-        np.append(exp.coord.lon, lon_mgrid[on_land])]).transpose()
-    exp.value = np.append(exp.value, lat_mgrid[on_land]*0)
-    exp.id = np.arange(1, exp.value.size+1)
-    exp.region_id = np.append(exp.region_id, lat_mgrid[on_land].astype(int)*0
-                              - 1)
-    exp.impact_id = {DEF_HAZ_TYPE: np.ones(exp.value.size, int)}
 
 def _fill_admin1_geom(iso3, admin1_rec, prov_list):
     """Get admin1 polygons for each input province of country iso3.

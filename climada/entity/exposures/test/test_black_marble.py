@@ -26,7 +26,7 @@ from cartopy.io import shapereader
 from sklearn.neighbors import DistanceMetric
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_country, _get_gdp, _get_income_group, fill_econ_indicators, add_sea, \
+_process_country, _get_gdp, _get_income_group, fill_econ_indicators, \
 _set_econ_indicators, _fill_admin1_geom, _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
@@ -324,7 +324,7 @@ class TestNightLight(unittest.TestCase):
         sea_coast = 100
         sea_res_km = 50
         sea_res = (sea_coast, sea_res_km)
-        add_sea(exp, sea_res)
+        exp.add_sea(sea_res)
         exp.check()
 
         sea_coast /= ONE_LAT_KM
