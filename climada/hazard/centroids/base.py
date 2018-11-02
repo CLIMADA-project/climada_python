@@ -226,6 +226,7 @@ class Centroids(object):
         lon_unique_n = len(np.unique(self.lon))
         area_per_lat = lat_res_km * lon_res_km
         self.area_per_centroid = np.tile(area_per_lat, lon_unique_n)
+        self.area_per_centroid = np.repeat(area_per_lat, lon_unique_n)
 
     def set_on_land(self):
         """ Add the _on_land attribute, i.e. if a centroid is on land
