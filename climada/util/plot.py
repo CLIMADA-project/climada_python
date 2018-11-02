@@ -41,7 +41,7 @@ RESOLUTION = 250
 # Degrees to add in the border
 BUFFER_DEG = 1.0
 # Maximum number of bins in geo_bin_from_array
-MAX_BINS = 200
+MAX_BINS = 2000
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
                        buffer_deg=BUFFER_DEG, extend='neither', **kwargs):
