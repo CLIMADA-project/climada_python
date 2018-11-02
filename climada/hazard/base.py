@@ -453,7 +453,7 @@ class Hazard():
         hazard._check_events()
         if self.event_id.size == 0:
             for key in hazard.__dict__:
-                self.__dict__[key] = copy.copy(hazard.__dict__[key])
+                self.__dict__[key] = copy.deepcopy(hazard.__dict__[key])
             return
 
         if (self.units == '') and (hazard.units != ''):
