@@ -117,6 +117,7 @@ class TestPlotter(unittest.TestCase):
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
         myent = Entity(ENT_TEST_XLS)
+        myent.exposures.impact_id['TC'] = myent.exposures.impact_id.pop('')
         myhaz = Hazard('TC', HAZ_DEMO_MAT)
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
