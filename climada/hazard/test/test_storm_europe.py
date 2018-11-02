@@ -26,8 +26,9 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard import StormEurope, Centroids
-from climada.util import GridPoints, SYSTEM_DIR
+from climada.util import GridPoints
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestReader(unittest.TestCase):
     """ Test loading functions from the StormEurope class """
@@ -36,9 +37,9 @@ class TestReader(unittest.TestCase):
         'fp_lothar_crop-test.nc',
         'fp_xynthia_crop-test.nc',
     ]
-    ncdfs = [os.path.join(SYSTEM_DIR, f) for f in fn]
+    ncdfs = [os.path.join(DATA_DIR, f) for f in fn]
 
-    ct = Centroids(os.path.join(SYSTEM_DIR, 'fp_centroids-test.csv'))
+    ct = Centroids(os.path.join(DATA_DIR, 'fp_centroids-test.csv'))
 
     def test_centroids_from_nc(self):
         """ Test if centroids can be constructed correctly """
