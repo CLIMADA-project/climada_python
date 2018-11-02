@@ -129,7 +129,11 @@ class Impact():
         (hazard.tag.haz_type not in exposures.assigned):
             LOGGER.info('Matching %s exposures with %s centroids.',
                         str(exposures.value.size), str(hazard.centroids.size))
-            exposures.assign(hazard)
+            if np.array_equal(exposures.coord, hazard.centroids.coord):
+                exposures.assigned[hazard.tag.haz_type] = \
+                    np.arange(exposures.size)
+            else:
+                exposures.assign(hazard)
 
         # 2. Initialize values
         self.unit = exposures.value_unit
