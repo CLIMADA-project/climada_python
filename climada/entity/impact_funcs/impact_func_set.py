@@ -280,7 +280,7 @@ class ImpactFuncSet(object):
         """
         impact_funcs.check()
         if self.size() == 0:
-            self.__dict__ = impact_funcs.__dict__.copy()
+            self.__dict__ = copy.deepcopy(impact_funcs.__dict__)
             return
 
         self.tag.append(impact_funcs.tag)

@@ -153,7 +153,7 @@ class DiscRates(object):
         """
         disc_rates.check()
         if self.years.size == 0:
-            self.__dict__ = disc_rates.__dict__.copy()
+            self.__dict__ = copy.deepcopy(disc_rates.__dict__)
             return
 
         self.tag.append(disc_rates.tag)

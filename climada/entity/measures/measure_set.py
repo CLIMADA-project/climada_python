@@ -195,7 +195,7 @@ class MeasureSet():
         """
         meas.check()
         if self.num_measures() == 0:
-            self.__dict__ = meas.__dict__.copy()
+            self.__dict__ = copy.deepcopy(meas.__dict__)
             return
 
         self.tag.append(meas.tag)

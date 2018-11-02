@@ -147,7 +147,7 @@ class Centroids(object):
 
         if self.id.size == 0:
             centroids.check()
-            self.__dict__ = centroids.__dict__.copy()
+            self.__dict__ = copy.deepcopy(centroids.__dict__)
             return
         elif centroids.id.size == 0:
             return

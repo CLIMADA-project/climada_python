@@ -64,7 +64,7 @@ class Exposures():
             (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
-        assigned (dict, optional): for a given hazard, id of the
+        assigned (dict, optional): for a given hazard, position of the
             centroid(s) affecting each exposure. Filled in 'assign' method.
     """
 
@@ -189,9 +189,10 @@ class Exposures():
                                'not set.')
             check.array_optional(num_exp, ass, 'Exposures.assigned')
 
-    def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
+    def plot(self, ignore_zero=False, pop_name=True, buffer_deg=0.0,
              extend='neither', **kwargs):
-        """Plot exposures values sum binned over Earth's map.
+        """Plot exposures values sum binned over Earth's map. An other function
+        for the bins can be set through the key reduce_C_function.
 
         Parameters:
             ignore_zero (bool, optional): flag to indicate if zero and negative
@@ -201,7 +202,8 @@ class Exposures():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            kwargs (optional): arguments for hexbin matplotlib function
+            kwargs (optional): arguments for hexbin matplotlib function, e.g.
+                reduce_C_function=np.average. Default: reduce_C_function=np.sum
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -284,7 +286,7 @@ class Exposures():
         """
         exposures.check()
         if self.id.size == 0:
-            self.__dict__ = exposures.__dict__.copy()
+            self.__dict__ = copy.deepcopy(exposures.__dict__)
             return
 
         if self.ref_year != exposures.ref_year:
