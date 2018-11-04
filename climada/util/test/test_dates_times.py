@@ -20,6 +20,7 @@ Test of dates_times module
 """
 import datetime as dt
 import unittest
+import numpy as np
 
 import climada.util.dates_times as u_dt
 
@@ -34,7 +35,16 @@ class TestDateString(unittest.TestCase):
         """ Test _date_to_str function"""
         date = 730000
         self.assertEqual(u_dt.str_to_date(u_dt.date_to_str(date)), date)
+        
+class TestDateNumpy(unittest.TestCase):
+    """"Test date functions for numpy datetime64 type"""
+    def test_datetime64_to_ordinal(self):
+        """Test _datetime64_to_ordinal"""
+        date = np.datetime64('1999-12-26T06:00:00.000000000')
+        ordinal = u_dt._datetime64_to_ordinal(date)
+        self.assertEqual(u_dt.date_to_str(ordinal), '1999-12-26')
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDateString)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDateNumpy))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

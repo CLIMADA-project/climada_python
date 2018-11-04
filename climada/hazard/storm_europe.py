@@ -24,13 +24,13 @@ __all__ = ['StormEurope']
 import logging
 import numpy as np
 import xarray as xr
-import pandas as pd
 from scipy import sparse
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names, to_list
+from climada.util.dates_times import _datetime64_to_ordinal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -144,7 +144,7 @@ class StormEurope(Hazard):
         new_haz = StormEurope()
         new_haz.event_name = [nc.storm_name]
         new_haz.date = np.array([
-            _datetime64_toordinal(nc.time.data[0])
+            _datetime64_to_ordinal(nc.time.data[0])
         ])
         new_haz.intensity = sparse.csr_matrix(stacked)
         new_haz.ssi = np.array([float(nc.ssi)])
@@ -184,9 +184,3 @@ class StormEurope(Hazard):
         """ Ought to plot the SSI versus the xs_freq, which presumably is the
             excess frequency. """
         pass
-
-
-def _datetime64_toordinal(datetime):
-    """ Converts from a numpy datetime64 object to an ordinal date.
-        See https://stackoverflow.com/a/21916253 for the horrible details. """
-    return pd.to_datetime(datetime.tolist()).toordinal()
