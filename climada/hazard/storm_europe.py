@@ -30,7 +30,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names, to_list
-from climada.util.dates_times import _datetime64_to_ordinal
+from climada.util.dates_times import datetime64_to_ordinal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -143,9 +143,7 @@ class StormEurope(Hazard):
         # fill in values from netCDF
         new_haz = StormEurope()
         new_haz.event_name = [nc.storm_name]
-        new_haz.date = np.array([
-            _datetime64_to_ordinal(nc.time.data[0])
-        ])
+        new_haz.date = np.array([datetime64_to_ordinal(nc.time.data[0])])
         new_haz.intensity = sparse.csr_matrix(stacked)
         new_haz.ssi = np.array([float(nc.ssi)])
         new_haz.time_bounds = np.array(nc.time_bounds)

@@ -41,7 +41,7 @@ class TestDateNumpy(unittest.TestCase):
     def test_datetime64_to_ordinal(self):
         """Test _datetime64_to_ordinal"""
         date = np.datetime64('1999-12-26T06:00:00.000000000')
-        ordinal = u_dt._datetime64_to_ordinal(date)
+        ordinal = u_dt.datetime64_to_ordinal(date)
         self.assertEqual(u_dt.date_to_str(ordinal), '1999-12-26')
 
 # Execute Tests

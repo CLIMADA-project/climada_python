@@ -47,7 +47,7 @@ def str_to_date(date):
     year, mounth, day = (int(val) for val in date.split('-'))
     return dt.date(year, mounth, day).toordinal()
 
-def _datetime64_to_ordinal(datetime):
+def datetime64_to_ordinal(datetime):
     """ Converts from a numpy datetime64 object to an ordinal date.
         See https://stackoverflow.com/a/21916253 for the horrible details.
 
