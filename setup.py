@@ -69,7 +69,9 @@ setup(
                       'pathos',
                       'tqdm',
                       'pandas-datareader',
-                      'pillow'
+                      'pillow',
+                      'netcdf4',
+                      'iso3166'
                      ],
 
     package_data={'': extra_files },

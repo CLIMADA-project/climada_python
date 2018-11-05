@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define Centroids class.
 """
 
@@ -134,7 +151,7 @@ class Centroids(object):
 
         if self.id.size == 0:
             centroids.check()
-            self.__dict__ = centroids.__dict__.copy()
+            self.__dict__ = copy.deepcopy(centroids.__dict__)
             return
         elif centroids.id.size == 0:
             return

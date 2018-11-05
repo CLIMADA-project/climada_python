@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 module containing functions to check variables properties.
 """
 
@@ -33,8 +50,10 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
             if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) or \
             isinstance(var_val, list):
                 size(n_size, var_val, name_prefix+var_name)
+            elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
+                shape(n_row, n_col, var_val, name_prefix+var_name)
             elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) \
-                  and var_val.ndim == 2:
+            and var_val.ndim == 2:
                 shape(n_row, n_col, var_val, name_prefix+var_name)
 
 def check_optionals(var_dict, var_opt, name_prefix, n_size):

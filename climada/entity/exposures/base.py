@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define Exposures class.
 """
 
@@ -39,17 +56,42 @@ class Exposures():
             lon in second, or GridPoints instance. "lat" and "lon" are
             descriptors of the latitude and longitude respectively.
         value (np.array): a value for each exposure
-        impact_id (np.array): impact function id corresponding to each
-            exposure
+        impact_id (dict): for each hazard type (key in dict), np.array of
+            impact function id corresponding to each exposure
         deductible (np.array, optional): deductible value for each exposure
         cover (np.array, optional): cover value for each exposure
         category_id (np.array, optional): category id for each exposure
             (when defined)
         region_id (np.array, optional): region id for each exposure
             (when defined)
-        assigned (dict, optional): for a given hazard, id of the
+        assigned (dict, optional): for a given hazard, position of the
             centroid(s) affecting each exposure. Filled in 'assign' method.
     """
+
+    vars_oblig = {'tag',
+                  'ref_year',
+                  'value_unit',
+                  '_coord',
+                  'value',
+                  'impact_id',
+                  'id'
+                 }
+    """Name of the variables needed to compute the impact. Types: scalar, str,
+    list, 1dim np.array of size num_exposures, GridPoints and Tag."""
+
+    vars_def = {'assigned'
+               }
+    """Name of the variables used in impact calculation whose value is
+    descriptive or can be recomputed. Types: dict.
+    """
+
+    vars_opt = {'deductible',
+                'cover',
+                'category_id',
+                'region_id'
+               }
+    """Name of the variables that aren't need to compute the impact. Types:
+    scalar, string, list, 1dim np.array of size num_exposures."""
 
     def __init__(self, file_name='', description=''):
         """Fill values from file, if provided.
@@ -69,29 +111,22 @@ class Exposures():
             >>> exp_city = Exposures()
             >>> exp_city.coord = np.array([[40.1, 8], [40.2, 8], [40.3, 8]])
             >>> exp_city.value = np.array([5604, 123, 9005001])
-            >>> exp_city.impact_id = np.array([1, 1, 1])
+            >>> exp_city.impact_id = {'FL': np.array([1, 1, 1])}
             >>> exp_city.id = np.array([11, 12, 13])
             >>> exp_city.check()
 
-            Read exposures from Zurich.mat and checks consistency data.
+            Read exposures from ENT_TEMPLATE_XLS and checks consistency data.
 
             >>> exp_city = Exposures(ENT_TEMPLATE_XLS)
         """
-        self.clear()
-        if file_name != '':
-            self.read(file_name, description)
-
-    def clear(self):
-        """Reinitialize attributes."""
-        # Optional variables
         self.tag = Tag()
         self.ref_year = CONFIG['entity']['present_ref_year']
-        self.value_unit = 'NA'
+        self.value_unit = ''
         # Following values defined for each exposure
         # Obligatory variables
         self.coord = GridPoints()
         self.value = np.array([], float)
-        self.impact_id = np.array([], int)
+        self.impact_id = dict() # {np.array([], int or str)}
         self.id = np.array([], int)
         # Optional variables.
         self.deductible = np.array([], float)
@@ -100,9 +135,21 @@ class Exposures():
         self.region_id = np.array([], int)
         self.assigned = dict()
 
+        if file_name != '':
+            self.read(file_name, description)
+
+    def clear(self):
+        """Reinitialize attributes."""
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.array([]))
+            else:
+                setattr(self, var_name, var_val.__class__())
+        self.ref_year = CONFIG['entity']['present_ref_year']
+
     def assign(self, hazard):
-        """Compute the hazard centroids affecting to each exposure. The
-        position of the centroids are provided, not their ids.
+        """Compute the hazard centroids affecting to each exposure. Returns the
+        position of the centroids, not their ids.
 
         Parameters:
             hazard (subclass Hazard): one hazard
@@ -123,12 +170,29 @@ class Exposures():
         if np.unique(self.id).size != num_exp:
             LOGGER.error("There are exposures with the same identifier.")
             raise ValueError
-        self._check_obligatories(num_exp)
-        self._check_optionals(num_exp)
 
-    def plot(self, ignore_zero=True, pop_name=True, buffer_deg=1.0,
+        check.check_oligatories(self.__dict__, self.vars_oblig, 'Exposures.',
+                                num_exp, num_exp, 2)
+        if not self.impact_id:
+            LOGGER.error('No impact function id set.')
+        for if_haz, if_id in self.impact_id.items():
+            if not if_haz:
+                LOGGER.warning('Exposures.impact_id: impact_id hazard type ' \
+                               'not set.')
+            check.size(num_exp, if_id, 'Exposures.impact_id')
+
+        check.check_optionals(self.__dict__, self.vars_opt, 'Exposures.', num_exp)
+        check.empty_optional(self.assigned, "Exposures.assigned")
+        for ass_haz, ass in self.assigned.items():
+            if not ass_haz:
+                LOGGER.warning('Exposures.assigned: assigned hazard type ' \
+                               'not set.')
+            check.array_optional(num_exp, ass, 'Exposures.assigned')
+
+    def plot(self, ignore_zero=False, pop_name=True, buffer_deg=0.0,
              extend='neither', **kwargs):
-        """Plot exposures values sum binned over Earth's map.
+        """Plot exposures values sum binned over Earth's map. An other function
+        for the bins can be set through the key reduce_C_function.
 
         Parameters:
             ignore_zero (bool, optional): flag to indicate if zero and negative
@@ -138,7 +202,8 @@ class Exposures():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            kwargs (optional): arguments for hexbin matplotlib function
+            kwargs (optional): arguments for hexbin matplotlib function, e.g.
+                reduce_C_function=np.average. Default: reduce_C_function=np.sum
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -171,6 +236,8 @@ class Exposures():
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
@@ -192,21 +259,21 @@ class Exposures():
         except IndexError:
             LOGGER.info('No exposure with id %s.', exp_id)
             return
-        self.coord = np.delete(self.coord, pos_del, axis=0)
-        self.value = np.delete(self.value, pos_del)
-        self.impact_id = np.delete(self.impact_id, pos_del)
-        self.id = np.delete(self.id, pos_del)
-        if self.deductible.size:
-            self.deductible = np.delete(self.deductible, pos_del)
-        if self.cover.size:
-            self.cover = np.delete(self.cover, pos_del)
-        if self.category_id.size:
-            self.category_id = np.delete(self.category_id, pos_del)
-        if self.region_id.size:
-            self.region_id = np.delete(self.region_id, pos_del)
+
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
+            and var_val.size:
+                setattr(self, var_name, np.delete(var_val, pos_del))
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
+                setattr(self, var_name, np.delete(var_val, pos_del, axis=0))
+
         old_assigned = self.assigned.copy()
         for key, val in old_assigned.items():
             self.assigned[key] = np.delete(val, pos_del)
+
+        old_impact_id = self.impact_id.copy()
+        for key, val in old_impact_id.items():
+            self.impact_id[key] = np.delete(val, pos_del)
 
     def append(self, exposures):
         """Check and append variables of input Exposures to current Exposures.
@@ -219,40 +286,45 @@ class Exposures():
         """
         exposures.check()
         if self.id.size == 0:
-            self.__dict__ = exposures.__dict__.copy()
+            self.__dict__ = copy.deepcopy(exposures.__dict__)
             return
 
-        self.tag.append(exposures.tag)
         if self.ref_year != exposures.ref_year:
             LOGGER.error("Append not possible. Different reference years.")
             raise ValueError
-        if (self.value_unit == 'NA') and (exposures.value_unit != 'NA'):
+        if not self.value_unit and exposures.value_unit:
             self.value_unit = exposures.value_unit
             LOGGER.info("Exposures units set to %s.", self.value_unit)
-        elif exposures.value_unit == 'NA':
+        elif not exposures.value_unit:
             LOGGER.info("Exposures units set to %s.", self.value_unit)
         elif self.value_unit != exposures.value_unit:
             LOGGER.error("Append not possible. Different units: %s != %s.", \
                              self.value_unit, exposures.value_unit)
             raise ValueError
+        self.tag.append(exposures.tag)
 
-        self.coord = np.append(self.coord, exposures.coord, axis=0)
-        self.value = np.append(self.value, exposures.value)
-        self.impact_id = np.append(self.impact_id, exposures.impact_id)
-        self.id = np.append(self.id, exposures.id)
-        self.deductible = self._append_optional(self.deductible,
-                                                exposures.deductible)
-        self.cover = self._append_optional(self.cover, exposures.cover)
-        self.category_id = self._append_optional(self.category_id, \
-                          exposures.category_id)
-        self.region_id = self._append_optional(self.region_id, \
-                        exposures.region_id)
-        for (ass_haz, ass) in exposures.assigned.items():
-            if ass_haz not in self.assigned:
-                self.assigned[ass_haz] = ass
-            else:
-                self.assigned[ass_haz] = self._append_optional( \
-                                         self.assigned[ass_haz], ass)
+        # append all 1-dim variables and 2-dim coordinate variable
+        for (var_name, var_val), haz_val in zip(self.__dict__.items(),
+                                                exposures.__dict__.values()):
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
+            and var_val.size:
+                setattr(self, var_name, np.append(var_val, haz_val). \
+                        astype(var_val.dtype, copy=False))
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
+                setattr(self, var_name, np.append(var_val, haz_val, axis=0). \
+                        astype(var_val.dtype, copy=False))
+            elif isinstance(var_val, list) and var_val:
+                setattr(self, var_name, var_val + haz_val)
+
+        self.coord = self._coord
+        for key, val in exposures.assigned.items():
+            if key in self.assigned:
+                self.assigned[key] = np.append(
+                    self.assigned[key], val).astype(val.dtype, copy=False)
+        for key, val in exposures.impact_id.items():
+            if key in self.impact_id:
+                self.impact_id[key] = np.append(
+                    self.impact_id[key], val).astype(val.dtype, copy=False)
 
         # provide new ids to repeated ones
         _, indices = np.unique(self.id, return_index=True)
@@ -261,7 +333,7 @@ class Exposures():
             self.id[dup_id] = new_id
             new_id += 1
 
-    def select_region(self, reg_id):
+    def select(self, reg_id):
         """Return reference exposure of given region.
 
         Parameters:
@@ -277,29 +349,28 @@ class Exposures():
             LOGGER.info('No exposure with region id %s.', reg_id)
             return None
 
-        sel_exp = Exposures()
-        sel_exp.tag.file_name = self.tag.file_name
-        sel_exp.tag.description = 'Region ' + str(reg_id)
-        sel_exp.ref_year = self.ref_year
-        sel_exp.value_unit = self.value_unit
-        # Obligatory variables
-        sel_exp.coord = self.coord[sel_idx, :]
-        sel_exp.value = self.value[sel_idx]
-        sel_exp.impact_id = self.impact_id[sel_idx]
-        sel_exp.id = self.id[sel_idx]
-        # Optional variables.
-        if self.deductible.size:
-            sel_exp.deductible = self.deductible[sel_idx]
-        if self.cover.size:
-            sel_exp.cover = self.cover[sel_idx]
-        if self.category_id.size:
-            sel_exp.category_id = self.category_id[sel_idx]
-        if self.region_id.size:
-            sel_exp.region_id = self.region_id[sel_idx]
+        sel_exp = self.__class__()
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_val.size:
+                setattr(sel_exp, var_name, var_val[sel_idx])
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
+                setattr(sel_exp, var_name, var_val[sel_idx, :])
+            elif isinstance(var_val, list) and var_val:
+                setattr(sel_exp, var_name, [var_val[idx] for idx in sel_idx])
+            else:
+                setattr(sel_exp, var_name, var_val)
 
         sel_exp.assigned = dict()
         for key, value in self.assigned.items():
             sel_exp.assigned[key] = value[sel_idx]
+
+        sel_exp.impact_id = dict()
+        for key, value in self.impact_id.items():
+            sel_exp.impact_id[key] = value[sel_idx]
+
+        sel_exp.tag = copy.copy(self.tag)
+        sel_exp.tag.description = 'Region: ' + str(reg_id)
 
         return sel_exp
 
@@ -333,12 +404,12 @@ class Exposures():
     @property
     def lat(self):
         """ Get latitude from coord array """
-        return self.coord[:, 0]
+        return self._coord[:, 0]
 
     @property
     def lon(self):
         """ Get longitude from coord array """
-        return self.coord[:, 1]
+        return self._coord[:, 1]
 
     @property
     def coord(self):
@@ -359,8 +430,8 @@ class Exposures():
         self.check()
         return self.value.size
 
-    @staticmethod
-    def _read_one(file_name, description='', var_names=None):
+    @classmethod
+    def _read_one(cls, file_name, description='', var_names=None):
         """Read one file and fill attributes.
 
         Parameters:
@@ -375,7 +446,7 @@ class Exposures():
             Exposures
         """
         LOGGER.info('Reading file: %s', file_name)
-        new_exp = Exposures()
+        new_exp = cls()
         new_exp.tag = Tag(file_name, description)
 
         extension = os.path.splitext(file_name)[1]
@@ -387,36 +458,6 @@ class Exposures():
         reader(new_exp, file_name, var_names)
 
         return new_exp
-
-    @staticmethod
-    def _append_optional(ini, to_add):
-        """Append variable only if both are filled."""
-        if (ini.size != 0) and (to_add.size != 0):
-            ini = np.append(ini, to_add)
-        else:
-            ini = np.array([], float)
-        return ini
-
-    def _check_obligatories(self, num_exp):
-        """Check coherence obligatory variables."""
-        check.size(num_exp, self.value, 'Exposures.value')
-        check.size(num_exp, self.impact_id, 'Exposures.impact_id')
-        check.shape(num_exp, 2, self.coord, 'Exposures.coord')
-
-    def _check_optionals(self, num_exp):
-        """Check coherence optional variables. Warn if empty."""
-        check.array_optional(num_exp, self.category_id, \
-                             'Exposures.category_id')
-        check.array_optional(num_exp, self.region_id, \
-                             'Exposures.region_id')
-        check.empty_optional(self.assigned, "Exposures.assigned")
-        check.array_optional(num_exp, self.deductible, 'Exposures.deductible')
-        check.array_optional(num_exp, self.cover, 'Exposures.cover')
-        for (ass_haz, ass) in self.assigned.items():
-            if ass_haz == 'NA':
-                LOGGER.warning('Exposures.assigned: assigned hazard type ' \
-                               'not set.')
-            check.array_optional(num_exp, ass, 'Exposures.assigned')
 
     def __str__(self):
         return self.tag.__str__()

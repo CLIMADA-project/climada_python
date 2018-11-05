@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define Tag class.
 """
 
@@ -18,7 +35,7 @@ class Tag(object):
         description (str or list(str)): description(s) of the data
     """
 
-    def __init__(self, haz_type='NA', file_name='', description=''):
+    def __init__(self, haz_type='', file_name='', description=''):
         """Initialize values.
 
         Parameters:
@@ -33,7 +50,7 @@ class Tag(object):
 
     def append(self, tag):
         """Append input Tag instance information to current Tag."""
-        if self.haz_type == 'NA':
+        if self.haz_type == '':
             self.haz_type = tag.haz_type
         if tag.haz_type != self.haz_type:
             LOGGER.error("Hazards of different type can't be appended:"\

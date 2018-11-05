@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test Exposures from MATLAB file.
 """
 
@@ -41,20 +58,20 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.cover[0], 13927504367.680632)
         self.assertEqual(expo.cover[n_expos-1], 12624818493.687229)
 
-        self.assertIn('int', str(expo.impact_id.dtype))
-        self.assertEqual(expo.impact_id.shape, (n_expos,))
-        self.assertEqual(expo.impact_id[0], 1)
-        self.assertEqual(expo.impact_id[n_expos-1], 1)
+        self.assertIn('int', str(expo.impact_id[''].dtype))
+        self.assertEqual(expo.impact_id[''].shape, (n_expos,))
+        self.assertEqual(expo.impact_id[''][0], 1)
+        self.assertEqual(expo.impact_id[''][n_expos-1], 1)
 
         self.assertIn('int', str(expo.category_id.dtype))
         self.assertEqual(expo.category_id.shape, (n_expos,))
         self.assertEqual(expo.category_id[0], 1)
         self.assertEqual(expo.category_id[n_expos-1], 1)
 
-        self.assertIn('int', str(expo.assigned['NA'].dtype))
-        self.assertEqual(expo.assigned['NA'].shape, (n_expos,))
-        self.assertEqual(expo.assigned['NA'][0], 47)
-        self.assertEqual(expo.assigned['NA'][n_expos-1], 46)
+        self.assertIn('int', str(expo.assigned[''].dtype))
+        self.assertEqual(expo.assigned[''].shape, (n_expos,))
+        self.assertEqual(expo.assigned[''][0], 47)
+        self.assertEqual(expo.assigned[''][n_expos-1], 46)
 
         self.assertEqual(expo.region_id.shape, (0,))
 
@@ -74,7 +91,7 @@ class TestReader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='INFO') as cm:
             Exposures(ENT_DEMO_MAT)
         self.assertIn("Exposures.region_id not set.", cm.output[0])
-        
+
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
@@ -173,7 +190,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_DEMO_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertEqual('NA', expo.value_unit)
+        self.assertEqual('', expo.value_unit)
 
     def test_no_assigned_pass(self):
         """Not error if no value unit."""

@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define GridPoints class
 """
 
@@ -15,7 +32,7 @@ from shapely.geometry import LineString, Polygon
 from sklearn.neighbors import BallTree
 
 from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
-from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS
+from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS_KM
 
 LOGGER = logging.getLogger(__name__)
 
@@ -189,10 +206,10 @@ def dist_to_coast(coord_lat, lon=None):
     coast = get_coastlines((np.min(lon) - marg, np.max(lon) + marg,
                             np.min(lat) - marg, np.max(lat) + marg), 10)
 
-    tree = BallTree(coast/180*np.pi, metric='haversine')
-    dist_coast, _ = tree.query(coord/180*np.pi, k=1, return_distance=True,
+    tree = BallTree(np.radians(coast), metric='haversine')
+    dist_coast, _ = tree.query(np.radians(coord), k=1, return_distance=True,
                                dualtree=True, breadth_first=False)
-    return dist_coast.reshape(-1,) * EARTH_RADIUS
+    return dist_coast.reshape(-1,) * EARTH_RADIUS_KM
 
 def get_land_geometry(country_names=None, border=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside

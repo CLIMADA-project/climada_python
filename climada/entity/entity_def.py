@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define Entity Class.
 """
 
@@ -8,7 +25,7 @@ import logging
 
 from climada.entity.impact_funcs.impact_func_set  import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.measures.base import MeasureSet
+from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.exposures.base import Exposures
 from climada.util.config import CONFIG
 
@@ -28,7 +45,7 @@ class Entity(object):
 
     def_file = CONFIG['local_data']['entity_def']
 
-    def __init__(self, file_name=None, description=None):
+    def __init__(self, file_name=None, description=''):
         """Fill values from file. Default file used when no file provided.
 
         Parameters:
@@ -63,7 +80,7 @@ class Entity(object):
         else:
             self.read(file_name, description)
 
-    def read(self, file_name, description=None):
+    def read(self, file_name, description=''):
         """Read and check input file.
 
         Parameters:

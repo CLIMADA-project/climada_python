@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test ImpactFuncSet class.
 """
 
@@ -193,52 +210,52 @@ class TestContainer(unittest.TestCase):
         imp_fun.add_func(vulner_1)
         self.assertEqual([], imp_fun.get_func('TC'))
 
-    def test_num_funcs_pass(self):
-        """Test num_funcs function."""
+    def test_size_pass(self):
+        """Test size function."""
         imp_fun = ImpactFuncSet()
-        self.assertEqual(0, imp_fun.num_funcs())
+        self.assertEqual(0, imp_fun.size())
         
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
         imp_fun.add_func(vulner_1)
-        self.assertEqual(1, imp_fun.num_funcs())
-        self.assertEqual(1, imp_fun.num_funcs('WS', 56))
-        self.assertEqual(1, imp_fun.num_funcs('WS'))
-        self.assertEqual(1, imp_fun.num_funcs(fun_id=56))
+        self.assertEqual(1, imp_fun.size())
+        self.assertEqual(1, imp_fun.size('WS', 56))
+        self.assertEqual(1, imp_fun.size('WS'))
+        self.assertEqual(1, imp_fun.size(fun_id=56))
         imp_fun.add_func(vulner_1)
-        self.assertEqual(1, imp_fun.num_funcs())
-        self.assertEqual(1, imp_fun.num_funcs('WS', 56))
-        self.assertEqual(1, imp_fun.num_funcs('WS'))
-        self.assertEqual(1, imp_fun.num_funcs(fun_id=56))
+        self.assertEqual(1, imp_fun.size())
+        self.assertEqual(1, imp_fun.size('WS', 56))
+        self.assertEqual(1, imp_fun.size('WS'))
+        self.assertEqual(1, imp_fun.size(fun_id=56))
 
         vulner_2 = ImpactFunc()
         vulner_2.haz_type = 'WS'
         vulner_2.id = 5
         imp_fun.add_func(vulner_2)
-        self.assertEqual(2, imp_fun.num_funcs())
-        self.assertEqual(1, imp_fun.num_funcs('WS', 56))
-        self.assertEqual(2, imp_fun.num_funcs('WS'))
-        self.assertEqual(1, imp_fun.num_funcs(fun_id=56))
-        self.assertEqual(1, imp_fun.num_funcs(fun_id=5))
+        self.assertEqual(2, imp_fun.size())
+        self.assertEqual(1, imp_fun.size('WS', 56))
+        self.assertEqual(2, imp_fun.size('WS'))
+        self.assertEqual(1, imp_fun.size(fun_id=56))
+        self.assertEqual(1, imp_fun.size(fun_id=5))
 
         vulner_3 = ImpactFunc()
         vulner_3.haz_type = 'TC'
         vulner_3.id = 5
         imp_fun.add_func(vulner_3)
-        self.assertEqual(3, imp_fun.num_funcs())
-        self.assertEqual(1, imp_fun.num_funcs('TC', 5))
-        self.assertEqual(2, imp_fun.num_funcs('WS'))
-        self.assertEqual(1, imp_fun.num_funcs('TC'))
-        self.assertEqual(1, imp_fun.num_funcs(fun_id=56))
-        self.assertEqual(2, imp_fun.num_funcs(fun_id=5))
+        self.assertEqual(3, imp_fun.size())
+        self.assertEqual(1, imp_fun.size('TC', 5))
+        self.assertEqual(2, imp_fun.size('WS'))
+        self.assertEqual(1, imp_fun.size('TC'))
+        self.assertEqual(1, imp_fun.size(fun_id=56))
+        self.assertEqual(2, imp_fun.size(fun_id=5))
 
-    def test_num_funcs_wrong_zero(self):
-        """Test num_funcs method with wrong inputs."""
+    def test_size_wrong_zero(self):
+        """Test size method with wrong inputs."""
         imp_fun = ImpactFuncSet()
-        self.assertEqual(0, imp_fun.num_funcs('TC'))
-        self.assertEqual(0, imp_fun.num_funcs('TC', 3))
-        self.assertEqual(0, imp_fun.num_funcs(fun_id=3))
+        self.assertEqual(0, imp_fun.size('TC'))
+        self.assertEqual(0, imp_fun.size('TC', 3))
+        self.assertEqual(0, imp_fun.size(fun_id=3))
             
     def test_add_func_pass(self):
         """Test add_func adds ImpactFunc to ImpactFuncSet correctly."""
@@ -352,9 +369,9 @@ class TestAppend(unittest.TestCase):
         imp_fun.append(imp_fun_add)
         imp_fun.check()
 
-        self.assertEqual(imp_fun.num_funcs(), 3)
-        self.assertEqual(imp_fun.num_funcs('TC'), 2)
-        self.assertEqual(imp_fun.num_funcs('FL'), 1)
+        self.assertEqual(imp_fun.size(), 3)
+        self.assertEqual(imp_fun.size('TC'), 2)
+        self.assertEqual(imp_fun.size('FL'), 1)
         self.assertEqual(imp_fun.tag.file_name, imp_fun_add.tag.file_name)
         self.assertEqual(imp_fun.tag.description, imp_fun_add.tag.description)
 
@@ -372,8 +389,8 @@ class TestAppend(unittest.TestCase):
         imp_fun.append(imp_fun_add)
         imp_fun.check()
 
-        self.assertEqual(imp_fun.num_funcs(), 1)
-        self.assertEqual(imp_fun.num_funcs('TC'), 1)
+        self.assertEqual(imp_fun.size(), 1)
+        self.assertEqual(imp_fun.size('TC'), 1)
 
     def test_append_different_append(self):
         """Append ImpactFuncSet with same and new values. The vulnerabilities
@@ -413,10 +430,10 @@ class TestAppend(unittest.TestCase):
         imp_fun.append(imp_fun_add)
         imp_fun.check()
 
-        self.assertEqual(imp_fun.num_funcs(), 4)
-        self.assertEqual(imp_fun.num_funcs('TC'), 2)
-        self.assertEqual(imp_fun.num_funcs('FL'), 1)
-        self.assertEqual(imp_fun.num_funcs('WS'), 1)      
+        self.assertEqual(imp_fun.size(), 4)
+        self.assertEqual(imp_fun.size('TC'), 2)
+        self.assertEqual(imp_fun.size('FL'), 1)
+        self.assertEqual(imp_fun.size('WS'), 1)      
 
 class TestReadParallel(unittest.TestCase):
     """Check read function with several files"""
@@ -427,7 +444,7 @@ class TestReadParallel(unittest.TestCase):
         imp_funcs = ImpactFuncSet([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
         self.assertEqual(imp_funcs.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(imp_funcs.tag.description, 'desc1 + desc2')
-        self.assertEqual(imp_funcs.num_funcs(), 11)
+        self.assertEqual(imp_funcs.size(), 11)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)

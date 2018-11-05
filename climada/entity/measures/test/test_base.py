@@ -1,13 +1,96 @@
 """
-Test MeasureSet class.
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Test MeasureSet and Measure classes.
 """
 
 import unittest
-import numpy
+import numpy as np
 
-from climada.entity.measures.base import MeasureSet, Measure
+from climada.hazard.base import Hazard
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.entity.impact_funcs.base import ImpactFunc
+from climada.entity.measures.base import Measure
+from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.source import READ_SET
-from climada.util.constants import ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
+
+
+class TestImpact(unittest.TestCase):
+    """Test implement measures functions."""
+    def test_change_imp_func_pass(self):
+        """Test change_imp_func"""
+        meas = MeasureSet(ENT_DEMO_MAT)
+        act_1 = meas.get_measure('Mangroves')
+
+        imp_set = ImpactFuncSet()
+        imp_tc = ImpactFunc()
+        imp_tc.haz_type = 'XX'
+        imp_tc.id = 1
+        imp_tc.intensity = np.arange(10,100, 10)
+        imp_tc.intensity[0] = 0.
+        imp_tc.intensity[-1] = 100.
+        imp_tc.mdd = np.array([0.0, 0.0, 0.021857142857143, 0.035887500000000,
+                               0.053977415307403, 0.103534246575342, 0.180414000000000,
+                               0.410796000000000, 0.410796000000000])
+        imp_tc.paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
+                               0.398500000000000, 0.657000000000000, 1.000000000000000,
+                               1.000000000000000, 1.000000000000000])
+        imp_set.add_func(imp_tc)
+        new_imp = act_1.change_imp_func(imp_set).get_func('XX')[0]
+
+        self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
+            54., 64., 74., 84., 104.])))
+        self.assertTrue(np.array_equal(new_imp.mdd, np.array([0, 0, 0.021857142857143, 0.035887500000000,
+            0.053977415307403, 0.103534246575342, 0.180414000000000, 0.410796000000000, 0.410796000000000])))
+        self.assertTrue(np.array_equal(new_imp.paa, np.array([0, 0.005000000000000, 0.042000000000000,
+            0.160000000000000, 0.398500000000000, 0.657000000000000, 1.000000000000000,
+            1.000000000000000, 1.000000000000000])))
+        self.assertFalse(id(new_imp) == id(imp_tc))
+
+    def test_implement_pass(self):
+        """Test implement"""
+        meas = MeasureSet(ENT_DEMO_MAT)
+        act_1 = meas.get_measure('Mangroves')
+
+        imp_set = ImpactFuncSet()
+        imp_tc = ImpactFunc()
+        imp_tc.haz_type = 'XX'
+        imp_tc.id = 1
+        imp_tc.intensity = np.arange(10,100, 10)
+        imp_tc.intensity[0] = 0.
+        imp_tc.intensity[-1] = 100.
+        imp_tc.mdd = np.array([0.0, 0.0, 0.021857142857143, 0.035887500000000,
+                               0.053977415307403, 0.103534246575342, 0.180414000000000,
+                               0.410796000000000, 0.410796000000000])
+        imp_tc.paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
+                               0.398500000000000, 0.657000000000000, 1.000000000000000,
+                               1.000000000000000, 1.000000000000000])
+        imp_set.add_func(imp_tc)
+
+        hazard = Hazard('XX')
+        exposures = Exposures()
+        new_exp, new_ifs, new_haz = act_1.implement(exposures, imp_set, hazard)
+
+        self.assertFalse(id(new_ifs) == id(imp_tc))
+        self.assertTrue(id(new_exp) == id(exposures))
+        self.assertTrue(id(new_haz) == id(hazard))
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -22,7 +105,7 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(act_1, 'color_rgb'))
         self.assertTrue(hasattr(act_1, 'cost'))
         self.assertTrue(hasattr(act_1, 'hazard_freq_cutoff'))
-        self.assertTrue(hasattr(act_1, 'hazard_intensity'))
+        self.assertTrue(hasattr(act_1, 'hazard_inten_imp'))
         self.assertTrue(hasattr(act_1, 'mdd_impact'))
         self.assertTrue(hasattr(act_1, 'paa_impact'))
         self.assertTrue(hasattr(act_1, 'risk_transf_attach'))
@@ -41,12 +124,12 @@ class TestContainer(unittest.TestCase):
         """Test error is raised when wrong ImpactFunc provided."""
         meas = MeasureSet()
         act_1 = Measure()
-        with self.assertLogs('climada.entity.measures.base', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.measures.measure_set', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.add_measure(act_1)
         self.assertIn("Input Measure's name not set.", cm.output[0])
 
-        with self.assertLogs('climada.entity.measures.base', level='ERROR') as cm:
+        with self.assertLogs('climada.entity.measures.measure_set', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.add_measure(45)
         self.assertIn("Input value is not of type Measure.", cm.output[0])
@@ -66,7 +149,7 @@ class TestContainer(unittest.TestCase):
         act_1 = Measure()
         act_1.name = 'Mangrove'
         meas.add_measure(act_1)
-        with self.assertLogs('climada.entity.measures.base', level='WARNING') as cm:
+        with self.assertLogs('climada.entity.measures.measure_set', level='WARNING') as cm:
             meas.remove_measure('Seawall')
         self.assertIn('No Measure with name Seawall.', cm.output[0])
 
@@ -133,8 +216,8 @@ class TestChecker(unittest.TestCase):
         meas = MeasureSet()
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.hazard_intensity = (1, 2, 3)
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.hazard_inten_imp = (1, 2, 3)
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
         meas.add_measure(act_1)
@@ -142,7 +225,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
-        self.assertIn('Invalid Measure.hazard_intensity size: 2 != 3.', \
+        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.', \
                          cm.output[0])
 
     def test_check_wrongColor_fail(self):
@@ -153,7 +236,7 @@ class TestChecker(unittest.TestCase):
         act_1.color_rgb = (1, 2)
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
         meas.add_measure(act_1)
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
@@ -166,10 +249,10 @@ class TestChecker(unittest.TestCase):
         meas = MeasureSet()
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1)
         act_1.paa_impact = (1, 2)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
         meas.add_measure(act_1)
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
@@ -182,10 +265,10 @@ class TestChecker(unittest.TestCase):
         meas = MeasureSet()
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2, 3, 4)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
         meas.add_measure(act_1)
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
@@ -212,10 +295,10 @@ class TestAppend(unittest.TestCase):
         meas_add = MeasureSet()
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
         meas_add.add_measure(act_1)
 
         meas.append(meas_add)
@@ -230,10 +313,10 @@ class TestAppend(unittest.TestCase):
         meas_add = MeasureSet()
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
         meas.add_measure(act_1)
         meas_add.add_measure(act_1)
 
@@ -248,24 +331,24 @@ class TestAppend(unittest.TestCase):
         with repeated name are overwritten."""
         act_1 = Measure()
         act_1.name = 'Mangrove'
-        act_1.color_rgb = numpy.array([1, 1, 1])
+        act_1.color_rgb = np.array([1, 1, 1])
         act_1.mdd_impact = (1, 2)
         act_1.paa_impact = (1, 2)
-        act_1.hazard_intensity = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
 
         act_11 = Measure()
         act_11.name = 'Mangrove'
-        act_11.color_rgb = numpy.array([1, 1, 1])
+        act_11.color_rgb = np.array([1, 1, 1])
         act_11.mdd_impact = (1, 2)
         act_11.paa_impact = (1, 3)
-        act_11.hazard_intensity = (1, 2)
+        act_11.hazard_inten_imp = (1, 2)
 
         act_2 = Measure()
         act_2.name = 'Anything'
-        act_2.color_rgb = numpy.array([1, 1, 1])
+        act_2.color_rgb = np.array([1, 1, 1])
         act_2.mdd_impact = (1, 2)
         act_2.paa_impact = (1, 2)
-        act_2.hazard_intensity = (1, 2)
+        act_2.hazard_inten_imp = (1, 2)
 
         meas = MeasureSet()
         meas.add_measure(act_1)
@@ -297,4 +380,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

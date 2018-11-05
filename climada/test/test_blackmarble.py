@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Tests on Black marble.
 """
 
@@ -25,6 +42,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
         self.assertIn("Processing country Spain.", cm.output[3])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[4])
+        self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12*(4+1), 4))
 
     def test_sint_maarten_pass(self):
         country_name = ['Sint Maarten']
@@ -36,6 +54,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
         self.assertIn("Processing country Sint Maarten.", cm.output[3])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[4])
+        self.assertAlmostEqual(ent.value.sum(), 3.658e+08*(4+1))
 
     def test_anguilla_pass(self):
         country_name = ['Anguilla']
@@ -43,6 +62,7 @@ class Test2013(unittest.TestCase):
         ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn("Anguilla 2013 GDP: 1.754e+08 income group: 3", ent.tag.description)
+        self.assertAlmostEqual(ent.value.sum(), 1.754e+08*(3+1))
 
 class Test1968(unittest.TestCase):
     """Test black marble of previous years to 1992."""
@@ -56,6 +76,7 @@ class Test1968(unittest.TestCase):
         self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[2])
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
+        self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10*(4+1), 4))
 
 class Test2012(unittest.TestCase):
     """Test year 2012 flags."""
@@ -69,6 +90,7 @@ class Test2012(unittest.TestCase):
             ent.set_countries(country_name, 2012, res_km=5.0)
         self.assertTrue('NOAA' in cm.output[-3])
         size1 = ent.value.size
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
     
         try:
             ent = BlackMarble()
@@ -77,16 +99,18 @@ class Test2012(unittest.TestCase):
                 self.assertTrue('NASA' in cm.output[-3])
                 size2 = ent.value.size
                 self.assertTrue(size1 < size2)
+                self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
         except TypeError:
             print('MemoryError caught')
             pass
+        
     
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0, from_hr=False)
         self.assertTrue('NOAA' in cm.output[-3])
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
         size3 = ent.value.size
-    
         self.assertEqual(size1, size3)
 
 class BMFuncs(unittest.TestCase):
@@ -134,14 +158,14 @@ class BMFuncs(unittest.TestCase):
         ent.check()
                 
         self.assertEqual(np.unique(ent.region_id).size, 2)
-        self.assertEqual(np.unique(ent.impact_id).size, 1)
+        self.assertEqual(np.unique(ent.impact_id['TC']).size, 1)
         self.assertEqual(ent.ref_year, 2013)
-        self.assertIn('Switzerland 2013 GDP: ', ent.tag.description[0])
-        self.assertIn('Germany 2013 GDP: ', ent.tag.description[1])
-        self.assertIn('income group: 4', ent.tag.description[0])
-        self.assertIn('income group: 4', ent.tag.description[1])
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name[0])
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name[1])
+        self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
+        self.assertIn('Germany 2013 GDP: ', ent.tag.description)
+        self.assertIn('income group: 4', ent.tag.description)
+        self.assertIn('income group: 4', ent.tag.description)
+        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
+        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
         
     def test_cut_nl_nasa_1_pass(self):
         """Test cut_nl_nasa situation 2->3->4->5."""
@@ -171,8 +195,8 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
             
             idx_info[0] = 4
             idx_info[1] = 3
@@ -182,9 +206,10 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 102.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
+            self.assertEqual(nl_mat.tocsr()[0, 1], 0.0)
+            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
     
             idx_info[0] = 5
             idx_info[1] = 4
@@ -194,10 +219,10 @@ class BMFuncs(unittest.TestCase):
                         in_lon, in_lat_nb, in_lon_nb)
             
             self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 102.0)
-            self.assertEqual(nl_mat.tocsr()[1, 1], 103.0)
+            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
+            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
+            self.assertEqual(nl_mat.tocsr()[0, 1], 103.0)
+            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
         except MemoryError:
             print('MemoryError caught')
             pass

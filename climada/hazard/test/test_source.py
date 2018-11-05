@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test read Hazard from file.
 """
 
@@ -20,7 +37,7 @@ class TestReaderMat(unittest.TestCase):
     def test_hazard_pass(self):
         ''' Read a hazard mat file correctly.'''
         # Read demo excel file
-        hazard = Hazard()
+        hazard = Hazard('TC')
         hazard.read(HAZ_TEST_MAT)
 
         # Check results
@@ -85,7 +102,7 @@ class TestReaderMat(unittest.TestCase):
         read_cen = Centroids(HAZ_TEST_MAT)
         read_cen.id = np.ones(12)
         # Read demo excel file
-        hazard = Hazard()
+        hazard = Hazard('TC')
 
         # Expected exception because centroid size is smaller than the
         # one provided in the intensity matrix
@@ -130,7 +147,7 @@ class TestReaderExcel(unittest.TestCase):
         n_events = 100
         n_centroids = 45
 
-        self.assertEqual(hazard.units, 'NA')
+        self.assertEqual(hazard.units, '')
 
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(hazard.centroids.coord[0][0], -25.95)

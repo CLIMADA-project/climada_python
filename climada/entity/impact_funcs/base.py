@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define ImpactFunc class.
 """
 
@@ -17,7 +34,8 @@ class ImpactFunc(object):
 
     Attributes:
         haz_type (str): hazard type acronym (e.g. 'TC')
-        id (int): id of the ImpactFunc (wrt vulnerabilities of same hazard)
+        id (int or str): id of the ImpactFunc (wrt vulnerabilities of same
+           hazard). Preferably int, otherwie short string.
         name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
@@ -28,10 +46,10 @@ class ImpactFunc(object):
     """
     def __init__(self):
         """ Empty initialization."""
-        self.id = 'NA' # int expected
+        self.id = ''
         self.name = ''
-        self.intensity_unit = 'NA'
-        self.haz_type = 'NA'
+        self.intensity_unit = ''
+        self.haz_type = ''
         # Followng values defined for each intensity value
         self.intensity = np.array([])
         self.mdd = np.array([])

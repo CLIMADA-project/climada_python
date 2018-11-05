@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test TropCyclone class
 """
 
@@ -146,7 +163,8 @@ class TestModel(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
-        rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0], ureg)
+        rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].radius_max_wind.values, ureg)
 
         self.assertEqual(rad_max_wind[0], 75.536713749999905)
         self.assertAlmostEqual(rad_max_wind[10], 75.592659583328057)
@@ -159,8 +177,8 @@ class TestModel(unittest.TestCase):
         self.assertEqual(rad_max_wind[192], 48.875090249999985)
         self.assertAlmostEqual(rad_max_wind[200], 59.975901084074955)
 
-    def test_bs_value_pass(self):
-        """" Test _bs_value function. Compare to MATLAB reference."""
+    def test_bs_hol08_pass(self):
+        """" Test _bs_hol08 function. Compare to MATLAB reference."""
         v_trans = 5.241999541820597
         penv = 1010
         pcen = 1005.263333333329
@@ -168,7 +186,7 @@ class TestModel(unittest.TestCase):
         lat = 12.299999504631343
         xx = 0.586781395348824
         tint = 1
-        _bs_res = tc._bs_value(v_trans, penv, pcen, prepcen, lat, xx, tint)
+        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, xx, tint)
         self.assertAlmostEqual(_bs_res, 1.270856908796045)
 
         v_trans = 5.123882725120426
@@ -178,7 +196,7 @@ class TestModel(unittest.TestCase):
         lat = 12.299999279463769
         xx = 0.586794883720942
         tint = 1
-        _bs_res = tc._bs_value(v_trans, penv, pcen, prepcen, lat, xx, tint)
+        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, xx, tint)
         self.assertAlmostEqual(_bs_res, 1.265551666104679)
 
     def test_stat_holland(self):
@@ -233,15 +251,16 @@ class TestModel(unittest.TestCase):
         self.assertEqual(CENT_CLB.lon[coastal[1044881]],  180.0000000000000)
         self.assertEqual(CENT_CLB.id[coastal[1044881]], 3043681)
 
-    def test_vtrans_holland(self):
-        """ Test _vtrans_holland function. Compare to MATLAB reference."""
+    def test_vtrans_correct(self):
+        """ Test _vtrans_correct function. Compare to MATLAB reference."""
         ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-                tc_track.data[0], ureg))
+            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].radius_max_wind.values, ureg))
         coast_centr = tc.coastal_centr_idx(CENT_CLB)
         new_centr = CENT_CLB.coord[coast_centr]
         r_arr = np.array([286.4938638337190, 290.5930935802884,
@@ -250,11 +269,16 @@ class TestModel(unittest.TestCase):
         close_centr = np.array([400381, 400382, 400383, 400384, 401110,
                                 1019665]) - 1
 
-        v_trans, v_trans_corr = tc._vtrans_holland(tc_track.data[0], i_node,
-            new_centr[close_centr, :], r_arr, ureg)
+        v_trans_corr = tc._vtrans_correct(
+            tc_track.data[0].lat.values[i_node:i_node+2], 
+            tc_track.data[0].lon.values[i_node:i_node+2],
+            tc_track.data[0].radius_max_wind.values[i_node],
+            new_centr[close_centr, :], r_arr)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
-        self.assertAlmostEqual(v_trans * to_kn, 10.191466256012880)
+        
+        v_trans = 10.191466256012880 / to_kn
+        v_trans_corr *= v_trans
         self.assertEqual(v_trans_corr.size, 6)
         self.assertAlmostEqual(v_trans_corr[0] * to_kn, 2.490082696506720)
         self.assertAlmostEqual(v_trans_corr[1] * to_kn, 2.418324821762491)
@@ -263,21 +287,42 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(v_trans_corr[4] * to_kn, 2.416654031976129)
         self.assertAlmostEqual(v_trans_corr[5] * to_kn, -1.394485527059995)
 
-    def test_vang_holland(self):
-        """ Test _vang_holland function. Compare to MATLAB reference. """
+    def test_vtrans_pass(self):
+        """ Test _vtrans function. Compare to MATLAB reference."""
+        ureg = UnitRegistry()
+        i_node = 1
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+
+        v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values, 
+                tc_track.data[0].time_step.values, ureg)
+
+        to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
+        
+        self.assertEqual(v_trans.size, tc_track.data[0].time.size-1)
+        self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466256012880)
+
+    def test_vang_sym(self):
+        """ Test _vang_sym function. Compare to MATLAB reference. """
         ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-                tc_track.data[0], ureg))
+            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].radius_max_wind.values, ureg))
         r_arr = np.array([286.4938638337190, 290.5930935802884,
                           295.0271327746536, 299.7811253637995,
                           296.8484825705515, 274.9892882245964])
         v_trans = 5.2429431910897559
-        v_ang = tc._vang_holland(tc_track.data[0], i_node, r_arr, v_trans,
-                                 model='H08')
+        v_ang = tc._vang_sym(tc_track.data[0].environmental_pressure.values[i_node], 
+            tc_track.data[0].central_pressure.values[i_node-1:i_node+1], 
+            tc_track.data[0].lat.values[i_node], 
+            tc_track.data[0].time_step.values[i_node], 
+            tc_track.data[0].radius_max_wind.values[i_node], 
+            r_arr, v_trans, model=0)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
         self.assertEqual(v_ang.size, 6)
@@ -288,47 +333,47 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(v_ang[4] * to_kn, 10.319869893291429)
         self.assertAlmostEqual(v_ang[5] * to_kn, 11.305188714213809)
 
-    def test_windfield_holland(self):
-        """ Test _windfield_holland function. Compare to MATLAB reference. """
+    def test_windfield(self):
+        """ Test _windfield function. Compare to MATLAB reference. """
         ureg = UnitRegistry()
         tc_track = TCTracks()
         tc_track.read_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-                tc_track.data[0], ureg))
+            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].radius_max_wind.values, ureg))
         int_track = tc_track.data[0].sel(time=slice('1951-08-27', '1951-08-28'))
         coast_centr = tc.coastal_centr_idx(CENT_CLB)
-        new_centr = CENT_CLB.coord[coast_centr]
 
-        wind = tc._windfield_holland(int_track, new_centr, model='H08')
+        wind = tc._windfield(int_track, CENT_CLB.coord, coast_centr, model=0)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
-        self.assertTrue(isinstance(wind, sparse.lil.lil_matrix))
-        self.assertEqual(wind.shape, (1, 1044882))
+        self.assertEqual(wind.shape, (CENT_CLB.size,))
+        
+        wind = wind[coast_centr]
         self.assertEqual(np.nonzero(wind)[0].size, 5)
-        self.assertTrue(np.array_equal(wind.nonzero()[1],
+        self.assertTrue(np.array_equal(wind.nonzero()[0],
             np.array([1019062, 1019183, 1019304, 1019425, 1019667]) - 1))
-        self.assertTrue(np.array_equal(wind.nonzero()[0], np.zeros((5,))))
 
-        self.assertAlmostEqual(wind[0, 1019061] * to_kn, 35.961499748377776, 4)
+        self.assertAlmostEqual(wind[1019061] * to_kn, 35.961499748377776, 4)
         self.assertTrue(np.isclose(35.961499748377776,
-                                   wind[0, 1019061] * to_kn))
+                                   wind[1019061] * to_kn))
 
-        self.assertAlmostEqual(wind[0, 1019182] * to_kn, 35.985591640301138, 6)
+        self.assertAlmostEqual(wind[1019182] * to_kn, 35.985591640301138, 6)
         self.assertTrue(np.isclose(35.985591640301138,
-                                   wind[0, 1019182] * to_kn))
+                                   wind[1019182] * to_kn))
 
-        self.assertAlmostEqual(wind[0, 1019303] * to_kn, 35.567653569424614, 5)
+        self.assertAlmostEqual(wind[1019303] * to_kn, 35.567653569424614, 5)
         self.assertTrue(np.isclose(35.567653569424614,
-                                   wind[0, 1019303] * to_kn))
+                                   wind[1019303] * to_kn))
 
-        self.assertAlmostEqual(wind[0, 1019424] * to_kn, 34.470214174079388, 6)
+        self.assertAlmostEqual(wind[1019424] * to_kn, 34.470214174079388, 6)
         self.assertTrue(np.isclose(34.470214174079388,
-                                   wind[0, 1019424] * to_kn))
+                                   wind[1019424] * to_kn))
 
-        self.assertAlmostEqual(wind[0, 1019666] * to_kn, 34.067538078331282, 6)
+        self.assertAlmostEqual(wind[1019666] * to_kn, 34.067538078331282, 6)
         self.assertTrue(np.isclose(34.067538078331282,
-                                   wind[0, 1019666] * to_kn))
+                                   wind[1019666] * to_kn))
 
     def test_gust_from_track(self):
         """ Test gust_from_track function. Compare to MATLAB reference. """

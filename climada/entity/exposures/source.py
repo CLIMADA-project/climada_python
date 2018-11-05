@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define Exposures reader function from a file with extension defined in
 constant FILE_EXT.
 """
@@ -50,6 +67,9 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """ MATLAB variable names """
 
+DEF_HAZ_TYPE = ''
+""" Hazard type used for the impact functions. Used for compatibility."""
+
 LOGGER = logging.getLogger(__name__)
 
 def read_mat(exposures, file_name, var_names=None):
@@ -94,8 +114,8 @@ def _read_xls_obligatory(exposures, dfr, var_names):
     coord_cols = [var_names['col_name']['lat'], var_names['col_name']['lon']]
     exposures.coord = GridPoints(np.array(dfr[coord_cols]))
 
-    exposures.impact_id = dfr[var_names['col_name']['imp']].values. \
-                            astype(int, copy=False)
+    exposures.impact_id[DEF_HAZ_TYPE] = dfr[var_names['col_name']['imp']].values. \
+        astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(dfr.index)
@@ -131,7 +151,7 @@ def _read_xls_optional(exposures, dfr, file_name, var_names):
     assigned = _parse_xls_optional(dfr, np.array([]), \
                 var_names['col_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
-        exposures.assigned['NA'] = assigned
+        exposures.assigned[DEF_HAZ_TYPE] = assigned
 
     # check if reference year given under "names" sheet
     # if not, set default present reference year
@@ -172,8 +192,8 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures.coord = GridPoints(np.concatenate((coord_lat, coord_lon),
                                                 axis=1))
 
-    exposures.impact_id = np.squeeze(data[var_names['var_name']['imp']]). \
-        astype(int, copy=False)
+    exposures.impact_id[DEF_HAZ_TYPE] = np.squeeze( \
+        data[var_names['var_name']['imp']]).astype(int, copy=False)
 
     # set exposures id according to appearance order
     num_exp = len(exposures.value)
@@ -207,7 +227,7 @@ def _read_mat_optional(exposures, data, file_name, var_names):
     assigned = _parse_mat_optional(data, np.array([]), \
                 var_names['var_name']['ass']).astype(int, copy=False)
     if assigned.size > 0:
-        exposures.assigned['NA'] = assigned
+        exposures.assigned[DEF_HAZ_TYPE] = assigned
     try:
         exposures.value_unit = hdf5.get_str_from_ref(file_name, \
             data[var_names['var_name']['uni']][0][0])

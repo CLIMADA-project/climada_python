@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test Entity class.
 """
 import os
@@ -9,7 +26,7 @@ from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.base import MeasureSet
+from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'test', 'data')

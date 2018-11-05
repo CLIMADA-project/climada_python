@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define ImpactFuncSet class.
 """
 
@@ -83,10 +100,10 @@ class ImpactFuncSet(object):
         if not isinstance(func, ImpactFunc):
             LOGGER.error("Input value is not of type ImpactFunc.")
             raise ValueError
-        if func.haz_type == 'NA':
+        if not func.haz_type:
             LOGGER.error("Input ImpactFunc's hazard type not set.")
             raise ValueError
-        if func.id == 'NA':
+        if not func.id:
             LOGGER.error("Input ImpactFunc's id not set.")
             raise ValueError
         if func.haz_type not in self._data:
@@ -193,7 +210,7 @@ class ImpactFuncSet(object):
         else:
             return self._data
 
-    def num_funcs(self, haz_type=None, fun_id=None):
+    def size(self, haz_type=None, fun_id=None):
         """Get number of impact functions contained with input hazard type and
         /or id. If no input provided, get total number of impact functions.
 
@@ -217,11 +234,11 @@ class ImpactFuncSet(object):
         """
         for key_haz, vul_dict in self._data.items():
             for fun_id, vul in vul_dict.items():
-                if (fun_id != vul.id) | (fun_id == 'NA'):
+                if (fun_id != vul.id) | (fun_id == ''):
                     LOGGER.error("Wrong ImpactFunc.id: %s != %s.", fun_id, \
                                  vul.id)
                     raise ValueError
-                if (key_haz != vul.haz_type) | (key_haz == 'NA'):
+                if (key_haz != vul.haz_type) | (key_haz == ''):
                     LOGGER.error("Wrong ImpactFunc.haz_type: %s != %s.",\
                                  key_haz, vul.haz_type)
                     raise ValueError
@@ -243,6 +260,8 @@ class ImpactFuncSet(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
@@ -260,8 +279,8 @@ class ImpactFuncSet(object):
             ValueError
         """
         impact_funcs.check()
-        if self.num_funcs() == 0:
-            self.__dict__ = impact_funcs.__dict__.copy()
+        if self.size() == 0:
+            self.__dict__ = copy.deepcopy(impact_funcs.__dict__)
             return
 
         self.tag.append(impact_funcs.tag)
@@ -282,7 +301,7 @@ class ImpactFuncSet(object):
         Returns:
             matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
         """
-        num_plts = self.num_funcs(haz_type, fun_id)
+        num_plts = self.size(haz_type, fun_id)
         # Select all hazard types to plot
         if haz_type is not None:
             hazards = [haz_type]

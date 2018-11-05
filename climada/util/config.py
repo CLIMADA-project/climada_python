@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define configuration parameters.
 """
 
@@ -97,13 +114,16 @@ def setup_conf_user():
         if 'local_data' in userconfig.keys():
             CONFIG['local_data'].update(userconfig['local_data'])
 
+        if 'global' in userconfig.keys():
+            CONFIG['global'] = userconfig['global']
+
         if 'entity' in userconfig.keys():
             CONFIG['entity'].update(userconfig['entity'])
 
         if 'trop_cyclone' in userconfig.keys():
             CONFIG['trop_cyclone'].update(userconfig['trop_cyclone'])
 
-        if 'log_level' in userconfig.keys():
-            CONFIG['log_level'] = userconfig['log_level']
+        if 'cost_benefit' in userconfig.keys():
+            CONFIG['cost_benefit'] = userconfig['cost_benefit']
 
         check_conf()

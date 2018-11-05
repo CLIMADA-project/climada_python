@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define TCTracks: IBTracs reader and tracks manager.
 """
 
@@ -7,6 +24,7 @@ __all__ = ['SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 import logging
 import datetime as dt
 import array
+import itertools
 import numpy as np
 import matplotlib.cm as cm
 from matplotlib.lines import Line2D
@@ -17,16 +35,18 @@ import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
 from pint import UnitRegistry
+from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
+from climada.util.constants import EARTH_RADIUS_KM
 from climada.util.files_handler import get_file_names
-import climada.util.plot as plot
+import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
 SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 135, 1000]
-""" Saffir-Simpson Hurricane Wind Scale """
+""" Saffir-Simpson Hurricane Wind Scale in kn"""
 
 CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',
@@ -36,7 +56,7 @@ CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
 CAT_COLORS = cm.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """ Color scale to plot the Saffir-Simpson scale."""
 
-class TCTracks(object):
+class TCTracks():
     """Contains tropical cyclone tracks.
 
     Attributes:
@@ -118,48 +138,37 @@ class TCTracks(object):
         """
         raise NotImplementedError
 
-    def equal_timestep(self, time_step_h=CONFIG['trop_cyclone']['time_step_h']):
+    def equal_timestep(self, time_step_h=CONFIG['trop_cyclone']['time_step_h'],
+                       land_params=True):
         """ Generate interpolated track values to time steps of min_time_step.
 
         Parameters:
             time_step_h (float): time step in hours to which to interpolate
+            land_params (bool, optional): compute on_land and dist_since_lf at
+                each node. Default: False.
         """
-        land_param = False
-        new_list = list()
-        for track in self.data:
-            if track.time.size > 3:
-                time_step = str(time_step_h) + 'H'
-                track_int = track.resample(time=time_step). \
-                            interpolate('linear')
-                track_int['time_step'] = ('time', track_int.time.size *
-                                          [time_step_h])
-                track_int.coords['lat'] = track.lat.resample(time=time_step).\
-                                          interpolate('cubic')
-                track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                                          interpolate('cubic')
-                track_int.attrs = track.attrs
-                track.attrs['category'] = set_category( \
-                    track.max_sustained_wind.values, \
-                    track.max_sustained_wind_unit)
-                if 'on_land' in track_int or 'dist_since_lf' in track_int:
-                    land_param = True
-            else:
-                LOGGER.warning('Track interpolation not done. ' +
-                               'Not enough elements for %s', track.name)
-                track_int = track
-            new_list.append(track_int)
+        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size,
+                    time_step_h)
 
-        self.data = new_list
-        if land_param:
-            self._calc_land_params()
+        if land_params:
+            land_geom = _calc_land_geom(self.data)
+        else:
+            land_geom = None
+
+        chunksize = min(self.size, 500)
+        self.data = Pool().map(self._one_interp_data, self.data,
+                               itertools.repeat(time_step_h, self.size),
+                               itertools.repeat(land_geom, self.size),
+                               chunksize=chunksize)
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
         ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
-        """ Generate random tracks for every track contained.
+        """ Generate synthetic tracks. An ensamble of tracks is computed for
+        every track contained.
 
         Parameters:
-            ens_size (int, optional): number of created tracks per original
-                track. Default 9.
+            ens_size (int, optional): number of ensamble per original track.
+                Default 9.
             ens_amp0 (float, optional): amplitude of max random starting point
                 shift degree longitude. Default: 1.5
             max_angle (float, optional): maximum angle of variation, =pi is
@@ -171,47 +180,31 @@ class TCTracks(object):
             decay (bool, optional): compute land decay in probabilistic tracks.
                 Default: True
         """
-        ens_track = list()
+        LOGGER.info('Computing %s synthetic tracks.', ens_size*self.size)
+
         if seed >= 0:
             np.random.seed(seed)
+
+        # problem random num generator in multiprocessing. python 3.7?
+        new_ens = list()
         for track in self.data:
-            n_dat = track.time.size
-            rand_unif_ini = np.random.uniform(size=(2, ens_size))
-            rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
+            new_ens.extend(self._one_rnd_walk(track, ens_size, ens_amp0,
+                                              ens_amp, max_angle))
+        self.data = new_ens
 
-            xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
-            tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
-            coord_xy = np.empty((2, ens_size * n_dat))
-            coord_xy[0] = np.cumsum(ens_amp * np.sin(tmp_ang))
-            coord_xy[1] = np.cumsum(ens_amp * np.cos(tmp_ang))
-
-            ens_track.append(track)
-            for i_ens in range(ens_size):
-                i_track = track.copy(True)
-
-                d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
-                    np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
-
-                d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
-
-                i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
-                i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
-                i_track.attrs['orig_event_flag'] = False
-                i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + \
-                                        str(i_ens+1)
-                i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
-
-                ens_track.append(i_track)
-
-        self.data = ens_track
-        self._calc_land_params()
         if decay:
             try:
-                v_rel, p_rel = self._calc_land_decay()
-                self._apply_land_decay(v_rel, p_rel)
+                land_geom = _calc_land_geom(self.data)
+                v_rel, p_rel = self._calc_land_decay(land_geom)
+                self._apply_land_decay(v_rel, p_rel, land_geom)
             except ValueError as err:
-                LOGGER.info('No land decay coefficients could be applied. %s',\
+                LOGGER.info('No land decay coefficients could be applied. %s',
                             str(err))
+
+    @property
+    def size(self):
+        """ Get longitude from coord array """
+        return len(self.data)
 
     def plot(self, title=None):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -224,10 +217,10 @@ class TCTracks(object):
         """
         if not self.size:
             LOGGER.info('No tracks to plot')
-            return
+            return None
 
         deg_border = 0.5
-        fig, axis = plot.make_map()
+        fig, axis = u_plot.make_map()
         axis = axis[0][0]
         min_lat, max_lat = 10000, -10000
         min_lon, max_lon = 10000, -10000
@@ -238,7 +231,7 @@ class TCTracks(object):
                                max(max_lon, np.max(track.lon.values))
         axis.set_extent(([min_lon-deg_border, max_lon+deg_border,
                           min_lat-deg_border, max_lat+deg_border]))
-        plot.add_shapes(axis)
+        u_plot.add_shapes(axis)
 
         synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
@@ -272,13 +265,88 @@ class TCTracks(object):
         axis.legend(leg_lines, leg_names)
         return fig, axis
 
-    def _calc_land_decay(self, s_rel=True, check_plot=False):
+    @staticmethod
+    def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle):
+        """ Interpolate values of one track.
+
+        Parameters:
+            track (xr.Dataset): track data
+
+        Returns:
+            list(xr.Dataset)
+        """
+        ens_track = list()
+        n_dat = track.time.size
+        rand_unif_ini = np.random.uniform(size=(2, ens_size))
+        rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
+
+        xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
+        tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
+        coord_xy = np.empty((2, ens_size * n_dat))
+        coord_xy[0] = np.cumsum(ens_amp * np.sin(tmp_ang))
+        coord_xy[1] = np.cumsum(ens_amp * np.cos(tmp_ang))
+
+        ens_track.append(track)
+        for i_ens in range(ens_size):
+            i_track = track.copy(True)
+
+            d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
+                np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
+
+            d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
+
+            i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
+            i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
+            i_track.attrs['orig_event_flag'] = False
+            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + \
+                                    str(i_ens+1)
+            i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
+
+            ens_track.append(i_track)
+
+        return ens_track
+
+    @staticmethod
+    def _one_interp_data(track, time_step_h, land_geom=None):
+        """ Interpolate values of one track.
+
+        Parameters:
+            track (xr.Dataset): track data
+
+        Returns:
+            xr.Dataset
+        """
+        if track.time.size > 3:
+            time_step = str(time_step_h) + 'H'
+            track_int = track.resample(time=time_step). \
+                        interpolate('linear')
+            track_int['time_step'] = ('time', track_int.time.size *
+                                      [time_step_h])
+            track_int.coords['lat'] = track.lat.resample(time=time_step).\
+                                      interpolate('cubic')
+            track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                                      interpolate('cubic')
+            track_int.attrs = track.attrs
+            track.attrs['category'] = set_category( \
+                track.max_sustained_wind.values, \
+                track.max_sustained_wind_unit)
+        else:
+            LOGGER.warning('Track interpolation not done. ' \
+                           'Not enough elements for %s', track.name)
+            track_int = track
+
+        if land_geom:
+            _track_land_params(track_int, land_geom)
+        return track_int
+
+    def _calc_land_decay(self, land_geom, s_rel=True, check_plot=False):
         """Compute wind and pressure decay coefficients for every TC category
         from the historical events according to the formulas:
             - wind decay = exp(-x*A)
             - pressure decay = S-(S-1)*exp(-x*B)
 
         Parameters:
+            land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
             s_rel (bool, optional): use environmental presure to calc S value
                 (true) or central presure (false)
             check_plot (bool, optional): visualize computed coefficients.
@@ -289,7 +357,7 @@ class TCTracks(object):
         """
         hist_tracks = [track for track in self.data if track.orig_event_flag]
         if not hist_tracks:
-            LOGGER.error('No historical tracks contained. Historical tracks' +
+            LOGGER.error('No historical tracks contained. Historical tracks' \
                          ' are needed.')
             raise ValueError
 
@@ -301,12 +369,18 @@ class TCTracks(object):
         p_lf = dict()
         # x-scale values to compute landfall decay
         x_val = dict()
-        try:
-            for track in hist_tracks:
-                _decay_values(s_rel, track, v_lf, p_lf, x_val)
-        except AttributeError:
-            LOGGER.error('Execute _calc_land_params() first.')
-            raise ValueError
+        chunksize = min(len(hist_tracks), 500)
+        for (tv_lf, tp_lf, tx_val) in Pool().map(_decay_values,
+                                                 hist_tracks,
+                                                 itertools.repeat(land_geom),
+                                                 itertools.repeat(s_rel),
+                                                 chunksize=chunksize):
+            for key in tv_lf.keys():
+                v_lf.setdefault(key, []).extend(tv_lf[key])
+                p_lf.setdefault(key, ([], []))
+                p_lf[key][0].extend(tp_lf[key][0])
+                p_lf[key][1].extend(tp_lf[key][1])
+                x_val.setdefault(key, []).extend(tx_val[key])
 
         v_rel, p_rel = _decay_calc_coeff(x_val, v_lf, p_lf)
         if check_plot:
@@ -314,73 +388,45 @@ class TCTracks(object):
 
         return v_rel, p_rel
 
-    def _apply_land_decay(self, v_rel, p_rel, s_rel=True, check_plot=False):
+    def _apply_land_decay(self, v_rel, p_rel, land_geom, s_rel=True,
+                          check_plot=False):
         """Compute wind and pressure decay due to landfall in synthetic tracks.
 
         Parameters:
             v_rel (dict): {category: A}, where wind decay = exp(-x*A)
             p_rel (dict): (category: (S, B)}, where pressure decay
                 = S-(S-1)*exp(-x*B)
+            land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
             s_rel (bool, optional): use environmental presure to calc S value
                 (true) or central presure (false)
             check_plot (bool, optional): visualize computed changes
         """
         sy_tracks = [track for track in self.data if not track.orig_event_flag]
         if not sy_tracks:
-            LOGGER.error('No synthetic tracks contained. Synthetic tracks' +
+            LOGGER.error('No synthetic tracks contained. Synthetic tracks' \
                          ' are needed.')
             raise ValueError
+
         if not v_rel or not p_rel:
+            LOGGER.info('No decay coefficients.')
             return
 
-        orig_wind, orig_pres = [], []
-        try:
+        if check_plot:
+            orig_wind, orig_pres = [], []
             for track in sy_tracks:
-                if check_plot:
-                    orig_wind.append(np.copy(track.max_sustained_wind.values))
-                    orig_pres.append(np.copy(track.central_pressure.values))
-                _apply_decay_coeffs(track, v_rel, p_rel, s_rel)
-        except AttributeError:
-            LOGGER.error('Execute _calc_land_params() first.')
-            raise ValueError
+                orig_wind.append(np.copy(track.max_sustained_wind.values))
+                orig_pres.append(np.copy(track.central_pressure.values))
+
+        chunksize = min(self.size, 500)
+        self.data = Pool().map(_apply_decay_coeffs, self.data,
+                               itertools.repeat(v_rel),
+                               itertools.repeat(p_rel),
+                               itertools.repeat(land_geom),
+                               itertools.repeat(s_rel),
+                               chunksize=chunksize)
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)
-
-    @property
-    def size(self):
-        """ Get longitude from coord array """
-        return len(self.data)
-
-    def _calc_land_params(self):
-        """Compute tracks attributes dependent on their coordinates:
-        on_land and dist_since_lf.
-
-            Parameters:
-                only_syn (bool, optional): consider only synthetic tracks.
-                    Default: False.
-        """
-        if not self.size:
-            return
-        deg_buffer = 0.1
-        min_lat = np.min([np.min(track.lat.values) for track in self.data])
-        min_lat = max(min_lat-deg_buffer, -90)
-
-        max_lat = np.max([np.max(track.lat.values) for track in self.data])
-        max_lat = min(max_lat+deg_buffer, 90)
-
-        min_lon = np.min([np.min(track.lon.values) for track in self.data])
-        min_lon = max(min_lon-deg_buffer, -180)
-
-        max_lon = np.max([np.max(track.lon.values) for track in self.data])
-        max_lon = min(max_lon+deg_buffer, 180)
-
-        land_geom = coord_util.get_land_geometry(border=(min_lon, max_lon, \
-            min_lat, max_lat), resolution=10)
-        for track in self.data:
-            track['on_land'] = ('time', coord_util.coord_on_land( \
-                track.lat.values, track.lon.values, land_geom))
-            track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
     def _read_one_csv(self, file_name):
         """Read IBTrACS track file.
@@ -436,6 +482,39 @@ class TCTracks(object):
 
         self.data.append(tr_ds)
 
+def _calc_land_geom(ens_track):
+    """Compute land geometry used for land distance computations.
+
+    Returns:
+        shapely.geometry.multipolygon.MultiPolygon
+    """
+    deg_buffer = 0.1
+    min_lat = np.min([np.min(track.lat.values) for track in ens_track])
+    min_lat = max(min_lat-deg_buffer, -90)
+
+    max_lat = np.max([np.max(track.lat.values) for track in ens_track])
+    max_lat = min(max_lat+deg_buffer, 90)
+
+    min_lon = np.min([np.min(track.lon.values) for track in ens_track])
+    min_lon = max(min_lon-deg_buffer, -180)
+
+    max_lon = np.max([np.max(track.lon.values) for track in ens_track])
+    max_lon = min(max_lon+deg_buffer, 180)
+
+    return coord_util.get_land_geometry(border=(min_lon, max_lon, \
+        min_lat, max_lat), resolution=10)
+
+def _track_land_params(track, land_geom):
+    """ Compute parameters of land for one track.
+
+    Parameters:
+        track (xr.Dataset): track values
+        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
+    """
+    track['on_land'] = ('time', coord_util.coord_on_land(track.lat.values, \
+         track.lon.values, land_geom))
+    track['dist_since_lf'] = ('time', _dist_since_lf(track))
+
 def _dist_since_lf(track):
     """ Compute the distance to landfall point for every point on land.
     Points on water get nan values.
@@ -460,10 +539,10 @@ def _dist_since_lf(track):
     orig_lf = _calc_orig_lf(track, sea_land_idx)
 
     dist = DistanceMetric.get_metric('haversine')
-    nodes1 = np.array([track.lat.values[1:],
-                       track.lon.values[1:]]).transpose()/180*np.pi
-    nodes0 = np.array([track.lat.values[:-1],
-                       track.lon.values[:-1]]).transpose()/180*np.pi
+    nodes1 = np.radians(np.array([track.lat.values[1:],
+                                  track.lon.values[1:]]).transpose())
+    nodes0 = np.radians(np.array([track.lat.values[:-1],
+                                  track.lon.values[:-1]]).transpose())
     dist_since_lf[1:] = dist.pairwise(nodes1, nodes0).diagonal()
     dist_since_lf[np.logical_not(track.on_land.values)] = 0.0
     nodes1 = np.array([track.lat.values[sea_land_idx+1],
@@ -474,7 +553,7 @@ def _dist_since_lf(track):
         dist_since_lf[sea_land+1:land_sea] = \
             np.cumsum(dist_since_lf[sea_land+1:land_sea])
 
-    dist_since_lf *= 6371
+    dist_since_lf *= EARTH_RADIUS_KM
     dist_since_lf[np.logical_not(track.on_land)] = np.nan
 
     return dist_since_lf
@@ -525,22 +604,30 @@ def _calc_decay_ps_value(track, p_landfall, s_rel):
             track.on_land.values).squeeze((-1,))[-1]].values
     return float(p_land_s / p_landfall)
 
-def _decay_values(s_rel, track, v_lf, p_lf, x_val):
+def _decay_values(track, land_geom, s_rel):
     """ Compute wind and pressure relative to landafall values.
 
     Parameters:
+        track (xr.Dataset): track
+        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
         s_rel (bool): use environmental presure for S value (true) or
             central presure (false)
-        track (xr.Dataset): track
+
+    Returns:
         v_lf (dict): key is Saffir-Simpson scale, values are arrays of
             wind/wind at landfall
         p_lf (dict): key is Saffir-Simpson scale, values are tuples with
-            first value the S parameter, second value array of central
+            first value array of S parameter, second value array of central
             pressure/central pressure at landfall
         x_val (dict): key is Saffir-Simpson scale, values are arrays with
             the values used as "x" in the coefficient fitting, the
             distance since landfall
     """
+    v_lf = dict()
+    p_lf = dict()
+    x_val = dict()
+
+    _track_land_params(track, land_geom)
     # Index in land that comes from previous sea index
     sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
     # Index in sea that comes from previous land index
@@ -574,6 +661,7 @@ def _decay_values(s_rel, track, v_lf, p_lf, x_val):
                 p_lf[ss_scale_idx][1].extend(p_land)
                 x_val[ss_scale_idx].extend(track.dist_since_lf[ \
                                            sea_land:land_sea])
+    return v_lf, p_lf, x_val
 
 def _decay_calc_coeff(x_val, v_lf, p_lf):
     """ From track's relative velocity and pressure, compute the decay
@@ -621,7 +709,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
         if ss_scale not in p_rel:
             close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
-            LOGGER.debug('No historical track of category %s. Decay ' +
+            LOGGER.debug('No historical track of category %s. Decay ' \
                          'parameters from category %s taken.',
                          CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
@@ -635,7 +723,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
     # One graph per TC category
     for track_cat, color in zip(v_lf.keys(),
                                 cm.rainbow(np.linspace(0, 1, len(v_lf)))):
-        graph = plot.Graph2D('', 2)
+        graph = u_plot.Graph2D('', 2)
         x_eval = np.linspace(0, np.max(x_val[track_cat]), 20)
 
         graph.add_subplot('Distance from landfall (km)', \
@@ -652,7 +740,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         graph.add_curve(x_eval, _decay_p_function(p_rel[track_cat][0], \
             p_rel[track_cat][1], x_eval), '-', c=color)
 
-def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
+def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     """ Change track's max sustained wind and central pressure using the land
     decay coefficients.
 
@@ -661,9 +749,18 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
         v_rel (dict): {category: A}, where wind decay = exp(-x*A)
         p_rel (dict): (category: (S, B)},
             where pressure decay = S-(S-1)*exp(-x*B)
+        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
         s_rel (bool): use environmental presure for S value (true) or
             central presure (false)
+
+    Returns:
+        xr.Dataset
     """
+    # return if historical track
+    if track.orig_event_flag:
+        return track
+
+    _track_land_params(track, land_geom)
     # Index in land that comes from previous sea index
     sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
     # Index in sea that comes from previous land index
@@ -671,7 +768,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
     if track.on_land[-1]:
         land_sea_idx = np.append(land_sea_idx, track.time.size)
     if not sea_land_idx.size or land_sea_idx.size > sea_land_idx.size:
-        return
+        return track
     for idx, (sea_land, land_sea) \
     in enumerate(zip(sea_land_idx, land_sea_idx)):
         v_landfall = track.max_sustained_wind[sea_land-1].values
@@ -706,6 +803,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, s_rel):
     track.max_sustained_wind[track.max_sustained_wind < 0] = 0
     track.attrs['category'] = set_category(track.max_sustained_wind.values,
                                            track.max_sustained_wind_unit)
+    return track
 
 def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
     """ Plot wind and presure before and after correction for synthetic tracks.
@@ -738,21 +836,21 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                 syn_orig_pres):
     """Plot winds and pressures of synthetic tracks before and after
     correction."""
-    graph_v_b = plot.Graph2D('Wind before land decay correction')
+    graph_v_b = u_plot.Graph2D('Wind before land decay correction')
     graph_v_b.add_subplot('Node number', 'Max sustained wind (kn)')
-    graph_v_a = plot.Graph2D('Wind after land decay correction')
+    graph_v_a = u_plot.Graph2D('Wind after land decay correction')
     graph_v_a.add_subplot('Node number', 'Max sustained wind (kn)')
 
-    graph_p_b = plot.Graph2D('Pressure before land decay correction')
+    graph_p_b = u_plot.Graph2D('Pressure before land decay correction')
     graph_p_b.add_subplot('Node number', 'Central pressure (mb)')
-    graph_p_a = plot.Graph2D('Pressure after land decay correction')
+    graph_p_a = u_plot.Graph2D('Pressure after land decay correction')
     graph_p_a.add_subplot('Node number', 'Central pressure (mb)')
 
-    graph_pd_a = plot.Graph2D('Relative pressure after land decay correction')
+    graph_pd_a = u_plot.Graph2D('Relative pressure after land decay correction')
     graph_pd_a.add_subplot('Distance from landfall (km)',
                            'Central pressure relative to landfall')
-    graph_ped_a = plot.Graph2D('Environmental - central pressure after land ' +
-                               'decay correction')
+    graph_ped_a = u_plot.Graph2D('Environmental - central pressure after land ' +
+                                 'decay correction')
     graph_ped_a.add_subplot('Distance from landfall (km)',
                             'Environmental pressure - Central pressure (mb)')
 
@@ -801,16 +899,16 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
 
 def _check_apply_decay_hist_plot(hist_tracks):
     """Plot winds and pressures of historical tracks."""
-    graph_hv = plot.Graph2D('Historical wind')
+    graph_hv = u_plot.Graph2D('Historical wind')
     graph_hv.add_subplot('Node number', 'Max sustained wind (kn)')
 
-    graph_hp = plot.Graph2D('Historical pressure')
+    graph_hp = u_plot.Graph2D('Historical pressure')
     graph_hp.add_subplot('Node number', 'Central pressure (mb)')
 
-    graph_hpd_a = plot.Graph2D('Historical relative pressure')
+    graph_hpd_a = u_plot.Graph2D('Historical relative pressure')
     graph_hpd_a.add_subplot('Distance from landfall (km)',
                             'Central pressure relative to landfall')
-    graph_hped_a = plot.Graph2D('Historical environmental - central pressure')
+    graph_hped_a = u_plot.Graph2D('Historical environmental - central pressure')
     graph_hped_a.add_subplot('Distance from landfall (km)',
                              'Environmental pressure - Central pressure (mb)')
     for track in hist_tracks:

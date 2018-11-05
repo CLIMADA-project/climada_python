@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test Centroids base class.
 """
 
@@ -267,8 +284,8 @@ class TestMethods(unittest.TestCase):
         centr_brb = Centroids(CENTR_BRB)
         centr_brb.calc_dist_to_coast()
         self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
-        self.assertEqual(5.7988200982894105, centr_brb.dist_coast[1])
-        self.assertEqual(166.36505441711506, centr_brb.dist_coast[-2])        
+        self.assertAlmostEqual(5.7988200982894105, centr_brb.dist_coast[1])
+        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)

@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test Exposure base class.
 """
 import os
@@ -22,7 +39,7 @@ def good_exposures():
     expo.value = np.array([1, 2, 3])
     expo.deductible = np.array([1, 2, 3])
     expo.cover = np.array([])
-    expo.impact_id = np.array([1, 2, 3])
+    expo.impact_id = {'NA': np.array([1, 2, 3])}
     expo.category_id = np.array([1, 2, 3])
     expo.region_id = np.array([1, 2, 3])
     expo.assigned['TC'] = np.array([1, 2, 3])
@@ -65,7 +82,7 @@ class TestAppend(unittest.TestCase):
         expo_app = Exposures()
         expo_app.id = np.arange(4, 9)
         expo_app.value = np.arange(4, 9)
-        expo_app.impact_id = np.arange(4, 9)
+        expo_app.impact_id = {'NA': np.arange(4, 9)}
         expo_app.coord = np.ones((5, 2))
         expo_app.assigned['TC'] = np.ones((5, 2))
 
@@ -75,7 +92,7 @@ class TestAppend(unittest.TestCase):
         expo_app.assigned['WS'] = np.ones((5, 2))
         expo.append(expo_app)
         self.assertTrue(len(expo.assigned['TC']), 8)
-        self.assertTrue(len(expo.assigned['WS']), 5)
+        self.assertTrue(len(expo.assigned), 1)
 
     def test_append_to_empty_same(self):
         """Append Exposure to empty one."""
@@ -90,7 +107,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(expo.value, expo_app.value))
         self.assertTrue(np.array_equal(expo.deductible, expo_app.deductible))
         self.assertTrue(np.array_equal(expo.cover, expo_app.cover))
-        self.assertTrue(np.array_equal(expo.impact_id, expo_app.impact_id))
+        self.assertTrue(np.array_equal(expo.impact_id['NA'], expo_app.impact_id['NA']))
         self.assertTrue(np.array_equal(expo.category_id, expo_app.category_id))
         self.assertTrue(np.array_equal(expo.region_id, expo_app.region_id))
         self.assertTrue(np.array_equal(expo.assigned['TC'], \
@@ -123,8 +140,8 @@ class TestAppend(unittest.TestCase):
                         np.append(expo_check.deductible, expo_app.deductible)))
         self.assertTrue(np.array_equal(expo.cover, \
                                        np.array([])))
-        self.assertTrue(np.array_equal(expo.impact_id, \
-                        np.append(expo_check.impact_id, expo_app.impact_id)))
+        self.assertTrue(np.array_equal(expo.impact_id['NA'], \
+                        np.append(expo_check.impact_id['NA'], expo_app.impact_id['NA'])))
         self.assertTrue(np.array_equal(expo.category_id, \
                         np.append(expo_check.category_id, \
                                   expo_app.category_id)))
@@ -148,7 +165,7 @@ class TestAppend(unittest.TestCase):
         expo_app.value = np.array([1, 2, 3, 4, 5])
         expo_app.deductible = np.array([1, 2, 3, 4, 5])
         expo_app.cover = np.array([1, 2, 3, 4, 5])
-        expo_app.impact_id = np.array([1, 2, 3, 4, 5])
+        expo_app.impact_id = {'NA': np.array([1, 2, 3, 4, 5])}
         expo_app.category_id = np.array([1, 2, 3, 4, 5])
         expo_app.region_id = np.array([1, 2, 3, 4, 5])
         expo_app.assigned['TC'] = np.array([1, 2, 3, 4, 5])
@@ -167,8 +184,8 @@ class TestAppend(unittest.TestCase):
                         np.append(expo_check.deductible, expo_app.deductible)))
         self.assertTrue(np.array_equal(expo.cover, \
                         np.array([])))
-        self.assertTrue(np.array_equal(expo.impact_id, \
-                        np.append(expo_check.impact_id, expo_app.impact_id)))
+        self.assertTrue(np.array_equal(expo.impact_id['NA'], \
+                        np.append(expo_check.impact_id['NA'], expo_app.impact_id['NA'])))
         self.assertTrue(np.array_equal(expo.category_id, \
                         np.append(expo_check.category_id, \
                         expo_app.category_id)))
@@ -268,7 +285,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 expo.check()
-        self.assertIn('Invalid Exposures.coord row size: 3 != 1.', \
+        self.assertIn('Invalid Exposures._coord row size: 3 != 1.', \
                       cm.output[0])
 
     def test_check_wrongDeduct_fail(self):
@@ -295,7 +312,7 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongImpact_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo.impact_id = np.array([1, 2])
+        expo.impact_id = {'NA': np.array([1, 2])}
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
@@ -347,19 +364,19 @@ class TestChecker(unittest.TestCase):
         self.assertIn('There are exposures with the same identifier.',
                       cm.output[0])
 
-class TestSelectRegion(unittest.TestCase):
+class TestSelect(unittest.TestCase):
     """Test select_region from the Exposures class"""
     def test_sel_reg_pass(self):
         """Select region"""
         expo = good_exposures()
-        sel_expo = expo.select_region(1)
+        sel_expo = expo.select(1)
 
         self.assertEqual(sel_expo.value.size, 1)
         self.assertEqual(sel_expo.value[0], 1)
         self.assertEqual(sel_expo.id.size, 1)
         self.assertEqual(sel_expo.id[0], 1)
-        self.assertEqual(sel_expo.impact_id.size, 1)
-        self.assertEqual(sel_expo.impact_id[0], 1)
+        self.assertEqual(sel_expo.impact_id['NA'].size, 1)
+        self.assertEqual(sel_expo.impact_id['NA'][0], 1)
         self.assertEqual(sel_expo.deductible.size, 1)
         self.assertEqual(sel_expo.deductible[0], 1)
         self.assertEqual(sel_expo.category_id.size, 1)
@@ -372,11 +389,12 @@ class TestSelectRegion(unittest.TestCase):
         self.assertEqual(sel_expo.coord.shape[0], 1)
         self.assertEqual(sel_expo.coord[0, 0], 1)
         self.assertEqual(sel_expo.coord[0, 1], 2)
+        self.assertIsInstance(sel_expo, Exposures)
 
     def test_sel_wrong_pass(self):
         """Select non-existent region"""
         expo = good_exposures()
-        sel_expo = expo.select_region(5)
+        sel_expo = expo.select(5)
         self.assertEqual(sel_expo, None)
 
 # Execute Tests
@@ -386,5 +404,5 @@ TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemove))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelectRegion))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

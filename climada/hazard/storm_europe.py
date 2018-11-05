@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define StormEurope class.
 """
 
@@ -7,13 +24,13 @@ __all__ = ['StormEurope']
 import logging
 import numpy as np
 import xarray as xr
-import pandas as pd
 from scipy import sparse
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
+from climada.util.dates_times import datetime64_to_ordinal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -136,9 +153,7 @@ class StormEurope(Hazard):
         # fill in values from netCDF
         new_haz = StormEurope()
         new_haz.event_name = [ncdf.storm_name]
-        new_haz.date = np.array([
-            _datetime64_toordinal(ncdf.time.data[0])
-        ])
+        new_haz.date = np.array([datetime64_to_ordinal(ncdf.time.data[0])])
         new_haz.intensity = sparse.csr_matrix(stacked)
         new_haz.ssi_wisc = np.array([float(ncdf.ssi)])
         new_haz.time_bounds = np.array(ncdf.time_bounds)
@@ -184,32 +199,3 @@ class StormEurope(Hazard):
         """ Ought to plot the SSI versus the xs_freq, which presumably is the
             excess frequency. """
         pass
-
-    def set_ssi_dawkins(self, on_land=True):
-        """ Calculate the SSI according to Dawkins. Differs from the SSI that
-            is delivered with the footprint files in that we only use the
-            centroids that are on land.
-
-            Parameters:
-                on_land (bool): Only calculate the SSI for areas on land,
-                    ignoring the intensities at sea.
-        """
-        if on_land is True:
-            assert self.centroids.area_per_centroid.all(),\
-                "Have you run set_area_per_centroid yet?"
-            area = self.centroids.area_per_centroid \
-                * self.centroids.on_land
-        else:
-            area = self.centroids.area_per_centroid
-
-        self.ssi_dawkins = np.zeros(self.intensity.shape[0])
-        
-        for i, intensity in enumerate(self.intensity):
-            ssi = area * intensity.power(3).todense().T
-            self.ssi_dawkins[i] = ssi.item(0)
-
-
-def _datetime64_toordinal(datetime):
-    """ Converts from a numpy datetime64 object to an ordinal date.
-        See https://stackoverflow.com/a/21916253 for the horrible details. """
-    return pd.to_datetime(datetime.tolist()).toordinal()

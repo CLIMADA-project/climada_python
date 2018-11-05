@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define DiscRates class.
 """
 
@@ -15,7 +32,8 @@ from climada.entity.disc_rates.source import READ_SET
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
-import climada.util.plot as plot
+import climada.util.plot as u_plot
+import climada.util.finance as u_fin
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,11 +112,34 @@ class DiscRates(object):
         """
         # Construct absolute path file names
         all_files = get_file_names(files)
+        if not all_files:
+            LOGGER.warning('No valid file provided: %s', files)
         desc_list = to_list(len(all_files), descriptions, 'descriptions')
         var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
         for file, desc, var in zip(all_files, desc_list, var_list):
             self.append(self._read_one(file, desc, var))
+
+    def select(self, year_range):
+        """Select discount rates in given years.
+
+        Parameters:
+            year_range (np.array): continuous sequence of selected years.
+
+        Returns:
+            DiscRates
+        """
+        pos_year = np.isin(year_range, self.years)
+        if not np.all(pos_year):
+            LOGGER.info('No discount rates for given years.')
+            return None
+        pos_year = np.isin(self.years, year_range)
+        sel_disc = self.__class__()
+        sel_disc.tag = self.tag
+        sel_disc.years = self.years[pos_year]
+        sel_disc.rates = self.rates[pos_year]
+
+        return sel_disc
 
     def append(self, disc_rates):
         """Check and append discount rates to current DiscRates. Overwrite
@@ -112,7 +153,7 @@ class DiscRates(object):
         """
         disc_rates.check()
         if self.years.size == 0:
-            self.__dict__ = disc_rates.__dict__.copy()
+            self.__dict__ = copy.deepcopy(disc_rates.__dict__)
             return
 
         self.tag.append(disc_rates.tag)
@@ -130,6 +171,29 @@ class DiscRates(object):
         self.years = np.append(self.years, new_year).astype(int, copy=False)
         self.rates = np.append(self.rates, new_rate)
 
+    def net_present_value(self, ini_year, end_year, val_years):
+        """Compute net present value between present year and future year.
+
+        Parameters:
+            ini_year (float): initial year
+            end_year (float): end year
+            val_years (np.array): cash flow at each year btw ini_year and
+                end_year (both included)
+        Returns:
+            float
+        """
+        year_range = np.arange(ini_year, end_year+1)
+        if year_range.size != val_years.size:
+            LOGGER.error('Wrong size of yearly values.')
+            raise ValueError
+        sel_disc = self.select(year_range)
+        if sel_disc is None:
+            LOGGER.error('No information of discount rates for provided years:'\
+                        ' %s - %s', ini_year, end_year)
+            raise ValueError
+        return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
+                                       val_years)
+
     @staticmethod
     def get_sup_file_format():
         """ Get supported file extensions that can be read.
@@ -141,7 +205,7 @@ class DiscRates(object):
 
     def plot(self):
         """Plot discount rates per year."""
-        graph = plot.Graph2D('Discount rates')
+        graph = u_plot.Graph2D('Discount rates')
         graph.add_subplot('Year', 'discount rate (%)', '')
         graph.add_curve(self.years, self.rates * 100, 'b')
         graph.set_x_lim(self.years)

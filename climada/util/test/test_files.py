@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test files_handler module.
 """
 
@@ -28,16 +45,16 @@ class TestToStrList(unittest.TestCase):
         val_name = 'values'
         out = to_list(num_exp, values, val_name)
         self.assertEqual(values, out)
-        
+
     def test_one_to_list(self):
-        """When input is a string or list with one element, it returns a list 
+        """When input is a string or list with one element, it returns a list
         with the expected number of elments repeated"""
         num_exp = 3
         values = 'hi'
         val_name = 'values'
         out = to_list(num_exp, values, val_name)
         self.assertEqual(['hi', 'hi', 'hi'], out)
-        
+
         values = ['ha']
         out = to_list(num_exp, values, val_name)
         self.assertEqual(['ha', 'ha', 'ha'], out)
@@ -47,11 +64,11 @@ class TestToStrList(unittest.TestCase):
         num_exp = 3
         values = ['1', '2']
         val_name = 'values'
-        
+
         with self.assertLogs('climada.util.files_handler', level='ERROR') as cm:
             to_list(num_exp, values, val_name)
         self.assertIn("Provide one or 3 values.", cm.output[0])
-        
+
 class TestGetFileNames(unittest.TestCase):
     """ Test get_file_names function. Only works with actually existing
         files and directories. """
@@ -68,13 +85,13 @@ class TestGetFileNames(unittest.TestCase):
         self.assertEqual(file_name, out)
 
     def test_folder_contents(self):
-        """If input is one folder name, return a list with containg files. 
+        """If input is one folder name, return a list with containg files.
         Folder names are not contained."""
         file_name = os.path.join(DATA_DIR, 'demo')
         out = get_file_names(file_name)
         for file in out:
             self.assertEqual('.', os.path.splitext(file)[1][0])
-        
+
         file_name = DATA_DIR
         out = get_file_names(file_name)
         for file in out:
@@ -84,14 +101,14 @@ class TestGetFileNames(unittest.TestCase):
         """ If input is a glob pattern, return a list of matching visible
             files; omit folders.
         """
-        file_name = os.path.join(DATA_DIR, 'demo/')
-        out = get_file_names(file_name + '*')
+        file_name = os.path.join(DATA_DIR, 'demo')
+        out = get_file_names(file_name)
 
         tmp_files = os.listdir(file_name)
-        tmp_files = [file_name + f for f in tmp_files]
+        tmp_files = [os.path.join(file_name, f) for f in tmp_files]
         tmp_files = [f for f in tmp_files if not os.path.isdir(f)
                 and not os.path.basename(os.path.normpath(f)).startswith('.')]
-        
+
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))
 

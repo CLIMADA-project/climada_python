@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test GridPoints module.
 """
 
@@ -173,11 +190,11 @@ class TestFunc(unittest.TestCase):
     def test_dist_to_coast(self):
         point = (13.208333333333329, -59.625000000000014)
         res = dist_to_coast(point)
-        self.assertEqual(5.7988200982894105, res)
+        self.assertAlmostEqual(5.7988200982894105, res[0])
         
         point = (13.958333333333343, -58.125)
         res = dist_to_coast(point)
-        self.assertEqual(166.36505441711506, res)        
+        self.assertAlmostEqual(166.36505441711506, res[0])        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGridPoints)

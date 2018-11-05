@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Define auxiliary functions for plots.
 """
 
@@ -24,7 +41,7 @@ RESOLUTION = 250
 # Degrees to add in the border
 BUFFER_DEG = 1.0
 # Maximum number of bins in geo_bin_from_array
-MAX_BINS = 200
+MAX_BINS = 2000
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
                        buffer_deg=BUFFER_DEG, extend='neither', **kwargs):
