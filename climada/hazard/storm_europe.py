@@ -13,7 +13,7 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
-from climada.util.files_handler import get_file_names, to_list
+from climada.util.files_handler import get_file_names
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,50 +22,53 @@ HAZ_TYPE = 'WS'
 
 
 class StormEurope(Hazard):
-    """Contains european winter storm events.
+    """ Contains european winter storm events. Historic storm events can be
+        downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
-        ssi (float): Storm Severity Index, as recorded in the footprint
-            files; this is _not_ the same as that computed by the Matlab
-            climada version.
-            cf. Lamb and Frydendahl (1991)
-            "Historic Storms of the North Sea, British Isles and
-            Northwest Europe", ISBN: 978-0-521-37522-1
-            SSI = v [m/s] ^ 3 * duration [h] * area [km^2 or m^2]
+        ssi_wisc (np.array, float): Storm Severity Index as recorded in the
+            footprint files; this is _not_ the same as that computed by the
+            Matlab climada version. Apparently not reproducible from the
+            max_wind_gust values only.
+            Definition presumably used:
+            ssi = sum(area_on_land) * mean(intensity > threshold)^3
+            see wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+        ssi_dawkins (np.array, float): Storm Severity Index as defined in
+            Dawkins, 2016, doi:10.5194/nhess-16-1999-2016
     """
     intensity_thres = 15
     """ intensity threshold for storage in m/s """
 
-    vars_opt = Hazard.vars_opt.union({'ssi'})
+    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
-        self.ssi = np.array([], int)
+        self.ssi_wisc = np.array([], float)
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc'):
-        """Clear instance and read WISC footprints. Read Assumes that all
-        footprints have the same coordinates as the first file listed/first
-        file in dir.
+        """ Clear instance and read WISC footprints. Read Assumes that all
+            footprints have the same coordinates as the first file listed/first
+            file in dir.
 
-        Parameters:
-            path (str, list(str)): A location in the filesystem. Either a
-                path to a single netCDF WISC footprint, or a folder containing
-                only footprints, or a globbing pattern to one or more
-                footprints.
-            description (str, optional): description of the events, defaults to
-                'WISC historical hazard set'
-            ref_raster (str, optional): Reference netCDF file from which to
-                construct a new barebones Centroids instance. Defaults to the
-                first file in path.
-            centroids (Centroids, optional): A Centroids struct, overriding
-                ref_raster
-            files_omit (str, list(str), optional): List of files to omit;
-                defaults to one duplicate storm present in the WISC set as of
-                2018-09-10.
+            Parameters:
+                path (str, list(str)): A location in the filesystem. Either a
+                    path to a single netCDF WISC footprint, or a folder
+                    containing only footprints, or a globbing pattern to one or
+                    more footprints.
+                description (str, optional): description of the events, defaults
+                    to 'WISC historical hazard set'
+                ref_raster (str, optional): Reference netCDF file from which to
+                    construct a new barebones Centroids instance. Defaults to
+                    the first file in path.
+                centroids (Centroids, optional): A Centroids struct, overriding
+                    ref_raster
+                files_omit (str, list(str), optional): List of files to omit;
+                    defaults to one duplicate storm present in the WISC set as
+                    of 2018-09-10.
         """
 
         self.clear()
@@ -85,11 +88,17 @@ class StormEurope(Hazard):
         if isinstance(files_omit, str):
             files_omit = [files_omit]
 
+        LOGGER.info('Commencing to iterate over netCDF files.')
+
         for fn in file_names:
             if any(fo in fn for fo in files_omit):
                 LOGGER.info("Omitting file %s", fn)
                 continue
-            self.append(self._read_one_nc(fn, centroids))
+            new_haz = self._read_one_nc(fn, centroids)
+            if new_haz is not None:
+                self.append(new_haz)
+
+        self.event_id = np.arange(1, len(self.event_id)+1)
 
         self.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved, too large to pickle',
@@ -98,40 +107,41 @@ class StormEurope(Hazard):
         if description is not None:
             self.tag.description = description
 
-    @classmethod
-    def _read_one_nc(cls, file_name, centroids):
+    def _read_one_nc(self, file_name, centroids):
         """ Read a single WISC footprint. Assumes a time dimension of length
             1. Omits a footprint if another file with the same timestamp has
             already been read.
 
             Parameters:
-                nc (xarray.Dataset): File connection to netcdf
                 file_name (str): Absolute or relative path to *.nc
                 centroids (Centroids): Centr. instance that matches the
                     coordinates used in the *.nc, only validated by size.
         """
-        nc = xr.open_dataset(file_name)
+        ncdf = xr.open_dataset(file_name)
 
-        if centroids.size != (nc.sizes['latitude'] * nc.sizes['longitude']):
-            raise ValueError('Number of centroids and grid size don\'t match.')
+        if centroids.size != (ncdf.sizes['latitude'] * ncdf.sizes['longitude']):
+            ncdf.close()
+            LOGGER.warning(('Centroids size doesn\'t match NCDF dimensions. '
+                            'Omitting file %s.'), file_name)
+            return None
 
         # xarray does not penalise repeated assignments, see
         # http://xarray.pydata.org/en/stable/data-structures.html
-        stacked = nc.max_wind_gust.stack(
+        stacked = ncdf.max_wind_gust.stack(
             intensity=('latitude', 'longitude', 'time')
         )
-        stacked = stacked.where(stacked > cls.intensity_thres)
+        stacked = stacked.where(stacked > self.intensity_thres)
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF
         new_haz = StormEurope()
-        new_haz.event_name = [nc.storm_name]
+        new_haz.event_name = [ncdf.storm_name]
         new_haz.date = np.array([
-            _datetime64_toordinal(nc.time.data[0])
+            _datetime64_toordinal(ncdf.time.data[0])
         ])
         new_haz.intensity = sparse.csr_matrix(stacked)
-        new_haz.ssi = np.array([float(nc.ssi)])
-        new_haz.time_bounds = np.array(nc.time_bounds)
+        new_haz.ssi_wisc = np.array([float(ncdf.ssi)])
+        new_haz.time_bounds = np.array(ncdf.time_bounds)
 
         # fill in default values
         new_haz.centroids = centroids
@@ -142,7 +152,7 @@ class StormEurope(Hazard):
         new_haz.fraction.data.fill(1)
         new_haz.orig = np.array([True])
 
-        nc.close()
+        ncdf.close()
         return new_haz
 
     @staticmethod
@@ -150,23 +160,53 @@ class StormEurope(Hazard):
         """ Construct Centroids from the grid described by 'latitude'
             and 'longitude' variables in a netCDF file.
         """
-        nc = xr.open_dataset(file_name)
-        lats = nc.latitude.data
-        lons = nc.longitude.data
-        ct = Centroids()
-        ct.coord = np.array([
+        LOGGER.info('Constructing centroids from %s', file_name)
+        ncdf = xr.open_dataset(file_name)
+        lats = ncdf.latitude.data
+        lons = ncdf.longitude.data
+        cent = Centroids()
+        cent.coord = np.array([
             np.repeat(lats, len(lons)),
             np.tile(lons, len(lats)),
         ]).T
-        ct.id = np.arange(0, len(ct.coord))
-        ct.tag.description = 'Centroids constructed from: ' + file_name
+        cent.id = np.arange(0, len(cent.coord))
+        cent.resolution = (float(ncdf.geospatial_lat_resolution),
+                           float(ncdf.geospatial_lon_resolution))
+        cent.tag.description = 'Centroids constructed from: ' + file_name
+        ncdf.close()
 
-        return ct
+        cent.set_area_per_centroid()
+        cent.set_on_land()
+
+        return cent
 
     def plot_ssi(self):
         """ Ought to plot the SSI versus the xs_freq, which presumably is the
             excess frequency. """
         pass
+
+    def set_ssi_dawkins(self, on_land=True):
+        """ Calculate the SSI according to Dawkins. Differs from the SSI that
+            is delivered with the footprint files in that we only use the
+            centroids that are on land.
+
+            Parameters:
+                on_land (bool): Only calculate the SSI for areas on land,
+                    ignoring the intensities at sea.
+        """
+        if on_land is True:
+            assert self.centroids.area_per_centroid.all(),\
+                "Have you run set_area_per_centroid yet?"
+            area = self.centroids.area_per_centroid \
+                * self.centroids.on_land
+        else:
+            area = self.centroids.area_per_centroid
+
+        self.ssi_dawkins = np.zeros(self.intensity.shape[0])
+        
+        for i, intensity in enumerate(self.intensity):
+            ssi = area * intensity.power(3).todense().T
+            self.ssi_dawkins[i] = ssi.item(0)
 
 
 def _datetime64_toordinal(datetime):
