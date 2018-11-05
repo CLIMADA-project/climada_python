@@ -49,5 +49,12 @@ def str_to_date(date):
 
 def _datetime64_to_ordinal(datetime):
     """ Converts from a numpy datetime64 object to an ordinal date.
-        See https://stackoverflow.com/a/21916253 for the horrible details. """
+        See https://stackoverflow.com/a/21916253 for the horrible details.
+
+    Parameters:
+        datetime (np.datetime64): date and time
+
+    Returns:
+        int
+    """
     return pd.to_datetime(datetime.tolist()).toordinal()
