@@ -1,5 +1,5 @@
-climada_python
-==============
+CLIMADA
+=======
 Python (3.6+) version of CLIMADA
 
 Latest CLIMADA in Python - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB)
