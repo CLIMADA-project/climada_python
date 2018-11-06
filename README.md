@@ -8,7 +8,7 @@ Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz
 
 Date: 2018-11-06
 
-Version: 0.1.0
+Version: 0.2.1
 
 See [technical documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial).
 
