@@ -45,13 +45,13 @@ class StormEurope(Hazard):
     Attributes:
         ssi_wisc (np.array, float): Storm Severity Index as recorded in the
             footprint files; this is _not_ the same as that computed by the
-            Matlab climada version. Apparently not reproducible from the
+            MATLAB climada version. Apparently not reproducible from the
             max_wind_gust values only.
-            Definition presumably used:
-            ssi = sum(area_on_land) * mean(intensity > threshold)^3
-            see wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
         ssi_dawkins (np.array, float): Storm Severity Index as defined in
             Dawkins, 2016, doi:10.5194/nhess-16-1999-2016
+            Can be set using self.set_ssi_dawkins()
+        ssi_wisc_gust (np.array): SSI according to the WISC definition,
+            calculated using only gust values. See self.set_ssi_wisc_gust()
     """
     intensity_thres = 15
     """ intensity threshold for storage in m/s """
@@ -199,3 +199,52 @@ class StormEurope(Hazard):
         """ Ought to plot the SSI versus the xs_freq, which presumably is the
             excess frequency. """
         pass
+
+    def set_ssi_dawkins(self, on_land=True):
+        """ Calculate the SSI according to Dawkins, the definition used matches
+            the MATLAB version. Threshold value must be determined before call
+            to self.read_footprints()
+            ssi = sum_i(area_cell_i * intensity_cell_i^3)
+
+            Parameters:
+                on_land (bool): Only calculate the SSI for areas on land,
+                    ignoring the intensities at sea. Defaults to true, whereas
+                    the MATLAB version did not.
+
+            Attributes:
+                self.ssi_dawkins (np.array): SSI per event
+        """
+        if on_land is True:
+            area_c = self.centroids.area_per_centroid \
+                * self.centroids.on_land
+        else:
+            area_c = self.centroids.area_per_centroid
+
+        self.ssi_dawkins = np.zeros(self.intensity.shape[0])
+        
+        for i, inten_i in enumerate(self.intensity):
+            ssi = area_c * inten_i.power(3).todense().T
+            # crossproduct due to transposition
+            self.ssi_dawkins[i] = ssi.item(0)
+
+    def set_ssi_wisc_gust(self):
+        """ Calculate the SSI according to the WISC definition found
+            at wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+            ssi = sum(area_on_land) * mean(intensity > threshold)^3
+            Note that this does not reproduce self.ssi_wisc, presumably because
+            the footprint only contains the maximum wind gusts instead of the
+            sustained wind speeds over the 72 hour window.
+
+            Attributes:
+                self.ssi_wisc_gust (np.array): SSI per event
+        """
+        cent = self.centroids
+
+        self.ssi_wisc_gust= np.zeros(self.intensity.shape[0])
+
+        area = sum(cent.area_per_centroid * cent.on_land)
+
+        for i, inten_i in enumerate(self.intensity[:, cent.on_land]):
+            inten_mean = np.mean(inten_i)
+            self.ssi_wisc_gust[i] = area * \
+                np.power(inten_mean, 3)
