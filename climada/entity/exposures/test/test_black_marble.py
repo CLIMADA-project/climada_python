@@ -353,71 +353,66 @@ class TestEconIndices(unittest.TestCase):
 
     def test_income_grp_aia_pass(self):
         """ Test _get_income_group function Anguilla."""
-        cntry_info = {'AIA': [1, 'Anguilla', 'geom']}
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_income_group(cntry_info, ref_year, SHP_FILE)
+            res = _get_income_group('AIA', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 3]}
+        res_ref = 3
         self.assertIn('Income group AIA: 3', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_income_grp_sxm_2012_pass(self):
         """ Test _get_income_group function Sint Maarten."""
-        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_income_group(cntry_info, ref_year, SHP_FILE)
+            res = _get_income_group('SXM', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
+        res_ref = 4
         self.assertIn('Income group SXM 2012: 4.', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_income_grp_sxm_1999_pass(self):
         """ Test _get_income_group function Sint Maarten."""
-        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
         ref_year = 1999
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_income_group(cntry_info, ref_year, SHP_FILE)
+            res = _get_income_group('SXM', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 4]}
+        res_ref = 4
         self.assertIn('Income group SXM 2010: 4.', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_get_gdp_aia_2012_pass(self):
         """ Test _get_gdp function Anguilla."""
-        cntry_info = {'AIA': [1, 'Anguilla', 'geom']}
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_gdp(cntry_info, ref_year, SHP_FILE)
+            res = _get_gdp('AIA', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'AIA': [1, 'Anguilla', 'geom', 1.754e+08]}
+        res_ref = 1.754e+08
         self.assertIn('GDP AIA 2009: 1.754e+08', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_get_gdp_sxm_2012_pass(self):
         """ Test _get_gdp function Sint Maarten."""
-        cntry_info = {'SXM': [1, 'Sint Maarten', 'geom']}
         ref_year = 2012
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_gdp(cntry_info, ref_year, SHP_FILE)
+            res = _get_gdp('SXM', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'SXM': [1, 'Sint Maarten', 'geom', 3.658e+08]}
+        res_ref = 3.658e+08
         self.assertIn('GDP SXM 2014: 3.658e+08', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_get_gdp_esp_1950_pass(self):
         """ Test _get_gdp function Sint Maarten."""
-        cntry_info = {'ESP': [1, 'Spain', 'geom']}
         ref_year = 1950
         with self.assertLogs('climada.entity.exposures', level='INFO') as cm:
-            _get_gdp(cntry_info, ref_year, SHP_FILE)
+            res = _get_gdp('ESP', ref_year, SHP_FILE)
 
-        cntry_info_ref = {'ESP': [1, 'Spain', 'geom', 12072126075.397]}
+        res_ref = 12072126075.397
         self.assertIn('GDP ESP 1960: 1.207e+10', cm.output[0])
-        self.assertEqual(cntry_info, cntry_info_ref)
+        self.assertEqual(res, res_ref)
 
     def test_fill_econ_indicators_pass(self):
+        """ Test fill_econ_indicators CHE, ZMB."""
         ref_year = 2015
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
@@ -429,6 +424,7 @@ class TestEconIndices(unittest.TestCase):
         self.assertEqual(country_isos, country_isos_ref)
 
     def test_fill_econ_indicators_kwargs_pass(self):
+        """ Test fill_econ_indicators with kwargs inputs."""
         ref_year = 2015
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
@@ -439,6 +435,21 @@ class TestEconIndices(unittest.TestCase):
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
         country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], inc_grp['CHE']],
                             'ZMB': [2, 'Zambia', 'zmb_geom', 2015, gdp['ZMB'], inc_grp['ZMB']]
+                           }
+        self.assertEqual(country_isos, country_isos_ref)
+
+    def test_fill_econ_indicators_na_pass(self):
+        """ Test fill_econ_indicators with '' inputs."""
+        ref_year = 2015
+        country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
+                        'ZMB': [2, 'Zambia', 'zmb_geom']
+                       }
+        gdp = {'CHE': 1.2, 'ZMB': ''}
+        inc_grp = {'CHE': '', 'ZMB': 4}
+        kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
+        fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21154394545.895, inc_grp['ZMB']]
                            }
         self.assertEqual(country_isos, country_isos_ref)
 

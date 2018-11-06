@@ -169,8 +169,8 @@ class BlackMarble(Exposures):
         if sea_res[0] == 0:
             return
 
-        LOGGER.info("Adding sea at %s km resolution and %s km distance from " + \
-            "coast.", str(sea_res[1]), str(sea_res[0]))
+        LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
+                    str(sea_res[1]), str(sea_res[0]))
 
         sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
 
@@ -310,18 +310,14 @@ def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
     """
     for cntry_iso, cntry_val in cntry_info.items():
         cntry_val.append(ref_year)
-
-    if 'gdp' not in kwargs:
-        _get_gdp(cntry_info, ref_year, shp_file)
-    else:
-        for cntry_iso, cntry_val in cntry_info.items():
+        if 'gdp' in kwargs and kwargs['gdp'][cntry_iso] != '':
             cntry_val.append(kwargs['gdp'][cntry_iso])
-
-    if 'inc_grp' not in kwargs:
-        _get_income_group(cntry_info, ref_year, shp_file)
-    else:
-        for cntry_iso, cntry_val in cntry_info.items():
+        else:
+            cntry_val.append(_get_gdp(cntry_iso, ref_year, shp_file))
+        if 'inc_grp' in kwargs and kwargs['inc_grp'][cntry_iso] != '':
             cntry_val.append(kwargs['inc_grp'][cntry_iso])
+        else:
+            cntry_val.append(_get_income_group(cntry_iso, ref_year, shp_file))
 
 def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
     """ Obtain nightlight from different sources depending on reference year.
@@ -350,8 +346,8 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
             nl_year = 2016
         else:
             nl_year = 2012
-        LOGGER.info("Nightlights from NASA's earth observatory for " + \
-                    "year %s.", str(nl_year))
+        LOGGER.info("Nightlights from NASA's earth observatory for year %s.",
+                    str(nl_year))
         res_fact = DEF_RES_NASA_KM/res_km
         geom = [info[2] for info in cntry_info.values()]
         geom = shapely.ops.cascaded_union(geom)
@@ -373,8 +369,8 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
             nl_year = 1992
         elif ref_year > 2013:
             nl_year = 2013
-        LOGGER.info("Nightlights from NOAA's earth observation group "+ \
-                    "for year %s.", str(nl_year))
+        LOGGER.info("Nightlights from NOAA's earth observation group for year %s.",
+                    str(nl_year))
         res_fact = DEF_RES_NOAA_KM/res_km
         # nightlight intensity with 30 arcsec resolution
         nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(nl_year)
@@ -454,13 +450,12 @@ def _cut_admin1(nightlight, lat, lon, admin1_geom, coord_nl, on_land):
 
     return nightlight_reg, lat_reg, lon_reg, all_geom, on_land_reg
 
-def _get_income_group(cntry_info, ref_year, shp_file):
+def _get_income_group(cntry_iso, ref_year, shp_file):
     """ Append country's income group from World Bank's data at a given year,
     or closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
-        cntry_info (dict): key = ISO alpha_3 country, value = [country id,
-            country name, country geometry]
+        cntry_iso (str): key = ISO alpha_3 country
         ref_year (int): reference year
         shp_file (cartopy.io.shapereader.Reader): shape file with INCOME_GRP
             attribute for every country.
@@ -480,76 +475,76 @@ def _get_income_group(cntry_info, ref_year, shp_file):
         LOGGER.warning('Internet connection failed while downloading ' +
                        'historical income groups.')
 
-    for cntry_iso, cntry_val in cntry_info.items():
-        try:
-            cntry_dfr = dfr_wb.loc[cntry_iso]
-            # select closest not nan value to ref_year
-            close_inc = cntry_dfr.iloc[np.abs( \
-                np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
-            close_inc_val = int(close_inc.iloc[0])
-            LOGGER.info('Income group %s %s: %s.', cntry_iso,
-                        close_inc.index[0], close_inc_val)
+    try:
+        cntry_dfr = dfr_wb.loc[cntry_iso]
+        # select closest not nan value to ref_year
+        close_inc = cntry_dfr.iloc[np.abs( \
+            np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
+        close_inc_val = int(close_inc.iloc[0])
+        LOGGER.info('Income group %s %s: %s.', cntry_iso,
+                    close_inc.index[0], close_inc_val)
 
-        except (KeyError, IndexError):
-            # take value from natural earth repository
-            close_inc = None
-            for info in shp_file.records():
-                if info.attributes['ADM0_A3'] == cntry_iso:
-                    close_inc = info.attributes['INCOME_GRP']
-                    break
-            if close_inc is None:
-                LOGGER.error("No income group for country %s found.",
-                             cntry_iso)
-                raise ValueError
-            close_inc_val = INCOME_GRP_NE_TABLE.get(int(close_inc[0]))
-            LOGGER.info('Income group %s: %s.', cntry_iso, close_inc_val)
+    except (KeyError, IndexError):
+        # take value from natural earth repository
+        close_inc = None
+        for info in shp_file.records():
+            if info.attributes['ADM0_A3'] == cntry_iso:
+                close_inc = info.attributes['INCOME_GRP']
+                break
+        if close_inc is None:
+            LOGGER.error("No income group for country %s found.",
+                         cntry_iso)
+            raise ValueError
+        close_inc_val = INCOME_GRP_NE_TABLE.get(int(close_inc[0]))
+        LOGGER.info('Income group %s: %s.', cntry_iso, close_inc_val)
 
-        cntry_val.append(close_inc_val)
+    return close_inc_val
 
-def _get_gdp(cntry_info, ref_year, shp_file):
+def _get_gdp(cntry_iso, ref_year, shp_file):
     """ Append country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
-        cntry_info (dict): key = ISO alpha_3 country, value = [country id,
-            country name, country geometry]
+        cntry_iso (str): key = ISO alpha_3 country
         ref_year (int): reference year
         shp_file (cartopy.io.shapereader.Reader): shape file with INCOME_GRP
             attribute for every country.
+
+    Returns:
+        float
     """
     wb_gdp_ind = 'NY.GDP.MKTP.CD'
-    for cntry_iso, cntry_val in cntry_info.items():
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                cntry_gdp = wb.download(indicator=wb_gdp_ind, \
-                    country=cntry_iso, start=1960, end=2030)
-            years = np.array([int(year) \
-                for year in cntry_gdp.index.get_level_values('year')])
-            close_gdp = cntry_gdp.iloc[ \
-                np.abs(years-ref_year).argsort()].dropna()
-            close_gdp_val = float(close_gdp.iloc[0].values)
-            LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
-                int(close_gdp.iloc[0].name[1]), close_gdp_val))
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cntry_gdp = wb.download(indicator=wb_gdp_ind, \
+                country=cntry_iso, start=1960, end=2030)
+        years = np.array([int(year) \
+            for year in cntry_gdp.index.get_level_values('year')])
+        close_gdp = cntry_gdp.iloc[ \
+            np.abs(years-ref_year).argsort()].dropna()
+        close_gdp_val = float(close_gdp.iloc[0].values)
+        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
+            int(close_gdp.iloc[0].name[1]), close_gdp_val))
 
-        except (ValueError, IndexError, requests.exceptions.ConnectionError) \
-        as err:
-            if isinstance(err, requests.exceptions.ConnectionError):
-                LOGGER.warning('Internet connection failed while ' +
-                               'retrieving GDPs.')
-            close_gdp_val = -99.0
-            for info in shp_file.records():
-                if info.attributes['ADM0_A3'] == cntry_iso:
-                    close_gdp_val = info.attributes['GDP_MD_EST']
-                    close_gdp_year = int(info.attributes['GDP_YEAR'])
-            if close_gdp_val == -99.0:
-                LOGGER.error("No GDP for country %s found.", cntry_iso)
-                raise ValueError
-            close_gdp_val *= 1e6
-            LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
-                        close_gdp_year, close_gdp_val))
+    except (ValueError, IndexError, requests.exceptions.ConnectionError) \
+    as err:
+        if isinstance(err, requests.exceptions.ConnectionError):
+            LOGGER.warning('Internet connection failed while ' +
+                           'retrieving GDPs.')
+        close_gdp_val = -99.0
+        for info in shp_file.records():
+            if info.attributes['ADM0_A3'] == cntry_iso:
+                close_gdp_val = info.attributes['GDP_MD_EST']
+                close_gdp_year = int(info.attributes['GDP_YEAR'])
+        if close_gdp_val == -99.0:
+            LOGGER.error("No GDP for country %s found.", cntry_iso)
+            raise ValueError
+        close_gdp_val *= 1e6
+        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
+                    close_gdp_year, close_gdp_val))
 
-        cntry_val.append(close_gdp_val)
+    return close_gdp_val
 
 def _process_country(geom, nightlight, coord_nl):
     """Cut nightlight image on box containing all the land.
