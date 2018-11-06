@@ -2,11 +2,11 @@ climada_python
 ==============
 Python (3.6+) version of CLIMADA
 
-TEST version of core CLIMADA in Python - please use https://github.com/davidnbresch/climada for the time being unless you really know what you're doing. dbresch@ethz.ch
+Latest CLIMADA in Python - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB)
 
 Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz.ch>
 
-Date: 2018-05-20
+Date: 2018-11-06
 
 Version: 0.1.0
 
