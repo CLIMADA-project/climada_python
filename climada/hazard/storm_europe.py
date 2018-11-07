@@ -54,6 +54,8 @@ class StormEurope(Hazard):
         ssi_wisc_gust (np.array): SSI according to the WISC definition,
             calculated using only gust values. See self.set_ssi_wisc_gust()
     """
+    intensity_thres = 14.7
+    """ intensity threshold for storage in m/s; same as in WISC """
 
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
     """Name of the variables that aren't need to compute the impact."""
