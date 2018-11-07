@@ -30,7 +30,8 @@ from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
-from climada.util.dates_times import datetime64_to_ordinal
+from climada.util.dates_times import datetime64_to_ordinal, last_year, \
+    first_year
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +54,6 @@ class StormEurope(Hazard):
         ssi_wisc_gust (np.array): SSI according to the WISC definition,
             calculated using only gust values. See self.set_ssi_wisc_gust()
     """
-    intensity_thres = 15
-    """ intensity threshold for storage in m/s """
 
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
     """Name of the variables that aren't need to compute the impact."""
@@ -116,6 +115,10 @@ class StormEurope(Hazard):
                 self.append(new_haz)
 
         self.event_id = np.arange(1, len(self.event_id)+1)
+        self.frequency = np.divide(
+            np.ones_like(self.date),
+            (last_year(self.date) - first_year(self.date))
+        )
 
         self.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved, too large to pickle',

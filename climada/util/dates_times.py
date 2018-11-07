@@ -20,6 +20,7 @@ Define functions to handle dates nad times in climada
 """
 import logging
 import datetime as dt
+import numpy as np
 import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ def str_to_date(date):
 
 def datetime64_to_ordinal(datetime):
     """ Converts from a numpy datetime64 object to an ordinal date.
-        See https://stackoverflow.com/a/21916253 for the horrible details.
+    See https://stackoverflow.com/a/21916253 for the horrible details.
 
     Parameters:
         datetime (np.datetime64): date and time
@@ -58,3 +59,11 @@ def datetime64_to_ordinal(datetime):
         int
     """
     return pd.to_datetime(datetime.tolist()).toordinal()
+
+def last_year(ordinal_vector):
+    """ Extract first year from ordinal date """
+    return dt.date.fromordinal(np.max(ordinal_vector)).year
+
+def first_year(ordinal_vector):
+    """ Extract first year from ordinal date """
+    return dt.date.fromordinal(np.min(ordinal_vector)).year
