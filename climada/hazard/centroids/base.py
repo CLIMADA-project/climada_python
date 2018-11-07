@@ -227,9 +227,9 @@ class Centroids(object):
         return self.id[idx]
 
     def set_area_per_centroid(self):
-        """ If the centroids are on a regular grid and have their resolution
-            set, set the area_per_centroid attribute, assuming degrees for the
-            GridPoints and km2 for the area.
+        """If the centroids are on a regular grid and have their resolution set,
+        set the area_per_centroid attribute, assuming degrees for the GridPoints
+        and km2 for the area.
         """
         try:
             self.resolution
@@ -265,8 +265,8 @@ class Centroids(object):
 
     @resolution.setter
     def resolution(self, res):
-        """ Set the resolution asset after making sure that the coordinates
-            are in a regular grid. Coerces floats to a tuple.
+        """ Set the resolution asset after making sure that the coordinates are
+        on a regular grid. Coerces floats to a tuple.
         """
         assert self.coord.is_regular, 'The coords are not on a regular grid'
         if type(res) is float:
