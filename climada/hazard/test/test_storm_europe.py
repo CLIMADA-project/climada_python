@@ -25,7 +25,8 @@ import datetime as dt
 import numpy as np
 from scipy import sparse
 
-from climada import StormEurope, Centroids, GridPoints
+from climada.hazard import StormEurope, Centroids
+from climada.util.coordinates import GridPoints
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
