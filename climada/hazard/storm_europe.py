@@ -207,9 +207,9 @@ class StormEurope(Hazard):
         """Ought to plot the SSI versus the xs_freq, which presumably is the
         excess frequency.
         """
-        pass
+        raise NotImplementedError
 
-    def set_ssi_dawkins(self, on_land=True):
+    def set_ssi_dawkins(self, on_land=True, threshold=None):
         """ Calculate the SSI according to Dawkins, the definition used matches
         the MATLAB version. Threshold value must be determined _before_ call to
         self.read_footprints()
@@ -219,6 +219,7 @@ class StormEurope(Hazard):
             on_land (bool): Only calculate the SSI for areas on land,
                 ignoring the intensities at sea. Defaults to true, whereas
                 the MATLAB version did not.
+            threshold (float, optional): Threshold used in index definition
 
         Attributes:
             self.ssi_dawkins (np.array): SSI per event
@@ -229,31 +230,47 @@ class StormEurope(Hazard):
         else:
             area_c = self.centroids.area_per_centroid
 
+        if threshold is None:
+            intensity = self.intensity
+        else:
+            assert threshold >= self.intensity_thres, \
+                'threshold cannot be below threshold upon read_footprint'
+            intensity = self.intensity > threshold
+
         self.ssi_dawkins = np.zeros(self.intensity.shape[0])
 
-        for i, inten_i in enumerate(self.intensity):
+        for i, inten_i in enumerate(intensity):
             ssi = area_c * inten_i.power(3).todense().T
             # crossproduct due to transposition
             self.ssi_dawkins[i] = ssi.item(0)
 
-    def set_ssi_wisc_gust(self):
+    def set_ssi_wisc_gust(self, threshold=None):
         """Calculate the SSI according to the WISC definition found at
         wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
         ssi = sum(area_on_land) * mean(intensity > threshold)^3
+        We _assume_ that only the area where the threshold is exceeded
         Note that this does not reproduce self.ssi_wisc, presumably because the
         footprint only contains the maximum wind gusts instead of the sustained
         wind speeds over the 72 hour window.
+
+        Parameters:
+            threshold (float, optional): Threshold used in index definition
 
         Attributes:
             self.ssi_wisc_gust (np.array): SSI per event
         """
         cent = self.centroids
+        
+        if threshold is None:
+            intensity = self.intensity
+        else:
+            assert threshold >= self.intensity_thres, \
+                'threshold cannot be below threshold upon read_footprint'
+            intensity = self.intensity > threshold
 
-        self.ssi_wisc_gust = np.zeros(self.intensity.shape[0])
+        self.ssi_wisc_gust = np.zeros(intensity.shape[0])
 
-        area = sum(cent.area_per_centroid * cent.on_land)
-
-        for i, inten_i in enumerate(self.intensity[:, cent.on_land]):
+        for i, inten_i in enumerate(intensity[:, cent.on_land]):
+            area = np.sum(cent.area_per_centroid[inten_i.indices])
             inten_mean = np.mean(inten_i)
-            self.ssi_wisc_gust[i] = area * \
-                np.power(inten_mean, 3)
+            self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
