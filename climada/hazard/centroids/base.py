@@ -30,9 +30,10 @@ import numpy as np
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import GridPoints, dist_to_coast
+from climada.util.coordinates import GridPoints, dist_to_coast, coord_on_land
 import climada.util.plot as plot
 from climada.util.files_handler import to_list, get_file_names
+from climada.util.constants import ONE_LAT_KM
 
 LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +59,9 @@ class Centroids(object):
         dist_coast (np.array, optional): distance to coast in km
         admin0_name (str, optional): admin0 country name
         admin0_iso3 (str, optional): admin0 ISO3 country name
+        resolution (float tuple, optional): If coord is a regular grid, then
+            a tuple of the form (res_lat, res_lon) can be set. Uses the same
+            units as the coord attribute.
     """
 
     def __init__(self, file_name='', description=''):
@@ -221,6 +225,54 @@ class Centroids(object):
         """
         idx = np.linalg.norm(np.abs(self.coord-[lat, lon]), axis=1).argmin()
         return self.id[idx]
+
+    def set_area_per_centroid(self):
+        """If the centroids are on a regular grid and have their resolution set,
+        set the area_per_centroid attribute, assuming degrees for the GridPoints
+        and km2 for the area.
+        """
+        try:
+            self.resolution
+        except ValueError:
+            LOGGER.warning('Resolution attribute was not set')
+
+        lat_res_km = self.resolution[0] * ONE_LAT_KM
+        lat_unique = np.array(np.unique(self.lat))
+        lon_res_km = self.resolution[1] * ONE_LAT_KM * \
+            np.cos(lat_unique/180*np.pi)
+        lon_unique_n = len(np.unique(self.lon))
+        area_per_lat = lat_res_km * lon_res_km
+        self.area_per_centroid = np.repeat(area_per_lat, lon_unique_n)
+
+    def set_on_land(self):
+        """ Add the _on_land attribute, i.e. if a centroid is on land
+        """
+        self._on_land = coord_on_land(self.lat, self.lon)
+
+    @property 
+    def on_land(self):
+        """ Retuns a logical array of centroids on land
+        """
+        if self._on_land is None:
+            self.set_on_land()
+        return self._on_land
+
+    @property
+    def resolution(self):
+        """ Returns a tuple of the resolution in the same unit as the coords.
+        """
+        return self._resolution
+
+    @resolution.setter
+    def resolution(self, res):
+        """ Set the resolution asset after making sure that the coordinates are
+        on a regular grid. Coerces floats to a tuple.
+        """
+        assert self.coord.is_regular, 'The coords are not on a regular grid'
+        if type(res) is float:
+            res = (res, res)
+        assert type(res) is tuple, 'Use a tuple like (lat, lon).'
+        self._resolution = res
 
     @property
     def lat(self):
