@@ -560,6 +560,8 @@ class TestAppend(unittest.TestCase):
                                             [1.1, 0.1, 1.01], \
                                             [8.3, 4.1, 4.0], \
                                             [9.3, 9.2, 1.7]])
+        haz2.date = np.ones((4,))
+        haz2.orig = np.ones((4,))
         haz2.units = 'm/s'
 
         haz1.append(haz2)
