@@ -427,7 +427,6 @@ class Exposures():
     @property
     def size(self):
         """ Get longitude from coord array """
-        self.check()
         return self.value.size
 
     @classmethod
