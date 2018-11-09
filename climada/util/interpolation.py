@@ -114,7 +114,8 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
                             return_inverse=True)
     # Compute cos(lat) for all centroids
     centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
-    assigned = np.zeros(coordinates.shape[0])
+    assigned = np.zeros(coordinates.shape[0], int)
+    num_warn = 0
     for icoord, iidx in enumerate(idx):
         dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1],
                                centr_cos_lat, coordinates[iidx, 0],
@@ -123,13 +124,15 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
         if np.sqrt(dist.min()) * ONE_LAT_KM > threshold:
-            LOGGER.warning('Distance to closest centroid for coordinate ' + \
-                '(%s, %s) is %s.', coordinates[iidx][0], coordinates[iidx][1],\
-                np.sqrt(dist.min()) * ONE_LAT_KM)
+            num_warn += 1
             min_idx = -1
 
         # Assign found centroid index to all the same coordinates
         assigned[inv == icoord] = min_idx
+
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s' \
+            'km for %s coordinates.', threshold, num_warn)
 
     return assigned
 
@@ -163,7 +166,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
     num_warn = np.sum(dist*EARTH_RADIUS_KM > threshold)
-    if num_warn > 0:
+    if num_warn:
         LOGGER.warning('Distance to closest centroid is greater than %s' \
             'km for %s coordinates.', threshold, num_warn)
         assigned[dist*EARTH_RADIUS_KM > threshold] = -1
