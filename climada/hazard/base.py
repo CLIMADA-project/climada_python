@@ -439,13 +439,15 @@ class Hazard():
             orig_yearset[year] = self.event_id[self.orig][orig_year == year]
         return orig_yearset
 
-    def append(self, hazard):
+    def append(self, hazard, set_uni_id=True):
         """Append events in hazard. Id is perserved if not present in current
         hazard. Otherwise, a new id is provided. Calls Centroids.append.
         All arrays and lists of the instances are appended.
 
         Parameters:
             hazard (Hazard): Hazard instance to append to current
+            set_uni_id (bool, optional): set event_id and centroids.id to
+                unique values
 
         Raises:
             ValueError
@@ -453,7 +455,10 @@ class Hazard():
         hazard._check_events()
         if self.event_id.size == 0:
             for key in hazard.__dict__:
-                self.__dict__[key] = copy.deepcopy(hazard.__dict__[key])
+                try:
+                    self.__dict__[key] = copy.deepcopy(hazard.__dict__[key])
+                except TypeError:
+                    self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
 
         if (self.units == '') and (hazard.units != ''):
@@ -487,7 +492,7 @@ class Hazard():
             self.fraction = sparse.vstack([self.fraction, \
                 hazard.fraction], format='csr')
         else:
-            cen_self, cen_haz = self._append_haz_cent(hazard.centroids)
+            cen_self, cen_haz = self._append_haz_cent(hazard.centroids, set_uni_id)
             self.intensity = sparse.vstack([self.intensity, \
                 sparse.lil_matrix((hazard.intensity.shape[0], \
                 self.intensity.shape[1]))], format='lil')
@@ -501,11 +506,12 @@ class Hazard():
             self.fraction = self.fraction.tocsr()
 
         # Make event id unique
-        _, unique_idx = np.unique(self.event_id, return_index=True)
-        rep_id = [pos for pos in range(self.event_id.size)
-                  if pos not in unique_idx]
-        sup_id = np.max(self.event_id) + 1
-        self.event_id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
+        if set_uni_id:
+            _, unique_idx = np.unique(self.event_id, return_index=True)
+            rep_id = [pos for pos in range(self.event_id.size)
+                      if pos not in unique_idx]
+            sup_id = np.max(self.event_id) + 1
+            self.event_id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
 
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
@@ -562,11 +568,11 @@ class Hazard():
     @property
     def size(self):
         """ Returns number of events """
-        self.check()
         return self.event_id.size
 
     def _append_all(self, list_haz_ev):
-        """Append event by event with same centroids.
+        """Append event by event with same centroids. Takes centroids and units
+        of first event.
 
         Parameters:
             list_haz_ev (list): Hazard instances with one event and same
@@ -599,19 +605,19 @@ class Hazard():
         self.fraction = self.fraction.tocsr()
         self.event_id = np.arange(1, num_ev+1)
 
-    def _append_haz_cent(self, centroids):
+    def _append_haz_cent(self, centroids, set_uni_id=True):
         """Append centroids. Get positions of new centroids.
 
         Parameters:
             centroids (Centroids): centroids to append
+            set_uni_id (bool, optional): set centroids.id to unique values
         Returns:
             cen_self (np.array): positions in self of new centroids
             cen_haz (np.array): corresponding positions in centroids
         """
         # append different centroids
-        # compute positions of repeated and different centroids
         n_ini_cen = self.centroids.id.size
-        self.centroids.append(centroids)
+        new_pos = self.centroids.append(centroids, set_uni_id)
 
         self.intensity = sparse.hstack([self.intensity, \
             sparse.lil_matrix((self.intensity.shape[0], \
@@ -620,13 +626,28 @@ class Hazard():
             sparse.lil_matrix((self.fraction.shape[0], \
             self.centroids.id.size - n_ini_cen))], format='lil')
 
-        cen_self_sort = np.argsort(self.centroids.coord, axis=0)[:, 0]
-        cen_haz = np.argsort(centroids.coord, axis=0)[:, 0]
-        dtype = {'names':['f{}'.format(i) for i in range(2)],
-                 'formats':2 * [centroids.coord.dtype]}
-        cen_self = np.in1d(self.centroids.coord[cen_self_sort].view(dtype),
-                           centroids.coord[cen_haz].view(dtype))
-        cen_self = cen_self_sort[cen_self]
+        # compute positions of repeated and different centroids
+        new_vals = np.argwhere(new_pos).squeeze(axis=1)
+        rep_vals = np.argwhere(np.logical_not(new_pos)).squeeze(axis=1)
+
+        if rep_vals.size:
+            view_x = self.centroids.coord[:self.centroids.size-new_vals.size].\
+                    astype(float).view(complex).reshape(-1,)
+            view_y = centroids.coord[rep_vals].\
+                    astype(float).view(complex).reshape(-1,)
+            index = np.argsort(view_x)
+            sorted_index = np.searchsorted(view_x[index], view_y)
+            yindex = np.take(index, sorted_index, mode="clip")
+        else:
+            yindex = np.array([])
+
+        cen_self = np.zeros(centroids.size, dtype=int)
+        cen_haz = np.zeros(centroids.size, dtype=int)
+        cen_self[:rep_vals.size] = yindex
+        cen_haz[:rep_vals.size] = rep_vals
+        cen_self[rep_vals.size:] = np.arange(new_vals.size) + n_ini_cen
+        cen_haz[rep_vals.size:] = new_vals
+
         return cen_self, cen_haz
 
     @classmethod

@@ -136,32 +136,36 @@ class Centroids(object):
         for file, desc, var in zip(all_files, desc_list, var_list):
             self.append(Centroids._read_one(file, desc, var))
 
-    def append(self, centroids):
+    def append(self, centroids, set_uni_id=True):
         """Append centroids values with NEW GridPoints. Id is perserved if
         not present in current centroids. Otherwise, a new id is provided.
 
         Parameters:
             centroids (Centroids): Centroids instance to append
+            set_uni_id (bool, optional): set centroids.id to unique values
+
+        Returns:
+            np.array(bool)): array of size centroids with True in the new
+                elements (which have been put at the end of self)
         """
         self.tag.append(centroids.tag)
 
         if self.id.size == 0:
             centroids.check()
             self.__dict__ = copy.deepcopy(centroids.__dict__)
-            return
+            return np.array([])
         elif centroids.id.size == 0:
-            return
+            return np.array([])
         elif np.array_equal(centroids.coord, self.coord):
-            return
+            return np.array([])
 
         # GridPoints of centroids that are not in self
         dtype = {'names':['f{}'.format(i) for i in range(2)],
                  'formats':2 * [centroids.coord.dtype]}
         new_pos = np.in1d(centroids.coord.copy().view(dtype),
                           self.coord.copy().view(dtype), invert=True)
-        new_pos = np.argwhere(new_pos).squeeze(axis=1)
-        if not new_pos.size:
-            return
+        if not np.argwhere(new_pos).squeeze(axis=1).size:
+            return new_pos
 
         centroids.check()
         self.coord = np.append(self.coord, centroids.coord[new_pos, :], axis=0)
@@ -180,10 +184,13 @@ class Centroids(object):
                                         centroids.dist_coast[new_pos])
 
         # Check id
-        _, unique_idx = np.unique(self.id, return_index=True)
-        rep_id = [pos for pos in range(self.id.size) if pos not in unique_idx]
-        sup_id = np.max(self.id) + 1
-        self.id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
+        if set_uni_id:
+            _, unique_idx = np.unique(self.id, return_index=True)
+            rep_id = [pos for pos in range(self.id.size) if pos not in unique_idx]
+            sup_id = np.max(self.id) + 1
+            self.id[rep_id] = np.arange(sup_id, sup_id+len(rep_id))
+
+        return new_pos
 
     def calc_dist_to_coast(self):
         """Compute distance to coast for each centroids (dist_coast variable).
