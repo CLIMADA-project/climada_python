@@ -272,14 +272,14 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
     return geom
 
 def coord_on_land(lat, lon, land_geom=None):
-    """Check if point is on land (True) or water (False) of provided countries.
+    """Check if point is on land (True) or water (False) of provided coordinates.
     All globe considered if no input countries.
 
-    Parameters:
-        land_geometry (shapely.geometry.multipolygon.MultiPolygon): profiles of
-            land.
+    Parameters:        
         lat (np.array): latitude of points
         lon (np.array): longitude of points
+        land_geom (shapely.geometry.multipolygon.MultiPolygon, optional): 
+            profiles of land.
 
     Returns:
         np.array(bool)
