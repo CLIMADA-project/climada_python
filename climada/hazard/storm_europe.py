@@ -260,7 +260,7 @@ class StormEurope(Hazard):
             self.ssi_wisc_gust (np.array): SSI per event
         """
         cent = self.centroids
-        
+
         if threshold is None:
             intensity = self.intensity
         else:
