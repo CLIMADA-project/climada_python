@@ -311,13 +311,18 @@ def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
     for cntry_iso, cntry_val in cntry_info.items():
         cntry_val.append(ref_year)
         if 'gdp' in kwargs and kwargs['gdp'][cntry_iso] != '':
-            cntry_val.append(kwargs['gdp'][cntry_iso])
+            gdp = kwargs['gdp'][cntry_iso]
+            LOGGER.info("GDP {}: {:.3e}.".format(cntry_iso, gdp))
         else:
-            cntry_val.append(_get_gdp(cntry_iso, ref_year, shp_file))
+            gdp = _get_gdp(cntry_iso, ref_year, shp_file)
+        cntry_val.append(gdp)
+
         if 'inc_grp' in kwargs and kwargs['inc_grp'][cntry_iso] != '':
-            cntry_val.append(kwargs['inc_grp'][cntry_iso])
+            inc_grp = kwargs['inc_grp'][cntry_iso]
+            LOGGER.info('Income group %s: %s.', cntry_iso, inc_grp)
         else:
-            cntry_val.append(_get_income_group(cntry_iso, ref_year, shp_file))
+            inc_grp = _get_income_group(cntry_iso, ref_year, shp_file)
+        cntry_val.append(inc_grp)
 
 def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
     """ Obtain nightlight from different sources depending on reference year.
@@ -541,8 +546,8 @@ def _get_gdp(cntry_iso, ref_year, shp_file):
             LOGGER.error("No GDP for country %s found.", cntry_iso)
             raise ValueError
         close_gdp_val *= 1e6
-        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, \
-                    close_gdp_year, close_gdp_val))
+        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_gdp_year, 
+                    close_gdp_val))
 
     return close_gdp_val
 
