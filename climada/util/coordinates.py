@@ -276,10 +276,10 @@ def coord_on_land(lat, lon, land_geom=None):
     """Check if point is on land (True) or water (False) of provided coordinates.
     All globe considered if no input countries.
 
-    Parameters:        
+    Parameters:
         lat (np.array): latitude of points
         lon (np.array): longitude of points
-        land_geom (shapely.geometry.multipolygon.MultiPolygon, optional): 
+        land_geom (shapely.geometry.multipolygon.MultiPolygon, optional):
             profiles of land.
 
     Returns:
