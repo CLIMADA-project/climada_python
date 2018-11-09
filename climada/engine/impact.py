@@ -24,8 +24,6 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 import logging
 import numpy as np
 
-from climada.entity.tag import Tag
-from climada.hazard.tag import Tag as TagHazard
 from climada.util.coordinates import GridPoints
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
@@ -37,11 +35,11 @@ class Impact():
     functions) and hazard.
 
     Attributes:
-        exposures_tag (Tag): information about the exposures
-        impact_funcs_tag (Tag): information about the impact functions
-        hazard_tag (TagHazard): information about the hazard
+        tag (dict): dictionary of tags of exposures, impact functions set and
+            hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
+        date (np.array): date of events
         coord_exp (GridPoints): exposures GridPoints (in degrees)
         eai_exp (np.array): expected annual impact for each exposure
         at_event (np.array): impact for each hazard event
@@ -53,9 +51,7 @@ class Impact():
 
     def __init__(self):
         """ Empty initialization."""
-        self.exposures_tag = Tag()
-        self.impact_funcs_tag = Tag()
-        self.hazard_tag = TagHazard()
+        self.tag = dict()
         self.event_id = np.array([], int)
         self.event_name = list()
         self.date = np.array([], int)
@@ -78,9 +74,7 @@ class Impact():
             ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
-        ifc.exposures_tag = self.exposures_tag
-        ifc.impact_funcs_tag = self.impact_funcs_tag
-        ifc.hazard_tag = self.hazard_tag
+        ifc.tag = self.tag
         # Sort descendingly the impacts per events
         sort_idxs = np.argsort(self.at_event)[::-1]
         # Calculate exceedence frequency
@@ -144,10 +138,8 @@ class Impact():
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(len(exposures.value))
-        self.tot_value = 0
-        self.exposures_tag = exposures.tag
-        self.impact_funcs_tag = impact_funcs.tag
-        self.hazard_tag = hazard.tag
+        self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
+                    'haz': hazard.tag}
 
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
@@ -198,12 +190,13 @@ class Impact():
             LOGGER.warning('No impact functions match the exposures.')
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
-    def plot_eai_exposure(self, ignore_zero=True, pop_name=True,
-                          buffer_deg=0.0, extend='neither', var_name=None,
-                          **kwargs):
+    def plot_eai_exposure(self, mask=None, ignore_zero=True,
+                          pop_name=True, buffer_deg=0.0, extend='neither',
+                          var_name=None, **kwargs):
         """Plot expected annual impact of each exposure.
 
         Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
@@ -220,13 +213,17 @@ class Impact():
         title = 'Expected annual impact'
         if var_name is None:
             var_name = 'Impact (' + self.unit + ')'
-        if ignore_zero:
-            pos_vals = self.eai_exp > 0
+        if mask is not None:
+            exp = self.eai_exp[mask]
         else:
-            pos_vals = np.ones((self.eai_exp.size,), dtype=bool)
+            exp = self.eai_exp
+        if ignore_zero:
+            pos_vals = exp > 0
+        else:
+            pos_vals = np.ones((exp.size,), dtype=bool)
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        return u_plot.geo_bin_from_array(self.eai_exp[pos_vals], \
+        return u_plot.geo_bin_from_array(exp[pos_vals], \
             self.coord_exp[pos_vals], var_name, title, pop_name, buffer_deg, \
             extend, **kwargs)
 
@@ -282,15 +279,15 @@ class ImpactFreqCurve():
     """ Impact exceedence frequency curve.
 
     Attributes:
+        tag (dict): dictionary of tags of exposures, impact functions set and
+            hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
         return_per (np.array): return period
         impact (np.array): impact exceeding frequency
         unit (str): value unit used (given by exposures unit)
         label (str): string describing source data
     """
     def __init__(self):
-        self.exposures_tag = Tag()
-        self.impact_funcs_tag = Tag()
-        self.hazard_tag = TagHazard()
+        self.tag = dict()
         self.return_per = np.array([])
         self.impact = np.array([])
         self.unit = ''
