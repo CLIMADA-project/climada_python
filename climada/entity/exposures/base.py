@@ -189,12 +189,13 @@ class Exposures():
                                'not set.')
             check.array_optional(num_exp, ass, 'Exposures.assigned')
 
-    def plot(self, ignore_zero=False, pop_name=True, buffer_deg=0.0,
+    def plot(self, mask=None, ignore_zero=False, pop_name=True, buffer_deg=0.0,
              extend='neither', **kwargs):
         """Plot exposures values sum binned over Earth's map. An other function
         for the bins can be set through the key reduce_C_function.
 
         Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
@@ -212,12 +213,16 @@ class Exposures():
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
+        if mask is not None:
+            exp = self.value[mask]
+        else:
+            exp = self.value
         if ignore_zero:
-            pos_vals = self.value > 0
-            return u_plot.geo_bin_from_array(self.value[pos_vals], \
+            pos_vals = exp > 0
+            return u_plot.geo_bin_from_array(exp[pos_vals], \
                 self.coord[pos_vals, :], cbar_label, title, pop_name, \
                 buffer_deg, extend, **kwargs)
-        return u_plot.geo_bin_from_array(self.value, self.coord, cbar_label, \
+        return u_plot.geo_bin_from_array(exp, self.coord, cbar_label, \
             title, pop_name, buffer_deg, extend, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
