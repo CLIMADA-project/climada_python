@@ -81,7 +81,7 @@ class TestChecks(unittest.TestCase):
         self.assertIn('Invalid DummyClass.array_opt size: 25 != 3.', cm.output[0])        
       
         dummy.array_opt = np.array([], int)
-        with self.assertLogs('climada.util.checker', level='INFO') as cm:
+        with self.assertLogs('climada.util.checker', level='DEBUG') as cm:
             check_optionals(dummy.__dict__, dummy.vars_opt, "DummyClass.", 
                       dummy.id.size)    
         self.assertIn('DummyClass.array_opt not set.', cm.output[0])    

@@ -138,13 +138,13 @@ class TestReader(unittest.TestCase):
 
     def test_check_template_info(self):
         """Check warning centroids when template read."""
-        with self.assertLogs('climada.util.checker', level='INFO') as cm:
+        with self.assertLogs('climada.util.checker', level='DEBUG') as cm:
             Exposures(ENT_TEMPLATE_XLS)
         self.assertIn("Exposures.assigned not set.", cm.output[0])
 
     def test_check_demo_info(self):
         """Check warning centroids when demo read."""
-        with self.assertLogs('climada.util.checker', level='INFO') as cm:
+        with self.assertLogs('climada.util.checker', level='DEBUG') as cm:
             Exposures(ENT_TEST_XLS)
         self.assertIn("Exposures.category_id not set.", cm.output[0])
         self.assertIn("Exposures.region_id not set.", cm.output[1])

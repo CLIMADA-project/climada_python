@@ -76,7 +76,7 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
 def empty_optional(var, var_name):
     """Check if a data structure is empty."""
     if not var:
-        LOGGER.info("%s not set. ", var_name)
+        LOGGER.debug("%s not set. ", var_name)
 
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
@@ -125,7 +125,7 @@ def array_optional(exp_len, var, var_name):
             ValueError
     """
     if len(var) == 0 and exp_len > 0:
-        LOGGER.info("%s not set. ", var_name)
+        LOGGER.debug("%s not set. ", var_name)
     else:
         size(exp_len, var, var_name)
 
@@ -146,7 +146,7 @@ def array_default(exp_len, var, var_name, def_val):
     """
     res = var
     if len(var) == 0 and exp_len > 0:
-        LOGGER.info("%s not set. Default values set.", var_name)
+        LOGGER.debug("%s not set. Default values set.", var_name)
         res = def_val
     else:
         size(exp_len, var, var_name)
