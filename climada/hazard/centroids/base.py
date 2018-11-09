@@ -256,7 +256,7 @@ class Centroids(object):
         """
         self._on_land = coord_on_land(self.lat, self.lon)
 
-    @property 
+    @property
     def on_land(self):
         """ Retuns a logical array of centroids on land
         """
@@ -276,9 +276,9 @@ class Centroids(object):
         on a regular grid. Coerces floats to a tuple.
         """
         assert self.coord.is_regular, 'The coords are not on a regular grid'
-        if type(res) is float:
+        if isinstance(res, float):
             res = (res, res)
-        assert type(res) is tuple, 'Use a tuple like (lat, lon).'
+        assert isinstance(res, tuple), 'Use a tuple like (lat, lon).'
         self._resolution = res
 
     @property
