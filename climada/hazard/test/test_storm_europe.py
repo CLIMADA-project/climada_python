@@ -26,34 +26,35 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard import StormEurope, Centroids
-from climada.util import GridPoints
+from climada.util.coordinates import GridPoints
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+fn = [
+    'fp_lothar_crop-test.nc',
+    'fp_xynthia_crop-test.nc',
+]
+TEST_NCS = [os.path.join(DATA_DIR, f) for f in fn]
+
+TEST_CENTROIDS = Centroids(os.path.join(DATA_DIR, 'fp_centroids-test.csv'))
+
 
 class TestReader(unittest.TestCase):
     """ Test loading functions from the StormEurope class """
 
-    fn = [
-        'fp_lothar_crop-test.nc',
-        'fp_xynthia_crop-test.nc',
-    ]
-    ncdfs = [os.path.join(DATA_DIR, f) for f in fn]
-
-    ct = Centroids(os.path.join(DATA_DIR, 'fp_centroids-test.csv'))
-
     def test_centroids_from_nc(self):
         """ Test if centroids can be constructed correctly """
-        ct = StormEurope._centroids_from_nc(self.ncdfs[0])
+        ct = StormEurope._centroids_from_nc(TEST_NCS[0])
 
         self.assertTrue(isinstance(ct, Centroids))
         self.assertTrue(isinstance(ct.coord, GridPoints))
-        self.assertEqual(ct.size, 10000)
+        self.assertEqual(ct.size, 15625)
         self.assertEqual(ct.coord.shape[0], ct.id.shape[0])
 
     def test_read_footprints(self):
         """ Test read_footprints function, using two small test files"""
         se = StormEurope()
-        se.read_footprints(self.ncdfs)
+        se.read_footprints(TEST_NCS)
 
         self.assertEqual(se.tag.haz_type, 'WS')
         self.assertEqual(se.units, 'm/s')
@@ -66,13 +67,13 @@ class TestReader(unittest.TestCase):
         self.assertEqual(se.event_name[0], 'Lothar')
         self.assertTrue(isinstance(se.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(se.fraction, sparse.csr.csr_matrix))
-        self.assertEqual(se.intensity.shape, (2, 10000))
-        self.assertEqual(se.fraction.shape, (2, 10000))
+        self.assertEqual(se.intensity.shape, (2, 15625))
+        self.assertEqual(se.fraction.shape, (2, 15625))
 
     def test_read_with_ref(self):
         """ Test read_footprints while passing in a reference raster. """
         se = StormEurope()
-        se.read_footprints(self.ncdfs, ref_raster=self.ncdfs[1])
+        se.read_footprints(TEST_NCS, ref_raster=TEST_NCS[1])
 
         self.assertEqual(se.tag.haz_type, 'WS')
         self.assertEqual(se.units, 'm/s')
@@ -85,13 +86,13 @@ class TestReader(unittest.TestCase):
         self.assertEqual(se.event_name[0], 'Lothar')
         self.assertTrue(isinstance(se.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(se.fraction, sparse.csr.csr_matrix))
-        self.assertEqual(se.intensity.shape, (2, 10000))
-        self.assertEqual(se.fraction.shape, (2, 10000))
+        self.assertEqual(se.intensity.shape, (2, 15625))
+        self.assertEqual(se.fraction.shape, (2, 15625))
 
     def test_read_with_cent(self):
         """ Test read_footprints while passing in a Centroids object """
         se = StormEurope()
-        se.read_footprints(self.ncdfs, centroids=self.ct)
+        se.read_footprints(TEST_NCS, centroids=TEST_CENTROIDS)
 
         self.assertEqual(se.tag.haz_type, 'WS')
         self.assertEqual(se.units, 'm/s')
@@ -104,13 +105,13 @@ class TestReader(unittest.TestCase):
         self.assertEqual(se.event_name[0], 'Lothar')
         self.assertTrue(isinstance(se.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(se.fraction, sparse.csr.csr_matrix))
-        self.assertEqual(se.intensity.shape, (2, 10000))
-        self.assertEqual(se.fraction.shape, (2, 10000))
+        self.assertEqual(se.intensity.shape, (2, 15625))
+        self.assertEqual(se.fraction.shape, (2, 15625))
         self.assertEqual(
-            se.centroids.region_id[
-                np.isnan(se.centroids.region_id)
-            ].size,
-            7515
+            np.sum(
+                ~np.isnan(se.centroids.region_id)
+            ),
+            5216
         )
 
 

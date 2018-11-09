@@ -57,33 +57,33 @@ class TestGridPoints(unittest.TestCase):
     def test_is_regular_pass(self):
         """ Test is_regular function. """
         coord = GridPoints(np.array([[1, 2], [4.4, 5.4], [4, 5]]))
-        self.assertFalse(coord.is_regular())
+        self.assertFalse(coord.is_regular)
 
         coord = GridPoints(np.array([[1, 2], [4.4, 5], [4, 5]]))
-        self.assertFalse(coord.is_regular())
+        self.assertFalse(coord.is_regular)
 
         coord = GridPoints(np.array([[1, 2], [4, 5]]))
-        self.assertFalse(coord.is_regular())
+        self.assertFalse(coord.is_regular)
         
         coord = GridPoints(np.array([[1, 2], [4, 5], [1, 5], [4, 3]]))
-        self.assertFalse(coord.is_regular())
+        self.assertFalse(coord.is_regular)
         
         coord = GridPoints(np.array([[1, 2], [4, 5], [1, 5], [4, 2]]))
-        self.assertTrue(coord.is_regular())
+        self.assertTrue(coord.is_regular)
         
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 5),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
         coord = GridPoints(np.array([grid_x, grid_y]).transpose())
-        self.assertTrue(coord.is_regular())
+        self.assertTrue(coord.is_regular)
 
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 4),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
         coord = GridPoints(np.array([grid_x, grid_y]).transpose())
-        self.assertTrue(coord.is_regular())
+        self.assertTrue(coord.is_regular)
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''

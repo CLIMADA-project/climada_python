@@ -104,3 +104,8 @@ venv.bak/
 
 # mac finder files
 .DS_Store
+
+# climada system data files
+# they get downloaded separately from the repo
+data/system/global_coast*
+data/system/global_country*

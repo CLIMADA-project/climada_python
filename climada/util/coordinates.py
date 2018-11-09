@@ -86,6 +86,7 @@ class GridPoints(np.ndarray):
         return interpol_index(self, coord, method=METHOD[0],
                               distance=DIST_DEF[1])
 
+    @property
     def is_regular(self):
         """Return True if grid is regular."""
         regular = False
