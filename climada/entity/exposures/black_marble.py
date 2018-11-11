@@ -28,6 +28,7 @@ import logging
 import math
 import warnings
 import numpy as np
+from numpy.polynomial.polynomial import polyval
 from scipy import ndimage
 import pandas as pd
 import requests
@@ -77,7 +78,10 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
 """ Meaning of values of natural earth's income groups. """
 
 DEF_HAZ_TYPE = 'TC'
-""" Default hazard type used in impact functions id."""
+""" Default hazard type used in impact functions id. """
+
+DEF_POLY_VAL = [0, 0, 1]
+""" Default polynomial transformation used. """
 
 class BlackMarble(Exposures):
     """Defines exposures from night light intensity, GDP and income group.
@@ -111,7 +115,9 @@ class BlackMarble(Exposures):
             from_hr (bool, optional): force to use higher resolution image,
                 independently of its year of acquisition.
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
-                country ISO_alpha3 code. If provided, these are used.
+                country ISO_alpha3 code. 'poly_val' polynomial transformation
+                [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
+                provided). If provided, these are used.
         """
         self.clear()
         shp_file = shapereader.natural_earth(resolution='10m',
@@ -128,7 +134,8 @@ class BlackMarble(Exposures):
         for cntry_iso, cntry_val in cntry_info.items():
             LOGGER.info('Processing country %s.', cntry_val[1])
             self.append(self._set_one_country(cntry_val, nightlight, \
-                coord_nl, fn_nl, res_fact, res_km, cntry_admin1[cntry_iso]))
+                coord_nl, fn_nl, res_fact, res_km, cntry_admin1[cntry_iso], \
+                **kwargs))
 
         self.add_sea(sea_res)
 
@@ -196,7 +203,7 @@ class BlackMarble(Exposures):
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, fn_nl, res_fact,
-                         res_km, admin1_geom):
+                         res_km, admin1_geom, **kwargs):
         """ Model one country.
 
         Parameters:
@@ -210,12 +217,19 @@ class BlackMarble(Exposures):
             res_fact (float): resampling factor
             res_km (float): wished resolution in km
             admin1_geom (list): list of admin1 geometries to filter
+            poly_val (list): list of polynomial coefficients to apply to
+                nightlight
         """
+        if 'poly_val' in kwargs:
+            poly_val = kwargs['poly_val']
+        else:
+            poly_val = DEF_POLY_VAL
         geom = cntry_info[2]
+
         nightlight_reg, lat_reg, lon_reg, on_land = _process_country(geom, \
             nightlight, coord_nl)
         nightlight_reg = _set_econ_indicators(nightlight_reg, cntry_info[4], \
-                                              cntry_info[5])
+                                              cntry_info[5], poly_val)
         if admin1_geom:
             nightlight_reg, lat_reg, lon_reg, geom, on_land = _cut_admin1( \
                 nightlight_reg, lat_reg, lon_reg, admin1_geom, coord_nl, on_land)
@@ -546,8 +560,8 @@ def _get_gdp(cntry_iso, ref_year, shp_file):
             LOGGER.error("No GDP for country %s found.", cntry_iso)
             raise ValueError
         close_gdp_val *= 1e6
-        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_gdp_year, 
-                    close_gdp_val))
+        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_gdp_year,
+                                                  close_gdp_val))
 
     return close_gdp_val
 
@@ -632,17 +646,21 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
 
     return nightlight_res[on_land].ravel(), lat_res[on_land], lon_res[on_land]
 
-def _set_econ_indicators(nightlight, gdp, inc_grp):
+def _set_econ_indicators(nightlight, gdp, inc_grp, poly_val):
     """Model land exposures from nightlight intensities and normalized
     to GDP * (income_group + 1).
 
     Parameters:
-        nightlight (sparse.csr_matrix): nightlight values
+        nightlight (np.matrix): nightlight values
         gdp (float): GDP to interpolate in the region
         inc_grp (float): index to weight exposures in the region
+        poly_val (list): list of polynomial coefficients to apply to nightlight
+
+    Returns:
+        np.array
     """
     if nightlight.sum() > 0:
-        nightlight = np.power(nightlight, 3)
+        nightlight = polyval(np.asarray(nightlight), poly_val)
         nightlight = nightlight/nightlight.sum() * gdp * (inc_grp+1)
 
     return nightlight
