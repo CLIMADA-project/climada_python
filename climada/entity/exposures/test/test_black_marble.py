@@ -458,7 +458,7 @@ class TestEconIndices(unittest.TestCase):
         nightlight = np.arange(0, 20, 0.1).reshape((100, 2))
         gdp = 4.225e9
         inc_grp = 4
-        nightlight = _set_econ_indicators(nightlight, gdp, inc_grp)
+        nightlight = _set_econ_indicators(nightlight, gdp, inc_grp, [0, 0, 1])
 
         self.assertAlmostEqual(nightlight.sum(), gdp*(inc_grp+1), 5)
 
