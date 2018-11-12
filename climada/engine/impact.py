@@ -224,8 +224,8 @@ class Impact():
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         return u_plot.geo_bin_from_array(exp[pos_vals], \
-            self.coord_exp[pos_vals], var_name, title, pop_name, buffer_deg, \
-            extend, **kwargs)
+            self.coord_exp[mask][pos_vals], var_name, title, pop_name, \
+            buffer_deg, extend, **kwargs)
 
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
         """Compute impact for inpute exposure indexes and impact function.

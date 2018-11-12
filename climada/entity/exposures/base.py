@@ -220,7 +220,7 @@ class Exposures():
         if ignore_zero:
             pos_vals = exp > 0
             return u_plot.geo_bin_from_array(exp[pos_vals], \
-                self.coord[pos_vals, :], cbar_label, title, pop_name, \
+                self.coord[mask][pos_vals], cbar_label, title, pop_name, \
                 buffer_deg, extend, **kwargs)
         return u_plot.geo_bin_from_array(exp, self.coord, cbar_label, \
             title, pop_name, buffer_deg, extend, **kwargs)
