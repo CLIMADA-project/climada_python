@@ -213,17 +213,15 @@ class Exposures():
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        if mask is not None:
-            exp = self.value[mask]
-        else:
-            exp = self.value
+        if mask is None:
+            mask = np.ones((self.value.size,), dtype=bool)
         if ignore_zero:
-            pos_vals = exp > 0
-            return u_plot.geo_bin_from_array(exp[pos_vals], \
-                self.coord[mask][pos_vals], cbar_label, title, pop_name, \
-                buffer_deg, extend, **kwargs)
-        return u_plot.geo_bin_from_array(exp, self.coord, cbar_label, \
-            title, pop_name, buffer_deg, extend, **kwargs)
+            pos_vals = self.value[mask] > 0
+        else:
+            pos_vals = np.ones((self.value[mask].size,), dtype=bool)
+        return u_plot.geo_bin_from_array(self.value[mask][pos_vals],
+            self.coord[mask][pos_vals], cbar_label, title, pop_name,
+            buffer_deg, extend, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
         """Read and check exposures.

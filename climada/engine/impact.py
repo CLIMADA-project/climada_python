@@ -213,17 +213,15 @@ class Impact():
         title = 'Expected annual impact'
         if var_name is None:
             var_name = 'Impact (' + self.unit + ')'
-        if mask is not None:
-            exp = self.eai_exp[mask]
-        else:
-            exp = self.eai_exp
+        if mask is None:
+            mask = np.ones((self.eai_exp.size,), dtype=bool)
         if ignore_zero:
-            pos_vals = exp > 0
+            pos_vals = self.eai_exp[mask] > 0
         else:
-            pos_vals = np.ones((exp.size,), dtype=bool)
+            pos_vals = np.ones((self.eai_exp[mask].size,), dtype=bool)
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
-        return u_plot.geo_bin_from_array(exp[pos_vals], \
+        return u_plot.geo_bin_from_array(self.eai_exp[mask][pos_vals], \
             self.coord_exp[mask][pos_vals], var_name, title, pop_name, \
             buffer_deg, extend, **kwargs)
 
