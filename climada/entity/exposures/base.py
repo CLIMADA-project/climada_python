@@ -219,8 +219,8 @@ class Exposures():
             pos_vals = self.value[mask] > 0
         else:
             pos_vals = np.ones((self.value[mask].size,), dtype=bool)
-        return u_plot.geo_bin_from_array(self.value[mask][pos_vals],
-            self.coord[mask][pos_vals], cbar_label, title, pop_name,
+        return u_plot.geo_bin_from_array(self.value[mask][pos_vals], \
+            self.coord[mask][pos_vals], cbar_label, title, pop_name, \
             buffer_deg, extend, **kwargs)
 
     def read(self, files, descriptions='', var_names=None):
