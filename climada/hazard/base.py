@@ -719,7 +719,7 @@ class Hazard():
                 title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
                                           self.event_name[event_pos])
             elif ev_id < 0:
-                max_inten = np.squeeze(np.asarray(np.sum(mat_var, axis=1)))
+                max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].todense().transpose()
@@ -762,7 +762,7 @@ class Hazard():
                     self.centroids.coord[centr_pos, 0], \
                     self.centroids.coord[centr_pos, 1])
         elif centr_id < 0:
-            max_inten = np.squeeze(np.asarray(np.sum(mat_var, axis=0)))
+            max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_id)[centr_id:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].todense()
