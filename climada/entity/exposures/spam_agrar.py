@@ -153,6 +153,7 @@ class SpamAgrar(Exposures):
             i_1 = 7 # get sum over all crops (columns 7 to 48)
             i_2 = 49
         self.value = data.iloc[:, i_1:i_2].sum(axis=1)
+        self.value.index = np.arange(0,self.value.size)
         self.coord = np.empty((self.value.size, 2))
         self.coord[:, 0] = lat.values
         self.coord[:, 1] = lon.values
