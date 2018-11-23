@@ -579,8 +579,15 @@ class Hazard():
                 centroids
         """
         self.clear()
+
         num_ev = len(list_haz_ev)
         num_cen = list_haz_ev[0].centroids.size
+
+        # check for new variables
+        for key_new in list_haz_ev[0].__dict__.keys():
+            if key_new not in self.__dict__:
+                self.__dict__[key_new] = list_haz_ev[0].__dict__[key_new]
+
         for var_name, var_val in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.zeros((num_ev,), dtype=var_val.dtype))
@@ -862,8 +869,3 @@ class Hazard():
         inten_fit[wrong_inten] = 0.
 
         return inten_fit
-
-    def __str__(self):
-        return self.tag.__str__()
-
-    __repr__ = __str__
