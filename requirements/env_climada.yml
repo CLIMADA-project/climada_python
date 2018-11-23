@@ -9,7 +9,7 @@ dependencies:
   - geos=3.6.2
   - h5py=2.7.1
   - matplotlib=2.2.2
-  - mkl=2019.0
+  - mkl
   - mkl_fft
   - mkl_random
   - netcdf4
