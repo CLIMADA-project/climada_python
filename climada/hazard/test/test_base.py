@@ -851,6 +851,24 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
         self.assertTrue(haz.tag, 'file_1.mat + file_2.mat')
         self.assertTrue(haz.tag, 'Description 1 + Description 2')
+        
+    def test_append_new_var_pass(self):
+        """ New variable appears if hazard to append is empty. """
+        haz = dummy_hazard()
+        haz.new_var = np.ones(haz.size)
+        
+        app_haz = Hazard()
+        app_haz.append(haz)
+        self.assertIn('new_var', app_haz.__dict__)
+
+    def test_append_all_new_var_pass(self):
+        """ New variable appears. """
+        haz = dummy_hazard()
+        haz.new_var = np.ones(haz.size)
+        
+        app_haz = dummy_hazard()
+        app_haz._append_all([haz])
+        self.assertIn('new_var', app_haz.__dict__)
 
 class TestRead(unittest.TestCase):
     """Test loading funcions from the Hazard class"""
