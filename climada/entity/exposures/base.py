@@ -460,8 +460,3 @@ class Exposures():
         reader(new_exp, file_name, var_names)
 
         return new_exp
-
-    def __str__(self):
-        return self.tag.__str__()
-
-    __repr__ = __str__

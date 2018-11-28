@@ -257,8 +257,3 @@ class MeasureSet():
         reader(new_meas, file_name, var_names)
 
         return new_meas
-
-    def __str__(self):
-        return self.tag.__str__()
-
-    __repr__ = __str__

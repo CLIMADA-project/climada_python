@@ -257,8 +257,3 @@ class DiscRates(object):
         reader(new_disc, file_name, var_names)
 
         return new_disc
-
-    def __str__(self):
-        return self.tag.__str__()
-
-    __repr__ = __str__
