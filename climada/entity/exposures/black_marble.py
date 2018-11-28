@@ -131,6 +131,7 @@ class BlackMarble(Exposures):
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(\
             ref_year, cntry_info, res_km, from_hr)
 
+        # TODO parallel over _set_one_country
         for cntry_iso, cntry_val in cntry_info.items():
             LOGGER.info('Processing country %s.', cntry_val[1])
             self.append(self._set_one_country(cntry_val, nightlight, \
