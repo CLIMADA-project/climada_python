@@ -56,8 +56,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(glb_cent.region_id[170825], 28)
         self.assertAlmostEqual(glb_cent.dist_coast[9], 21.366461094662913)
         self.assertAlmostEqual(glb_cent.dist_coast[1568370], 36.76908653021)
-        self.assertEqual(glb_cent.admin0_name, '')
-        self.assertEqual(glb_cent.admin0_iso3, '')
+        self.assertEqual(glb_cent.name, '')
 
 class TestReaderExcel(unittest.TestCase):
     '''Test reader functionality of Excel files'''

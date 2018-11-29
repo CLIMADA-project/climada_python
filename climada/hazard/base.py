@@ -195,7 +195,7 @@ class Hazard():
                                           var_list):
             self.append(self._read_one(file, haz_type, desc, centr, var))
 
-    def select(self, date=None, orig=None):
+    def select(self, date=None, orig=None, reg_id=None):
         """Select events within provided date and/or historical or synthetical.
         Frequency of the events may need to be recomputed!
 
@@ -209,35 +209,50 @@ class Hazard():
             Hazard or children
         """
         haz = self.__class__()
-        sel_idx = np.ones(self.event_id.size, bool)
+        sel_ev = np.ones(self.event_id.size, bool)
+        sel_cen = np.ones(self.centroids.size, bool)
 
+        # filter events with date
         if isinstance(date, tuple):
             date_ini, date_end = date[0], date[1]
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
 
-            sel_idx = np.logical_and(date_ini <= self.date,
-                                     self.date <= date_end)
-            if not np.any(sel_idx):
+            sel_ev = np.logical_and(date_ini <= self.date,
+                                    self.date <= date_end)
+            if not np.any(sel_ev):
                 LOGGER.info('No hazard in date range %s.', date)
                 return None
 
+        # filter events hist/synthetic
         if isinstance(orig, bool):
-            sel_idx = np.logical_and(sel_idx, self.orig.astype(bool) == orig)
-            if not np.any(sel_idx):
+            sel_ev = np.logical_and(sel_ev, self.orig.astype(bool) == orig)
+            if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s tracks.', str(orig))
                 return None
 
-        sel_idx = np.argwhere(sel_idx).squeeze()
+        # filter centroids
+        if reg_id is not None:
+            sel_cen = np.argwhere(self.centroids.region_id == reg_id).reshape(-1)
+            if not sel_cen.size:
+                LOGGER.info('No hazard centroids with region %s.', str(reg_id))
+                return None
+
+        sel_ev = np.argwhere(sel_ev).squeeze()
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
             var_val.size:
-                setattr(haz, var_name, var_val[sel_idx])
+                setattr(haz, var_name, var_val[sel_ev])
             elif isinstance(var_val, sparse.csr_matrix):
-                setattr(haz, var_name, var_val[sel_idx, :])
+                setattr(haz, var_name, var_val[sel_ev, :][:, sel_cen])
             elif isinstance(var_val, list) and var_val:
-                setattr(haz, var_name, [var_val[idx] for idx in sel_idx])
+                setattr(haz, var_name, [var_val[idx] for idx in sel_ev])
+            elif var_name == 'centroids':
+                if reg_id is not None:
+                    setattr(haz, var_name, var_val.select(reg_id))
+                else:
+                    setattr(haz, var_name, var_val)
             else:
                 setattr(haz, var_name, var_val)
 

@@ -495,6 +495,27 @@ class TestSelect(unittest.TestCase):
         sel_haz = haz.select(date=(6,8), orig=False)
         self.assertEqual(sel_haz, None)
 
+    def test_select_reg_id_pass(self):
+        """Test select region of centroids."""
+        haz = dummy_hazard()
+        haz.centroids.region_id = np.array([5, 7, 9])
+        sel_haz = haz.select(date=(2,4), orig=False, reg_id=9)
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(), 
+                                       haz.centroids.coord[2, :]))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.01], [0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.01], [1.0]])))
+        self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
 class TestAppend(unittest.TestCase):
     """Test append method."""
 
@@ -944,11 +965,11 @@ class TestYearset(unittest.TestCase):
                                        np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRead))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSelect)
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRead))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

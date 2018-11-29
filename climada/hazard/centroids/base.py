@@ -31,7 +31,7 @@ from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
 from climada.util.coordinates import GridPoints, dist_to_coast, coord_on_land
-import climada.util.plot as plot
+import climada.util.plot as u_plot
 from climada.util.files_handler import to_list, get_file_names
 from climada.util.constants import ONE_LAT_KM
 
@@ -45,7 +45,7 @@ FILE_EXT = {'.mat':  'MAT',
 
 """ Supported files format to read from """
 
-class Centroids(object):
+class Centroids():
     """Definition of the hazard GridPoints.
 
     Attributes:
@@ -56,9 +56,7 @@ class Centroids(object):
         id (np.array): an id for each centroid
         region_id (np.array, optional): region id for each centroid
             (when defined)
-        dist_coast (np.array, optional): distance to coast in km
-        admin0_name (str, optional): admin0 country name
-        admin0_iso3 (str, optional): admin0 ISO3 country name
+        name (str, optional): name of centroids (e.g. country, region)
         resolution (float tuple, optional): If coord is a regular grid, then
             a tuple of the form (res_lat, res_lon) can be set. Uses the same
             units as the coord attribute.
@@ -95,9 +93,7 @@ class Centroids(object):
         self.coord = GridPoints()
         self.id = np.array([], int)
         self.region_id = np.array([], int)
-        self.dist_coast = np.array([], float)
-        self.admin0_name = ''
-        self.admin0_iso3 = ''
+        self.name = ''
 
     def check(self):
         """Check instance attributes. Ids are unique.
@@ -114,10 +110,10 @@ class Centroids(object):
         != 2*self.coord.shape[0]:
             LOGGER.error("There centroids with the same GridPoints.")
             raise ValueError
-        check.array_optional(num_exp, self.region_id,
-                             'Centroids.region_id')
-        check.array_optional(num_exp, self.dist_coast,
-                             'Centroids.dist_coast')
+        # check all 1-dim variable set
+        for var_name, var_val in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                check.array_optional(num_exp, var_val, 'Centroids.'+var_name)
 
     def read(self, files, descriptions='', var_names=None):
         """ Read and check centroids.
@@ -158,9 +154,9 @@ class Centroids(object):
             centroids.check()
             self.__dict__ = copy.deepcopy(centroids.__dict__)
             return np.array([])
-        elif centroids.id.size == 0:
+        if centroids.id.size == 0:
             return np.array([])
-        elif np.array_equal(centroids.coord, self.coord):
+        if np.array_equal(centroids.coord, self.coord):
             return np.array([])
 
         # GridPoints of centroids that are not in self
@@ -173,19 +169,15 @@ class Centroids(object):
 
         centroids.check()
         self.coord = np.append(self.coord, centroids.coord[new_pos, :], axis=0)
-        self.id = np.append(self.id, centroids.id[new_pos], axis=0)
-
-        if (self.region_id.size == 0) | (centroids.region_id.size == 0):
-            self.region_id = np.array([], int)
-        else:
-            self.region_id = np.append(self.region_id,
-                                       centroids.region_id[new_pos])
-
-        if (self.dist_coast.size == 0) | (centroids.dist_coast.size == 0):
-            self.dist_coast = np.array([], float)
-        else:
-            self.dist_coast = np.append(self.dist_coast,
-                                        centroids.dist_coast[new_pos])
+        # append all 1-dim arrays (not the optionals)
+        for (var_name, var_val), cen_val in zip(self.__dict__.items(),
+                                                centroids.__dict__.values()):
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_val.size and cen_val.size:
+                setattr(self, var_name, np.append(var_val, cen_val[new_pos]). \
+                        astype(var_val.dtype, copy=False))
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.array([]))
 
         # Check id
         if set_uni_id:
@@ -196,10 +188,23 @@ class Centroids(object):
 
         return new_pos
 
-    def calc_dist_to_coast(self):
-        """Compute distance to coast for each centroids (dist_coast variable).
-        No distinction between sea and land centroids."""
-        self.dist_coast = dist_to_coast(self.coord)
+    def select(self, reg_id):
+        """ Get copy new instance with all the attributs in given region """
+        cen = self.__class__()
+        sel_cen = np.argwhere(self.region_id == reg_id).reshape(-1)
+
+        for (var_name, var_val) in self.__dict__.items():
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_val.size:
+                setattr(cen, var_name, var_val[sel_cen])
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2 and \
+            var_val.size:
+                setattr(cen, var_name, var_val[sel_cen, :])
+            elif isinstance(var_val, list) and var_val:
+                setattr(cen, var_name, [var_val[idx] for idx in sel_cen])
+            else:
+                setattr(cen, var_name, var_val)
+        return cen
 
     def plot(self, **kwargs):
         """ Plot centroids points over earth.
@@ -212,26 +217,18 @@ class Centroids(object):
         """
         if 's' not in kwargs:
             kwargs['s'] = 1
-        fig, axis = plot.make_map()
+        fig, axis = u_plot.make_map()
         axis = axis[0][0]
-        plot.add_shapes(axis)
+        u_plot.add_shapes(axis)
         axis.set_title(self.tag.join_file_names())
         axis.scatter(self.lon, self.lat, **kwargs)
 
         return fig, axis
 
-    def get_nearest_id(self, lat, lon):
-        """Get id of nearest centroid coordinate.
-
-        Parameters:
-            lat (float): latitude
-            lon (float): longitude
-
-        Returns:
-            int
-        """
-        idx = np.linalg.norm(np.abs(self.coord-[lat, lon]), axis=1).argmin()
-        return self.id[idx]
+    def set_dist_coast(self):
+        """Add dist_coast attribute: distance to coast in km for each centroids.
+        No distinction between sea and land centroids."""
+        self.dist_coast = dist_to_coast(self.coord)
 
     def set_area_per_centroid(self):
         """If the centroids are on a regular grid and have their resolution set,
@@ -252,17 +249,23 @@ class Centroids(object):
         self.area_per_centroid = np.repeat(area_per_lat, lon_unique_n)
 
     def set_on_land(self):
-        """ Add the _on_land attribute, i.e. if a centroid is on land
+        """ Add the on_land attribute, i.e. if a centroid is on land.
         """
-        self._on_land = coord_on_land(self.lat, self.lon)
+        self.on_land = coord_on_land(self.lat, self.lon)
 
-    @property
-    def on_land(self):
-        """ Retuns a logical array of centroids on land
+    def get_nearest_id(self, lat, lon):
+        """Get id of nearest centroid coordinate. Not thought to be called
+        recursively!
+
+        Parameters:
+            lat (float): latitude
+            lon (float): longitude
+
+        Returns:
+            int
         """
-        if self._on_land is None:
-            self.set_on_land()
-        return self._on_land
+        idx = np.linalg.norm(np.abs(self.coord-[lat, lon]), axis=1).argmin()
+        return self.id[idx]
 
     @property
     def resolution(self):
@@ -364,8 +367,3 @@ class Centroids(object):
         reader(new_cent, file_name, var_names)
 
         return new_cent
-
-    def __str__(self):
-        return self.tag.__str__()
-
-    __repr__ = __str__

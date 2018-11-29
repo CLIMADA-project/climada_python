@@ -112,7 +112,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(type(centr1.coord), GridPoints)
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(centr1.region_id), np.ndarray)
-        self.assertTrue(type(centr1.dist_coast), np.ndarray)
 
     def test_append_empty_fill(self):
         """Append the same centroids."""
@@ -132,7 +131,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_append_to_empty_fill(self):
         """Append to empty centroids."""
@@ -152,7 +150,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_same_centroids_pass(self):
         """Append the same centroids."""
@@ -173,7 +170,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(centr1.id.shape, (3,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9])))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_new_elem_pass(self):
         """Append a centroids with a new element."""
@@ -231,7 +227,6 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.id, \
                                               np.array([5, 7, 9, 10, 11])))
         self.assertTrue(np.array_equal(centr1.region_id, np.array([], int)))
-        self.assertTrue(np.array_equal(centr1.dist_coast, np.array([], float)))
 
     def test_without_region_pass(self):
         """Append centroids without region id."""
@@ -276,19 +271,49 @@ class TestAppend(unittest.TestCase):
         centr1.append(centr2)
         self.assertTrue(np.array_equal(centr1.region_id, np.array([1, 1, 1])))
 
+class TestSelect(unittest.TestCase):
+    """ Test select method """
+    
+    def test_select_pass(self):
+        """ Select successfully."""
+        centr_brb = Centroids(CENTR_BRB)
+        centr_brb.region_id = np.arange(centr_brb.size)
+        sel_brb = centr_brb.select(reg_id=5)
+        self.assertEqual(sel_brb.size, 1)
+        self.assertEqual(sel_brb.id.size, 1)
+        self.assertEqual(sel_brb.region_id.size, 1)
+        self.assertEqual(sel_brb.dist_coast.size, 1)
+        self.assertEqual(sel_brb.region_id[0], 5)
+        self.assertEqual(sel_brb.coord.shape, (1, 2))
+    
+    def test_select_prop_pass(self):
+        """ Select successfully with a property set."""
+        centr_brb = Centroids(CENTR_BRB)
+        centr_brb.region_id = np.arange(centr_brb.size)
+        centr_brb.set_on_land()
+        sel_brb = centr_brb.select(reg_id=5)
+        self.assertEqual(sel_brb.size, 1)
+        self.assertEqual(sel_brb.id.size, 1)
+        self.assertEqual(sel_brb.region_id.size, 1)
+        self.assertEqual(sel_brb.on_land, 1)
+        self.assertEqual(sel_brb.dist_coast.size, 1)
+        self.assertEqual(sel_brb.region_id[0], 5)
+        self.assertEqual(sel_brb.coord.shape, (1, 2))
+    
 class TestMethods(unittest.TestCase):
     """Test additional methods."""
 
     def test_calc_dist_coast_pass(self):
         """Test against reference data."""
         centr_brb = Centroids(CENTR_BRB)
-        centr_brb.calc_dist_to_coast()
+        centr_brb.set_dist_coast()
         self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
         self.assertAlmostEqual(5.7988200982894105, centr_brb.dist_coast[1])
-        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])        
+        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])   
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSelect)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLoader))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestMethods))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
