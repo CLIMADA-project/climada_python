@@ -61,6 +61,7 @@ A minimal configuration file looks something like this:
 
 ### local_data
 Configuration values related to local data location.
+
 | Option | Description | Default |
 | ------ | ----------- | ------- |
 | ``save_dir`` | Folder were the variables are saved through the ``save`` command. An absolut path is safer. | "./results" |
@@ -74,6 +75,7 @@ Configuration values related to local data location.
 
 ### trop_cyclone
 Configuration values related to tropical cyclones.
+
 | Option | Description | Default |
 | ------ | ----------- | ------- |
 | ``random_seed`` | Seed used for the stochastic tracks generation. | 54 |
