@@ -210,6 +210,7 @@ def _windfield(track, centroids, coastal_idx, model):
     Returns:
         np.array
     """
+    np.warnings.filterwarnings('ignore')
     # Make sure that CentralPressure never exceeds EnvironmentalPressure
     up_pr = np.argwhere(track.central_pressure.values >
                         track.environmental_pressure.values)
