@@ -138,12 +138,12 @@ class TCTracks():
         """
         raise NotImplementedError
 
-    def equal_timestep(self, time_step_h=CONFIG['trop_cyclone']['time_step_h'],
-                       land_params=True):
+    def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
 
         Parameters:
-            time_step_h (float): time step in hours to which to interpolate
+            time_step_h (float, optional): time step in hours to which to 
+                interpolate. Default: 1.
             land_params (bool, optional): compute on_land and dist_since_lf at
                 each node. Default: False.
         """
@@ -327,7 +327,7 @@ class TCTracks():
             track_int.coords['lon'] = track.lon.resample(time=time_step).\
                                       interpolate('cubic')
             track_int.attrs = track.attrs
-            track.attrs['category'] = set_category( \
+            track_int.attrs['category'] = set_category( \
                 track.max_sustained_wind.values, \
                 track.max_sustained_wind_unit)
         else:
@@ -434,6 +434,7 @@ class TCTracks():
             Parameters:
                 file_name (str): file name containing one IBTrACS track to read
         """
+        LOGGER.info('Reading %s', file_name)
         dfr = pd.read_csv(file_name)
         name = dfr['ibtracsID'].values[0]
 
