@@ -169,8 +169,10 @@ def coastal_centr_idx(centroids, lat_max=61):
     Returns:
         np.array
     """
-    if centroids.dist_coast.size == 0:
-        centroids.calc_dist_to_coast()
+    try:
+        centroids.dist_coast
+    except AttributeError:
+        centroids.set_dist_coast()
     return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
                           centroids.lat < lat_max).nonzero()[0]
 
