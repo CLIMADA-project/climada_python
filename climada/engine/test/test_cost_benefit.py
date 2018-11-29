@@ -27,7 +27,6 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP
 from climada.util.constants import ENT_DEMO_MAT
-from climada.util.config import CONFIG
 
 HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
 HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
@@ -54,8 +53,8 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.cost_ben_ratio, dict())
         self.assertEqual(cost_ben.benefit, dict())
         self.assertEqual(cost_ben.tot_climate_risk, 0.0)
-        self.assertEqual(cost_ben.present_year, CONFIG['entity']['present_ref_year'])
-        self.assertEqual(cost_ben.future_year, CONFIG['entity']['future_ref_year'])
+        self.assertEqual(cost_ben.present_year, 2016)
+        self.assertEqual(cost_ben.future_year, 2030)
 
         self.assertEqual(cost_ben.imp_meas_future['no measure']['cost'], 0)
         self.assertEqual(cost_ben.imp_meas_future['no measure']['risk'], 6.51220115756442e+09)
@@ -117,7 +116,7 @@ class TestSteps(unittest.TestCase):
 
         cost_ben.present_year = 2018
         cost_ben.future_year = 2040
-        cost_ben._calc_cost_benefit(entity.disc_rates, imp_time_depen=CONFIG['cost_benefit']['impact_time_dependence'])
+        cost_ben._calc_cost_benefit(entity.disc_rates, imp_time_depen=1)
 
         self.assertEqual(cost_ben.imp_meas_present, dict())
         self.assertEqual(len(cost_ben.imp_meas_future), 5)
@@ -161,7 +160,7 @@ class TestSteps(unittest.TestCase):
 
         cost_ben.present_year = 2018
         cost_ben.future_year = 2040
-        cost_ben._calc_cost_benefit(entity.disc_rates, imp_time_depen=CONFIG['cost_benefit']['impact_time_dependence'])
+        cost_ben._calc_cost_benefit(entity.disc_rates, imp_time_depen=1)
 
         self.assertEqual(cost_ben.present_year, 2018)
         self.assertEqual(cost_ben.future_year, 2040)

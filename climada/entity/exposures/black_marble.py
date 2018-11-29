@@ -39,7 +39,6 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR, ONE_LAT_KM
-from climada.util.config import CONFIG
 from climada.util.coordinates import coord_on_land
 from climada.entity.exposures import nightlight as nl_utils
 
@@ -95,9 +94,8 @@ class BlackMarble(Exposures):
         """ Empty initializer. """
         Exposures.__init__(self)
 
-    def set_countries(self, countries,
-                      ref_year=CONFIG['entity']['present_ref_year'],
-                      res_km=None, sea_res=(0, 1), from_hr=None, **kwargs):
+    def set_countries(self, countries, ref_year=2016, res_km=None,
+                      sea_res=(0, 1), from_hr=None, **kwargs):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -105,8 +103,7 @@ class BlackMarble(Exposures):
         Parameters:
             countries (list or dict): list of country names (admin0) or dict
                 with key = admin0 name and value = [admin1 names]
-            ref_year (int, optional): reference year. Default: present_ref_year
-                in configuration.
+            ref_year (int, optional): reference year. Default: 2016
             res_km (float, optional): approx resolution in km. Default:
                 nightlights resolution.
             sea_res (tuple, optional): (sea_coast_km, sea_res_km), where first
@@ -139,12 +136,6 @@ class BlackMarble(Exposures):
                 **kwargs))
 
         self.add_sea(sea_res)
-
-    def set_region(self, centroids,
-                   ref_year=CONFIG['entity']['present_ref_year'], res_km=1):
-        """ Model a specific region given by centroids."""
-        # TODO: accept input centroids as well
-        raise NotImplementedError
 
     def select(self, reg_id):
         """ Select exposures with input region.

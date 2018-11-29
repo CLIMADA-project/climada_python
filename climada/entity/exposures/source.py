@@ -28,7 +28,6 @@ import numpy as np
 import pandas
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.config import CONFIG
 from climada.util.coordinates import GridPoints
 
 DEF_VAR_EXCEL = {'sheet_name': {'exp': 'assets',
@@ -69,6 +68,9 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
 
 DEF_HAZ_TYPE = ''
 """ Hazard type used for the impact functions. Used for compatibility."""
+
+DEF_REF_YEAR = 2016
+""" Reference year used if not provided """
 
 LOGGER = logging.getLogger(__name__)
 
@@ -164,7 +166,7 @@ def _parse_xls_ref_year(file_name, var_names):
         dfr.index = dfr[var_names['col_name']['item']]
         ref_year = dfr.loc[var_names['col_name']['ref']]['name']
     except (XLRDError, KeyError):
-        ref_year = CONFIG['entity']['present_ref_year']
+        ref_year = DEF_REF_YEAR
     return ref_year
 
 def _parse_xls_optional(dfr, var, var_name):

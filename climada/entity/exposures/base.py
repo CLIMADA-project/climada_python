@@ -27,12 +27,11 @@ import copy
 import logging
 import numpy as np
 
-from climada.entity.exposures.source import READ_SET
+from climada.entity.exposures.source import READ_SET, DEF_REF_YEAR
 from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 from climada.util.coordinates import GridPoints
-from climada.util.config import CONFIG
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -120,7 +119,7 @@ class Exposures():
             >>> exp_city = Exposures(ENT_TEMPLATE_XLS)
         """
         self.tag = Tag()
-        self.ref_year = CONFIG['entity']['present_ref_year']
+        self.ref_year = DEF_REF_YEAR
         self.value_unit = ''
         # Following values defined for each exposure
         # Obligatory variables
@@ -145,7 +144,7 @@ class Exposures():
                 setattr(self, var_name, np.array([]))
             else:
                 setattr(self, var_name, var_val.__class__())
-        self.ref_year = CONFIG['entity']['present_ref_year']
+        self.ref_year = DEF_REF_YEAR
 
     def assign(self, hazard):
         """Compute the hazard centroids affecting to each exposure. Returns the

@@ -77,7 +77,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.coord[0][1], -80.12879900000)
         self.assertEqual(expo.coord[n_expos-1][1], -80.15885500000)
 
-        self.assertEqual(expo.ref_year, CONFIG['entity']["present_ref_year"])
+        self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, '')
         self.assertEqual(expo.tag.file_name, ENT_TEST_XLS)
         self.assertEqual(expo.tag.description, description)
@@ -271,7 +271,7 @@ class TestOptionals(unittest.TestCase):
         expo.read(ENT_TEST_XLS, var_names=new_var_names)
 
         # Check results
-        self.assertEqual(CONFIG['entity']["present_ref_year"], expo.ref_year)
+        self.assertEqual(2016, expo.ref_year)
 
 class TestDefaults(unittest.TestCase):
     """Test reading exposures default values."""
@@ -354,7 +354,7 @@ class TestParsers(unittest.TestCase):
     def test_refyear_not_exist_pass(self):
         """Check that the reference year is default if not present."""
         ref_year = source._parse_xls_ref_year(ENT_TEST_XLS, source.DEF_VAR_EXCEL)
-        self.assertEqual(CONFIG['entity']["present_ref_year"], ref_year)
+        self.assertEqual(2016, ref_year)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefaults)

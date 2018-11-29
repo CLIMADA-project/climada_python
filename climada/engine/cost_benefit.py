@@ -25,13 +25,18 @@ import logging
 import numpy as np
 
 from climada.engine.impact import Impact
-from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
 DEF_RP = np.array([1, 5, 10, 20, 25, 30, 35, 40, 45, 50, 75, 100, 125, 150, \
                    175, 200, 250, 300, 400, 500, 1000])
 """ Default return periods used for impact exceedance frequency curve """
+
+DEF_PRESENT_YEAR = 2016
+""" Default present reference year """
+
+DEF_FUTURE_YEAR = 2030
+""" Default future reference year """
 
 def risk_aai_agg(impact):
     """Risk measurement as average annual impact aggregated.
@@ -75,8 +80,8 @@ class CostBenefit():
 
     def __init__(self):
         """ Initilization """
-        self.present_year = CONFIG['entity']['present_ref_year']
-        self.future_year = CONFIG['entity']['future_ref_year']
+        self.present_year = DEF_PRESENT_YEAR
+        self.future_year = DEF_FUTURE_YEAR
 
         self.tot_climate_risk = 0.0
 
@@ -94,9 +99,7 @@ class CostBenefit():
         self.imp_meas_present = dict()
 
     def calc(self, hazard, entity, haz_future=None, ent_future=None, \
-        risk_func=risk_aai_agg, \
-        imp_time_depen=CONFIG['cost_benefit']['impact_time_dependence'], \
-        save_imp=False):
+        risk_func=risk_aai_agg, imp_time_depen=1, save_imp=False):
         """Compute cost-benefit ratio for every measure provided current
         and future conditions.
 
@@ -109,7 +112,7 @@ class CostBenefit():
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
             imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Default: by configuration
+                evolution of impact. Default: 1 (linear).
             save_imp (bool, optional): activate if Impact of each measure is
                 saved. Default: False.
         """
@@ -143,7 +146,7 @@ class CostBenefit():
 
 #    def calc_all_options(self, hazard, entity, haz_future, ent_future, \
 #        risk_func=risk_aai_agg, \
-#        imp_time_depen=CONFIG['cost_benefit']['impact_time_dependence'], \
+#        imp_time_depen=1, \
 #        save_imp=False):
 #        """Compute cost benefit with respect future conditions. Intermediate
 #        results of changes with and without change in hazard and entity are
@@ -260,14 +263,13 @@ class CostBenefit():
         else:
             self.imp_meas_present = impact_meas
 
-    def _calc_cost_benefit(self, disc_rates, imp_time_depen= \
-        CONFIG['cost_benefit']['impact_time_dependence']):
+    def _calc_cost_benefit(self, disc_rates, imp_time_depen=1):
         """Compute discounted impact from present year to future year
 
         Parameters:
             disc_rates (DiscRates): discount rates instance
             imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Default: by configuration
+                evolution of impact. Default: 1 (linear).
         """
         LOGGER.info('Computing cost benefit from years %s to %s.',
                     str(self.present_year), str(self.future_year))

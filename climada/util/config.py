@@ -30,7 +30,7 @@ import json
 import logging
 from pkg_resources import Requirement, resource_filename
 
-from climada.util.constants import SOURCE_DIR, DATA_DIR, ENT_TEMPLATE_XLS
+from climada.util.constants import SOURCE_DIR, ENT_TEMPLATE_XLS
 
 WORKING_DIR = os.getcwd()
 WINDOWS_END = 'C:\\'
@@ -61,8 +61,6 @@ def check_conf():
                                                    os.path.expanduser(path)))
         if key == "entity_def":
             def_file = ENT_TEMPLATE_XLS
-        elif key == "repository":
-            def_file = os.path.join(DATA_DIR)
         elif key == "save_dir":
             def_file = os.path.join(WORKING_DIR, "results")
         else:
