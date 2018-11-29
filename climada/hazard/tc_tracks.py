@@ -34,6 +34,7 @@ import cartopy.crs as ccrs
 import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
+from numba import jit
 from pint import UnitRegistry
 from pathos.multiprocessing import ProcessingPool as Pool
 
@@ -266,6 +267,7 @@ class TCTracks():
         return fig, axis
 
     @staticmethod
+    @jit
     def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle):
         """ Interpolate values of one track.
 
