@@ -142,7 +142,7 @@ class TCTracks():
         """ Generate interpolated track values to time steps of min_time_step.
 
         Parameters:
-            time_step_h (float, optional): time step in hours to which to 
+            time_step_h (float, optional): time step in hours to which to
                 interpolate. Default: 1.
             land_params (bool, optional): compute on_land and dist_since_lf at
                 each node. Default: False.
