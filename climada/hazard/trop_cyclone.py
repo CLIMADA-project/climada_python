@@ -127,6 +127,7 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
     @staticmethod
+    @jit
     def _tc_from_track(track, centroids, coastal_centr, model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
