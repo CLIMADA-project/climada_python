@@ -16,10 +16,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define impact function for tropical cyclnes using the formula of Emanuele 2011.
+Define impact functions for tropical cyclnes .
 """
 
-__all__ = ['IFEmanuelUSA']
+__all__ = ['IFTropCyclone']
 
 import logging
 import numpy as np
@@ -28,12 +28,15 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFEmanuelUSA(ImpactFunc):
-    """Impact function for tropical cyclones according to Emanuele 2011."""
+class IFTropCyclone(ImpactFunc):
+    """Impact functions for tropical cyclones."""
 
-    def __init__(self, if_id=1, intensity=np.arange(0, 121, 5), v_thresh=25.7,
-                 v_half=74.7, scale=1.0):
-        """ Empty initialization.
+    def __init__(self):
+        ImpactFunc.__init__(self)
+
+    def set_emanuel_usa(self, if_id=1, intensity=np.arange(0, 121, 5),
+                        v_thresh=25.7, v_half=74.7, scale=1.0):
+        """Using the formula of Emanuele 2011.
 
         Parameters:
             if_id (int, optional): impact function id. Default: 1
@@ -50,49 +53,23 @@ class IFEmanuelUSA(ImpactFunc):
         Raises:
             ValueError
         """
-        ImpactFunc.__init__(self)
-        self.name = 'Emanuel 2011'
-        self.haz_type = 'TC'
-        self.id = if_id
-        self.intensity_unit = 'm/s'
-        self.intensity = intensity
-        self.paa = np.ones(intensity.shape)
-        self.set_shape(v_thresh, v_half)
-        self.set_scale(scale)
-
-    def set_shape(self, v_thresh, v_half):
-        """ Check values and set vulnerability curve with according shape.
-
-        Parameters:
-            v_thresh (float): first shape parameter, wind speed in
-                m/s below which there is no damage.
-            v_half (float): second shape parameter, wind speed in m/s
-                at which 50% of max. damage is expected.
-
-        Raises:
-            ValueError
-        """
         if v_half <= v_thresh:
             LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
             raise ValueError
         elif  v_thresh < 0 or v_half < 0:
             LOGGER.error('Negative shape parameter.')
             raise ValueError
-
-        v_temp = (self.intensity - v_thresh) / (v_half - v_thresh)
-        v_temp[v_temp < 0] = 0
-        self.mdd = v_temp**3 / (1 + v_temp**3)
-
-    def set_scale(self, scale):
-        """ Multiply vulnerability curve by scale.
-
-        Parameters:
-            scale (float): scale parameter, linear scaling of MDD. 0<=scale<=1.
-
-        Raises:
-            ValueError
-        """
         if scale > 1 or scale <= 0:
             LOGGER.error('Scale parameter out of range.')
             raise ValueError
+
+        self.name = 'Emanuel 2011'
+        self.haz_type = 'TC'
+        self.id = if_id
+        self.intensity_unit = 'm/s'
+        self.intensity = intensity
+        self.paa = np.ones(intensity.shape)
+        v_temp = (self.intensity - v_thresh) / (v_half - v_thresh)
+        v_temp[v_temp < 0] = 0
+        self.mdd = v_temp**3 / (1 + v_temp**3)
         self.mdd *= scale
