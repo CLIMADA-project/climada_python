@@ -28,10 +28,10 @@ climada\.entity\.impact\_funcs\.source module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.tc\_emanuel module
---------------------------------------------------
+climada\.entity\.impact\_funcs\.trop_cyclone module
+---------------------------------------------------
 
-.. automodule:: climada.entity.impact_funcs.tc_emanuel
+.. automodule:: climada.entity.impact_funcs.trop_cyclone
     :members:
     :undoc-members:
     :show-inheritance:
