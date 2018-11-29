@@ -10,7 +10,7 @@ Date: 2018-11-06
 
 Version: 0.2.1
 
-See [technical documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial).
+See [documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial).
 
 Introduction
 ------------
@@ -33,9 +33,8 @@ and used as fallback. The local configuration file needs to be called
 The climada configuration file is a JSON file and consists of the following values:
 
 - ``local_data``
-- ``entity``
+- ``global``
 - ``trop_cyclone``
-- ``log_level``
 
 A minimal configuration file looks something like this:
 
@@ -44,42 +43,40 @@ A minimal configuration file looks something like this:
     "local_data":
     {
         "save_dir": "./results/",
-        "entity_def" : "",
-        "repository": ""
+        "entity_def": ""
     },
 
-    "log_level": "INFO",
-    
-    "entity":
+    "global":
     {
-        "present_ref_year": 2016,
-        "future_ref_year": 2030
+        "log_level": "INFO",
+        "max_matrix_size": 1.0e8
     },
 
     "trop_cyclone":
     {
-        "time_step_h": 1,
         "random_seed": 54
     }
 }
 ```
 
-
 ### local_data
+Configuration values related to local data location.
 
 | Option | Description | Default |
 | ------ | ----------- | ------- |
 | ``save_dir`` | Folder were the variables are saved through the ``save`` command. An absolut path is safer. | "./results" |
 | ``entity_def`` | Entity to be used as default. If not provided, the static entity_template.xlsx is used. | "" |
-| ``repository`` | Absolute path of climada's data repository. No default path provided. | "" |
 
-
-### entity
-Configuration values related to an Entity.
+### global
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| ``log_level`` | Minimum log level showed by logging: DEBUG, INFO, WARNING, ERROR or CRITICAL. | "INFO" |
+| ``max_matrix_size`` | Maximum matrix size that can be used. Set a lower value if memory issues. | 1.0e8 |
 
 ### trop_cyclone
 Configuration values related to tropical cyclones.
 
-### log_level
-Minimum log level showed by logging. DEBUG, INFO, WARNING, ERROR and CRITICAL are the different levels.
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| ``random_seed`` | Seed used for the stochastic tracks generation. | 54 |
 
