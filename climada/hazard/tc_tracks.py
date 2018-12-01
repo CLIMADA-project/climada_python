@@ -675,7 +675,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     Parameters:
         x_val (dict): key is Saffir-Simpson scale, values are lists with
             the values used as "x" in the coefficient fitting, the
-            distance since
+            distance since landfall
         v_lf (dict): key is Saffir-Simpson scale, values are lists of
             wind/wind at landfall
         p_lf (dict): key is Saffir-Simpson scale, values are tuples with
