@@ -37,6 +37,8 @@ class TestDefault(unittest.TestCase):
         self.assertIn('Lat. range: +1.875 to +5.958.', cm.output[0])
         self.assertIn('Lon. range: -58.042 to -54.042.', cm.output[1])
         self.assertIn("Total V_agg TA Suriname: 78879225.2 USD.", cm.output[2])
+        self.assertEqual(ent.impact_id['DR'].max(),1) # is impact_id default 1?
+        self.assertEqual(ent.impact_id['DR'].min(),1)
 
     def test_zurich_pass(self):
         """Test admin 1 Zurich for default parameters:"""
@@ -63,6 +65,8 @@ class TestOtherVar(unittest.TestCase):
         self.assertIn('Lat. range: +45.875 to +47.792.', cm.output[0])
         self.assertIn('Lon. range: +6.042 to +10.375.', cm.output[1])
         self.assertIn("Total H TI CHE: 28427.1 Ha.", cm.output[2])
+        self.assertEqual(ent.impact_id['DR'].max(),1) # is impact_id default 1?
+        self.assertEqual(ent.impact_id['DR'].min(),1)
 
     def test_ucayali_pass(self):
         """Test admin 2 region Ucayali for non-default parameters:"""

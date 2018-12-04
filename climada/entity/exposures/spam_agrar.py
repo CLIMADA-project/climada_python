@@ -170,34 +170,28 @@ class SpamAgrar(Exposures):
         self.tag.description = ("SPAM agrar exposure for variable "\
             + spam_v + " and technology " + spam_t)
 
-        # assign different damage function ID per technology type.
-        # hazard type drought as default.
+        # set hazard type drought ("DR") as default;
+        # assign default damage function ID 1 per technology type:
+        self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
+        # add tag.description as string:
         if spam_t == 'TA':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+1}
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+2}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+3}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+4}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+5}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
-        else:
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
 
         self.tag.file_name = (FILENAME_SPAM+'_'+ spam_v\
                               + '_' + spam_t + '.csv')
@@ -212,10 +206,8 @@ class SpamAgrar(Exposures):
         else:
             self.value_unit = 'USD'
 
-
         LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(\
                     spam_v, spam_t, region, self.value.sum(), self.value_unit))
-
 
 
     def _read_spam_file(self, **parameters):
