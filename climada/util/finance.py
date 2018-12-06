@@ -131,7 +131,7 @@ def gdp(cntry_iso, ref_year, shp_file=None):
     as err:
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
-        close_year, close_val = nat_earth_adm0(cntry_iso, ref_year, 'GDP_MD_EST',
+        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
                                                'GDP_YEAR', shp_file)
     finally:
         LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
@@ -178,7 +178,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
                                     INCOME_GRP_WB_TABLE.values())
         except (IOError, requests.exceptions.ConnectionError) as err:
             LOGGER.error('Internet connection failed while downloading ' +
-                           'historical income groups.')
+                         'historical income groups.')
             raise err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
@@ -189,12 +189,11 @@ def world_bank(cntry_iso, ref_year, info_ind):
 
     return close_year, close_val
 
-def nat_earth_adm0(cntry_iso, ref_year, info_name, year_name=None, shp_file=None):
+def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     """ Get country's parameter from natural earth's admin0 shape file.
 
     Parameters:
         cntry_iso (str): key = ISO alpha_3 country
-        ref_year (int): reference year
         info_name (str): attribute to get, e.g. 'GDP_MD_EST', 'INCOME_GRP'.
         year_name (str, optional): year name of the info_name in shape file,
             e.g. 'GDP_YEAR'
