@@ -391,6 +391,31 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_expo.coord[0, 1], 2)
         self.assertIsInstance(sel_expo, Exposures)
 
+    def test_sel_regs_pass(self):
+        """Select region"""
+        expo = good_exposures()
+        sel_expo = expo.select([1, 2])
+
+        self.assertEqual(sel_expo.value.size, 2)
+        self.assertEqual(sel_expo.value[0], 1)
+        self.assertEqual(sel_expo.id.size, 2)
+        self.assertEqual(sel_expo.id[0], 1)
+        self.assertEqual(sel_expo.impact_id['NA'].size, 2)
+        self.assertEqual(sel_expo.impact_id['NA'][0], 1)
+        self.assertEqual(sel_expo.deductible.size, 2)
+        self.assertEqual(sel_expo.deductible[0], 1)
+        self.assertEqual(sel_expo.category_id.size, 2)
+        self.assertEqual(sel_expo.category_id[0], 1)
+        self.assertEqual(sel_expo.region_id.size, 2)
+        self.assertEqual(sel_expo.region_id[0], 1)
+        self.assertEqual(sel_expo.cover.size, 0)
+        self.assertEqual(sel_expo.assigned['TC'].size, 2)
+        self.assertEqual(sel_expo.assigned['TC'][0], 1)
+        self.assertEqual(sel_expo.coord.shape[0], 2)
+        self.assertEqual(sel_expo.coord[0, 0], 1)
+        self.assertEqual(sel_expo.coord[0, 1], 2)
+        self.assertIsInstance(sel_expo, Exposures)
+
     def test_sel_wrong_pass(self):
         """Select non-existent region"""
         expo = good_exposures()

@@ -295,10 +295,24 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_brb.size, 1)
         self.assertEqual(sel_brb.id.size, 1)
         self.assertEqual(sel_brb.region_id.size, 1)
-        self.assertEqual(sel_brb.on_land, 1)
+        self.assertEqual(sel_brb.on_land.size, 1)
         self.assertEqual(sel_brb.dist_coast.size, 1)
         self.assertEqual(sel_brb.region_id[0], 5)
         self.assertEqual(sel_brb.coord.shape, (1, 2))
+    
+    def test_select_prop_list_pass(self):
+        """ Select successfully with a property set."""
+        centr_brb = Centroids(CENTR_BRB)
+        centr_brb.region_id = np.arange(centr_brb.size)
+        centr_brb.set_on_land()
+        sel_brb = centr_brb.select(reg_id=[4, 5])
+        self.assertEqual(sel_brb.size, 2)
+        self.assertEqual(sel_brb.id.size, 2)
+        self.assertEqual(sel_brb.region_id.size, 2)
+        self.assertEqual(sel_brb.on_land.size, 2)
+        self.assertEqual(sel_brb.dist_coast.size, 2)
+        self.assertTrue(np.array_equal(sel_brb.region_id, [4, 5]))
+        self.assertEqual(sel_brb.coord.shape, (2, 2))
     
 class TestMethods(unittest.TestCase):
     """Test additional methods."""

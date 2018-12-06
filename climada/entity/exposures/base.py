@@ -344,10 +344,13 @@ class Exposures():
         Returns:
             Exposures
         """
-        sel_idx = np.argwhere(self.region_id == reg_id)
-        if sel_idx.size:
-            sel_idx = sel_idx.reshape((sel_idx.size,))
-        else:
+        if not isinstance(reg_id, list):
+            reg_id = [reg_id]
+        if isinstance(reg_id, list):
+            sel_idx = np.zeros(self.size, bool)
+            for reg in reg_id:
+                sel_idx = np.logical_or(sel_idx, self.region_id == reg)
+        if not np.any(sel_idx):
             LOGGER.info('No exposure with region id %s.', reg_id)
             return None
 
