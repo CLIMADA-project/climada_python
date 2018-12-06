@@ -44,7 +44,7 @@ class TestWBData(unittest.TestCase):
     def test_ne_income_grp_aia_pass(self):
         """ Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
-        res_year, res_val = nat_earth_adm0('AIA', ref_year, 'INCOME_GRP',
+        res_year, res_val = nat_earth_adm0('AIA', 'INCOME_GRP',
                                            shp_file=SHP_FILE)
 
         ref_year = 0
@@ -77,7 +77,7 @@ class TestWBData(unittest.TestCase):
     def test_ne_gdp_aia_2012_pass(self):
         """ Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
-        res_year, res_val = nat_earth_adm0('AIA', ref_year, 'GDP_MD_EST',
+        res_year, res_val = nat_earth_adm0('AIA', 'GDP_MD_EST',
                                            'GDP_YEAR', SHP_FILE)
 
         ref_year = 2009
