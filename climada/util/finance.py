@@ -61,6 +61,10 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
                       }
 """ Meaning of values of natural earth's income groups. """
 
+FILE_GWP_WEALTH2GDP_FACTORS = 'WEALTH2GDP_factors_CRI_2016.csv'
+""" File with wealth-to-GDP factors from the
+Credit Suisse's Global Wealth Report 2017 (household wealth)"""
+
 def _nat_earth_shp(resolution='10m', category='cultural',
                    name='admin_0_countries'):
     shp_file = shapereader.natural_earth(resolution=resolution,
@@ -229,3 +233,37 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
         close_val = INCOME_GRP_NE_TABLE.get(int(close_val[0]))
 
     return close_year, close_val
+
+def wealth2gdp(cntry_iso, non_financial = True, ref_year=2016, file_name = FILE_GWP_WEALTH2GDP_FACTORS):
+    """ Get country's wealth-to-GDP factor from the
+        Credit Suisse's Global Wealth Report 2017 (household wealth).
+        Missing value: returns NaN.
+        
+        Parameters:
+            cntry_iso (str): key = ISO alpha_3 country
+            non_financial (boolean): use non-financial wealth (True)
+                                     use total wealth (False) 
+            ref_year (int): reference year
+
+        Returns:
+            float
+    """
+    fname = os.path.join(SYSTEM_DIR, file_name)
+    factors_all_countries = pd.read_csv(fname, sep=',', index_col=None, \
+                     header=0, encoding='ISO-8859-1')
+    if ref_year != 2016:
+        LOGGER.warning('Reference year for the factor to convert GDP to '\
+            + 'wealth was set to 2016 because other years have not '\
+            + 'been implemented yet.')
+        ref_year = 2016
+    if non_financial:
+        val = factors_all_countries\
+            [factors_all_countries.country_iso3 == cntry_iso]\
+            ['NFW-to-GDP-ratio'].values[0]
+    else:
+        val = factors_all_countries\
+            [factors_all_countries.country_iso3 == cntry_iso]\
+            ['TW-to-GDP-ratio'].values[0]
+
+    val = np.around(val,5)
+    return ref_year, val

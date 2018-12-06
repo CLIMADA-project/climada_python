@@ -23,7 +23,7 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.util.finance import net_present_value, gdp, income_group, \
-nat_earth_adm0, world_bank
+nat_earth_adm0, world_bank, wealth2gdp
 
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
@@ -106,8 +106,34 @@ class TestWBData(unittest.TestCase):
         ref_val = 12072126075.397
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
+        
+class TestWealth2GDP(unittest.TestCase):
+    def test_nfw_SUR_pass(self):
+        """ Test non-financial wealth-to-gdp factor with Suriname."""
+        res_year, res_val = wealth2gdp('SUR')
 
+        ref_year = 2016
+        ref_val = 0.73656
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+        
+    def test_nfw_BEL_pass(self):
+        """ Test total wealth-to-gdp factor with Belgium."""
+        res_year, res_val = wealth2gdp('BEL', False)
+
+        ref_year = 2016
+        ref_val = 4.88758
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)    
+        
+    def test_nfw_LBY_pass(self):
+        """ Test missing factor with Libya."""
+        _, res_val = wealth2gdp('LBY')
+
+        self.assertTrue(np.isnan(res_val))
+        
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNetpresValue)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBData))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWealth2GDP))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
