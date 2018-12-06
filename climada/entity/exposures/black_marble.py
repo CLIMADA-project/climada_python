@@ -508,7 +508,7 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
 
     return nightlight_res[on_land].ravel(), lat_res[on_land], lon_res[on_land]
 
-def _set_econ_indicators(nightlight, gdp, inc_grp, poly_val):
+def _set_econ_indicators(nightlight, gdp_val, inc_grp, poly_val):
     """Model land exposures from nightlight intensities and normalized
     to GDP * (income_group + 1).
 
@@ -523,6 +523,6 @@ def _set_econ_indicators(nightlight, gdp, inc_grp, poly_val):
     """
     if nightlight.sum() > 0:
         nightlight = polyval(np.asarray(nightlight), poly_val)
-        nightlight = nightlight/nightlight.sum() * gdp * (inc_grp+1)
+        nightlight = nightlight/nightlight.sum() * gdp_val * (inc_grp+1)
 
     return nightlight
