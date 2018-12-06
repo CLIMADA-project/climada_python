@@ -100,12 +100,10 @@ class TestWBData(unittest.TestCase):
     def test_wb_esp_1950_pass(self):
         """ Test world_bank function Sint Maarten."""
         ref_year = 1950
-        with self.assertLogs('climada.util.finance', level='INFO') as cm:
-            res_year, res_val = world_bank('ESP', ref_year, 'NY.GDP.MKTP.CD')
+        res_year, res_val = world_bank('ESP', ref_year, 'NY.GDP.MKTP.CD')
 
         ref_year = 1960
         ref_val = 12072126075.397
-        self.assertIn('GDP ESP 1960: 1.207e+10', cm.output[0])
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
 

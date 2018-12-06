@@ -286,16 +286,14 @@ def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
         cntry_val.append(ref_year)
         if 'gdp' in kwargs and kwargs['gdp'][cntry_iso] != '':
             gdp_val = kwargs['gdp'][cntry_iso]
-            LOGGER.info("GDP {}: {:.3e}.".format(cntry_iso, gdp_val))
         else:
-            gdp_val = gdp(cntry_iso, ref_year, shp_file)
+            _, gdp_val = gdp(cntry_iso, ref_year, shp_file)
         cntry_val.append(gdp_val)
 
         if 'inc_grp' in kwargs and kwargs['inc_grp'][cntry_iso] != '':
             inc_grp = kwargs['inc_grp'][cntry_iso]
-            LOGGER.info('Income group %s: %s.', cntry_iso, inc_grp)
         else:
-            inc_grp = income_group(cntry_iso, ref_year, shp_file)
+            _, inc_grp = income_group(cntry_iso, ref_year, shp_file)
         cntry_val.append(inc_grp)
 
 def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):

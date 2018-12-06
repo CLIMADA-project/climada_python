@@ -26,7 +26,7 @@ from cartopy.io import shapereader
 from sklearn.neighbors import DistanceMetric
 
 from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
-_process_country, fill_econ_indicators, _set_econ_indicators, _fill_admin1_geom, 
+_cut_country, fill_econ_indicators, _set_econ_indicators, _fill_admin1_geom, \
 _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 from climada.util.constants import ONE_LAT_KM
@@ -222,8 +222,8 @@ class TestProvinces(unittest.TestCase):
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
-    def test_process_country_brb_1km_pass(self):
-        """ Test _process_country function with fake Barbados."""
+    def test_cut_country_brb_1km_pass(self):
+        """ Test _cut_country function with fake Barbados."""
         country_iso = 'BRB'
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
@@ -239,7 +239,7 @@ class TestNightLight(unittest.TestCase):
         coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
                           0.3603520186853473]
 
-        nightlight_reg, lat_reg, lon_reg, on_land = _process_country(geom, nightlight, coord_nl)
+        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, nightlight, coord_nl)
 
         lat_ref = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
                               [13.28022712, 13.28022712, 13.28022712],
@@ -261,7 +261,7 @@ class TestNightLight(unittest.TestCase):
         self.assertTrue(np.allclose(on_ref, on_land))
         self.assertTrue(np.allclose(nightlight_ref, nightlight_reg))
 
-    def test_process_country_brb_2km_pass(self):
+    def test_cut_country_brb_2km_pass(self):
         """ Test _resample_land function with fake Barbados."""
         country_iso = 'BRB'
         for cntry in list(SHP_FILE.records()):
@@ -279,7 +279,7 @@ class TestNightLight(unittest.TestCase):
                           0.3603520186853473]
 
         res_fact = 2.0
-        nightlight_reg, lat_reg, lon_reg, on_land = _process_country(geom, nightlight, coord_nl)
+        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, nightlight, coord_nl)
         nightlight_res, lat_res, lon_res = _resample_land(geom, nightlight_reg, lat_reg, lon_reg, res_fact, on_land)
 
         lat_ref = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
