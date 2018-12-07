@@ -13,13 +13,6 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
-
----
-
-Creates Agriculture Exposure Set (Entity) based on SPAM
-(Global Spatially-Disaggregated Crop Production Statistics Data for 2005
-Version 3.2 )
-https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 """
 
 import os
@@ -27,6 +20,7 @@ import logging
 import zipfile
 import pandas as pd
 import numpy as np
+from iso3166 import countries as iso_cntry
 
 from climada.entity.exposures.base import Exposures
 from climada.util.files_handler import download_file
@@ -51,7 +45,15 @@ BUFFER_VAL = -340282306073709652508363335590014353408
 """ Hard coded value which is used for NANs in original data """
 
 class SpamAgrar(Exposures):
-    """Defines exposures from
+    """Defines agriculture exposures from SPAM
+(Global Spatially-Disaggregated Crop Production Statistics Data for 2005
+Version 3.2 )
+https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
+
+    Attribute region_id is defined as:
+    - United Nations Statistics Division (UNSD) 3-digit equivalent numeric code
+    - 0 if country not found in UNSD.
+    - -1 for water
     """
 
     def __init__(self):
@@ -85,8 +87,6 @@ class SpamAgrar(Exposures):
             name_adm2 (str): Name of admin2 to be cut out.
                 No default
 
-            region_id (int): region_id to be assigned to exposure. Default=1
-
             spam_variable (str): select one agricultural variable:
                 'A'		physical area
                 'H'		harvested area
@@ -105,10 +105,9 @@ class SpamAgrar(Exposures):
                 'TR'   rainfed portion of crop (= TA - TI, or TH + TL + TS)
                 ! different impact_ids are assigned to each technology (1-6)
 
-            result_mode (int): Determines how many aditional data are saved:
-                1: only basics (lat, lon, total value)
-                2: like 1 + name of country
-                3: like 2 + name of admin1
+            save_name_adm1 (Boolean): Determines how many aditional data are saved:
+                False: only basics (lat, lon, total value), region_id per country
+                True: like 1 + name of admin1
 
 
         Returns:
@@ -119,8 +118,7 @@ class SpamAgrar(Exposures):
         adm0 = parameters.get('country')
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
-        reg_id = parameters.get('region_id', 1)
-        result_m = parameters.get('result_mode', 2)
+        save_adm1 = parameters.get('save_name_adm1', False)
 
         # Test if parameters make sense:
         if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
@@ -138,12 +136,11 @@ class SpamAgrar(Exposures):
                                        name_adm1=adm1, name_adm2=adm2)
 
         # sort by alloc_key to make extraction of lat / lon easier:
-        data.sort_values(by=['alloc_key'])
+        data = data.sort_values(by=['alloc_key'])
 
         lat, lon = self._spam_get_coordinates(data.loc[:, 'alloc_key'], \
                                              data_path=data_p)
-        if result_m == 2 or result_m == 4:
-            self.country = data.loc[:, 'iso3'].values
+        if save_adm1:
             self.name_adm1 = data.loc[:, 'name_adm1'].values
 
         if spam_v == 'V_agg': # total only (column 7)
@@ -153,7 +150,7 @@ class SpamAgrar(Exposures):
             i_1 = 7 # get sum over all crops (columns 7 to 48)
             i_2 = 49
         self.value = data.iloc[:, i_1:i_2].sum(axis=1)
-        self.value.index = np.arange(0,self.value.size)
+        self.value = self.value.values
         self.coord = np.empty((self.value.size, 2))
         self.coord[:, 0] = lat.values
         self.coord[:, 1] = lon.values
@@ -162,10 +159,16 @@ class SpamAgrar(Exposures):
         LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
                     np.min(self.coord[:, 1]), np.max(self.coord[:, 1])))
         self.id = np.arange(1, self.value.size+1)
-        self.region_id = np.ones(self.value.size, int)
-        if reg_id > 1:
-            self.region_id = reg_id*self.region_id
-
+        
+        # set region_id (numeric ISO3):
+        country_id = data.loc[:, 'iso3']
+        if country_id.unique().size == 1:
+            self.region_id = np.ones(self.value.size, int)\
+                    *int(iso_cntry.get(country_id.iloc[0]).numeric)
+        else:
+            self.region_id = np.zeros(self.value.size, int)
+            for i in range(0, self.value.size):
+                self.region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
         self.ref_year = 2005
         self.tag.description = ("SPAM agrar exposure for variable "\
             + spam_v + " and technology " + spam_t)
@@ -241,21 +244,13 @@ class SpamAgrar(Exposures):
                 'TS'   rainfed subsistence portion of crop
                 'TR'   rainfed portion of crop (= TA - TI, or TH + TL + TS)
 
-            result_mode (int): Determines whether latitude and longitude are
-                delievered along with gpw data (0) or only gpw_data is returned (1)
-                Default = 1.
 
         Returns:
-            tile_temp (pandas SparseArray): GPW data
-            lon (list): list with longitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if result_mode=1)
-            lat (list): list with latitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if result_mode=1)
+            data: PandaFrame with all data for selected country / region
         """
         data_path = parameters.get('data_path', SYSTEM_DIR)
         spam_tech = parameters.get('spam_technology', 'TA')
         spam_var = parameters.get('spam_variable', 'V_agg')
-        # result_mode = parameters.get('result_mode',1)
         fname_short = FILENAME_SPAM+'_'+ spam_var  + '_' + spam_tech + '.csv'
 
         try:
@@ -316,7 +311,7 @@ class SpamAgrar(Exposures):
             concordance_data = concordance_data\
                 [concordance_data['alloc_key'].isin(alloc_key_array)]
 
-            concordance_data.sort_values(by=['alloc_key'])
+            concordance_data = concordance_data.sort_values(by=['alloc_key'])
 
             lat = concordance_data.loc[:, 'y']
             lon = concordance_data.loc[:, 'x']
