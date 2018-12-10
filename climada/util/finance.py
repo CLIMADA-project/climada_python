@@ -238,13 +238,11 @@ def wealth2gdp(cntry_iso, non_financial = True, ref_year=2016, file_name = FILE_
     """ Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
         Missing value: returns NaN.
-        
         Parameters:
             cntry_iso (str): key = ISO alpha_3 country
             non_financial (boolean): use non-financial wealth (True)
                                      use total wealth (False) 
             ref_year (int): reference year
-
         Returns:
             float
     """
