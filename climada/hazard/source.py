@@ -129,6 +129,9 @@ def read_att_mat(hazard, data, file_name, var_names):
     except ValueError as err:
         LOGGER.error('Size missmatch in fraction matrix.')
         raise err
+    except KeyError:
+        hazard.fraction = sparse.csr_matrix(np.ones(hazard.intensity.shape, \
+                                        dtype=np.float))
     # Event names: set as event_id if no provided
     try:
         hazard.event_name = hdf5.get_list_str_from_ref(
