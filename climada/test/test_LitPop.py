@@ -31,19 +31,12 @@ class TestDefault(unittest.TestCase):
         resolution = 300
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec = resolution)
+            ent.set_country(country_name, res_arcsec=resolution)
         print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(ent.value.sum() == 3343726398022.6597)
-        
-class TestDataCheck(unittest.TestCase):
-    """Default test LitPop for Switzerland:"""
-
-    def blackmarble_data(self):
-        """Test data availability checks (blackmarble nightlight):"""
-        ent = LitPop()
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)

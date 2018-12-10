@@ -149,8 +149,8 @@ class LitPop(Exposures):
                 country_list[list_len-1-i] =\
                     country_new
                 if country_new is None:
-                    LOGGER.warning(('The country {} could not be found. '\
-                             + 'It is removed from the list.').format(country))
+                    LOGGER.warning('The country %s could not be found.', country)
+                    LOGGER.warning('Country %s is removed from the list.', country)
                     del country_list[list_len-1-i]
                 else:
                     country_info[country_new], admin1_info[country_new] =\
@@ -171,8 +171,7 @@ class LitPop(Exposures):
             if not _get_country_shape(country_list[0], 1) is None:
                 all_bbox = _get_country_shape(country_list[0], 1)[0]
             else:
-                LOGGER.error(('The country {} could not be found. '\
-                              + 'Operation aborted.').format(countries))
+                LOGGER.error('Country %s could not be found.', countries)
                 raise ValueError
             cut_bbox = all_bbox
             country_info[country_list[0]], admin1_info[country_list[0]]\
@@ -183,8 +182,7 @@ class LitPop(Exposures):
             raise TypeError
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
-        LOGGER.info('Generating LitPop data at a resolution of '\
-                    + str(resolution) + ' arcsec.')
+        LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
         LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0)
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
@@ -595,11 +593,11 @@ def _shape_cutter(shape, **opt_args):
                 sub_shape_path.append(path.Path(all_coords_shape\
                                             [shape.parts[i]:end_idx]))
         if check_enclaves == 1:
-            LOGGER.debug('Detected subshapes: ' + str(sub_shapes)\
-               + ', of which detected enclaves: ' + str(len(enclave_paths)))
+            LOGGER.debug('Detected subshapes: %s, of which subshapes: %s',\
+                         str(sub_shapes), str(len(enclave_paths)))
         else:
-            LOGGER.debug('Detected subshapes: ' + str(sub_shapes)\
-                      + '. Enclave checking disabled.')
+            LOGGER.debug('Detected subshapes: %s. Enclave checking disabled',\
+                         + str(sub_shapes))
     else:
         sub_shape_path.append(path.Path(all_coords_shape))
     del all_coords_shape
@@ -651,16 +649,16 @@ def _shape_cutter(shape, **opt_args):
             _plot_paths_to_plot(enclave_paths, enclave_format)
     if point_format == 1:
         if return_mask == 1:
-            LOGGER.debug('Cutting the shape took ' +\
-                        str(round(time.time()-curr_time, 2)) + 's')
+            LOGGER.debug('Cutting the shape took %s s',\
+                         str(round(time.time()-curr_time, 2)))
             return zip(lon, lat), enclave_paths, mask
         else:
-            LOGGER.debug('Cutting the shape took ' +\
-                        str(round(time.time()-curr_time, 2)) + 's')
+            LOGGER.debug('Cutting the shape took %s s',\
+                         str(round(time.time()-curr_time, 2)))
             return incl_coords, enclave_paths
     else:
-        LOGGER.debug('Cutting the shape took ' +\
-                    str(round(time.time()-curr_time, 2)) + 's')
+        LOGGER.debug('Cutting the shape took %s s',\
+                     str(round(time.time()-curr_time, 2)))
         if return_mask == 1:
             return lon, lat, enclave_paths, mask
         else:
@@ -785,8 +783,8 @@ def _mask_from_shape(check_shape, **opt_args):
                 sub_shape_path.append(path.Path(all_coords_shape\
                                       [check_shape.parts[i]:end_idx]))
         if check_enclaves == 1:
-            LOGGER.debug('Detected subshapes: ' + str(sub_shapes)\
-               + ', of which detected enclaves: ' + str(len(enclave_paths)))
+            LOGGER.debug('Detected subshapes: %s', str(sub_shapes))
+            LOGGER.debug('of which detected enclaves: %s', str(len(enclave_paths)))
         else:
             print('Detected subshapes: ' + str(sub_shapes)\
                       + '. Enclave checking disabled.')
@@ -981,8 +979,8 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
         for cntry_iso, cntry_val in cntry_info.items():
             _, wealth2GDP_factor = wealth2gdp(cntry_iso, fin_mode == 'nfw', ref_year)
             if np.isnan(wealth2GDP_factor):
-                LOGGER.warning("Missing factor for country " + cntry_iso +". "\
-                        + "Factor to convert GDP to assets will be set to 1 "\
+                LOGGER.warning("Missing factor for country %s.", cntry_iso)
+                LOGGER.warning("Factor to convert GDP to assets will be set to 1 "\
                         + "(total asset value corresponds to GDP).")
                 wealth2GDP_factor = 1
             cntry_val.append(wealth2GDP_factor)
@@ -1041,9 +1039,8 @@ def _gsdp_read(country_ISO3, admin1_shape_data,\
                             admin1_xls_data['GSDP_ref'][idx2]
         return out_dict
     else:
-        LOGGER.warning('No file for ' + country_ISO3 + ' could be found in the '\
-                    + ' folder ' + look_folder + '. No admin1 data is '\
-                    + ' calculated in this case.')
+        LOGGER.warning('No file for %s could be found in %s.', country_ISO3, look_folder)
+        LOGGER.warning('No admin1 data is calculated in this case.')
         return None
 
 def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
@@ -1209,8 +1206,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             temp_adm1 = {'adm0_LitPop_share':[], 'adm1_LitPop_share': []}
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
-                LOGGER.debug('Caclulating admin1 for ' +\
-                            adm1_shp.attributes['name'])
+                LOGGER.debug('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
                 mask_adm1 = _mask_from_shape(adm1_shp._shape,\
                          resolution=resolution,\
                          points2check=coords)
@@ -1249,8 +1245,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             for idx2, val in\
                 enumerate(gsdp_data.values()):
                 if not val is None:
-                    LOGGER.debug('Calculating admin1 data for ' +\
-                                admin1_info[idx2].attributes['name'])
+                    LOGGER.debug('Calculating admin1 data for %s.', admin1_info[idx2].attributes['name'])
                     mult = val*admin1_LitPop_share\
                             *(country_info[3]*country_info[4])\
                             /temp_adm1['LitPop_sum'][idx2]
@@ -1260,10 +1255,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                       for idx, val1 in\
                       enumerate(LitPop_data.values)])
                 else:
-                    LOGGER.warning('No admin1 data found for ' +\
-                                admin1_info[idx2].attributes['name']\
-                                + '. Only admin0 level data is calculated in'\
-                                + ' this case.')
+                    LOGGER.warning('No admin1 data found for %s.', admin1_info[idx2].attributes['name'])
+                    LOGGER.warning('Only admin0 data is calculated in this case.')
             for idx5, val2 in enumerate(admin1_info):
                 LP_sum = sum(LitPop_data.values)
                 temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
@@ -1396,18 +1389,15 @@ def read_bm_file(bm_path, filename):
                 coordinates can be calculated.
     """
     try:
-        LOGGER.debug('Trying to import the file ' +\
-                    os.path.join(bm_path, filename))
+        LOGGER.debug('Trying to import the file %s.', os.path.join(bm_path, filename))
         curr_file = gdal.Open(os.path.join(bm_path, filename))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1
-        LOGGER.debug('Reading file ' + os.path.join(bm_path, filename)\
-                    + ' completed.')
+        LOGGER.debug('Reading file completed: %s.', os.path.join(bm_path, filename))
         return arr1, curr_file
     except:
-        LOGGER.error('Importing the file ' + str(curr_file)\
-                     + ' failed. Operation aborted.')
+        LOGGER.error('Failed: Importing %s', str(curr_file))
         raise
 
 def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
@@ -1640,8 +1630,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     # Download necessary files:
     if not(np.array_equal(req_sat_files, files_exist)):
         try:
-            LOGGER.debug('Attempting to download ' + \
-                    str(int(sum(req_sat_files)-sum(files_exist))) + ' files.')
+            LOGGER.debug('Attempting to download %s', str(int(sum(req_sat_files)-sum(files_exist))))
             nightlight.download_nl_files(req_sat_files, files_exist,\
                                          dwnl_path=bm_path, year=2016)
         except:
@@ -1649,8 +1638,7 @@ def _get_box_blackmarble(cut_bbox, **args):
                      Operation aborted.')
             raise
     # Read corresponding files
-    LOGGER.debug('Reading and cropping neccessary BM files (' \
-           + str(int(sum(req_sat_files))) + ' files).')
+    LOGGER.debug('Reading and cropping neccessary BM files.')
     nightlight_intensity = get_bm(req_sat_files, resolution=resolution,\
                                   return_coords = 0, cut_bbox = cut_bbox,\
                                   bm_path = bm_path)[0]

@@ -159,7 +159,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
                     np.min(self.coord[:, 1]), np.max(self.coord[:, 1])))
         self.id = np.arange(1, self.value.size+1)
-        
+
         # set region_id (numeric ISO3):
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
@@ -206,7 +206,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                               + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
         #self.tag.country = cntry_info[1]
-        if spam_v == 'A' or spam_v == 'H':
+        if spam_v in ('A', 'H'):
             self.value_unit = 'Ha'
         elif spam_v == 'Y':
             self.value_unit = 'kg/Ha'

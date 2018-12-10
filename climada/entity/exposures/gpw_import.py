@@ -6,18 +6,20 @@ Created on Fri Jul 13 10:11:45 2018
 """
 import os
 import logging
+import subprocess
+
 import gdal
 import pandas as pd
 from scipy import ndimage as nd
 import numpy as np
-import subprocess
+
 from climada.util.constants import SYSTEM_DIR
 from climada.entity.exposures import litpop as LitPop
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 FILENAME_GPW = 'gpw_v4_population_count_rev10_2015_30_sec.tif'
-BUFFER_VAL = -340282306073709652508363335590014353408 
+BUFFER_VAL = -340282306073709652508363335590014353408
 # Hard coded value which is used for NANs in original GPW data
 
 def read_gpw_file(**parameters):
@@ -59,7 +61,7 @@ def read_gpw_file(**parameters):
 #    if cut_bbox is None and not (country_adm0 is None):
 #        cut_bbox = LitPop._check_bbox_country_cut_mode(country_cut_mode,\
 #                                                       cut_bbox, country_adm0)
-    if (cut_bbox is None) & (result_mode == 0): 
+    if (cut_bbox is None) & (result_mode == 0):
     # If we don't have a bbox by now and we need one, we just use the global
         cut_bbox = np.array((-180, -90, 180, 90))
     zoom_factor = 30/resolution # Orignal resolution is arc-seconds
@@ -82,17 +84,16 @@ def read_gpw_file(**parameters):
                                       + 'The data can be downloaded from '\
                                       + 'http://sedac.ciesin.columbia.edu/'\
                                       + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Trying to import the file ' + str(fname))
+        LOGGER.debug('Trying to import the file %s', str(fname))
         gpw_file = gdal.Open(fname)
         band1 = gpw_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1, gpw_file
         arr1[arr1 < 0] = 0
         if arr1.shape != (17400, 43200):
-            LOGGER.warning('Warning: GPW dataset has different dimensions '\
-                        + 'than expected. Actual dimensions: '\
-                        + str(arr1.shape[0]) + 'x' + str(arr1.shape[1]) + '. '\
-                        + 'Expected dimsions: 17400x43200.')
+            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '\
+                           + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
+            LOGGER.warning('Expected dimensions: 17400x43200.')
         if zoom_factor != 1:
             tile_temp = nd.zoom(arr1, zoom_factor, order=1)
         else:
@@ -117,13 +118,14 @@ def read_gpw_file(**parameters):
         del encl
         if not len(mask) == len(tile_temp):
             LOGGER.warning('Warning: length of mask and data not equal: '\
-                   + print(str(len(mask)) + ' and ' + str(len(tile_temp))))
+                   + '{} and {}'.format(str(len(mask)), str(len(tile_temp))))
         tile_temp = tile_temp[mask.sp_index.indices]
         if result_mode == 1:
             return tile_temp, lat, lon
-        else:
-            del mask, lat, lon
-            return tile_temp
+
+        del mask, lat, lon
+        return tile_temp
+
     except:
         LOGGER.error('Importing the GPW population density file failed. '\
                      + 'Operation aborted.')
@@ -142,7 +144,7 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution):
     Returns:
         gpw_data (array): Cropped GPW data
     """
-    
+
     """ gpw data is 17400 rows x 43200 cols in dimension (from 85 N to 60 S in
     latitude, full longitudinal range). Hence, the bounding box can easily be
     converted to the according indices in the gpw data"""
@@ -150,7 +152,7 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution):
     zoom = 30/resolution
     col_min, row_min, col_max, row_max =\
         LitPop._LitPop_coords_in_glb_grid(bbox, resolution)
-    row_min, row_max = int(row_min-5*steps_p_res), int(row_max-5*steps_p_res) 
+    row_min, row_max = int(row_min-5*steps_p_res), int(row_max-5*steps_p_res)
     # accomodate to fact that not the whole grid is present in this dataset
     if col_max < (43200/zoom)-1:
         col_max = col_max + 1
@@ -201,7 +203,7 @@ def _get_box_gpw(**parameters):
         bounding box.
 
     Optional parameters:
-        gpw_path (str): absolute path where files are stored. 
+        gpw_path (str): absolute path where files are stored.
             Default: SYSTEM_DIR
         resolution (int): the resolution in arcsec in which the data output
             is created.
@@ -233,7 +235,7 @@ def _get_box_gpw(**parameters):
     cut_bbox = parameters.get('cut_bbox')
 #    country_cut_mode = parameters.get('country_cut_mode', 1)
     return_coords = parameters.get('return_coords', 0)
-    if (cut_bbox is None) & (return_coords == 0):  
+    if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
         cut_bbox = np.array((-180, -90, 180, 90))
     zoom_factor = 30/resolution # Orignal resolution is arc-seconds
@@ -256,17 +258,16 @@ def _get_box_gpw(**parameters):
                                       + 'The data can be downloaded from '\
                                       + 'http://sedac.ciesin.columbia.edu/'\
                                       + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Trying to import the file ' + str(fname))
+        LOGGER.debug('Trying to import the file %s', str(fname))
         gpw_file = gdal.Open(fname)
         band1 = gpw_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1, gpw_file
         arr1[arr1 < 0] = 0
         if arr1.shape != (17400, 43200):
-            LOGGER.warning('Warning: GPW dataset has different dimensions '\
-                        + 'than expected. Actual dimensions: '\
-                        + str(arr1.shape[0]) + 'x' + str(arr1.shape[1])\
-                        + '. Expected dimensions: 17400x43200.')
+            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '\
+                           + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
+            LOGGER.warning('Expected dimensions: 17400x43200.')
         if zoom_factor != 1:
             tile_temp = nd.zoom(arr1, zoom_factor, order=1)
         else:
@@ -285,9 +286,9 @@ def _get_box_gpw(**parameters):
             lon = tuple((cut_bbox[0], 1/(3600/resolution)))
             lat = tuple((cut_bbox[1], 1/(3600/resolution)))
             return tile_temp, lon, lat
-        else:
-            return tile_temp
+
+        return tile_temp
+
     except:
-        LOGGER.error('Importing the GPW population density file failed. '\
-                     + 'Operation aborted.')
+        LOGGER.error('Importing the GPW population density file failed.')
         raise
