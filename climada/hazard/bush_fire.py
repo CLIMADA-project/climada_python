@@ -31,6 +31,9 @@ MIN_SAMPLES = 1
 """number of samples (or total weight) in a neighborhood for a point to
 be considered as a core point. This includes the point itself."""
 
+RESOL_CENTR = 500
+""" Number of centroids in x and y axes. """
+
 class BushFire(Hazard):
     """Contains bush fire events."""
 
@@ -211,8 +214,9 @@ class BushFire(Hazard):
         min_lon = firms['longitude'].min()
         max_lon = firms['longitude'].max()
         centroids = Centroids()
-        centroids.coord = (np.mgrid[min_lat : max_lat : complex(0, 500),
-                                    min_lon : max_lon : complex(0, 500)]).reshape(2, 250000).transpose()
+        centroids.coord = (np.mgrid[min_lat : max_lat : complex(0, RESOL_CENTR),
+                                    min_lon : max_lon : complex(0, RESOL_CENTR)]).\
+                           reshape(2, RESOL_CENTR*RESOL_CENTR).transpose()
         centroids.id = np.arange(len(centroids.coord)) + 1
         return centroids
 
@@ -269,7 +273,7 @@ class BushFire(Hazard):
                 brightness[ev_idx, centr_idx] = bright[idx]
         brightness = brightness.tocsr()
         return brightness
-    
+
     #Probabilistic event
     @staticmethod
     def _random_ignition(centroids):
@@ -278,46 +282,49 @@ class BushFire(Hazard):
         Parameters:
             centroids (Centroids): Centroids instance. Use global
                 centroids if not provided.
-            
+
 
         Returns: ignition_start (int): centroids.id of the centroid randomly selected
-            as ignition starting point. 
-            
+            as ignition starting point.
+
         """
         ignition_start = randint(0, centroids.id.size)
+        ignition_lat = centroids.lat[centroids.id == ignition_start]
+        ignition_lon = centroids.lon[centroids.id == ignition_start]
         
-        return ignition_start
-    
+
+        return ignition_start, ignition_lat, ignition_lon
+
     @staticmethod
-    def _propagation (centroids, ignition_start):
+    def _propagation (centroids, ignition_start, ignition_lon, ignition_lat):
         """Propagate the fire from the ignition point with a cellular automat.
-        
+
         Parameters:
             centroids (Centroids): Centroids instance.
-            ignition_start (int): id of the centroid randomly selected as 
+            ignition_start (int): id of the centroid randomly selected as
                 ignition starting point.
-                
-        Returns: 
-             
-            
+
+        Returns:
+
+
         """
-        
+
         fire = centroids.id.reshape(-1,1)
         fire = pd.DataFrame.from_dict(fire)
         fire.columns = ['centr_id']
         fire['val'] = np.zeros(centroids.id.size)
-        
+
         #step 0: change in val only for the ignition starting point
         for raw, centr_id in enumerate(fire['centr_id'].values):
             if fire.at[raw, 'centr_id'] == ignition_start:
                 fire.at[raw, 'val'] = 1
-                
-        #next steps: 
+
+        #next steps:
         lat_uni = list(np.unique(centroids.lat))
         dlat = []
         lon_uni = np.unique(centroids.lon)
         dlon = []
-        
+
         for x in iter(lat_uni):
             d_lat = x - next(iter(lat_uni))
             dlat.append(d_lat)
@@ -326,10 +333,9 @@ class BushFire(Hazard):
             dlon.append(d_lon)
         dlat = dlat[1]
         dlon = dlon[1]
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
