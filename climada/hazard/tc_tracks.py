@@ -26,7 +26,7 @@ import datetime as dt
 import array
 import itertools
 import numpy as np
-import matplotlib.cm as cm
+import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -54,7 +54,7 @@ CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              5: 'Hurrican Cat. 3', 6: 'Hurrican Cat. 4', 7: 'Hurrican Cat. 5'}
 """ Saffir-Simpson category names. """
 
-CAT_COLORS = cm.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
+CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """ Color scale to plot the Saffir-Simpson scale."""
 
 class TCTracks():
@@ -326,8 +326,12 @@ class TCTracks():
                                       [time_step_h])
             track_int.coords['lat'] = track.lat.resample(time=time_step).\
                                       interpolate('cubic')
+            track_int.coords['lat'][track_int.coords['lat'] > 90] = 90
+            track_int.coords['lat'][track_int.coords['lat'] < -90] = -90
             track_int.coords['lon'] = track.lon.resample(time=time_step).\
                                       interpolate('cubic')
+            track_int.coords['lon'][track_int.coords['lat'] > 180] = 180
+            track_int.coords['lon'][track_int.coords['lat'] < -180] = -180
             track_int.attrs = track.attrs
             track_int.attrs['category'] = set_category( \
                 track.max_sustained_wind.values, \
@@ -643,7 +647,10 @@ def _decay_values(track, land_geom, s_rel):
             ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0]+1
 
             v_land = track.max_sustained_wind[sea_land-1:land_sea].values
-            v_land = (v_land[1:]/v_land[0]).tolist()
+            if v_land[0] > 0:
+                v_land = (v_land[1:]/v_land[0]).tolist()
+            else:
+                v_land = v_land[1:].tolist()
 
             p_landfall = float(track.central_pressure[sea_land-1].values)
             p_land = track.central_pressure[sea_land-1:land_sea].values
@@ -692,6 +699,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
 
         y_val = np.array(val_lf)
         v_coef = _solve_decay_v_function(y_val, x_val_ss)
+        v_coef = v_coef[np.isfinite(v_coef)]
 
         ps_y_val = np.array(p_lf[ss_scale][0])
         y_val = np.array(p_lf[ss_scale][1])
@@ -725,7 +733,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
     decay, true and approximated."""
     # One graph per TC category
     for track_cat, color in zip(v_lf.keys(),
-                                cm.rainbow(np.linspace(0, 1, len(v_lf)))):
+                                cm_mp.rainbow(np.linspace(0, 1, len(v_lf)))):
         graph = u_plot.Graph2D('', 2)
         x_eval = np.linspace(0, np.max(x_val[track_cat]), 20)
 
@@ -989,7 +997,6 @@ def set_category(max_sus_wind, max_sus_wind_unit):
         LOGGER.error('Wind not recorded in kn, conversion to kn needed.')
         raise ValueError
     max_wind_kn = (np.nanmax(max_sus_wind) * unit).to(ureg.knot).magnitude
-
     try:
         return (np.argwhere(max_wind_kn < SAFFIR_SIM_CAT) - 1)[0][0]
     except IndexError:
