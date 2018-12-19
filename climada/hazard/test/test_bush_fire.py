@@ -6,6 +6,7 @@ import os
 import unittest
 import pandas as pd
 from datetime import datetime
+import numpy as np
 
 
 from climada.hazard.bush_fire import BushFire
@@ -13,7 +14,6 @@ from climada.hazard.bush_fire import BushFire
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 TEST_FIRMS = os.path.join(DATA_DIR, "Victoria_firms.csv")
 #TEST_FIRMS = os.path.join(DATA_DIR, "Spain_2013-2018_firms.csv")
-TEST_SYNTH = os.path.join(DATA_DIR, "Firms_synthetique.csv")
 description = ''
 
 class TestReaderFirms(unittest.TestCase):
@@ -102,10 +102,10 @@ class TestReaderDF(unittest.TestCase):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-             -38.095, -37.45 ],
-        'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
-             142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
-             146.397, 145.361],
+             -38.095, -37.45],
+                 'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
+                       142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
+                       146.397, 145.361],
         'brightness' : [316.5, 150, 500, 312.6, 312.7, 324.4, 373.6,
              359.6, 312.9, 100, 400, 500, 300, 250],
         'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
@@ -124,7 +124,7 @@ class TestReaderDF(unittest.TestCase):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-             -38.095, -37.45 ],
+             -38.095, -37.45],
         'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
              142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
              146.397, 145.361],
@@ -147,10 +147,10 @@ class TestReaderDF(unittest.TestCase):
         self.assertEqual(firms['cons_id'][13], 2)
 
     def clustering(self):
-         bf = BushFire()
-         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
+        bf = BushFire()
+        firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-             -38.095, -37.45 ],
+             -38.095, -37.45],
         'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
              142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
              146.397, 145.361],
@@ -159,19 +159,19 @@ class TestReaderDF(unittest.TestCase):
         'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
              '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-25', '2006-01-25',
              '2006-01-28', '2006-01-28', '2006-01-30']}
-         firms, description = TestReaderDF._read_firms_synth(firms)
-         firms = bf._firms_cons_days(firms)
+        firms, description = TestReaderDF._read_firms_synth(firms)
+        firms = bf._firms_cons_days(firms)
          #add clus_id
-         firms = bf._firms_clustering(firms)
+        firms = bf._firms_clustering(firms)
 
-         self.assertEqual(max((firms['clus_id'][:10]).values), 2)
-         self.assertEqual(max((firms['clus_id'][11:13]).values), 0)
+        self.assertEqual(max((firms['clus_id'][:10]).values), 2)
+        self.assertEqual(max((firms['clus_id'][11:13]).values), 0)
 
     def test_event_one_pass(self):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-             -38.095, -37.45 ],
+             -38.095, -37.45],
         'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
              142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
              146.397, 145.361],
@@ -196,7 +196,7 @@ class TestReaderDF(unittest.TestCase):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-             -38.095, -37.45 ],
+             -38.095, -37.45],
         'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
              142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
              146.397, 145.361],
