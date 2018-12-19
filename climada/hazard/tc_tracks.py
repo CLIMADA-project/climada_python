@@ -776,7 +776,10 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     in enumerate(zip(sea_land_idx, land_sea_idx)):
         v_landfall = track.max_sustained_wind[sea_land-1].values
         p_landfall = float(track.central_pressure[sea_land-1].values)
-        ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0]+1
+        try:
+            ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0]+1
+        except IndexError:
+            continue
         if land_sea - sea_land == 1:
             continue
         p_decay = _calc_decay_ps_value(track, p_landfall, s_rel)
@@ -985,6 +988,9 @@ def set_category(max_sus_wind, max_sus_wind_unit):
     else:
         LOGGER.error('Wind not recorded in kn, conversion to kn needed.')
         raise ValueError
-    max_wind_kn = (np.max(max_sus_wind) * unit).to(ureg.knot).magnitude
+    max_wind_kn = (np.nanmax(max_sus_wind) * unit).to(ureg.knot).magnitude
 
-    return (np.argwhere(max_wind_kn < SAFFIR_SIM_CAT) - 1)[0][0]
+    try:
+        return (np.argwhere(max_wind_kn < SAFFIR_SIM_CAT) - 1)[0][0]
+    except IndexError:
+        return -1
