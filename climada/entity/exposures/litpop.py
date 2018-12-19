@@ -124,14 +124,18 @@ class LitPop(Exposures):
                 - income_group: gdp multiplied by country's income group+1
                 - nfw: non-financial wealth (of households only)
                 - tw: total wealth (of households only)
+            admin1_calc (boolean): distribute admin1-level GDP if available? (default 0)
+            reference_year (int)
         """
         #TODO: allow for user delivered path
+        self.clear() # clear existing assets (reset)
         start_time = time.time()
         res_km = args.get('res_km', 1)
         res_arcsec = args.get('res_arcsec', [])
         fin_mode = args.get('fin_mode', 'income_group')
         admin1_calc = args.get('admin1_calc', 0)
         scatter_plot = args.get('scatter_plot', 1)
+        reference_year = args.get('reference_year', 2016)
 #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
         if res_arcsec == []:
             resolution = (res_km/DEF_RES_GPW_KM)*DEF_RES_GPW_ARCSEC
@@ -183,7 +187,7 @@ class LitPop(Exposures):
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
         LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
-        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0)
+        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year)
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -193,8 +197,6 @@ class LitPop(Exposures):
             _, gdp_val = gdp(cntry_iso, 2016, shp_file)
             cntry_val.append(gdp_val)
         _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
-        # be aware of arg order in _get_gdp2asset_factor
-        print("...............................")
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\
@@ -213,7 +215,7 @@ class LitPop(Exposures):
                                    country_info[curr_country][4])
 
             self.append(self._set_one_country(country_info[curr_country],\
-                      LitPop_curr, lon, lat, 'various', resolution))
+                      LitPop_curr, lon, lat, 'various', resolution, fin_mode))
             self._append_additional_info(curr_country,\
                                          country_info[curr_country])
         if check_plot == 1:
@@ -222,7 +224,7 @@ class LitPop(Exposures):
                         + str(round(time.time() - start_time, 2)) +"s")
 
     @staticmethod
-    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution):
+    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode):
         """ Model one country.
 
         Parameters:
@@ -234,6 +236,7 @@ class LitPop(Exposures):
             lat (array): latudinal coordinates
             fn_nl (str): file name of underlying data with path #Unimplemented #TODO
             resolution (scalar): the resolution of the LitPop_data in arc-sec
+            fin_mode (str): financial mode
         """
         lp = LitPop()
         lp.value = LitPop_data.values
@@ -245,8 +248,8 @@ class LitPop(Exposures):
         lp.impact_id = {DEF_HAZ_TYPE: np.ones(lp.value.size, int)}
         lp.ref_year = 2016
         lp.tag.description = ("LitPop based asset values for {} "\
-            + "at " + str(int(resolution)) + " arcsec resolution"\
-            + "\n").format(cntry_info[1])
+            + "at " + str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
+            + "\n").format(cntry_info[1],fin_mode)
         lp.tag.file_name = fn_nl
 #        lp.tag.shape = cntry_info[2]
 #        lp.tag.country = cntry_info[1]
@@ -303,7 +306,7 @@ class LitPop(Exposures):
             plt.colorbar()
             plt.show()
 
-def _get_LitPop_box(cut_bbox, resolution, return_coords=0):
+def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016):
     '''
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -315,6 +318,8 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0):
             [minimum longitude, minimum latitude, maximum longitude,
                  maxmimum latitude]
         resolution (scalar): resolution in arc-seconds
+        reference_year (int): reference year, population available at:
+            2000, 2005, 2010, 2015 (default), 2020
     OUTPUT (either one of these lines, depending on option return_coords):
         LitPop_data (pandas SparseArray): A pandas SparseArray containing the
             raw, unnormalised LitPop data.
@@ -327,7 +332,7 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0):
     bm = _get_box_blackmarble(cut_bbox,\
                                     resolution=resolution, return_coords=0)
     gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
-                                  return_coords=0)
+                                  return_coords=0, reference_year=reference_year)
     bm_temp = np.ones(bm.shape)
     bm_temp[bm.sp_index.indices] = (np.array(bm.sp_values, dtype='uint16')+1)
     bm = pd.SparseArray(bm_temp, fill_value=1)
