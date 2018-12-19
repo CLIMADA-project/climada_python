@@ -3,17 +3,18 @@
 __all__ = ['BushFire']
 
 import logging
+from datetime import datetime
+from random import randint
 import numpy as np
 import pandas as pd
 from scipy import sparse
-from datetime import datetime
 from sklearn.cluster import DBSCAN
 
 from climada.hazard.centroids.base import Centroids
 from climada.util.interpolation import interpol_index
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
-from random import randint
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +51,8 @@ class BushFire(Hazard):
         """ Fill in the hazard file
 
         Parameters:
-            csv_firms: csv file of the FIRMS data (obtained here:https://firms.modaps.eosdis.nasa.gov/download/)
+            csv_firms: csv file of the FIRMS data
+                (obtained here:https://firms.modaps.eosdis.nasa.gov/download/)
             centroids (Centroids, optional): Centroids where to model BF.
                 Default: global centroids.
             description (str, optional): description of the events
@@ -153,12 +155,12 @@ class BushFire(Hazard):
         #Creation of an identifier for geographical clustering
         cluster_id = np.zeros((firms.index.size,))-1
         for cons_id in np.unique(firms['cons_id'].values):
-            cc = np.argwhere(firms['cons_id'].values == cons_id).reshape(-1,)
-            lat_lon = firms.loc[cc, ['latitude', 'longitude']].values
+            temp = np.argwhere(firms['cons_id'].values == cons_id).reshape(-1,)
+            lat_lon = firms.loc[temp, ['latitude', 'longitude']].values
             lat_lon_uni, lat_lon_cpy = np.unique(lat_lon, return_inverse=True, axis=0)
             cluster_uni = DBSCAN(eps=EPS, min_samples=MIN_SAMPLES).fit(lat_lon_uni).labels_
             cluster_cpy = cluster_uni[lat_lon_cpy]
-            cluster_id[cc] = cluster_cpy
+            cluster_id[temp] = cluster_cpy
         firms['clus_id'] = pd.Series(cluster_id)
         print(max(firms['clus_id'].values))
 
@@ -190,7 +192,8 @@ class BushFire(Hazard):
         event_id = np.zeros((firms.index.size,))+1
         firms['event_id'] = pd.Series(event_id)
         for index, val in list(map(tuple, firms['clus_id'].items()))[1:]:
-            if ((firms.at[index, 'clus_id'] - firms.at[index-1, 'clus_id']) == 0) & ((firms.at[index, 'cons_id'] - firms.at[index-1, 'cons_id']) == 0):
+            if ((firms.at[index, 'clus_id'] - firms.at[index-1, 'clus_id']) == 0) \
+            & ((firms.at[index, 'cons_id'] - firms.at[index-1, 'cons_id']) == 0):
                 firms.at[index, 'event_id'] = int(firms.at[index-1, 'event_id'])
             else:
                 firms.at[index, 'event_id'] = int(firms.at[index-1, 'event_id']+1)
@@ -246,9 +249,8 @@ class BushFire(Hazard):
         latlon = interpol_index(lat_lon_uni, centroids.coord, threshold=THRESH_INTERP)
 
         LOGGER.info('Computing brightness matrix.')
-        num_events = int(max(firms['event_id'].values))
-        num_centroids = int(len(centroids.id))
-        brightness = sparse.lil_matrix(np.zeros((num_events, num_centroids)))
+        brightness = sparse.lil_matrix(np.zeros((int(max(firms['event_id'].values)),
+                                                 int(len(centroids.id)))))
 
         LOGGER.debug('Filling up the matrix.')
         # Matrix intensity: events x centroids
@@ -263,7 +265,8 @@ class BushFire(Hazard):
 
         for ev_idx, ev_id in enumerate(np.unique(firms['event_id'].values)):
             temp_firms = firms.loc[firms['event_id'] == ev_id, ['index', 'brightness']]
-            index_uni, index_cpy = np.unique(temp_firms['index'].values, return_inverse=True, axis=0)
+            index_uni, index_cpy = np.unique(temp_firms['index'].values,
+                                             return_inverse=True, axis=0)
             bright = np.zeros(index_uni.size)
             for index_idx, index in enumerate(index_uni):
                 bright[index_idx] = np.max(temp_firms['brightness'][index_uni[index_cpy] == index])
@@ -291,12 +294,11 @@ class BushFire(Hazard):
         ignition_start = randint(0, centroids.id.size)
         ignition_lat = centroids.lat[centroids.id == ignition_start]
         ignition_lon = centroids.lon[centroids.id == ignition_start]
-        
 
         return ignition_start, ignition_lat, ignition_lon
 
     @staticmethod
-    def _propagation (centroids, ignition_start, ignition_lon, ignition_lat):
+    def _propagation(centroids, ignition_start):
         """Propagate the fire from the ignition point with a cellular automat.
 
         Parameters:
@@ -309,7 +311,7 @@ class BushFire(Hazard):
 
         """
 
-        fire = centroids.id.reshape(-1,1)
+        fire = centroids.id.reshape(-1, 1)
         fire = pd.DataFrame.from_dict(fire)
         fire.columns = ['centr_id']
         fire['val'] = np.zeros(centroids.id.size)
@@ -325,17 +327,12 @@ class BushFire(Hazard):
         lon_uni = np.unique(centroids.lon)
         dlon = []
 
-        for x in iter(lat_uni):
-            d_lat = x - next(iter(lat_uni))
+        for lat in iter(lat_uni):
+            d_lat = lat - next(iter(lat_uni))
             dlat.append(d_lat)
-        for x in iter(lon_uni):
-            d_lon = x - next(iter(lon_uni))
+        for lon in iter(lon_uni):
+            d_lon = lon - next(iter(lon_uni))
             dlon.append(d_lon)
         dlat = dlat[1]
         dlon = dlon[1]
-
-
-
-
-
-
+        
