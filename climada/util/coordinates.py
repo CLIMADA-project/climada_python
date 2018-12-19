@@ -333,7 +333,7 @@ def shapely_to_pyshp(shapely_geom):
     # first convert shapely to geojson
     geoj = shapely.geometry.mapping(shapely_geom)
     # create empty pyshp shape
-    record = shapefile._Shape()
+    record = shapefile.Shape()
     # set shapetype
     pyshptype = GEOMETRY_TYPE[geoj["type"]]
     record.shapeType = pyshptype
