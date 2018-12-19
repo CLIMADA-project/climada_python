@@ -18,7 +18,9 @@ from climada.entity.exposures import litpop as LitPop
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
-FILENAME_GPW = 'gpw_v4_population_count_rev10_2015_30_sec.tif'
+FILENAME_GPW0 = 'gpw_v4_population_count_rev10_'
+FILENAME_GPW1 = '_30_sec.tif'
+YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
 BUFFER_VAL = -340282306073709652508363335590014353408
 # Hard coded value which is used for NANs in original GPW data
 
@@ -44,6 +46,8 @@ def read_gpw_file(**parameters):
         result_mode (int): Determines whether latitude and longitude are
             delievered along with gpw data (0) or only gpw_data is returned (1)
             Default = 1.
+        reference_year (int): reference year, available years are:
+            2000, 2005, 2010, 2015 (default), 2020
 
     Returns:
         tile_temp (pandas SparseArray): GPW data
@@ -58,6 +62,12 @@ def read_gpw_file(**parameters):
     country_adm0 = parameters.get('country_adm0')
 #    country_cut_mode = parameters.get('country_cut_mode', 1)
     result_mode = parameters.get('result_mode', 0)
+    reference_year = parameters.get('reference_year', 2015)
+    # find nearest available year:
+    year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
+    filename_GPW = FILENAME_GPW0 + str(year) + FILENAME_GPW1
+    LOGGER.debug('Reference year: %i. Nearest available year for GWP population data: %i',\
+                 reference_year, year)
 #    if cut_bbox is None and not (country_adm0 is None):
 #        cut_bbox = LitPop._check_bbox_country_cut_mode(country_cut_mode,\
 #                                                       cut_bbox, country_adm0)
@@ -66,7 +76,7 @@ def read_gpw_file(**parameters):
         cut_bbox = np.array((-180, -90, 180, 90))
     zoom_factor = 30/resolution # Orignal resolution is arc-seconds
     try:
-        fname = os.path.join(gpw_path, FILENAME_GPW)
+        fname = os.path.join(gpw_path, filename_GPW)
         if not os.path.isfile(fname):
             if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
                 subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],\
@@ -222,6 +232,8 @@ def _get_box_gpw(**parameters):
             or only gpw_data is returned (Default: 0)
         add_one (boolean): Determine whether the integer one is added to all
             cells to eliminate zero pixels (Default: 0) #TODO: Unimplemented
+        reference_year (int): reference year, available years are:
+            2000, 2005, 2010, 2015 (default), 2020
 
     Returns:
         tile_temp (pandas SparseArray): GPW data
@@ -235,12 +247,18 @@ def _get_box_gpw(**parameters):
     cut_bbox = parameters.get('cut_bbox')
 #    country_cut_mode = parameters.get('country_cut_mode', 1)
     return_coords = parameters.get('return_coords', 0)
+    reference_year = parameters.get('reference_year', 2015)    
+    year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
+    filename_GPW = FILENAME_GPW0 + str(year) + FILENAME_GPW1
+    if year != reference_year:
+        LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',\
+                    reference_year, year)
     if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
         cut_bbox = np.array((-180, -90, 180, 90))
     zoom_factor = 30/resolution # Orignal resolution is arc-seconds
     try:
-        fname = os.path.join(gpw_path, FILENAME_GPW)
+        fname = os.path.join(gpw_path, filename_GPW)
         if not os.path.isfile(fname):
             if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
                 subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],\
@@ -269,7 +287,10 @@ def _get_box_gpw(**parameters):
                            + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
             LOGGER.warning('Expected dimensions: 17400x43200.')
         if zoom_factor != 1:
+            total_population = arr1.sum()
             tile_temp = nd.zoom(arr1, zoom_factor, order=1)
+            # normalize interpolated gridded population count to keep total population stable:
+            tile_temp = tile_temp*(total_population/tile_temp.sum())
         else:
             tile_temp = arr1
         del arr1

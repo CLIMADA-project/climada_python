@@ -25,18 +25,44 @@ from climada.entity.exposures.litpop import LitPop
 class TestDefault(unittest.TestCase):
     """Test data availability checks (blackmarble nightlight and gpw population):"""
 
-    def test_switzerland_pass(self):
-        """Create LitPop entity for Switzerland:"""
+    def test_switzerland300_pass(self):
+        """Create LitPop entity for Switzerland on 300 arcsec:"""
         country_name = ['CHE']
         resolution = 300
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution)
-        print(cm)
+        # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(ent.value.sum() == 3343726398022.6597)
+        self.assertTrue(ent.value.sum() == 3343726398022.6606)
+        
+    def test_switzerland30_pass(self):
+        """Create LitPop entity for Switzerland on 30 arcsec:"""
+        country_name = ['CHE']
+        resolution = 30
+        ent = LitPop()
+        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
+            ent.set_country(country_name, res_arcsec=resolution, reference_year=2016)
+        # print(cm)
+        self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
+        self.assertTrue(ent.region_id.min() == 756)
+        self.assertTrue(ent.region_id.max() == 756)
+        self.assertTrue(ent.value.sum() == 3343726398022.672)
+        
+    def test_suriname30_nfw_pass(self):
+        """Create LitPop entity for Suriname for non-finanical wealth:"""
+        country_name = ['SUR']
+        fin_mode = 'nfw'
+        ent = LitPop()
+        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
+            ent.set_country(country_name, reference_year=2016, fin_mode=fin_mode)
+        # print(cm)
+        self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
+        self.assertTrue(ent.region_id.min() == 740)
+        self.assertTrue(ent.region_id.max() == 740)
+        self.assertTrue(ent.value.sum() == 2414756959.8304553)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
