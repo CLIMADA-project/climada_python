@@ -24,6 +24,7 @@ import pandas as pd
 from pandas_datareader import wb
 from scipy import sparse
 from scipy import ndimage as nd
+from scipy import stats
 from cartopy.io import shapereader
 import shapefile
 from matplotlib import pyplot as plt
@@ -124,8 +125,9 @@ class LitPop(Exposures):
                 - income_group: gdp multiplied by country's income group+1
                 - nfw: non-financial wealth (of households only)
                 - tw: total wealth (of households only)
-            admin1_calc (boolean): distribute admin1-level GDP if available? (default 0)
+            admin1_calc (boolean): distribute admin1-level GDP if available? (default False)
             reference_year (int)
+            adm1_scatter (boolean): produce scatter plot for admin1 validation?
         """
         #TODO: allow for user delivered path
         self.clear() # clear existing assets (reset)
@@ -133,8 +135,8 @@ class LitPop(Exposures):
         res_km = args.get('res_km', 1)
         res_arcsec = args.get('res_arcsec', [])
         fin_mode = args.get('fin_mode', 'income_group')
-        admin1_calc = args.get('admin1_calc', 0)
-        scatter_plot = args.get('scatter_plot', 1)
+        admin1_calc = args.get('admin1_calc', False)
+        adm1_scatter = args.get('adm1_scatter', False)
         reference_year = args.get('reference_year', 2016)
 #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
         if res_arcsec == []:
@@ -187,7 +189,7 @@ class LitPop(Exposures):
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
         LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
-        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year)
+        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 0)
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -208,7 +210,7 @@ class LitPop(Exposures):
                                            country_info[curr_country],
                                            admin1_info[curr_country],\
                                            LitPop_curr, list(zip(lon, lat)),\
-                                           resolution, scatter_plot)
+                                           resolution, adm1_scatter)
             else:
                 LitPop_curr = _calc_admin0(LitPop_curr,\
                                    country_info[curr_country][3],\
@@ -306,7 +308,7 @@ class LitPop(Exposures):
             plt.colorbar()
             plt.show()
 
-def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016):
+def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, validation_mode=0):
     '''
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -320,6 +322,7 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016):
         resolution (scalar): resolution in arc-seconds
         reference_year (int): reference year, population available at:
             2000, 2005, 2010, 2015 (default), 2020
+        validation_mode (int, default = 0) 1: night light only, 2: population only
     OUTPUT (either one of these lines, depending on option return_coords):
         LitPop_data (pandas SparseArray): A pandas SparseArray containing the
             raw, unnormalised LitPop data.
@@ -337,6 +340,11 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016):
     bm_temp[bm.sp_index.indices] = (np.array(bm.sp_values, dtype='uint16')+1)
     bm = pd.SparseArray(bm_temp, fill_value=1)
     del bm_temp
+    if validation_mode == 1:
+        gpw = gpw*0+1 # set gpw to 1 everywhere for pure night light
+    elif validation_mode == 2:
+        bm = bm*0+1 # set bm to 1 everywhere for pure population
+
     LitPop_data = pd.SparseArray(np.multiply(bm.values, gpw.values),\
                                  fill_value=0)
     if return_coords == 1:
@@ -608,11 +616,11 @@ def _shape_cutter(shape, **opt_args):
     del all_coords_shape
     incl_coords = []
     for j in range(0, len(sub_shape_path)):
-        stdout.write("\rChecking points in subshape " + str(j+1)\
+        """stdout.write("\rChecking points in subshape " + str(j+1)\
              + " of " +str(len(sub_shape_path))\
              + ". Note: The first few subshapes are usually the largest"\
              + " and hence slowest.")
-        stdout.flush()
+        stdout.flush()"""
         add_points = _mask_from_path(sub_shape_path[j], resolution)
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
@@ -798,11 +806,11 @@ def _mask_from_shape(check_shape, **opt_args):
     del all_coords_shape
     incl_coords = []
     for j in range(0, len(sub_shape_path)):
-        stdout.write("\rChecking points in subshape " + str(j+1)\
+        """stdout.write("\rChecking points in subshape " + str(j+1)\
              + " of " +str(len(sub_shape_path))\
              + ". Note: The first few subshapes are usually the largest"\
              + " and hence slowest.")
-        stdout.flush()
+        stdout.flush()"""
         add_points = _mask_from_path(sub_shape_path[j], resolution)
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
@@ -1165,7 +1173,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
         _plot_shape_to_plot(i, gray_val=gray_val)
 
 def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
-                 coords, resolution, scatter_plot):
+                 coords, resolution, adm1_scatter, check_plot=1):
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
@@ -1193,7 +1201,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
         coords (list): a list containing all the coordinates of the country in
             the format (lon, lat)
         resolution (scalar): the desired resolution in arc-seconds.
-        scatter_plot (boolean): whether a scatter plot comparing admin0 and
+        adm1_scatter (boolean): whether a scatter plot and correlation comparing admin0 and
             admin1 results should be produced.
 
     Returns:
@@ -1266,12 +1274,14 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                 LP_sum = sum(LitPop_data.values)
                 temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
                          [temp_adm1['mask'][idx5].values])/LP_sum)
-        if scatter_plot == 1:
-            _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
-                            temp_adm1['adm1_LitPop_share'], admin1_info)
+        if adm1_scatter == 1:
+            pearsonr, spearmanr = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
+                            temp_adm1['adm1_LitPop_share'], admin1_info, check_plot)
     else:
         LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
                                    country_info[4])
+    if adm1_scatter:
+        return LitPop_data, [pearsonr, spearmanr], temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
     return LitPop_data
 
 def _calc_admin0(LitPop_data, GDP_val, GDP2AssetFactor):
@@ -1361,7 +1371,7 @@ def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
             cut_bbox = None
     return cut_bbox
 
-def _LitPop_scatter(adm0_data, adm1_data, adm1_info):
+def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     """ Plots the admin0 share of the states and provinces against the admin1
         shares.
 
@@ -1370,15 +1380,29 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info):
         adm1_data (list): list containing the admin1 shares
         adm1_info (list): list containing the shape files of the admin1 items.
     """
-    plt.figure()
-    plt.scatter(adm0_data, adm1_data, c=(0.1, 0.1, 0.3))
-    plt.suptitle('Comparison of admin0 and admin1 LitPop data for '\
-              + adm1_info[0].attributes['admin'])
-    plt.plot(plt.gca().get_xlim(), plt.gca().get_ylim(), ls="--", c=".3")
-    label = [x.attributes['postal'] for x in adm1_info] # TODO add labels
-#    plt.annotate(label, xy=(adm0_data, adm1_data), xytext=(-20, 20),
-#        textcoords='offset points', ha='right', va='bottom')
-    plt.show()
+    adm0_data = np.array(adm0_data)
+    adm1_data = np.array(adm1_data)
+    adm1_data = adm1_data[adm0_data.nonzero()]
+    adm0_data = adm0_data[adm0_data.nonzero()]
+    spearmanr = stats.spearmanr(adm0_data, adm1_data)[0]
+    pearsonr = stats.pearsonr(adm0_data, adm1_data)[0]
+    if check_plot:
+        plt.figure()
+        plt.scatter(adm1_data, adm0_data, c=(0.1, 0.1, 0.3))
+#        plt.suptitle('Comparison of admin0 and admin1 LitPop data for '\
+#                  + adm1_info[0].attributes['admin'])
+        plt.plot([0,np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
+              [0,np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])], ls="--", c=".3")
+    #    plt.annotate(label, xy=(adm0_data, adm1_data), xytext=(-20, 20),
+    #        textcoords='offset points', ha='right', va='bottom')
+        plt.suptitle(adm1_info[0].attributes['admin'] + ': rp='\
+                     + format(pearsonr, '.2f') + ', rs='\
+                     + format(spearmanr, '.2f'), fontsize=18)
+        plt.xlabel('Reference GDP share')
+        plt.ylabel('Modelled GDP share')
+        plt.show()
+    return pearsonr, spearmanr
+    
     
 def read_bm_file(bm_path, filename):
     """ Reads a single NASA BlackMarble GeoTiff and returns the data. Run all
@@ -1592,8 +1616,8 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         col_max = min(col_max+1, ((maxlon_tile-minlon_tile)\
                                   -(deg_per_pix/2))*(1/deg_per_pix))
         bm_data = bm_data[row_min:row_max, col_min:col_max]
-    print('Cutting the bounding box took ' + str(round(time.time()-start_time,\
-                                                       2)) + 's')
+#    print('Cutting the bounding box took ' + str(round(time.time()-start_time,\
+#                                                       2)) + 's')
     return bm_data
 
 def _get_box_blackmarble(cut_bbox, **args):
@@ -1653,3 +1677,103 @@ def _get_box_blackmarble(cut_bbox, **args):
         return nightlight_intensity, lon, lat
     else: ### TODO: ensure function is efficient if no coords are returned
         return nightlight_intensity
+    
+def admin1_validation(country, **args):
+        """ Get LitPop based exposre for one country or multiple countries
+    using values at reference year. If GDP or income
+    group not available for that year, consider the value of the closest
+    available year.
+
+    Parameters:
+        country (str): list of countries or single county as a
+            sting. Countries can either be country names ('France') or
+            country codes ('FRA'), even a mix is possible in the list.
+    args: Keyword arguments. The following keywords are recognised:
+        res_km (float, optional): approx resolution in km. Default: 1km.
+        res_arcsec (float, optional): resolution in arc-sec. Overrides
+            res_km if both are delivered
+        check_plot (boolean, optional): choose if a plot is shown at the
+            end of the operation.
+    """
+        res_km = args.get('res_km', 1)
+        res_arcsec = args.get('res_arcsec', [])
+        check_plot = args.get('ckeck_plot', True)
+        fin_mode = 'gdp'
+        reference_year = 2015
+        #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
+        if res_arcsec == []:
+            resolution = (res_km/DEF_RES_GPW_KM)*DEF_RES_GPW_ARCSEC
+        else:
+            resolution = res_arcsec
+        _match_target_res(resolution)
+        country_info = dict()
+        admin1_info = dict()
+        if isinstance(country, list): #multiple countries
+            LOGGER.error('No valid country chosen. Give country as string.')
+            raise TypeError
+        elif isinstance(country, str): #One country
+            country_list = list()
+            country_list.append(country)
+            country_new = _get_ISO3_from_name(country)
+            country_list[0] = country_new
+            if not _get_country_shape(country_list[0], 1) is None:
+                all_bbox = _get_country_shape(country_list[0], 1)[0]
+            else:
+                LOGGER.error('Country %s could not be found.', country)
+                raise ValueError
+            cut_bbox = all_bbox
+            country_info[country_list[0]], admin1_info[country_list[0]]\
+                = _get_country_info(country_list[0])
+        else:
+            LOGGER.error('Country parameter data type not recognised. '\
+                         + 'Operation aborted.')
+            raise TypeError
+        all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
+        # Get LitPop, Lit and Pop
+        LOGGER.info('Generating LitPop, Lit and Pop data at a resolution of %s arcsec.', str(resolution))
+        
+        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 0)
+        Lit_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 1)
+        Pop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 2)
+        shp_file = shapereader.natural_earth(resolution='10m',
+                                             category='cultural',
+                                             name='admin_0_countries')
+        shp_file = shapereader.Reader(shp_file)
+        
+        for cntry_iso, cntry_val in country_info.items():
+            _, gdp_val = gdp(cntry_iso, 2016, shp_file)
+            cntry_val.append(gdp_val)
+        _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
+        for curr_country in country_list:
+            curr_shp = _get_country_shape(curr_country, 0)
+            mask = _mask_from_shape(curr_shp, resolution=resolution,\
+                                    points2check=all_coords)
+            LitPop_curr = LitPop_data[mask.sp_index.indices]
+            Lit_curr = Lit_data[mask.sp_index.indices]
+            Pop_curr = Pop_data[mask.sp_index.indices]
+            lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
+            rho = np.array([[0, 0],[0, 0],[0, 0]],float)
+            
+            adm0 = dict()
+            adm1 = dict()
+            
+            LOGGER.info('LitPop:')
+            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+            LitPop_curr, rho[0,], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       LitPop_curr, list(zip(lon, lat)),\
+                                       resolution, True, check_plot)
+            LOGGER.info('Lit:')
+            Lit_curr, rho[1,], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       Lit_curr, list(zip(lon, lat)),\
+                                       resolution, True, check_plot)
+            LOGGER.info('Pop:')
+            Pop_curr, rho[2,], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       Pop_curr, list(zip(lon, lat)),\
+                                       resolution, True, check_plot)                
+        return rho, adm0, adm1
