@@ -138,7 +138,7 @@ def get_coastlines(border=None, resolution=110):
 
         LOGGER.info('Writing file %s', file_globe)
 
-        shapewriter = shapefile.Writer(file_globe)
+        shapewriter = shapefile.Writer()
         shapewriter.field("global_coastline")
         converted_shape = shapely_to_pyshp(LineString(coast))
         shapewriter._shapes.append(converted_shape)
@@ -242,7 +242,7 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
 
         LOGGER.info('Writing file %s', file_globe)
 
-        shapewriter = shapefile.Writer(file_globe)
+        shapewriter = shapefile.Writer()
         shapewriter.field("global_country_borders")
         converted_shape = shapely_to_pyshp(geom)
         shapewriter._shapes.append(converted_shape)
@@ -333,7 +333,7 @@ def shapely_to_pyshp(shapely_geom):
     # first convert shapely to geojson
     geoj = shapely.geometry.mapping(shapely_geom)
     # create empty pyshp shape
-    record = shapefile.Shape()
+    record = shapefile._Shape()
     # set shapetype
     pyshptype = GEOMETRY_TYPE[geoj["type"]]
     record.shapeType = pyshptype
