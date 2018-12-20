@@ -20,6 +20,7 @@ dependencies:
   - pip=10.0.1
   - proj4
   - pysocks=1.6.8
+  - pyshp=1.2.12
   - python=3.6.5
   - requests=2.19.1
   - scikit-learn=0.19.1
