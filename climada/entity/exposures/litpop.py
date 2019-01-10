@@ -342,6 +342,7 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, 
     del bm_temp
     if validation_mode == 1:
         gpw = gpw*0+1 # set gpw to 1 everywhere for pure night light
+        # gpw = bm # set gpw to bm everywhere for pure squared night light
     elif validation_mode == 2:
         bm = bm*0+1 # set bm to 1 everywhere for pure population
 
@@ -1752,26 +1753,26 @@ def admin1_validation(country, **args):
             Lit_curr = Lit_data[mask.sp_index.indices]
             Pop_curr = Pop_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-            rho = np.array([[0, 0],[0, 0],[0, 0]],float)
+            rho = np.array([0, 0, 0, 0, 0 ,0],float)
             
             adm0 = dict()
             adm1 = dict()
             
             LOGGER.info('LitPop:')
             # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
-            LitPop_curr, rho[0,], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
+            LitPop_curr, rho[0:2], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        LitPop_curr, list(zip(lon, lat)),\
                                        resolution, True, check_plot)
             LOGGER.info('Lit:')
-            Lit_curr, rho[1,], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
+            Lit_curr, rho[2:4], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Lit_curr, list(zip(lon, lat)),\
                                        resolution, True, check_plot)
             LOGGER.info('Pop:')
-            Pop_curr, rho[2,], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
+            Pop_curr, rho[4:6], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Pop_curr, list(zip(lon, lat)),\
