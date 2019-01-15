@@ -18,6 +18,7 @@ Tests on LitPop exposures.
 """
 
 import unittest
+import numpy as np
 
 from climada.entity.exposures.litpop import LitPop
 from climada.util.finance import world_bank_wealth_account
@@ -66,19 +67,23 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.value.sum() == 2414756959.8304553)
 
     def test_switzerland300_pc2016_pass(self):
-        """Create LitPop entity for Switzerland 2016 for produced capital:"""
+        """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
         country_name = ['CHE']
         fin_mode = 'pc'
         resolution = 300
         ref_year = 2016
-        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)
+        adm1 = True
+        cons = True
+        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, \
+                                                                no_land=1)
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution, \
-                            reference_year=ref_year, fin_mode=fin_mode)
+                            reference_year=ref_year, fin_mode=fin_mode, \
+                            conserve_cntrytotal=cons, calc_admin1=adm1)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertTrue(ent.value.sum() == comparison_total_val)
+        self.assertTrue(np.around(ent.value.sum(),0) == np.around(comparison_total_val,0))
         self.assertTrue(ent.value.sum() == 2217353764117.5)
 
     def test_switzerland300_pc2013_pass(self):

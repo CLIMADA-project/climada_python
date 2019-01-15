@@ -129,6 +129,7 @@ class LitPop(Exposures):
                     built assets such as machinery, equipment, and physical structures
                     (pc is in constant 2014 USD)
             admin1_calc (boolean): distribute admin1-level GDP if available? (default False)
+            conserve_cntrytotal (boolean): given admin1_calc, conserve national total asset value (default True)
             reference_year (int)
             adm1_scatter (boolean): produce scatter plot for admin1 validation?
         """
@@ -140,6 +141,7 @@ class LitPop(Exposures):
         fin_mode = args.get('fin_mode', 'income_group')
         admin1_calc = args.get('admin1_calc', False)
         adm1_scatter = args.get('adm1_scatter', False)
+        conserve_cntrytotal = args.get('conserve_cntrytotal', True)
         reference_year = args.get('reference_year', 2016)
 #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
         if res_arcsec == []:
@@ -216,7 +218,9 @@ class LitPop(Exposures):
                                            country_info[curr_country],
                                            admin1_info[curr_country],\
                                            LitPop_curr, list(zip(lon, lat)),\
-                                           resolution, adm1_scatter)
+                                           resolution, adm1_scatter, \
+                                           conserve_cntrytotal=conserve_cntrytotal,\
+                                           check_plot=check_plot)
             else:
                 LitPop_curr = _calc_admin0(LitPop_curr,\
                                    country_info[curr_country][3],\
@@ -1182,7 +1186,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
         _plot_shape_to_plot(i, gray_val=gray_val)
 
 def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
-                 coords, resolution, adm1_scatter, check_plot=1):
+                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, check_plot=1):
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
@@ -1212,6 +1216,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
         resolution (scalar): the desired resolution in arc-seconds.
         adm1_scatter (boolean): whether a scatter plot and correlation comparing admin0 and
             admin1 results should be produced.
+        conserve_cntrytotal (boolean): if True, final LitPop is normalized with country value
 
     Returns:
         LitPop_data (pandas SparseArray): The LitPop_data the sum of which
@@ -1224,11 +1229,11 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
         sum_vals = sum(filter(None, gsdp_data.values()))
         gsdp_data = {key: (value/sum_vals if not value is None else None)\
                      for (key, value) in gsdp_data.items()}
-        if not None in gsdp_data.values():
+        if not None in gsdp_data.values(): # standard loop if all GSDP data is available
             temp_adm1 = {'adm0_LitPop_share':[], 'adm1_LitPop_share': []}
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
-                LOGGER.debug('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
+                LOGGER.info('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
                 mask_adm1 = _mask_from_shape(adm1_shp._shape,\
                          resolution=resolution,\
                          points2check=coords)
@@ -1236,9 +1241,13 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                 temp_adm1['adm0_LitPop_share'].append(shr_adm0)
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
                          [idx3])
-                mult = country_info[3]\
-                    *country_info[4]\
-                    *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
+                # LitPop in the admin1-unit is scaled by ratio of admin
+                if shr_adm0>0:
+                    mult = country_info[3]\
+                        *country_info[4]\
+                        *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
+                else:
+                    mult = 0
                 LitPop_data = pd.SparseArray([val*mult if\
                       mask_adm1[idx] == 1 else val for idx, val in\
                       enumerate(LitPop_data.values)], fill_value=0)
@@ -1287,6 +1296,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             pearsonr, spearmanr = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
                             temp_adm1['adm1_LitPop_share'], admin1_info, check_plot)
     else:
+        LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
+                                   country_info[4])
+    if conserve_cntrytotal:
         LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
                                    country_info[4])
     if adm1_scatter:
@@ -1775,17 +1787,17 @@ def admin1_validation(country, **args):
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        LitPop_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Lit:')
             Lit_curr, rho[2:4], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Lit_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Pop:')
             Pop_curr, rho[4:6], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Pop_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)                
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)                
         return rho, adm0, adm1
