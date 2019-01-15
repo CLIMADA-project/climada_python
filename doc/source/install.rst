@@ -3,6 +3,8 @@
 Installation
 ************
 
+Please execute the instructions of the following text boxes in a Terminal or Anaconda Prompt.
+
 Download
 ========
 Download or clone the GitHub repository `climada_python <https://github.com/davidnbresch/climada_python.git>`_. 
@@ -73,44 +75,4 @@ Install environment with Anaconda
 ---------------------------------
 
 See `Install environment with Anaconda`_.
-
-
-Package Installation
-====================
-
-.. _Pre-requisites:
-
-Pre-requisites
---------------
-
-Following libraries need to be installed:
-
-* GEOS >= 3.5.0
-
-* PROJ4 = 4.9.3
-
-* python = 3.6
-
-Install distribution
---------------------
-
-1. **Download distribution**: Download the desired distribution from the GitHub repository `climada_python <https://github.com/davidnbresch/climada_python.git>`_ in the ``releases`` section.
-
-2. **Install climada**: Specifying the correct distribution, install it as follows::
-
-    pip install climada-*.tar.gz
-
-  If errors, try installing Cartopy first. With pip::
-
-    pip install --global-option=build_ext --global-option="-I/path_to/proj/4.9.3/x86_64/include/:/path_to/geos/3.5.0/x86_64/include/" --global-option="-L/path_to/proj/4.9.3/x86_64/lib/" Cartopy 
-
-  or with conda::
-
-    conda install cartopy
-
-3. **Test installation**: Execute the unit tests to ensure the installation has been successful::
-
-    PYTHONPATH=. python3 tests_runner.py
-
- If the installation has been successful, an OK will appear at the end of the execution.
 
