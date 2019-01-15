@@ -108,7 +108,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
         close_year, close_val = world_bank(cntry_iso, ref_year, 'INC_GRP')
     except (KeyError, IndexError):
         # take value from natural earth repository
-        close_year, close_val = nat_earth_adm0(cntry_iso, ref_year, 'INCOME_GRP',
+        close_year, close_val = nat_earth_adm0(cntry_iso, 'INCOME_GRP',
                                                shp_file=shp_file)
     finally:
         LOGGER.info('Income group %s %s: %s.', cntry_iso, close_year, close_val)
