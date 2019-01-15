@@ -23,7 +23,7 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.util.finance import net_present_value, gdp, income_group, \
-nat_earth_adm0, world_bank, wealth2gdp
+nat_earth_adm0, world_bank, wealth2gdp, world_bank_wealth_account
 
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
@@ -41,6 +41,7 @@ class TestNetpresValue(unittest.TestCase):
         self.assertEqual(1.215049630691397e+11, res)
 
 class TestWBData(unittest.TestCase):
+    """Test World Bank data"""
     def test_ne_income_grp_aia_pass(self):
         """ Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
@@ -106,8 +107,9 @@ class TestWBData(unittest.TestCase):
         ref_val = 12072126075.397
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
-        
+
 class TestWealth2GDP(unittest.TestCase):
+    """ Test Wealth to GDP factor extraction """
     def test_nfw_SUR_pass(self):
         """ Test non-financial wealth-to-gdp factor with Suriname."""
         res_year, res_val = wealth2gdp('SUR')
@@ -116,7 +118,7 @@ class TestWealth2GDP(unittest.TestCase):
         ref_val = 0.73656
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
-        
+
     def test_nfw_BEL_pass(self):
         """ Test total wealth-to-gdp factor with Belgium."""
         res_year, res_val = wealth2gdp('BEL', False)
@@ -124,16 +126,60 @@ class TestWealth2GDP(unittest.TestCase):
         ref_year = 2016
         ref_val = 4.88758
         self.assertEqual(res_year, ref_year)
-        self.assertEqual(res_val, ref_val)    
-        
+        self.assertEqual(res_val, ref_val)
+
     def test_nfw_LBY_pass(self):
         """ Test missing factor with Libya."""
         _, res_val = wealth2gdp('LBY')
 
         self.assertTrue(np.isnan(res_val))
-        
+
+class TestWBWealthAccount(unittest.TestCase):
+    """ Test Wealth Indicator extraction from World Bank provided CSV """
+    def test_pca_DEU_2010_pass(self):
+        """ Test Processed Capital value Germany 2010."""
+        ref_year = 2010
+        cntry_iso = 'DEU'
+        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
+        res_year_noland, res_val_noland = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        ref_val = 17675048450284.9
+        ref_val_noland = 14254071330874.9
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+        self.assertEqual(res_year_noland, ref_year)
+        self.assertEqual(res_val_noland, ref_val_noland)
+    def test_pca_CHE_2008_pass(self):
+        """ Test Prcoessed Capital per capita Switzerland 2008 (interp.)."""
+        ref_year = 2008
+        cntry_iso = 'CHE'
+        var_name = 'NW.PCA.PC'
+        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, \
+                                        variable_name=var_name, no_land=0)
+        ref_val = 328398.7
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+    def test_tow_IND_1985_pass(self):
+        """ Test Total Wealth value India 1985 (outside year range)."""
+        ref_year = 1985
+        cntry_iso = 'IND'
+        var_name = 'NW.TOW.TO'
+        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, \
+                                        variable_name=var_name)
+        ref_val = 5415188681942.8
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+    def test_pca_CUB_2015_pass(self):
+        """ Test Processed Capital value Cuba 2015 (missing value)."""
+        ref_year = 2015
+        cntry_iso = 'CUB'
+        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        ref_val = 108675513472.0
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNetpresValue)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBData))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWealth2GDP))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBWealthAccount))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
