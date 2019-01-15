@@ -35,7 +35,7 @@ from pint import UnitRegistry
 from climada.entity.exposures import nightlight as nightlight
 from climada.entity.exposures.base import Exposures
 from climada.entity.exposures import gpw_import
-from climada.util.finance import gdp, income_group, wealth2gdp
+from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR
 
 logging.root.setLevel(logging.DEBUG)
@@ -121,10 +121,13 @@ class LitPop(Exposures):
                 end of the operation.
             fin_mode (str, optional): define what total country economic value
                 is to be used as an asset base and distributed to the grid:
-                - gdp: gross-domestic product
+                - gdp: gross-domestic product (Source: World Bank)
                 - income_group: gdp multiplied by country's income group+1
-                - nfw: non-financial wealth (of households only)
-                - tw: total wealth (of households only)
+                - nfw: non-financial wealth (Source: Credit Suisse, of households only)
+                - tw: total wealth (Source: Credit Suisse, of households only)
+                - pc: produced capital (Source: World Bank), incl. manufactured or
+                    built assets such as machinery, equipment, and physical structures
+                    (pc is in constant 2014 USD)
             admin1_calc (boolean): distribute admin1-level GDP if available? (default False)
             reference_year (int)
             adm1_scatter (boolean): produce scatter plot for admin1 validation?
@@ -196,9 +199,12 @@ class LitPop(Exposures):
         shp_file = shapereader.Reader(shp_file)
 
         for cntry_iso, cntry_val in country_info.items():
-            _, gdp_val = gdp(cntry_iso, 2016, shp_file)
+            if fin_mode == 'pc':
+                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
+            else:
+                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
-        _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
+        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\
@@ -217,7 +223,7 @@ class LitPop(Exposures):
                                    country_info[curr_country][4])
 
             self.append(self._set_one_country(country_info[curr_country],\
-                      LitPop_curr, lon, lat, 'various', resolution, fin_mode))
+                      LitPop_curr, lon, lat, 'various', resolution, fin_mode, reference_year))
             self._append_additional_info(curr_country,\
                                          country_info[curr_country])
         if check_plot == 1:
@@ -226,7 +232,7 @@ class LitPop(Exposures):
                         + str(round(time.time() - start_time, 2)) +"s")
 
     @staticmethod
-    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode):
+    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode, reference_year):
         """ Model one country.
 
         Parameters:
@@ -239,6 +245,7 @@ class LitPop(Exposures):
             fn_nl (str): file name of underlying data with path #Unimplemented #TODO
             resolution (scalar): the resolution of the LitPop_data in arc-sec
             fin_mode (str): financial mode
+            reference_year (int): reference year (default = 2016)
         """
         lp = LitPop()
         lp.value = LitPop_data.values
@@ -248,7 +255,7 @@ class LitPop(Exposures):
         lp.id = np.arange(1, lp.value.size+1)
         lp.region_id = np.ones(lp.value.shape, int) * int(iso_cntry.get(cntry_info[1]).numeric)
         lp.impact_id = {DEF_HAZ_TYPE: np.ones(lp.value.size, int)}
-        lp.ref_year = 2016
+        lp.ref_year = reference_year
         lp.tag.description = ("LitPop based asset values for {} "\
             + "at " + str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
             + "\n").format(cntry_info[1],fin_mode)
@@ -981,12 +988,13 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
                 - income_group: gdp multiplied by country's income group+1
                 - nfw: non-financial wealth (of households only)
                 - tw: total wealth (of households only)
+                - pc: produced capital
     """
     if fin_mode == 'income_group':
         for cntry_iso, cntry_val in cntry_info.items():
             _, inc_grp = income_group(cntry_iso, ref_year, shp_file)
             cntry_val.append(inc_grp+1)
-    elif fin_mode == 'gdp':
+    elif fin_mode in ['gdp', 'pc']:
         for cntry_iso, cntry_val in cntry_info.items():
             cntry_val.append(1)
     elif fin_mode == 'nfw' or fin_mode == 'tw':
@@ -997,7 +1005,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
                 LOGGER.warning("Factor to convert GDP to assets will be set to 1 "\
                         + "(total asset value corresponds to GDP).")
                 wealth2GDP_factor = 1
-            cntry_val.append(wealth2GDP_factor)
+            cntry_val.append(wealth2GDP_factor)   
     else:
         LOGGER.error("invalid fin_mode")
 
@@ -1742,9 +1750,12 @@ def admin1_validation(country, **args):
         shp_file = shapereader.Reader(shp_file)
         
         for cntry_iso, cntry_val in country_info.items():
-            _, gdp_val = gdp(cntry_iso, 2016, shp_file)
+            if fin_mode == 'pc':
+                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
+            else:
+                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
-        _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
+        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\

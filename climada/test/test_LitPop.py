@@ -20,6 +20,7 @@ Tests on LitPop exposures.
 import unittest
 
 from climada.entity.exposures.litpop import LitPop
+from climada.util.finance import world_bank_wealth_account
 
 # ---------------------
 class TestDefault(unittest.TestCase):
@@ -37,7 +38,7 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(ent.value.sum() == 3343726398022.6606)
-        
+
     def test_switzerland30_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
         country_name = ['CHE']
@@ -50,7 +51,7 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(ent.value.sum() == 3343726398022.672)
-        
+
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
         country_name = ['SUR']
@@ -63,6 +64,38 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.region_id.min() == 740)
         self.assertTrue(ent.region_id.max() == 740)
         self.assertTrue(ent.value.sum() == 2414756959.8304553)
+
+    def test_switzerland300_pc2016_pass(self):
+        """Create LitPop entity for Switzerland 2016 for produced capital:"""
+        country_name = ['CHE']
+        fin_mode = 'pc'
+        resolution = 300
+        ref_year = 2016
+        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)
+        ent = LitPop()
+        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
+            ent.set_country(country_name, res_arcsec=resolution, \
+                            reference_year=ref_year, fin_mode=fin_mode)
+        # print(cm)
+        self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
+        self.assertTrue(ent.value.sum() == comparison_total_val)
+        self.assertTrue(ent.value.sum() == 2217353764117.5)
+
+    def test_switzerland300_pc2013_pass(self):
+        """Create LitPop entity for Switzerland 2013 for produced capital:"""
+        country_name = ['CHE']
+        fin_mode = 'pc'
+        resolution = 300
+        ref_year = 2013
+        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)
+        ent = LitPop()
+        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
+            ent.set_country(country_name, res_arcsec=resolution, \
+                            reference_year=ref_year, fin_mode=fin_mode)
+        # print(cm)
+        self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
+        self.assertTrue(ent.value.sum() == comparison_total_val)
+        self.assertTrue(ent.value.sum() == 2296358085749.2)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
