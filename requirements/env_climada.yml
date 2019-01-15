@@ -4,6 +4,7 @@ channels:
 dependencies:
   - blas=1.0
   - cartopy=0.16.0
+  - cython=0.26
   - dill=0.2.7.1
   - gdal
   - geos=3.6.2
