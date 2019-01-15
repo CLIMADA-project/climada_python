@@ -10,7 +10,7 @@ Download
 Download or clone the GitHub repository `climada_python <https://github.com/davidnbresch/climada_python.git>`_. 
 To clone it, you might want to use the `GitHub Desktop <https://desktop.github.com>`_ or the command line with the provided URL::
 
-  git clone https://github.com/davidnbresch/climada_python.git
+  git clone https://github.com/CLIMADA-project/climada_python.git
 
 Developers with Unix
 ====================
