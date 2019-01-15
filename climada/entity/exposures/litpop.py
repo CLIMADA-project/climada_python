@@ -827,7 +827,7 @@ def _mask_from_shape(check_shape, **opt_args):
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
         del add_points
-    stdout.write('\n')
+    # stdout.write('\n')
     if (check_enclaves == 1) & (len(enclave_paths) > 0):
         excl_coords = []
         LOGGER.debug('Removing enclaves...')
@@ -1233,7 +1233,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             temp_adm1 = {'adm0_LitPop_share':[], 'adm1_LitPop_share': []}
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
-                LOGGER.info('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
+                LOGGER.debug('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
                 mask_adm1 = _mask_from_shape(adm1_shp._shape,\
                          resolution=resolution,\
                          points2check=coords)
