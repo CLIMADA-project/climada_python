@@ -35,25 +35,31 @@ class Test2013(unittest.TestCase):
     def test_spain_pass(self):
         country_name = ['Spain']
         ent = BlackMarble()
-        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+        with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=1, sea_res=(200, 50))
         self.assertIn('GDP ESP 2013: 1.362e+12.', cm.output[0])
         self.assertIn('Income group ESP 2013: 4.', cm.output[1])
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
-        self.assertIn("Processing country Spain.", cm.output[3])
-        self.assertIn("Generating resolution of approx 1 km.", cm.output[4])
+
+        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+            ent.set_countries(country_name, 2013, res_km=1, sea_res=(200, 50))
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Processing country Spain.", cm.output[1])
+        self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
         self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12*(4+1), 4))
 
     def test_sint_maarten_pass(self):
         country_name = ['Sint Maarten']
         ent = BlackMarble()
-        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+        with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2, sea_res=(200, 50))
         self.assertIn('GDP SXM 2014: 3.658e+08.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[2])
-        self.assertIn("Processing country Sint Maarten.", cm.output[3])
-        self.assertIn("Generating resolution of approx 0.2 km.", cm.output[4])
+
+        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+            ent.set_countries(country_name, 2013, res_km=0.2, sea_res=(200, 50))
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Processing country Sint Maarten.", cm.output[1])
+        self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
         self.assertAlmostEqual(ent.value.sum(), 3.658e+08*(4+1))
 
     def test_anguilla_pass(self):
@@ -69,11 +75,14 @@ class Test1968(unittest.TestCase):
     def test_switzerland_pass(self):
         country_name = ['Switzerland']
         ent = BlackMarble()
-        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+        with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 1968, res_km=0.5)
         self.assertIn('GDP CHE 1968: 1.894e+10.', cm.output[0])
         self.assertIn('Income group CHE 1987: 4.', cm.output[1])
-        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[2])
+
+        with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
+            ent.set_countries(country_name, 1968, res_km=0.5)
+        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[0])
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
         self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10*(4+1), 4))
