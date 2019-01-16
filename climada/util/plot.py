@@ -320,7 +320,7 @@ def add_populated_places(axis, extent, projection=ccrs.PlateCarree()):
 
     Parameters:
         axis (cartopy.mpl.geoaxes.GeoAxesSubplot): cartopy axis.
-        extent (list): geographical limits.
+        extent (list): geographical limits [min_lon, max_lon, min_lat, max_lat]
         projection (cartopy.crs projection, optional): geographical projection,
             PlateCarree default.
 
@@ -343,7 +343,7 @@ def add_cntry_names(axis, extent, projection=ccrs.PlateCarree()):
 
     Parameters:
         axis (cartopy.mpl.geoaxes.GeoAxesSubplot): cartopy axis.
-        extent (list): geographical limits.
+        extent (list): geographical limits [min_lon, max_lon, min_lat, max_lat]
         projection (cartopy.crs projection, optional): geographical projection,
             PlateCarree default.
 
