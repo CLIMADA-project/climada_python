@@ -173,30 +173,31 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self.tag.description = ("SPAM agrar exposure for variable "\
             + spam_v + " and technology " + spam_t)
 
-        # assign different damage function ID per technology type.
-        # hazard type drought as default.
+        # if impact id variation iiv = 1, assign different damage function ID per technology type.
+        # hazard type drought is default.
+        iiv = 0
         if spam_t == 'TA':
             self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+1}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+1*iiv}
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+2}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+2*iiv}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+3}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+3*iiv}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+4}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+4*iiv}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+5}
+            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+5*iiv}
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:

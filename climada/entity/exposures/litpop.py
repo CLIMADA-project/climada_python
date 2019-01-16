@@ -35,7 +35,7 @@ from pint import UnitRegistry
 from climada.entity.exposures import nightlight as nightlight
 from climada.entity.exposures.base import Exposures
 from climada.entity.exposures import gpw_import
-from climada.util.finance import gdp, income_group, wealth2gdp
+from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR
 
 logging.root.setLevel(logging.DEBUG)
@@ -121,11 +121,15 @@ class LitPop(Exposures):
                 end of the operation.
             fin_mode (str, optional): define what total country economic value
                 is to be used as an asset base and distributed to the grid:
-                - gdp: gross-domestic product
+                - gdp: gross-domestic product (Source: World Bank)
                 - income_group: gdp multiplied by country's income group+1
-                - nfw: non-financial wealth (of households only)
-                - tw: total wealth (of households only)
+                - nfw: non-financial wealth (Source: Credit Suisse, of households only)
+                - tw: total wealth (Source: Credit Suisse, of households only)
+                - pc: produced capital (Source: World Bank), incl. manufactured or
+                    built assets such as machinery, equipment, and physical structures
+                    (pc is in constant 2014 USD)
             admin1_calc (boolean): distribute admin1-level GDP if available? (default False)
+            conserve_cntrytotal (boolean): given admin1_calc, conserve national total asset value (default True)
             reference_year (int)
             adm1_scatter (boolean): produce scatter plot for admin1 validation?
         """
@@ -137,6 +141,7 @@ class LitPop(Exposures):
         fin_mode = args.get('fin_mode', 'income_group')
         admin1_calc = args.get('admin1_calc', False)
         adm1_scatter = args.get('adm1_scatter', False)
+        conserve_cntrytotal = args.get('conserve_cntrytotal', True)
         reference_year = args.get('reference_year', 2016)
 #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
         if res_arcsec == []:
@@ -196,9 +201,12 @@ class LitPop(Exposures):
         shp_file = shapereader.Reader(shp_file)
 
         for cntry_iso, cntry_val in country_info.items():
-            _, gdp_val = gdp(cntry_iso, 2016, shp_file)
+            if fin_mode == 'pc':
+                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
+            else:
+                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
-        _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
+        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\
@@ -210,14 +218,16 @@ class LitPop(Exposures):
                                            country_info[curr_country],
                                            admin1_info[curr_country],\
                                            LitPop_curr, list(zip(lon, lat)),\
-                                           resolution, adm1_scatter)
+                                           resolution, adm1_scatter, \
+                                           conserve_cntrytotal=conserve_cntrytotal,\
+                                           check_plot=check_plot)
             else:
                 LitPop_curr = _calc_admin0(LitPop_curr,\
                                    country_info[curr_country][3],\
                                    country_info[curr_country][4])
 
             self.append(self._set_one_country(country_info[curr_country],\
-                      LitPop_curr, lon, lat, 'various', resolution, fin_mode))
+                      LitPop_curr, lon, lat, 'various', resolution, fin_mode, reference_year))
             self._append_additional_info(curr_country,\
                                          country_info[curr_country])
         if check_plot == 1:
@@ -226,7 +236,7 @@ class LitPop(Exposures):
                         + str(round(time.time() - start_time, 2)) +"s")
 
     @staticmethod
-    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode):
+    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode, reference_year):
         """ Model one country.
 
         Parameters:
@@ -239,6 +249,7 @@ class LitPop(Exposures):
             fn_nl (str): file name of underlying data with path #Unimplemented #TODO
             resolution (scalar): the resolution of the LitPop_data in arc-sec
             fin_mode (str): financial mode
+            reference_year (int): reference year (default = 2016)
         """
         lp = LitPop()
         lp.value = LitPop_data.values
@@ -248,7 +259,7 @@ class LitPop(Exposures):
         lp.id = np.arange(1, lp.value.size+1)
         lp.region_id = np.ones(lp.value.shape, int) * int(iso_cntry.get(cntry_info[1]).numeric)
         lp.impact_id = {DEF_HAZ_TYPE: np.ones(lp.value.size, int)}
-        lp.ref_year = 2016
+        lp.ref_year = reference_year
         lp.tag.description = ("LitPop based asset values for {} "\
             + "at " + str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
             + "\n").format(cntry_info[1],fin_mode)
@@ -816,7 +827,7 @@ def _mask_from_shape(check_shape, **opt_args):
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
         del add_points
-    stdout.write('\n')
+    # stdout.write('\n')
     if (check_enclaves == 1) & (len(enclave_paths) > 0):
         excl_coords = []
         LOGGER.debug('Removing enclaves...')
@@ -981,12 +992,13 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
                 - income_group: gdp multiplied by country's income group+1
                 - nfw: non-financial wealth (of households only)
                 - tw: total wealth (of households only)
+                - pc: produced capital
     """
     if fin_mode == 'income_group':
         for cntry_iso, cntry_val in cntry_info.items():
             _, inc_grp = income_group(cntry_iso, ref_year, shp_file)
             cntry_val.append(inc_grp+1)
-    elif fin_mode == 'gdp':
+    elif fin_mode in ['gdp', 'pc']:
         for cntry_iso, cntry_val in cntry_info.items():
             cntry_val.append(1)
     elif fin_mode == 'nfw' or fin_mode == 'tw':
@@ -997,7 +1009,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
                 LOGGER.warning("Factor to convert GDP to assets will be set to 1 "\
                         + "(total asset value corresponds to GDP).")
                 wealth2GDP_factor = 1
-            cntry_val.append(wealth2GDP_factor)
+            cntry_val.append(wealth2GDP_factor)   
     else:
         LOGGER.error("invalid fin_mode")
 
@@ -1174,7 +1186,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
         _plot_shape_to_plot(i, gray_val=gray_val)
 
 def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
-                 coords, resolution, adm1_scatter, check_plot=1):
+                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, check_plot=1):
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
@@ -1204,6 +1216,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
         resolution (scalar): the desired resolution in arc-seconds.
         adm1_scatter (boolean): whether a scatter plot and correlation comparing admin0 and
             admin1 results should be produced.
+        conserve_cntrytotal (boolean): if True, final LitPop is normalized with country value
 
     Returns:
         LitPop_data (pandas SparseArray): The LitPop_data the sum of which
@@ -1216,7 +1229,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
         sum_vals = sum(filter(None, gsdp_data.values()))
         gsdp_data = {key: (value/sum_vals if not value is None else None)\
                      for (key, value) in gsdp_data.items()}
-        if not None in gsdp_data.values():
+        if not None in gsdp_data.values(): # standard loop if all GSDP data is available
             temp_adm1 = {'adm0_LitPop_share':[], 'adm1_LitPop_share': []}
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
@@ -1228,9 +1241,13 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                 temp_adm1['adm0_LitPop_share'].append(shr_adm0)
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
                          [idx3])
-                mult = country_info[3]\
-                    *country_info[4]\
-                    *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
+                # LitPop in the admin1-unit is scaled by ratio of admin
+                if shr_adm0>0:
+                    mult = country_info[3]\
+                        *country_info[4]\
+                        *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
+                else:
+                    mult = 0
                 LitPop_data = pd.SparseArray([val*mult if\
                       mask_adm1[idx] == 1 else val for idx, val in\
                       enumerate(LitPop_data.values)], fill_value=0)
@@ -1279,6 +1296,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             pearsonr, spearmanr = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
                             temp_adm1['adm1_LitPop_share'], admin1_info, check_plot)
     else:
+        LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
+                                   country_info[4])
+    if conserve_cntrytotal:
         LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
                                    country_info[4])
     if adm1_scatter:
@@ -1742,9 +1762,12 @@ def admin1_validation(country, **args):
         shp_file = shapereader.Reader(shp_file)
         
         for cntry_iso, cntry_val in country_info.items():
-            _, gdp_val = gdp(cntry_iso, 2016, shp_file)
+            if fin_mode == 'pc':
+                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
+            else:
+                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
-        _get_gdp2asset_factor(country_info, 2016, shp_file, default_val=1, fin_mode=fin_mode)
+        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\
@@ -1764,17 +1787,17 @@ def admin1_validation(country, **args):
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        LitPop_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Lit:')
             Lit_curr, rho[2:4], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Lit_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Pop:')
             Pop_curr, rho[4:6], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Pop_curr, list(zip(lon, lat)),\
-                                       resolution, True, check_plot)                
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)                
         return rho, adm0, adm1
