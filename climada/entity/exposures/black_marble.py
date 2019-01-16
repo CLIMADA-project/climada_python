@@ -109,14 +109,14 @@ class BlackMarble(Exposures):
         """ Select exposures with input region.
 
         Parameters:
-            reg_id (int, str, list(int)): integer iso equivalent country 
-                numeric code or string iso alpha-3 or alpha-2 code or country 
+            reg_id (int, str, list(int)): integer iso equivalent country
+                numeric code or string iso alpha-3 or alpha-2 code or country
                 name.
 
         Returns:
             Exposures
         """
-        if isinstance(reg_id, int) or isinstance(reg_id, list):
+        if isinstance(reg_id, (int, list)):
             return Exposures.select(self, reg_id)
 
         try:
