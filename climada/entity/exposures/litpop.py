@@ -194,7 +194,7 @@ class LitPop(Exposures):
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
         LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
-        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 0)
+        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, [1, 1])
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -319,7 +319,7 @@ class LitPop(Exposures):
             plt.colorbar()
             plt.show()
 
-def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, validation_mode=0):
+def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, litpop_power=[1, 1]):
     '''
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -333,7 +333,8 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, 
         resolution (scalar): resolution in arc-seconds
         reference_year (int): reference year, population available at:
             2000, 2005, 2010, 2015 (default), 2020
-        validation_mode (int, default = 0) 1: night light only, 2: population only
+        litpop_power (list of two integers, default = [1, 1]) defining power with
+            which lit (bm) and pop (gpw) go into LitPop
     OUTPUT (either one of these lines, depending on option return_coords):
         LitPop_data (pandas SparseArray): A pandas SparseArray containing the
             raw, unnormalised LitPop data.
@@ -351,19 +352,26 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, 
     bm_temp[bm.sp_index.indices] = (np.array(bm.sp_values, dtype='uint16')+1)
     bm = pd.SparseArray(bm_temp, fill_value=1)
     del bm_temp
-    if validation_mode == 1:
-        gpw = gpw*0+1 # set gpw to 1 everywhere for pure night light
-        # gpw = bm # set gpw to bm everywhere for pure squared night light
-    elif validation_mode == 2:
-        bm = bm*0+1 # set bm to 1 everywhere for pure population
 
-    LitPop_data = pd.SparseArray(np.multiply(bm.values, gpw.values),\
-                                 fill_value=0)
+    LitPop_data = _LitPop_multiply_box(bm, gpw, x=litpop_power[0], y=litpop_power[1])
+
     if return_coords == 1:
         lon, lat = _LitPop_box2coords(cut_bbox, resolution, 0)
         return LitPop_data, lon, lat
     else:
         return LitPop_data
+    
+def _LitPop_multiply_box(bm, gpw, x=1, y=1):
+    '''
+    PURPOSE:
+        Multiplication of lit (bm^x) and pop (gpw^y) to get LitPop.
+        Both factors can be included once or to the power of x / y to
+        increase their weight.
+    '''
+    LitPop_data = pd.SparseArray(np.multiply(bm.values**x, \
+                                            gpw.values**y),\
+                                            fill_value=0)
+    return LitPop_data
 
 def _LitPop_box2coords(box, resolution, point_format=0):
     '''
@@ -1753,9 +1761,22 @@ def admin1_validation(country, **args):
         # Get LitPop, Lit and Pop
         LOGGER.info('Generating LitPop, Lit and Pop data at a resolution of %s arcsec.', str(resolution))
         
-        LitPop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 0)
-        Lit_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 1)
-        Pop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, 2)
+        bm = _get_box_blackmarble(cut_bbox,\
+                                    resolution=resolution, return_coords=0)
+        gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
+                                  return_coords=0, reference_year=reference_year)
+        bm_temp = np.ones(bm.shape)
+        bm_temp[bm.sp_index.indices] = (np.array(bm.sp_values, dtype='uint16')+1)
+        bm = pd.SparseArray(bm_temp, fill_value=1)
+        del bm_temp
+
+        LitPop_data = _LitPop_multiply_box(bm, gpw, x=1, y=1)
+        Lit_data = _LitPop_multiply_box(bm, gpw, x=1, y=0)
+        Pop_data = _LitPop_multiply_box(bm, gpw, x=0, y=1)
+        Lit2Pop_data = _LitPop_multiply_box(bm, gpw, x=2, y=1)
+        Lit2_data = _LitPop_multiply_box(bm, gpw, x=2, y=0)
+        Lit3_data = _LitPop_multiply_box(bm, gpw, x=3, y=0)
+
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -1775,29 +1796,52 @@ def admin1_validation(country, **args):
             LitPop_curr = LitPop_data[mask.sp_index.indices]
             Lit_curr = Lit_data[mask.sp_index.indices]
             Pop_curr = Pop_data[mask.sp_index.indices]
+            Lit2Pop_curr = Lit2Pop_data[mask.sp_index.indices]
+            Lit2_curr = Lit2_data[mask.sp_index.indices]
+            Lit3_curr = Lit3_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-            rho = np.array([0, 0, 0, 0, 0 ,0],float)
+            rho = np.zeros(12)
             
             adm0 = dict()
             adm1 = dict()
-            
-            LOGGER.info('LitPop:')
-            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
-            LitPop_curr, rho[0:2], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       LitPop_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Lit:')
-            Lit_curr, rho[2:4], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
+            Lit_curr, rho[0:2], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Lit_curr, list(zip(lon, lat)),\
                                        resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+            LOGGER.info('Lit2:')
+            Lit2_curr, rho[2:4], adm0['Lit2'], adm1['Lit2'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       Lit2_curr, list(zip(lon, lat)),\
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+            LOGGER.info('Lit3:')
+            Lit3_curr, rho[4:6], adm0['Lit3'], adm1['Lit3'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       Lit3_curr, list(zip(lon, lat)),\
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
             LOGGER.info('Pop:')
-            Pop_curr, rho[4:6], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
+            Pop_curr, rho[6:8], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
                                        country_info[curr_country],
                                        admin1_info[curr_country],\
                                        Pop_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)                
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+
+            LOGGER.info('Lit2Pop:')
+            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+            Lit2Pop_curr, rho[8:10], adm0['Lit2Pop'], adm1['Lit2Pop'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       Lit2Pop_curr, list(zip(lon, lat)),\
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+            LOGGER.info('LitPop:')
+            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+            LitPop_curr, rho[10:12], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
+                                       country_info[curr_country],
+                                       admin1_info[curr_country],\
+                                       LitPop_curr, list(zip(lon, lat)),\
+                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+
         return rho, adm0, adm1
