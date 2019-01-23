@@ -122,7 +122,7 @@ class TestOneExposure(unittest.TestCase):
         impact.tot_value = 0
 
         # Assign centroids to exposures
-        ent.exposures.assign(hazard)
+        ent.exposures.assign_centroids(hazard)
 
         # Compute impact for 6th exposure
         iexp = 5
@@ -175,7 +175,7 @@ class TestCalc(unittest.TestCase):
         impact = Impact()
 
         # Assign centroids to exposures
-        ent.exposures.assign(hazard)
+        ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard)

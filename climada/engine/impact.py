@@ -122,7 +122,7 @@ class Impact():
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
         if assign_haz not in exposures:
-            exposures.assign(hazard)
+            exposures.assign_centroids(hazard)
         else:
             LOGGER.info('Exposures matching centroids found in %s', assign_haz)
 
@@ -132,8 +132,8 @@ class Impact():
         self.event_name = hazard.event_name
         self.date = hazard.date
         self.coord_exp = np.zeros((exposures.shape[0], 2))
-        self.coord_exp[: ,0] = exposures.latitude.values
-        self.coord_exp[: ,1] = exposures.longitude.values
+        self.coord_exp[:, 0] = exposures.latitude.values
+        self.coord_exp[:, 1] = exposures.longitude.values
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
@@ -154,9 +154,8 @@ class Impact():
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
         if if_haz not in exposures:
-            LOGGER.error('Missing exposures column %s.' +
-                'No exposures with impact functions for peril %s.',
-                if_haz, hazard.tag.haz_type)
+            LOGGER.error('Missing exposures column %s. No exposures with impact'\
+                         +' functions for peril %s.', if_haz, hazard.tag.haz_type)
             raise ValueError
 
         # Check if deductible and cover should be applied

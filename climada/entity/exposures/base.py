@@ -87,9 +87,9 @@ class Exposures(GeoDataFrame):
         region_id (pd.Series, optional): region id for each exposure
         centr_ (pd.Series, optional): e.g. centr_TC. centroids index for hazard
             TC. There might be different hazards defined: centr_TC, centr_FL, ...
-            Computed in method assign().
+            Computed in method assign_centroids().
     """
-    _metadata = GeoDataFrame._metadata + ['tag',  'ref_year', 'value_unit']
+    _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit']
 
     vars_oblig = ['value', 'latitude', 'longitude', INDICATOR_IF]
     """Name of the variables needed to compute the impact. Types: scalar, str,
@@ -142,10 +142,10 @@ class Exposures(GeoDataFrame):
             if var not in self.columns:
                 LOGGER.info("%s not set.", var)
 
-    def assign(self, hazard):
+    def assign_centroids(self, hazard):
         """ Check which variables are present """
         LOGGER.info('Matching %s exposures with %s centroids.',
-            str(self.shape[0]), str(hazard.centroids.size))
+                    str(self.shape[0]), str(hazard.centroids.size))
 
         coord = np.zeros((self.latitude.values.size, 2))
         coord[:, 0] = self.latitude.values
@@ -172,7 +172,7 @@ class Exposures(GeoDataFrame):
         self['longitude'] = self.geometry[:].x
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
-        buffer_deg=0.0, extend='neither', **kwargs):
+                    buffer_deg=0.0, extend='neither', **kwargs):
         """Plot exposures values sum binned over Earth's map. An other function
         for the bins can be set through the key reduce_C_function.
         Parameters:
@@ -237,17 +237,17 @@ class Exposures(GeoDataFrame):
         _read_mat_metadata(self, data, file_name, var_names)
 
     def copy(self, deep=True):
-            """
-            Make a copy of this GeoDataFrame object
-            Parameters
-            ----------
-            deep : boolean, default True
-                Make a deep copy, i.e. also copy data
-            Returns
-            -------
-            copy : GeoDataFrame
-            """
-            return Exposures(GeoDataFrame.copy(self, deep))
+        """
+        Make a copy of this GeoDataFrame object
+        Parameters
+        ----------
+        deep : boolean, default True
+            Make a deep copy, i.e. also copy data
+        Returns
+        -------
+        copy : GeoDataFrame
+        """
+        return Exposures(GeoDataFrame.copy(self, deep))
 
 def add_sea(exposures, sea_res):
     """ Add sea to geometry's surroundings with given resolution. region_id
@@ -261,9 +261,6 @@ def add_sea(exposures, sea_res):
     Returns:
         Exposures
     """
-    if sea_res[0] == 0:
-        return
-
     LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
                 str(sea_res[1]), str(sea_res[0]))
 
@@ -290,9 +287,9 @@ def add_sea(exposures, sea_res):
         sea_exp.set_geometry_points()
 
     for var_name in exposures.columns:
-        if var_name != 'latitude' and var_name != 'longitude' \
-        and var_name != 'region_id' and var_name != 'geometry':
-            sea_exp[var_name] = np.zeros(sea_exp.latitude.size, exposures[var_name].dtype)
+        if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
+            sea_exp[var_name] = np.zeros(sea_exp.latitude.size, 
+                                         exposures[var_name].dtype)
 
     return pd.concat([exposures, sea_exp], ignore_index=True, sort=False)
 
@@ -319,12 +316,14 @@ def _read_mat_optional(exposures, data, var_names):
         pass
 
     try:
-        exposures['category_id'] = np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
+        exposures['category_id'] = \
+        np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
     except KeyError:
         pass
 
     try:
-        exposures['region_id'] = np.squeeze(data[var_names['var_name']['reg']]).astype(int, copy=False)
+        exposures['region_id'] = \
+        np.squeeze(data[var_names['var_name']['reg']]).astype(int, copy=False)
     except KeyError:
         pass
 

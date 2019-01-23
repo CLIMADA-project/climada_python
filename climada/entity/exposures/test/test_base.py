@@ -61,7 +61,7 @@ class TestAssign(unittest.TestCase):
         haz.tag.haz_type = 'TC'
         haz.centroids.coord = np.ones((expo.shape[0]+6, 2))
         # assign
-        expo.assign(haz)
+        expo.assign_centroids(haz)
 
         # check assigned variable has been set with correct length
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))

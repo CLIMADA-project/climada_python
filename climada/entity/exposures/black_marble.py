@@ -96,17 +96,16 @@ class BlackMarble(Exposures):
 
         tag = Tag()
         bkmrbl_list = []
-        
+
         for cntry_iso, cntry_val in cntry_info.items():
-            
+
             bkmrbl_list.append(self._set_one_country(cntry_val, nightlight, \
                 coord_nl, res_fact, res_km, cntry_admin1[cntry_iso], **kwargs))
-            tag.description += ("{} {:d} GDP: {:.3e} income group: {:d}"+\
-                "\n").format(cntry_val[1], cntry_val[3], cntry_val[4], 
-                cntry_val[5])
+            tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
+                format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list, 
-            ignore_index=True)))
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list,
+                                                            ignore_index=True)))
 
         # set metadata
         self.ref_year = ref_year

@@ -46,7 +46,7 @@ class TestIntegr(unittest.TestCase):
         
         exposure_agrar = SpamAgrar()
         exposure_agrar.init_spam_agrar(country='CHE')
-        exposure_agrar.assign(hazard_set)
+        exposure_agrar.assign_centroids(hazard_set)
         imp_drought.calc(exposure_agrar, dr_if, hazard_set)
 
         index_event_start = imp_drought.event_name.index('2003')
