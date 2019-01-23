@@ -213,6 +213,7 @@ class LitPop(Exposures):
                                     points2check=all_coords)
             LitPop_curr = LitPop_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
+
             if admin1_calc == 1:
                 LitPop_curr = _calc_admin1(curr_country,\
                                            country_info[curr_country],
@@ -220,7 +221,7 @@ class LitPop(Exposures):
                                            LitPop_curr, list(zip(lon, lat)),\
                                            resolution, adm1_scatter, \
                                            conserve_cntrytotal=conserve_cntrytotal,\
-                                           check_plot=check_plot)
+                                           check_plot=check_plot, masks_adm1=[], return_data=1)
             else:
                 LitPop_curr = _calc_admin0(LitPop_curr,\
                                    country_info[curr_country][3],\
@@ -819,7 +820,7 @@ def _mask_from_shape(check_shape, **opt_args):
             LOGGER.debug('Detected subshapes: %s', str(sub_shapes))
             LOGGER.debug('of which detected enclaves: %s', str(len(enclave_paths)))
         else:
-            print('Detected subshapes: ' + str(sub_shapes)\
+            LOGGER.info('Detected subshapes: ' + str(sub_shapes)\
                       + '. Enclave checking disabled.')
     else:
         sub_shape_path.append(path.Path(all_coords_shape))
@@ -1194,7 +1195,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
         _plot_shape_to_plot(i, gray_val=gray_val)
 
 def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
-                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, check_plot=1):
+                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, check_plot=1, masks_adm1=[], return_data = 1):
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
@@ -1241,11 +1242,16 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             temp_adm1 = {'adm0_LitPop_share':[], 'adm1_LitPop_share': []}
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
+                # start_time = time.time()
                 LOGGER.debug('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
-                mask_adm1 = _mask_from_shape(adm1_shp._shape,\
-                         resolution=resolution,\
-                         points2check=coords)
-                shr_adm0 = sum(LitPop_data.values[mask_adm1.values])
+                if not masks_adm1:
+                    mask_adm1 = _mask_from_shape(adm1_shp._shape,\
+                             resolution=resolution,\
+                             points2check=coords)
+                    shr_adm0 = sum(LitPop_data.values[mask_adm1.values])
+                else:
+                    shr_adm0 = sum(LitPop_data.values[masks_adm1[idx3].values])
+                
                 temp_adm1['adm0_LitPop_share'].append(shr_adm0)
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
                          [idx3])
@@ -1256,9 +1262,18 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                         *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
                 else:
                     mult = 0
-                LitPop_data = pd.SparseArray([val*mult if\
-                      mask_adm1[idx] == 1 else val for idx, val in\
-                      enumerate(LitPop_data.values)], fill_value=0)
+                if return_data:
+                    if not masks_adm1:
+                        LitPop_data = pd.SparseArray([val*mult if\
+                              mask_adm1[idx] == 1 else val for idx, val in\
+                              enumerate(LitPop_data.values)], fill_value=0)
+                    else:
+                        LitPop_data = pd.SparseArray([val*mult if\
+                              masks_adm1[idx3][idx] == 1 else val for idx, val in\
+                              enumerate(LitPop_data.values)], fill_value=0)                        
+
+                # LOGGER.debug('Processing '+ adm1_shp.attributes['name'] + ' took ' + str(round(time.time()-start_time,\
+                #                            2)) + 's')
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share':[],\
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
@@ -1267,9 +1282,12 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             sum_litpop = sum(LitPop_data.sp_values)
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
-                mask_adm1 = _mask_from_shape(adm1_shp._shape,\
-                            resolution=resolution,\
-                            points2check=coords)
+                if not masks_adm1:
+                    mask_adm1 = _mask_from_shape(adm1_shp._shape,\
+                                resolution=resolution,\
+                                points2check=coords)
+                else:
+                    mask_adm1 = masks_adm1[idx3]
                 temp_adm1['mask'].append(mask_adm1)
                 temp_adm1['LitPop_sum'].append(sum(LitPop_data.values\
                                                [mask_adm1.values]))
@@ -1289,10 +1307,12 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                             *(country_info[3]*country_info[4])\
                             /temp_adm1['LitPop_sum'][idx2]
                     temp_mask = temp_adm1['mask'][idx2].values
-                    LitPop_data = pd.SparseArray([val1*mult if\
-                      temp_mask[idx] == 1 else val1\
-                      for idx, val1 in\
-                      enumerate(LitPop_data.values)])
+                    if return_data:
+                        LitPop_data = pd.SparseArray([val1*mult if\
+                            temp_mask[idx] == 1 else val1\
+                            for idx, val1 in\
+                            enumerate(LitPop_data.values)])
+
                 else:
                     LOGGER.warning('No admin1 data found for %s.', admin1_info[idx2].attributes['name'])
                     LOGGER.warning('Only admin0 data is calculated in this case.')
@@ -1301,16 +1321,17 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                 temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
                          [temp_adm1['mask'][idx5].values])/LP_sum)
         if adm1_scatter == 1:
-            pearsonr, spearmanr = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
-                            temp_adm1['adm1_LitPop_share'], admin1_info, check_plot)
-    else:
+            pearsonr, spearmanr, rmse, rrmse = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
+                            temp_adm1['adm1_LitPop_share'], admin1_info, check_plot) 
+    elif return_data:
         LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
                                    country_info[4])
-    if conserve_cntrytotal:
-        LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
-                                   country_info[4])
+    if conserve_cntrytotal and return_data:
+        LitPop_data = _normalise_litpop(LitPop_data)*country_info[3]*country_info[4]
+    if not return_data:
+        LitPop_data = []
     if adm1_scatter:
-        return LitPop_data, [pearsonr, spearmanr], temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+        return LitPop_data, [pearsonr, spearmanr, rmse, rrmse], temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
     return LitPop_data
 
 def _calc_admin0(LitPop_data, GDP_val, GDP2AssetFactor):
@@ -1415,6 +1436,8 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     adm0_data = adm0_data[adm0_data.nonzero()]
     spearmanr = stats.spearmanr(adm0_data, adm1_data)[0]
     pearsonr = stats.pearsonr(adm0_data, adm1_data)[0]
+    rmse = (sum((adm0_data-adm1_data)**2))**.5
+    rrmse = (sum(((adm0_data-adm1_data)/adm1_data)**2))**.5
     if check_plot:
         plt.figure()
         plt.scatter(adm1_data, adm0_data, c=(0.1, 0.1, 0.3))
@@ -1430,7 +1453,7 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
         plt.xlabel('Reference GDP share')
         plt.ylabel('Modelled GDP share')
         plt.show()
-    return pearsonr, spearmanr
+    return pearsonr, spearmanr, rmse, rrmse
     
     
 def read_bm_file(bm_path, filename):
@@ -1645,8 +1668,8 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         col_max = min(col_max+1, ((maxlon_tile-minlon_tile)\
                                   -(deg_per_pix/2))*(1/deg_per_pix))
         bm_data = bm_data[row_min:row_max, col_min:col_max]
-#    print('Cutting the bounding box took ' + str(round(time.time()-start_time,\
-#                                                       2)) + 's')
+    LOGGER.debug('Cutting the bounding box took ' + str(round(time.time()-start_time,\
+                                                       2)) + 's')
     return bm_data
 
 def _get_box_blackmarble(cut_bbox, **args):
@@ -1707,7 +1730,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     else: ### TODO: ensure function is efficient if no coords are returned
         return nightlight_intensity
     
-def admin1_validation(country, **args):
+def admin1_validation(country, methods, methods_num, **args):
         """ Get LitPop based exposre for one country or multiple countries
     using values at reference year. If GDP or income
     group not available for that year, consider the value of the closest
@@ -1717,6 +1740,14 @@ def admin1_validation(country, **args):
         country (str): list of countries or single county as a
             sting. Countries can either be country names ('France') or
             country codes ('FRA'), even a mix is possible in the list.
+        methods_name (list of str), i.e.:
+            - ['LitPop' for LitPop,
+            - ['Lit', 'Pop'] for Lit and Pop,
+            - ['Lit3'] for cube of night lights (Lit3)            
+        methods_num (list of 2-vectors), same length as methods_name i.e.:
+            - [[1, 1]] for LitPop,
+            - [[1, 0], [0, 1]] for Lit and Pop,
+            - [[3, 0]] for cube of night lights (Lit3)
     args: Keyword arguments. The following keywords are recognised:
         res_km (float, optional): approx resolution in km. Default: 1km.
         res_arcsec (float, optional): resolution in arc-sec. Overrides
@@ -1724,6 +1755,7 @@ def admin1_validation(country, **args):
         check_plot (boolean, optional): choose if a plot is shown at the
             end of the operation.
     """
+        start_time = time.time()
         res_km = args.get('res_km', 1)
         res_arcsec = args.get('res_arcsec', [])
         check_plot = args.get('ckeck_plot', True)
@@ -1737,6 +1769,7 @@ def admin1_validation(country, **args):
         _match_target_res(resolution)
         country_info = dict()
         admin1_info = dict()
+        LOGGER.info('Preparing coordinates, bm, and gpw data at a resolution of %s arcsec.', str(resolution))
         if isinstance(country, list): #multiple countries
             LOGGER.error('No valid country chosen. Give country as string.')
             raise TypeError
@@ -1745,12 +1778,8 @@ def admin1_validation(country, **args):
             country_list.append(country)
             country_new = _get_ISO3_from_name(country)
             country_list[0] = country_new
-            if not _get_country_shape(country_list[0], 1) is None:
-                all_bbox = _get_country_shape(country_list[0], 1)[0]
-            else:
-                LOGGER.error('Country %s could not be found.', country)
-                raise ValueError
-            cut_bbox = all_bbox
+            cut_bbox = _get_country_shape(country_list[0], 1)[0]
+
             country_info[country_list[0]], admin1_info[country_list[0]]\
                 = _get_country_info(country_list[0])
         else:
@@ -1758,9 +1787,7 @@ def admin1_validation(country, **args):
                          + 'Operation aborted.')
             raise TypeError
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
-        # Get LitPop, Lit and Pop
-        LOGGER.info('Generating LitPop, Lit and Pop data at a resolution of %s arcsec.', str(resolution))
-        
+        # Get LitPop, Lit and Pop       
         bm = _get_box_blackmarble(cut_bbox,\
                                     resolution=resolution, return_coords=0)
         gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
@@ -1770,78 +1797,53 @@ def admin1_validation(country, **args):
         bm = pd.SparseArray(bm_temp, fill_value=1)
         del bm_temp
 
-        LitPop_data = _LitPop_multiply_box(bm, gpw, x=1, y=1)
-        Lit_data = _LitPop_multiply_box(bm, gpw, x=1, y=0)
-        Pop_data = _LitPop_multiply_box(bm, gpw, x=0, y=1)
-        Lit2Pop_data = _LitPop_multiply_box(bm, gpw, x=2, y=1)
-        Lit2_data = _LitPop_multiply_box(bm, gpw, x=2, y=0)
-        Lit3_data = _LitPop_multiply_box(bm, gpw, x=3, y=0)
-
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
         shp_file = shapereader.Reader(shp_file)
         
-        for cntry_iso, cntry_val in country_info.items():
-            if fin_mode == 'pc':
-                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
-            else:
-                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
+        for cntry_iso, cntry_val in country_info.items(): # get GDP value for country
+            _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
         _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
-        for curr_country in country_list:
-            curr_shp = _get_country_shape(curr_country, 0)
-            mask = _mask_from_shape(curr_shp, resolution=resolution,\
-                                    points2check=all_coords)
-            LitPop_curr = LitPop_data[mask.sp_index.indices]
-            Lit_curr = Lit_data[mask.sp_index.indices]
-            Pop_curr = Pop_data[mask.sp_index.indices]
-            Lit2Pop_curr = Lit2Pop_data[mask.sp_index.indices]
-            Lit2_curr = Lit2_data[mask.sp_index.indices]
-            Lit3_curr = Lit3_data[mask.sp_index.indices]
-            lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-            rho = np.zeros(12)
-            
-            adm0 = dict()
-            adm1 = dict()
-            LOGGER.info('Lit:')
-            Lit_curr, rho[0:2], adm0['Lit'], adm1['Lit'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       Lit_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
-            LOGGER.info('Lit2:')
-            Lit2_curr, rho[2:4], adm0['Lit2'], adm1['Lit2'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       Lit2_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
-            LOGGER.info('Lit3:')
-            Lit3_curr, rho[4:6], adm0['Lit3'], adm1['Lit3'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       Lit3_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
-            LOGGER.info('Pop:')
-            Pop_curr, rho[6:8], adm0['Pop'], adm1['Pop'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       Pop_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
 
-            LOGGER.info('Lit2Pop:')
-            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
-            Lit2Pop_curr, rho[8:10], adm0['Lit2Pop'], adm1['Lit2Pop'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       Lit2Pop_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
-            LOGGER.info('LitPop:')
-            # LitPop_data, rho, temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
-            LitPop_curr, rho[10:12], adm0['LitPop'], adm1['LitPop'] = _calc_admin1(curr_country,\
-                                       country_info[curr_country],
-                                       admin1_info[curr_country],\
-                                       LitPop_curr, list(zip(lon, lat)),\
-                                       resolution, True, conserve_cntrytotal=0, check_plot=check_plot)
+        curr_shp = _get_country_shape(country_list[0], 0)
+        mask = _mask_from_shape(curr_shp, resolution=resolution,\
+                                points2check=all_coords)
+        bm = bm[mask.sp_index.indices]
+        gpw = gpw[mask.sp_index.indices]
+        
+        lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
+        LOGGER.debug('Preparing bm and gpw data for country took ' + str(round(time.time()-start_time,\
+                                                       2)) + 's')
+        LOGGER.debug('Caclulating admin1 masks...')
+        start_time = time.time()
+        masks_adm1 = dict()
+        for idx, adm1_shp in\
+                enumerate(admin1_info[country_list[0]]):
+                
+                masks_adm1[idx] = _mask_from_shape(adm1_shp._shape,\
+                         resolution=resolution,\
+                         points2check=list(zip(lon, lat)))
 
+        LOGGER.debug('Caclulating admin1 masks took ' + str(round(time.time()-start_time,\
+                                                       2)) + 's')
+        n=4
+        rho = np.zeros(len(methods)*n)
+        adm0 = dict()
+        adm1 = dict()
+        LOGGER.info('Loop through methods...')
+        for i in np.arange(0,len(methods)):
+            LOGGER.info(methods[i] + ':')
+            start_time = time.time()
+            _data = _LitPop_multiply_box(bm, gpw, x=methods_num[i][0], y=methods_num[i][1])
+            LOGGER.debug('Multiplying bm and gpw data for country took ' + str(round(time.time()-start_time,\
+                                                       2)) + 's')
+            _, rho[i*n:(i*n)+n], adm0[methods[i]], adm1[methods[i]] = _calc_admin1(country_list[0],\
+                                   country_info[country_list[0]],
+                                   admin1_info[country_list[0]],\
+                                   _data, list(zip(lon, lat)),\
+                                   resolution, True, conserve_cntrytotal=0, \
+                                   check_plot=check_plot, masks_adm1=masks_adm1, \
+                                   return_data=0)
         return rho, adm0, adm1
