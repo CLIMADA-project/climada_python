@@ -288,7 +288,7 @@ def add_sea(exposures, sea_res):
 
     for var_name in exposures.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
-            sea_exp[var_name] = np.zeros(sea_exp.latitude.size, 
+            sea_exp[var_name] = np.zeros(sea_exp.latitude.size,
                                          exposures[var_name].dtype)
 
     return pd.concat([exposures, sea_exp], ignore_index=True, sort=False)
