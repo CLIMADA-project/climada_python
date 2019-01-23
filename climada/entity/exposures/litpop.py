@@ -1318,7 +1318,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                 temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
                          [temp_adm1['mask'][idx5].values])/LP_sum)
         if adm1_scatter == 1:
-            pearsonr, spearmanr, rmse, rrmse = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
+            pearsonr, spearmanr, rmse, rmsf = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
                             temp_adm1['adm1_LitPop_share'], admin1_info, check_plot) 
     elif return_data:
         LitPop_data = _calc_admin0(LitPop_data, country_info[3],\
@@ -1328,7 +1328,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
     if not return_data:
         LitPop_data = []
     if adm1_scatter:
-        return LitPop_data, [pearsonr, spearmanr, rmse, rrmse], temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+        return LitPop_data, [pearsonr, spearmanr, rmse, rmsf], temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
     return LitPop_data
 
 def _calc_admin0(LitPop_data, GDP_val, GDP2AssetFactor):
@@ -1431,10 +1431,16 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     adm1_data = np.array(adm1_data)
     adm1_data = adm1_data[adm0_data.nonzero()]
     adm0_data = adm0_data[adm0_data.nonzero()]
+    # Correlation coefficients:
     spearmanr = stats.spearmanr(adm0_data, adm1_data)[0]
     pearsonr = stats.pearsonr(adm0_data, adm1_data)[0]
+    # Root mean square error:
     rmse = (sum((adm0_data-adm1_data)**2))**.5
-    rrmse = (sum(((adm0_data-adm1_data)/adm1_data)**2))**.5
+    # Relative root mean square error:
+    # rrmse = (sum(((adm0_data-adm1_data)/adm1_data)**2))**.5
+    # Root mean squared fraction:
+    rmsf = np.exp(np.sqrt(np.sum(np.log(adm0_data/adm1_data)**2)/ \
+                                        adm0_data.shape[0])) 
     if check_plot:
         plt.figure()
         plt.scatter(adm1_data, adm0_data, c=(0.1, 0.1, 0.3))
@@ -1450,7 +1456,7 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
         plt.xlabel('Reference GDP share')
         plt.ylabel('Modelled GDP share')
         plt.show()
-    return pearsonr, spearmanr, rmse, rrmse
+    return pearsonr, spearmanr, rmse, rmsf
     
     
 def read_bm_file(bm_path, filename):
@@ -1803,17 +1809,6 @@ def admin1_validation(country, methods, methods_num, **args):
             _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
         _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
-
-        curr_shp = _get_country_shape(country_list[0], 0)
-        mask = _mask_from_shape(curr_shp, resolution=resolution,\
-                                points2check=all_coords)
-        bm = bm[mask.sp_index.indices]
-        gpw = gpw[mask.sp_index.indices]
-        
-        lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-        LOGGER.debug('Preparing bm and gpw data for country took ' + str(round(time.time()-start_time,\
-                                                       2)) + 's')
-        LOGGER.debug('Caclulating admin1 masks...')
 
         curr_shp = _get_country_shape(country_list[0], 0)
         mask = _mask_from_shape(curr_shp, resolution=resolution,\
