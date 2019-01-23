@@ -28,8 +28,7 @@ from climada.engine.impact import Impact
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
-ENT_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'entity/test/data/')
-ENT_TEST_XLS = os.path.join(ENT_DIR, 'demo_today.xlsx')
+ENT_TEST_XLS = os.path.join(os.path.dirname(__file__), 'data/demo_today.xlsx')
 
 class TestFreqCurve(unittest.TestCase):
     '''Test exceedence frequency curve computation'''
@@ -111,9 +110,8 @@ class TestOneExposure(unittest.TestCase):
         ''' Test result against reference value'''
         # Read demo entity values
         # Set the entity default file to the demo one
-        Entity.def_file = ENT_TEST_XLS
         ent = Entity()
-        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('')
+        ent.read_excel(ENT_TEST_XLS)
         
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
@@ -124,22 +122,22 @@ class TestOneExposure(unittest.TestCase):
         impact.tot_value = 0
 
         # Assign centroids to exposures
-        ent.exposures.assign(hazard)
+        ent.exposures.assign_centroids(hazard)
 
         # Compute impact for 6th exposure
         iexp = 5
         # Take its impact function
-        imp_id = ent.exposures.impact_id['TC'][iexp]
+        imp_id = ent.exposures.if_TC[iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
         # Compute
         insure_flag = True
         impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
         
-        self.assertEqual(impact.eai_exp.size, ent.exposures.size)
+        self.assertEqual(impact.eai_exp.size, ent.exposures.shape[0])
         self.assertEqual(impact.at_event.size, hazard.intensity.shape[0])
         
-        events_pos = hazard.intensity[:, ent.exposures.assigned['TC'][iexp]].nonzero()[0]
-        res_exp = np.zeros((ent.exposures.size))
+        events_pos = hazard.intensity[:, ent.exposures.centr_TC[iexp]].nonzero()[0]
+        res_exp = np.zeros((ent.exposures.shape[0]))
         res_exp[iexp] = np.sum(impact.at_event[events_pos] * hazard.frequency[events_pos])
         self.assertTrue(np.array_equal(res_exp, impact.eai_exp))
 
@@ -167,9 +165,9 @@ class TestCalc(unittest.TestCase):
     def test_ref_value_pass(self):
         ''' Test result against reference value'''
         # Read default entity values
-        Entity.def_file = ENT_TEST_XLS
         ent = Entity()
-        ent.exposures.impact_id['TC'] = ent.exposures.impact_id.pop('')
+        ent.read_excel(ENT_TEST_XLS)
+        ent.check()
 
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
@@ -177,14 +175,14 @@ class TestCalc(unittest.TestCase):
         impact = Impact()
 
         # Assign centroids to exposures
-        ent.exposures.assign(hazard)
+        ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
         
         # Check result
         num_events = len(hazard.event_id)
-        num_exp = len(ent.exposures.id)
+        num_exp = ent.exposures.shape[0]
         # Check relative errors as well when absolute value gt 1.0e-7
         # impact.at_event == EDS.damage in MATLAB
         self.assertEqual(num_events, len(impact.at_event))

@@ -33,6 +33,7 @@ class IFTropCyclone(ImpactFunc):
 
     def __init__(self):
         ImpactFunc.__init__(self)
+        self.haz_type = 'TC'
 
     def set_emanuel_usa(self, if_id=1, intensity=np.arange(0, 121, 5),
                         v_thresh=25.7, v_half=74.7, scale=1.0):
@@ -64,7 +65,6 @@ class IFTropCyclone(ImpactFunc):
             raise ValueError
 
         self.name = 'Emanuel 2011'
-        self.haz_type = 'TC'
         self.id = if_id
         self.intensity_unit = 'm/s'
         self.intensity = intensity

@@ -93,7 +93,8 @@ class TropCyclone(Hazard):
         if centroids is None:
             centroids = Centroids(GLB_CENTROIDS_MAT, 'Global centroids')
         # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-        coastal_idx = coastal_centr_idx(centroids)
+#        coastal_idx = coastal_centr_idx(centroids)
+        coastal_idx = np.arange(centroids.size)
 
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(centroids.size))

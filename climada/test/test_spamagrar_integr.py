@@ -33,7 +33,7 @@ class TestDefault(unittest.TestCase):
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             ent.init_spam_agrar()
-        ent_select = ent.select(208) # select Denmark only
+        ent_select = ent[ent['region_id']==208] # select Denmark only
         self.assertIn('Lat. range: -55.375 to +71.125.', cm.output[0])
         self.assertIn('Lon. range: -179.125 to +179.958.', cm.output[1])
         self.assertIn("Total V_agg TA global: 1301919384722.2 USD.", cm.output[2])
@@ -116,8 +116,9 @@ class TestInvalidInput(unittest.TestCase):
         """Invalid techonology or variable input returns error:"""
         tech = 'XY' # does not exist
         ent = SpamAgrar()
-        with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            ent.init_spam_agrar(spam_technology=tech)
+        with self.assertLogs('climada.entity.exposures.spam_agrar', level='ERROR') as cm:
+            with self.assertRaises(ValueError): 
+                ent.init_spam_agrar(spam_technology=tech)
         self.assertIn('Invalid input parameter(s).', cm.output[0])
 
 # Execute Tests

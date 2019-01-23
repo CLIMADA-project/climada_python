@@ -22,6 +22,7 @@ import os
 import unittest
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
@@ -30,7 +31,7 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_MAT, SOURCE_DIR
 
-ENT_TEST_XLS = os.path.join(SOURCE_DIR, 'entity/test/data', 'demo_today.xlsx')
+ENT_TEST_XLS = os.path.join(SOURCE_DIR, 'engine/test/data', 'demo_today.xlsx')
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -97,12 +98,15 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = Exposures(ENT_TEST_XLS, description='demo_today')
-        _, myax= myexp.plot()
+        myexp = pd.read_excel(ENT_TEST_XLS)
+        myexp = Exposures(myexp)
+        myexp.check()
+        myexp.tag.description = 'demo_today'
+        _, myax= myexp.plot_hexbin()
         self.assertIn('demo_today', myax[0][0].get_title())
 
-        myexp = Exposures(ENT_TEST_XLS)
-        _, myax= myexp.plot()
+        myexp.tag.description = ''
+        _, myax= myexp.plot_hexbin()
         self.assertIn('', myax[0][0].get_title())
 
     def test_impact_funcs_pass(self):
@@ -116,8 +120,9 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
-        myent = Entity(ENT_TEST_XLS)
-        myent.exposures.impact_id['TC'] = myent.exposures.impact_id.pop('')
+        myent = Entity()
+        myent.read_excel(ENT_TEST_XLS)
+        myent.exposures.check()
         myhaz = Hazard('TC', HAZ_DEMO_MAT)
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)

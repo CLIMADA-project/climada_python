@@ -8,6 +8,7 @@ dependencies:
   - dill=0.2.7.1
   - gdal
   - geos=3.6.2
+  - geopandas=0.4.0
   - h5py=2.7.1
   - matplotlib=2.2.2
   - mkl
@@ -22,6 +23,7 @@ dependencies:
   - proj4
   - pysocks=1.6.8
   - pyshp=1.2.12
+  - pytables=3.4.4
   - python=3.6.5
   - requests=2.19.1
   - scikit-learn=0.19.1

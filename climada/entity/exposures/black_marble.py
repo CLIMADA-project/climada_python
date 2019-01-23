@@ -25,14 +25,16 @@ import logging
 import math
 import numpy as np
 from numpy.polynomial.polynomial import polyval
+import pandas as pd
+import geopandas as gpd
 from scipy import ndimage
 import shapely.vectorized
 from cartopy.io import shapereader
 from iso3166 import countries as iso_cntry
 
-from climada.entity.exposures.base import Exposures
-from climada.util.constants import SYSTEM_DIR, ONE_LAT_KM
-from climada.util.coordinates import coord_on_land
+from climada.entity.tag import Tag
+from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.util.constants import SYSTEM_DIR
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.finance import gdp, income_group
 
@@ -58,12 +60,12 @@ class BlackMarble(Exposures):
     - -1 for water
     """
 
-    def __init__(self):
-        """ Empty initializer. """
-        Exposures.__init__(self)
+    @property
+    def _constructor(self):
+        return BlackMarble
 
-    def set_countries(self, countries, ref_year=2016, res_km=None,
-                      sea_res=(0, 1), from_hr=None, **kwargs):
+    def set_countries(self, countries, ref_year=2016, res_km=None, from_hr=None,
+                      **kwargs):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -74,9 +76,6 @@ class BlackMarble(Exposures):
             ref_year (int, optional): reference year. Default: 2016
             res_km (float, optional): approx resolution in km. Default:
                 nightlights resolution.
-            sea_res (tuple, optional): (sea_coast_km, sea_res_km), where first
-                parameter is distance from coast to fill with water and second
-                parameter is resolution between sea points.
             from_hr (bool, optional): force to use higher resolution image,
                 independently of its year of acquisition.
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
@@ -84,7 +83,6 @@ class BlackMarble(Exposures):
                 [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
                 provided). If provided, these are used.
         """
-        self.clear()
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -96,74 +94,28 @@ class BlackMarble(Exposures):
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(\
             ref_year, cntry_info, res_km, from_hr)
 
-        # TODO parallel over _set_one_country
+        tag = Tag()
+        bkmrbl_list = []
+
         for cntry_iso, cntry_val in cntry_info.items():
-            LOGGER.info('Processing country %s.', cntry_val[1])
-            self.append(self._set_one_country(cntry_val, nightlight, \
-                coord_nl, fn_nl, res_fact, res_km, cntry_admin1[cntry_iso], \
-                **kwargs))
 
-        self.add_sea(sea_res)
+            bkmrbl_list.append(self._set_one_country(cntry_val, nightlight, \
+                coord_nl, res_fact, res_km, cntry_admin1[cntry_iso], **kwargs))
+            tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
+                format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-    def select(self, reg_id):
-        """ Select exposures with input region.
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list,
+                                                            ignore_index=True)))
 
-        Parameters:
-            reg_id (int, str, list(int)): integer iso equivalent country
-                numeric code or string iso alpha-3 or alpha-2 code or country
-                name.
-
-        Returns:
-            Exposures
-        """
-        if isinstance(reg_id, (int, list)):
-            return Exposures.select(self, reg_id)
-
-        try:
-            return Exposures.select(self, \
-                int(iso_cntry.get(reg_id).numeric))
-        except KeyError:
-            LOGGER.info('No country %s found.', reg_id)
-            return None
-
-    def add_sea(self, sea_res):
-        """ Add sea to geometry's surroundings with given resolution.
-
-        Parameters:
-            sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
-                is distance from coast to fill with water and second parameter
-                is resolution between sea points
-        """
-        if sea_res[0] == 0:
-            return
-
-        LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
-                    str(sea_res[1]), str(sea_res[0]))
-
-        sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
-
-        min_lat = max(-90, float(np.min(self.coord.lat)) - sea_res[0])
-        max_lat = min(90, float(np.max(self.coord.lat)) + sea_res[0])
-        min_lon = max(-180, float(np.min(self.coord.lon)) - sea_res[0])
-        max_lon = min(180, float(np.max(self.coord.lon)) + sea_res[0])
-
-        lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
-        lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
-
-        lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
-        lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-        on_land = np.logical_not(coord_on_land(lat_mgrid, lon_mgrid))
-
-        self.coord = np.array([np.append(self.coord.lat, lat_mgrid[on_land]), \
-            np.append(self.coord.lon, lon_mgrid[on_land])]).transpose()
-        self.value = np.append(self.value, lat_mgrid[on_land]*0)
-        self.id = np.arange(1, self.value.size+1)
-        self.region_id = np.append(self.region_id,
-                                   lat_mgrid[on_land].astype(int)*0 - 1)
-        self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
+        # set metadata
+        self.ref_year = ref_year
+        self.tag = tag
+        self.tag.file_name = fn_nl
+        self.value_unit = 'USD'
+        self.check()
 
     @staticmethod
-    def _set_one_country(cntry_info, nightlight, coord_nl, fn_nl, res_fact,
+    def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,
                          res_km, admin1_geom, **kwargs):
         """ Model one country.
 
@@ -174,13 +126,14 @@ class BlackMarble(Exposures):
                 Row latitudes, col longitudes
             coord_nl (np.array): nightlight coordinates: [[min_lat, lat_step],
                 [min_lon, lon_step]]
-            fn_nl (str): file name of considered nightlight with path
             res_fact (float): resampling factor
             res_km (float): wished resolution in km
             admin1_geom (list): list of admin1 geometries to filter
             poly_val (list): list of polynomial coefficients to apply to
                 nightlight
         """
+        LOGGER.info('Processing country %s.', cntry_info[1])
+
         if 'poly_val' in kwargs:
             poly_val = kwargs['poly_val']
         else:
@@ -200,19 +153,11 @@ class BlackMarble(Exposures):
             lat_reg, lon_reg, res_fact, on_land)
 
         exp_bkmrb = BlackMarble()
-        exp_bkmrb.value = np.asarray(nightlight_reg).reshape(-1,)
-        exp_bkmrb.coord = np.empty((exp_bkmrb.value.size, 2))
-        exp_bkmrb.coord[:, 0] = lat_reg
-        exp_bkmrb.coord[:, 1] = lon_reg
-        exp_bkmrb.id = np.arange(1, exp_bkmrb.value.size+1)
-        exp_bkmrb.region_id = np.ones(exp_bkmrb.value.shape, int)*cntry_info[0]
-        exp_bkmrb.impact_id = {DEF_HAZ_TYPE: np.ones(exp_bkmrb.value.size, int)}
-        exp_bkmrb.ref_year = cntry_info[3]
-        exp_bkmrb.tag.description = ("{} {:d} GDP: {:.3e} income group: {:d}"+\
-            "\n").format(cntry_info[1], cntry_info[3], \
-            cntry_info[4], cntry_info[5])
-        exp_bkmrb.tag.file_name = fn_nl
-        exp_bkmrb.value_unit = 'USD'
+        exp_bkmrb['value'] = np.asarray(nightlight_reg).reshape(-1,)
+        exp_bkmrb['latitude'] = lat_reg
+        exp_bkmrb['longitude'] = lon_reg
+        exp_bkmrb['region_id'] = np.ones(exp_bkmrb.value.size, int)*cntry_info[0]
+        exp_bkmrb[INDICATOR_IF] = np.ones(exp_bkmrb.value.size, int)
 
         return exp_bkmrb
 

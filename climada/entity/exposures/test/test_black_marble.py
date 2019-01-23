@@ -23,14 +23,11 @@ import numpy as np
 import scipy.sparse as sparse
 import shapely
 from cartopy.io import shapereader
-from sklearn.neighbors import DistanceMetric
 
-from climada.entity.exposures.black_marble import country_iso_geom, BlackMarble, \
+from climada.entity.exposures.black_marble import country_iso_geom, \
 _cut_country, fill_econ_indicators, _set_econ_indicators, _fill_admin1_geom, \
 _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
-from climada.util.constants import ONE_LAT_KM
-from climada.util.coordinates import coord_on_land
 
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
@@ -90,64 +87,6 @@ class TestCountryIso(unittest.TestCase):
         country_name = ['Korea']
         with self.assertRaises(ValueError):
             country_iso_geom(country_name, SHP_FILE)
-
-    def test_select_reg_pass(self):
-        """Select counrty """
-        exp = BlackMarble()
-        exp.value = np.arange(0, 20, 0.1)
-        exp.coord = np.ones((200, 2))
-        exp.impact_id = {'TC': np.ones((200,))}
-        exp.id = np.arange(200)
-
-        exp.region_id = np.ones((200,))
-        exp.region_id[:101] = exp.region_id[:101]*780
-        exp.region_id[101:] = exp.region_id[101:]*894
-
-        sel_exp = exp.select('TTO')
-        self.assertEqual(sel_exp.value.size, 101)
-        sel_exp = exp.select('Trinidad and Tobago')
-        self.assertEqual(sel_exp.value.size, 101)
-        sel_exp = exp.select('TT')
-        self.assertEqual(sel_exp.value.size, 101)
-        self.assertIsInstance(sel_exp, BlackMarble)
-
-        sel_exp = exp.select('ZMB')
-        self.assertEqual(sel_exp.value.size, 99)
-        sel_exp = exp.select('Zambia')
-        self.assertEqual(sel_exp.value.size, 99)
-        sel_exp = exp.select('ZM')
-        self.assertEqual(sel_exp.value.size, 99)
-        self.assertIsInstance(sel_exp, BlackMarble)
-
-    def test_select_not_included_pass(self):
-        """Select country that is not contained."""
-        exp = BlackMarble()
-        exp.value = np.arange(0, 20, 0.1)
-        exp.coord = np.ones((200, 2))
-        exp.impact_id = {'TC': np.ones((200,))}
-        exp.id = np.arange(200)
-
-        exp.region_id = np.ones((200,))
-        exp.region_id[:101] = exp.region_id[:101]*780
-        exp.region_id[101:] = exp.region_id[101:]*894
-
-        sel_exp = exp.select('UGA')
-        self.assertEqual(sel_exp, None)
-
-    def test_select_wrong_fail(self):
-        """Select country that is not contained."""
-        exp = BlackMarble()
-        exp.value = np.arange(0, 20, 0.1)
-        exp.coord = np.ones((200, 2))
-        exp.impact_id = {'TC': np.ones((200,))}
-        exp.id = np.arange(200)
-
-        exp.region_id = np.ones((200,))
-        exp.region_id[:101] = exp.region_id[:101]*780
-        exp.region_id[101:] = exp.region_id[101:]*894
-
-        sel_exp = exp.select('TTU')
-        self.assertEqual(sel_exp, None)
 
 class TestProvinces(unittest.TestCase):
     """Tst black marble with admin1."""
@@ -307,46 +246,6 @@ class TestNightLight(unittest.TestCase):
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
         self.assertAlmostEqual(nightlight_res[0], 0.1410256410256411)
         self.assertAlmostEqual(nightlight_res[1], 0.3589743589743589)
-
-    def test_add_sea_pass(self):
-        """Test add_sea function with fake data."""
-        exp = BlackMarble()
-
-        exp.value = np.arange(0, 1.0e6, 1.0e5)
-
-        min_lat, max_lat = 27.5, 30
-        min_lon, max_lon = -18, -12
-        exp.coord = np.zeros((10, 2))
-        exp.coord[:, 0] = np.linspace(min_lat, max_lat, 10)
-        exp.coord[:, 1] = np.linspace(min_lon, max_lon, 10)
-        exp.region_id = np.ones(10)
-
-        sea_coast = 100
-        sea_res_km = 50
-        sea_res = (sea_coast, sea_res_km)
-        exp.add_sea(sea_res)
-        exp.check()
-
-        sea_coast /= ONE_LAT_KM
-        sea_res_km /= ONE_LAT_KM
-
-        min_lat = min_lat - sea_coast
-        max_lat = max_lat + sea_coast
-        min_lon = min_lon - sea_coast
-        max_lon = max_lon + sea_coast
-        self.assertEqual(np.min(exp.coord.lat), min_lat)
-        self.assertEqual(np.min(exp.coord.lon), min_lon)
-        self.assertTrue(np.array_equal(exp.value[:10], np.arange(0, 1.0e6, 1.0e5)))
-
-        on_sea_lat = exp.coord[11:, 0]
-        on_sea_lon = exp.coord[11:, 1]
-        res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
-        res_on_sea = np.logical_not(res_on_sea)
-        self.assertTrue(np.all(res_on_sea))
-
-        dist = DistanceMetric.get_metric('haversine')
-        self.assertAlmostEqual(dist.pairwise([[exp.coord[-1][1], exp.coord[-1][0]],
-            [exp.coord[-2][1], exp.coord[-2][0]]])[0][1], sea_res_km)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""

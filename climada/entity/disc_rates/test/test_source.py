@@ -24,7 +24,8 @@ import unittest
 from climada.entity.disc_rates.base import DiscRates
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+                        os.pardir, 'engine', 'test', 'data')
 ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestReaderExcel(unittest.TestCase):

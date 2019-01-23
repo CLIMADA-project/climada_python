@@ -46,7 +46,7 @@ class TestIntegr(unittest.TestCase):
         
         exposure_agrar = SpamAgrar()
         exposure_agrar.init_spam_agrar(country='CHE')
-        exposure_agrar.assign(hazard_set)
+        exposure_agrar.assign_centroids(hazard_set)
         imp_drought.calc(exposure_agrar, dr_if, hazard_set)
 
         index_event_start = imp_drought.event_name.index('2003')
@@ -55,7 +55,7 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual(hazard_set.tag.haz_type, 'DR')
         self.assertEqual(hazard_set.size, 114)
         self.assertEqual(hazard_set.centroids.size, 130)
-        self.assertEqual(exposure_agrar.coord.size, 766)
+        self.assertEqual(exposure_agrar.latitude.values.size, 766/2)
         self.assertEqual(exposure_agrar.value[3], 1720024.4)
         self.assertEqual(damages_drought, 61995472.55522311)
                 

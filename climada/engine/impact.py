@@ -24,6 +24,7 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 import logging
 import numpy as np
 
+from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 from climada.util.coordinates import GridPoints
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
@@ -119,31 +120,29 @@ class Impact():
             >>> tc_impact.calc(exposures, funcs, hazard)
         """
         # 1. Assign centroids to each exposure if not done
-        if (not exposures.assigned) or \
-        (hazard.tag.haz_type not in exposures.assigned):
-            LOGGER.info('Matching %s exposures with %s centroids.',
-                        str(exposures.value.size), str(hazard.centroids.size))
-            if np.array_equal(exposures.coord, hazard.centroids.coord):
-                exposures.assigned[hazard.tag.haz_type] = \
-                    np.arange(exposures.size)
-            else:
-                exposures.assign(hazard)
+        assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
+        if assign_haz not in exposures:
+            exposures.assign_centroids(hazard)
+        else:
+            LOGGER.info('Exposures matching centroids found in %s', assign_haz)
 
         # 2. Initialize values
         self.unit = exposures.value_unit
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
         self.date = hazard.date
-        self.coord_exp = exposures.coord
+        self.coord_exp = np.zeros((exposures.shape[0], 2))
+        self.coord_exp[:, 0] = exposures.latitude.values
+        self.coord_exp[:, 1] = exposures.longitude.values
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
-        self.eai_exp = np.zeros(len(exposures.value))
+        self.eai_exp = np.zeros(exposures.value.size)
         self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
                     'haz': hazard.tag}
 
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
-                           exposures.assigned[hazard.tag.haz_type] >= 0))[0]
+                           exposures[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
@@ -151,17 +150,17 @@ class Impact():
         LOGGER.info('Calculating damage for %s assets (>0) and %s events.',
                     exp_idx.size, num_events)
 
-        # Get hazard type
-        haz_type = hazard.tag.haz_type
         # Get damage functions for this hazard
-        haz_imp = impact_funcs.get_func(haz_type)
-        if haz_type not in exposures.impact_id:
-            LOGGER.warning('No exposures with impact functions for peril %s.',
-                           haz_type)
+        if_haz = INDICATOR_IF + hazard.tag.haz_type
+        haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
+        if if_haz not in exposures:
+            LOGGER.error('Missing exposures column %s. No exposures with impact'\
+                         +' functions for peril %s.', if_haz, hazard.tag.haz_type)
+            raise ValueError
 
         # Check if deductible and cover should be applied
         insure_flag = False
-        if exposures.deductible.size and exposures.cover.size \
+        if ('deductible' in exposures) and ('cover' in exposures) \
         and exposures.cover.max():
             insure_flag = True
 
@@ -169,8 +168,7 @@ class Impact():
         tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures.impact_id[haz_type][exp_idx] ==
-                                imp_fun.id)[0]
+            exp_iimp = np.where(exposures[if_haz][exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
             exp_step = int(CONFIG['global']['max_matrix_size']/num_events)
             if not exp_step:
@@ -236,7 +234,7 @@ class Impact():
             insure_flag (bool): consider deductible and cover of exposures
         """
         # get assigned centroids
-        icens = exposures.assigned[hazard.tag.haz_type][exp_iimp]
+        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type][exp_iimp]
 
         # get affected intensities
         inten_val = hazard.intensity[:, icens].todense()
@@ -244,13 +242,13 @@ class Impact():
         fract = hazard.fraction[:, icens]
         # impact = fraction * mdr * value
         impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
-            multiply(exposures.value[exp_iimp])
+            multiply(exposures.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             impact = np.minimum(np.maximum(impact - \
-                exposures.deductible[exp_iimp] * paa, 0), \
-                exposures.cover[exp_iimp])
+                exposures.deductible.values[exp_iimp] * paa, 0), \
+                exposures.cover.values[exp_iimp])
             self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
                 hazard.frequency.reshape(-1, 1), axis=0)
         else:
@@ -258,7 +256,7 @@ class Impact():
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
-        self.tot_value += np.sum(exposures.value[exp_iimp])
+        self.tot_value += np.sum(exposures.value.values[exp_iimp])
 
     @property
     def coord_exp(self):
