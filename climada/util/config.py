@@ -59,9 +59,7 @@ def check_conf():
         if not os.path.isabs(abspath):
             abspath = os.path.abspath(os.path.join(WORKING_DIR,
                                                    os.path.expanduser(path)))
-        if key == "entity_def":
-            def_file = ENT_TEMPLATE_XLS
-        elif key == "save_dir":
+        if key == "save_dir":
             def_file = os.path.join(WORKING_DIR, "results")
         else:
             LOGGER.error("Configuration option %s not found.", key)

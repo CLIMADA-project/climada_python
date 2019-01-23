@@ -36,12 +36,12 @@ class Test2013(unittest.TestCase):
         country_name = ['Spain']
         ent = BlackMarble()
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
-            ent.set_countries(country_name, 2013, res_km=1, sea_res=(200, 50))
+            ent.set_countries(country_name, 2013, res_km=1)
         self.assertIn('GDP ESP 2013: 1.362e+12.', cm.output[0])
         self.assertIn('Income group ESP 2013: 4.', cm.output[1])
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
-            ent.set_countries(country_name, 2013, res_km=1, sea_res=(200, 50))
+            ent.set_countries(country_name, 2013, res_km=1)
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
@@ -51,12 +51,12 @@ class Test2013(unittest.TestCase):
         country_name = ['Sint Maarten']
         ent = BlackMarble()
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
-            ent.set_countries(country_name, 2013, res_km=0.2, sea_res=(200, 50))
+            ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertIn('GDP SXM 2014: 3.658e+08.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
-            ent.set_countries(country_name, 2013, res_km=0.2, sea_res=(200, 50))
+            ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
@@ -167,7 +167,6 @@ class BMFuncs(unittest.TestCase):
         ent.check()
                 
         self.assertEqual(np.unique(ent.region_id).size, 2)
-        self.assertEqual(np.unique(ent.impact_id['TC']).size, 1)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
         self.assertIn('Germany 2013 GDP: ', ent.tag.description)

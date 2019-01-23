@@ -22,7 +22,8 @@ import pandas as pd
 import numpy as np
 from iso3166 import countries as iso_cntry
 
-from climada.entity.exposures.base import Exposures
+from climada.entity.tag import Tag
+from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 
@@ -56,19 +57,9 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
     - -1 for water
     """
 
-    def __init__(self):
-        """ Empty initializer. """
-        Exposures.__init__(self)
-
-    def clear(self):
-        """ Appending the base class clear attribute to also delete attributes
-            which are only used here.
-        """
-        Exposures.clear(self)
-        try:
-            del self.country_data
-        except AttributeError:
-            pass
+    @property
+    def _constructor(self):
+        return SpamAgrar
 
     def init_spam_agrar(self, **parameters):
         """ initiates agriculture exposure from SPAM data:
@@ -124,22 +115,21 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
         spam_t not in ['TA', 'TI', 'TH', 'TL', 'TS', 'TR']:
             LOGGER.error('Invalid input parameter(s).')
-            return
-            # raise ValueError('Invalid input parameter(s).')
+            raise ValueError('Invalid input parameter(s).')
 
         # read data from CSV:
-        data = self._read_spam_file(data_path=data_p, spam_technology=spam_t, \
-                                  spam_variable=spam_v, result_mode=1)
+        data = self._read_spam_file(data_path=data_p, spam_technology=spam_t,
+                                    spam_variable=spam_v, result_mode=1)
 
         # extract country or admin level (if provided)
-        data, region = self._spam_set_country(data, country=adm0, \
-                                       name_adm1=adm1, name_adm2=adm2)
+        data, region = self._spam_set_country(data, country=adm0,
+                                              name_adm1=adm1, name_adm2=adm2)
 
         # sort by alloc_key to make extraction of lat / lon easier:
         data = data.sort_values(by=['alloc_key'])
 
-        lat, lon = self._spam_get_coordinates(data.loc[:, 'alloc_key'], \
-                                             data_path=data_p)
+        lat, lon = self._spam_get_coordinates(data.loc[:, 'alloc_key'],
+                                              data_path=data_p)
         if save_adm1:
             self.name_adm1 = data.loc[:, 'name_adm1'].values
 
@@ -149,62 +139,34 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         else:
             i_1 = 7 # get sum over all crops (columns 7 to 48)
             i_2 = 49
-        self.value = data.iloc[:, i_1:i_2].sum(axis=1)
-        self.value = self.value.values
-        self.coord = np.empty((self.value.size, 2))
-        self.coord[:, 0] = lat.values
-        self.coord[:, 1] = lon.values
+        self['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
+        self['latitude'] = lat.values
+        self['longitude'] = lon.values
         LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(\
-                    np.min(self.coord[:, 0]), np.max(self.coord[:, 0])))
+                    np.min(self.latitude), np.max(self.latitude)))
         LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
-                    np.min(self.coord[:, 1]), np.max(self.coord[:, 1])))
-        self.id = np.arange(1, self.value.size+1)
+                    np.min(self.longitude), np.max(self.longitude)))
 
         # set region_id (numeric ISO3):
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
-            self.region_id = np.ones(self.value.size, int)\
-                    *int(iso_cntry.get(country_id.iloc[0]).numeric)
+            region_id = np.ones(self.value.size, int)\
+                *int(iso_cntry.get(country_id.iloc[0]).numeric)
         else:
-            self.region_id = np.zeros(self.value.size, int)
+            region_id = np.zeros(self.value.size, int)
             for i in range(0, self.value.size):
-                self.region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
+                region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
+        self['region_id'] = region_id
         self.ref_year = 2005
+        self.tag = Tag()
         self.tag.description = ("SPAM agrar exposure for variable "\
             + spam_v + " and technology " + spam_t)
 
-        # if impact id variation iiv = 1, assign different damage function ID per technology type.
-        # hazard type drought is default.
-        iiv = 0
-        if spam_t == 'TA':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
-            self.tag.description = self.tag.description + '. '\
-            + 'all technologies together, ie complete crop'
-        elif spam_t == 'TI':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+1*iiv}
-            self.tag.description = self.tag.description + '. '\
-            + 'irrigated portion of crop'
-        elif spam_t == 'TH':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+2*iiv}
-            self.tag.description = self.tag.description + '. '\
-            + 'rainfed high inputs portion of crop'
-        elif spam_t == 'TL':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+3*iiv}
-            self.tag.description = self.tag.description + '. '\
-            + 'rainfed low inputs portion of crop'
-        elif spam_t == 'TS':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+4*iiv}
-            self.tag.description = self.tag.description + '. '\
-            + 'rainfed subsistence portion of crop'
-        elif spam_t == 'TR':
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)+5*iiv}
-            self.tag.description = self.tag.description + '. '\
-            + 'rainfed portion of crop (= TA - TI)'
-        else:
-            self.impact_id = {DEF_HAZ_TYPE: np.ones(self.value.size, int)}
+        # if impact id variation iiv = 1, assign different damage function ID
+        # per technology type.
+        self._set_if(spam_t)
 
-        self.tag.file_name = (FILENAME_SPAM+'_'+ spam_v\
-                              + '_' + spam_t + '.csv')
+        self.tag.file_name = (FILENAME_SPAM + '_' + spam_v + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
         #self.tag.country = cntry_info[1]
         if spam_v in ('A', 'H'):
@@ -216,11 +178,40 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         else:
             self.value_unit = 'USD'
 
-
         LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(\
                     spam_v, spam_t, region, self.value.sum(), self.value_unit))
+        self.check()
 
-
+    def _set_if(self, spam_t):
+        """ Set impact function id depending on technology."""
+        # hazard type drought is default.
+        iiv = 0
+        if spam_t == 'TA':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)
+            self.tag.description = self.tag.description + '. '\
+            + 'all technologies together, ie complete crop'
+        elif spam_t == 'TI':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+1*iiv
+            self.tag.description = self.tag.description + '. '\
+            + 'irrigated portion of crop'
+        elif spam_t == 'TH':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+2*iiv
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed high inputs portion of crop'
+        elif spam_t == 'TL':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+3*iiv
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed low inputs portion of crop'
+        elif spam_t == 'TS':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+4*iiv
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed subsistence portion of crop'
+        elif spam_t == 'TR':
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+5*iiv
+            self.tag.description = self.tag.description + '. '\
+            + 'rainfed portion of crop (= TA - TI)'
+        else:
+            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)
 
     def _read_spam_file(self, **parameters):
         """ Reads data from SPAM CSV file and cuts out the data for the

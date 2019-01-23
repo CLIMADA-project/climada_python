@@ -40,8 +40,10 @@ class TestSteps(unittest.TestCase):
         """Test _calc_impact_measures against reference value"""
 
         hazard = Hazard('TC', HAZ_TEST_MAT)
-        entity = Entity(ENT_DEMO_MAT)
-        entity.exposures.impact_id['TC'] = entity.exposures.impact_id.pop('')
+        entity = Entity()
+        entity.read_mat(ENT_DEMO_MAT)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.check()
         for meas in entity.measures.get_measure():
             meas.haz_type = 'TC'
 
@@ -105,8 +107,10 @@ class TestSteps(unittest.TestCase):
     def test_calc_cb_no_change_pass(self):
         """Test _calc_cost_benefit without present value against reference value"""
         hazard = Hazard('TC', HAZ_TEST_MAT)
-        entity = Entity(ENT_DEMO_MAT)
-        entity.exposures.impact_id['TC'] = entity.exposures.impact_id.pop('')
+        entity = Entity()
+        entity.read_mat(ENT_DEMO_MAT)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.check()
         for meas in entity.measures.get_measure():
             meas.haz_type = 'TC'
 
@@ -138,8 +142,10 @@ class TestSteps(unittest.TestCase):
     def test_calc_cb_change_pass(self):
         """Test _calc_cost_benefit with present value against reference value"""
         hazard = Hazard('TC', HAZ_TEST_MAT)
-        entity = Entity(ENT_DEMO_MAT)
-        entity.exposures.impact_id['TC'] = entity.exposures.impact_id.pop('')
+        entity = Entity()
+        entity.read_mat(ENT_DEMO_MAT)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.check()
         for meas in entity.measures.get_measure():
             meas.haz_type = 'TC'
 
@@ -147,8 +153,9 @@ class TestSteps(unittest.TestCase):
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
             entity.impact_funcs, when='present', risk_func=risk_aai_agg, save_imp=False)
 
-        ent_future = Entity(ENT_FUTURE)
-        ent_future.exposures.impact_id['TC'] = ent_future.exposures.impact_id.pop('')
+        ent_future = Entity()
+        ent_future.read_excel(ENT_FUTURE)
+        ent_future.check()
         for meas in ent_future.measures.get_measure():
             meas.haz_type = 'TC'
         

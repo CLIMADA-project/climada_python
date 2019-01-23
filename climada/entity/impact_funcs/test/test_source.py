@@ -27,7 +27,8 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.source import DEF_VAR_MAT, DEF_VAR_EXCEL, _get_xls_funcs, _get_hdf5_funcs, _get_hdf5_unit, _get_hdf5_name
 from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+                        os.pardir, 'engine', 'test', 'data')
 ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestReaderMat(unittest.TestCase):

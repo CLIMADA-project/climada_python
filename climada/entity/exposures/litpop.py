@@ -26,6 +26,7 @@ from scipy import sparse
 from scipy import ndimage as nd
 from scipy import stats
 from cartopy.io import shapereader
+import geopandas as gpd
 import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
@@ -33,7 +34,8 @@ import gdal
 from pint import UnitRegistry
 
 from climada.entity.exposures import nightlight as nightlight
-from climada.entity.exposures.base import Exposures
+from climada.entity.tag import Tag
+from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR
@@ -81,7 +83,7 @@ class LitPop(Exposures):
         data (SEDAC), GDP (World Bank) and a conversion factor to calculate
         asset value from GDP derived from the Global Wealth Databook by the
         Credit Suisse Research Institute.
-        
+
         Calling sequence example:
         ent = LitPop()
         country_name = ['Switzerland', 'Austria']
@@ -89,9 +91,9 @@ class LitPop(Exposures):
         ent.plot()
     """
 
-    def __init__(self):
-        """ Empty initializer. """
-        Exposures.__init__(self)
+    @property
+    def _constructor(self):
+        return LitPop
 
     def clear(self):
         """ Appending the base class clear attribute to also delete attributes
@@ -134,7 +136,7 @@ class LitPop(Exposures):
             adm1_scatter (boolean): produce scatter plot for admin1 validation?
         """
         #TODO: allow for user delivered path
-        self.clear() # clear existing assets (reset)
+#        self.clear() # clear existing assets (reset)
         start_time = time.time()
         res_km = args.get('res_km', 1)
         res_arcsec = args.get('res_arcsec', [])
@@ -207,6 +209,9 @@ class LitPop(Exposures):
                 _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
         _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
+
+        tag = Tag()
+        lp_cntry = list()
         for curr_country in country_list:
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,\
@@ -225,18 +230,26 @@ class LitPop(Exposures):
                 LitPop_curr = _calc_admin0(LitPop_curr,\
                                    country_info[curr_country][3],\
                                    country_info[curr_country][4])
+            lp_cntry.append(self._set_one_country(country_info[curr_country],\
+                LitPop_curr, lon, lat))
+            tag.description += ("LitPop based asset values for {} at " + \
+                str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
+                + "\n").format(country_info[curr_country][1], fin_mode)
 
-            self.append(self._set_one_country(country_info[curr_country],\
-                      LitPop_curr, lon, lat, 'various', resolution, fin_mode, reference_year))
-            self._append_additional_info(curr_country,\
-                                         country_info[curr_country])
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry,
+                                                            ignore_index=True)))
+        self.ref_year = reference_year
+        self.tag = tag
+        self.value_unit = 'USD'
+
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
         LOGGER.info("Creating the LitPop exposure took "\
                         + str(round(time.time() - start_time, 2)) +"s")
+        self.check()
 
     @staticmethod
-    def _set_one_country(cntry_info, LitPop_data, lon, lat, fn_nl, resolution, fin_mode, reference_year):
+    def _set_one_country(cntry_info, LitPop_data, lon, lat):
         """ Model one country.
 
         Parameters:
@@ -246,36 +259,23 @@ class LitPop(Exposures):
                 already distributed.
             lon (array): longitudinal coordinates
             lat (array): latudinal coordinates
-            fn_nl (str): file name of underlying data with path #Unimplemented #TODO
-            resolution (scalar): the resolution of the LitPop_data in arc-sec
-            fin_mode (str): financial mode
-            reference_year (int): reference year (default = 2016)
         """
         lp = LitPop()
-        lp.value = LitPop_data.values
-        lp.coord = np.empty((lp.value.size, 2))
-        lp.coord[:, 0] = lat
-        lp.coord[:, 1] = lon
-        lp.id = np.arange(1, lp.value.size+1)
-        lp.region_id = np.ones(lp.value.shape, int) * int(iso_cntry.get(cntry_info[1]).numeric)
-        lp.impact_id = {DEF_HAZ_TYPE: np.ones(lp.value.size, int)}
-        lp.ref_year = reference_year
-        lp.tag.description = ("LitPop based asset values for {} "\
-            + "at " + str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
-            + "\n").format(cntry_info[1],fin_mode)
-        lp.tag.file_name = fn_nl
-#        lp.tag.shape = cntry_info[2]
-#        lp.tag.country = cntry_info[1]
-        lp.value_unit = 'USD'
+        lp['value'] = LitPop_data.values
+        lp['latitude'] = lat
+        lp['longitude'] = lon
+        lp['region_id'] = np.ones(lp.value.shape, int) * int(iso_cntry.get(cntry_info[1]).numeric)
+        lp[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp.value.size, int)
         return lp
 
-    def _append_additional_info(self, cntry_ISO3, cntry_info):
-        if not hasattr(self, 'country_data'):
-            self.country_data = {'ISO3': [], 'name': [], 'shape': []}
-            self.country_data['ISO3'].append(cntry_ISO3)
-            self.country_data['name'].append(cntry_info[1])
-            self.country_data['shape'].append(cntry_info[2])
-        else:
+    def _append_additional_info(self, cntries_info):
+        """ Add country information in dictionary attribute country_data.
+
+        Parameters:
+            cntries_info (dict): country ISO3, name and shape
+        """
+        self.country_data = {'ISO3': [], 'name': [], 'shape': []}
+        for cntry_ISO3, cntry_info in cntries_info.items():
             self.country_data['ISO3'].append(cntry_ISO3)
             self.country_data['name'].append(cntry_info[1])
             self.country_data['shape'].append(cntry_info[2])
@@ -360,7 +360,7 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, 
         return LitPop_data, lon, lat
     else:
         return LitPop_data
-    
+
 def _LitPop_multiply_box(bm, gpw, x=1, y=1):
     '''
     PURPOSE:
@@ -1017,7 +1017,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, default_val=1, fin_mod
                 LOGGER.warning("Factor to convert GDP to assets will be set to 1 "\
                         + "(total asset value corresponds to GDP).")
                 wealth2GDP_factor = 1
-            cntry_val.append(wealth2GDP_factor)   
+            cntry_val.append(wealth2GDP_factor)
     else:
         LOGGER.error("invalid fin_mode")
 
@@ -1431,8 +1431,8 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
         plt.ylabel('Modelled GDP share')
         plt.show()
     return pearsonr, spearmanr
-    
-    
+
+
 def read_bm_file(bm_path, filename):
     """ Reads a single NASA BlackMarble GeoTiff and returns the data. Run all
         required checks first.
@@ -1459,7 +1459,7 @@ def read_bm_file(bm_path, filename):
         raise
 
 def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
-           **parameters): 
+           **parameters):
     """ Potential TODO: put cutting before zooming (faster), but with expanding
     bbox in order to preserve additional pixels for interpolation..."""
     """ Reads data from NASA GeoTiff files and cuts out the data along a chosen
@@ -1512,11 +1512,11 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
     nightlight_temp = None
     file_count = 0
     zoom_factor = 15/resolution  # Orignal resolution is 15 arc-seconds
-    for num_i, file_i in enumerate(BM_FILENAMES[::2]): 
+    for num_i, file_i in enumerate(BM_FILENAMES[::2]):
         """ Due to concat, we have to anlyse the tiles in pairs otherwise the
         data is concatenated in the wrong order"""
         arr1 = [None] * 2 # Prepopulate list
-        for j in range(0,2): 
+        for j in range(0,2):
             #Loop which cycles through the two tiles in each "column"
             if required_files[num_i*2+j] == 0:
                 continue
@@ -1571,7 +1571,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
     LOGGER.debug('Reducing to one dimension...')
     nightlight_intensity = pd.SparseArray(nightlight_temp.values\
                                           .reshape((-1,), order='F'),\
-                                          dtype='float') 
+                                          dtype='float')
     del nightlight_temp
     if return_coords == 1:
         if cut_bbox is None:
@@ -1682,7 +1682,7 @@ def _get_box_blackmarble(cut_bbox, **args):
         (cut_bbox)
     # Check existence of necessary files:
     files_exist = nightlight.check_nl_local_file_exists\
-        (req_sat_files, bm_path, 2016)[0] 
+        (req_sat_files, bm_path, 2016)[0]
         # XXX: Deliberately hard-coded year!
         # Change once other years are implemented
     # Download necessary files:
@@ -1706,7 +1706,7 @@ def _get_box_blackmarble(cut_bbox, **args):
         return nightlight_intensity, lon, lat
     else: ### TODO: ensure function is efficient if no coords are returned
         return nightlight_intensity
-    
+
 def admin1_validation(country, **args):
         """ Get LitPop based exposre for one country or multiple countries
     using values at reference year. If GDP or income
@@ -1760,7 +1760,7 @@ def admin1_validation(country, **args):
         all_coords = _LitPop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop, Lit and Pop
         LOGGER.info('Generating LitPop, Lit and Pop data at a resolution of %s arcsec.', str(resolution))
-        
+
         bm = _get_box_blackmarble(cut_bbox,\
                                     resolution=resolution, return_coords=0)
         gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
@@ -1781,7 +1781,7 @@ def admin1_validation(country, **args):
                                              category='cultural',
                                              name='admin_0_countries')
         shp_file = shapereader.Reader(shp_file)
-        
+
         for cntry_iso, cntry_val in country_info.items():
             if fin_mode == 'pc':
                 _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
@@ -1801,7 +1801,7 @@ def admin1_validation(country, **args):
             Lit3_curr = Lit3_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
             rho = np.zeros(12)
-            
+
             adm0 = dict()
             adm1 = dict()
             LOGGER.info('Lit:')
