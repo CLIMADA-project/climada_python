@@ -71,7 +71,8 @@ setup(
                       'pandas-datareader',
                       'pillow',
                       'netcdf4',
-                      'iso3166'
+                      'iso3166',
+                      'geopandas'
                      ],
 
     package_data={'': extra_files },
