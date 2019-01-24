@@ -22,6 +22,8 @@ import os
 import unittest
 import numpy as np
 
+from climada.entity.tag import Tag
+from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
@@ -112,7 +114,7 @@ class TestOneExposure(unittest.TestCase):
         # Set the entity default file to the demo one
         ent = Entity()
         ent.read_excel(ENT_TEST_XLS)
-        
+
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
         # Create impact object
@@ -132,10 +134,10 @@ class TestOneExposure(unittest.TestCase):
         # Compute
         insure_flag = True
         impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
-        
+
         self.assertEqual(impact.eai_exp.size, ent.exposures.shape[0])
         self.assertEqual(impact.at_event.size, hazard.intensity.shape[0])
-        
+
         events_pos = hazard.intensity[:, ent.exposures.centr_TC[iexp]].nonzero()[0]
         res_exp = np.zeros((ent.exposures.shape[0]))
         res_exp[iexp] = np.sum(impact.at_event[events_pos] * hazard.frequency[events_pos])
@@ -179,7 +181,7 @@ class TestCalc(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
-        
+
         # Check result
         num_events = len(hazard.event_id)
         num_exp = ent.exposures.shape[0]
@@ -207,11 +209,100 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
-     
-        
+
+class TestIO(unittest.TestCase):
+    ''' Test impact calc method.'''
+
+    def test_write_read_ev_test(self):
+        ''' Test result against reference value'''
+        # Create impact object
+        num_ev = 10
+        num_exp = 5
+        imp_write = Impact()
+        imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
+                         'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
+                         'if_set': Tag()}
+        imp_write.event_id = np.arange(num_ev)
+        imp_write.event_name = ['event_'+str(num) for num in imp_write.event_id]
+        imp_write.date = np.ones(num_ev)
+        imp_write.coord_exp = np.zeros((num_exp, 2))
+        imp_write.coord_exp[:, 0] = 1.5
+        imp_write.coord_exp[:, 1] = 2.5
+        imp_write.eai_exp = np.arange(num_exp) * 100
+        imp_write.at_event = np.arange(num_ev) * 50
+        imp_write.frequency = np.ones(num_ev) * 0.1
+        imp_write.tot_value = 1000
+        imp_write.aai_agg = 1001
+        imp_write.unit = 'USD'
+
+        file_name = os.path.dirname(__file__) + 'test.csv'
+        imp_write.write_csv(file_name)
+
+        imp_read = Impact()
+        imp_read.read_csv(file_name)
+        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
+        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
+        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
+        self.assertTrue(np.array_equal(imp_write.eai_exp, imp_read.eai_exp))
+        self.assertTrue(np.array_equal(imp_write.at_event, imp_read.at_event))
+        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        self.assertEqual(imp_write.tot_value, imp_read.tot_value)
+        self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
+        self.assertEqual(imp_write.unit, imp_read.unit)
+        self.assertEqual(str(imp_write.tag['haz']), str(imp_read.tag['haz']))
+        self.assertEqual(str(imp_write.tag['exp']), str(imp_read.tag['exp']))
+        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].file_name))
+        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].description))
+        self.assertEqual(0, len([i for i, j in
+            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+
+    def test_write_read_exp_test(self):
+        ''' Test result against reference value'''
+        # Create impact object
+        num_ev = 5
+        num_exp = 10
+        imp_write = Impact()
+        imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
+                         'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
+                         'if_set': Tag()}
+        imp_write.event_id = np.arange(num_ev)
+        imp_write.event_name = ['event_'+str(num) for num in imp_write.event_id]
+        imp_write.date = np.ones(num_ev)
+        imp_write.coord_exp = np.zeros((num_exp, 2))
+        imp_write.coord_exp[:, 0] = 1.5
+        imp_write.coord_exp[:, 1] = 2.5
+        imp_write.eai_exp = np.arange(num_exp) * 100
+        imp_write.at_event = np.arange(num_ev) * 50
+        imp_write.frequency = np.ones(num_ev) * 0.1
+        imp_write.tot_value = 1000
+        imp_write.aai_agg = 1001
+        imp_write.unit = 'USD'
+
+        file_name = os.path.dirname(__file__) + 'test.csv'
+        imp_write.write_csv(file_name)
+
+        imp_read = Impact()
+        imp_read.read_csv(file_name)
+        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
+        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
+        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
+        self.assertTrue(np.array_equal(imp_write.eai_exp, imp_read.eai_exp))
+        self.assertTrue(np.array_equal(imp_write.at_event, imp_read.at_event))
+        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        self.assertEqual(imp_write.tot_value, imp_read.tot_value)
+        self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
+        self.assertEqual(imp_write.unit, imp_read.unit)
+        self.assertEqual(str(imp_write.tag['haz']), str(imp_read.tag['haz']))
+        self.assertEqual(str(imp_write.tag['exp']), str(imp_read.tag['exp']))
+        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].file_name))
+        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].description))
+        self.assertEqual(0, len([i for i, j in
+            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
 
