@@ -1314,9 +1314,11 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                     LOGGER.warning('No admin1 data found for %s.', admin1_info[idx2].attributes['name'])
                     LOGGER.warning('Only admin0 data is calculated in this case.')
             for idx5, val2 in enumerate(admin1_info):
-                LP_sum = sum(LitPop_data.values)
-                temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
-                         [temp_adm1['mask'][idx5].values])/LP_sum)
+                temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
+                         [idx5])
+                # LP_sum = sum(LitPop_data.values)
+                # temp_adm1['adm1_LitPop_share'].append(sum(LitPop_data.values\
+                #        [temp_adm1['mask'][idx5].values])/LP_sum) 
         if adm1_scatter == 1:
             pearsonr, spearmanr, rmse, rmsf = _LitPop_scatter(temp_adm1['adm0_LitPop_share'],\
                             temp_adm1['adm1_LitPop_share'], admin1_info, check_plot) 
@@ -1429,8 +1431,9 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     """
     adm0_data = np.array(adm0_data)
     adm1_data = np.array(adm1_data)
-    adm1_data = adm1_data[adm0_data.nonzero()]
-    adm0_data = adm0_data[adm0_data.nonzero()]
+    inter = np.intersect1d(np.nonzero(adm1_data), np.nonzero(adm0_data))
+    adm1_data = adm1_data[inter].astype(float)
+    adm0_data = adm0_data[inter].astype(float)
     # Correlation coefficients:
     spearmanr = stats.spearmanr(adm0_data, adm1_data)[0]
     pearsonr = stats.pearsonr(adm0_data, adm1_data)[0]
@@ -1439,7 +1442,7 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     # Relative root mean square error:
     # rrmse = (sum(((adm0_data-adm1_data)/adm1_data)**2))**.5
     # Root mean squared fraction:
-    rmsf = np.exp(np.sqrt(np.sum(np.log(adm0_data/adm1_data)**2)/ \
+    rmsf = np.exp(np.sqrt(np.sum((np.log(adm0_data/adm1_data))**2)/ \
                                         adm0_data.shape[0])) 
     if check_plot:
         plt.figure()
