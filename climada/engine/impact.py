@@ -173,7 +173,7 @@ class Impact():
         tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures[if_haz][exp_idx] == imp_fun.id)[0]
+            exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
             exp_step = int(CONFIG['global']['max_matrix_size']/num_events)
             if not exp_step:
@@ -239,7 +239,7 @@ class Impact():
             insure_flag (bool): consider deductible and cover of exposures
         """
         # get assigned centroids
-        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type][exp_iimp]
+        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
 
         # get affected intensities
         inten_val = hazard.intensity[:, icens].todense()
@@ -275,10 +275,10 @@ class Impact():
                              "unit", "tot_value", "aai_agg", "event_id",
                              "event_name", "event_date", "event_frequency",
                              "at_event", "eai_exp", "exp_lat", "exp_lon"])
-            csv_data = [[self.tag['haz'].haz_type, self.tag['haz'].file_name,
-                         self.tag['haz'].description],
-                        [self.tag['exp'].file_name, self.tag['exp'].description],
-                        [self.tag['if_set'].file_name, self.tag['if_set'].description],
+            csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
+                         [self.tag['haz'].description]],
+                        [[self.tag['exp'].file_name], [self.tag['exp'].description]],
+                        [[self.tag['if_set'].file_name], [self.tag['if_set'].description]],
                         [self.unit], [self.tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
                         self.frequency, self.at_event,
@@ -308,10 +308,13 @@ class Impact():
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
-        self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]), str(imp_df.tag_hazard[1]),
+        self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
+                                 str(imp_df.tag_hazard[1]),
                                  str(imp_df.tag_hazard[2]))
-        self.tag['exp'] = Tag(str(imp_df.tag_exposure[0]), str(imp_df.tag_exposure[1]))
-        self.tag['if_set'] = Tag(str(imp_df.tag_impact_func[0]), str(imp_df.tag_impact_func[1]))
+        self.tag['exp'] = Tag(str(imp_df.tag_exposure[0]),
+                              str(imp_df.tag_exposure[1]))
+        self.tag['if_set'] = Tag(str(imp_df.tag_impact_func[0]),
+                                 str(imp_df.tag_impact_func[1]))
 
     @property
     def coord_exp(self):

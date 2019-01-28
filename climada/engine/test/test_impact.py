@@ -249,10 +249,6 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(str(imp_write.tag['haz']), str(imp_read.tag['haz']))
-        self.assertEqual(str(imp_write.tag['exp']), str(imp_read.tag['exp']))
-        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].file_name))
-        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].description))
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
 
@@ -292,10 +288,6 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(str(imp_write.tag['haz']), str(imp_read.tag['haz']))
-        self.assertEqual(str(imp_write.tag['exp']), str(imp_read.tag['exp']))
-        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].file_name))
-        self.assertEqual(str(np.nan), str(imp_read.tag['if_set'].description))
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
 
