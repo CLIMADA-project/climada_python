@@ -18,7 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test MeasureSet and Measure classes.
 """
-
+import os
 import unittest
 import numpy as np
 
@@ -28,17 +28,20 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.base import Measure
 from climada.entity.measures.measure_set import MeasureSet
-from climada.entity.measures.source import READ_SET
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+                        os.pardir, 'engine', 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
-class TestImpact(unittest.TestCase):
+class TestApply(unittest.TestCase):
     """Test implement measures functions."""
     def test_change_imp_func_pass(self):
         """Test change_imp_func"""
-        meas = MeasureSet(ENT_DEMO_MAT)
+        meas = MeasureSet()
+        meas.read_mat(ENT_DEMO_MAT)
         act_1 = meas.get_measure('Mangroves')
-
+        
         imp_set = ImpactFuncSet()
         imp_tc = ImpactFunc()
         imp_tc.haz_type = 'XX'
@@ -53,7 +56,7 @@ class TestImpact(unittest.TestCase):
                                0.398500000000000, 0.657000000000000, 1.000000000000000,
                                1.000000000000000, 1.000000000000000])
         imp_set.add_func(imp_tc)
-        new_imp = act_1.change_imp_func(imp_set).get_func('XX')[0]
+        new_imp = act_1._change_imp_func(imp_set).get_func('XX')[0]
 
         self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
             54., 64., 74., 84., 104.])))
@@ -64,9 +67,10 @@ class TestImpact(unittest.TestCase):
             1.000000000000000, 1.000000000000000])))
         self.assertFalse(id(new_imp) == id(imp_tc))
 
-    def test_implement_pass(self):
+    def test_apply_pass(self):
         """Test implement"""
-        meas = MeasureSet(ENT_DEMO_MAT)
+        meas = MeasureSet()
+        meas.read_mat(ENT_DEMO_MAT)
         act_1 = meas.get_measure('Mangroves')
 
         imp_set = ImpactFuncSet()
@@ -86,7 +90,7 @@ class TestImpact(unittest.TestCase):
 
         hazard = Hazard('XX')
         exposures = Exposures()
-        new_exp, new_ifs, new_haz = act_1.implement(exposures, imp_set, hazard)
+        new_exp, new_ifs, new_haz = act_1.apply(exposures, imp_set, hazard)
 
         self.assertFalse(id(new_ifs) == id(imp_tc))
         self.assertTrue(id(new_exp) == id(exposures))
@@ -110,13 +114,6 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(act_1, 'paa_impact'))
         self.assertTrue(hasattr(act_1, 'risk_transf_attach'))
         self.assertTrue(hasattr(act_1, 'risk_transf_cover'))
-
-    def test_get_def_vars(self):
-        """ Test def_source_vars function."""
-        self.assertTrue(MeasureSet.get_def_file_var_names('xls') ==
-                        READ_SET['XLS'][0])
-        self.assertTrue(MeasureSet.get_def_file_var_names('.mat') ==
-                        READ_SET['MAT'][0])
 
 class TestContainer(unittest.TestCase):
     """Test MeasureSet as container."""
@@ -363,22 +360,251 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(meas.get_names(), [act_1.name, act_2.name])
         self.assertEqual(meas.get_measure(act_1.name).paa_impact, act_11.paa_impact)
 
-class TestReadParallel(unittest.TestCase):
-    """Check read function with several files"""
+class TestReaderExcel(unittest.TestCase):
+    """Test reader functionality of the MeasuresExcel class"""
 
-    def test_read_two_pass(self):
-        """Both files are readed and appended."""
-        descriptions = ['desc1','desc2']
-        meas = MeasureSet([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
+    def test_demo_file(self):
+        """ Read demo excel file"""
+        meas = MeasureSet()
+        description = 'One single file.'
+        meas.read_excel(ENT_TEST_XLS, description)
+
+        # Check results
+        n_meas = 4
+
+        self.assertEqual(len(meas.get_measure()), n_meas)
+
+        act_man = meas.get_measure('Mangroves')
+        self.assertEqual(act_man.name, 'Mangroves')
+        self.assertEqual(type(act_man.color_rgb), np.ndarray)
+        self.assertEqual(len(act_man.color_rgb), 3)
+        self.assertEqual(act_man.color_rgb[0], 0.1529)
+        self.assertEqual(act_man.color_rgb[1], 0.251)
+        self.assertEqual(act_man.color_rgb[2], 0.5451)
+        self.assertEqual(act_man.cost, 1311768360.8515418)
+        self.assertEqual(act_man.hazard_freq_cutoff, 0)
+        self.assertEqual(act_man.hazard_inten_imp, (1, -4))
+        self.assertEqual(act_man.mdd_impact, (1, 0))
+        self.assertEqual(act_man.paa_impact, (1, 0))
+        self.assertEqual(act_man.risk_transf_attach, 0)
+        self.assertEqual(act_man.risk_transf_cover, 0)
+
+        act_buil = meas.get_measure('Building code')
+        self.assertEqual(act_buil.name, 'Building code')
+        self.assertEqual(type(act_buil.color_rgb), np.ndarray)
+        self.assertEqual(len(act_buil.color_rgb), 3)
+        self.assertEqual(act_buil.color_rgb[0], 0.6980)
+        self.assertEqual(act_buil.color_rgb[1], 0.8745)
+        self.assertEqual(act_buil.color_rgb[2], 0.9333)
+        self.assertEqual(act_buil.cost, 9200000000.0000000)
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
+        self.assertEqual(act_buil.mdd_impact, (0.75, 0))
+        self.assertEqual(act_buil.paa_impact, (1, 0))
+        self.assertEqual(act_buil.risk_transf_attach, 0)
+        self.assertEqual(act_buil.risk_transf_cover, 0)
+
+        self.assertEqual(meas.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(meas.tag.description, description)
+
+    def test_template_file_pass(self):
+        """ Read template excel file"""
+        meas = MeasureSet()
+        meas.read_excel(ENT_TEMPLATE_XLS)
+
+        self.assertEqual(len(meas.get_measure()), 7)
+
+        name = 'elevate existing buildings'
+        act_buil = meas.get_measure(name)
+        self.assertEqual(act_buil.name, name)
+        self.assertEqual(act_buil.haz_type, 'TS')
+        self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.84, 0.89, 0.70])))
+        self.assertEqual(act_buil.cost, 3911963265.476649)
+
+        self.assertEqual(act_buil.hazard_set, 'nil')
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_inten_imp, (1, -2))
+
+        self.assertEqual(act_buil.exposures_set, 'nil')
+        self.assertEqual(act_buil.exp_region_id, 0)
+
+        self.assertEqual(act_buil.paa_impact, (0.9, 0))
+        self.assertEqual(act_buil.mdd_impact, (0.9, -0.1))
+        self.assertEqual(act_buil.imp_fun_map, 'nil')
+
+        self.assertEqual(act_buil.risk_transf_attach, 0)
+        self.assertEqual(act_buil.risk_transf_cover, 0)
+
+        name = 'vegetation management'
+        act_buil = meas.get_measure(name)
+        self.assertEqual(act_buil.name, name)
+        self.assertEqual(act_buil.haz_type, 'TC')
+        self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.76, 0.84, 0.60])))
+        self.assertEqual(act_buil.cost,  63968125.00687534)
+
+        self.assertEqual(act_buil.hazard_set, 'nil')
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_inten_imp, (1, -1))
+
+        self.assertEqual(act_buil.exposures_set, 'nil')
+        self.assertEqual(act_buil.exp_region_id, 0)
+
+        self.assertEqual(act_buil.paa_impact, (0.8, 0))
+        self.assertEqual(act_buil.mdd_impact, (1, 0))
+        self.assertEqual(act_buil.imp_fun_map, 'nil')
+
+        self.assertEqual(act_buil.risk_transf_attach, 0)
+        self.assertEqual(act_buil.risk_transf_cover, 0)
+
+        self.assertEqual(meas.get_measure('enforce building code').imp_fun_map, '1to3')
+
         self.assertEqual(meas.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(meas.tag.description, 'desc1 + desc2')
-        self.assertEqual(meas.num_measures(), 7)
+        self.assertEqual(meas.tag.description, '')
+
+class TestReaderMat(unittest.TestCase):
+    """Test reader functionality of the MeasuresMat class"""
+
+    def test_demo_file(self):
+        # Read demo excel file
+        meas = MeasureSet()
+        description = 'One single file.'
+        meas.read_mat(ENT_DEMO_MAT, description)
+
+        # Check results
+        n_meas = 4
+
+        self.assertEqual(len(meas.get_measure()), n_meas)
+
+        act_man = meas.get_measure('Mangroves')
+        self.assertEqual(act_man.name, 'Mangroves')
+        self.assertEqual(act_man.haz_type, 'XX')
+        self.assertEqual(type(act_man.color_rgb), np.ndarray)
+        self.assertEqual(len(act_man.color_rgb), 3)
+        self.assertEqual(act_man.color_rgb[0], 0.1529)
+        self.assertEqual(act_man.color_rgb[1], 0.251)
+        self.assertEqual(act_man.color_rgb[2], 0.5451)
+        self.assertEqual(act_man.cost, 1311768360.8515418)
+
+        self.assertEqual(act_man.hazard_freq_cutoff, 0)
+        self.assertEqual(act_man.hazard_set, 'nil')
+        self.assertEqual(act_man.hazard_inten_imp, (1, -4))
+
+        self.assertEqual(act_man.exposures_set, 'nil')
+        self.assertEqual(act_man.exp_region_id, 0)
+
+        self.assertEqual(act_man.mdd_impact, (1, 0))
+        self.assertEqual(act_man.paa_impact, (1, 0))
+        self.assertEqual(act_man.imp_fun_map, 'nil')
+
+        self.assertEqual(act_man.risk_transf_attach, 0)
+        self.assertEqual(act_man.risk_transf_cover, 0)
+
+
+        act_buil = meas.get_measure('Building code')
+        self.assertEqual(act_buil.name, 'Building code')
+        self.assertEqual(act_buil.haz_type, 'XX')
+        self.assertEqual(type(act_buil.color_rgb), np.ndarray)
+        self.assertEqual(len(act_buil.color_rgb), 3)
+        self.assertEqual(act_buil.color_rgb[0], 0.6980)
+        self.assertEqual(act_buil.color_rgb[1], 0.8745)
+        self.assertEqual(act_buil.color_rgb[2], 0.9333)
+        self.assertEqual(act_buil.cost, 9200000000.0000000)
+
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_set, 'nil')
+        self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
+
+        self.assertEqual(act_buil.exposures_set, 'nil')
+        self.assertEqual(act_buil.exp_region_id, 0)
+
+        self.assertEqual(act_buil.mdd_impact, (0.75, 0))
+        self.assertEqual(act_buil.paa_impact, (1, 0))
+        self.assertEqual(act_man.imp_fun_map, 'nil')
+
+        self.assertEqual(act_buil.risk_transf_attach, 0)
+        self.assertEqual(act_buil.risk_transf_cover, 0)
+
+        self.assertEqual(meas.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(meas.tag.description, description)
+
+class TestWriter(unittest.TestCase):
+    """Test reader functionality of the MeasuresExcel class"""
+
+    def test_write_read_file(self):
+        """ Write and read excel file"""
+        
+        act_1 = Measure()
+        act_1.name = 'Mangrove'
+        act_1.color_rgb = np.array([1, 1, 1])
+        act_1.cost = 10
+        act_1.mdd_impact = (1, 2)
+        act_1.paa_impact = (1, 2)
+        act_1.hazard_inten_imp = (1, 2)
+        act_1.risk_transf_cover = 500
+
+        act_11 = Measure()
+        act_11.name = 'Something'
+        act_11.color_rgb = np.array([1, 1, 1])
+        act_11.mdd_impact = (1, 2)
+        act_11.paa_impact = (1, 3)
+        act_11.hazard_inten_imp = (1, 2)
+        act_11.exp_region_id = 2
+
+        act_2 = Measure()
+        act_2.name = 'Anything'
+        act_2.haz_type = 'Fl'
+        act_2.color_rgb = np.array([1, 1, 1])
+        act_2.mdd_impact = (1, 2)
+        act_2.paa_impact = (1, 2)
+        act_2.hazard_inten_imp = (1, 2)
+        act_2.hazard_freq_cutoff = 30
+        act_2.imp_fun_map = 'map'
+
+        meas_set = MeasureSet()
+        meas_set.add_measure(act_1)
+        meas_set.add_measure(act_11)
+        meas_set.add_measure(act_2)
+        
+        file_name = 'test_meas.xlsx'
+        meas_set.write_excel(file_name)
+        
+        meas_read = MeasureSet()
+        meas_read.read_excel(file_name, 'test')
+        
+        self.assertEqual(meas_read.tag.file_name, file_name)
+        self.assertEqual(meas_read.tag.description, 'test')
+        
+        for meas in meas_read.get_measure():
+            if meas.name == 'Mangrove':
+                meas_ref = act_1
+            elif meas.name == 'Something':
+                meas_ref = act_11
+            elif meas.name == 'Anything':
+                meas_ref = act_2
+            
+            self.assertEqual(meas_ref.name, meas.name)
+            self.assertEqual(meas_ref.haz_type, meas.haz_type)
+            self.assertEqual(meas_ref.cost, meas.cost)
+            self.assertEqual(meas_ref.hazard_set, meas.hazard_set)
+            self.assertEqual(meas_ref.hazard_freq_cutoff, meas.hazard_freq_cutoff)
+            self.assertEqual(meas_ref.exposures_set, meas.exposures_set)
+            self.assertEqual(meas_ref.exp_region_id, meas.exp_region_id)
+            self.assertTrue(np.array_equal(meas_ref.color_rgb, meas.color_rgb))
+            self.assertEqual(meas_ref.mdd_impact, meas.mdd_impact)
+            self.assertEqual(meas_ref.paa_impact, meas.paa_impact)
+            self.assertEqual(meas_ref.hazard_inten_imp, meas.hazard_inten_imp)
+            self.assertEqual(meas_ref.imp_fun_map, meas.imp_fun_map)
+            self.assertEqual(meas_ref.risk_transf_attach, meas.risk_transf_attach)
+            self.assertEqual(meas_ref.risk_transf_cover, meas.risk_transf_cover)
+
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestApply))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

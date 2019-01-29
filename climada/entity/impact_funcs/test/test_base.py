@@ -35,7 +35,7 @@ class TestInterpolation(unittest.TestCase):
         imp_fun.mdd = np.arange(0, 1, 0.1)
         new_inten = 17.2
         self.assertEqual(imp_fun.calc_mdr(new_inten), 0.029583999999999996)
-        
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolation)
 unittest.TextTestRunner(verbosity=2).run(TESTS)

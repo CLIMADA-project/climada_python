@@ -18,13 +18,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test ImpactFuncSet class.
 """
-
+import os
 import unittest
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
-from climada.entity.impact_funcs.source import READ_SET
-from climada.util.constants import ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+                        os.pardir, 'engine', 'test', 'data')
+ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -42,13 +45,6 @@ class TestConstructor(unittest.TestCase):
         self.assertTrue(hasattr(vulner_1, 'intensity_unit'))
         self.assertTrue(hasattr(vulner_1, 'mdd'))
         self.assertTrue(hasattr(vulner_1, 'paa'))
-
-    def test_get_def_vars(self):
-        """ Test def_source_vars function."""
-        self.assertTrue(ImpactFuncSet.get_def_file_var_names('xls') == 
-                        READ_SET['XLS'][0])
-        self.assertTrue(ImpactFuncSet.get_def_file_var_names('mat') == 
-                        READ_SET['MAT'][0])
 
 class TestContainer(unittest.TestCase):
     """Test ImpactFuncSet as container."""
@@ -435,21 +431,257 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(imp_fun.size('FL'), 1)
         self.assertEqual(imp_fun.size('WS'), 1)      
 
-class TestReadParallel(unittest.TestCase):
-    """Check read function with several files"""
+class TestReaderMat(unittest.TestCase):
+    """Test reader functionality of the imp_funcsFuncsExcel class"""
 
-    def test_read_two_pass(self):
-        """Both files are readed and appended."""
-        descriptions = ['desc1','desc2']
-        imp_funcs = ImpactFuncSet([ENT_TEMPLATE_XLS, ENT_TEMPLATE_XLS], descriptions)
-        self.assertEqual(imp_funcs.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(imp_funcs.tag.description, 'desc1 + desc2')
-        self.assertEqual(imp_funcs.size(), 11)
+    def test_demo_file_pass(self):
+        """ Read demo excel file"""
+        # Read demo mat file
+        imp_funcs = ImpactFuncSet()
+        description = 'One single file.'
+        imp_funcs.read_mat(ENT_DEMO_MAT, description)
+
+        # Check results
+        n_funcs = 2
+        hazard = 'TC'
+        first_id = 1
+        second_id = 3
+
+        self.assertEqual(len(imp_funcs._data), 1)
+        self.assertEqual(len(imp_funcs._data[hazard]), n_funcs)
+
+        # first function
+        self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
+        self.assertEqual(imp_funcs._data[hazard][first_id].name,
+                         'Tropical cyclone default')
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+                         'm/s')
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+                         (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[2], 30)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[3], 40)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[4], 50)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[5], 60)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[6], 70)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[7], 80)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[8], 100)
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd[8], 0.41079600)
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa[8], 1)
+
+        # second function
+        self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
+        self.assertEqual(imp_funcs._data[hazard][second_id].name,
+                         'TC Building code')
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+                         'm/s')
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+                         (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[2], 30)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[3], 40)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[4], 50)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[5], 60)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[6], 70)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[7], 80)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[8], 100)
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd[8], 0.4)
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
+
+        # general information
+        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(imp_funcs.tag.description, description)
+
+class TestReaderExcel(unittest.TestCase):
+    """Test reader functionality of the imp_funcsFuncsExcel class"""
+
+    def test_demo_file_pass(self):
+        """ Read demo excel file"""
+        # Read demo excel file
+        imp_funcs = ImpactFuncSet()
+        description = 'One single file.'
+        imp_funcs.read_excel(ENT_TEST_XLS, description)
+
+        # Check results
+        n_funcs = 2
+        hazard = 'TC'
+        first_id = 1
+        second_id = 3
+
+        self.assertEqual(len(imp_funcs._data), 1)
+        self.assertEqual(len(imp_funcs._data[hazard]), n_funcs)
+
+        # first function
+        self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
+        self.assertEqual(imp_funcs._data[hazard][first_id].name,
+                         'Tropical cyclone default')
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+                         'm/s')
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+                         (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[2], 30)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[3], 40)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[4], 50)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[5], 60)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[6], 70)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[7], 80)
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity[8], 100)
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].mdd[8], 0.41079600)
+
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][first_id].paa[8], 1)
+
+        # second function
+        self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
+        self.assertEqual(imp_funcs._data[hazard][second_id].name,
+                         'TC Building code')
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+                         'm/s')
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+                         (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[2], 30)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[3], 40)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[4], 50)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[5], 60)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[6], 70)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[7], 80)
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity[8], 100)
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].mdd[8], 0.4)
+
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa.shape, (9,))
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa[0], 0)
+        self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
+
+        # general information
+        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(imp_funcs.tag.description, description)
+
+    def test_template_file_pass(self):
+        """ Read template excel file"""
+        imp_funcs = ImpactFuncSet()
+        imp_funcs.read_excel(ENT_TEMPLATE_XLS)
+        # Check some results
+        self.assertEqual(len(imp_funcs._data), 10)
+        self.assertEqual(len(imp_funcs._data['TC'][3].paa), 9)
+        self.assertEqual(len(imp_funcs._data['EQ'][1].intensity), 14)
+        self.assertEqual(len(imp_funcs._data['HS'][1].mdd), 16)
+
+class TestWriter(unittest.TestCase):
+    """Test reader functionality of the imp_funcsFuncsExcel class"""
+
+    def test_write_read_pass(self):
+        """ Write + read excel file"""
+        
+        imp_funcs = ImpactFuncSet()
+        imp_funcs.tag.file_name = 'No file name'
+        imp_funcs.tag.description = 'test writer'
+        
+        imp1 = ImpactFunc()
+        imp1.id = 1
+        imp1.name = 'code 1'
+        imp1.intensity_unit = 'm/s'
+        imp1.haz_type = 'TC'
+        imp1.intensity = np.arange(100)
+        imp1.mdd = np.arange(100) * 0.5
+        imp1.paa = np.ones(100)
+        imp_funcs.add_func(imp1)
+        
+        imp2 = ImpactFunc()
+        imp2.id = 2
+        imp2.name = 'code 2'
+        imp2.intensity_unit = 'm/s'
+        imp2.haz_type = 'TC'
+        imp2.intensity = np.arange(102)
+        imp2.mdd = np.arange(102) * 0.25
+        imp2.paa = np.ones(102)
+        imp_funcs.add_func(imp2)
+
+        imp3 = ImpactFunc()
+        imp3.id = 1
+        imp3.name = 'code 1'
+        imp3.intensity_unit = 'm'
+        imp3.haz_type = 'FL'
+        imp3.intensity = np.arange(86)
+        imp3.mdd = np.arange(86) * 0.15
+        imp3.paa = np.ones(86)
+        imp_funcs.add_func(imp3)
+
+        imp4 = ImpactFunc()
+        imp4.id = 15
+        imp4.name = 'code 15'
+        imp4.intensity_unit = 'K'
+        imp4.haz_type = 'DR'
+        imp4.intensity = np.arange(5)
+        imp4.mdd = np.arange(5)
+        imp4.paa = np.ones(5)
+        imp_funcs.add_func(imp4)
+
+        file_name = 'test_write.xlsx'
+        imp_funcs.write_excel(file_name)
+        
+        imp_res = ImpactFuncSet()
+        imp_res.read_excel(file_name)
+        
+        self.assertEqual(imp_res.tag.file_name, file_name)
+        self.assertEqual(imp_res.tag.description, '')
+
+        # first function
+        for fun_haz, fun_dict in imp_res.get_func().items():
+            for fun_id, fun in fun_dict.items():
+                if fun_haz == 'TC' and fun_id == 1:
+                    ref_fun = imp1
+                elif fun_haz == 'TC' and fun_id == 2:
+                    ref_fun = imp2
+                elif fun_haz == 'FL' and fun_id == 1:
+                    ref_fun = imp3
+                elif fun_haz == 'DR' and fun_id == 15:
+                    ref_fun = imp4
+                else:
+                    self.assertEqual(1, 0)
+                
+                self.assertEqual(ref_fun.haz_type, fun.haz_type)
+                self.assertEqual(ref_fun.id, fun.id)
+                self.assertEqual(ref_fun.name, fun.name)
+                self.assertEqual(ref_fun.intensity_unit, fun.intensity_unit)
+                self.assertTrue(np.allclose(ref_fun.intensity, fun.intensity))
+                self.assertTrue(np.allclose(ref_fun.mdd, fun.mdd))
+                self.assertTrue(np.allclose(ref_fun.paa, fun.paa))
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadParallel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

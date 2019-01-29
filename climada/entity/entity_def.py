@@ -67,13 +67,13 @@ class Entity(object):
         self.exposures.read_mat(file_name)
 
         self.disc_rates = DiscRates()
-        self.disc_rates.read(file_name, description)
+        self.disc_rates.read_mat(file_name, description)
 
         self.impact_funcs = ImpactFuncSet()
-        self.impact_funcs.read(file_name, description)
+        self.impact_funcs.read_mat(file_name, description)
 
         self.measures = MeasureSet()
-        self.measures.read(file_name, description)
+        self.measures.read_mat(file_name, description)
 
     def read_excel(self, file_name, description=''):
         """Read csv or xls or xlsx file following climada's template.
@@ -93,13 +93,20 @@ class Entity(object):
         self.exposures.tag.description = description
 
         self.disc_rates = DiscRates()
-        self.disc_rates.read(file_name, description)
+        self.disc_rates.read_excel(file_name, description)
 
         self.impact_funcs = ImpactFuncSet()
-        self.impact_funcs.read(file_name, description)
+        self.impact_funcs.read_excel(file_name, description)
 
         self.measures = MeasureSet()
-        self.measures.read(file_name, description)
+        self.measures.read_excel(file_name, description)
+
+    def write_excel(self, file_name):
+        """ Write excel file following template. """
+        self.exposures.to_excel(file_name)
+        self.impact_funcs.write_excel(file_name)
+        self.measures.write_excel(file_name)
+        self.disc_rates.write_excel(file_name)
 
     def check(self):
         """Check instance attributes.

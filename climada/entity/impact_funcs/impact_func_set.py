@@ -19,28 +19,48 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define ImpactFuncSet class.
 """
 
-__all__ = ['ImpactFuncSet',
-           'FILE_EXT']
+__all__ = ['ImpactFuncSet']
 
-import os
 import copy
 import logging
+from itertools import repeat
+import numpy as np
+import pandas as pd
+import xlsxwriter
 
-from climada.entity.impact_funcs.source import READ_SET
-from climada.util.files_handler import to_list, get_file_names
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.tag import Tag
-import climada.util.plot as plot
+import climada.util.plot as u_plot
+import climada.util.hdf5_handler as hdf5
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'.mat':  'MAT',
-            '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
-""" Supported files format to read from """
+DEF_VAR_EXCEL = {'sheet_name': 'impact_functions',
+                 'col_name': {'func_id' : 'impact_fun_id',
+                              'inten' : 'intensity',
+                              'mdd' : 'mdd',
+                              'paa' : 'paa',
+                              'name' : 'name',
+                              'unit' : 'intensity_unit',
+                              'peril' : 'peril_id'
+                             }
+                }
+""" Excel and csv variable names """
 
-class ImpactFuncSet(object):
+DEF_VAR_MAT = {'sup_field_name': 'entity',
+               'field_name': 'damagefunctions',
+               'var_name': {'fun_id' : 'DamageFunID',
+                            'inten' : 'Intensity',
+                            'mdd' : 'MDD',
+                            'paa' : 'PAA',
+                            'name' : 'name',
+                            'unit' : 'Intensity_unit',
+                            'peril' : 'peril_ID'
+                           }
+              }
+""" MATLAB variable names """
+
+class ImpactFuncSet():
     """Contains impact functions of type ImpactFunc. Loads from
     files with format defined in FILE_EXT.
 
@@ -50,17 +70,8 @@ class ImpactFuncSet(object):
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name='', description=''):
-        """Fill values from file, if provided.
-
-        Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
-
-        Raises:
-            ValueError
+    def __init__(self):
+        """Empty initialization.
 
         Examples:
             Fill impact functions with values and check consistency data:
@@ -77,11 +88,10 @@ class ImpactFuncSet(object):
 
             Read impact functions from file and checks consistency data.
 
-            >>> imp_fun = ImpactFuncSet(ENT_TEMPLATE_XLS)
+            >>> imp_fun = ImpactFuncSet()
+            >>> imp_fun.read(ENT_TEMPLATE_XLS)
         """
         self.clear()
-        if file_name != '':
-            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -138,6 +148,37 @@ class ImpactFuncSet(object):
         else:
             self._data = dict()
 
+    def get_func(self, haz_type=None, fun_id=None):
+        """Get ImpactFunc(s) of input hazard type and/or id.
+        If no input provided, all impact functions are returned.
+
+        Parameters:
+            haz_type (str, optional): hazard type
+            fun_id (int, optional): ImpactFunc id
+
+        Returns:
+            list(ImpactFunc) (if haz_type and/or fun_id), {ImpactFunc.haz_type:
+            {ImpactFunc.id : ImpactFunc}} (if None)
+        """
+        if (haz_type is not None) and (fun_id is not None):
+            try:
+                return [self._data[haz_type][fun_id]]
+            except KeyError:
+                return list()
+        elif haz_type is not None:
+            try:
+                return list(self._data[haz_type].values())
+            except KeyError:
+                return list()
+        elif fun_id is not None:
+            haz_return = self.get_hazard_types(fun_id)
+            vul_return = []
+            for vul_haz in haz_return:
+                vul_return.append(self._data[vul_haz][fun_id])
+            return vul_return
+        else:
+            return self._data
+
     def get_hazard_types(self, fun_id=None):
         """Get impact functions hazard types contained for the id provided.
         Return all hazard types if no input id.
@@ -173,42 +214,11 @@ class ImpactFuncSet(object):
             for vul_haz, vul_dict in self._data.items():
                 out_dict[vul_haz] = list(vul_dict.keys())
             return out_dict
-        else:
-            try:
-                return list(self._data[haz_type].keys())
-            except KeyError:
-                return list()
 
-    def get_func(self, haz_type=None, fun_id=None):
-        """Get ImpactFunc(s) of input hazard type and/or id.
-        If no input provided, all impact functions are returned.
-
-        Parameters:
-            haz_type (str, optional): hazard type
-            fun_id (int, optional): ImpactFunc id
-
-        Returns:
-            list(ImpactFunc) (if haz_type and/or fun_id), {ImpactFunc.haz_type:
-            {ImpactFunc.id : ImpactFunc}} (if None)
-        """
-        if (haz_type is not None) and (fun_id is not None):
-            try:
-                return [self._data[haz_type][fun_id]]
-            except KeyError:
-                return list()
-        elif haz_type is not None:
-            try:
-                return list(self._data[haz_type].values())
-            except KeyError:
-                return list()
-        elif fun_id is not None:
-            haz_return = self.get_hazard_types(fun_id)
-            vul_return = []
-            for vul_haz in haz_return:
-                vul_return.append(self._data[vul_haz][fun_id])
-            return vul_return
-        else:
-            return self._data
+        try:
+            return list(self._data[haz_type].keys())
+        except KeyError:
+            return list()
 
     def size(self, haz_type=None, fun_id=None):
         """Get number of impact functions contained with input hazard type and
@@ -221,7 +231,7 @@ class ImpactFuncSet(object):
         Returns:
             int
         """
-        if (haz_type != None) or (fun_id != None):
+        if (haz_type is not None) or (fun_id is not None):
             return len(self.get_func(haz_type, fun_id))
 
         return sum(len(vul_list) for vul_list in self.get_ids().values())
@@ -244,32 +254,8 @@ class ImpactFuncSet(object):
                     raise ValueError
                 vul.check()
 
-    def read(self, files, descriptions='', var_names=None):
-        """Read and check impact functions.
-
-        Parameters:
-            files (str or list(str)): absolute file name(s) or folder name
-                containing the files to read
-            descriptions (str or list(str), optional): one description of the
-                data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in
-                the file (default: check def_source_vars() function)
-
-        Raises:
-            ValueError
-        """
-        # Construct absolute path file names
-        all_files = get_file_names(files)
-        if not all_files:
-            LOGGER.warning('No valid file provided: %s', files)
-        desc_list = to_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_list(len(all_files), var_names, 'var_names')
-        self.clear()
-        for file, desc, var in zip(all_files, desc_list, var_list):
-            self.append(self._read_one(file, desc, var))
-
     def append(self, impact_funcs):
-        """Check and append impact functions of input ImpactFuncSet to current
+        """Append impact functions of input ImpactFuncSet to current
         ImpactFuncSet. Overwrite ImpactFunc if same id.
 
         Parameters:
@@ -308,7 +294,7 @@ class ImpactFuncSet(object):
         else:
             hazards = self._data.keys()
 
-        graph = plot.Graph2D('', num_plts)
+        graph = u_plot.Graph2D('', num_plts)
         for sel_haz in hazards:
             if fun_id is not None:
                 self._data[sel_haz][fun_id].plot(graph)
@@ -317,58 +303,168 @@ class ImpactFuncSet(object):
                     self._data[sel_haz][sel_id].plot(graph)
         return graph.get_elems()
 
-    @staticmethod
-    def get_sup_file_format():
-        """ Get supported file extensions that can be read.
-
-        Returns:
-            list(str)
-        """
-        return list(FILE_EXT.keys())
-
-    @staticmethod
-    def get_def_file_var_names(src_format):
-        """Get default variable names for given file format.
+    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+        """Read excel file following template and store variables.
 
         Parameters:
-            src_format (str): extension of the file, e.g. '.xls', '.mat'
-
-        Returns:
-            dict: dictionary with variable names
-        """
-        try:
-            if '.' not in src_format:
-                src_format = '.' + src_format
-            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
-        except KeyError:
-            LOGGER.error('File extension not supported: %s.', src_format)
-            raise ValueError
-
-    @staticmethod
-    def _read_one(file_name, description='', var_names=None):
-        """Read input file.
-
-        Parameters:
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str): absolute file name
+            description (str, optional): description of the data
             var_names (dict, optional): name of the variables in the file
-
-        Raises:
-            ValueError
-
-        Returns:
-            ImpactFuncSet
         """
-        LOGGER.info('Reading file: %s', file_name)
-        new_imp = ImpactFuncSet()
-        new_imp.tag = Tag(file_name, description)
+        dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
-        extension = os.path.splitext(file_name)[1]
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
+        self._fill_dfr(dfr, var_names)
+
+    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+        """Read MATLAB file generated with previous MATLAB CLIMADA version.
+
+        Parameters:
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            var_names (dict, optional): name of the variables in the file
+        """
+        def _get_hdf5_funcs(imp, file_name, var_names):
+            """Get rows that fill every impact function and its name."""
+            func_pos = dict()
+            for row, (fun_id, fun_type) in enumerate(zip( \
+            imp[var_names['var_name']['fun_id']].squeeze(), \
+            imp[var_names['var_name']['peril']].squeeze())):
+                type_str = hdf5.get_str_from_ref(file_name, fun_type)
+                key = (type_str, int(fun_id))
+                if key not in func_pos:
+                    func_pos[key] = list()
+                func_pos[key].append(row)
+            return func_pos
+
+        def _get_hdf5_str(imp, idxs, file_name, var_name):
+            """Get rows with same string in var_name."""
+            prev_str = ""
+            for row in idxs:
+                cur_str = hdf5.get_str_from_ref(file_name, imp[var_name][row][0])
+                if prev_str == "":
+                    prev_str = cur_str
+                elif prev_str != cur_str:
+                    LOGGER.error("Impact function with two different %s.", var_name)
+                    raise ValueError
+            return prev_str
+
+        imp = hdf5.read(file_name)
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
+
         try:
-            reader = READ_SET[FILE_EXT[extension]][1]
+            imp = imp[var_names['sup_field_name']]
         except KeyError:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        reader(new_imp, file_name, var_names)
+            pass
+        try:
+            imp = imp[var_names['field_name']]
+            funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
+            for imp_key, imp_rows in funcs_idx.items():
+                func = ImpactFunc()
+                func.haz_type = imp_key[0]
+                func.id = imp_key[1]
+                # check that this function only has one intensity unit, if provided
+                try:
+                    func.intensity_unit = _get_hdf5_str(imp, imp_rows, \
+                        file_name, var_names['var_name']['unit'])
+                except KeyError:
+                    pass
+                # check that this function only has one name
+                try:
+                    func.name = _get_hdf5_str(imp, imp_rows, file_name, \
+                        var_names['var_name']['name'])
+                except KeyError:
+                    func.name = str(func.id)
+                func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
+                func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
+                func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
+                self.add_func(func)
+        except KeyError as err:
+            LOGGER.error("Not existing variable: %s", str(err))
+            raise err
 
-        return new_imp
+    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+        """ Write excel file following template.
+
+        Parameters:
+            file_name (str): absolute file name to write
+            var_names (dict, optional): name of the variables in the file
+        """
+        def write_row(row_ini, imp_ws, xls_data):
+            for icol, col_dat in enumerate(xls_data):
+                for irow, data in enumerate(col_dat, row_ini):
+                    imp_ws.write(irow, icol, data)
+
+        imp_wb = xlsxwriter.Workbook(file_name)
+        imp_ws = imp_wb.add_worksheet(var_names['sheet_name'])
+
+        header = [var_names['col_name']['func_id'], var_names['col_name']['inten'],
+                  var_names['col_name']['mdd'], var_names['col_name']['paa'],
+                  var_names['col_name']['peril'], var_names['col_name']['unit'],
+                  var_names['col_name']['name']]
+        for icol, head_dat in enumerate(header):
+            imp_ws.write(0, icol, head_dat)
+        row_ini = 1
+        for fun_haz_id, fun_haz in self._data.items():
+            for fun_id, fun in fun_haz.items():
+                n_inten = fun.intensity.size
+                xls_data = [repeat(fun_id, n_inten), fun.intensity, fun.mdd,
+                            fun.paa, repeat(fun_haz_id, n_inten),
+                            repeat(fun.intensity_unit, n_inten),
+                            repeat(fun.name, n_inten)]
+                write_row(row_ini, imp_ws, xls_data)
+                row_ini += n_inten
+        imp_wb.close()
+
+    def _fill_dfr(self, dfr, var_names):
+
+        def _get_xls_funcs(dfr, var_names):
+            """ Parse individual impact functions. """
+            dist_func = []
+            for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']], \
+            dfr[var_names['col_name']['func_id']]):
+                if (haz_type, imp_id) not in dist_func:
+                    dist_func.append((haz_type, imp_id))
+            return dist_func
+
+        try:
+            dist_func = _get_xls_funcs(dfr, var_names)
+            for haz_type, imp_id in dist_func:
+                df_func = dfr[dfr[var_names['col_name']['peril']] == haz_type]
+                df_func = df_func[df_func[var_names['col_name']['func_id']] \
+                                  == imp_id]
+
+                func = ImpactFunc()
+                func.haz_type = haz_type
+                func.id = imp_id
+                # check that the unit of the intensity is the same
+                try:
+                    if len(df_func[var_names['col_name']['name']].unique()) != 1:
+                        raise ValueError('Impact function with two different names.')
+                    func.name = df_func[var_names['col_name']['name']].values[0]
+                except KeyError:
+                    func.name = str(func.id)
+
+                # check that the unit of the intensity is the same, if provided
+                try:
+                    if len(df_func[var_names['col_name']['unit']].unique()) != 1:
+                        raise ValueError('Impact function with two different \
+                                         intensity units.')
+                    func.intensity_unit = \
+                                    df_func[var_names['col_name']['unit']].values[0]
+                except KeyError:
+                    pass
+
+                func.intensity = df_func[var_names['col_name']['inten']].values
+                func.mdd = df_func[var_names['col_name']['mdd']].values
+                func.paa = df_func[var_names['col_name']['paa']].values
+
+                self.add_func(func)
+
+        except KeyError as err:
+            LOGGER.error("Not existing variable: %s", str(err))
+            raise err

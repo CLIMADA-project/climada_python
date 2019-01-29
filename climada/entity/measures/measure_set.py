@@ -19,25 +19,64 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define MeasureSet class.
 """
 
-__all__ = ['MeasureSet',
-           'FILE_EXT']
+__all__ = ['MeasureSet']
 
-import os
 import copy
 import logging
+import numpy as np
+import pandas as pd
+import xlsxwriter
 
 from climada.entity.measures.base import Measure
-from climada.entity.measures.source import READ_SET
-from climada.util.files_handler import to_list, get_file_names
 from climada.entity.tag import Tag
+import climada.util.hdf5_handler as hdf5
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'.mat':  'MAT',
-            '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
-""" Supported files format to read from """
+DEF_VAR_MAT = {'sup_field_name': 'entity',
+               'field_name': 'measures',
+               'var_name': {'name' : 'name',
+                            'color' : 'color',
+                            'cost' : 'cost',
+                            'haz_int_a' : 'hazard_intensity_impact_a',
+                            'haz_int_b' : 'hazard_intensity_impact_b',
+                            'haz_frq' : 'hazard_high_frequency_cutoff',
+                            'haz_set' : 'hazard_event_set',
+                            'mdd_a' : 'MDD_impact_a',
+                            'mdd_b' : 'MDD_impact_b',
+                            'paa_a' : 'PAA_impact_a',
+                            'paa_b' : 'PAA_impact_b',
+                            'fun_map' : 'damagefunctions_map',
+                            'exp_set' : 'assets_file',
+                            'exp_reg' : 'Region_ID',
+                            'risk_att' : 'risk_transfer_attachement',
+                            'risk_cov' : 'risk_transfer_cover',
+                            'haz' : 'peril_ID'
+                           }
+              }
+""" MATLAB variable names """
+
+DEF_VAR_EXCEL = {'sheet_name': 'measures',
+                 'col_name': {'name' : 'name',
+                              'color' : 'color',
+                              'cost' : 'cost',
+                              'haz_int_a' : 'hazard intensity impact a',
+                              'haz_int_b' : 'hazard intensity impact b',
+                              'haz_frq' : 'hazard high frequency cutoff',
+                              'haz_set' : 'hazard event set',
+                              'mdd_a' : 'MDD impact a',
+                              'mdd_b' : 'MDD impact b',
+                              'paa_a' : 'PAA impact a',
+                              'paa_b' : 'PAA impact b',
+                              'fun_map' : 'damagefunctions map',
+                              'exp_set' : 'assets file',
+                              'exp_reg' : 'Region_ID',
+                              'risk_att' : 'risk transfer attachement',
+                              'risk_cov' : 'risk transfer cover',
+                              'haz' : 'peril_ID'
+                             }
+                }
+""" Excel variable names """
 
 class MeasureSet():
     """Contains measures of type Measure. Loads from
@@ -49,17 +88,8 @@ class MeasureSet():
             directly accessed. Use the class methods instead.
     """
 
-    def __init__(self, file_name='', description=''):
-        """Fill values from file, if provided.
-
-        Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
-
-        Raises:
-            ValueError
+    def __init__(self):
+        """Empty initialization.
 
         Examples:
             Fill MeasureSet with values and check consistency data:
@@ -80,8 +110,6 @@ class MeasureSet():
             >>> meas = MeasureSet(ENT_TEMPLATE_XLS)
         """
         self.clear()
-        if file_name != '':
-            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -160,29 +188,6 @@ class MeasureSet():
                                 (act_name, act.name))
             act.check()
 
-    def read(self, files, descriptions='', var_names=None):
-        """Read and check MeasureSet.
-
-        Parameters:
-            files (str or list(str)): absolute file name(s) or folder name
-                containing the files to read
-            descriptions (str or list(str), optional): one description of the
-                data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in
-                the file (default: DEF_VAR_NAME defined in the source modules)
-
-        Raises:
-            ValueError
-        """
-        all_files = get_file_names(files)
-        if not all_files:
-            LOGGER.warning('No valid file provided: %s', files)
-        desc_list = to_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_list(len(all_files), var_names, 'var_names')
-        self.clear()
-        for file, desc, var in zip(all_files, desc_list, var_list):
-            self.append(self._read_one(file, desc, var))
-
     def append(self, meas):
         """Check and append measures of input MeasureSet to current MeasureSet.
         Overwrite Measure if same name.
@@ -202,58 +207,165 @@ class MeasureSet():
         for measure in meas.get_measure():
             self.add_measure(measure)
 
-    @staticmethod
-    def get_sup_file_format():
-        """ Get supported file extensions that can be read.
-
-        Returns:
-            list(str)
-        """
-        return list(FILE_EXT.keys())
-
-    @staticmethod
-    def get_def_file_var_names(src_format):
-        """Get default variable names for given file format.
+    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+        """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters:
-            src_format (str): extension of the file, e.g. '.xls', '.mat'.
-
-        Returns:
-            dict: dictionary with variable names
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            var_names (dict, optional): name of the variables in the file
         """
-        try:
-            if '.' not in src_format:
-                src_format = '.' + src_format
-            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
-        except KeyError:
-            LOGGER.error('File extension not supported: %s.', src_format)
-            raise ValueError
+        def read_att_mat(measures, data, file_name, var_names):
+            """Read MATLAB measures attributes"""
+            num_mes = len(data[var_names['var_name']['name']])
+            for idx in range(0, num_mes):
+                meas = Measure()
 
-    @staticmethod
-    def _read_one(file_name, description='', var_names=None):
-        """Read input file.
+                meas.name = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['name']][idx][0])
+
+                color_str = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['color']][idx][0])
+                meas.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
+                meas.cost = data[var_names['var_name']['cost']][idx][0]
+                meas.haz_type = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['haz']][idx][0])
+                meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
+                meas.hazard_set = hdf5.get_str_from_ref(file_name, \
+                    data[var_names['var_name']['haz_set']][idx][0])
+                try:
+                    meas.hazard_inten_imp = ( \
+                        data[var_names['var_name']['haz_int_a']][idx][0], \
+                        data[var_names['var_name']['haz_int_b']][0][idx])
+                except KeyError:
+                    meas.hazard_inten_imp = ( \
+                        data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
+
+                # different convention of signes followed in MATLAB!
+                meas.mdd_impact = (data[var_names['var_name']['mdd_a']][idx][0],
+                                   data[var_names['var_name']['mdd_b']][idx][0])
+                meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
+                                   data[var_names['var_name']['paa_b']][idx][0])
+                meas.imp_fun_map = hdf5.get_str_from_ref(file_name, \
+                                   data[var_names['var_name']['fun_map']][idx][0])
+
+                meas.exposures_set = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['exp_set']][idx][0])
+                meas.exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
+
+                meas.risk_transf_attach = data[var_names['var_name']['risk_att']][idx][0]
+                meas.risk_transf_cover = data[var_names['var_name']['risk_cov']][idx][0]
+
+                measures.add_measure(meas)
+
+        data = hdf5.read(file_name)
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
+        try:
+            data = data[var_names['sup_field_name']]
+        except KeyError:
+            pass
+
+        try:
+            data = data[var_names['field_name']]
+            read_att_mat(self, data, file_name, var_names)
+        except KeyError as var_err:
+            LOGGER.error("Not existing variable %s", str(var_err))
+            raise var_err
+
+    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+        """Read excel file following template and store variables.
 
         Parameters:
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
-            var_names (dict), optional): name of the variables in the file
-
-        Raises:
-            ValueError
-
-        Returns:
-            MeasureSet
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            var_names (dict, optional): name of the variables in the file
         """
-        LOGGER.info('Reading file: %s', file_name)
-        new_meas = MeasureSet()
-        new_meas.tag = Tag(file_name, description)
+        def read_att_excel(measures, dfr, var_names):
+            """Read Excel measures attributes"""
+            num_mes = len(dfr.index)
+            for idx in range(0, num_mes):
+                meas = Measure()
 
-        extension = os.path.splitext(file_name)[1]
+                meas.name = dfr[var_names['col_name']['name']][idx]
+                try:
+                    meas.haz_type = dfr[var_names['col_name']['haz']][idx]
+                except KeyError:
+                    pass
+                meas.color_rgb = np.fromstring( \
+                    dfr[var_names['col_name']['color']][idx], dtype=float, sep=' ')
+                meas.cost = dfr[var_names['col_name']['cost']][idx]
+
+                meas.hazard_freq_cutoff = dfr[var_names['col_name']['haz_frq']][idx]
+                meas.hazard_set = dfr[var_names['col_name']['haz_set']][idx]
+                # Search for (a, b) values, put a = 1 otherwise
+                try:
+                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],\
+                                             dfr[var_names['col_name']['haz_int_b']][idx])
+                except KeyError:
+                    meas.hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
+
+                try:
+                    meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
+                    meas.exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
+                except KeyError:
+                    pass
+
+                meas.mdd_impact = (dfr[var_names['col_name']['mdd_a']][idx],
+                                   dfr[var_names['col_name']['mdd_b']][idx])
+                meas.paa_impact = (dfr[var_names['col_name']['paa_a']][idx],
+                                   dfr[var_names['col_name']['paa_b']][idx])
+                meas.imp_fun_map = dfr[var_names['col_name']['fun_map']][idx]
+                meas.risk_transf_attach = dfr[var_names['col_name']['risk_att']][idx]
+                meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
+
+                measures.add_measure(meas)
+
+        dfr = pd.read_excel(file_name, var_names['sheet_name'])
+        dfr = dfr.fillna('')
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
         try:
-            reader = READ_SET[FILE_EXT[extension]][1]
-        except KeyError:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        reader(new_meas, file_name, var_names)
+            read_att_excel(self, dfr, var_names)
+        except KeyError as var_err:
+            LOGGER.error("Not existing variable: %s", str(var_err))
+            raise var_err
 
-        return new_meas
+    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+        """ Write excel file following template.
+
+        Parameters:
+            file_name (str): absolute file name to write
+            var_names (dict, optional): name of the variables in the file
+        """
+        def write_meas(row_ini, imp_ws, xls_data):
+            for icol, col_dat in enumerate(xls_data):
+                imp_ws.write(row_ini, icol, col_dat)
+
+        meas_wb = xlsxwriter.Workbook(file_name)
+        mead_ws = meas_wb.add_worksheet(var_names['sheet_name'])
+
+        header = [var_names['col_name']['name'], var_names['col_name']['color'],
+                  var_names['col_name']['cost'], var_names['col_name']['haz_int_a'],
+                  var_names['col_name']['haz_int_b'], var_names['col_name']['haz_frq'],
+                  var_names['col_name']['haz_set'], var_names['col_name']['mdd_a'],
+                  var_names['col_name']['mdd_b'], var_names['col_name']['paa_a'],
+                  var_names['col_name']['paa_b'], var_names['col_name']['fun_map'],
+                  var_names['col_name']['exp_set'], var_names['col_name']['exp_reg'],
+                  var_names['col_name']['risk_att'], var_names['col_name']['risk_cov'],
+                  var_names['col_name']['haz']]
+        for icol, head_dat in enumerate(header):
+            mead_ws.write(0, icol, head_dat)
+        row_ini = 1
+        for meas_name, meas in self._data.items():
+            xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))), meas.cost, meas.hazard_inten_imp[0],
+                        meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
+                        meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
+                        meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
+                        meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
+                        meas.risk_transf_cover, meas.haz_type]
+            write_meas(row_ini, mead_ws, xls_data)
+            row_ini += 1
+        meas_wb.close()

@@ -19,51 +19,50 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define DiscRates class.
 """
 
-__all__ = ['DiscRates',
-           'FILE_EXT']
+__all__ = ['DiscRates']
 
-import os
 import copy
 from array import array
 import logging
 import numpy as np
+import pandas as pd
+import xlsxwriter
 
-from climada.entity.disc_rates.source import READ_SET
-from climada.util.files_handler import to_list, get_file_names
 import climada.util.checker as check
 from climada.entity.tag import Tag
 import climada.util.plot as u_plot
 import climada.util.finance as u_fin
+import climada.util.hdf5_handler as hdf5
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'.mat':  'MAT',
-            '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
-""" Supported files format to read from """
+DEF_VAR_MAT = {'sup_field_name': 'entity',
+               'field_name': 'discount',
+               'var_name': {'year' : 'year',
+                            'disc' : 'discount_rate'
+                           }
+              }
+""" MATLAB variable names """
 
-class DiscRates(object):
+DEF_VAR_EXCEL = {'sheet_name': 'discount',
+                 'col_name': {'year' : 'year',
+                              'disc' : 'discount_rate'
+                             }
+                }
+""" Excel variable names """
+
+class DiscRates():
     """Defines discount rates and basic methods. Loads from
     files with format defined in FILE_EXT.
 
     Attributes:
         tag (Tag): information about the source data
         years (np.array): years
-        rates (np.array): discount rates for each year
+        rates (np.array): discount rates for each year (between 0 and 1)
     """
 
-    def __init__(self, file_name='', description=''):
-        """Fill values from file, if provided.
-
-        Parameters:
-            file_name (str or list(str), optional): absolute file name(s) or
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
-
-        Raises:
-            ValueError
+    def __init__(self):
+        """Empty initialization.
 
         Examples:
             Fill discount rates with values and check consistency data:
@@ -78,8 +77,6 @@ class DiscRates(object):
             >>> disc_rates = DiscRates(ENT_TEMPLATE_XLS)
         """
         self.clear()
-        if file_name != '':
-            self.read(file_name, description)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -95,30 +92,6 @@ class DiscRates(object):
             ValueError
         """
         check.size(len(self.years), self.rates, 'DiscRates.rates')
-
-    def read(self, files, descriptions='', var_names=None):
-        """Read and check discount rates.
-
-        Parameters:
-            files (str or list(str)): absolute file name(s) or folder name
-                containing the files to read
-            descriptions (str or list(str), optional): one description of the
-                data or a description of each data file
-            var_names (dict or list(dict), default): name of the variables in
-                the file (default: DEF_VAR_NAME defined in the source modules)
-
-        Raises:
-            ValueError
-        """
-        # Construct absolute path file names
-        all_files = get_file_names(files)
-        if not all_files:
-            LOGGER.warning('No valid file provided: %s', files)
-        desc_list = to_list(len(all_files), descriptions, 'descriptions')
-        var_list = to_list(len(all_files), var_names, 'var_names')
-        self.clear()
-        for file, desc, var in zip(all_files, desc_list, var_list):
-            self.append(self._read_one(file, desc, var))
 
     def select(self, year_range):
         """Select discount rates in given years.
@@ -194,15 +167,6 @@ class DiscRates(object):
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)
 
-    @staticmethod
-    def get_sup_file_format():
-        """ Get supported file extensions that can be read.
-
-        Returns:
-            list(str)
-        """
-        return list(FILE_EXT.keys())
-
     def plot(self):
         """Plot discount rates per year."""
         graph = u_plot.Graph2D('Discount rates')
@@ -211,49 +175,66 @@ class DiscRates(object):
         graph.set_x_lim(self.years)
         return graph.get_elems()
 
-    @staticmethod
-    def get_def_file_var_names(src_format):
-        """Get default variable names for given file format.
+    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+        """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters:
-            src_format (str): extension of the file, e.g. '.xls', '.mat'.
-
-        Returns:
-            dict: dictionary with variable names
-        """
-        try:
-            if '.' not in src_format:
-                src_format = '.' + src_format
-            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
-        except KeyError:
-            LOGGER.error('File extension not supported: %s.', src_format)
-            raise ValueError
-
-    @staticmethod
-    def _read_one(file_name, description='', var_names=None):
-        """Read one file and fill attributes.
-
-        Parameters:
-            file_name (str): name of the source file
-            description (str, optional): description of the source data
+            file_name (str): absolute file name
+            description (str, optional): description of the data
             var_names (dict, optional): name of the variables in the file
-
-        Raises:
-            ValueError
-
-        Returns:
-            DiscRates
         """
-        LOGGER.info('Reading file: %s', file_name)
-        new_disc = DiscRates()
-        new_disc.tag = Tag(file_name, description)
-
-        extension = os.path.splitext(file_name)[1]
+        disc = hdf5.read(file_name)
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
         try:
-            reader = READ_SET[FILE_EXT[extension]][1]
+            disc = disc[var_names['sup_field_name']]
         except KeyError:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        reader(new_disc, file_name, var_names)
+            pass
 
-        return new_disc
+        try:
+            disc = disc[var_names['field_name']]
+            self.years = np.squeeze(disc[var_names['var_name']['year']]). \
+                astype(int, copy=False)
+            self.rates = np.squeeze(disc[var_names['var_name']['disc']])
+        except KeyError as err:
+            LOGGER.error("Not existing variable: %s", str(err))
+            raise err
+
+    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+        """Read excel file following template and store variables.
+
+        Parameters:
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            var_names (dict, optional): name of the variables in the file
+        """
+        dfr = pd.read_excel(file_name, var_names['sheet_name'])
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
+        try:
+            self.years = dfr[var_names['col_name']['year']].values. \
+                astype(int, copy=False)
+            self.rates = dfr[var_names['col_name']['disc']].values
+        except KeyError as err:
+            LOGGER.error("Not existing variable: %s", str(err))
+            raise err
+
+    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+        """ Write excel file following template.
+
+        Parameters:
+            file_name (str): absolute file name to write
+            var_names (dict, optional): name of the variables in the file
+        """
+        disc_wb = xlsxwriter.Workbook(file_name)
+        disc_ws = disc_wb.add_worksheet(var_names['sheet_name'])
+
+        header = [var_names['col_name']['year'], var_names['col_name']['disc']]
+        for icol, head_dat in enumerate(header):
+            disc_ws.write(0, icol, head_dat)
+        for i_yr, (disc_yr, disc_rt) in enumerate(zip(self.years, self.rates), 1):
+            disc_ws.write(i_yr, 0, disc_yr)
+            disc_ws.write(i_yr, 1, disc_rt)
+        disc_wb.close()

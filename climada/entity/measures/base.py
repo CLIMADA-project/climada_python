@@ -35,16 +35,21 @@ class Measure():
 
     Attributes:
         name (str): name of the action
+        haz_type (str): related hazard type (peril), e.g. TC
         color_rgb (np.array): integer array of size 3. Gives color code of
             this measure in RGB
-        cost (float): cost
+        cost (float): discounted cost (in same units as assets)
+        hazard_set (str): file name of hazard to use
         hazard_freq_cutoff (float): hazard frequency cutoff
-        hazard_intensity (tuple): parameter a and b
+        exposure_set (str): file name of exposure to use
+        exp_region_id (int): region id of the selected exposures to consider
+        hazard_inten_imp (tuple): parameter a and b of hazard intensity change
         mdd_impact (tuple): parameter a and b of the impact over the mean
-            damage (impact) degree
+            damage degree
         paa_impact (tuple): parameter a and b of the impact over the
-            percentage of affected assets (exposures)
-        risk_transf_attach (float): risk transfer attach
+            percentage of affected assets
+        imp_fun_map (str): change of impact function id, e.g. '1to3'
+        risk_transf_attach (float): risk transfer attachment
         risk_transf_cover (float): risk transfer cover
     """
 
@@ -64,9 +69,9 @@ class Measure():
         self.exp_region_id = -1
 
         # related to change in impact functions
-        self.hazard_inten_imp = () # parameter a and b
-        self.mdd_impact = () # parameter a and b
-        self.paa_impact = () # parameter a and b
+        self.hazard_inten_imp = (1, 0) # parameter a and b
+        self.mdd_impact = (1, 0) # parameter a and b
+        self.paa_impact = (1, 0) # parameter a and b
         self.imp_fun_map = ''
 
         # risk transfer
@@ -84,15 +89,15 @@ class Measure():
         check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         check.size(2, self.paa_impact, 'Measure.paa_impact')
 
-    def implement(self, exposures, imp_fun_set, hazard):
+    def apply(self, exposures, imp_fun_set, hazard):
         """Implement measure with all its defined parameters."""
-        new_haz = self.change_hazard(hazard)
-        new_exp = self.change_exposures(exposures)
-        new_ifs = self.change_imp_func(imp_fun_set)
+        new_haz = self._change_hazard(hazard)
+        new_exp = self._change_exposures(exposures)
+        new_ifs = self._change_imp_func(imp_fun_set)
 
         return new_exp, new_ifs, new_haz
 
-    def change_hazard(self, hazard):
+    def _change_hazard(self, hazard):
         """Apply measure to hazard of the same type.
 
         Parameters:
@@ -104,7 +109,7 @@ class Measure():
         # TODO: implement
         return hazard
 
-    def change_exposures(self, exposures):
+    def _change_exposures(self, exposures):
         """Apply measure to exposures.
 
         Parameters:
@@ -116,7 +121,7 @@ class Measure():
         # TODO: implement
         return exposures
 
-    def change_imp_func(self, imp_set):
+    def _change_imp_func(self, imp_set):
         """Apply measure to impact functions of the same hazard type.
 
         Parameters:
@@ -125,16 +130,16 @@ class Measure():
         Returns:
             ImpactFuncSet
         """
-        # all impact functions of one hazard??
+        # all impact functions of one hazard
         new_imp_set = ImpactFuncSet()
 
         for imp_fun in imp_set.get_func(self.haz_type):
             new_if = copy.copy(imp_fun)
             new_if.intensity = np.maximum(new_if.intensity * \
                 self.hazard_inten_imp[0] - self.hazard_inten_imp[1], 0.0)
-            new_if.mdd = np.maximum(new_if.mdd * self.mdd_impact[0] - \
+            new_if.mdd = np.maximum(new_if.mdd * self.mdd_impact[0] + \
                 self.mdd_impact[1], 0.0)
-            new_if.paa = np.maximum(new_if.paa * self.paa_impact[0] - \
+            new_if.paa = np.maximum(new_if.paa * self.paa_impact[0] + \
                 self.paa_impact[1], 0.0)
             new_imp_set.add_func(new_if)
 

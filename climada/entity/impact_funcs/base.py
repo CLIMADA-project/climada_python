@@ -29,13 +29,13 @@ import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
-class ImpactFunc(object):
+class ImpactFunc():
     """Contains the definition of one impact function.
 
     Attributes:
         haz_type (str): hazard type acronym (e.g. 'TC')
-        id (int or str): id of the ImpactFunc (wrt vulnerabilities of same
-           hazard). Preferably int, otherwie short string.
+        id (int or str): id of the impact function. Exposures of the same type
+            will refer to the same impact function id
         name (str): name of the ImpactFunc
         intensity_unit (str): unit of the intensity
         intensity (np.array): intensity values
