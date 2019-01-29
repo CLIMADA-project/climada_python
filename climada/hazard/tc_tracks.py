@@ -230,8 +230,11 @@ class TCTracks():
                                max(max_lat, np.max(track.lat.values))
             min_lon, max_lon = min(min_lon, np.min(track.lon.values)), \
                                max(max_lon, np.max(track.lon.values))
-        axis.set_extent(([min_lon-deg_border, max_lon+deg_border,
-                          min_lat-deg_border, max_lat+deg_border]))
+        min_lon, max_lon = min_lon-deg_border, max_lon+deg_border
+        min_lat, max_lat = min_lat-deg_border, max_lat+deg_border
+        if abs(min_lon - max_lon) > 360:
+            min_lon, max_lon = -180, 180
+        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]))
         u_plot.add_shapes(axis)
 
         synth_flag = False
