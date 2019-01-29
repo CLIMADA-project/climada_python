@@ -245,8 +245,8 @@ class CostBenefit():
 
         # compute impact for each measure
         for measure in meas_set.get_measure():
-            new_exp, new_ifs, new_haz = measure.implement(exposures,
-                                                          imp_fun_set, hazard)
+            new_exp, new_ifs, new_haz = measure.apply(exposures, imp_fun_set,
+                                                      hazard)
 
             imp_tmp = Impact()
             imp_tmp.calc(new_exp, new_ifs, new_haz)
