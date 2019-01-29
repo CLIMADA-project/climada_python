@@ -341,6 +341,7 @@ class MeasureSet():
             var_names (dict, optional): name of the variables in the file
         """
         def write_meas(row_ini, imp_ws, xls_data):
+            """ Write one measure """
             for icol, col_dat in enumerate(xls_data):
                 imp_ws.write(row_ini, icol, col_dat)
 
@@ -360,7 +361,8 @@ class MeasureSet():
             mead_ws.write(0, icol, head_dat)
         row_ini = 1
         for meas_name, meas in self._data.items():
-            xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))), meas.cost, meas.hazard_inten_imp[0],
+            xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
+                        meas.cost, meas.hazard_inten_imp[0],
                         meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
                         meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
                         meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
