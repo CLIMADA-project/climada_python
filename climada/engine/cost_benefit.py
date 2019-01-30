@@ -173,21 +173,18 @@ class CostBenefit():
         xmin = 0
         for meas_id in sort_cb:
             meas_n = m_names[meas_id]
-            rect = Rectangle((xmin,0), self.benefit[meas_n]/norm_fact,
-                      1/self.cost_ben_ratio[meas_n], color=self.color_rgb[meas_n])
+            rect = Rectangle((xmin, 0), self.benefit[meas_n]/norm_fact, \
+                1/self.cost_ben_ratio[meas_n], color=self.color_rgb[meas_n])
             axis.add_patch(rect)
             axis.text(xmin + (self.benefit[meas_n]/norm_fact)/2,
-                          0.5, meas_n, horizontalalignment='center',
-                          verticalalignment='bottom', rotation=90, fontsize=12)
+                      0.5, meas_n, horizontalalignment='center',
+                      verticalalignment='bottom', rotation=90, fontsize=12)
             xmin += self.benefit[meas_n]/norm_fact
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
         axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
         print('Tot risk: {:.3e} {}'.format(self.tot_climate_risk, self.unit))
-        if self.imp_meas_present:
-            text_pos = self.imp_meas_present['no measure']['risk']/norm_fact
-        else:
-            text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
+        text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
         axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
         axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
@@ -229,7 +226,7 @@ class CostBenefit():
             cum_effect = np.cumsum(np.array([0] + val_i))
             for (eff, color) in zip(cum_effect[::-1][:-1], color_sort[::-1]):
                 plt.bar(rp_i+1, eff, color=color)
-            plt.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1,0,0,0))
+            plt.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0))
         axis.set_xlabel('Return Period')
         axis.set_ylabel('Impact ('+ self.unit + ')')
         plt.xticks(np.arange(len(return_per))+1, return_per)
@@ -260,8 +257,8 @@ class CostBenefit():
         # current situation
         risk_future = self.imp_meas_present['no measure']['risk']
         time_dep = self._time_dependency_array(n_years, imp_time_depen)
-        risk_curr = self._npv_unaverted_impact(self.present_year, self.future_year,
-            risk_future, entity.disc_rates, time_dep)
+        risk_curr = self._npv_unaverted_impact(self.present_year, \
+            self.future_year, risk_future, entity.disc_rates, time_dep)
 
         # changing future
         time_dep = self._time_dependency_array(n_years, imp_time_depen,
@@ -270,11 +267,11 @@ class CostBenefit():
         imp = Impact()
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
         risk_future = risk_func(imp)
-        risk_dev = self._npv_unaverted_impact(self.present_year, self.future_year,
+        risk_dev = self._npv_unaverted_impact(self.present_year, self.future_year, \
             risk_future, entity.disc_rates, time_dep, self.imp_meas_present)
         # socioecon + cc
         risk_future = self.imp_meas_future['no measure']['risk']
-        risk_tot = self._npv_unaverted_impact(self.present_year, self.future_year,
+        risk_tot = self._npv_unaverted_impact(self.present_year, self.future_year, \
             risk_future, entity.disc_rates, time_dep, self.imp_meas_present)
 
         axis.bar(1, risk_curr/norm_fact)
@@ -293,7 +290,7 @@ class CostBenefit():
         axis.text(4, risk_tot/norm_fact, str(int(round(risk_tot/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
-        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year),
+        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
 
@@ -393,7 +390,7 @@ class CostBenefit():
             self.cost_ben_ratio[meas_name] = meas_cost/meas_ben
 
         # npv of the full unaverted damages
-        self.tot_climate_risk = self._npv_unaverted_impact(self.present_year,
+        self.tot_climate_risk = self._npv_unaverted_impact(self.present_year, \
             self.future_year, self.imp_meas_future['no measure']['risk'], \
             disc_rates, time_dep, self.imp_meas_present)
 
