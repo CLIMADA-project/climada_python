@@ -27,10 +27,10 @@ from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
+from climada.util.constants import ENT_DEMO_TODAY
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
-ENT_TEST_XLS = os.path.join(os.path.dirname(__file__), 'data/demo_today.xlsx')
 
 class TestFreqCurve(unittest.TestCase):
     '''Test exceedence frequency curve computation'''
@@ -113,7 +113,7 @@ class TestOneExposure(unittest.TestCase):
         # Read demo entity values
         # Set the entity default file to the demo one
         ent = Entity()
-        ent.read_excel(ENT_TEST_XLS)
+        ent.read_excel(ENT_DEMO_TODAY)
 
         # Read default hazard file
         hazard = Hazard('TC', HAZ_TEST_MAT)
@@ -168,7 +168,7 @@ class TestCalc(unittest.TestCase):
         ''' Test result against reference value'''
         # Read default entity values
         ent = Entity()
-        ent.read_excel(ENT_TEST_XLS)
+        ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file

@@ -26,13 +26,12 @@ import numpy as np
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP
-from climada.util.constants import ENT_DEMO_MAT
+from climada.util.constants import ENT_DEMO_MAT, ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
 HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
 HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-ENT_FUTURE = os.path.join(DATA_DIR, 'demo_future_TEST.xlsx')
 
 class TestSteps(unittest.TestCase):
     '''Test intermediate steps'''
@@ -153,7 +152,7 @@ class TestSteps(unittest.TestCase):
             entity.impact_funcs, when='present', risk_func=risk_aai_agg, save_imp=False)
 
         ent_future = Entity()
-        ent_future.read_excel(ENT_FUTURE)
+        ent_future.read_excel(ENT_DEMO_FUTURE)
         ent_future.check()
         for meas in ent_future.measures.get_measure():
             meas.haz_type = 'TC'
@@ -192,19 +191,15 @@ class TestCalc(unittest.TestCase):
         # present
         hazard = Hazard('TC', HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_excel(ENT_DEMO_TODAY)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
-        for meas in entity.measures.get_measure():
-            meas.haz_type = 'TC'
         entity.exposures.ref_year = 2018
         
         # future
         ent_future = Entity()
-        ent_future.read_excel(ENT_FUTURE)
+        ent_future.read_excel(ENT_DEMO_FUTURE)
         ent_future.check()
-        for meas in ent_future.measures.get_measure():
-            meas.haz_type = 'TC'
         ent_future.exposures.ref_year = 2040
         
         haz_future = copy.deepcopy(hazard)
@@ -233,11 +228,8 @@ class TestCalc(unittest.TestCase):
         """Test calc without future change"""
         hazard = Hazard('TC', HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.read_excel(ENT_DEMO_TODAY)
         entity.check()
-        for meas in entity.measures.get_measure():
-            meas.haz_type = 'TC'
         entity.exposures.ref_year = 2018
         cost_ben = CostBenefit()
         cost_ben.calc(hazard, entity, future_year=2040)

@@ -53,13 +53,20 @@ ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
 """ Entity template in xls format."""
 
 
-
+HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
+""" Raster file of flood over Venezuela. Model from GAR2015"""
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
 """ Hazard demo in mat format."""
 
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 """ Entity demo in mat format."""
+
+ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
+""" Entity demo present in xslx format."""
+
+ENT_DEMO_FUTURE = os.path.join(DATA_DIR, 'demo', 'demo_future_TEST.xlsx')
+""" Entity demo future in xslx format."""
 
 ENT_FL_MAT = os.path.join(DATA_DIR, 'demo',
                           'USA_UnitedStates_Florida_entity.mat')

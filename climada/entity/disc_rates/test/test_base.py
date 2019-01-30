@@ -23,11 +23,7 @@ import unittest
 import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
-                        os.pardir, 'engine', 'test', 'data')
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT, ENT_DEMO_TODAY
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""
@@ -178,7 +174,7 @@ class TestReaderExcel(unittest.TestCase):
         """ Read demo excel file."""      
         disc_rate = DiscRates()
         description = 'One single file.'
-        disc_rate.read_excel(ENT_TEST_XLS, description)
+        disc_rate.read_excel(ENT_DEMO_TODAY, description)
 
         # Check results
         n_rates = 51
@@ -193,7 +189,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_TODAY)
         self.assertEqual(disc_rate.tag.description, description)
 
     def test_template_file_pass(self):

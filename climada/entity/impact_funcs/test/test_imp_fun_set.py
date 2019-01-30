@@ -18,16 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test ImpactFuncSet class.
 """
-import os
 import unittest
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
-from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
-                        os.pardir, 'engine', 'test', 'data')
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT, ENT_DEMO_TODAY
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -516,7 +511,7 @@ class TestReaderExcel(unittest.TestCase):
         # Read demo excel file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read_excel(ENT_TEST_XLS, description)
+        imp_funcs.read_excel(ENT_DEMO_TODAY, description)
 
         # Check results
         n_funcs = 2
@@ -582,7 +577,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_XLS)
+        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_TODAY)
         self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):

@@ -30,11 +30,6 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_DEMO_MAT
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
-                        os.pardir, 'engine', 'test', 'data')
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
-
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
                         os.pardir, 'hazard', 'test', 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
 

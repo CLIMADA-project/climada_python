@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Exposure base class.
 """
-import os
 import unittest
 import numpy as np
 import pandas as pd
@@ -30,9 +29,6 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR, add_sea
 from climada.hazard.base import Hazard
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test', 'data')
-ENT_TEST_XLS = os.path.join(DATA_DIR, 'demo_today.xlsx')
 
 def good_exposures():
     """Followng values are defined for each exposure"""

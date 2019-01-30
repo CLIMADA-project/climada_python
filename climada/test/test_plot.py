@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 test plots
 """
-import os
 import unittest
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,9 +28,7 @@ from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine.impact import Impact, ImpactFreqCurve
-from climada.util.constants import HAZ_DEMO_MAT, SOURCE_DIR
-
-ENT_TEST_XLS = os.path.join(SOURCE_DIR, 'engine/test/data', 'demo_today.xlsx')
+from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -98,7 +95,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = pd.read_excel(ENT_TEST_XLS)
+        myexp = pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
         myexp.check()
         myexp.tag.description = 'demo_today'
@@ -111,7 +108,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncSet(ENT_TEST_XLS)
+        myfuncs = ImpactFuncSet(ENT_DEMO_TODAY)
         _, myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1: Tropical cyclone default', \
@@ -121,7 +118,7 @@ class TestPlotter(unittest.TestCase):
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
         myent = Entity()
-        myent.read_excel(ENT_TEST_XLS)
+        myent.read_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
         myhaz = Hazard('TC', HAZ_DEMO_MAT)
         myimp = Impact()
