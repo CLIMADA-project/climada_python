@@ -26,6 +26,7 @@ import logging
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.engine import Impact
 import climada.util.checker as check
 
 LOGGER = logging.getLogger(__name__)
@@ -90,24 +91,49 @@ class Measure():
         check.size(2, self.paa_impact, 'Measure.paa_impact')
 
     def apply(self, exposures, imp_fun_set, hazard):
-        """Implement measure with all its defined parameters."""
-        new_haz = self._change_hazard(hazard)
+        """Implement measure with all its defined parameters.
+
+        Parameters:
+            exposures (Exposures): exposures instance
+            imp_fun_set (ImpactFuncSet): impact functions instance
+            hazard (Hazard): hazard instance
+
+        Returns:
+            new_haz, new_ifs, new_haz
+
+        """
+        new_haz = self._change_hazard(exposures, imp_fun_set, hazard)
         new_exp = self._change_exposures(exposures)
         new_ifs = self._change_imp_func(imp_fun_set)
 
         return new_exp, new_ifs, new_haz
 
-    def _change_hazard(self, hazard):
+    def _change_hazard(self, exposures, imp_fun_set, hazard):
         """Apply measure to hazard of the same type.
 
         Parameters:
+            exposures (Exposures): exposures instance
+            imp_fun_set (ImpactFuncSet): impact functions instance
             hazard (Hazard): hazard instance
 
         Returns:
             Hazard
         """
-        # TODO: implement
-        return hazard
+        if self.hazard_freq_cutoff == 0:
+            return hazard
+
+        # TODO implement hazard_set
+
+        imp = Impact()
+        imp.calc(exposures, imp_fun_set, hazard)
+
+        new_haz = copy.deepcopy(hazard)
+        sort_idxs = np.argsort(imp.at_event)[::-1]
+        exceed_freq = np.cumsum(imp.frequency[sort_idxs])
+        cutoff = exceed_freq > self.hazard_freq_cutoff
+        sel_haz = sort_idxs[cutoff]
+        new_haz.intensity[sel_haz, :] = np.zeros(new_haz.intensity.shape[1])
+        return new_haz
 
     def _change_exposures(self, exposures):
         """Apply measure to exposures.
@@ -118,7 +144,7 @@ class Measure():
         Returns:
             Exposures
         """
-        # TODO: implement
+        # TODO: implement exposures_set, exp_region_id
         return exposures
 
     def _change_imp_func(self, imp_set):
@@ -130,6 +156,7 @@ class Measure():
         Returns:
             ImpactFuncSet
         """
+        # TODO implement imp_fun_map
         # all impact functions of one hazard
         new_imp_set = ImpactFuncSet()
 
