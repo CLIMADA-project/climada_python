@@ -86,14 +86,13 @@ class Impact():
         # Calculate exceedence frequency
         exceed_freq = np.cumsum(self.frequency[sort_idxs])
         # Set return period and imact exceeding frequency
-        ifc.return_per = 1/exceed_freq
-        ifc.impact = self.at_event[sort_idxs]
+        ifc.return_per = 1/exceed_freq[::-1]
+        ifc.impact = self.at_event[sort_idxs][::-1]
         ifc.unit = self.unit
         ifc.label = 'Exceedance frequency curve'
 
         if return_per is not None:
-            interp_imp = np.interp(return_per, ifc.return_per[::-1],
-                                   ifc.impact[::-1])
+            interp_imp = np.interp(return_per, ifc.return_per, ifc.impact)
             ifc.return_per = return_per
             ifc.impact = interp_imp
 
