@@ -23,6 +23,8 @@ __all__ = ['CostBenefit', 'risk_aai_agg']
 
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 from climada.engine.impact import Impact
 
@@ -84,8 +86,11 @@ class CostBenefit():
         self.future_year = DEF_FUTURE_YEAR
 
         self.tot_climate_risk = 0.0
+        self.unit = 'USD'
 
         # dictionaries with key: measure name
+        # value: measure color_rgb
+        self.color_rgb = dict()
         # value: measure benefit
         self.benefit = dict()
         # value: measure cost benefit
@@ -99,7 +104,7 @@ class CostBenefit():
         self.imp_meas_present = dict()
 
     def calc(self, hazard, entity, haz_future=None, ent_future=None, \
-        risk_func=risk_aai_agg, imp_time_depen=1, save_imp=False):
+        future_year=2050, risk_func=risk_aai_agg, imp_time_depen=1, save_imp=False):
         """Compute cost-benefit ratio for every measure provided current
         and future conditions.
 
@@ -108,7 +113,8 @@ class CostBenefit():
             entity (Entity): entity
             haz_future (Hazard): hazard in the future (future year provided at
                 ent_future)
-            ent_future (Exposures): entity in the future
+            ent_future (Entity): entity in the future
+            future_year (int): future year to consider if no ent_future provided
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
             imp_time_depen (float, optional): parameter which represent time
@@ -118,8 +124,14 @@ class CostBenefit():
         """
         # Present year given in entity. Future year in ent_future if provided.
         self.present_year = entity.exposures.ref_year
+        self.unit = entity.exposures.value_unit
+
+        # save measure colors
+        for meas in entity.measures.get_measure():
+            self.color_rgb[meas.name] = meas.color_rgb
 
         if not haz_future and not ent_future:
+            self.future_year = future_year
             self._calc_impact_measures(hazard, entity.exposures, \
                 entity.measures, entity.impact_funcs, 'future', \
                 risk_func, save_imp)
@@ -133,6 +145,7 @@ class CostBenefit():
                     ent_future.measures, ent_future.impact_funcs, 'future', \
                     risk_func, save_imp)
             elif haz_future:
+                self.future_year = future_year
                 self._calc_impact_measures(haz_future, entity.exposures, \
                     entity.measures, entity.impact_funcs, 'future', risk_func,\
                     save_imp)
@@ -144,75 +157,147 @@ class CostBenefit():
 
         self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
 
-#    def calc_all_options(self, hazard, entity, haz_future, ent_future, \
-#        risk_func=risk_aai_agg, \
-#        imp_time_depen=1, \
-#        save_imp=False):
-#        """Compute cost benefit with respect future conditions. Intermediate
-#        results of changes with and without change in hazard and entity are
-#        returned. The returned data allows to plot the waterfall.
-#
-#        Parameters:
-#            hazard (Hazard): hazard
-#            entity (Entity): entity
-#            haz_future (Hazard): hazard in the future (future year provided at
-#                ent_future)
-#            ent_future (Exposures): entity in the future
-#            risk_func (func, optional): function describing risk measure given
-#                an Impact. Default: average annual impact (aggregated).
-#            imp_time_depen (float, optional): parameter which represent time
-#                evolution of impact. Default: by configuration
-#            save_imp (bool, optional): activate if Impact of each measure is
-#                saved. Default: False.
-#
-#        Returns:
-#            list [current risk, risk due to change in hazard, risk due to
-#            change in entity, risk due to change in hazard and entity]
-#        """
-#        self.present_year = entity.exposures.ref_year
-#        self.future_year = ent_future.exposures.ref_year
-#
-#        risk_evol = []
-#
-#        # current risk
-#        self._calc_impact_measures(hazard, entity.exposures, \
-#                entity.measures, entity.impact_funcs, 'future', \
-#                risk_func, save_imp)
-#        self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
-#        risk_evol.append(self.tot_climate_risk)
-#
-#        # set values to present and compute different futures
-#        self.imp_meas_present = self.imp_meas_future
-#        # climate change
-#        self._calc_impact_measures(haz_future, entity.exposures, \
-#            entity.measures, entity.impact_funcs, 'future', risk_func,\
-#            save_imp)
-#        self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
-#        risk_evol.append(self.tot_climate_risk)
-#
-#        # entity change
-#        self._calc_impact_measures(hazard, ent_future.exposures, \
-#            ent_future.measures, ent_future.impact_funcs, 'future', \
-#            risk_func, save_imp)
-#        self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
-#        risk_evol.append(self.tot_climate_risk)
-#
-#        # all change
-#        self._calc_impact_measures(haz_future, ent_future.exposures, \
-#            ent_future.measures, ent_future.impact_funcs, 'future', \
-#            risk_func, save_imp)
-#        self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
-#        risk_evol.append(self.tot_climate_risk)
-#
-#        return risk_evol
-
     def plot_cost_benefit(self):
-        """ Plot cost-benefit graph. """
-        raise NotImplementedError
+        """ Plot cost-benefit graph.
 
-    def plot_waterfall(self, risk_evol):
-        """ Plot waterfall graph. """
-        raise NotImplementedError
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        fig, axis = plt.subplots(1, 1)
+        norm_fact, norm_name = self._norm_values(self.tot_climate_risk)
+
+        m_names = list(self.cost_ben_ratio.keys())
+        m_cb = np.array([self.cost_ben_ratio[name] for name in m_names])
+        sort_cb = np.argsort(m_cb)
+
+        xmin = 0
+        for meas_id in sort_cb:
+            meas_n = m_names[meas_id]
+            rect = Rectangle((xmin,0), self.benefit[meas_n]/norm_fact,
+                      1/self.cost_ben_ratio[meas_n], color=self.color_rgb[meas_n])
+            axis.add_patch(rect)
+            axis.text(xmin + (self.benefit[meas_n]/norm_fact)/2,
+                          0.5, meas_n, horizontalalignment='center',
+                          verticalalignment='bottom', rotation=90, fontsize=12)
+            xmin += self.benefit[meas_n]/norm_fact
+        axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
+        axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
+                  verticalalignment='bottom', rotation=90, fontsize=12, color='r')
+        print('Tot risk: {:.3e} {}'.format(self.tot_climate_risk, self.unit))
+        if self.imp_meas_present:
+            text_pos = self.imp_meas_present['no measure']['risk']/norm_fact
+        else:
+            text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
+        axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
+        axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
+                  verticalalignment='bottom', rotation=90, fontsize=12, color='r')
+        print('AAI: {:.3e} {}'.format(text_pos*norm_fact, self.unit))
+
+        axis.set_xlim(0, int(self.tot_climate_risk/norm_fact)+5)
+        axis.set_ylim(0, int(1/self.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
+        x_label = 'NPV averted damage over ' + str(self.future_year - self.present_year + 1) + \
+                  ' years (' + self.unit + ' ' + norm_name + ')'
+        axis.set_xlabel(x_label)
+        axis.set_ylabel('Benefit/Cost ratio')
+        return fig, axis
+
+    def plot_event_view(self, return_per=[10, 25, 100]):
+        """ Plot averted damages for return periods
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        fig, axis = plt.subplots(1, 1)
+        avert_rp = dict()
+        ref_imp = np.interp(return_per,
+                            self.imp_meas_future['no measure']['efc'].return_per,
+                            self.imp_meas_future['no measure']['efc'].impact)
+        for meas_name, meas_val in self.imp_meas_future.items():
+            if meas_name == 'no measure':
+                continue
+            interp_imp = np.interp(return_per, meas_val['efc'].return_per,
+                                   meas_val['efc'].impact)
+            avert_rp[meas_name] = ref_imp - interp_imp
+
+        m_names = list(self.cost_ben_ratio.keys())
+        m_cb = np.array([self.cost_ben_ratio[name] for name in m_names])
+        sort_cb = np.argsort(m_cb)
+        names_sort = [m_names[i] for i in sort_cb]
+        color_sort = [self.color_rgb[name] for name in names_sort]
+        for rp_i, _ in enumerate(return_per):
+            val_i = [avert_rp[name][rp_i] for name in names_sort]
+            cum_effect = np.cumsum(np.array([0] + val_i))
+            for (eff, color) in zip(cum_effect[::-1][:-1], color_sort[::-1]):
+                plt.bar(rp_i+1, eff, color=color)
+            plt.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1,0,0,0))
+        axis.set_xlabel('Return Period')
+        axis.set_ylabel('Impact ('+ self.unit + ')')
+        plt.xticks(np.arange(len(return_per))+1, return_per)
+        return fig, axis
+
+    def plot_waterfall(self, hazard, entity, haz_future, ent_future,
+                       risk_func=risk_aai_agg, imp_time_depen=1):
+        """ Plot waterfall graph.
+
+        Parameters:
+            hazard (Hazard): hazard
+            entity (Entity): entity
+            haz_future (Hazard): hazard in the future (future year provided at
+                ent_future)
+            ent_future (Entity): entity in the future
+            risk_func (func, optional): function describing risk measure given
+                an Impact. Default: average annual impact (aggregated).
+            imp_time_depen (float, optional): parameter which represent time
+                evolution of impact. Default: 1 (linear).
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        fig, axis = plt.subplots(1, 1)
+        norm_fact, norm_name = self._norm_values(self.tot_climate_risk)
+        n_years = self.future_year - self.present_year + 1
+
+        # current situation
+        risk_future = self.imp_meas_present['no measure']['risk']
+        time_dep = self._time_dependency_array(n_years, imp_time_depen)
+        risk_curr = self._npv_unaverted_impact(self.present_year, self.future_year,
+            risk_future, entity.disc_rates, time_dep)
+
+        # changing future
+        time_dep = self._time_dependency_array(n_years, imp_time_depen,
+                                               self.imp_meas_present)
+        # socio-economic dev
+        imp = Impact()
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
+        risk_future = risk_func(imp)
+        risk_dev = self._npv_unaverted_impact(self.present_year, self.future_year,
+            risk_future, entity.disc_rates, time_dep, self.imp_meas_present)
+        # socioecon + cc
+        risk_future = self.imp_meas_future['no measure']['risk']
+        risk_tot = self._npv_unaverted_impact(self.present_year, self.future_year,
+            risk_future, entity.disc_rates, time_dep, self.imp_meas_present)
+
+        axis.bar(1, risk_curr/norm_fact)
+        axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
+            horizontalalignment='center', verticalalignment='bottom', \
+            fontsize=12, color='k')
+        axis.bar(2, height=(risk_dev-risk_curr)/norm_fact, bottom=risk_curr/norm_fact)
+        axis.text(2, risk_curr/norm_fact + (risk_dev-risk_curr)/norm_fact/2, \
+            str(int(round((risk_dev-risk_curr)/norm_fact))), \
+            horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
+        axis.bar(3, height=(risk_tot-risk_dev)/norm_fact, bottom=risk_dev/norm_fact)
+        axis.text(3, risk_dev/norm_fact + (risk_tot-risk_dev)/norm_fact/2, \
+            str(int(round((risk_tot-risk_dev)/norm_fact))), \
+            horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
+        axis.bar(4, height=risk_tot/norm_fact)
+        axis.text(4, risk_tot/norm_fact, str(int(round(risk_tot/norm_fact))), \
+                  horizontalalignment='center', verticalalignment='bottom', \
+                  fontsize=12, color='k')
+        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year),
+            'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
+        axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
+
+        return fig, axis
 
     def _calc_impact_measures(self, hazard, exposures, meas_set, imp_fun_set, \
         when='future', risk_func=risk_aai_agg, save_imp=False):
@@ -285,11 +370,8 @@ class CostBenefit():
             LOGGER.error('Compute first _calc_impact_measures')
             raise ValueError
 
-        if self.imp_meas_present:
-            time_dep = np.arange(n_years)**imp_time_depen / \
-                (n_years-1)**imp_time_depen
-        else:
-            time_dep = np.ones(n_years)
+        time_dep = self._time_dependency_array(n_years, imp_time_depen,
+                                               self.imp_meas_present)
 
         # discounted cost benefit for each measure
         for meas_name, meas_val in self.imp_meas_future.items():
@@ -311,15 +393,52 @@ class CostBenefit():
             self.cost_ben_ratio[meas_name] = meas_cost/meas_ben
 
         # npv of the full unaverted damages
-        if self.imp_meas_present:
-            pres_benefit = self.imp_meas_present['no measure']['risk']
-            fut_benefit = self.imp_meas_future['no measure']['risk']
-            tot_climate_risk = pres_benefit + \
-                (fut_benefit-pres_benefit) * time_dep
-            tot_climate_risk = disc_rates.net_present_value(self.present_year,\
-                self.future_year, tot_climate_risk)
+        self.tot_climate_risk = self._npv_unaverted_impact(self.present_year,
+            self.future_year, self.imp_meas_future['no measure']['risk'], \
+            disc_rates, time_dep, self.imp_meas_present)
+
+    @staticmethod
+    def _time_dependency_array(n_years, imp_time_depen, pres_imp=None):
+        if pres_imp:
+            time_dep = np.arange(n_years)**imp_time_depen / \
+                (n_years-1)**imp_time_depen
         else:
-            tot_climate_risk = disc_rates.net_present_value(self.present_year,\
-                self.future_year, time_dep * \
-                self.imp_meas_future['no measure']['risk'])
-        self.tot_climate_risk = tot_climate_risk
+            time_dep = np.ones(n_years)
+        return time_dep
+
+    @staticmethod
+    def _npv_unaverted_impact(pres_year, fut_year, risk_future, disc_rates,
+                              time_dep, risk_present=None):
+        """ Net present value of total unaverted damages """
+        if risk_present:
+            tot_climate_risk = risk_present['no measure']['risk'] + \
+                (risk_future-risk_present['no measure']['risk']) * time_dep
+            tot_climate_risk = disc_rates.net_present_value(pres_year, fut_year,
+                                                            tot_climate_risk)
+        else:
+            tot_climate_risk = disc_rates.net_present_value(pres_year,\
+                fut_year, time_dep * risk_future)
+        return tot_climate_risk
+
+    @staticmethod
+    def _norm_values(value):
+        """ Compute normalization value and name
+
+        Parameters:
+            value (float): value to normalize
+
+        Returns:
+            norm_fact, norm_name
+        """
+        norm_fact = 1.
+        norm_name = ''
+        if value/1.0e9 > 1:
+            norm_fact = 1.0e9
+            norm_name = 'bn'
+        elif value/1.0e6 > 1:
+            norm_fact = 1.0e6
+            norm_name = 'm'
+        elif value/1.0e3 > 1:
+            norm_fact = 1.0e3
+            norm_name = 'k'
+        return norm_fact, norm_name

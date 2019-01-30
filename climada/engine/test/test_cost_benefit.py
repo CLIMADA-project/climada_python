@@ -35,7 +35,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 ENT_FUTURE = os.path.join(DATA_DIR, 'demo_future_TEST.xlsx')
 
 class TestSteps(unittest.TestCase):
-    '''Test exceedence frequency curve computation'''
+    '''Test intermediate steps'''
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
 
@@ -86,13 +86,12 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].aai_agg, 5.188921355413834e+09)
 
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['cost'], 8.878779433630093e+09)
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 6.51220115756442e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 4.736400526119911e+09)
         self.assertTrue(np.array_equal(cost_ben.imp_meas_future['Seawall']['efc'].return_per, DEF_RP))
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].at_event.nonzero()[0].size, 841)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].at_event.nonzero()[0].size, 73)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].at_event[1229], 0.0)
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].eai_exp[34], 1.3866850247790202e+08)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].tot_value, 6.570532945599105e+11)
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].aai_agg, 6.51220115756442e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].aai_agg, 4.736400526119911e+09)
 
         self.assertEqual(cost_ben.imp_meas_future['Building code']['cost'], 9.200000000000000e+09)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.884150868173321e+09)
@@ -129,12 +128,12 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.cost_ben_ratio['Mangroves'], 0.04230714690616641)
         self.assertEqual(cost_ben.cost_ben_ratio['Beach nourishment'], 0.06998836431681373)
-        self.assertEqual(cost_ben.cost_ben_ratio['Seawall'], np.inf)
+        self.assertEqual(cost_ben.cost_ben_ratio['Seawall'], 0.2679741183248266)
         self.assertEqual(cost_ben.cost_ben_ratio['Building code'], 0.30286828677985717)
 
         self.assertEqual(cost_ben.benefit['Mangroves'], 3.100583368954022e+10)
         self.assertEqual(cost_ben.benefit['Beach nourishment'], 2.468981832719974e+10)
-        self.assertEqual(cost_ben.benefit['Seawall'], 0.0)
+        self.assertEqual(cost_ben.benefit['Seawall'], 3.3132973770502796e+10)
         self.assertEqual(cost_ben.benefit['Building code'], 3.0376240767284798e+10)
 
         self.assertEqual(cost_ben.tot_climate_risk, 1.2150496306913972e+11)
@@ -176,15 +175,91 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_present['no measure']['risk'], 6.51220115756442e+09)
         self.assertEqual(cost_ben.imp_meas_present['Mangroves']['risk'], 4.850407096284983e+09)
         self.assertEqual(cost_ben.imp_meas_present['Beach nourishment']['risk'], 5.188921355413834e+09)
-        self.assertEqual(cost_ben.imp_meas_present['Seawall']['risk'], 6.51220115756442e+09)
+        self.assertEqual(cost_ben.imp_meas_present['Seawall']['risk'], 4.736400526119911e+09)
         self.assertEqual(cost_ben.imp_meas_present['Building code']['risk'], 4.884150868173321e+09)
 
         self.assertEqual(cost_ben.imp_meas_future['no measure']['risk'], 5.9506659786664024e+10)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['risk'], 4.826231151473135e+10)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['risk'], 5.0647250923231674e+10)
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 5.9506659786664024e+10)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 21089567135.7345)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.462999483999791e+10)
 
+class TestCalc(unittest.TestCase):
+    '''Test calc'''
+
+    def test_calc_change_pass(self):
+        """Test calc with future change"""
+        # present
+        hazard = Hazard('TC', HAZ_TEST_MAT)
+        entity = Entity()
+        entity.read_mat(ENT_DEMO_MAT)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.check()
+        for meas in entity.measures.get_measure():
+            meas.haz_type = 'TC'
+        entity.exposures.ref_year = 2018
+        
+        # future
+        ent_future = Entity()
+        ent_future.read_excel(ENT_FUTURE)
+        ent_future.check()
+        for meas in ent_future.measures.get_measure():
+            meas.haz_type = 'TC'
+        ent_future.exposures.ref_year = 2040
+        
+        haz_future = copy.deepcopy(hazard)
+        haz_future.intensity.data += 25
+
+        cost_ben = CostBenefit()
+        cost_ben.calc(hazard, entity, haz_future, ent_future)
+
+        self.assertEqual(cost_ben.present_year, 2018)
+        self.assertEqual(cost_ben.future_year, 2040)
+        self.assertEqual(cost_ben.tot_climate_risk, 5.768659152882021e+11)
+
+        self.assertEqual(cost_ben.imp_meas_present['no measure']['risk'], 6.51220115756442e+09)
+        self.assertEqual(cost_ben.imp_meas_present['Mangroves']['risk'], 4.850407096284983e+09)
+        self.assertEqual(cost_ben.imp_meas_present['Beach nourishment']['risk'], 5.188921355413834e+09)
+        self.assertEqual(cost_ben.imp_meas_present['Seawall']['risk'], 4.736400526119911e+09)
+        self.assertEqual(cost_ben.imp_meas_present['Building code']['risk'], 4.884150868173321e+09)
+
+        self.assertEqual(cost_ben.imp_meas_future['no measure']['risk'], 5.9506659786664024e+10)
+        self.assertEqual(cost_ben.imp_meas_future['Mangroves']['risk'], 4.826231151473135e+10)
+        self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['risk'], 5.0647250923231674e+10)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 21089567135.7345)
+        self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.462999483999791e+10)
+
+    def test_calc_no_change_pass(self):
+        """Test calc without future change"""
+        hazard = Hazard('TC', HAZ_TEST_MAT)
+        entity = Entity()
+        entity.read_mat(ENT_DEMO_MAT)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.check()
+        for meas in entity.measures.get_measure():
+            meas.haz_type = 'TC'
+        entity.exposures.ref_year = 2018
+        cost_ben = CostBenefit()
+        cost_ben.calc(hazard, entity, future_year=2040)
+
+        self.assertEqual(cost_ben.imp_meas_present, dict())
+        self.assertEqual(len(cost_ben.imp_meas_future), 5)
+        self.assertEqual(cost_ben.present_year, 2018)
+        self.assertEqual(cost_ben.future_year, 2040)
+
+        self.assertEqual(cost_ben.cost_ben_ratio['Mangroves'], 0.04230714690616641)
+        self.assertEqual(cost_ben.cost_ben_ratio['Beach nourishment'], 0.06998836431681373)
+        self.assertEqual(cost_ben.cost_ben_ratio['Seawall'], 0.2679741183248266)
+        self.assertEqual(cost_ben.cost_ben_ratio['Building code'], 0.30286828677985717)
+
+        self.assertEqual(cost_ben.benefit['Mangroves'], 3.100583368954022e+10)
+        self.assertEqual(cost_ben.benefit['Beach nourishment'], 2.468981832719974e+10)
+        self.assertEqual(cost_ben.benefit['Seawall'], 3.3132973770502796e+10)
+        self.assertEqual(cost_ben.benefit['Building code'], 3.0376240767284798e+10)
+
+        self.assertEqual(cost_ben.tot_climate_risk, 1.2150496306913972e+11)
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSteps)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
