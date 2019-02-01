@@ -18,9 +18,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 init entity
 """
+from .tag import *
 from .disc_rates import *
 from .exposures import *
 from .impact_funcs import *
 from .measures import *
-from .tag import *
 from .entity_def import *

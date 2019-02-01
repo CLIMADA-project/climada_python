@@ -26,7 +26,6 @@ import logging
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.engine import Impact
 import climada.util.checker as check
 
 LOGGER = logging.getLogger(__name__)
@@ -123,7 +122,7 @@ class Measure():
             return hazard
 
         # TODO implement hazard_set
-
+        from climada.engine import Impact
         imp = Impact()
         imp.calc(exposures, imp_fun_set, hazard)
 
