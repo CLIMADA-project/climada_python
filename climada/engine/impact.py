@@ -25,7 +25,9 @@ import logging
 import csv
 from itertools import zip_longest
 import numpy as np
+from scipy import sparse
 import pandas as pd
+import xlsxwriter
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -53,6 +55,8 @@ class Impact():
         tot_value (float): total exposure value affected
         aai_agg (float): average annual impact (aggregated)
         unit (str): value unit used (given by exposures unit)
+        imp_mat (sparse.csr_matrix): matrix num_events x num_exp with impacts.
+            only filled if save_mat is True in calc()
     """
 
     def __init__(self):
@@ -68,6 +72,7 @@ class Impact():
         self.tot_value = 0
         self.aai_agg = 0
         self.unit = ''
+        self.imp_mat = []
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.
@@ -98,13 +103,14 @@ class Impact():
 
         return ifc
 
-    def calc(self, exposures, impact_funcs, hazard):
+    def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """Compute impact of an hazard to exposures.
 
         Parameters:
             exposures (Exposures): exposures
             impact_funcs (ImpactFuncSet): impact functions
             hazard (Hazard): hazard
+            self_mat (bool): self impact matrix: events x exposures
 
         Examples:
             Use Entity class:
@@ -167,6 +173,9 @@ class Impact():
         if ('deductible' in exposures) and ('cover' in exposures) \
         and exposures.cover.max():
             insure_flag = True
+
+        if save_mat:
+            self.imp_mat = sparse.lil_matrix((self.date.size, exposures.value.size))
 
         # 3. Loop over exposures according to their impact function
         tot_exp = 0
@@ -237,6 +246,9 @@ class Impact():
             imp_fun (ImpactFunc): impact function instance
             insure_flag (bool): consider deductible and cover of exposures
         """
+        if not exp_iimp.size:
+            return
+
         # get assigned centroids
         icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
 
@@ -261,9 +273,11 @@ class Impact():
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value.values[exp_iimp])
+        if not isinstance(self.imp_mat, list):
+            self.imp_mat[:, exp_iimp] = impact
 
     def write_csv(self, file_name):
-        """ Write data into csv file.
+        """ Write data into csv file. imp_mat is not saved.
 
         Parameters:
             file_name (str): absolute path of the file
@@ -284,6 +298,60 @@ class Impact():
                         self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1]]
             for values in zip_longest(*csv_data):
                 imp_wr.writerow(values)
+
+    def write_excel(self, file_name):
+        """ Write data into Excel file. imp_mat is not saved.
+
+        Parameters:
+            file_name (str): absolute path of the file
+        """
+        def write_col(i_col, imp_ws, xls_data):
+            """ Write one measure """
+            row_ini = 1
+            for dat_row in xls_data:
+                imp_ws.write(row_ini, i_col, dat_row)
+                row_ini += 1
+
+        imp_wb = xlsxwriter.Workbook(file_name)
+        imp_ws = imp_wb.add_worksheet()
+
+        header = ["tag_hazard", "tag_exposure", "tag_impact_func",
+                  "unit", "tot_value", "aai_agg", "event_id",
+                  "event_name", "event_date", "event_frequency",
+                  "at_event", "eai_exp", "exp_lat", "exp_lon"]
+        for icol, head_dat in enumerate(header):
+            imp_ws.write(0, icol, head_dat)
+        data = [self.tag['haz'].haz_type, self.tag['haz'].file_name,
+                self.tag['haz'].description]
+        write_col(0, imp_ws, data)
+        data = [self.tag['exp'].file_name, self.tag['exp'].description]
+        write_col(1, imp_ws, data)
+        data = [self.tag['if_set'].file_name, self.tag['if_set'].description]
+        write_col(2, imp_ws, data)
+        write_col(3, imp_ws, [self.unit])
+        write_col(4, imp_ws, [self.tot_value])
+        write_col(5, imp_ws, [self.aai_agg])
+        write_col(6, imp_ws, self.event_id)
+        write_col(7, imp_ws, self.event_name)
+        write_col(8, imp_ws, self.date)
+        write_col(9, imp_ws, self.frequency)
+        write_col(10, imp_ws, self.at_event)
+        write_col(11, imp_ws, self.eai_exp)
+        write_col(12, imp_ws, self.coord_exp[:, 0])
+        write_col(13, imp_ws, self.coord_exp[:, 1])
+
+        imp_wb.close()
+
+    def write_excel_imp_mat(self, file_name):
+        """ Write imp_mat matrix """
+        imp_wb = xlsxwriter.Workbook(file_name)
+        imp_ws = imp_wb.add_worksheet()
+
+        imp_ws.write(0, 0, "imp_matrix")
+        for irow in range(1, self.imp_mat.shape[0]+1):
+            for icol in range(self.imp_mat.shape[1]):
+                imp_ws.write(irow, icol, self.imp_mat[irow-1, icol])
+        imp_wb.close()
 
     def read_csv(self, file_name):
         """ Read csv file containing impact data generated by write_csv.
@@ -314,6 +382,40 @@ class Impact():
                               str(imp_df.tag_exposure[1]))
         self.tag['if_set'] = Tag(str(imp_df.tag_impact_func[0]),
                                  str(imp_df.tag_impact_func[1]))
+
+    def read_excel(self, file_name):
+        """ Read excel file containing impact data generated by write_excel.
+
+        Parameters:
+            file_name (str): absolute path of the file
+        """
+        dfr = pd.read_excel(file_name)
+        self.__init__()
+        self.tag['haz'] = TagHaz()
+        self.tag['haz'].haz_type = dfr['tag_hazard'][0]
+        self.tag['haz'].file_name = dfr['tag_hazard'][1]
+        self.tag['haz'].description = dfr['tag_hazard'][2]
+        self.tag['exp'] = Tag()
+        self.tag['exp'].file_name = dfr['tag_exposure'][0]
+        self.tag['exp'].description = dfr['tag_exposure'][1]
+        self.tag['if_set'] = Tag()
+        self.tag['if_set'].file_name = dfr['tag_impact_func'][0]
+        self.tag['if_set'].description = dfr['tag_impact_func'][1]
+
+        self.unit = dfr.unit[0]
+        self.tot_value = dfr.tot_value[0]
+        self.aai_agg = dfr.aai_agg[0]
+
+        self.event_id = dfr.event_id[~np.isnan(dfr.event_id.values)].values
+        self.event_name = dfr.event_name[:self.event_id.size].values
+        self.date = dfr.event_date[:self.event_id.size].values
+        self.frequency = dfr.event_frequency[:self.event_id.size].values
+        self.at_event = dfr.at_event[:self.event_id.size].values
+
+        self.eai_exp = dfr.eai_exp[~np.isnan(dfr.eai_exp.values)].values
+        self.coord_exp = np.zeros((self.eai_exp.size, 2))
+        self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
+        self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
 
     @property
     def coord_exp(self):

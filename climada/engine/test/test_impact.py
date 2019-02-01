@@ -21,6 +21,8 @@ Test Impact class.
 import os
 import unittest
 import numpy as np
+from scipy import sparse
+import pandas as pd
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -210,6 +212,31 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
+    def test_calc_imp_mat_pass(self):
+        """ Test save imp_mat """
+         # Read default entity values
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.check()
+
+        # Read default hazard file
+        hazard = Hazard('TC', HAZ_TEST_MAT)
+        # Create impact object
+        impact = Impact()
+
+        # Assign centroids to exposures
+        ent.exposures.assign_centroids(hazard)
+
+        # Compute the impact over the whole exposures
+        impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
+        self.assertTrue(isinstance(impact.imp_mat, sparse.lil_matrix))
+        self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
+            ent.exposures.value.size))
+        self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
+            impact.at_event))
+        self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.todense(),
+            impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
+
 class TestIO(unittest.TestCase):
     ''' Test impact calc method.'''
 
@@ -291,10 +318,55 @@ class TestIO(unittest.TestCase):
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
 
+    def test_write_read_excel_pass(self):
+        """ Test write and read in excel """
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.check()
+
+        hazard = Hazard('TC', HAZ_TEST_MAT)
+        imp_write = Impact()
+        ent.exposures.assign_centroids(hazard)
+        imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
+        file_name = os.path.dirname(__file__) + 'test.xlsx'
+        imp_write.write_excel(file_name)
+
+        imp_read = Impact()
+        imp_read.read_excel(file_name)
+
+        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
+        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
+        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
+        self.assertTrue(np.allclose(imp_write.eai_exp, imp_read.eai_exp))
+        self.assertTrue(np.allclose(imp_write.at_event, imp_read.at_event))
+        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        self.assertEqual(imp_write.tot_value, imp_read.tot_value)
+        self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
+        self.assertEqual(imp_write.unit, imp_read.unit)
+        self.assertEqual(0, len([i for i, j in
+            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+
+    def test_write_imp_mat(self):
+        """ Test write_excel_imp_mat function """
+        impact = Impact()
+        impact.imp_mat = sparse.lil_matrix(np.zeros((5, 4)))
+        impact.imp_mat[0, :] = np.arange(4)
+        impact.imp_mat[1, :] = np.arange(4)*2
+        impact.imp_mat[2, :] = np.arange(4)*3
+        impact.imp_mat[3, :] = np.arange(4)*4
+        impact.imp_mat[4, :] = np.arange(4)*5
+
+        file_name = os.path.dirname(__file__) + 'test_imp_mat.xlsx'
+        impact.write_excel_imp_mat(file_name)
+        dfr = pd.read_excel(file_name)
+        for irow in range(5):
+            self.assertTrue(np.array_equal(dfr.iloc[irow].values,
+                np.array(impact.imp_mat[irow, :].todense()).reshape(-1)))
+
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
-
