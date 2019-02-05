@@ -108,7 +108,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncSet(ENT_DEMO_TODAY)
+        myfuncs = ImpactFuncSet()
+        myfuncs.read_excel(ENT_DEMO_TODAY)
         _, myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1: Tropical cyclone default', \
