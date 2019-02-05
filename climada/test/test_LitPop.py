@@ -64,7 +64,7 @@ class TestDefault(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 740)
         self.assertTrue(ent.region_id.max() == 740)
-        self.assertTrue(ent.value.sum() == 2414756959.8304553)
+        self.assertTrue(ent.value.sum() == 2321765217.391304)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""

@@ -212,6 +212,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             + 'rainfed portion of crop (= TA - TI)'
         else:
             self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)
+        self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):
         """ Reads data from SPAM CSV file and cuts out the data for the

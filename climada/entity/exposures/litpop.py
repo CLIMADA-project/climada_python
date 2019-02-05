@@ -246,6 +246,7 @@ class LitPop(Exposures):
         LOGGER.info("Creating the LitPop exposure took "\
                         + str(round(time.time() - start_time, 2)) +"s")
         self.check()
+        self.set_geometry_points()
 
     @staticmethod
     def _set_one_country(cntry_info, LitPop_data, lon, lat):
