@@ -45,8 +45,6 @@ LOGGER = logging.getLogger(__name__)
 
 """Define LitPop class."""
 
-"""__all__ = ['litpop']"""
-
 BM_FILENAMES = ['BlackMarble_2016_A1_geo_gray.tif', \
                     'BlackMarble_2016_A2_geo_gray.tif', \
                     'BlackMarble_2016_B1_geo_gray.tif', \
@@ -129,8 +127,10 @@ class LitPop(Exposures):
                 - pc: produced capital (Source: World Bank), incl. manufactured or
                     built assets such as machinery, equipment, and physical structures
                     (pc is in constant 2014 USD)
-            admin1_calc (boolean): distribute admin1-level GDP if available? (default False)
-            conserve_cntrytotal (boolean): given admin1_calc, conserve national total asset value (default True)
+            admin1_calc (boolean): distribute admin1-level GDP if available? 
+                (default False)
+            conserve_cntrytotal (boolean): given admin1_calc, conserve national 
+            total asset value (default True)
             reference_year (int)
             adm1_scatter (boolean): produce scatter plot for admin1 validation?
         """
@@ -203,11 +203,14 @@ class LitPop(Exposures):
 
         for cntry_iso, cntry_val in country_info.items():
             if fin_mode == 'pc':
-                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, no_land = True) # not actually GDP but Produced Capital "pc"
+                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, \
+                                                       no_land = True) 
+                # not actually GDP but Produced Capital "pc"
             else:
                 _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(gdp_val)
-        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, fin_mode=fin_mode)
+        _get_gdp2asset_factor(country_info, reference_year, shp_file, default_val=1, \
+                              fin_mode=fin_mode)
 
         tag = Tag()
         lp_cntry = list()
@@ -492,11 +495,13 @@ def _get_country_shape(country_iso, only_geo=0):
                                     name='admin_0_countries')
     shp = shapefile.Reader(shp)
     if len(country_iso) == 3:
-        for field_num, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+        for field_num, field in enumerate(shp.fields[1::]):   
+            # Skip first (index zero) field, because it is DeletionFlag
             if field[0] == 'ADM0_A3':
                 break
     else:
-        for field_num, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+        for field_num, field in enumerate(shp.fields[1::]):   
+            # Skip first (index zero) field, because it is DeletionFlag
             if field[0] == 'ADMIN':
                 break
     del field
@@ -606,7 +611,9 @@ def _shape_cutter(shape, **opt_args):
             if (i > 0) & (check_enclaves == 1):
                 temp_path = path.Path(all_coords_shape[shape.parts[i]:end_idx])
                 for k in range(0, len(sub_shape_path)):
-                    if sub_shape_path[k].contains_point(temp_path.vertices[0]): #Only check if the first three vertices of the new shape is in any of the old shapes for speed
+                    if sub_shape_path[k].contains_point(temp_path.vertices[0]): 
+                        #Only check if the first three vertices of the new 
+                        # shape is in any of the old shapes for speed
                         if len(temp_path.vertices) > 2:
                             if sub_shape_path[k].contains_point\
                                 (temp_path.vertices[1])\
@@ -796,7 +803,9 @@ def _mask_from_shape(check_shape, **opt_args):
                 temp_path = path.Path(all_coords_shape\
                                       [check_shape.parts[i]:end_idx])
                 for k in range(0, len(sub_shape_path)):
-                    if sub_shape_path[k].contains_point(temp_path.vertices[0]): #Only check if the first three vertices of the new shape is in any of the old shapes for speed
+                    if sub_shape_path[k].contains_point(temp_path.vertices[0]): 
+                        #Only check if the first three vertices of the new shape
+                        # is in any of the old shapes for speed
                         if len(temp_path.vertices) > 2:
                             if sub_shape_path[k].contains_point\
                                 (temp_path.vertices[1])\
@@ -903,11 +912,13 @@ def _get_country_info(ISO3):
                                     category='cultural',
                                     name='admin_0_countries')
     shp = shapefile.Reader(shp)
-    for field_num, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+    for field_num, field in enumerate(shp.fields[1::]):
+        # Skip first (index zero) field, because it is DeletionFlag
         if field[0] == 'ADM0_A3':
             break
     del field
-    for field_num2, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+    for field_num2, field in enumerate(shp.fields[1::]):
+        # Skip first (index zero) field, because it is DeletionFlag
         if field[0] == 'ADMIN':
             break
     del field
@@ -960,7 +971,8 @@ def _get_ISO3_from_name(country_name):
                                     category='cultural',
                                     name='admin_0_countries')
     shp = shapefile.Reader(shp)
-    for field_num, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+    for field_num, field in enumerate(shp.fields[1::]):
+        # Skip first (index zero) field, because it is DeletionFlag
         if field[0] == 'ADM0_A3':
             field_adm = field_num
             if 'field_name' in locals():
@@ -1181,7 +1193,8 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
                                          name='admin_1_states_provinces')
     shp = shapefile.Reader(shp_file)
     del shp_file
-    for field_num, field in enumerate(shp.fields[1::]):   # Skip first (index zero) field, because it is DeletionFlag
+    for field_num, field in enumerate(shp.fields[1::]):
+        # Skip first (index zero) field, because it is DeletionFlag
         if field[0].casefold() == 'ADM0_A3'.casefold():
             break
     del field
@@ -1193,7 +1206,8 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
         _plot_shape_to_plot(i, gray_val=gray_val)
 
 def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
-                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, check_plot=1, masks_adm1=[], return_data = 1):
+                 coords, resolution, adm1_scatter, conserve_cntrytotal=1, \
+                 check_plot=1, masks_adm1=[], return_data = 1):
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
@@ -1270,8 +1284,6 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                               masks_adm1[idx3][idx] == 1 else val for idx, val in\
                               enumerate(LitPop_data.values)], fill_value=0)                        
 
-                # LOGGER.debug('Processing '+ adm1_shp.attributes['name'] + ' took ' + str(round(time.time()-start_time,\
-                #                            2)) + 's')
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share':[],\
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
@@ -1300,7 +1312,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
             for idx2, val in\
                 enumerate(gsdp_data.values()):
                 if not val is None:
-                    LOGGER.debug('Calculating admin1 data for %s.', admin1_info[idx2].attributes['name'])
+                    LOGGER.debug('Calculating admin1 data for %s.', \
+                                 admin1_info[idx2].attributes['name'])
                     mult = val*admin1_LitPop_share\
                             *(country_info[3]*country_info[4])\
                             /temp_adm1['LitPop_sum'][idx2]
@@ -1312,7 +1325,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, LitPop_data,\
                             enumerate(LitPop_data.values)])
 
                 else:
-                    LOGGER.warning('No admin1 data found for %s.', admin1_info[idx2].attributes['name'])
+                    LOGGER.warning('No admin1 data found for %s.', \
+                                   admin1_info[idx2].attributes['name'])
                     LOGGER.warning('Only admin0 data is calculated in this case.')
             for idx5, val2 in enumerate(admin1_info):
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
@@ -1451,7 +1465,8 @@ def _LitPop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
 #        plt.suptitle('Comparison of admin0 and admin1 LitPop data for '\
 #                  + adm1_info[0].attributes['admin'])
         plt.plot([0,np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
-              [0,np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])], ls="--", c=".3")
+              [0,np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])], \
+              ls="--", c=".3")
     #    plt.annotate(label, xy=(adm0_data, adm1_data), xytext=(-20, 20),
     #        textcoords='offset points', ha='right', va='bottom')
         plt.suptitle(adm1_info[0].attributes['admin'] + ': rp='\
@@ -1578,7 +1593,8 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
                     # Now get the coordinates
                     RastSizeX, RastSizeY = curr_file.RasterXSize,\
                         curr_file.RasterYSize
-                    minlon = min(minlon, gt[0]) # Only add if they extend the current bbox
+                    minlon = min(minlon, gt[0]) 
+                    # Only add if they extend the current bbox
                     minlat = min(minlat, gt[3] + RastSizeX*gt[4]\
                                  + RastSizeY*gt[5])
                     maxlon = max(maxlon, gt[0] + RastSizeX*gt[1]\

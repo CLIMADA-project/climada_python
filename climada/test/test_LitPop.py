@@ -83,7 +83,7 @@ class TestDefault(unittest.TestCase):
                             conserve_cntrytotal=cons, calc_admin1=adm1)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertTrue(np.around(ent.value.sum(),0) == np.around(comparison_total_val,0))
+        self.assertTrue(np.around(ent.value.sum(), 0) == np.around(comparison_total_val, 0))
         self.assertTrue(ent.value.sum() == 2217353764117.5)
 
     def test_switzerland300_pc2013_pass(self):
