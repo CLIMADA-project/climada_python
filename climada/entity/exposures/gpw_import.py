@@ -118,7 +118,7 @@ def read_gpw_file(**parameters):
             raise TypeError
         tile_temp = tile_temp.reshape((tile_temp.size,), order='F')
         country_shape = LitPop._get_country_shape(country_adm0)
-        check_points = LitPop._LitPop_box2coords(cut_bbox, resolution, 1)
+        check_points = LitPop._litpop_box2coords(cut_bbox, resolution, 1)
         lat, lon, encl, mask = LitPop._shape_cutter(country_shape, resolution\
                                                     =resolution,\
                                                     return_mask=1,\
@@ -161,7 +161,7 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution):
     steps_p_res = 3600/resolution
     zoom = 30/resolution
     col_min, row_min, col_max, row_max =\
-        LitPop._LitPop_coords_in_glb_grid(bbox, resolution)
+        LitPop._litpop_coords_in_glb_grid(bbox, resolution)
     row_min, row_max = int(row_min-5*steps_p_res), int(row_max-5*steps_p_res)
     # accomodate to fact that not the whole grid is present in this dataset
     if col_max < (43200/zoom)-1:
