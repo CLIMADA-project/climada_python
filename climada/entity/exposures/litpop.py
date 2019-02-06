@@ -322,7 +322,8 @@ class LitPop(Exposures):
             plt.colorbar()
             plt.show()
 
-def _get_LitPop_box(cut_bbox, resolution, return_coords=0, reference_year=2016, litpop_power=[1, 1]):
+def _get_LitPop_box(cut_bbox, resolution, return_coords=0, \
+                    reference_year=2016, litpop_power=[1, 1]):
     '''
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -1749,7 +1750,7 @@ def admin1_validation(country, methods, methods_num, **args):
         methods_name (list of str), i.e.:
             - ['LitPop' for LitPop,
             - ['Lit', 'Pop'] for Lit and Pop,
-            - ['Lit3'] for cube of night lights (Lit3)   
+            - ['Lit3'] for cube of night lights (Lit3)
         methods_num (list of 2-vectors), same length as methods_name i.e.:
             - [[1, 1]] for LitPop,
             - [[1, 0], [0, 1]] for Lit and Pop,
@@ -1793,7 +1794,7 @@ def admin1_validation(country, methods, methods_num, **args):
                      + 'Operation aborted.')
         raise TypeError
     all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
-    # Get LitPop, Lit and Pop, etc:      
+    # Get LitPop, Lit and Pop, etc:
     nightlights = _get_box_blackmarble(cut_bbox,\
                                 resolution=resolution, return_coords=0)
     gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
@@ -1825,15 +1826,15 @@ def admin1_validation(country, methods, methods_num, **args):
     for idx, adm1_shp in enumerate(admin1_info[country_list[0]]):
         masks_adm1[idx] = _mask_from_shape(adm1_shp._shape, resolution=resolution,\
                   points2check=list(zip(lon, lat)))
-    n=4
-    rho = np.zeros(len(methods)*n)
+    n_scores = 4
+    rho = np.zeros(len(methods)*n_scores)
     adm0 = dict()
     adm1 = dict()
     LOGGER.info('Loop through methods...')
     for i in np.arange(0, len(methods)):
-        LOGGER.info(methods[i] + ':')
+        LOGGER.info('%s :', methods[i])
         _data = _LitPop_multiply_box(nightlights, gpw, x=methods_num[i][0], y=methods_num[i][1])
-        _, rho[i*n:(i*n)+n], adm0[methods[i]], adm1[methods[i]] = \
+        _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\
                 _data, list(zip(lon, lat)), resolution, True, conserve_cntrytotal=0, \
