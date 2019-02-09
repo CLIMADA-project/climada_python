@@ -25,6 +25,8 @@ import numpy as np
 from climada.entity.disc_rates.base import DiscRates
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT, ENT_DEMO_TODAY
 
+CURR_DIR = os.path.dirname(__file__)
+
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""
 
@@ -249,7 +251,7 @@ class TestWriter(unittest.TestCase):
         disc_rate.years = np.arange(1950, 2150)
         disc_rate.rates = np.ones(disc_rate.years.size)*0.03
 
-        file_name = 'test_disc.xlsx'
+        file_name = os.path.join(CURR_DIR, 'test_disc.xlsx')
         disc_rate.write_excel(file_name)
         
         disc_read = DiscRates()
