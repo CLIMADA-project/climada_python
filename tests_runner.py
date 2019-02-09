@@ -6,6 +6,8 @@ import sys
 import unittest
 import matplotlib
 
+CURR_DIR = os.path.dirname(__file__)
+
 def find_unit_tests():
     """ select unit tests."""
     suite = unittest.TestLoader().discover('climada.entity.exposures.test')
@@ -30,10 +32,10 @@ def main():
         import xmlrunner
         arg = sys.argv[1]
         if arg == 'unit':
-            output = 'tests_xml'
+            output = os.path.join(CURR_DIR, 'tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
         elif arg == 'integ':
-            output = 'tests_xml'
+            output = os.path.join(CURR_DIR, 'tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(find_integ_tests())
     else:
         # execute without xml reports
