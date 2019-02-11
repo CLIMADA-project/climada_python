@@ -254,7 +254,8 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
     elif country_names:
         countries = list(reader.records())
         geom = [country.geometry for country in countries
-                if country.attributes['ISO_A3'] in country_names]
+                if (country.attributes['ISO_A3'] in country_names) or
+                (country.attributes['WB_A3'] in country_names)]
         geom = shapely.ops.cascaded_union(geom)
 
     elif border:
