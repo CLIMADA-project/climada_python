@@ -142,7 +142,14 @@ class TestFunc(unittest.TestCase):
         for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000, 
                                          4.337087436000, 43.793443101)):
             self.assertAlmostEqual(res, ref)
-            
+
+        iso_countries = ['FRA']
+        res = get_land_geometry(iso_countries, 110)
+        self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
+        for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993, 
+                                         55.854502800000034, 51.08754088371883)):
+            self.assertAlmostEqual(res, ref)
+
     def test_get_land_geometry_border_pass(self):
         """get_land_geometry with selected countries."""
         lat = np.array([28.203216, 28.555994, 28.860875])
