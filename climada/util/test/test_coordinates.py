@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test GridPoints module.
+Test coordinates module.
 """
 
 import unittest
@@ -24,76 +24,50 @@ import numpy as np
 import shapely
 from cartopy.io import shapereader
 
-from climada.util.coordinates import GridPoints, get_coastlines, \
+from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
 dist_to_coast
-    
-class TestGridPoints(unittest.TestCase):
-    ''' Test GridPoints class'''
 
-    def test_shape_pass(self):
-        """Check that shape returns expected value."""
-        coord = GridPoints(np.array([[1, 2], [4.5, 5.5], [4, 5]]))
-        self.assertEqual(coord.shape, (3,2))
-
-        GridPoints(np.array([[1, 2], [4, 5], [4, 5]]))
-        self.assertEqual(coord.shape, (3,2))
-
-        coord = GridPoints()
-        self.assertEqual(coord.shape, (0,2))
-
-    def test_wrong_value_fail(self):
-        """Check good values in constructor."""
-        with self.assertRaises(ValueError):
-            GridPoints(np.array([[1, 2], [4.3, 5], [4, 5]]).transpose())
-
-    def test_resample_nn_pass(self):
-        """Check that resample works correctly."""
-        coord_1 = GridPoints(np.array([[1, 2], [4.1, 5.1], [4, 5]]))
-        coord_2 = coord_1
-        result = coord_1.resample_nn(coord_2)
-        self.assertTrue(np.array_equal(result, np.array([ 0.,  1.,  2.])))
+class TestFunc(unittest.TestCase):
+    '''Test the auxiliary used with plot functions'''
 
     def test_is_regular_pass(self):
         """ Test is_regular function. """
-        coord = GridPoints(np.array([[1, 2], [4.4, 5.4], [4, 5]]))
-        self.assertFalse(coord.is_regular)
+        coord = np.array([[1, 2], [4.4, 5.4], [4, 5]])
+        self.assertFalse(grid_is_regular(coord))
 
-        coord = GridPoints(np.array([[1, 2], [4.4, 5], [4, 5]]))
-        self.assertFalse(coord.is_regular)
+        coord = np.array([[1, 2], [4.4, 5], [4, 5]])
+        self.assertFalse(grid_is_regular(coord))
 
-        coord = GridPoints(np.array([[1, 2], [4, 5]]))
-        self.assertFalse(coord.is_regular)
-        
-        coord = GridPoints(np.array([[1, 2], [4, 5], [1, 5], [4, 3]]))
-        self.assertFalse(coord.is_regular)
-        
-        coord = GridPoints(np.array([[1, 2], [4, 5], [1, 5], [4, 2]]))
-        self.assertTrue(coord.is_regular)
-        
+        coord = np.array([[1, 2], [4, 5]])
+        self.assertFalse(grid_is_regular(coord))
+
+        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 3]])
+        self.assertFalse(grid_is_regular(coord))
+
+        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 2]])
+        self.assertTrue(grid_is_regular(coord))
+
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 5),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
-        coord = GridPoints(np.array([grid_x, grid_y]).transpose())
-        self.assertTrue(coord.is_regular)
+        coord = np.array([grid_x, grid_y]).transpose()
+        self.assertTrue(grid_is_regular(coord))
 
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 4),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
-        coord = GridPoints(np.array([grid_x, grid_y]).transpose())
-        self.assertTrue(coord.is_regular)
-
-class TestFunc(unittest.TestCase):
-    '''Test the auxiliary used with plot functions'''
+        coord = np.array([grid_x, grid_y]).transpose()
+        self.assertTrue(grid_is_regular(coord))
 
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""
         self.assertEqual(nat_earth_resolution(10), '10m')
         self.assertEqual(nat_earth_resolution(50), '50m')
         self.assertEqual(nat_earth_resolution(110), '110m')
-        
+
     def test_nat_earth_resolution_fail(self):
         """Wrong resolution."""
         with self.assertRaises(ValueError):
@@ -102,12 +76,12 @@ class TestFunc(unittest.TestCase):
             nat_earth_resolution(51)
         with self.assertRaises(ValueError):
             nat_earth_resolution(111)
-        
+
     def test_get_coastlines_all_pass(self):
         '''Check get_coastlines function over whole earth'''
         coast = get_coastlines(resolution=110)
         self.assertEqual((5128, 2), coast.shape)
-        
+
         self.assertEqual(-78.59566741324154, coast[0][0])
         self.assertEqual(73.60000000000001, coast[-1][0])
 
@@ -132,21 +106,21 @@ class TestFunc(unittest.TestCase):
         iso_countries = ['DEU', 'VNM']
         res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800, 
+        for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800,
                                          109.47242272200, 55.065334377000)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['ESP']
         res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000, 
+        for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000,
                                          4.337087436000, 43.793443101)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['FRA']
         res = get_land_geometry(iso_countries, 110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993, 
+        for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993,
                                          55.854502800000034, 51.08754088371883)):
             self.assertAlmostEqual(res, ref)
 
@@ -193,17 +167,16 @@ class TestFunc(unittest.TestCase):
         res =  shapereader._create_polygon(converted_shape)
         self.assertTrue(res.equals(all_geom))
         self.assertEqual(res.area, all_geom.area)
-        
+
     def test_dist_to_coast(self):
         point = (13.208333333333329, -59.625000000000014)
         res = dist_to_coast(point)
         self.assertAlmostEqual(5.7988200982894105, res[0])
-        
+
         point = (13.958333333333343, -58.125)
         res = dist_to_coast(point)
-        self.assertAlmostEqual(166.36505441711506, res[0])        
+        self.assertAlmostEqual(166.36505441711506, res[0])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGridPoints)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
 unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -41,7 +41,7 @@ def good_exposures():
     data['category_id'] = np.array([1, 2, 3])
     data['region_id'] = np.array([1, 2, 3])
     data[INDICATOR_CENTR + 'TC'] = np.array([1, 2, 3])
-    
+
     expo = Exposures(geopandas.GeoDataFrame(data=data))
     return expo
 
@@ -50,7 +50,7 @@ class TestAssign(unittest.TestCase):
 
     def test_assign_pass(self):
         """ Check that assigned attribute is correctly set."""
-        # Fill with dummy values the GridPoints
+        # Fill with dummy values
         expo = good_exposures()
         # Fill with dummy values the centroids
         haz = Hazard()
@@ -76,7 +76,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('value_unit metadata set to default value', cm.output[2])
         self.assertIn('geometry not set', cm.output[3])
         self.assertIn('cover not set', cm.output[4])
-        
+
     def test_error_logs(self):
         """Wrong exposures definition"""
         expo = good_exposures()

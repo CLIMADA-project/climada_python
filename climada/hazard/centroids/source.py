@@ -27,7 +27,6 @@ import pandas as pd
 import numpy as np
 
 import climada.util.hdf5_handler as hdf5
-from climada.util.coordinates import GridPoints
 
 DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                'var_name': {'cen_id' : 'centroid_ID',
@@ -68,7 +67,7 @@ def read_excel(centroids, file_name, var_names):
         coord_cols = [var_names['col_name']['lat'], \
                   var_names['col_name']['lon']]
 
-        centroids.coord = GridPoints(np.array(dfr[coord_cols]))
+        centroids.coord = np.array(dfr[coord_cols])
         centroids.id = dfr[var_names['col_name']['cen_id']].values. \
                     astype(int, copy=False)
     except KeyError as err:
@@ -103,7 +102,7 @@ def read_att_mat(centroids, cent, num_try, var_names):
     """Read impact functions' attributes from MATLAB file"""
     cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
     cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-    centroids.coord = GridPoints(np.array([cen_lat, cen_lon]).transpose())
+    centroids.coord = np.array([cen_lat, cen_lon]).transpose()
     centroids.id = np.squeeze(cent[var_names['var_name']['cen_id']]. \
                               astype(int, copy=False))
 
@@ -145,12 +144,8 @@ def read_csv(centroids, file_name, var_names):
     cent_pd = pd.read_csv(file_name)
 
     centroids.id = np.array(cent_pd.index)
-    centroids.coord = GridPoints(
-        np.array(cent_pd[[
-            var_names['lat'],
-            var_names['lon'],
-        ]])
-    )
+    centroids.coord = np.array(cent_pd[[var_names['lat'],
+                                        var_names['lon'],]])
     centroids.region_id = np.array(
         cent_pd[[var_names['region_id']]]
     )

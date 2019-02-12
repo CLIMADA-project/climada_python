@@ -16,11 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define GridPoints class
+Define functions to handle with coordinates
 """
-
-__all__ = ['GridPoints']
-
 import os.path
 import logging
 import numpy as np
@@ -31,7 +28,6 @@ import shapely.ops
 from shapely.geometry import LineString, Polygon
 from sklearn.neighbors import BallTree
 
-from climada.util.interpolation import METHOD, DIST_DEF, interpol_index
 from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS_KM
 
 LOGGER = logging.getLogger(__name__)
@@ -44,70 +40,21 @@ GLOBE_COASTLINES = "global_coastlines"
 """ Name of the earth's coastlines shape file generated in function
 get_coastlines"""
 
-class GridPoints(np.ndarray):
-    """Define grid using 2d numpy array. Each row is a point. The first column
-    is for latitudes and the second for longitudes (in degrees)."""
-    def __new__(cls, input_array=None):
-        if input_array is not None:
-            obj = np.asarray(input_array).view(cls)
-            obj.check()
-        else:
-            obj = np.empty((0, 2)).view(cls)
-        return obj
+def grid_is_regular(coord):
+    """Return True if grid is regular.
 
-    def __array_finalize__(self, obj):
-        if obj is None:
-            return
-
-    def check(self):
-        """Check shape. Repeated points are allowed"""
-        if self.shape[1] != 2:
-            LOGGER.error("GridPoints with wrong shape: %s != %s",
-                         self.shape[1], 2)
-            raise ValueError
-
-    def resample_nn(self, coord, threshold=None):
-        """ Input GridPoints are resampled to current grid by calculating the
-        nearest neighbor. For every input coord point, its corresponding
-        GridPoint in self is returned.
-
-        Parameters:
-            coord (2d array): First column contains latitude, second
-                column contains longitude. Each row is a geographic point.
-            threshold (float, optional): distance threshold in km over which no
-                neighbor will be found. Those are assigned with a -1 index.
-                Default: THRESHOLD in interpolation (100km)
-        Returns:
-            np.array (with shape of coord)
-        """
-        if threshold:
-            return interpol_index(self, coord, method=METHOD[0],
-                                  distance=DIST_DEF[1], threshold=threshold)
-        return interpol_index(self, coord, method=METHOD[0],
-                              distance=DIST_DEF[1])
-
-    @property
-    def is_regular(self):
-        """Return True if grid is regular."""
-        regular = False
-        _, count_lat = np.unique(self[:, 0], return_counts=True)
-        _, count_lon = np.unique(self[:, 1], return_counts=True)
-        uni_lat_size = np.unique(count_lat).size
-        uni_lon_size = np.unique(count_lon).size
-        if uni_lat_size == uni_lon_size and uni_lat_size == 1 \
-        and count_lat[0] > 1 and count_lon[0] > 1:
-            regular = True
-        return regular
-
-    @property
-    def lat(self):
-        """Get latitude."""
-        return self[:, 0]
-
-    @property
-    def lon(self):
-        """Get longitude."""
-        return self[:, 1]
+    Parameters:
+        coord (np.array):
+    """
+    regular = False
+    _, count_lat = np.unique(coord[:, 0], return_counts=True)
+    _, count_lon = np.unique(coord[:, 1], return_counts=True)
+    uni_lat_size = np.unique(count_lat).size
+    uni_lon_size = np.unique(count_lon).size
+    if uni_lat_size == uni_lon_size and uni_lat_size == 1 \
+    and count_lat[0] > 1 and count_lon[0] > 1:
+        regular = True
+    return regular
 
 def get_coastlines(border=None, resolution=110):
     """Get latitudes and longitudes of the coast lines inside border. All

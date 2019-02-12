@@ -33,6 +33,7 @@ from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
+from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -92,16 +93,13 @@ class Exposures(GeoDataFrame):
     _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit']
 
     vars_oblig = ['value', 'latitude', 'longitude', INDICATOR_IF]
-    """Name of the variables needed to compute the impact. Types: scalar, str,
-    list, 1dim np.array of size num_exposures, GridPoints and Tag."""
+    """Name of the variables needed to compute the impact."""
 
     vars_def = [INDICATOR_CENTR, 'geometry']
-    """Name of variables that can be computed.
-    """
+    """Name of variables that can be computed."""
 
     vars_opt = ['deductible', 'cover', 'category_id', 'region_id']
-    """Name of the variables that aren't need to compute the impact. Types:
-    scalar, string, list, 1dim np.array of size num_exposures."""
+    """Name of the variables that aren't need to compute the impact."""
 
     @property
     def _constructor(self):
@@ -142,8 +140,18 @@ class Exposures(GeoDataFrame):
             if var not in self.columns:
                 LOGGER.info("%s not set.", var)
 
-    def assign_centroids(self, hazard):
-        """ Check which variables are present """
+    def assign_centroids(self, hazard, method='NN', distance='haversine',
+                         threshold=100):
+        """ Assign for each exposure coordinate closest hazard coordinate
+
+        Parameters:
+            hazard (Hazard): hazard to match
+            method (str, optional): interpolation method to use. Nearest
+                neighbor (NN) default
+            distance (str, optional): distance to use. Haversine default
+            threshold (float): distance threshold in km over which no neighbor
+                will be found. Those are assigned with a -1 index. Default 100
+        """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.shape[0]), str(hazard.centroids.size))
 
@@ -154,7 +162,8 @@ class Exposures(GeoDataFrame):
         if np.array_equal(coord, hazard.centroids.coord):
             assigned = np.arange(self.shape[0])
         else:
-            assigned = hazard.centroids.coord.resample_nn(coord)
+            assigned = interpol_index(hazard.centroids.coord, coord, \
+                method=method, distance=distance, threshold=threshold)
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 

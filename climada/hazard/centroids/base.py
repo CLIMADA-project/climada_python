@@ -30,7 +30,7 @@ import numpy as np
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import GridPoints, dist_to_coast, coord_on_land
+from climada.util.coordinates import grid_is_regular, dist_to_coast, coord_on_land
 import climada.util.plot as u_plot
 from climada.util.files_handler import to_list, get_file_names
 from climada.util.constants import ONE_LAT_KM
@@ -46,13 +46,13 @@ FILE_EXT = {'.mat':  'MAT',
 """ Supported files format to read from """
 
 class Centroids():
-    """Definition of the hazard GridPoints.
+    """Definition of the hazard coordinates.
 
     Attributes:
         tag (Tag): information about the source
-        coord (np.array or GridPoints): 2d array with lat in first column and
-            lon in second, or GridPoints instance. "lat" and "lon" are
-            descriptors of the latitude and longitude respectively.
+        coord (np.array): 2d array with lat in first column and
+            lon in second. "lat" and "lon" are descriptors of the latitude and
+            longitude respectively.
         id (np.array): an id for each centroid
         region_id (np.array, optional): region id for each centroid
             (when defined)
@@ -90,7 +90,7 @@ class Centroids():
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self.coord = GridPoints()
+        self.coord = np.array([], float)
         self.id = np.array([], int)
         self.region_id = np.array([], int)
         self.name = ''
@@ -108,7 +108,7 @@ class Centroids():
         check.shape(num_exp, 2, self.coord, 'Centroids.coord')
         if num_exp > 0 and np.unique(self.coord, axis=0).size \
         != 2*self.coord.shape[0]:
-            LOGGER.error("There centroids with the same GridPoints.")
+            LOGGER.error("There centroids with the same points.")
             raise ValueError
         # check all 1-dim variable set
         for var_name, var_val in self.__dict__.items():
@@ -137,7 +137,7 @@ class Centroids():
             self.append(Centroids._read_one(file, desc, var))
 
     def append(self, centroids, set_uni_id=True):
-        """Append centroids values with NEW GridPoints. Id is perserved if
+        """Append centroids values with NEW points. Id is perserved if
         not present in current centroids. Otherwise, a new id is provided.
 
         Parameters:
@@ -159,7 +159,7 @@ class Centroids():
         if np.array_equal(centroids.coord, self.coord):
             return np.array([])
 
-        # GridPoints of centroids that are not in self
+        # points of centroids that are not in self
         dtype = {'names':['f{}'.format(i) for i in range(2)],
                  'formats':2 * [centroids.coord.dtype]}
         new_pos = np.in1d(centroids.coord.copy().view(dtype),
@@ -247,7 +247,7 @@ class Centroids():
 
     def set_area_per_centroid(self):
         """If the centroids are on a regular grid and have their resolution set,
-        set the area_per_centroid attribute, assuming degrees for the GridPoints
+        set the area_per_centroid attribute, assuming degrees for the points
         and km2 for the area.
         """
         try:
@@ -293,7 +293,7 @@ class Centroids():
         """ Set the resolution asset after making sure that the coordinates are
         on a regular grid. Coerces floats to a tuple.
         """
-        assert self.coord.is_regular, 'The coords are not on a regular grid'
+        assert grid_is_regular(self.coord), 'The coords are not on a regular grid'
         if isinstance(res, float):
             res = (res, res)
         assert isinstance(res, tuple), 'Use a tuple like (lat, lon).'
@@ -340,19 +340,6 @@ class Centroids():
         except KeyError:
             LOGGER.error('File extension not supported: %s.', src_format)
             raise ValueError
-
-    @property
-    def coord(self):
-        """ Return coord"""
-        return self._coord
-
-    @coord.setter
-    def coord(self, value):
-        """ If it is not a GridPoints instance, put it."""
-        if not isinstance(value, GridPoints):
-            self._coord = GridPoints(value)
-        else:
-            self._coord = value
 
     @staticmethod
     def _read_one(file_name, description='', var_names=None):

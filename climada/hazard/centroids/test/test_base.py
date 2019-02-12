@@ -26,7 +26,6 @@ import numpy as np
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.centroids.source import READ_SET
 from climada.hazard.centroids.tag import Tag
-from climada.util.coordinates import GridPoints
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 CENTR_BRB = os.path.join(DATA_DIR, 'centr_brb_test.mat')
@@ -109,7 +108,7 @@ class TestAppend(unittest.TestCase):
         centr1.append(centr2)
         self.assertEqual(type(centr1.tag.file_name), str)
         self.assertEqual(type(centr1.tag.description), str)
-        self.assertEqual(type(centr1.coord), GridPoints)
+        self.assertEqual(type(centr1.coord), np.ndarray)
         self.assertEqual(type(centr1.id), np.ndarray)
         self.assertTrue(type(centr1.region_id), np.ndarray)
 
@@ -197,7 +196,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(centr1.coord[3, :], [7, 8]))
         self.assertEqual(centr1.id.shape, (4,))
         self.assertTrue(np.array_equal(centr1.id, np.array([5, 7, 9, 1])))
-        self.assertTrue(np.array_equal(centr1.region_id, 
+        self.assertTrue(np.array_equal(centr1.region_id,
                                        np.array([1, 2, 3, 6])))
         self.assertTrue(np.array_equal(centr1.dist_coast,
                                        np.array([1.5, 2.6, 3.5, 7.8])))
@@ -273,7 +272,7 @@ class TestAppend(unittest.TestCase):
 
 class TestSelect(unittest.TestCase):
     """ Test select method """
-    
+
     def test_select_pass(self):
         """ Select successfully."""
         centr_brb = Centroids(CENTR_BRB)
@@ -285,7 +284,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_brb.dist_coast.size, 1)
         self.assertEqual(sel_brb.region_id[0], 5)
         self.assertEqual(sel_brb.coord.shape, (1, 2))
-    
+
     def test_select_prop_pass(self):
         """ Select successfully with a property set."""
         centr_brb = Centroids(CENTR_BRB)
@@ -299,7 +298,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_brb.dist_coast.size, 1)
         self.assertEqual(sel_brb.region_id[0], 5)
         self.assertEqual(sel_brb.coord.shape, (1, 2))
-    
+
     def test_select_prop_list_pass(self):
         """ Select successfully with a property set."""
         centr_brb = Centroids(CENTR_BRB)
@@ -313,7 +312,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_brb.dist_coast.size, 2)
         self.assertTrue(np.array_equal(sel_brb.region_id, [4, 5]))
         self.assertEqual(sel_brb.coord.shape, (2, 2))
-    
+
 class TestMethods(unittest.TestCase):
     """Test additional methods."""
 
@@ -323,7 +322,7 @@ class TestMethods(unittest.TestCase):
         centr_brb.set_dist_coast()
         self.assertEqual(centr_brb.id.size, centr_brb.dist_coast.size)
         self.assertAlmostEqual(5.7988200982894105, centr_brb.dist_coast[1])
-        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])   
+        self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSelect)

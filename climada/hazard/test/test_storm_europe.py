@@ -26,7 +26,6 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard import StormEurope, Centroids
-from climada.util.coordinates import GridPoints
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -47,7 +46,7 @@ class TestReader(unittest.TestCase):
         ct = StormEurope._centroids_from_nc(TEST_NCS[0])
 
         self.assertTrue(isinstance(ct, Centroids))
-        self.assertTrue(isinstance(ct.coord, GridPoints))
+        self.assertTrue(isinstance(ct.coord, np.ndarray))
         self.assertEqual(ct.size, 15625)
         self.assertEqual(ct.coord.shape[0], ct.id.shape[0])
 
