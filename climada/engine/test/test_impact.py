@@ -229,7 +229,7 @@ class TestCalc(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
-        self.assertTrue(isinstance(impact.imp_mat, sparse.lil_matrix))
+        self.assertTrue(isinstance(impact.imp_mat, sparse.csr_matrix))
         self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
             ent.exposures.value.size))
         self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
@@ -355,12 +355,13 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[2, :] = np.arange(4)*3
         impact.imp_mat[3, :] = np.arange(4)*4
         impact.imp_mat[4, :] = np.arange(4)*5
+        impact.imp_mat = impact.imp_mat.tocsr()
 
-        file_name = os.path.dirname(__file__) + 'test_imp_mat.xlsx'
-        impact.write_excel_imp_mat(file_name)
-        dfr = pd.read_excel(file_name)
+        file_name = os.path.dirname(__file__) + '/test_imp_mat'
+        impact.write_sparse_csr(file_name)
+        read_imp_mat = Impact().read_sparse_csr(file_name+'.npz')
         for irow in range(5):
-            self.assertTrue(np.array_equal(dfr.iloc[irow].values,
+            self.assertTrue(np.array_equal(np.array(read_imp_mat[irow, :].todense()).reshape(-1),
                 np.array(impact.imp_mat[irow, :].todense()).reshape(-1)))
 
 
