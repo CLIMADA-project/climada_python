@@ -24,6 +24,7 @@ import unittest
 import numpy as np
 
 from climada.entity.entity_def import Entity
+from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP
 from climada.util.constants import ENT_DEMO_MAT, ENT_DEMO_FUTURE, ENT_DEMO_TODAY
@@ -118,7 +119,7 @@ class TestSteps(unittest.TestCase):
 
         cost_ben.present_year = 2018
         cost_ben.future_year = 2040
-        cost_ben._calc_cost_benefit(entity.disc_rates, imp_time_depen=1)
+        cost_ben._calc_cost_benefit(entity.disc_rates)
 
         self.assertEqual(cost_ben.imp_meas_present, dict())
         self.assertEqual(len(cost_ben.imp_meas_future), 5)
@@ -156,7 +157,7 @@ class TestSteps(unittest.TestCase):
         ent_future.check()
         for meas in ent_future.measures.get_measure():
             meas.haz_type = 'TC'
-        
+
         haz_future = copy.deepcopy(hazard)
         haz_future.intensity.data += 25
 
@@ -183,6 +184,116 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 21089567135.7345)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.462999483999791e+10)
 
+    def test_time_array_pres_pass(self):
+        """ Test _time_dependency_array """
+        cb = CostBenefit()
+        cb.present_year = 2018
+        cb.future_year = 2030
+        imp_time_depen = 1.0
+        time_arr = cb._time_dependency_array(imp_time_depen)
+
+        n_years = cb.future_year - cb.present_year + 1
+        self.assertEqual(time_arr.size, n_years)
+        self.assertTrue(np.allclose(time_arr[:-1], np.arange(0, 1, 1/(n_years-1))))
+        self.assertEqual(time_arr[-1], 1)
+
+        imp_time_depen = 0.5
+        time_arr = cb._time_dependency_array(imp_time_depen)
+
+        n_years = cb.future_year - cb.present_year + 1
+        self.assertEqual(time_arr.size, n_years)
+        self.assertTrue(np.allclose(time_arr, np.arange(n_years)**imp_time_depen / \
+                (n_years-1)**imp_time_depen))
+
+    def test_time_array_no_pres_pass(self):
+        """ Test _time_dependency_array """
+        cb = CostBenefit()
+        cb.present_year = 2018
+        cb.future_year = 2030
+        time_arr = cb._time_dependency_array()
+
+        n_years = cb.future_year - cb.present_year + 1
+        self.assertEqual(time_arr.size, n_years)
+        self.assertTrue(np.array_equal(time_arr, np.ones(n_years)))
+
+    def test_npv_unaverted_no_pres_pass(self):
+        """ Test _npv_unaverted_impact """
+        cb = CostBenefit()
+        cb.present_year = 2018
+        cb.future_year = 2030
+        risk_future = 1000
+        disc_rates = DiscRates()
+        disc_rates.years = np.arange(cb.present_year, cb.future_year+1)
+        disc_rates.rates = np.ones(disc_rates.years.size)*0.025
+        time_dep = np.linspace(0, 1, disc_rates.years.size)
+        res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
+                              risk_present=None)
+
+        self.assertEqual(res, disc_rates.net_present_value(cb.present_year, \
+                cb.future_year, time_dep * risk_future))
+
+    def test_npv_unaverted_pres_pass(self):
+        """ Test _npv_unaverted_impact """
+        cb = CostBenefit()
+        cb.present_year = 2018
+        cb.future_year = 2030
+        risk_future = 1000
+        risk_present = 500
+        disc_rates = DiscRates()
+        disc_rates.years = np.arange(cb.present_year, cb.future_year+1)
+        disc_rates.rates = np.ones(disc_rates.years.size)*0.025
+        time_dep = np.linspace(0, 1, disc_rates.years.size)
+        res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
+                              risk_present)
+
+
+        tot_climate_risk = risk_present + (risk_future-risk_present) * time_dep
+        self.assertEqual(res, disc_rates.net_present_value(cb.present_year, \
+            cb.future_year, tot_climate_risk))
+
+    def test_norm_value(self):
+        """ Test _norm_values """
+        cb = CostBenefit()
+        norm_fact, norm_name = cb._norm_values(1)
+        self.assertEqual(norm_fact, 1)
+        self.assertEqual(norm_name, "")
+
+        norm_fact, norm_name = cb._norm_values(10)
+        self.assertEqual(norm_fact, 1)
+        self.assertEqual(norm_name, "")
+
+        norm_fact, norm_name = cb._norm_values(100)
+        self.assertEqual(norm_fact, 1)
+        self.assertEqual(norm_name, "")
+
+        norm_fact, norm_name = cb._norm_values(1001)
+        self.assertEqual(norm_fact, 1000)
+        self.assertEqual(norm_name, "k")
+
+        norm_fact, norm_name = cb._norm_values(10000)
+        self.assertEqual(norm_fact, 1000)
+        self.assertEqual(norm_name, "k")
+
+        norm_fact, norm_name = cb._norm_values(1.01e6)
+        self.assertEqual(norm_fact, 1.0e6)
+        self.assertEqual(norm_name, "m")
+
+        norm_fact, norm_name = cb._norm_values(1.0e8)
+        self.assertEqual(norm_fact, 1.0e6)
+        self.assertEqual(norm_name, "m")
+
+        norm_fact, norm_name = cb._norm_values(1.01e9)
+        self.assertEqual(norm_fact, 1.0e9)
+        self.assertEqual(norm_name, "bn")
+
+        norm_fact, norm_name = cb._norm_values(1.0e10)
+        self.assertEqual(norm_fact, 1.0e9)
+        self.assertEqual(norm_name, "bn")
+
+        norm_fact, norm_name = cb._norm_values(1.0e12)
+        self.assertEqual(norm_fact, 1.0e9)
+        self.assertEqual(norm_name, "bn")
+
 class TestCalc(unittest.TestCase):
     '''Test calc'''
 
@@ -195,13 +306,13 @@ class TestCalc(unittest.TestCase):
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         entity.exposures.ref_year = 2018
-        
+
         # future
         ent_future = Entity()
         ent_future.read_excel(ENT_DEMO_FUTURE)
         ent_future.check()
         ent_future.exposures.ref_year = 2040
-        
+
         haz_future = copy.deepcopy(hazard)
         haz_future.intensity.data += 25
 
