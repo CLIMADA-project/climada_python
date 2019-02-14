@@ -31,9 +31,10 @@ class TestDefault(unittest.TestCase):
         """Create LitPop entity for Switzerland on 300 arcsec:"""
         country_name = ['CHE']
         resolution = 300
+        fin_mode = 'income_group'
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution)
+            ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
@@ -44,9 +45,11 @@ class TestDefault(unittest.TestCase):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
         country_name = ['CHE']
         resolution = 30
+        fin_mode = 'income_group'
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, reference_year=2016)
+            ent.set_country(country_name, res_arcsec=resolution, \
+                            fin_mode=fin_mode, reference_year=2016)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
