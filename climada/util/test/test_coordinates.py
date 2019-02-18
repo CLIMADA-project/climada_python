@@ -89,14 +89,14 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(-106.6, coast[-1][1])
 
     def test_get_coastlines_pass(self):
-        '''Check get_coastlines function in defined border'''
-        border = (-100, 95, -55, 35)
-        coast = get_coastlines(border, resolution=110)
+        '''Check get_coastlines function in defined extent'''
+        extent = (-100, 95, -55, 35)
+        coast = get_coastlines(extent, resolution=110)
 
         for lat_val, lon_val in coast:
-            if lon_val < border[0] or lon_val > border[1]:
+            if lon_val < extent[0] or lon_val > extent[1]:
                 self.assertTrue(False)
-            if lat_val < border[2] or lat_val > border[3]:
+            if lat_val < extent[2] or lat_val > extent[3]:
                 self.assertTrue(False)
 
         self.assertEqual((1234, 2), coast.shape)
@@ -124,11 +124,11 @@ class TestFunc(unittest.TestCase):
                                          55.854502800000034, 51.08754088371883)):
             self.assertAlmostEqual(res, ref)
 
-    def test_get_land_geometry_border_pass(self):
+    def test_get_land_geometry_extent_pass(self):
         """get_land_geometry with selected countries."""
         lat = np.array([28.203216, 28.555994, 28.860875])
         lon = np.array([-16.567489, -18.554130, -9.532476])
-        res = get_land_geometry(border=(np.min(lon), np.max(lon),
+        res = get_land_geometry(extent=(np.min(lon), np.max(lon),
                                 np.min(lat), np.max(lat)), resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         self.assertAlmostEqual(res.bounds[0], -18.002186653)

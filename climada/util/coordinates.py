@@ -56,12 +56,12 @@ def grid_is_regular(coord):
         regular = True
     return regular
 
-def get_coastlines(border=None, resolution=110):
-    """Get latitudes and longitudes of the coast lines inside border. All
-    earth if no border.
+def get_coastlines(exent=None, resolution=110):
+    """Get latitudes and longitudes of the coast lines inside extent. All
+    earth if no extent.
 
     Parameters:
-        border (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
+        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
         resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
             110m, i.e. 1:110.000.000
 
@@ -98,11 +98,11 @@ def get_coastlines(border=None, resolution=110):
         all_geom = list(reader.geometries())[0].geoms[0]
         coast = np.array((all_geom.xy)).transpose()
 
-    if border is None:
+    if exent is None:
         return coast
 
-    in_lon = np.logical_and(coast[:, 1] >= border[0], coast[:, 1] <= border[1])
-    in_lat = np.logical_and(coast[:, 0] >= border[2], coast[:, 0] <= border[3])
+    in_lon = np.logical_and(coast[:, 1] >= exent[0], coast[:, 1] <= exent[1])
+    in_lat = np.logical_and(coast[:, 0] >= exent[2], coast[:, 0] <= exent[3])
     return coast[np.logical_and(in_lon, in_lat)].reshape(-1, 2)
 
 def dist_to_coast(coord_lat, lon=None):
@@ -158,15 +158,15 @@ def dist_to_coast(coord_lat, lon=None):
                                dualtree=True, breadth_first=False)
     return dist_coast.reshape(-1,) * EARTH_RADIUS_KM
 
-def get_land_geometry(country_names=None, border=None, resolution=10):
+def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
-    the border. If all the countries are selected, write shp file in SYSTEM
+    the extent. If all the countries are selected, write shp file in SYSTEM
     folder which can be directly read in following computations.
 
     Parameters:
         country_names (list, optional): list with ISO3 names of countries, e.g
             ['ZWE', 'GBR', 'VNM', 'UZB']
-        border (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
+        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
         resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
             10m, i.e. 1:10.000.000
 
@@ -182,7 +182,7 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
                               ".shp")
     geom = Polygon()
     if (not os.path.isfile(file_globe)) and (country_names is None) and \
-    (border is None):
+    (extent is None):
         LOGGER.info("Computing earth's land geometry ...")
         geom = [cntry_geom for cntry_geom in reader.geometries()]
         geom = shapely.ops.cascaded_union(geom)
@@ -205,12 +205,12 @@ def get_land_geometry(country_names=None, border=None, resolution=10):
                 (country.attributes['WB_A3'] in country_names)]
         geom = shapely.ops.cascaded_union(geom)
 
-    elif border:
-        border_poly = Polygon([(border[0], border[2]), (border[0], border[3]),
-                               (border[1], border[3]), (border[1], border[2])])
+    elif extent:
+        extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
+                               (extent[1], extent[3]), (extent[1], extent[2])])
         geom = []
         for cntry_geom in reader.geometries():
-            inter_poly = cntry_geom.intersection(border_poly)
+            inter_poly = cntry_geom.intersection(extent_poly)
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
         geom = shapely.ops.cascaded_union(geom)
@@ -239,7 +239,7 @@ def coord_on_land(lat, lon, land_geom=None):
         raise ValueError
     delta_deg = 1
     if land_geom is None:
-        land_geom = get_land_geometry(border=(np.min(lon)-delta_deg, \
+        land_geom = get_land_geometry(extent=(np.min(lon)-delta_deg, \
             np.max(lon)+delta_deg, np.min(lat)-delta_deg, \
             np.max(lat)+delta_deg), resolution=10)
     return shapely.vectorized.contains(land_geom, lon, lat)

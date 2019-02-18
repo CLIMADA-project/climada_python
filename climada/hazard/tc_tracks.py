@@ -511,7 +511,7 @@ def _calc_land_geom(ens_track):
     max_lon = np.max([np.max(track.lon.values) for track in ens_track])
     max_lon = min(max_lon+deg_buffer, 180)
 
-    return coord_util.get_land_geometry(border=(min_lon, max_lon, \
+    return coord_util.get_land_geometry(extent=(min_lon, max_lon, \
         min_lat, max_lat), resolution=10)
 
 def _track_land_params(track, land_geom):
