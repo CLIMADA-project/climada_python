@@ -108,11 +108,11 @@ class StormEurope(Hazard):
 
         LOGGER.info('Commencing to iterate over netCDF files.')
 
-        for fn in file_names:
-            if any(fo in fn for fo in files_omit):
-                LOGGER.info("Omitting file %s", fn)
+        for f in file_names:
+            if any(fo in f for fo in files_omit):
+                LOGGER.info("Omitting file %s", f)
                 continue
-            new_haz = self._read_one_nc(fn, centroids)
+            new_haz = self._read_one_nc(f, centroids)
             if new_haz is not None:
                 self.append(new_haz)
 
