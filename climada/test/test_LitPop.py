@@ -31,27 +31,30 @@ class TestDefault(unittest.TestCase):
         """Create LitPop entity for Switzerland on 300 arcsec:"""
         country_name = ['CHE']
         resolution = 300
+        fin_mode = 'income_group'
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution)
+            ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(ent.value.sum() == 3343726398022.6606)
+        self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
 
     def test_switzerland30_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
         country_name = ['CHE']
         resolution = 30
+        fin_mode = 'income_group'
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, reference_year=2016)
+            ent.set_country(country_name, res_arcsec=resolution, \
+                            fin_mode=fin_mode, reference_year=2016)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(ent.value.sum() == 3343726398022.672)
+        self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
 
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
@@ -64,7 +67,7 @@ class TestDefault(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 740)
         self.assertTrue(ent.region_id.max() == 740)
-        self.assertTrue(ent.value.sum() == 2321765217.391304)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2321765217)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
@@ -84,7 +87,7 @@ class TestDefault(unittest.TestCase):
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(np.around(ent.value.sum(), 0) == np.around(comparison_total_val, 0))
-        self.assertTrue(ent.value.sum() == 2217353764117.5)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2217353764118)
 
     def test_switzerland300_pc2013_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital:"""
@@ -100,7 +103,7 @@ class TestDefault(unittest.TestCase):
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.value.sum() == comparison_total_val)
-        self.assertTrue(ent.value.sum() == 2296358085749.2)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
