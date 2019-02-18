@@ -27,6 +27,7 @@ import shapely.vectorized
 import shapely.ops
 from shapely.geometry import LineString, Polygon
 from sklearn.neighbors import BallTree
+import geopandas
 
 from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS_KM
 
@@ -314,3 +315,56 @@ def shapely_to_pyshp(shapely_geom):
         record.points = points
         record.parts = parts
     return record
+
+NE_CRS = {'init' : 'epsg:4326'}
+
+def get_country_geometries(country_names=None, extent=None, resolution=10):
+    """Returns a geopandas GeoSeries of natural earth multipolygons of the 
+    specified countries, resp. the countries that lie within the specified 
+    extent. If no arguments are given, simply returns the whole natural earth
+    dataset.
+    Take heed: we assume WGS84 as the CRS unless the Natural Earth download 
+    utility from cartopy starts including the projection information. (They 
+    are saving a whopping 147 bytes by omitting it.) Same goes for UTF.
+
+    Parameters:
+        country_names (list, optional): list with ISO3 names of countries, e.g
+            ['ZWE', 'GBR', 'VNM', 'UZB']
+        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat) assumed
+            to be in the same CRS as the natural earth data.
+        resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
+            10m
+
+    Returns:
+        GeoDataFrame
+    """
+    resolution = nat_earth_resolution(resolution)
+    shp_file = shapereader.natural_earth(resolution=resolution,
+                                         category='cultural',
+                                         name='admin_0_countries')
+    nat_earth = geopandas.read_file(shp_file, encoding='UTF-8')
+    
+    if not nat_earth.crs:
+        nat_earth.crs = NE_CRS
+    
+    if country_names:
+        if isinstance(country_names, str): country_names = [country_names]
+        out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
+
+    elif extent:
+        bbox = Polygon([
+            (extent[0], extent[2]), 
+            (extent[0], extent[3]),
+            (extent[1], extent[3]),
+            (extent[1], extent[2])
+        ])
+        bbox = geopandas.GeoSeries(bbox)
+        bbox.crs = nat_earth.crs
+        bbox = geopandas.GeoDataFrame({'geometry': bbox})
+        out = geopandas.overlay(nat_earth, bbox, how="intersection")
+
+    else:
+        out = nat_earth
+
+    return out
+
