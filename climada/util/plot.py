@@ -33,7 +33,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import cartopy.crs as ccrs
 from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import rasterio
 
 from climada.util.files_handler import to_list
 
