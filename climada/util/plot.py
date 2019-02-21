@@ -33,6 +33,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import cartopy.crs as ccrs
 from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import rasterio
+
 from climada.util.files_handler import to_list
 
 
@@ -300,7 +302,7 @@ def make_map(num_sub=1, projection=ccrs.PlateCarree()):
 
     return fig, axis_sub
 
-def add_shapes(axis, projection=ccrs.PlateCarree()):
+def add_shapes(axis):
     """Overlay Earth's countries coastlines to matplotlib.pyplot axis.
 
     Parameters:
@@ -312,7 +314,7 @@ def add_shapes(axis, projection=ccrs.PlateCarree()):
                 category='cultural', name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], projection, facecolor='', \
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='', \
                             edgecolor='black')
 
 def add_populated_places(axis, extent, projection=ccrs.PlateCarree()):
