@@ -48,7 +48,7 @@ class TestReader(unittest.TestCase):
     def test_set_one_pass(self):
         """Test _hazard_from_track function."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.equal_timestep()
         coastal_centr = tc.coastal_centr_idx(CENT_CLB)
         tc_haz = TropCyclone._tc_from_track(tc_track.data[0], CENT_CLB, coastal_centr)
@@ -84,7 +84,7 @@ class TestReader(unittest.TestCase):
     def test_set_one_file_pass(self):
         """ Test set function set_from_tracks with one input."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_haz = TropCyclone()
         tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
         tc_haz.check()
@@ -111,7 +111,7 @@ class TestReader(unittest.TestCase):
     def test_two_files_pass(self):
         """ Test set function set_from_tracks with two ibtracs."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
+        tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TropCyclone()
         tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
         tc_haz.remove_duplicates()
@@ -141,7 +141,7 @@ class TestReader(unittest.TestCase):
         """ Append Hazard and Tropical Cyclone. Fail because of missing 
         category in hazard. """
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
 
         tc_haz1 = TropCyclone()
         tc_haz1.read(HAZ_TEST_MAT)
@@ -161,7 +161,7 @@ class TestModel(unittest.TestCase):
         """ Test _extra_rad_max_wind function. Compare to MATLAB reference."""
         ureg = UnitRegistry()
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values, 
             tc_track.data[0].radius_max_wind.values, ureg)
@@ -256,7 +256,7 @@ class TestModel(unittest.TestCase):
         ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values, 
@@ -292,7 +292,7 @@ class TestModel(unittest.TestCase):
         ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
         v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values, 
@@ -308,7 +308,7 @@ class TestModel(unittest.TestCase):
         ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values, 
@@ -337,7 +337,7 @@ class TestModel(unittest.TestCase):
         """ Test _windfield function. Compare to MATLAB reference. """
         ureg = UnitRegistry()
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values, 
@@ -378,7 +378,7 @@ class TestModel(unittest.TestCase):
     def test_gust_from_track(self):
         """ Test gust_from_track function. Compare to MATLAB reference. """
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.equal_timestep()
         intensity = tc.gust_from_track(tc_track.data[0], CENT_CLB, model='H08')
 
