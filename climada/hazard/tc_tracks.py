@@ -21,10 +21,14 @@ Define TCTracks: IBTracs reader and tracks manager.
 
 __all__ = ['SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
+import os
+import glob
+import shutil
 import logging
 import datetime as dt
 import array
 import itertools
+import requests
 import numpy as np
 import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
@@ -34,14 +38,15 @@ import cartopy.crs as ccrs
 import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
+from netCDF4 import Dataset
 from numba import jit
 from pint import UnitRegistry
 from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
-from climada.util.constants import EARTH_RADIUS_KM
-from climada.util.files_handler import get_file_names
+from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
+from climada.util.files_handler import get_file_names, download_file
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -56,6 +61,9 @@ CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
 
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """ Color scale to plot the Saffir-Simpson scale."""
+
+IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/IBTrACS.ALL.v04r00.nc'
+""" FTP of IBTrACS netcdf file containing all tracks v4.0 """
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -118,26 +126,45 @@ class TCTracks():
         LOGGER.info('No track with name %s found.', track_name)
         return []
 
-    def read_ibtracs_csv(self, file_names):
-        """Clear and model tropical cyclone from input csv IBTrACS file.
-        Parallel process.
+    def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
+                            year_range=(1980, 2018), basin=None):
+        """Fill from raw ibtracs v04. Removes nans in coordinates, central
+        pressure and removes repeated times data.
+
+        Parameters:
+            file_names (str or list(str)): absolute file name(s) or
+                folder name containing the files to read.
+            year_range=(1980, 2018)
+            basins=() or basin of origin e.g. (WP, SI)
+            provider
+        """
+        self.data = list()
+        fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
+        if not glob.glob(fn_nc):
+            try:
+                file_down = download_file(IBTRACS_URL)
+                shutil.move(file_down, fn_nc)
+            except (IOError, requests.exceptions.ConnectionError) as err:
+                LOGGER.error('Error while downloading .')
+                raise err
+
+        nc_data = Dataset(fn_nc)
+        sel_tracks = self._filter_ibtracs(nc_data, storm_id, year_range, basin)
+
+        for i_track in sel_tracks:
+            self._read_one_raw(nc_data, i_track, provider)
+
+    def read_processed_ibtracs_csv(self, file_names):
+        """Fill from processed ibtracs csv file.
 
         Parameters:
             file_names (str or list(str)): absolute file name(s) or
                 folder name containing the files to read.
         """
+        self.data = list()
         all_file = get_file_names(file_names)
         for file in all_file:
             self._read_one_csv(file)
-
-    def retrieve_ibtracs(self, name_ev, date_ev):
-        """ Download from IBTrACS repository a specific track.
-
-        Parameters:
-            name_ev (str, optional): name of event
-            date_ev (str, optional): date of the event in format
-        """
-        raise NotImplementedError
 
     def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
@@ -492,6 +519,140 @@ class TCTracks():
 
         self.data.append(tr_ds)
 
+    @staticmethod
+    def _filter_ibtracs(nc_data, storm_id, year_range, basin):
+        """ Select tracks from input conditions.
+
+        Parameters:
+            nc_data (netCDF4.Dataset): ibtracs netcdf data
+            storm_id (str): ibtrac id of the storm
+            year_range(tuple): (min_year, max_year)
+            basin (str): e.g. US, SA, NI, SI, SP, WP, EP, NA
+
+        Returns:
+            np.array
+        """
+        storm_ids = [''.join(name.data.astype(str))
+                     for name in nc_data.variables['sid']]
+        sel_tracks = []
+        # fileter name
+        if storm_id:
+            sel_tracks = np.array([storm_ids.index(storm_id)])
+        else:
+            # filter years
+            years = np.array([int(iso_name[:4]) for iso_name in storm_ids])
+            sel_tracks = np.argwhere(np.logical_and(years >= year_range[0], \
+                years <= year_range[1])).reshape(-1)
+            if not sel_tracks.size:
+                LOGGER.info('No tracks in time range (%s, %s).', year_range[0],
+                            year_range[1])
+                return sel_tracks
+            # filter basin
+            if basin:
+                basin0 = np.array([''.join(bas.astype(str)) \
+                    for bas in nc_data.variables['basin'][:, 0, :].data])[sel_tracks]
+                sel_bas = np.argwhere(basin0 == basin).reshape(-1)
+                if not sel_tracks.size:
+                    LOGGER.info('No tracks in basin %s.', basin)
+                    return sel_tracks
+                sel_tracks = sel_tracks[sel_bas]
+        return sel_tracks
+
+    def _read_one_raw(self, nc_data, i_track, provider):
+        """Fill given track.
+
+            Parameters:
+            nc_data (netCDF4.Dataset): ibtracs netcdf data
+            i_track (int): track position in netcdf data
+            provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
+        """
+        name = ''.join(nc_data.variables['sid'][i_track].data.astype(str))
+        basin = ''.join(nc_data.variables['basin'][i_track, 0, :].data.astype(str))
+        LOGGER.info('Reading %s', name)
+
+        isot = nc_data.variables['iso_time'][i_track, :, :]
+        val_len = isot.mask[isot.mask == False].shape[0]//isot.shape[1]
+        datetimes = list()
+        for date_time in isot.data[:val_len]:
+            datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
+                                                  '%Y-%m-%d %H:%M:%S'))
+
+        lat = nc_data.variables[provider + '_lat'][i_track, :].data[:val_len]
+        lon = nc_data.variables[provider + '_lon'][i_track, :].data[:val_len]
+
+        max_sus_wind = nc_data.variables[provider + '_wind'][i_track, :].data[:val_len]
+        cen_pres = nc_data.variables[provider + '_pres'][i_track, :].data[:val_len]
+
+        if np.all(lon == nc_data.variables[provider + '_lon']._FillValue) or \
+        (np.any(lon == nc_data.variables[provider + '_lon']._FillValue) and \
+        np.all(max_sus_wind == nc_data.variables[provider + '_wind']._FillValue) \
+        and np.all(cen_pres == nc_data.variables[provider + '_pres']._FillValue)):
+            LOGGER.warning('Skipping %s. It does not contain valid values. ' +\
+                           'Try another provider.', name)
+            return
+
+        try:
+            rmax = nc_data.variables[provider + '_rmw'][i_track, :].data[:val_len]
+        except KeyError:
+            LOGGER.info('%s: No rmax for given provider %s. Set to default.',
+                        name, provider)
+            rmax = np.zeros(lat.size)
+        try:
+            penv = nc_data.variables[provider + '_poci'][i_track, :].data[:val_len]
+        except KeyError:
+            LOGGER.info('%s: No penv for given provider %s. Set to default.',
+                        name, provider)
+            penv = np.ones(lat.size)*1010
+            if basin in ('NI', 'SI', 'WP'):
+                penv = np.ones(lat.size)*1005
+            elif basin == 'SP':
+                penv = np.ones(lat.size)*1004
+
+        tr_ds = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, \
+            'radius_max_wind': rmax.astype('float'), 'max_sustained_wind': max_sus_wind, \
+            'central_pressure': cen_pres, 'environmental_pressure': penv.astype('float')})
+
+        # deal with nans
+        tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes)
+
+        # construct xarray
+        tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
+        tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
+            'name': name, 'orig_event_flag': True, 'data_provider': provider, \
+            'basin': basin, 'category': set_category(max_sus_wind, 'kn')}
+
+        self.data.append(tr_ds)
+
+    @staticmethod
+    def _deal_nans(tr_ds, nc_data, provider, datetimes):
+        """ Remove or substitute fill values of netcdf variables. """
+        # remove nan coordinates
+        tr_ds.drop(tr_ds[tr_ds.lat == nc_data.variables[provider + '_lat']. \
+            _FillValue].index, inplace=True)
+        tr_ds.drop(tr_ds[tr_ds.lon == nc_data.variables[provider + '_lon']. \
+            _FillValue].index, inplace=True)
+        # remove nan central pressures
+        tr_ds.drop(tr_ds[tr_ds.central_pressure == nc_data.variables[provider + '_pres']. \
+            _FillValue].index, inplace=True)
+        # remove repeated dates
+        tr_ds.drop_duplicates('time', inplace=True)
+        # fill nans of environmental_pressure and radius_max_wind
+        tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
+            nc_data.variables[provider + '_poci']._FillValue] = np.nan
+        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4).bfill(limit=4)
+        tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
+            nc_data.variables[provider + '_rmw']._FillValue] = np.nan
+        tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
+
+        # set time steps
+        tr_ds['time_step'] = np.zeros(tr_ds.shape[0])
+        for i_time, time in enumerate(tr_ds.time[1:], 1):
+            tr_ds.time_step.values[i_time] = (time - datetimes[i_time-1]).total_seconds()/3600
+        if tr_ds.shape[0]:
+            tr_ds.time_step.values[0] = tr_ds.time_step.values[-1]
+
+        return tr_ds
+
 def _calc_land_geom(ens_track):
     """Compute land geometry used for land distance computations.
 
@@ -511,7 +672,7 @@ def _calc_land_geom(ens_track):
     max_lon = np.max([np.max(track.lon.values) for track in ens_track])
     max_lon = min(max_lon+deg_buffer, 180)
 
-    return coord_util.get_land_geometry(border=(min_lon, max_lon, \
+    return coord_util.get_land_geometry(extent=(min_lon, max_lon, \
         min_lat, max_lat), resolution=10)
 
 def _track_land_params(track, land_geom):
@@ -988,7 +1149,7 @@ def set_category(max_sus_wind, max_sus_wind_unit):
         double
     """
     ureg = UnitRegistry()
-    if (max_sus_wind_unit == 'kn') or (max_sus_wind_unit == 'kt'):
+    if max_sus_wind_unit in ('kn', 'kt'):
         unit = ureg.knot
     elif max_sus_wind_unit == 'mph':
         unit = ureg.mile / ureg.hour

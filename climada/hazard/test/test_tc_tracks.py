@@ -23,7 +23,9 @@ import os
 import unittest
 import array
 import xarray as xr
+import datetime as dt
 import numpy as np
+from netCDF4 import Dataset
 
 from climada.hazard.tc_tracks import TCTracks
 import climada.hazard.tc_tracks as tc
@@ -33,13 +35,14 @@ from climada.util.coordinates import coord_on_land, dist_to_coast
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
+TEST_RAW_TRACK = os.path.join(DATA_DIR, 'Storm.2016075S11087.ibtracs_all.v03r10.csv')
 
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
     def test_read_pass(self):
         """Read a tropical cyclone."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
         self.assertEqual(tc_track.data[0].time.size, 38)
         self.assertEqual(tc_track.data[0].lon[11], -39.60)
@@ -62,19 +65,19 @@ class TestIBTracs(unittest.TestCase):
         self.assertTrue(np.isnan(tc_track.data[0].basin))
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
-
+        
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
     def test_get_track_pass(self):
         """ Test get_track."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         self.assertIsInstance(tc_track.get_track(), xr.Dataset)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
 
         tc_track_bis = TCTracks()
-        tc_track_bis.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track_bis.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.append(tc_track_bis)
         self.assertIsInstance(tc_track.get_track(), list)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
@@ -82,7 +85,7 @@ class TestFuncs(unittest.TestCase):
     def test_interp_track_pass(self):
         """ Interpolate track to min_time_step. Compare to MATLAB reference."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=1)
 
         self.assertEqual(tc_track.data[0].time.size, 223)
@@ -111,7 +114,7 @@ class TestFuncs(unittest.TestCase):
     def test_random_no_landfall_pass(self):
         """ Test calc_random_walk with decay and no historical tracks with landfall """
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
             tc_track.calc_random_walk()
         self.assertIn('No historical track with landfall.', cm.output[1])
@@ -119,7 +122,7 @@ class TestFuncs(unittest.TestCase):
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         ens_size=2
         tc_track.calc_random_walk(ens_size, seed=25, decay=False)
 
@@ -158,7 +161,7 @@ class TestFuncs(unittest.TestCase):
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_random_walk."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         ens_size=2
         with self.assertLogs('climada.hazard.tc_tracks', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size, seed=25, decay=True)
@@ -172,7 +175,7 @@ class TestFuncs(unittest.TestCase):
     def test_calc_decay_no_landfall_pass(self):
         """ Test _calc_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
@@ -182,7 +185,7 @@ class TestFuncs(unittest.TestCase):
     def test_calc_land_decay_pass(self):
         """ Test _calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
         v_rel, p_rel = tc_track._calc_land_decay(land_geom)
@@ -201,7 +204,7 @@ class TestFuncs(unittest.TestCase):
     def test_decay_values_andrew_pass(self):
         """ Test _decay_values with central pressure function."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
@@ -234,7 +237,7 @@ class TestFuncs(unittest.TestCase):
     def test_dist_since_lf_pass(self):
         """ Test _dist_since_lf for andrew tropical cyclone."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
         track['on_land'] = ('time', coord_on_land(track.lat.values,
              track.lon.values))
@@ -254,7 +257,7 @@ class TestFuncs(unittest.TestCase):
     def test_calc_orig_lf(self):
         """ Test _calc_orig_lf for andrew tropical cyclone."""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
         track['on_land'] = ('time', coord_on_land(track.lat.values,
              track.lon.values))
@@ -294,7 +297,7 @@ class TestFuncs(unittest.TestCase):
     def test_apply_decay_no_landfall_pass(self):
         """ Test _apply_land_decay with no historical tracks with landfall """
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
         tc_track.data[0]['orig_event_flag']=False
@@ -325,7 +328,7 @@ class TestFuncs(unittest.TestCase):
                  7: (1.0499941, 0.007978940084158488)}
 
         tc_track = TCTracks()
-        tc_track.read_ibtracs_csv(TC_ANDREW_FL)
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
