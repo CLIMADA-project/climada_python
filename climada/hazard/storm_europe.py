@@ -108,11 +108,11 @@ class StormEurope(Hazard):
 
         LOGGER.info('Commencing to iterate over netCDF files.')
 
-        for fn in file_names:
-            if any(fo in fn for fo in files_omit):
-                LOGGER.info("Omitting file %s", fn)
+        for f in file_names:
+            if any(fo in f for fo in files_omit):
+                LOGGER.info("Omitting file %s", f)
                 continue
-            new_haz = self._read_one_nc(fn, centroids)
+            new_haz = self._read_one_nc(f, centroids)
             if new_haz is not None:
                 self.append(new_haz)
 
@@ -274,3 +274,146 @@ class StormEurope(Hazard):
             area = np.sum(cent.area_per_centroid[inten_i.indices])
             inten_mean = np.mean(inten_i)
             self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
+
+    def generate_prob_storms(self, countries=528):
+        """ Generate 6 probabilistic storms per historic storm.
+            DOI 10.1007/s10584-009-9712-1
+        Caveats of the development version
+            - Cannot return results for more than one country
+            - Does not save generated storms to disk; memory may be limiting
+            - Can only use country code for country selection
+            - drops event names and ssi as provided by WISC
+            - the event ids ending on 00 are historic, the next 29 are synthetic,
+              and so forth for every historic event
+
+        Parameters:
+            country (int): iso_n3 code of the country we want the generated
+            hazard set to be returned for.
+
+        Returns:
+            new_haz (StormEurope): A new hazard set for the given country.
+        """
+        if (self.centroids.region_id.size == 0):
+            self.centroids.set_region_id()
+        # bool vector selecting the targeted centroids
+        if not isinstance(countries, list):
+            countries = [countries]
+        select_centroids = np.isin(self.centroids.region_id, countries)
+
+        shape_grid = self.centroids.shape_grid
+
+        # init probabilistic array
+        n_events = 6*5
+        n_out = n_events * self.size
+        intensity_prob = np.ndarray((n_out, np.count_nonzero(select_centroids)))
+
+        LOGGER.info('Commencing probabilistic calculations')
+        for index, intensity1d in enumerate(self.intensity):
+            # indices for return matrix
+            index_start = index * n_events
+            index_end = (index + 1) * n_events
+
+            # returned slice is of (n_events, sum(select_centroids))
+            intensity_prob[index_start:index_end, :] =\
+                self._hist2prob(
+                    intensity1d, 
+                    shape_grid, 
+                    select_centroids, 
+                    n_events
+                )
+
+        LOGGER.info('Generating new StormEurope instance')
+        new_haz = StormEurope()
+        new_haz.intensity = sparse.csr_matrix(intensity_prob)
+
+        # don't use synthetic dates; just repeat the historic dates
+        new_haz.date = np.repeat(self.date, n_events)
+
+        # subsetting centroids
+        new_haz.centroids = self.centroids.select(reg_id = countries)
+        new_haz.units = 'm/s'
+
+        # construct new event ids
+        base = np.repeat((self.event_id * 100), n_events)
+        synth_id = np.tile(np.arange(n_events), self.size)
+        new_haz.event_id = base + synth_id
+
+        # frequency still based on the historic number of years
+        new_haz.frequency = np.divide(
+            np.ones_like(new_haz.event_id),
+            (last_year(self.date) - first_year(self.date))
+        )
+
+        self.tag = TagHazard(
+            HAZ_TYPE, 'Hazard set not saved automatically',
+            description='WISC probabilistic hazard set using Schwierz et al.'
+        )
+
+        new_haz.fraction = new_haz.intensity.copy().tocsr()
+        new_haz.fraction.data.fill(1)
+        new_haz.orig = (new_haz.event_id % 100 == 0)
+        new_haz.check()
+
+        return new_haz
+
+    @staticmethod
+    def _hist2prob(intensity1d, shape_grid, select_centroids, n_events,
+                   spatial_shift=4, power=1.1):
+        """ 
+        Internal function, intended to be called from generate_prob_storms. 
+        Generates six permutations based on one historical storm event, which
+        it then moves around by spatial_shift gridpoints to the east, west, and 
+        north.
+
+        Parameters:
+            intensity1d (scipy.sparse.csr_matrix, 1 by n): One historic event
+            shape_grid (tuple): Shape of the original footprint grid
+            select_centroids (np.ndarray(dty=bool))
+        """
+        shape_ndarray = shape_grid + tuple([n_events])
+
+        shape_ndarray = tuple([n_events]) + shape_grid
+
+        # reshape to the raster that the data represents
+        intensity2d = intensity1d.reshape(shape_grid)
+
+        # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
+        # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
+        intensity2d_sqrt = intensity2d.sqrt().todense()
+        intensity2d_pwr = intensity2d.power(power).todense()
+        intensity2d = intensity2d.todense()
+
+        # intermediary 3d array: (lat, lon, events)
+        intensity3d_prob = np.ndarray(shape_ndarray)
+
+        # the six variants of intensity transformation
+        # 1. translation only
+        intensity3d_prob[0] = intensity2d
+
+        intensity3d_prob[1] = intensity2d - (0.1 * intensity2d_sqrt)
+        intensity3d_prob[2] = intensity2d + (0.1 * intensity2d_sqrt)
+
+        intensity3d_prob[3] = intensity2d - (0.1 * intensity2d_pwr)
+        intensity3d_prob[4] = intensity2d + (0.1 * intensity2d_pwr)
+
+        intensity3d_prob[5] = intensity2d \
+                              - (0.05 * intensity2d_pwr) \
+                              - (0.05 * intensity2d_sqrt)
+
+        # spatial shifts
+        # northward
+        intensity3d_prob[ 6:12, :-spatial_shift, :] = \
+            intensity3d_prob[0:6, spatial_shift:, :]
+        # southward
+        intensity3d_prob[12:18, spatial_shift:,  :] = \
+            intensity3d_prob[0:6, :-spatial_shift, :]
+        # eastward
+        intensity3d_prob[18:24, :,  spatial_shift:] = \
+            intensity3d_prob[0:6, :, :-spatial_shift]
+        # westward
+        intensity3d_prob[24:30, :, :-spatial_shift] = \
+            intensity3d_prob[0:6, :, spatial_shift:]
+
+        intensity_out = intensity3d_prob.reshape(n_events, np.prod(shape_grid))
+        return intensity_out[:, select_centroids]
+

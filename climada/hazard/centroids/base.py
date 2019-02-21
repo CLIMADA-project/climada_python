@@ -26,11 +26,13 @@ import os
 import copy
 import logging
 import numpy as np
+import shapely.vectorized
 
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import grid_is_regular, dist_to_coast, coord_on_land
+from climada.util.coordinates import (grid_is_regular, dist_to_coast, 
+    coord_on_land, get_country_geometries)
 import climada.util.plot as u_plot
 from climada.util.files_handler import to_list, get_file_names
 from climada.util.constants import ONE_LAT_KM
@@ -282,6 +284,23 @@ class Centroids():
         idx = np.linalg.norm(np.abs(self.coord-[lat, lon]), axis=1).argmin()
         return self.id[idx]
 
+    def set_region_id(self):
+        """ Set the region_id to the adm0 ISO_N3 (country) code as indicated by
+        natural earth data. Currently simply iterates over all countries in
+        extent given by Centroids instance. Not terribly efficient; could
+        implement a raster burn method if centroids lie on regular grid. Could
+        also employ parallelization.
+
+        Take heed: the natural earth dataset has errors and misclassifies, among
+        others, Norway, Somaliland, and Kosovo, using -99 instead of their
+        assigned codes. Have a look at the natural earth shapefiles and 
+        attribute tables. """
+        countries = get_country_geometries(extent = self.extent)
+        self.region_id = np.zeros(self.size, dtype=int)
+        for geom in zip(countries.geometry, countries.ISO_N3):
+            select = shapely.vectorized.contains(geom[0], self.lon, self.lat)
+            self.region_id[select] = geom[1]
+
     @property
     def resolution(self):
         """ Returns a tuple of the resolution in the same unit as the coords.
@@ -292,6 +311,9 @@ class Centroids():
     def resolution(self, res):
         """ Set the resolution asset after making sure that the coordinates are
         on a regular grid. Coerces floats to a tuple.
+
+        Parameters:
+            res (tuple, float): If float, use same resolution for x and y axis.
         """
         assert grid_is_regular(self.coord), 'The coords are not on a regular grid'
         if isinstance(res, float):
@@ -313,6 +335,30 @@ class Centroids():
     def size(self):
         """ Get count of centroids """
         return self.id.size
+
+    @property
+    def extent(self):
+        """ Gets geographical extent as tuple
+
+        Returns:
+            extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
+        """
+        return (
+           float(np.min(self.lon)),
+           float(np.max(self.lon)),
+           float(np.min(self.lat)),
+           float(np.max(self.lat)),
+        )
+
+    @property
+    def shape_grid(self):
+        """If the centroids lie on a regular grid, return its shape as a tuple
+        of the form (n_lat, n_lon), that is, (height, width) """
+        assert grid_is_regular(self.coord), 'Coords are not on a regular grid'
+        return (
+            np.unique(self.lat).size,
+            np.unique(self.lon).size
+        )
 
     @staticmethod
     def get_sup_file_format():

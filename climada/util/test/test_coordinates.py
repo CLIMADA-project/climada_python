@@ -23,10 +23,11 @@ import unittest
 import numpy as np
 import shapely
 from cartopy.io import shapereader
+import geopandas
 
 from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, shapely_to_pyshp,\
-dist_to_coast
+dist_to_coast, get_country_geometries
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -89,14 +90,14 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(-106.6, coast[-1][1])
 
     def test_get_coastlines_pass(self):
-        '''Check get_coastlines function in defined border'''
-        border = (-100, 95, -55, 35)
-        coast = get_coastlines(border, resolution=110)
+        '''Check get_coastlines function in defined extent'''
+        extent = (-100, 95, -55, 35)
+        coast = get_coastlines(extent, resolution=110)
 
         for lat_val, lon_val in coast:
-            if lon_val < border[0] or lon_val > border[1]:
+            if lon_val < extent[0] or lon_val > extent[1]:
                 self.assertTrue(False)
-            if lat_val < border[2] or lat_val > border[3]:
+            if lat_val < extent[2] or lat_val > extent[3]:
                 self.assertTrue(False)
 
         self.assertEqual((1234, 2), coast.shape)
@@ -124,11 +125,11 @@ class TestFunc(unittest.TestCase):
                                          55.854502800000034, 51.08754088371883)):
             self.assertAlmostEqual(res, ref)
 
-    def test_get_land_geometry_border_pass(self):
+    def test_get_land_geometry_extent_pass(self):
         """get_land_geometry with selected countries."""
         lat = np.array([28.203216, 28.555994, 28.860875])
         lon = np.array([-16.567489, -18.554130, -9.532476])
-        res = get_land_geometry(border=(np.min(lon), np.max(lon),
+        res = get_land_geometry(extent=(np.min(lon), np.max(lon),
                                 np.min(lat), np.max(lat)), resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         self.assertAlmostEqual(res.bounds[0], -18.002186653)
@@ -176,6 +177,41 @@ class TestFunc(unittest.TestCase):
         point = (13.958333333333343, -58.125)
         res = dist_to_coast(point)
         self.assertAlmostEqual(166.36505441711506, res[0])
+
+    def test_get_country_geometries_country_pass(self):
+        """ get_country_geometries with selected countries. issues with the
+        natural earth data should be caught by test_get_land_geometry_* since
+        it's very similar """
+        iso_countries = ['NLD', 'VNM']
+        res = get_country_geometries(iso_countries, resolution=110)
+        self.assertIsInstance(res,
+                              geopandas.geodataframe.GeoDataFrame)    
+
+    def test_get_country_geometries_extent_pass(self):
+        """get_country_geometries by selecting by extent"""
+        lat = np.array([28.203216, 28.555994, 28.860875])
+        lon = np.array([-16.567489, -18.554130, -9.532476])
+
+        res = get_country_geometries(extent=(
+            np.min(lon), np.max(lon),
+            np.min(lat), np.max(lat)
+        ))
+
+        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
+        self.assertAlmostEqual(res.bounds.iloc[0,0], -11.800084333105298)
+        self.assertTrue(
+            np.allclose(res.bounds.iloc[1,1], lat[0])
+        )
+        self.assertAlmostEqual(res.bounds.iloc[0,2], np.max(lon))
+        self.assertAlmostEqual(res.bounds.iloc[0,3], np.max(lat))
+
+    def test_get_country_geometries_all_pass(self):
+        """get_country_geometries with no countries or extent; i.e. the whole
+        earth"""
+        res = get_country_geometries(resolution=110)
+        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
+        self.assertAlmostEqual(res.area[0], 1.639510995900778)
+
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)

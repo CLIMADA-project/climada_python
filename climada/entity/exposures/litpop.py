@@ -118,6 +118,10 @@ class LitPop(Exposures):
                 res_km if both are delivered
             check_plot (boolean, optional): choose if a plot is shown at the
                 end of the operation.
+            exponents (list of two integers, default = [1, 1]) defining
+                power with which lit (nightlights) and pop (gpw) go into LitPop.
+                To get nightlights^3 alone: [3, 0].
+                To use population count alone: [0, 1].
             fin_mode (str, optional): define what total country economic value
                 is to be used as an asset base and distributed to the grid:
                 - gdp: gross-domestic product (Source: World Bank)
@@ -139,7 +143,8 @@ class LitPop(Exposures):
         start_time = time.time()
         res_km = args.get('res_km', 1)
         res_arcsec = args.get('res_arcsec', [])
-        fin_mode = args.get('fin_mode', 'income_group')
+        fin_mode = args.get('fin_mode', 'pc')
+        exponents = args.get('exponents', [1, 1])
         admin1_calc = args.get('admin1_calc', False)
         adm1_scatter = args.get('adm1_scatter', False)
         conserve_cntrytotal = args.get('conserve_cntrytotal', True)
@@ -195,7 +200,8 @@ class LitPop(Exposures):
         all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
         LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
-        litpop_data = _get_LitPop_box(cut_bbox, resolution, 0, reference_year, [1, 1])
+        litpop_data = _get_litpop_box(cut_bbox, resolution, 0, reference_year, \
+                                      exponents)
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name='admin_0_countries')
@@ -203,12 +209,14 @@ class LitPop(Exposures):
 
         for cntry_iso, cntry_val in country_info.items():
             if fin_mode == 'pc':
-                _, gdp_val = world_bank_wealth_account(cntry_iso, reference_year, \
-                                                       no_land=True)
-                # not actually GDP but Produced Capital "pc"
+                _, total_asset_val = world_bank_wealth_account(cntry_iso, \
+                                                               reference_year, \
+                                                               no_land=True)
+                # here, total_asset_val is Produced Capital "pc"
+                # no_land=True returns value w/o the mark-up of 24% for land value
             else:
-                _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
-            cntry_val.append(gdp_val)
+                _, total_asset_val = gdp(cntry_iso, reference_year, shp_file)
+            cntry_val.append(total_asset_val)
         _get_gdp2asset_factor(country_info, reference_year, shp_file, fin_mode=fin_mode)
 
         tag = Tag()
@@ -232,7 +240,7 @@ class LitPop(Exposures):
                                    country_info[curr_country][3],\
                                    country_info[curr_country][4])
             lp_cntry.append(self._set_one_country(country_info[curr_country],\
-                litpop_curr, lon, lat))
+                litpop_curr, lon, lat, curr_country))
             tag.description += ("LitPop based asset values for {} at " + \
                 str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
                 + "\n").format(country_info[curr_country][1], fin_mode)
@@ -251,7 +259,7 @@ class LitPop(Exposures):
         self.set_geometry_points()
 
     @staticmethod
-    def _set_one_country(cntry_info, litpop_data, lon, lat):
+    def _set_one_country(cntry_info, litpop_data, lon, lat, curr_country):
         """ Model one country.
 
         Parameters:
@@ -261,13 +269,18 @@ class LitPop(Exposures):
                 already distributed.
             lon (array): longitudinal coordinates
             lat (array): latudinal coordinates
+            curr_country: name or iso3 ID of country
         """
         lp_ent = LitPop()
         lp_ent['value'] = litpop_data.values
         lp_ent['latitude'] = lat
         lp_ent['longitude'] = lon
-        lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                * int(iso_cntry.get(cntry_info[1]).numeric)
+        try:
+            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
+                    * int(iso_cntry.get(cntry_info[1]).numeric)
+        except KeyError:
+            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
+                    * int(iso_cntry.get(curr_country).numeric)            
         lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
         return lp_ent
 
@@ -322,8 +335,8 @@ class LitPop(Exposures):
             plt.colorbar()
             plt.show()
 
-def _get_LitPop_box(cut_bbox, resolution, return_coords=0, \
-                    reference_year=2016, litpop_power=[1, 1]):
+def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
+                    reference_year=2016, exponents=[1, 1]):
     '''
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -337,8 +350,10 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, \
         resolution (scalar): resolution in arc-seconds
         reference_year (int): reference year, population available at:
             2000, 2005, 2010, 2015 (default), 2020
-        litpop_power (list of two integers, default = [1, 1]) defining power with
-            which lit (nightlights) and pop (gpw) go into LitPop
+        exponents (list of two integers, default = [1, 1]) defining power with
+            which lit (nightlights) and pop (gpw) go into LitPop.
+            To get nightlights^3 alone: [3, 0].
+            To use population count alone: [0, 1].
     OUTPUT (either one of these lines, depending on option return_coords):
         litpop_data (pandas SparseArray): A pandas SparseArray containing the
             raw, unnormalised LitPop data.
@@ -353,11 +368,14 @@ def _get_LitPop_box(cut_bbox, resolution, return_coords=0, \
     gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
                                   return_coords=0, reference_year=reference_year)
     bm_temp = np.ones(nightlights.shape)
-    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16')+1)
-    nightlights = pd.SparseArray(bm_temp, fill_value=1)
+    # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
+    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
+           dtype='uint16')+int(exponents[1]>0))
+    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1]>0))
     del bm_temp
 
-    litpop_data = _LitPop_multiply_box(nightlights, gpw, x=litpop_power[0], y=litpop_power[1])
+    litpop_data = _LitPop_multiply_box(nightlights, gpw, \
+                                       x=exponents[0], y=exponents[1])
 
     if return_coords == 1:
         lon, lat = _litpop_box2coords(cut_bbox, resolution, 0)
@@ -1333,7 +1351,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                 temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
     return litpop_data
 
-def _calc_admin0(litpop_data, gdp_val, gdptoasset_factor):
+def _calc_admin0(litpop_data, total_asset_val, gdptoasset_factor):
     """ Calculates the LitPop on a national level. The total value distributed
         corresponds to GDP times the factor to convert GDP to assets from
         the Gloabl Wealth Databook by the Credit Suisse Research Institute.
@@ -1341,7 +1359,7 @@ def _calc_admin0(litpop_data, gdp_val, gdptoasset_factor):
     Parameters:
         litpop_data (pandas SparseArray): The raw litpop_data to which the
             admin0 based value should be assinged.
-        gdp_val (scalar): The total GDP value of the country.
+        total_asset_val (scalar): The total asset value of the country.
         gdptoasset_factor (scalar): The factor with which GDP can be converted
             to physical asset value.
 
@@ -1351,7 +1369,7 @@ def _calc_admin0(litpop_data, gdp_val, gdptoasset_factor):
             factor.
     """
     litpop_data = _normalise_litpop(litpop_data)
-    litpop_data = pd.SparseArray(litpop_data.values)*gdp_val*gdptoasset_factor
+    litpop_data = pd.SparseArray(litpop_data.values)*total_asset_val*gdptoasset_factor
     return litpop_data
 
 def _normalise_litpop(litpop_data):
@@ -1737,7 +1755,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     ### TODO: ensure function is efficient if no coords are returned
     return nightlight_intensity
 
-def admin1_validation(country, methods, methods_num, **args):
+def admin1_validation(country, methods, exponents, **args):
     """ Get LitPop based exposre for one country or multiple countries
     using values at reference year. If GDP or income
     group not available for that year, consider the value of the closest
@@ -1751,7 +1769,7 @@ def admin1_validation(country, methods, methods_num, **args):
             - ['LitPop' for LitPop,
             - ['Lit', 'Pop'] for Lit and Pop,
             - ['Lit3'] for cube of night lights (Lit3)
-        methods_num (list of 2-vectors), same length as methods_name i.e.:
+        exponents (list of 2-vectors), same length as methods_name i.e.:
             - [[1, 1]] for LitPop,
             - [[1, 0], [0, 1]] for Lit and Pop,
             - [[3, 0]] for cube of night lights (Lit3)
@@ -1800,8 +1818,11 @@ def admin1_validation(country, methods, methods_num, **args):
     gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
                               return_coords=0, reference_year=reference_year)
     bm_temp = np.ones(nightlights.shape)
-    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16')+1)
-    nightlights = pd.SparseArray(bm_temp, fill_value=1)
+    
+     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
+    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
+           dtype='uint16')+int(exponents[1]>0))
+    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1]>0))
     del bm_temp
 
     shp_file = shapereader.natural_earth(resolution='10m',
@@ -1833,7 +1854,8 @@ def admin1_validation(country, methods, methods_num, **args):
     LOGGER.info('Loop through methods...')
     for i in np.arange(0, len(methods)):
         LOGGER.info('%s :', methods[i])
-        _data = _LitPop_multiply_box(nightlights, gpw, x=methods_num[i][0], y=methods_num[i][1])
+        _data = _LitPop_multiply_box(nightlights, gpw, \
+                                     x=exponents[i][0], y=exponents[i][1])
         _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\

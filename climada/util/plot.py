@@ -335,7 +335,7 @@ def add_populated_places(axis, extent, projection=ccrs.PlateCarree()):
         if extent[0] < point.x <= extent[1]:
             if extent[2] < point.y <= extent[3]:
                 axis.plot(point.x, point.y, 'ko', markersize=7, \
-                          transform=projection)
+                          markerfacecolor='None', transform=projection)
                 axis.text(point.x, point.y, rec.attributes['name'], \
                     horizontalalignment='right', verticalalignment='bottom', \
                     transform=projection, fontsize=14)

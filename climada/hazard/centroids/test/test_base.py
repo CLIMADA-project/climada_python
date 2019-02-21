@@ -324,6 +324,18 @@ class TestMethods(unittest.TestCase):
         self.assertAlmostEqual(5.7988200982894105, centr_brb.dist_coast[1])
         self.assertAlmostEqual(166.36505441711506, centr_brb.dist_coast[-2])
 
+    def test_set_region_id(self):
+        """ Test that the region id setter works """
+        centr_brb = Centroids(CENTR_BRB)
+        centr_brb.set_region_id()
+ 
+        self.assertEqual(
+            np.count_nonzero(centr_brb.region_id),
+            6
+        )
+        self.assertEqual(centr_brb.region_id[0], 52) # 052 for barbados
+
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSelect)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
