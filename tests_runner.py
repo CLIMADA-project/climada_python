@@ -32,10 +32,10 @@ def main():
         import xmlrunner
         arg = sys.argv[1]
         if arg == 'unit':
-            output = os.path.join(SOURCE_DIR, 'tests_xml')
+            output = os.path.join(SOURCE_DIR, '../tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
         elif arg == 'integ':
-            output = os.path.join(SOURCE_DIR, 'tests_xml')
+            output = os.path.join(SOURCE_DIR, '../tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(find_integ_tests())
     else:
         # execute without xml reports
