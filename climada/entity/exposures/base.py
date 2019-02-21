@@ -189,8 +189,8 @@ class Exposures(GeoDataFrame):
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
-            buffer_deg (float, optional): border to add to coordinates.
-                Default: 1.0.
+            buffer_deg (float, optional): border to add to coordinates in deg.
+                Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
