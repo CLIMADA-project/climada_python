@@ -30,6 +30,10 @@ from climada.util.constants import SYSTEM_DIR
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
+    class TestResult(unittest.TestResult):
+        def addError(self, test, err):
+            print('ERROR while downloading Ibtracs file.')
+
     def test_raw_ibtracs_empty(self):
         """ read_ibtracs_netcdf"""
         tc_track = TCTracks()
