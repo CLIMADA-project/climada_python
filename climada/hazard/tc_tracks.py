@@ -129,14 +129,15 @@ class TCTracks():
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
                             year_range=(1980, 2018), basin=None):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
-        pressure and removes repeated times data.
+        pressure and removes repeated times data. Fills nans of environmental_pressure
+        and radius_max_wind.
 
         Parameters:
-            file_names (str or list(str)): absolute file name(s) or
-                folder name containing the files to read.
-            year_range=(1980, 2018)
-            basins=() or basin of origin e.g. (WP, SI)
-            provider
+            provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
+            storm_id (str, optional): ibtracs if of the storm, e.g. 1988234N13299
+            year_range(tuple, optional): (min_year, max_year). Default: (1980, 2018)
+            basin (str, optional): e.g. US, SA, NI, SI, SP, WP, EP, NA. if not
+                provided, consider all basins.
         """
         self.data = list()
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
@@ -145,7 +146,9 @@ class TCTracks():
                 file_down = download_file(IBTRACS_URL)
                 shutil.move(file_down, fn_nc)
             except (IOError, requests.exceptions.ConnectionError) as err:
-                LOGGER.error('Error while downloading .')
+                LOGGER.error('Error while downloading %s. Try to download it '+
+                             'manually and put the file in ' +
+                             'climada_python/data/system/', IBTRACS_URL)
                 raise err
 
         nc_data = Dataset(fn_nc)
@@ -293,7 +296,7 @@ class TCTracks():
             leg_names.append('Historical')
             leg_names.append('Synthetic')
 
-        axis.legend(leg_lines, leg_names)
+        axis.legend(leg_lines, leg_names, loc=0)
         return fig, axis
 
     @staticmethod
@@ -453,13 +456,11 @@ class TCTracks():
                 orig_wind.append(np.copy(track.max_sustained_wind.values))
                 orig_pres.append(np.copy(track.central_pressure.values))
 
-        chunksize = min(self.size, 500)
-        self.data = Pool().map(_apply_decay_coeffs, self.data,
-                               itertools.repeat(v_rel),
-                               itertools.repeat(p_rel),
-                               itertools.repeat(land_geom),
-                               itertools.repeat(s_rel),
-                               chunksize=chunksize)
+        res = []
+        for track in self.data:
+            res.append(_apply_decay_coeffs(track, v_rel, p_rel, land_geom,
+                                           s_rel))
+        self.data = res
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)
@@ -577,11 +578,14 @@ class TCTracks():
             datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
                                                   '%Y-%m-%d %H:%M:%S'))
 
+        id_no = float(name.replace('N', '0').replace('S', '1'))
         lat = nc_data.variables[provider + '_lat'][i_track, :].data[:val_len]
         lon = nc_data.variables[provider + '_lon'][i_track, :].data[:val_len]
 
-        max_sus_wind = nc_data.variables[provider + '_wind'][i_track, :].data[:val_len]
-        cen_pres = nc_data.variables[provider + '_pres'][i_track, :].data[:val_len]
+        max_sus_wind = nc_data.variables[provider + '_wind'][i_track, :]. \
+            data[:val_len].astype(float)
+        cen_pres = nc_data.variables[provider + '_pres'][i_track, :]. \
+            data[:val_len].astype(float)
 
         if np.all(lon == nc_data.variables[provider + '_lon']._FillValue) or \
         (np.any(lon == nc_data.variables[provider + '_lon']._FillValue) and \
@@ -617,11 +621,16 @@ class TCTracks():
 
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
+        tr_ds.coords['lat'] = ('time', tr_ds.lat)
+        tr_ds.coords['lon'] = ('time', tr_ds.lon)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
             'name': name, 'orig_event_flag': True, 'data_provider': provider, \
-            'basin': basin, 'category': set_category(max_sus_wind, 'kn')}
+            'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
 
-        self.data.append(tr_ds)
+        if tr_ds.time.size:
+            self.data.append(tr_ds)
+        else:
+            LOGGER.warning('Skipping %s. No usable data.', tr_ds.name)
 
     @staticmethod
     def _deal_nans(tr_ds, nc_data, provider, datetimes):

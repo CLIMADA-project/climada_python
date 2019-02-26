@@ -23,9 +23,7 @@ import os
 import unittest
 import array
 import xarray as xr
-import datetime as dt
 import numpy as np
-from netCDF4 import Dataset
 
 from climada.hazard.tc_tracks import TCTracks
 import climada.hazard.tc_tracks as tc
@@ -61,6 +59,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track.data[0].orig_event_flag, 1)
         self.assertEqual(tc_track.data[0].name, '1951239N12334')
+        self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].data_provider, 'hurdat_atl')
         self.assertTrue(np.isnan(tc_track.data[0].basin))
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
