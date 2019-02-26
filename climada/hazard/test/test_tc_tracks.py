@@ -164,12 +164,12 @@ class TestFuncs(unittest.TestCase):
         ens_size=2
         with self.assertLogs('climada.hazard.tc_tracks', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size, seed=25, decay=True)
-        self.assertIn('No historical track of category Tropical Depression.', cm.output[1])
+        self.assertIn('No historical track of category Tropical Depression with landfall.', cm.output[1])
         self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[2])
-        self.assertIn('No historical track of category Hurrican Cat. 1.', cm.output[3])
+        self.assertIn('No historical track of category Hurrican Cat. 1 with landfall.', cm.output[3])
         self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[4])
-        self.assertIn('No historical track of category Hurrican Cat. 3. Decay parameters from category Hurrican Cat. 4 taken.', cm.output[5])
-        self.assertIn('No historical track of category Hurrican Cat. 5.', cm.output[6])
+        self.assertIn('No historical track of category Hurrican Cat. 3 with landfall. Decay parameters from category Hurrican Cat. 4 taken.', cm.output[5])
+        self.assertIn('No historical track of category Hurrican Cat. 5 with landfall.', cm.output[6])
 
     def test_calc_decay_no_landfall_pass(self):
         """ Test _calc_land_decay with no historical tracks with landfall """
