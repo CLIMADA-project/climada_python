@@ -86,26 +86,29 @@ class TestIBTracs(unittest.TestCase):
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
                                year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
+        
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
+        self.assertEqual(tc_track.size, 32)
 
     def test_filter_ibtracs_track_pass(self):
         """ Test _filter_ibtracs """
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
-        nc_data=Dataset(fn_nc)
 
         storm_id='1988234N13299'
         tc_track = TCTracks()
-        sel = tc_track._filter_ibtracs(nc_data, storm_id, year_range=None, basin=None)
+        sel = tc_track._filter_ibtracs(fn_nc, storm_id, year_range=None, basin=None)
         self.assertTrue(sel, np.array([10000]))
 
     def test_filter_ibtracs_year_basin_pass(self):
         """ Test _filter_ibtracs """
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
-        nc_data=Dataset(fn_nc)
 
         tc_track = TCTracks()
-        sel = tc_track._filter_ibtracs(nc_data, storm_id=None, year_range=(1915, 1916),
+        sel = tc_track._filter_ibtracs(fn_nc, storm_id=None, year_range=(1915, 1916),
                                  basin='WP')
 
+        nc_data=Dataset(fn_nc)
         for i_sel in sel:
             self.assertEqual('WP',
                              ''.join(nc_data.variables['basin'][i_sel, 0, :].data.astype(str)))

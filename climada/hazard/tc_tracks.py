@@ -151,11 +151,11 @@ class TCTracks():
                              'climada_python/data/system/', IBTRACS_URL)
                 raise err
 
-        nc_data = Dataset(fn_nc)
-        sel_tracks = self._filter_ibtracs(nc_data, storm_id, year_range, basin)
-
-        for i_track in sel_tracks:
-            self._read_one_raw(nc_data, i_track, provider)
+        sel_tracks = self._filter_ibtracs(fn_nc, storm_id, year_range, basin)
+        chunksize = min(self.size, 100)
+        self.data = Pool().map(self._read_one_raw, itertools.repeat(fn_nc), \
+            sel_tracks, itertools.repeat(provider), chunksize=chunksize)
+        self.data = [track for track in self.data if track is not None]
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file.
@@ -188,9 +188,8 @@ class TCTracks():
 
         chunksize = min(self.size, 500)
         self.data = Pool().map(self._one_interp_data, self.data,
-                               itertools.repeat(time_step_h, self.size),
-                               itertools.repeat(land_geom, self.size),
-                               chunksize=chunksize)
+            itertools.repeat(time_step_h, self.size),
+            itertools.repeat(land_geom, self.size), chunksize=chunksize)
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
         ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
@@ -456,11 +455,11 @@ class TCTracks():
                 orig_wind.append(np.copy(track.max_sustained_wind.values))
                 orig_pres.append(np.copy(track.central_pressure.values))
 
-        res = []
-        for track in self.data:
-            res.append(_apply_decay_coeffs(track, v_rel, p_rel, land_geom,
-                                           s_rel))
-        self.data = res
+        chunksize = min(self.size, 500)
+        self.data = Pool().map(_apply_decay_coeffs, self.data, \
+            itertools.repeat(v_rel), itertools.repeat(p_rel), \
+            itertools.repeat(land_geom), itertools.repeat(s_rel), \
+            chunksize=chunksize)
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)
@@ -521,11 +520,11 @@ class TCTracks():
         self.data.append(tr_ds)
 
     @staticmethod
-    def _filter_ibtracs(nc_data, storm_id, year_range, basin):
+    def _filter_ibtracs(fn_nc, storm_id, year_range, basin):
         """ Select tracks from input conditions.
 
         Parameters:
-            nc_data (netCDF4.Dataset): ibtracs netcdf data
+            fn_nc (str): ibtracs netcdf data file name
             storm_id (str): ibtrac id of the storm
             year_range(tuple): (min_year, max_year)
             basin (str): e.g. US, SA, NI, SI, SP, WP, EP, NA
@@ -533,6 +532,7 @@ class TCTracks():
         Returns:
             np.array
         """
+        nc_data = Dataset(fn_nc)
         storm_ids = [''.join(name.data.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
@@ -559,14 +559,15 @@ class TCTracks():
                 sel_tracks = sel_tracks[sel_bas]
         return sel_tracks
 
-    def _read_one_raw(self, nc_data, i_track, provider):
+    def _read_one_raw(self, fn_nc, i_track, provider):
         """Fill given track.
 
             Parameters:
-            nc_data (netCDF4.Dataset): ibtracs netcdf data
+            fn_nc (str): ibtracs netcdf data file name
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
+        nc_data = Dataset(fn_nc)
         name = ''.join(nc_data.variables['sid'][i_track].data.astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].data.astype(str))
         LOGGER.info('Reading %s', name)
@@ -593,7 +594,7 @@ class TCTracks():
         and np.all(cen_pres == nc_data.variables[provider + '_pres']._FillValue)):
             LOGGER.warning('Skipping %s. It does not contain valid values. ' +\
                            'Try another provider.', name)
-            return
+            return None
 
         try:
             rmax = nc_data.variables[provider + '_rmw'][i_track, :].data[:val_len]
@@ -619,6 +620,10 @@ class TCTracks():
         # deal with nans
         tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes)
 
+        if not tr_ds.shape[0]:
+            LOGGER.warning('Skipping %s. No usable data.', name)
+            return None
+
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
         tr_ds.coords['lat'] = ('time', tr_ds.lat)
@@ -626,11 +631,7 @@ class TCTracks():
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
             'name': name, 'orig_event_flag': True, 'data_provider': provider, \
             'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
-
-        if tr_ds.time.size:
-            self.data.append(tr_ds)
-        else:
-            LOGGER.warning('Skipping %s. No usable data.', tr_ds.name)
+        return tr_ds
 
     @staticmethod
     def _deal_nans(tr_ds, nc_data, provider, datetimes):
