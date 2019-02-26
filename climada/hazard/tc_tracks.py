@@ -187,8 +187,8 @@ class TCTracks():
             land_geom = None
 
         chunksize = min(self.size, 500)
-        self.data = Pool().map(self._one_interp_data, self.data,
-            itertools.repeat(time_step_h, self.size),
+        self.data = Pool().map(self._one_interp_data, self.data, \
+            itertools.repeat(time_step_h, self.size), \
             itertools.repeat(land_geom, self.size), chunksize=chunksize)
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
