@@ -866,6 +866,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     Returns:
         v_rel (dict()), p_rel (dict())
     """
+    np.warnings.filterwarnings('ignore')
     v_rel = dict()
     p_rel = dict()
     for ss_scale, val_lf in v_lf.items():
@@ -894,8 +895,8 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
         if ss_scale not in p_rel:
             close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
-            LOGGER.debug('No historical track of category %s. Decay ' \
-                         'parameters from category %s taken.',
+            LOGGER.debug('No historical track of category %s with landfall. ' \
+                         'Decay parameters from category %s taken.',
                          CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
@@ -986,6 +987,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             track.max_sustained_wind[land_sea:sea_land_idx[idx+1]] += - r_diff
 
     # correct limits
+    np.warnings.filterwarnings('ignore')
     cor_p = track.central_pressure.values > track.environmental_pressure.values
     track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
     track.max_sustained_wind[track.max_sustained_wind < 0] = 0
