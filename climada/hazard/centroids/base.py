@@ -31,8 +31,12 @@ import shapely.vectorized
 from climada.hazard.centroids.tag import Tag
 from climada.hazard.centroids.source import READ_SET
 import climada.util.checker as check
-from climada.util.coordinates import (grid_is_regular, dist_to_coast, 
-    coord_on_land, get_country_geometries)
+from climada.util.coordinates import (
+    coord_on_land,
+    dist_to_coast,
+    get_country_geometries,
+    grid_is_regular,
+)
 import climada.util.plot as u_plot
 from climada.util.files_handler import to_list, get_file_names
 from climada.util.constants import ONE_LAT_KM
@@ -293,9 +297,9 @@ class Centroids():
 
         Take heed: the natural earth dataset has errors and misclassifies, among
         others, Norway, Somaliland, and Kosovo, using -99 instead of their
-        assigned codes. Have a look at the natural earth shapefiles and 
+        assigned codes. Have a look at the natural earth shapefiles and
         attribute tables. """
-        countries = get_country_geometries(extent = self.extent)
+        countries = get_country_geometries(extent=self.extent)
         self.region_id = np.zeros(self.size, dtype=int)
         for geom in zip(countries.geometry, countries.ISO_N3):
             select = shapely.vectorized.contains(geom[0], self.lon, self.lat)
@@ -344,10 +348,10 @@ class Centroids():
             extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
         """
         return (
-           float(np.min(self.lon)),
-           float(np.max(self.lon)),
-           float(np.min(self.lat)),
-           float(np.max(self.lat)),
+            float(np.min(self.lon)),
+            float(np.max(self.lon)),
+            float(np.min(self.lat)),
+            float(np.max(self.lat)),
         )
 
     @property

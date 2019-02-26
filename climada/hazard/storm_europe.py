@@ -108,11 +108,11 @@ class StormEurope(Hazard):
 
         LOGGER.info('Commencing to iterate over netCDF files.')
 
-        for f in file_names:
-            if any(fo in f for fo in files_omit):
-                LOGGER.info("Omitting file %s", f)
+        for file_name in file_names:
+            if any(fo in file_name for fo in files_omit):
+                LOGGER.info("Omitting file %s", file_name)
                 continue
-            new_haz = self._read_one_nc(f, centroids)
+            new_haz = self._read_one_nc(file_name, centroids)
             if new_haz is not None:
                 self.append(new_haz)
 
@@ -276,15 +276,16 @@ class StormEurope(Hazard):
             self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
 
     def generate_prob_storms(self, countries=528):
-        """ Generate 6 probabilistic storms per historic storm.
-            DOI 10.1007/s10584-009-9712-1
+        """ Generate 6 probabilistic storms per historic storm. As per doi:
+            10.1007/s10584-009-9712-1
+
         Caveats of the development version
-            - Cannot return results for more than one country
             - Does not save generated storms to disk; memory may be limiting
             - Can only use country code for country selection
-            - drops event names and ssi as provided by WISC
-            - the event ids ending on 00 are historic, the next 29 are synthetic,
-              and so forth for every historic event
+            - Drops event names and ssi as provided by WISC
+
+        The event ids ending on 00 are historic, the next 29 are synthetic, and
+        so forth for every historic event
 
         Parameters:
             country (int): iso_n3 code of the country we want the generated
@@ -293,7 +294,7 @@ class StormEurope(Hazard):
         Returns:
             new_haz (StormEurope): A new hazard set for the given country.
         """
-        if (self.centroids.region_id.size == 0):
+        if self.centroids.region_id.size == 0:
             self.centroids.set_region_id()
         # bool vector selecting the targeted centroids
         if not isinstance(countries, list):
@@ -316,9 +317,9 @@ class StormEurope(Hazard):
             # returned slice is of (n_events, sum(select_centroids))
             intensity_prob[index_start:index_end, :] =\
                 self._hist2prob(
-                    intensity1d, 
-                    shape_grid, 
-                    select_centroids, 
+                    intensity1d,
+                    shape_grid,
+                    select_centroids,
                     n_events
                 )
 
@@ -330,7 +331,7 @@ class StormEurope(Hazard):
         new_haz.date = np.repeat(self.date, n_events)
 
         # subsetting centroids
-        new_haz.centroids = self.centroids.select(reg_id = countries)
+        new_haz.centroids = self.centroids.select(reg_id=countries)
         new_haz.units = 'm/s'
 
         # construct new event ids
@@ -359,10 +360,10 @@ class StormEurope(Hazard):
     @staticmethod
     def _hist2prob(intensity1d, shape_grid, select_centroids, n_events,
                    spatial_shift=4, power=1.1):
-        """ 
-        Internal function, intended to be called from generate_prob_storms. 
+        """
+        Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
-        it then moves around by spatial_shift gridpoints to the east, west, and 
+        it then moves around by spatial_shift gridpoints to the east, west, and
         north.
 
         Parameters:
@@ -402,13 +403,13 @@ class StormEurope(Hazard):
 
         # spatial shifts
         # northward
-        intensity3d_prob[ 6:12, :-spatial_shift, :] = \
+        intensity3d_prob[6:12, :-spatial_shift, :] = \
             intensity3d_prob[0:6, spatial_shift:, :]
         # southward
-        intensity3d_prob[12:18, spatial_shift:,  :] = \
+        intensity3d_prob[12:18, spatial_shift:, :] = \
             intensity3d_prob[0:6, :-spatial_shift, :]
         # eastward
-        intensity3d_prob[18:24, :,  spatial_shift:] = \
+        intensity3d_prob[18:24, :, spatial_shift:] = \
             intensity3d_prob[0:6, :, :-spatial_shift]
         # westward
         intensity3d_prob[24:30, :, :-spatial_shift] = \
@@ -416,4 +417,3 @@ class StormEurope(Hazard):
 
         intensity_out = intensity3d_prob.reshape(n_events, np.prod(shape_grid))
         return intensity_out[:, select_centroids]
-

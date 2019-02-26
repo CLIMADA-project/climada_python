@@ -57,7 +57,7 @@ class TestReader(unittest.TestCase):
     def test_read_footprints(self):
         """ Test read_footprints function, using two small test files"""
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS)
+        storms.read_footprints(TEST_NCS, description='test_description')
 
         self.assertEqual(storms.tag.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
