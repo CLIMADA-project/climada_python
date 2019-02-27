@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Exposure base class.
 """
+import os
 import unittest
 import numpy as np
 import pandas as pd
@@ -29,6 +30,8 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR, add_sea
 from climada.hazard.base import Hazard
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 def good_exposures():
     """Followng values are defined for each exposure"""
@@ -87,7 +90,7 @@ class TestChecker(unittest.TestCase):
                 expo.check()
         self.assertIn('longitude missing', cm.output[0])
 
-class TestReader(unittest.TestCase):
+class TestIO(unittest.TestCase):
     """ Check constructor Exposures through DataFrames readers """
 
     def test_read_template(self):
@@ -99,6 +102,42 @@ class TestReader(unittest.TestCase):
         exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
         exp_df.check()
+
+    def test_io_hdf5(self):
+        """ write and read hdf5 """
+        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
+        exp_df.set_geometry_points()
+        # set metadata
+        exp_df.ref_year = 2020
+        exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
+        exp_df.value_unit = 'XSD'
+        
+        file_name = os.path.join(DATA_DIR, 'test_hdf5_exp.h5')
+        exp_df.write_hdf5(file_name)
+        
+        exp_read = Exposures()
+        exp_read.read_hdf5(file_name)
+    
+        self.assertEqual(exp_df.ref_year, exp_read.ref_year)
+        self.assertEqual(exp_df.value_unit, exp_read.value_unit)
+        self.assertEqual(exp_df.crs, exp_read.crs)
+        self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
+        self.assertEqual(exp_df.tag.description, exp_read.tag.description)
+        self.assertTrue(np.array_equal(exp_df.latitude.values, exp_read.latitude.values))
+        self.assertTrue(np.array_equal(exp_df.longitude.values, exp_read.longitude.values))
+        self.assertTrue(np.array_equal(exp_df.value.values, exp_read.value.values))
+        self.assertTrue(np.array_equal(exp_df.deductible.values, exp_read.deductible.values))
+        self.assertTrue(np.array_equal(exp_df.cover.values, exp_read.cover.values))
+        self.assertTrue(np.array_equal(exp_df.region_id.values, exp_read.region_id.values))
+        self.assertTrue(np.array_equal(exp_df.category_id.values, exp_read.category_id.values))
+        self.assertTrue(np.array_equal(exp_df.if_TC.values, exp_read.if_TC.values))
+        self.assertTrue(np.array_equal(exp_df.centr_TC.values, exp_read.centr_TC.values))
+        self.assertTrue(np.array_equal(exp_df.if_FL.values, exp_read.if_FL.values))
+        self.assertTrue(np.array_equal(exp_df.centr_FL.values, exp_read.centr_FL.values))
+
+        for point_df, point_read in zip(exp_df.geometry.values, exp_read.geometry.values):
+            self.assertEqual(point_df.x, point_read.x)
+            self.assertEqual(point_df.y, point_read.y)
 
 class TestAddSea(unittest.TestCase):
     """ Check constructor Exposures through DataFrames readers """
@@ -150,6 +189,6 @@ class TestAddSea(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

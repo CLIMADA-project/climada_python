@@ -215,6 +215,30 @@ class Exposures(GeoDataFrame):
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title, \
             pop_name, buffer_deg, extend, **kwargs)
 
+    def write_hdf5(self, file_name):
+        """ Write data frame and metadata in hdf5 format """
+        store = pd.HDFStore(file_name)
+        store.put('exposures', pd.DataFrame(self))
+
+        var_meta = {}
+        for var in self._metadata:
+            if var[0] != '_':
+                try:
+                    var_meta[var] = getattr(self, var)
+                except AttributeError:
+                    pass
+
+        store.get_storer('exposures').attrs.metadata = var_meta
+        store.close()
+
+    def read_hdf5(self, file_name):
+        """ Read data frame and metadata in hdf5 format """
+        with pd.HDFStore(file_name) as store:
+            self.__init__(store['exposures'])
+            metadata = store.get_storer('exposures').attrs.metadata
+            for key, val in metadata.items():
+                setattr(self, key, val)
+
     def read_mat(self, file_name, var_names=DEF_VAR_MAT):
         """Read MATLAB file and store variables in exposures.
 
