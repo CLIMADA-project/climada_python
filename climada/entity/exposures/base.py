@@ -155,10 +155,7 @@ class Exposures(GeoDataFrame):
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.shape[0]), str(hazard.centroids.size))
 
-        coord = np.zeros((self.latitude.values.size, 2))
-        coord[:, 0] = self.latitude.values
-        coord[:, 1] = self.longitude.values
-
+        coord = np.stack([self.latitude.values, self.longitude.values], axis=1)
         if np.array_equal(coord, hazard.centroids.coord):
             assigned = np.arange(self.shape[0])
         else:
@@ -209,9 +206,8 @@ class Exposures(GeoDataFrame):
         else:
             pos_vals = np.ones((self.value[mask].values.size,), dtype=bool)
         value = self.value[mask][pos_vals].values
-        coord = np.zeros((value.size, 2))
-        coord[:, 0] = self.latitude[mask][pos_vals].values
-        coord[:, 1] = self.longitude[mask][pos_vals].values
+        coord = np.stack([self.latitude[mask][pos_vals].values,
+                          self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title, \
             pop_name, buffer_deg, extend, **kwargs)
 
