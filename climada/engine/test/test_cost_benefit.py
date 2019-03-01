@@ -39,7 +39,8 @@ class TestSteps(unittest.TestCase):
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
 
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_mat(ENT_DEMO_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
@@ -105,7 +106,8 @@ class TestSteps(unittest.TestCase):
 
     def test_calc_cb_no_change_pass(self):
         """Test _calc_cost_benefit without present value against reference value"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_mat(ENT_DEMO_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
@@ -140,7 +142,8 @@ class TestSteps(unittest.TestCase):
 
     def test_calc_cb_change_pass(self):
         """Test _calc_cost_benefit with present value against reference value"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_mat(ENT_DEMO_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
@@ -300,7 +303,8 @@ class TestCalc(unittest.TestCase):
     def test_calc_change_pass(self):
         """Test calc with future change"""
         # present
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
@@ -337,7 +341,8 @@ class TestCalc(unittest.TestCase):
 
     def test_calc_no_change_pass(self):
         """Test calc without future change"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
         entity.check()

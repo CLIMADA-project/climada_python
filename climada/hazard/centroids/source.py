@@ -42,9 +42,9 @@ DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
 """ MATLAB variable names """
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
-                 'col_name': {'cen_id' : 'centroid_ID',
-                              'lat' : 'Latitude',
-                              'lon' : 'Longitude',
+                 'col_name': {'cen_id' : 'centroid_id',
+                              'lat' : 'latitude',
+                              'lon' : 'longitude',
                              }
                 }
 """ Excel variable names """

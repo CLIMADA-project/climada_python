@@ -118,7 +118,8 @@ class TestOneExposure(unittest.TestCase):
         ent.read_excel(ENT_DEMO_TODAY)
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -174,7 +175,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 
@@ -220,7 +222,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 
@@ -324,7 +327,8 @@ class TestIO(unittest.TestCase):
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)

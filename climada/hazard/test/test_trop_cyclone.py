@@ -144,7 +144,7 @@ class TestReader(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
 
         tc_haz1 = TropCyclone()
-        tc_haz1.read(HAZ_TEST_MAT)
+        tc_haz1.read_mat(HAZ_TEST_MAT)
 
         tc_haz2 = TropCyclone()
         tc_haz2.set_from_tracks(tc_track, CENTR_TEST_BRB)

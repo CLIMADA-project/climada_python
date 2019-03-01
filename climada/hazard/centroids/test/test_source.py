@@ -23,10 +23,9 @@ import os
 import unittest
 
 from climada.hazard.centroids.base import Centroids
-from climada.util.constants import GLB_CENTROIDS_MAT
+from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'test/data/')
-HAZ_TEST_XLS = os.path.join(HAZ_DIR, 'Excel_hazard.xlsx')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 class TestReaderMat(unittest.TestCase):
@@ -64,7 +63,7 @@ class TestReaderExcel(unittest.TestCase):
     def test_centroid_pass(self):
         ''' Read a centroid excel file correctly.'''
         description = 'One single file.'
-        centroids = Centroids(HAZ_TEST_XLS, description)
+        centroids = Centroids(HAZ_TEMPLATE_XLS, description)
 
         n_centroids = 45
         self.assertEqual(centroids.coord.shape[0], n_centroids)
@@ -83,7 +82,7 @@ class TestReaderMix(unittest.TestCase):
     
     def test_xls_mat_pass(self):
         """Read xls and matlab files."""
-        files = [HAZ_TEST_MAT, HAZ_TEST_XLS]
+        files = [HAZ_TEST_MAT, HAZ_TEMPLATE_XLS]
         centroids = Centroids(files)
         
         self.assertEqual(centroids.id.size, 145)

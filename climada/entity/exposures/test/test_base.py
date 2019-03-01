@@ -56,8 +56,7 @@ class TestAssign(unittest.TestCase):
         # Fill with dummy values
         expo = good_exposures()
         # Fill with dummy values the centroids
-        haz = Hazard()
-        haz.tag.haz_type = 'TC'
+        haz = Hazard('TC')
         haz.centroids.coord = np.ones((expo.shape[0]+6, 2))
         # assign
         expo.assign_centroids(haz)

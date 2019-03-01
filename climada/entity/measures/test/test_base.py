@@ -72,7 +72,8 @@ class TestApply(unittest.TestCase):
         meas.read_mat(ENT_DEMO_MAT)
         act_1 = meas.get_measure('Seawall')
         
-        haz = Hazard('TC', HAZ_TEST_MAT)
+        haz = Hazard('TC')
+        haz.read_mat(HAZ_TEST_MAT)
         exp = Exposures()
         exp.read_mat(ENT_DEMO_MAT)
         exp.rename(columns={'if_': 'if_TC'}, inplace=True)
