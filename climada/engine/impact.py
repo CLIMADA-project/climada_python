@@ -140,9 +140,8 @@ class Impact():
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
         self.date = hazard.date
-        self.coord_exp = np.zeros((exposures.shape[0], 2))
-        self.coord_exp[:, 0] = exposures.latitude.values
-        self.coord_exp[:, 1] = exposures.longitude.values
+        self.coord_exp = np.stack([exposures.latitude.values,
+                                   exposures.latitude.values], axis=1)
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
@@ -323,12 +322,12 @@ class Impact():
                   "at_event", "eai_exp", "exp_lat", "exp_lon"]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
-        data = [self.tag['haz'].haz_type, self.tag['haz'].file_name,
-                self.tag['haz'].description]
+        data = [self.tag['haz'].haz_type, str(self.tag['haz'].file_name),
+                str(self.tag['haz'].description)]
         write_col(0, imp_ws, data)
-        data = [self.tag['exp'].file_name, self.tag['exp'].description]
+        data = [str(self.tag['exp'].file_name), str(self.tag['exp'].description)]
         write_col(1, imp_ws, data)
-        data = [self.tag['if_set'].file_name, self.tag['if_set'].description]
+        data = [str(self.tag['if_set'].file_name), str(self.tag['if_set'].description)]
         write_col(2, imp_ws, data)
         write_col(3, imp_ws, [self.unit])
         write_col(4, imp_ws, [self.tot_value])
