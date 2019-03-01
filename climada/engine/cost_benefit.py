@@ -113,7 +113,10 @@ class CostBenefit():
     def calc(self, hazard, entity, haz_future=None, ent_future=None, \
         future_year=2050, risk_func=risk_aai_agg, imp_time_depen=1, save_imp=False):
         """Compute cost-benefit ratio for every measure provided current
-        and future conditions.
+        and future conditions. Present and future measures need to have the same
+        name. The measures costs need to be discounted by the user.
+        If present and future entity provided, only the costs of the measures
+        of the future and the discount rates of the present will be used.
 
         Parameters:
             hazard (Hazard): hazard
