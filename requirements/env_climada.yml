@@ -25,6 +25,7 @@ dependencies:
   - pyshp=1.2.12
   - pytables=3.4.4
   - python=3.6.5
+  - rasterio=0.36.0
   - requests=2.19.1
   - scikit-learn=0.19.1
   - scipy=1.1.0

@@ -112,7 +112,7 @@ class BlackMarble(Exposures):
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        self.check()
+        self.crs = {'init': 'epsg:4326'}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,
