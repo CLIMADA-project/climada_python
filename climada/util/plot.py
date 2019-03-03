@@ -23,7 +23,9 @@ __all__ = ['Graph2D',
            'geo_bin_from_array',
            'geo_im_from_array',
            'make_map',
-           'add_shapes'
+           'add_shapes',
+           'add_populated_places',
+           'add_cntry_names'
           ]
 
 import numpy as np
@@ -103,6 +105,74 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
         if 'gridsize' not in kwargs:
             kwargs['gridsize'] = min(int(array_im.size/2), MAX_BINS)
         hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im, \
+            transform=proj, **kwargs)
+
+        # Create colorbar in this axis
+        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
+            pad=0.1, axes_class=plt.Axes)
+        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
+                            extend=extend)
+        cbar.set_label(name)
+        axis.set_title(tit)
+
+    return fig, axis_sub
+
+def geo_scatter_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
+                           buffer=BUFFER, extend='neither', \
+                           proj=ccrs.PlateCarree(), **kwargs):
+    """Plot array values binned over input coordinates.
+
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are values at each point in corresponding
+            geo_coord that are binned in one subplot.
+        geo_coord (2d np.array or list(2d np.array)): (lat, lon) for each
+            point in a row. If one provided, the same grid is used for all
+            subplots. Otherwise provide as many as subplots in array_sub.
+        var_name (str or list(str)): label to be shown in the colorbar. If one
+            provided, the same is used for all subplots. Otherwise provide as
+            many as subplots in array_sub.
+        title (str or list(str)): subplot title. If one provided, the same is
+            used for all subplots. Otherwise provide as many as subplots in
+            array_sub.
+        pop_name (bool, optional): add names of the populated places.
+        buffer (float, optional): border to add to coordinates
+        extend (str, optional): extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        proj (ccrs): coordinate reference system used in coordinates
+        kwargs (optional): arguments for hexbin matplotlib function
+
+    Returns:
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+
+    Raises:
+        ValueError
+    """
+    # Generate array of values used in each subplot
+    num_im, list_arr = _get_collection_arrays(array_sub)
+    list_tit = to_list(num_im, title, 'title')
+    list_name = to_list(num_im, var_name, 'var_name')
+    list_coord = to_list(num_im, geo_coord, 'geo_coord')
+
+    if 'cmap' not in kwargs:
+        kwargs['cmap'] = 'Wistia'
+
+    # Generate each subplot
+    fig, axis_sub = make_map(num_im, proj=proj)
+    for array_im, axis, tit, name, coord in \
+    zip(list_arr, axis_sub.flatten(), list_tit, list_name, list_coord):
+        if coord.shape[0] != array_im.size:
+            raise ValueError("Size mismatch in input array: %s != %s." % \
+                             (coord.shape[0], array_im.size))
+
+        # Binned image with coastlines
+        extent = _get_borders(coord, buffer, proj)
+        axis.set_extent((extent), proj)
+        add_shapes(axis)
+        if pop_name:
+            add_populated_places(axis, extent, proj)
+
+        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im, \
             transform=proj, **kwargs)
 
         # Create colorbar in this axis
@@ -368,8 +438,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     for rec, point in zip(shp.records(), shp.geometries()):
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
-        if ext_trans[2][0] < point.x <= ext_trans[0][0]:
-            if ext_trans[0][1] < point.y <= ext_trans[1][1]:
+        if ext_trans[2][0] < point_x <= ext_trans[0][0]:
+            if ext_trans[0][1] < point_y <= ext_trans[1][1]:
                 axis.text(point_x, point_y, rec.attributes['NAME'], \
                     horizontalalignment='center', verticalalignment='center', \
                     transform=ccrs.PlateCarree(), fontsize=14)

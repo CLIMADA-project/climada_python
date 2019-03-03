@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas
+import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
 
@@ -49,7 +50,7 @@ def good_exposures():
     expo = Exposures(geopandas.GeoDataFrame(data=data))
     return expo
 
-class TestAssign(unittest.TestCase):
+class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
@@ -64,6 +65,37 @@ class TestAssign(unittest.TestCase):
 
         # check assigned variable has been set with correct length
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
+
+    def test_get_transform_4326_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy.crs.PlateCarree)
+        self.assertEqual(unit, '°')
+
+    def test_get_transform_3395_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        expo.set_geometry_points()
+        expo.to_crs(epsg=3395, inplace=True)
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy.crs.Mercator)
+        self.assertEqual(unit, 'm')
+
+    def test_get_transform_3035_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        expo.set_geometry_points()
+        expo.to_crs(epsg=3035, inplace=True)
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
+        self.assertEqual(unit, 'm')
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function """
@@ -242,7 +274,7 @@ class TestGeoDFFuncs(unittest.TestCase):
     
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
