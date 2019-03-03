@@ -404,6 +404,7 @@ class CostBenefit():
                     self.tot_climate_risk = self._npv_unaverted_impact(
                         self.imp_meas_future['no measure']['risk'], \
                         disc_rates, time_dep)
+                continue
 
             fut_benefit = self.imp_meas_future['no measure']['risk'] - meas_val['risk']
 

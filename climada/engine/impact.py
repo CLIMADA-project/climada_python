@@ -141,7 +141,7 @@ class Impact():
         self.event_name = hazard.event_name
         self.date = hazard.date
         self.coord_exp = np.stack([exposures.latitude.values,
-                                   exposures.latitude.values], axis=1)
+                                   exposures.longitude.values], axis=1)
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
