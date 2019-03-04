@@ -607,18 +607,14 @@ class TCTracks():
         except KeyError:
             LOGGER.info('%s: No penv for given provider %s. Set to default.',
                         name, provider)
-            penv = np.ones(lat.size)*1010
-            if basin in ('NI', 'SI', 'WP'):
-                penv = np.ones(lat.size)*1005
-            elif basin == 'SP':
-                penv = np.ones(lat.size)*1004
+            penv = np.ones(lat.size)*self._set_penv(basin)
 
         tr_ds = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, \
             'radius_max_wind': rmax.astype('float'), 'max_sustained_wind': max_sus_wind, \
             'central_pressure': cen_pres, 'environmental_pressure': penv.astype('float')})
 
         # deal with nans
-        tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes)
+        tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes, basin)
 
         if not tr_ds.shape[0]:
             LOGGER.warning('Skipping %s. No usable data.', name)
@@ -633,8 +629,7 @@ class TCTracks():
             'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
         return tr_ds
 
-    @staticmethod
-    def _deal_nans(tr_ds, nc_data, provider, datetimes):
+    def _deal_nans(self, tr_ds, nc_data, provider, datetimes, basin):
         """ Remove or substitute fill values of netcdf variables. """
         # remove nan coordinates
         tr_ds.drop(tr_ds[tr_ds.lat == nc_data.variables[provider + '_lat']. \
@@ -649,7 +644,8 @@ class TCTracks():
         # fill nans of environmental_pressure and radius_max_wind
         tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
             nc_data.variables[provider + '_poci']._FillValue] = np.nan
-        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4).bfill(limit=4)
+        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
+            bfill(limit=4).fillna(self._set_penv(basin))
         tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
             nc_data.variables[provider + '_rmw']._FillValue] = np.nan
         tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
@@ -662,6 +658,17 @@ class TCTracks():
             tr_ds.time_step.values[0] = tr_ds.time_step.values[-1]
 
         return tr_ds
+
+    @staticmethod
+    def _set_penv(basin):
+        """ Set environmental pressure depending on basin """
+        penv = 1010
+        if basin in ('NI', 'SI', 'WP'):
+            penv = 1005
+        elif basin == 'SP':
+            penv = 1004
+        return penv
+
 
 def _calc_land_geom(ens_track):
     """Compute land geometry used for land distance computations.

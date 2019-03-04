@@ -34,7 +34,16 @@ class TestIBTracs(unittest.TestCase):
         def addError(self, test, err):
             print('ERROR while downloading Ibtracs file.')
 
-    def test_raw_ibtracs_empty(self):
+    def test_penv_rmax_pass(self):
+        """ read_ibtracs_netcdf"""
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
+        self.assertTrue(np.array_equal(tc_track.get_track().environmental_pressure.values, 
+                                       np.ones(97)*1010))
+        self.assertTrue(np.array_equal(tc_track.get_track().radius_max_wind.values, 
+                                       np.zeros(97)))
+
+    def test_raw_ibtracs_empty_pass(self):
         """ read_ibtracs_netcdf"""
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
