@@ -29,7 +29,8 @@ __all__ = ['SOURCE_DIR',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
            'ENT_FL_MAT',
-           'TC_ANDREW_FL']
+           'TC_ANDREW_FL',
+           'HAZ_DEMO_H5']
 
 import os
 
@@ -60,7 +61,10 @@ HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
 """ Raster file of flood over Venezuela. Model from GAR2015"""
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
-""" Hazard demo in mat format."""
+""" Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida."""
+
+HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
+""" Hazard demo in h5 format: ibtracs from 1851 to 2011 over Florida."""
 
 ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
 """ Entity demo in mat format."""
