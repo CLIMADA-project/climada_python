@@ -254,7 +254,10 @@ class Hazard():
         Returns:
             Hazard or children
         """
-        haz = self.__class__(self.tag.haz_type)
+        try:
+            haz = self.__class__()
+        except TypeError:
+            haz = Hazard(self.tag.haz_type)
         sel_ev = np.ones(self.event_id.size, bool)
         sel_cen = np.ones(self.centroids.size, bool)
 
