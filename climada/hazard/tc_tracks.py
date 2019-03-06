@@ -130,7 +130,7 @@ class TCTracks():
                             year_range=(1980, 2018), basin=None):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
-        and radius_max_wind.
+        and radius_max_wind. Checks environmental_pressure > central_pressure.
 
         Parameters:
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
@@ -152,10 +152,11 @@ class TCTracks():
                 raise err
 
         sel_tracks = self._filter_ibtracs(fn_nc, storm_id, year_range, basin)
-        chunksize = min(self.size, 100)
-        self.data = Pool().map(self._read_one_raw, itertools.repeat(fn_nc), \
-            sel_tracks, itertools.repeat(provider), chunksize=chunksize)
-        self.data = [track for track in self.data if track is not None]
+        nc_data = Dataset(fn_nc)
+        all_tracks = []
+        for i_track in sel_tracks:
+            all_tracks.append(self._read_one_raw(nc_data, i_track, provider))
+        self.data = [track for track in all_tracks if track is not None]
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file.
@@ -559,15 +560,14 @@ class TCTracks():
                 sel_tracks = sel_tracks[sel_bas]
         return sel_tracks
 
-    def _read_one_raw(self, fn_nc, i_track, provider):
+    def _read_one_raw(self, nc_data, i_track, provider):
         """Fill given track.
 
             Parameters:
-            fn_nc (str): ibtracs netcdf data file name
+            nc_data (Dataset): netcdf data set
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
-        nc_data = Dataset(fn_nc)
         name = ''.join(nc_data.variables['sid'][i_track].data.astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].data.astype(str))
         LOGGER.info('Reading %s', name)
@@ -615,10 +615,12 @@ class TCTracks():
 
         # deal with nans
         tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes, basin)
-
         if not tr_ds.shape[0]:
             LOGGER.warning('Skipping %s. No usable data.', name)
             return None
+        # ensure environmental pressure > central pressure
+        chg_pres = (tr_ds.central_pressure > tr_ds.environmental_pressure).values
+        tr_ds.environmental_pressure.values[chg_pres] = tr_ds.central_pressure.values[chg_pres]
 
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
@@ -783,13 +785,11 @@ def _solve_decay_p_function(ps_y, p_y, x_val):
     Get B coefficient."""
     return -np.log((ps_y - p_y)/(ps_y - 1.0)) / x_val
 
-def _calc_decay_ps_value(track, p_landfall, s_rel):
+def _calc_decay_ps_value(track, p_landfall, pos, s_rel):
     if s_rel:
-        p_land_s = track.environmental_pressure[np.argwhere(
-            track.on_land.values).squeeze((-1,))[-1]].values
+        p_land_s = track.environmental_pressure[pos].values
     else:
-        p_land_s = track.central_pressure[np.argwhere(
-            track.on_land.values).squeeze((-1,))[-1]].values
+        p_land_s = track.central_pressure[pos].values
     return float(p_land_s / p_landfall)
 
 def _decay_values(track, land_geom, s_rel):
@@ -837,7 +837,7 @@ def _decay_values(track, land_geom, s_rel):
             p_land = track.central_pressure[sea_land-1:land_sea].values
             p_land = (p_land[1:]/p_land[0]).tolist()
 
-            p_land_s = _calc_decay_ps_value(track, p_landfall, s_rel)
+            p_land_s = _calc_decay_ps_value(track, p_landfall, land_sea-1, s_rel)
             p_land_s = len(p_land)*[p_land_s]
 
             if ss_scale_idx not in v_lf:
@@ -882,6 +882,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
         y_val = np.array(val_lf)
         v_coef = _solve_decay_v_function(y_val, x_val_ss)
         v_coef = v_coef[np.isfinite(v_coef)]
+        v_coef = np.mean(v_coef)
 
         ps_y_val = np.array(p_lf[ss_scale][0])
         y_val = np.array(p_lf[ss_scale][1])
@@ -891,9 +892,12 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
         ps_y_val = ps_y_val[valid_p]
         y_val = y_val[valid_p]
         p_coef = _solve_decay_p_function(ps_y_val, y_val, x_val_ss[valid_p])
+        ps_y_val = np.mean(ps_y_val)
+        p_coef = np.mean(p_coef)
 
-        v_rel[ss_scale] = np.mean(v_coef)
-        p_rel[ss_scale] = (np.mean(ps_y_val), np.mean(p_coef))
+        if np.isfinite(v_coef) and np.isfinite(ps_y_val) and np.isfinite(ps_y_val):
+            v_rel[ss_scale] = v_coef
+            p_rel[ss_scale] = (ps_y_val, p_coef)
 
     scale_fill = np.array(list(p_rel.keys()))
     if not scale_fill.size:
@@ -972,13 +976,17 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             continue
         if land_sea - sea_land == 1:
             continue
-        p_decay = _calc_decay_ps_value(track, p_landfall, s_rel)
+        p_decay = _calc_decay_ps_value(track, p_landfall, land_sea-1, s_rel)
         p_decay = _decay_p_function(p_decay, p_rel[ss_scale_idx][1], \
             track.dist_since_lf[sea_land:land_sea].values)
+        # dont applay decay if it would decrease central pressure
+        p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1]/p_landfall
         track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
         v_decay = _decay_v_function(v_rel[ss_scale_idx], \
             track.dist_since_lf[sea_land:land_sea].values)
+        # dont applay decay if it would increas wind speeds
+        v_decay[v_decay > 1] = track.max_sustained_wind[sea_land:land_sea][v_decay > 1]/v_landfall
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea between two landfalls
