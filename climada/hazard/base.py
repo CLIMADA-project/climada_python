@@ -130,7 +130,7 @@ class Hazard():
     scalar, string, list, 1dim np.array of size num_events."""
 
     def __init__(self, haz_type):
-        """Initialize values from given file, if given.
+        """Initialize values.
 
         Parameters:
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
