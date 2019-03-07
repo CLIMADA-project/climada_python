@@ -133,6 +133,8 @@ class Exposures(GeoDataFrame):
         for var in self.vars_oblig:
             if var == INDICATOR_IF:
                 found = np.array([var in var_col for var_col in self.columns]).any()
+                if INDICATOR_IF in self.columns:
+                    LOGGER.warning("Hazard type not set in %s", var)
             else:
                 found = var in self.columns
             if not found:
@@ -142,6 +144,8 @@ class Exposures(GeoDataFrame):
         for var in self.vars_def:
             if var == INDICATOR_CENTR:
                 found = np.array([var in var_col for var_col in self.columns]).any()
+                if INDICATOR_CENTR in self.columns:
+                    LOGGER.warning("Hazard type not set in %s", var)
             else:
                 found = var in self.columns
             if not found:
