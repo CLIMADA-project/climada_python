@@ -76,15 +76,17 @@ class CostBenefit():
             Value: dict with:
                              'cost' (float): cost measure,
                              'risk' (float): risk measurement,
+                             'risk_transf' (float): annual expected risk transfer,
                              'efc'  (ImpactFreqCurve): impact exceedance freq
-              (optionally)   'impact' (Impact): impact instance
+                (optional)   'impact' (Impact): impact instance
         imp_meas_present (dict): impact of each measure at present.
             Key: measure name ('no measure' used for case without measure),
             Value: dict with:
                              'cost' (float): cost measure,
                              'risk' (float): risk measurement,
+                             'risk_transf' (float): annual expected risk transfer,
                              'efc'  (ImpactFreqCurve): impact exceedance freq
-              (optionally)   'impact' (Impact): impact instance
+                (optional)   'impact' (Impact): impact instance
     """
 
     def __init__(self):
@@ -345,20 +347,18 @@ class CostBenefit():
         impact_meas['no measure'] = dict()
         impact_meas['no measure']['cost'] = 0.0
         impact_meas['no measure']['risk'] = risk_func(imp_tmp)
+        impact_meas['no measure']['risk_transf'] = 0.0
         impact_meas['no measure']['efc'] = imp_tmp.calc_freq_curve(DEF_RP)
         if save_imp:
             impact_meas['no measure']['impact'] = imp_tmp
 
         # compute impact for each measure
         for measure in meas_set.get_measure():
-            new_exp, new_ifs, new_haz = measure.apply(exposures, imp_fun_set,
-                                                      hazard)
-
-            imp_tmp = Impact()
-            imp_tmp.calc(new_exp, new_ifs, new_haz)
+            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = measure.cost
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)
+            impact_meas[measure.name]['risk_transf'] = risk_transf
             impact_meas[measure.name]['efc'] = imp_tmp.calc_freq_curve(DEF_RP)
             if save_imp:
                 impact_meas[measure.name]['impact'] = imp_tmp
@@ -379,8 +379,7 @@ class CostBenefit():
         """
         LOGGER.info('Computing cost benefit from years %s to %s.',
                     str(self.present_year), str(self.future_year))
-        # TODO add risk transfer
-        # TODO add premium
+
         if self.future_year - self.present_year + 1 <= 0:
             LOGGER.error('Wrong year range: %s - %s.', str(self.present_year),
                          str(self.future_year))
@@ -407,18 +406,25 @@ class CostBenefit():
                 continue
 
             fut_benefit = self.imp_meas_future['no measure']['risk'] - meas_val['risk']
-
+            fut_risk_tr = meas_val['risk_transf']
             if self.imp_meas_present:
                 pres_benefit = self.imp_meas_present['no measure']['risk'] - \
                     self.imp_meas_present[meas_name]['risk']
                 meas_ben = pres_benefit + (fut_benefit-pres_benefit) * time_dep
+
+                pres_risk_tr = self.imp_meas_present[meas_name]['risk_transf']
+                risk_tr = pres_risk_tr + (fut_risk_tr-pres_risk_tr) * time_dep
             else:
                 meas_ben = time_dep*fut_benefit
+                risk_tr = time_dep*fut_risk_tr
 
+            # discount
             meas_ben = disc_rates.net_present_value(self.present_year,
                                                     self.future_year, meas_ben)
+            risk_tr = disc_rates.net_present_value(self.present_year,
+                                                   self.future_year, risk_tr)
             self.benefit[meas_name] = meas_ben
-            self.cost_ben_ratio[meas_name] = meas_val['cost']/meas_ben
+            self.cost_ben_ratio[meas_name] = (meas_val['cost']+risk_tr)/meas_ben
 
     def _time_dependency_array(self, imp_time_depen=None):
         """ Construct time dependency array. Each year contains a value in [0,1]
