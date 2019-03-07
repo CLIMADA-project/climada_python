@@ -50,13 +50,14 @@ class Measure():
         hazard_set (str): file name of hazard to use (in h5 format)
         hazard_freq_cutoff (float): hazard frequency cutoff
         exposure_set (str): file name of exposure to use (in h5 format)
-        exp_region_id (int): region id of the selected exposures to consider
         imp_fun_map (str): change of impact function id of exposures, e.g. '1to3'
         hazard_inten_imp (tuple): parameter a and b of hazard intensity change
         mdd_impact (tuple): parameter a and b of the impact over the mean
             damage degree
         paa_impact (tuple): parameter a and b of the impact over the
             percentage of affected assets
+        exp_region_id (int): region id of the selected exposures to consider ALL
+            the previous parameters
         risk_transf_attach (float): risk transfer attachment
         risk_transf_cover (float): risk transfer cover
     """
