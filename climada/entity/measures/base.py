@@ -280,7 +280,9 @@ class Measure():
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
         cutoff = exceed_freq > self.hazard_freq_cutoff
         sel_haz = sort_idxs[cutoff]
-        new_haz.intensity[sel_haz, :] = np.zeros(new_haz.intensity.shape[1])
+        new_haz_inten = new_haz.intensity.tolil()
+        new_haz_inten[sel_haz, :] = np.zeros(new_haz.intensity.shape[1])
+        new_haz.intensity = new_haz_inten.tocsr()
         return new_haz
 
     def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
@@ -329,6 +331,8 @@ class Measure():
         exposures.assign_centroids(hazard)
         centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
         centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
-        new_haz.intensity[:, centr] = hazard.intensity[:, centr]
+        new_haz_inten = new_haz.intensity.tolil()
+        new_haz_inten[:, centr] = hazard.intensity[:, centr]
+        new_haz.intensity = new_haz_inten.tocsr()
 
         return new_exp, new_ifs, new_haz
