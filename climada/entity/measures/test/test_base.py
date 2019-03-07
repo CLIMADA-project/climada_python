@@ -30,21 +30,22 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IF_ID_FACT
-from climada.util.constants import ENT_DEMO_MAT, HAZ_DEMO_H5
+from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
                         os.pardir, 'hazard', 'test', 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-EXP_H5 = os.path.join(DATA_DIR, 'ent_demo_hdf5.h5')
+ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
+                            '../../exposures/test/data/demo_today.mat')
 
 class TestApply(unittest.TestCase):
     """Test implement measures functions."""
     def test_change_imp_func_pass(self):
         """Test _change_imp_func"""
         meas = MeasureSet()
-        meas.read_mat(ENT_DEMO_MAT)
+        meas.read_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure('Mangroves')
 
         imp_set = ImpactFuncSet()
@@ -75,17 +76,17 @@ class TestApply(unittest.TestCase):
     def test_cutoff_hazard_damage_pass(self):
         """Test _cutoff_hazard_damage"""
         meas = MeasureSet()
-        meas.read_mat(ENT_DEMO_MAT)
+        meas.read_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure('Seawall')
 
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
         exp = Exposures()
-        exp.read_mat(ENT_DEMO_MAT)
+        exp.read_mat(ENT_TEST_MAT)
         exp.rename(columns={'if_': 'if_TC'}, inplace=True)
 
         imp_set = ImpactFuncSet()
-        imp_set.read_mat(ENT_DEMO_MAT)
+        imp_set.read_mat(ENT_TEST_MAT)
 
         new_haz = act_1._cutoff_hazard_damage(exp, imp_set, haz)
 
@@ -109,11 +110,11 @@ class TestApply(unittest.TestCase):
         """Test _change_exposures_if"""
         meas = Measure()
         meas.imp_fun_map = '1to3'
-        meas.haz_type = ''
+        meas.haz_type = 'TC'
 
         imp_set = ImpactFuncSet()
         imp_tc = ImpactFunc()
-        imp_tc.haz_type = 'XX'
+        imp_tc.haz_type = 'TC'
         imp_tc.id = 1
         imp_tc.intensity = np.arange(10, 100, 10)
         imp_tc.mdd = np.arange(10, 100, 10)
@@ -121,14 +122,14 @@ class TestApply(unittest.TestCase):
         imp_set.add_func(imp_tc)
 
         imp_tc = ImpactFunc()
-        imp_tc.haz_type = 'XX'
+        imp_tc.haz_type = 'TC'
         imp_tc.id = 3
         imp_tc.intensity = np.arange(10, 100, 10)
         imp_tc.mdd = np.arange(10, 100, 10)*2
         imp_tc.paa = np.arange(10, 100, 10)*2
 
         exp = Exposures()
-        exp.read_hdf5(EXP_H5)
+        exp.read_hdf5(EXP_DEMO_H5)
         new_exp = meas._change_exposures_if(exp)
 
         self.assertEqual(new_exp.ref_year, exp.ref_year)
@@ -138,8 +139,8 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp.value.values, exp.value.values))
         self.assertTrue(np.array_equal(new_exp.latitude.values, exp.latitude.values))
         self.assertTrue(np.array_equal(new_exp.longitude.values, exp.longitude.values))
-        self.assertTrue(np.array_equal(exp[INDICATOR_IF+''].values, np.ones(new_exp.shape[0])))
-        self.assertTrue(np.array_equal(new_exp[INDICATOR_IF+''].values, np.ones(new_exp.shape[0])*3))
+        self.assertTrue(np.array_equal(exp[INDICATOR_IF+'TC'].values, np.ones(new_exp.shape[0])))
+        self.assertTrue(np.array_equal(new_exp[INDICATOR_IF+'TC'].values, np.ones(new_exp.shape[0])*3))
 
     def test_change_all_hazard_pass(self):
         """Test _change_all_hazard method """
@@ -164,10 +165,10 @@ class TestApply(unittest.TestCase):
     def test_change_all_exposures_pass(self):
         """Test _change_all_exposures method """
         meas = Measure()
-        meas.exposures_set = EXP_H5
+        meas.exposures_set = EXP_DEMO_H5
 
         ref_exp = Exposures()
-        ref_exp.read_hdf5(EXP_H5)
+        ref_exp.read_hdf5(EXP_DEMO_H5)
 
         exposures = Exposures()
         new_exp = meas._change_all_exposures(exposures)
@@ -211,13 +212,13 @@ class TestApply(unittest.TestCase):
         meas.haz_type = 'TC'
 
         exp = Exposures()
-        exp.read_mat(ENT_DEMO_MAT)
+        exp.read_mat(ENT_TEST_MAT)
         exp.rename(columns={'if_':'if_TC', 'centr_':'centr_TC'}, inplace=True)
         exp['region_id'] = np.ones(exp.shape[0])
         exp.region_id.values[:exp.shape[0]//2] = 3
 
         imp_set = ImpactFuncSet()
-        imp_set.read_mat(ENT_DEMO_MAT)
+        imp_set.read_mat(ENT_TEST_MAT)
 
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
@@ -298,7 +299,7 @@ class TestApply(unittest.TestCase):
         hazard.haz_type = 'TC'
 
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.measures.get_measure('Mangroves').haz_type = 'TC'
         entity.check()
         
@@ -334,7 +335,7 @@ class TestApply(unittest.TestCase):
         hazard.read_mat(HAZ_TEST_MAT)
 
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
         entity.measures.get_measure('Mangroves').haz_type = 'TC'
         entity.check()
@@ -370,7 +371,7 @@ class TestApply(unittest.TestCase):
         hazard.read_mat(HAZ_TEST_MAT)
 
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
         entity.measures.get_measure('Beach nourishment').haz_type = 'TC'
         entity.measures.get_measure('Beach nourishment').hazard_inten_imp = (1, 0)

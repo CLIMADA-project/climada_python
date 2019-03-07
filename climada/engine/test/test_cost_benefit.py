@@ -27,10 +27,12 @@ from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP
-from climada.util.constants import ENT_DEMO_MAT, ENT_DEMO_FUTURE, ENT_DEMO_TODAY
+from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
 HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
 HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
+ENT_TEST_MAT = os.path.join(os.path.dirname(__file__), 
+                            '../../entity/exposures/test/data/demo_today.mat')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -42,7 +44,7 @@ class TestSteps(unittest.TestCase):
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         for meas in entity.measures.get_measure():
@@ -109,7 +111,7 @@ class TestSteps(unittest.TestCase):
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         for meas in entity.measures.get_measure():
@@ -145,7 +147,7 @@ class TestSteps(unittest.TestCase):
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
+        entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         for meas in entity.measures.get_measure():

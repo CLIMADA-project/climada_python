@@ -23,9 +23,10 @@ import unittest
 import numpy as np
 
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
-from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT, ENT_DEMO_TODAY
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 CURR_DIR = os.path.dirname(__file__)
+ENT_TEST_MAT = os.path.join(CURR_DIR, '../../exposures/test/data/demo_today.mat')
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -437,7 +438,7 @@ class TestReaderMat(unittest.TestCase):
         # Read demo mat file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read_mat(ENT_DEMO_MAT, description)
+        imp_funcs.read_mat(ENT_TEST_MAT, description)
 
         # Check results
         n_funcs = 2
@@ -503,7 +504,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_MAT)
         self.assertEqual(imp_funcs.tag.description, description)
 
 class TestReaderExcel(unittest.TestCase):

@@ -18,7 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Entity class.
 """
-
+import os
 import unittest
 import numpy as np
 
@@ -27,7 +27,10 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.measure_set import MeasureSet
-from climada.util.constants import ENT_DEMO_MAT, ENT_TEMPLATE_XLS
+from climada.util.constants import ENT_TEMPLATE_XLS
+
+ENT_TEST_MAT = os.path.join(os.path.dirname(__file__), 
+                            '../exposures/test/data/demo_today.mat')
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the Entity class"""
@@ -56,11 +59,11 @@ class TestReader(unittest.TestCase):
     def test_read_mat(self):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity()
-        entity_mat.read_mat(ENT_DEMO_MAT)
-        self.assertEqual(entity_mat.exposures.tag.file_name, ENT_DEMO_MAT)
-        self.assertEqual(entity_mat.disc_rates.tag.file_name, ENT_DEMO_MAT)
-        self.assertEqual(entity_mat.measures.tag.file_name, ENT_DEMO_MAT)
-        self.assertEqual(entity_mat.impact_funcs.tag.file_name, ENT_DEMO_MAT)
+        entity_mat.read_mat(ENT_TEST_MAT)
+        self.assertEqual(entity_mat.exposures.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.disc_rates.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.measures.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.impact_funcs.tag.file_name, ENT_TEST_MAT)
 
     def test_read_excel(self):
         """Read entity from an xls file following the template."""

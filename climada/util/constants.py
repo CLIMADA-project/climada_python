@@ -24,13 +24,12 @@ __all__ = ['SOURCE_DIR',
            'SYSTEM_DIR',
            'HAZ_DEMO_MAT',
            'ENT_TEMPLATE_XLS',
-           'ENT_DEMO_MAT',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
-           'ENT_FL_MAT',
            'TC_ANDREW_FL',
-           'HAZ_DEMO_H5']
+           'HAZ_DEMO_H5',
+           'EXP_DEMO_H5']
 
 import os
 
@@ -61,13 +60,11 @@ HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
 """ Raster file of flood over Venezuela. Model from GAR2015"""
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
-""" Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida."""
+""" Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids."""
 
 HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
-""" Hazard demo in h5 format: ibtracs from 1851 to 2011 over Florida."""
+""" Hazard demo in h5 format: ibtracs from 1975 to 2011 over Florida with 2500 centroids."""
 
-ENT_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'demo_today.mat')
-""" Entity demo in mat format."""
 
 ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 """ Entity demo present in xslx format."""
@@ -75,15 +72,13 @@ ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 ENT_DEMO_FUTURE = os.path.join(DATA_DIR, 'demo', 'demo_future_TEST.xlsx')
 """ Entity demo future in xslx format."""
 
-ENT_FL_MAT = os.path.join(DATA_DIR, 'demo',
-                          'USA_UnitedStates_Florida_entity.mat')
-""" Entity for Florida """
+EXP_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'exp_demo_today.h5')
+""" Exposures over Florida """
+
 
 TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
                             'ibtracs_global_intp-None_1992230N11325.csv')
 """ Tropical cyclone Andrew in Florida """
-
-
 
 
 ONE_LAT_KM = 111.12
