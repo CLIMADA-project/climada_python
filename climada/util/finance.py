@@ -341,7 +341,7 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
         ref_year_fac, fac = wealth2gdp(cntry_iso)
-        return gdp_year, np.around((fac*gdp_val),1)
+        return gdp_year, np.around((fac*gdp_val),1), 0
     if ref_year in years: # indicator for reference year is available directly
         result = data_wealth.loc[:,np.str(ref_year)].values[0]
     elif ref_year > np.min(years) and ref_year < np.max(years): # interpolate
@@ -358,4 +358,4 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
         ref_year = gdp_year
     if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
         result = result/1.24
-    return ref_year, np.around(result,1)
+    return ref_year, np.around(result,1), 1
