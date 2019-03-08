@@ -124,13 +124,15 @@ class LitPop(Exposures):
                 To use population count alone: [0, 1].
             fin_mode (str, optional): define what total country economic value
                 is to be used as an asset base and distributed to the grid:
-                - gdp: gross-domestic product (Source: World Bank)
-                - income_group: gdp multiplied by country's income group+1
-                - nfw: non-financial wealth (Source: Credit Suisse, of households only)
-                - tw: total wealth (Source: Credit Suisse, of households only)
-                - pc: produced capital (Source: World Bank), incl. manufactured or
+                - 'gdp': gross-domestic product (Source: World Bank)
+                - 'income_group': gdp multiplied by country's income group+1
+                - 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
+                - 'tw': total wealth (Source: Credit Suisse, of households only)
+                - 'pc': produced capital (Source: World Bank), incl. manufactured or
                     built assets such as machinery, equipment, and physical structures
                     (pc is in constant 2014 USD)
+                - 'norm': normalized by country
+                - 'none': LitPop per pixel is returned unchanged
             admin1_calc (boolean): distribute admin1-level GDP if available?
                 (default False)
             conserve_cntrytotal (boolean): given admin1_calc, conserve national
@@ -209,11 +211,13 @@ class LitPop(Exposures):
 
         for cntry_iso, cntry_val in country_info.items():
             if fin_mode == 'pc':
-                _, total_asset_val = world_bank_wealth_account(cntry_iso, \
+                total_asset_val = world_bank_wealth_account(cntry_iso, \
                                                                reference_year, \
-                                                               no_land=True)
+                                                               no_land=True)[1]
                 # here, total_asset_val is Produced Capital "pc"
                 # no_land=True returns value w/o the mark-up of 24% for land value
+            elif fin_mode in ['norm', 'none']:
+                total_asset_val = 1
             else:
                 _, total_asset_val = gdp(cntry_iso, reference_year, shp_file)
             cntry_val.append(total_asset_val)
@@ -227,7 +231,9 @@ class LitPop(Exposures):
                                     points2check=all_coords)
             litpop_curr = litpop_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-            if admin1_calc == 1:
+            if fin_mode=='none':
+                LOGGER.info('fin_mode=none --> no downscaling; admin1_calc is ignored')
+            elif admin1_calc == 1:
                 litpop_curr = _calc_admin1(curr_country,\
                                            country_info[curr_country],
                                            admin1_info[curr_country],\
@@ -255,8 +261,9 @@ class LitPop(Exposures):
             self.plot_log(admin1_plot=0)
         LOGGER.info("Creating the LitPop exposure took "\
                         + str(round(time.time() - start_time, 2)) +"s")
+
+        # self.set_geometry_points()
         self.check()
-        self.set_geometry_points()
 
     @staticmethod
     def _set_one_country(cntry_info, litpop_data, lon, lat, curr_country):
@@ -1026,7 +1033,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
         for cntry_iso, cntry_val in cntry_info.items():
             _, inc_grp = income_group(cntry_iso, ref_year, shp_file)
             cntry_val.append(inc_grp+1)
-    elif fin_mode in ['gdp', 'pc']:
+    elif fin_mode in ['gdp', 'pc', 'none', 'norm']:
         for cntry_iso, cntry_val in cntry_info.items():
             cntry_val.append(1)
     elif fin_mode == 'nfw' or fin_mode == 'tw':
@@ -1811,20 +1818,6 @@ def admin1_validation(country, methods, exponents, **args):
         LOGGER.error('Country parameter data type not recognised. '\
                      + 'Operation aborted.')
         raise TypeError
-    all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
-    # Get LitPop, Lit and Pop, etc:
-    nightlights = _get_box_blackmarble(cut_bbox,\
-                                resolution=resolution, return_coords=0)
-    gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
-                              return_coords=0, reference_year=reference_year)
-    bm_temp = np.ones(nightlights.shape)
-    
-     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
-    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
-           dtype='uint16')+int(exponents[1]>0))
-    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1]>0))
-    del bm_temp
-
     shp_file = shapereader.natural_earth(resolution='10m',
                                          category='cultural',
                                          name='admin_0_countries')
@@ -1836,9 +1829,31 @@ def admin1_validation(country, methods, exponents, **args):
     _get_gdp2asset_factor(country_info, reference_year, shp_file, fin_mode=fin_mode)
 
     curr_shp = _get_country_shape(country_list[0], 0)
+    
+    all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
     mask = _mask_from_shape(curr_shp, resolution=resolution,\
                             points2check=all_coords)
-    nightlights = nightlights[mask.sp_index.indices]
+    
+
+    # Get LitPop, Lit and Pop, etc:
+    nightlights = _get_box_blackmarble(cut_bbox,\
+                                resolution=resolution, return_coords=0)
+
+    bm_temp = np.ones(nightlights.shape)
+    
+     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
+    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
+           dtype='uint16')) 
+    del nightlights
+
+    nightlights0 = pd.SparseArray(bm_temp, fill_value=0)
+    nightlights0 = nightlights0[mask.sp_index.indices]
+    nightlights1 = pd.SparseArray(bm_temp+1, fill_value=1)
+    del bm_temp
+    nightlights1 = nightlights1[mask.sp_index.indices]
+
+    gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
+                              return_coords=0, reference_year=reference_year)
     gpw = gpw[mask.sp_index.indices]
 
     lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
@@ -1854,8 +1869,13 @@ def admin1_validation(country, methods, exponents, **args):
     LOGGER.info('Loop through methods...')
     for i in np.arange(0, len(methods)):
         LOGGER.info('%s :', methods[i])
-        _data = _LitPop_multiply_box(nightlights, gpw, \
-                                     x=exponents[i][0], y=exponents[i][1])
+        if exponents[i][1]==0: # Lit only, use Lit in [0, 255]
+            _data = _LitPop_multiply_box(nightlights0, gpw, \
+                                         x=exponents[i][0], y=0)
+        else: # Pop is used, use Lit+1 in [1, 256] 
+            _data = _LitPop_multiply_box(nightlights1, gpw, \
+                                         x=exponents[i][0], y=exponents[i][1])
+            
         _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\

@@ -56,6 +56,22 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
 
+    def test_switzerland30_normPopulation_pass(self):
+        """Create LitPop entity for Switzerland on 30 arcsec:"""
+        country_name = ['CHE']
+        resolution = 30
+        exp = [0, 1]
+        fin_mode = 'norm'
+        ent = LitPop()
+        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
+            ent.set_country(country_name, res_arcsec=resolution, exponent=exp,\
+                            fin_mode=fin_mode, reference_year=2015)
+        # print(cm)
+        self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
+        self.assertTrue(ent.region_id.min() == 756)
+        self.assertTrue(ent.region_id.max() == 756)
+        self.assertTrue(np.int((1000*ent.value.sum()).round()) == 1000)
+
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
         country_name = ['SUR']
@@ -77,8 +93,8 @@ class TestDefault(unittest.TestCase):
         ref_year = 2016
         adm1 = True
         cons = True
-        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, \
-                                                                no_land=1)
+        comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, \
+                                                                no_land=1)[1]
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution, \
@@ -95,7 +111,8 @@ class TestDefault(unittest.TestCase):
         fin_mode = 'pc'
         resolution = 300
         ref_year = 2013
-        _, comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)
+        comparison_total_val = world_bank_wealth_account(country_name[0], \
+                                                         ref_year, no_land=1)[1]
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution, \
