@@ -381,6 +381,32 @@ class Exposures(GeoDataFrame):
         Exposures.__init__(self, data=exposures)
         _read_mat_metadata(self, data, file_name, var_names)
 
+    def read_csv(self, file_name):
+        """Read MATLAB file and store variables in exposures.
+
+        Parameters:
+            file_name (str): absolute path file
+        Note:
+            The input CSV-file needs to consist of at least these columns:
+                - value
+                - latitude
+                - longitude
+        """
+        # load CSV to pandas data frame:
+        data = pd.read_csv(file_name)
+        # check for missing variables:
+        if not ('value' and 'latitude' and 'longitude') in data.columns:
+            raise ValueError('Required column(s) missing: value, latitude, or longitude.')
+        if 'Unnamed: 0' in data.columns:
+            data.index = data['Unnamed: 0']
+            data = data.drop(columns='Unnamed: 0')
+        if not 'if_TC' in data.columns:
+            data['if_TC'] = np.ones(data.shape[0], int)
+        # Init Exposures from data frame:
+        Exposures.__init__(self, data=data)
+        self.tag = Tag(file_name)
+        self.check()
+
     #
     # Implement geopandas methods
     #
