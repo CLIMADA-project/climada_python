@@ -161,10 +161,13 @@ class Impact():
         # Get damage functions for this hazard
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if if_haz not in exposures:
-            LOGGER.error('Missing exposures column %s. No exposures with impact'\
-                         +' functions for peril %s.', if_haz, hazard.tag.haz_type)
+        if if_haz not in exposures and INDICATOR_IF not in exposures:
+            LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
+        elif if_haz not in exposures:
+            LOGGER.info('Missing exposures impact functions for hazard %s. ' +\
+                        'Using impact functions in %s.', if_haz, INDICATOR_IF)
+            if_haz = INDICATOR_IF
 
         # Check if deductible and cover should be applied
         insure_flag = False
@@ -203,7 +206,7 @@ class Impact():
             self.imp_mat = self.imp_mat.tocsr()
 
     def plot_eai_exposure(self, mask=None, ignore_zero=True,
-                          pop_name=True, buffer_deg=0.0, extend='neither',
+                          pop_name=True, buffer=0.0, extend='neither',
                           var_name=None, **kwargs):
         """Plot expected annual impact of each exposure.
 
@@ -212,7 +215,7 @@ class Impact():
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
-            buffer_deg (float, optional): border to add to coordinates.
+            buffer (float, optional): border to add to coordinates.
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
@@ -235,7 +238,7 @@ class Impact():
             kwargs['reduce_C_function'] = np.sum
         return u_plot.geo_bin_from_array(self.eai_exp[mask][pos_vals], \
             self.coord_exp[mask][pos_vals], var_name, title, pop_name, \
-            buffer_deg, extend, **kwargs)
+            buffer, extend, **kwargs)
 
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
         """Compute impact for inpute exposure indexes and impact function.

@@ -239,6 +239,48 @@ class TestCalc(unittest.TestCase):
         self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.todense(),
             impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
 
+    def test_calc_if_pass(self):
+        """ Execute when no if_HAZ present, but only if_ """
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.exposures.rename(columns={'if_TC':'if_'}, inplace=True)
+        ent.check()
+        
+        # Read default hazard file
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        # Create impact object
+        impact = Impact()
+        impact.calc(ent.exposures, ent.impact_funcs, hazard)
+
+        # Check result
+        num_events = len(hazard.event_id)
+        num_exp = ent.exposures.shape[0]
+        # Check relative errors as well when absolute value gt 1.0e-7
+        # impact.at_event == EDS.damage in MATLAB
+        self.assertEqual(num_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[int(num_events/2)])
+        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
+        self.assertEqual(7.076504723057619e+10, impact.at_event[12147])
+        self.assertEqual(0, impact.at_event[num_events-1])
+        # impact.eai_exp == EDS.ED_at_centroid in MATLAB
+        self.assertEqual(num_exp, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
+        self.assertAlmostEqual(1.373490457046383e+08, \
+                               impact.eai_exp[int(num_exp/2)], 6)
+        self.assertTrue(np.isclose(1.373490457046383e+08, \
+                                          impact.eai_exp[int(num_exp/2)]))
+        self.assertAlmostEqual(1.066837260150042e+08, \
+                               impact.eai_exp[num_exp-1], 6)
+        self.assertTrue(np.isclose(1.066837260150042e+08, \
+                                          impact.eai_exp[int(num_exp-1)]))
+        # impact.tot_value == EDS.Value in MATLAB
+        # impact.aai_agg == EDS.ED in MATLAB
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
+        self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
+
 class TestIO(unittest.TestCase):
     ''' Test impact calc method.'''
 
