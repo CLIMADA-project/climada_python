@@ -254,14 +254,15 @@ class Impact():
         icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
 
         # get affected intensities
-        inten_val = hazard.intensity[:, icens].todense()
+        inten_val = hazard.intensity[:, icens]
         # get affected fractions
         fract = hazard.fraction[:, icens]
         # impact = fraction * mdr * value
-        impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
-            multiply(exposures.value.values[exp_iimp])
+        inten_val.data = imp_fun.calc_mdr(inten_val.data)
+        impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
+            inten_val = hazard.intensity[:, icens].todense()
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             impact = np.minimum(np.maximum(impact - \
                 exposures.deductible.values[exp_iimp] * paa, 0), \

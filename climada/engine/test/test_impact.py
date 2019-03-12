@@ -22,7 +22,6 @@ import os
 import unittest
 import numpy as np
 from scipy import sparse
-import pandas as pd
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
