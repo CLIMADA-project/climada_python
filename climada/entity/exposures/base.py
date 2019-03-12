@@ -84,8 +84,9 @@ class Exposures(GeoDataFrame):
         latitude (pd.Series): latitude
         longitude (pd.Series): longitude
         value (pd.Series): a value for each exposure
-        if_ (pd.Series): e.g. if_TC. impact functions id for hazard TC. There
-            might be different hazards defined: if_TC, if_FL, ...
+        if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
+            There might be different hazards defined: if_TC, if_FL, ...
+            If not provided, set to default 'if_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
         deductible (pd.Series, optional): deductible value for each exposure
@@ -98,13 +99,14 @@ class Exposures(GeoDataFrame):
     """
     _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit']
 
-    vars_oblig = ['value', 'latitude', 'longitude', INDICATOR_IF]
+    vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_CENTR, 'geometry']
+    vars_def = [INDICATOR_IF]
     """Name of variables that can be computed."""
 
-    vars_opt = ['deductible', 'cover', 'category_id', 'region_id']
+    vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
+                'region_id', 'geometry']
     """Name of the variables that aren't need to compute the impact."""
 
     @property
@@ -131,21 +133,28 @@ class Exposures(GeoDataFrame):
                 LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
 
         for var in self.vars_oblig:
-            if var == INDICATOR_IF:
-                found = np.array([var in var_col for var_col in self.columns]).any()
-                if INDICATOR_IF in self.columns:
-                    LOGGER.warning("Hazard type not set in %s", var)
-            else:
-                found = var in self.columns
-            if not found:
+            if not var in self.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError
 
         for var in self.vars_def:
+            if var == INDICATOR_IF:
+                found = np.array([var in var_col for var_col in self.columns]).any()
+                if INDICATOR_IF in self.columns:
+                    LOGGER.info("Hazard type not set in %s", var)
+            else:
+                found = var in self.columns
+            if not found and var == INDICATOR_IF:
+                LOGGER.info("Setting %s to default impact functions ids 1.", var)
+                self[INDICATOR_IF] = np.ones(self.shape[0], dtype=int)
+            elif not found:
+                LOGGER.info("%s not set.", var)
+
+        for var in self.vars_opt:
             if var == INDICATOR_CENTR:
                 found = np.array([var in var_col for var_col in self.columns]).any()
                 if INDICATOR_CENTR in self.columns:
-                    LOGGER.warning("Hazard type not set in %s", var)
+                    LOGGER.info("Hazard type not set in %s", var)
             else:
                 found = var in self.columns
             if not found:
@@ -156,10 +165,6 @@ class Exposures(GeoDataFrame):
                 LOGGER.error('Geometry values do not correspond to latitude ' +\
                 'and longitude. Use set_geometry_points() or set_lat_lon().')
                 raise ValueError
-
-        for var in self.vars_opt:
-            if var not in self.columns:
-                LOGGER.info("%s not set.", var)
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
@@ -414,7 +419,7 @@ class Exposures(GeoDataFrame):
         return Exposures(data).__finalize__(self)
 
     def _get_transformation(self):
-        """ Get projection and its units to use in cartopy transforamtions from 
+        """ Get projection and its units to use in cartopy transforamtions from
         current crs
 
         Returns:

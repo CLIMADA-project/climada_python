@@ -110,8 +110,8 @@ class TestChecker(unittest.TestCase):
         self.assertIn('tag metadata set to default value', cm.output[1])
         self.assertIn('ref_year metadata set to default value', cm.output[2])
         self.assertIn('value_unit metadata set to default value', cm.output[3])
-        self.assertIn('geometry not set', cm.output[4])
-        self.assertIn('cover not set', cm.output[5])
+        self.assertIn('geometry not set', cm.output[5])
+        self.assertIn('cover not set', cm.output[4])
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
