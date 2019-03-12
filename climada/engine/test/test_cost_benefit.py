@@ -31,7 +31,7 @@ from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
 HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
 HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
-ENT_TEST_MAT = os.path.join(os.path.dirname(__file__), 
+ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
                             '../../entity/exposures/test/data/demo_today.mat')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
