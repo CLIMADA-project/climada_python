@@ -25,6 +25,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from tabulate import tabulate
 
 from climada.engine.impact import Impact
 
@@ -168,6 +169,17 @@ class CostBenefit():
                     ent_future.measures, ent_future.impact_funcs, 'future', \
                     risk_func, save_imp)
             self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
+
+        # print results
+        print()
+        norm_fact, norm_name = self._norm_values(np.array(list(self.benefit.values())).max())
+        headers = ['Measure', 'Cost (' + self.unit + ' ' + norm_name + ')',
+                   'Benefit (' + self.unit + ' ' + norm_name + ')', 'Benefit/Cost']
+        table = []
+        for meas_name in self.benefit.keys():
+            table.append([meas_name, entity.measures.get_measure(meas_name).cost/norm_fact,
+                          self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])
+        print(tabulate(table, headers, tablefmt="simple"))
 
     def plot_cost_benefit(self):
         """ Plot cost-benefit graph. Call after calc()
