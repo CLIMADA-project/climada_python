@@ -31,6 +31,7 @@ dependencies:
   - scipy=1.1.0
   - setuptools=39.1.0
   - shapely=1.6.4
+  - tabulate=0.8.2
   - tqdm=4.23.4
   - xarray=0.10.2
   - xlrd=1.1.0
