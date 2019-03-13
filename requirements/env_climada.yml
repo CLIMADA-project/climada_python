@@ -17,6 +17,7 @@ dependencies:
   - netcdf4
   - numba=0.37.0
   - numpy=1.14.2
+  - nbconvert=5.4.1
   - pandas=0.23.0
   - pandas-datareader=0.6.0
   - pip=10.0.1
