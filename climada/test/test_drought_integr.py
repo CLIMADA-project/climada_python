@@ -50,14 +50,14 @@ class TestIntegr(unittest.TestCase):
         imp_drought.calc(exposure_agrar, dr_if, hazard_set)
 
         index_event_start = imp_drought.event_name.index('2003')
-        damages_drought = np.asarray([imp_drought.at_event[index_event_start]])
+        damages_drought = imp_drought.at_event[index_event_start]
                 
         self.assertEqual(hazard_set.tag.haz_type, 'DR')
         self.assertEqual(hazard_set.size, 114)
         self.assertEqual(hazard_set.centroids.size, 130)
         self.assertEqual(exposure_agrar.latitude.values.size, 766/2)
         self.assertEqual(exposure_agrar.value[3], 1720024.4)
-        self.assertEqual(damages_drought, 61995472.55522311)
+        self.assertEqual(damages_drought, 61995472.555223145)
                 
         
 # Execute Tests
