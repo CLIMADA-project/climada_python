@@ -319,12 +319,12 @@ def shapely_to_pyshp(shapely_geom):
 NE_CRS = {'init' : 'epsg:4326'}
 
 def get_country_geometries(country_names=None, extent=None, resolution=10):
-    """Returns a geopandas GeoSeries of natural earth multipolygons of the 
-    specified countries, resp. the countries that lie within the specified 
-    extent. If no arguments are given, simply returns the whole natural earth
-    dataset.
-    Take heed: we assume WGS84 as the CRS unless the Natural Earth download 
-    utility from cartopy starts including the projection information. (They 
+    """Returns a GeoDataFrame with natural earth multipolygons of the
+    specified countries, resp. the parts of the countries that lie within the
+    specified extent. If no arguments are given, simply returns the whole
+    natural earth dataset.
+    Take heed: we assume WGS84 as the CRS unless the Natural Earth download
+    utility from cartopy starts including the projection information. (They
     are saving a whopping 147 bytes by omitting it.) Same goes for UTF.
 
     Parameters:

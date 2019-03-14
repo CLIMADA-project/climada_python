@@ -40,25 +40,24 @@ HAZ_TYPE = 'WS'
 
 
 class StormEurope(Hazard):
-    """Contains european winter storm events. Historic storm events can be
+    """ Contains european winter storm events. Historic storm events can be
     downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
-        ssi_wisc (np.array, float): Storm Severity Index as recorded in the
-            footprint files; this is _not_ the same as that computed by the
-            MATLAB climada version. Apparently not reproducible from the
-            max_wind_gust values only.
-        ssi_dawkins (np.array, float): Storm Severity Index as defined in
-            Dawkins, 2016, doi:10.5194/nhess-16-1999-2016
-            Can be set using self.set_ssi_dawkins()
+        ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
+            the footprint files; apparently not reproducible from the footprint
+            values only.
+        ssi_dawkins (np.array, float): SSI as defined in Dawkins, 2016; see 
+            self.set_ssi_dawkins()
         ssi_wisc_gust (np.array): SSI according to the WISC definition,
             calculated using only gust values. See self.set_ssi_wisc_gust()
     """
     intensity_thres = 14.7
-    """ intensity threshold for storage in m/s; same as in WISC """
+    """ Intensity threshold for storage in m/s; same as used by WISC SSI
+        calculations. """
 
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
-    """Name of the variables that aren't need to compute the impact."""
+    """ Name of the variables that aren't need to compute the impact. """
 
     def __init__(self):
         """Empty constructor. """
@@ -68,7 +67,7 @@ class StormEurope(Hazard):
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc'):
-        """Clear instance and read WISC footprints into it. Read Assumes that
+        """ Clear instance and read WISC footprints into it. Read Assumes that
         all footprints have the same coordinates as the first file listed/first
         file in dir.
 
@@ -123,7 +122,7 @@ class StormEurope(Hazard):
         )
 
         self.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+            HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC historical hazard set.'
         )
         if description is not None:
@@ -180,7 +179,7 @@ class StormEurope(Hazard):
 
     @staticmethod
     def _centroids_from_nc(file_name):
-        """Construct Centroids from the grid described by 'latitude' and
+        """ Construct Centroids from the grid described by 'latitude' and
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
@@ -228,9 +227,11 @@ class StormEurope(Hazard):
         raise NotImplementedError
 
     def set_ssi_dawkins(self, on_land=True, threshold=None):
-        """ Calculate the SSI according to Dawkins, the definition used matches
-        the MATLAB version. Threshold value must be determined _before_ call to
-        self.read_footprints()
+        """ Calculate the SSI according to Dawkins et al. (2016),
+        doi:10.5194/nhess-16-1999-2016
+        The definition used matches the MATLAB version. Threshold value must be
+        set _before_ reading in the footprints.
+
         ssi = sum_i(area_cell_i * intensity_cell_i^3)
 
         Parameters:
@@ -263,10 +264,12 @@ class StormEurope(Hazard):
             self.ssi_dawkins[i] = ssi.item(0)
 
     def set_ssi_wisc_gust(self, threshold=None):
-        """Calculate the SSI according to the WISC definition found at
-        wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+        """ Calculate the SSI according to the WISC definition found at
+        https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+
         ssi = sum(area_on_land) * mean(intensity > threshold)^3
-        We _assume_ that only the area where the threshold is exceeded
+        
+        We assume that only the area where the threshold is exceeded
         Note that this does not reproduce self.ssi_wisc, presumably because the
         footprint only contains the maximum wind gusts instead of the sustained
         wind speeds over the 72 hour window.
@@ -294,23 +297,31 @@ class StormEurope(Hazard):
             self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
 
     def generate_prob_storms(self, countries=528):
-        """ Generate 6 probabilistic storms per historic storm. As per doi:
-            10.1007/s10584-009-9712-1
+        """ Generates a new hazard set with one original and 29 probabilistic 
+        storms per historic storm. This represents a partial implementation of 
+        the Monte-Carlo method described in section 2.2 of Schwierz et al.
+        (2010), doi:10.1007/s10584-009-9712-1. 
+        It omits the rotation of the storm footprints, as well as the pseudo-
+        random alterations to the intensity.
 
-        Caveats of the development version
-            - Does not save generated storms to disk; memory may be limiting
-            - Can only use country code for country selection
-            - Drops event names and ssi as provided by WISC
+        In a first step, the original intensity and five additional intensities
+        are saved to an array. In a second step, those 6 possible intensity 
+        levels are shifted by n raster pixels into each direction (N/S/E/W).
 
-        The event ids ending on 00 are historic, the next 29 are synthetic, and
-        so forth for every historic event
+        Caveats:
+            - May not be memory safe for big input or output hazard sets
+            - Can only use numeric region_id for country selection
+            - Drops event names as provided by WISC
 
         Parameters:
-            country (int): iso_n3 code of the country we want the generated
-            hazard set to be returned for.
+            region_id (int, list of ints): iso_n3 code of the countries we want 
+                the generated hazard set to be returned for.
+            **kwargs: keyword arguments passed on to self._hist2prob()
 
         Returns:
             new_haz (StormEurope): A new hazard set for the given country.
+                Centroid attributes are preserved. self.orig attribute is set 
+                to True for original storms (event_id ending in 00).
         """
         if self.centroids.region_id.size == 0:
             self.centroids.set_region_id()
