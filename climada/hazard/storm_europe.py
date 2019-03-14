@@ -212,13 +212,11 @@ class StormEurope(Hazard):
         cent = Centroids()
         cent.coord = new_coord
         cent.id = np.arange(0, len(cent.coord))
-        if hasattr(ncdf,'geospatial_lat_resolution'):
-            cent.resolution = (float(ncdf.geospatial_lat_resolution),
-                               float(ncdf.geospatial_lon_resolution))
-            cent.set_area_per_centroid()
         cent.tag.description = 'Centroids constructed from: ' + file_name
+
         ncdf.close()
 
+        cent.set_area_per_centroid()
         cent.set_on_land()
 
         return cent

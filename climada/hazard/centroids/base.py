@@ -100,6 +100,7 @@ class Centroids():
         self.id = np.array([], int)
         self.region_id = np.array([], int)
         self.name = ''
+        self._resolution = None
 
     def check(self):
         """Check instance attributes. Ids are unique.
@@ -252,15 +253,12 @@ class Centroids():
         self.dist_coast = dist_to_coast(self.coord)
 
     def set_area_per_centroid(self):
-        """If the centroids are on a regular grid and have their resolution set,
-        set the area_per_centroid attribute, assuming degrees for the points
+        """If the centroids are on a regular grid, we may infer the area per
+        pixel from their spacing, i.e. resolution.
+
+        Sets the area_per_centroid attribute, assuming degrees for the points
         and km2 for the area.
         """
-        try:
-            self.resolution
-        except ValueError:
-            LOGGER.warning('Resolution attribute was not set')
-
         lat_res_km = self.resolution[0] * ONE_LAT_KM
         lat_unique = np.array(np.unique(self.lat))
         lon_res_km = self.resolution[1] * ONE_LAT_KM * \
@@ -309,21 +307,15 @@ class Centroids():
     def resolution(self):
         """ Returns a tuple of the resolution in the same unit as the coords.
         """
+        if self._resolution is None:
+            assert grid_is_regular(self.coord), 'Centroids not a regular grid'
+            lats = np.unique(self.lat)
+            lons = np.unique(self.lon)
+            res_lat = lats[1] - lats[0]
+            res_lon = lons[1] - lons[0]
+            self._resolution = (res_lat, res_lon)
+
         return self._resolution
-
-    @resolution.setter
-    def resolution(self, res):
-        """ Set the resolution asset after making sure that the coordinates are
-        on a regular grid. Coerces floats to a tuple.
-
-        Parameters:
-            res (tuple, float): If float, use same resolution for x and y axis.
-        """
-        assert grid_is_regular(self.coord), 'The coords are not on a regular grid'
-        if isinstance(res, float):
-            res = (res, res)
-        assert isinstance(res, tuple), 'Use a tuple like (lat, lon).'
-        self._resolution = res
 
     @property
     def lat(self):
