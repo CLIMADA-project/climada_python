@@ -73,8 +73,8 @@ DEF_RES_NASA_ARCSEC = 15
 DEF_RES_GPW_ARCSEC = 30
 """ Default approximate resolution for the GPW dataset in arcsec."""
 
-DEF_HAZ_TYPE = 'TC'
-""" Default hazard type used in impact functions id. """
+DEF_HAZ_TYPE = ''
+""" Default hazard type used in impact functions id, i.e. TC """
 
 class LitPop(Exposures):
     """Defines exposures from nightlight intensity (NASA), Gridded Population
