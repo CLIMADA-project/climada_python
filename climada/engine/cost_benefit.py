@@ -178,7 +178,7 @@ class CostBenefit():
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
-        fig, axis = plt.subplots(1, 1, figsize=(12,10))
+        fig, axis = plt.subplots(1, 1)
         norm_fact, norm_name = self._norm_values(self.tot_climate_risk)
 
         m_names = list(self.cost_ben_ratio.keys())
@@ -204,7 +204,8 @@ class CostBenefit():
         axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
 
-        axis.set_xlim(0, np.array(list(self.benefit.values())).sum()/norm_fact)
+        axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact), 
+                             np.array(list(self.benefit.values())).sum()/norm_fact))
         axis.set_ylim(0, int(1/self.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
         x_label = 'NPV averted damage over ' + str(self.future_year - self.present_year + 1) + \
                   ' years (' + self.unit + ' ' + norm_name + ')'
