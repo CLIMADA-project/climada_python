@@ -170,16 +170,7 @@ class CostBenefit():
                     risk_func, save_imp)
             self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
 
-        # print results
-        print()
-        norm_fact, norm_name = self._norm_values(np.array(list(self.benefit.values())).max())
-        headers = ['Measure', 'Cost (' + self.unit + ' ' + norm_name + ')',
-                   'Benefit (' + self.unit + ' ' + norm_name + ')', 'Benefit/Cost']
-        table = []
-        for meas_name in self.benefit.keys():
-            table.append([meas_name, entity.measures.get_measure(meas_name).cost/norm_fact,
-                          self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])
-        print(tabulate(table, headers, tablefmt="simple"))
+        self._print_results()
 
     def plot_cost_benefit(self):
         """ Plot cost-benefit graph. Call after calc()
@@ -187,7 +178,7 @@ class CostBenefit():
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
-        fig, axis = plt.subplots(1, 1)
+        fig, axis = plt.subplots(1, 1, figsize=(12,10))
         norm_fact, norm_name = self._norm_values(self.tot_climate_risk)
 
         m_names = list(self.cost_ben_ratio.keys())
@@ -207,14 +198,13 @@ class CostBenefit():
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
         axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
-        print('Tot risk: {:.3e} {}'.format(self.tot_climate_risk, self.unit))
+
         text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
         axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
         axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
-        print('AAI: {:.3e} {}'.format(text_pos*norm_fact, self.unit))
 
-        axis.set_xlim(0, int(self.tot_climate_risk/norm_fact)+5)
+        axis.set_xlim(0, np.array(list(self.benefit.values())).sum()/norm_fact)
         axis.set_ylim(0, int(1/self.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
         x_label = 'NPV averted damage over ' + str(self.future_year - self.present_year + 1) + \
                   ' years (' + self.unit + ' ' + norm_name + ')'
@@ -228,6 +218,9 @@ class CostBenefit():
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
+        if not self.imp_meas_future:
+            LOGGER.error('Compute COstBenefit.calc() first')
+            raise ValueError
         fig, axis = plt.subplots(1, 1)
         avert_rp = dict()
         ref_imp = np.interp(return_per,
@@ -273,6 +266,9 @@ class CostBenefit():
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
+        if ent_future.exposures.ref_year == entity.exposures.ref_year:
+            LOGGER.error('Same reference years for future and present entities.')
+            raise ValueError
         self.present_year = entity.exposures.ref_year
         self.future_year = ent_future.exposures.ref_year
 
@@ -477,6 +473,31 @@ class CostBenefit():
             tot_climate_risk = disc_rates.net_present_value(self.present_year, \
                 self.future_year, time_dep * risk_future)
         return tot_climate_risk
+
+    def _print_results(self):
+        """ Print table with main results """
+        norm_fact, norm_name = self._norm_values(np.array(list(self.benefit.values())).max())
+        norm_name = '(' + self.unit + ' ' + norm_name + ')'
+
+        table = []
+        headers = ['Measure', 'Cost ' + norm_name, 'Benefit ' + norm_name, 'Benefit/Cost']
+        for meas_name in self.benefit.keys():
+            table.append([meas_name,
+            self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact,
+            self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])
+        print()
+        print(tabulate(table, headers, tablefmt="simple"))
+
+        table = []
+        table.append(['Total climate risk:',
+                      self.tot_climate_risk/norm_fact, norm_name])
+        table.append(['Average annual risk:',
+                      self.imp_meas_future['no measure']['risk']/norm_fact, norm_name])
+        table.append(['Residual damage:',
+                      (self.tot_climate_risk -
+                       np.array(list(self.benefit.values())).sum())/norm_fact, norm_name])
+        print()
+        print(tabulate(table, tablefmt="simple"))
 
     @staticmethod
     def _norm_values(value):
