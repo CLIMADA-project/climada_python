@@ -204,7 +204,7 @@ class CostBenefit():
         axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
 
-        axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact), 
+        axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact),
                              np.array(list(self.benefit.values())).sum()/norm_fact))
         axis.set_ylim(0, int(1/self.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
         x_label = 'NPV averted damage over ' + str(self.future_year - self.present_year + 1) + \
@@ -483,8 +483,8 @@ class CostBenefit():
         table = []
         headers = ['Measure', 'Cost ' + norm_name, 'Benefit ' + norm_name, 'Benefit/Cost']
         for meas_name in self.benefit.keys():
-            table.append([meas_name,
-            self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact,
+            table.append([meas_name, \
+            self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact, \
             self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])
         print()
         print(tabulate(table, headers, tablefmt="simple"))

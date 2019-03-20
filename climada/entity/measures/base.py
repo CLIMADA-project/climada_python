@@ -269,7 +269,7 @@ class Measure():
             return hazard
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
-                    self.hazard_freq_cutoff)
+                     self.hazard_freq_cutoff)
         from climada.engine.impact import Impact
         imp = Impact()
         imp.calc(exposures, if_set, hazard)
