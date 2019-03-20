@@ -248,13 +248,14 @@ class Drought(Hazard):
             Drought, full hazard set
             check using new_haz.check()       """
 
-#        if self.intensity_definition == 2:
-#            HAZ_TYPE = 'DR_sumthr'
-#            self.tag = TagHazard(HAZ_TYPE, 'TEST')
-#        elif self.intensity_definition == 3:
-#            HAZ_TYPE = 'DR_sum'
-#            self.tag = TagHazard(HAZ_TYPE, 'TEST')
-        self.tag = TagHazard(HAZ_TYPE, 'TEST')
+        if self.intensity_definition == 2:
+            HAZ_TYPE = 'DR_sumthr'
+            self.tag.haz_type = 'DR_sumthr'
+        elif self.intensity_definition == 3:
+            HAZ_TYPE = 'DR_sum'
+            self.tag.haz_type = 'DR_sum'
+
+#        self.tag = TagHazard(HAZ_TYPE, 'TEST')
 
         self.intensity = sparse.csr_matrix(intensity_matrix)
 
