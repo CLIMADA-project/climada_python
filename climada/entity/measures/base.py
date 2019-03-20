@@ -135,7 +135,6 @@ class Measure():
         new_ifs = self._change_imp_func(imp_fun_set)
         # cutoff events whose damage happen with high frequency
         new_haz = self._cutoff_hazard_damage(new_exp, new_ifs, new_haz)
-
         # apply all previous changes only to the selected exposures
         new_exp, new_ifs, new_haz = self._filter_exposures(exposures, \
             imp_fun_set, hazard, new_exp, new_ifs, new_haz)
@@ -269,7 +268,7 @@ class Measure():
         if self.hazard_freq_cutoff == 0:
             return hazard
 
-        LOGGER.info('Cutting events whose damage have a frequency > %s.',
+        LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                     self.hazard_freq_cutoff)
         from climada.engine.impact import Impact
         imp = Impact()
