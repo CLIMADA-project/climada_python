@@ -157,12 +157,13 @@ class ImpactFuncSet():
             fun_id (int, optional): ImpactFunc id
 
         Returns:
-            list(ImpactFunc) (if haz_type and/or fun_id), {ImpactFunc.haz_type:
-            {ImpactFunc.id : ImpactFunc}} (if None)
+            ImpactFunc (if haz_type and fun_id),
+            list(ImpactFunc) (if haz_type or fun_id),
+            {ImpactFunc.haz_type: {ImpactFunc.id : ImpactFunc}} (if None)
         """
         if (haz_type is not None) and (fun_id is not None):
             try:
-                return [self._data[haz_type][fun_id]]
+                return self._data[haz_type][fun_id]
             except KeyError:
                 return list()
         elif haz_type is not None:
@@ -231,9 +232,11 @@ class ImpactFuncSet():
         Returns:
             int
         """
+        if (haz_type is not None) and (fun_id is not None) and \
+        (isinstance(self.get_func(haz_type, fun_id), ImpactFunc)):
+            return 1
         if (haz_type is not None) or (fun_id is not None):
             return len(self.get_func(haz_type, fun_id))
-
         return sum(len(vul_list) for vul_list in self.get_ids().values())
 
     def check(self):

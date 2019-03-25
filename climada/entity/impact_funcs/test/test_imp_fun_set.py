@@ -172,7 +172,7 @@ class TestContainer(unittest.TestCase):
         imp_fun.add_func(vulner_1)
         self.assertEqual(1, len(imp_fun.get_func('WS')))
         self.assertEqual(1, len(imp_fun.get_func(fun_id=56)))
-        self.assertIs(vulner_1, imp_fun.get_func('WS', 56)[0])
+        self.assertIs(vulner_1, imp_fun.get_func('WS', 56))
 
         vulner_2 = ImpactFunc()
         vulner_2.haz_type = 'WS'
@@ -180,7 +180,7 @@ class TestContainer(unittest.TestCase):
         imp_fun.add_func(vulner_2)
         self.assertEqual(2, len(imp_fun.get_func('WS')))
         self.assertEqual(1, len(imp_fun.get_func(fun_id=6)))
-        self.assertIs(vulner_2, imp_fun.get_func('WS', 6)[0])
+        self.assertIs(vulner_2, imp_fun.get_func('WS', 6))
 
         vulner_3 = ImpactFunc()
         vulner_3.haz_type = 'TC'
@@ -190,7 +190,7 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(1, len(imp_fun.get_func(fun_id=56)))
         self.assertEqual(2, len(imp_fun.get_func('WS')))
         self.assertEqual(1, len(imp_fun.get_func('TC')))
-        self.assertIs(vulner_3, imp_fun.get_func('TC', 6)[0])
+        self.assertIs(vulner_3, imp_fun.get_func('TC', 6))
 
         self.assertEqual(2, len(imp_fun.get_func().keys()))
         self.assertEqual(1, len(imp_fun.get_func()['TC'].keys()))
