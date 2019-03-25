@@ -47,7 +47,7 @@ WORLD_BANK_WEALTH_ACC = \
 """ Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
     https://datacatalog.worldbank.org/dataset/wealth-accounting
     Includes variable Produced Capital (NW.PCA.TO)"""
-    
+
 FILE_WORLD_BANK_WEALTH_ACC = "Wealth-AccountsData.csv"
 
 WORLD_BANK_INC_GRP = \
@@ -252,7 +252,7 @@ def wealth2gdp(cntry_iso, non_financial = True, ref_year=2016, file_name = FILE_
         Parameters:
             cntry_iso (str): key = ISO alpha_3 country
             non_financial (boolean): use non-financial wealth (True)
-                                     use total wealth (False) 
+                                     use total wealth (False)
             ref_year (int): reference year
         Returns:
             float
@@ -304,11 +304,11 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
             'NW.PCA.PC': Produced capital stock per capita
                          incl. manufactured or built assets such as machinery, equipment, and physical structures
                          and value of built-up urban land (24% mark-up)
-            'NW.NCA.TO': Total natural capital of country. Natural capital includes the valuation of 
-                        fossil fuel energy (oil, gas, hard and soft coal) and 
+            'NW.NCA.TO': Total natural capital of country. Natural capital includes the valuation of
+                        fossil fuel energy (oil, gas, hard and soft coal) and
                         minerals (bauxite, copper, gold, iron ore, lead, nickel, phosphate, silver, tin, and zinc),
-                        agricultural land (cropland and pastureland), forests (timber and some nontimber forest products), and 
-                        protected areas. 
+                        agricultural land (cropland and pastureland), forests (timber and some nontimber forest products), and
+                        protected areas.
             'NW.TOW.TO': Total wealth of country.
             Note: Values are measured at market exchange rates in constant 2014 US dollars,
                         using a country-specific GDP deflator.
@@ -345,11 +345,11 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
     if ref_year in years: # indicator for reference year is available directly
         result = data_wealth.loc[:,np.str(ref_year)].values[0]
     elif ref_year > np.min(years) and ref_year < np.max(years): # interpolate
-        result = np.interp(ref_year,years,data_wealth.values[0,:])
+        result = np.interp(ref_year, years, data_wealth.values[0,:])
     elif ref_year < np.min(years): # scale proportionally to GDP
         gdp_year, gdp0_val = gdp(cntry_iso, np.min(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0,0]*gdp_val/gdp0_val
+        result = data_wealth.values[0, 0]*gdp_val/gdp0_val
         ref_year = gdp_year
     else:
         gdp_year, gdp0_val = gdp(cntry_iso, np.max(years))
