@@ -34,7 +34,7 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 
 from climada.hazard.base import Hazard
-from climada.hazard.tag import Tag as TagHazard
+#from climada.hazard.tag import Tag as TagHazard
 
 from climada.util.files_handler import download_file
 from climada.util.dates_times import datetime64_to_ordinal
@@ -248,13 +248,14 @@ class Drought(Hazard):
             Drought, full hazard set
             check using new_haz.check()       """
 
-#        if self.intensity_definition == 2:
-#            HAZ_TYPE = 'DR_sumthr'
-#            self.tag = TagHazard(HAZ_TYPE, 'TEST')
-#        elif self.intensity_definition == 3:
-#            HAZ_TYPE = 'DR_sum'
-#            self.tag = TagHazard(HAZ_TYPE, 'TEST')
-        self.tag = TagHazard(HAZ_TYPE, 'TEST')
+        if self.intensity_definition == 2:
+            HAZ_TYPE = 'DR_sumthr'
+            self.tag.haz_type = 'DR_sumthr'
+        elif self.intensity_definition == 3:
+            HAZ_TYPE = 'DR_sum'
+            self.tag.haz_type = 'DR_sum'
+
+#        self.tag = TagHazard(HAZ_TYPE, 'TEST')
 
         self.intensity = sparse.csr_matrix(intensity_matrix)
 
@@ -387,6 +388,10 @@ class Drought(Hazard):
         event = 0
         min_spei = 0
         sum_spei = 0
+        sum_spei_thr = []
+
+        start_time = []
+        end_time = []
 
         list_events_info = list()
         #create a list with every event exeeding the threshold
@@ -550,7 +555,8 @@ class Drought(Hazard):
 
         dates = np.arange(np.ceil(startdate/100)*100, np.ceil(startdate/100)*100+400, 100)
         list_dates = list()
-        for i in range(len(dates)): list_dates.append(date_to_str(dates.astype(np.int64)[i]))
+        for i in range(len(dates)): 
+            list_dates.append(date_to_str(dates.astype(np.int64)[i]))
 
         colourmap = 'plasma'
         boundaries = np.arange(startyear, enddate, 15)
