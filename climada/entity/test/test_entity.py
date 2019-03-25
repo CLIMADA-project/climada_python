@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -45,7 +45,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(len(def_entity.exposures.deductible), 24)
         self.assertEqual(def_entity.exposures.value[2], 12596064143.542929)
 
-        self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1)[0].mdd), 25)
+        self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1).mdd), 25)
 
         self.assertIn('risk transfer', def_entity.measures.get_names())
 
@@ -98,7 +98,7 @@ class TestCheck(unittest.TestCase):
         """Wrong impact functions"""
         ent = Entity()
         ent.read_excel(ENT_TEMPLATE_XLS)
-        ent.impact_funcs.get_func('TC', 1)[0].paa = np.array([1, 2])
+        ent.impact_funcs.get_func('TC', 1).paa = np.array([1, 2])
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 ent.check()

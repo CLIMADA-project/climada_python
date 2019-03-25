@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -132,7 +132,7 @@ class TestOneExposure(unittest.TestCase):
         iexp = 5
         # Take its impact function
         imp_id = ent.exposures.if_TC[iexp]
-        imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
+        imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)
         # Compute
         insure_flag = True
         impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
