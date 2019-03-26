@@ -86,12 +86,12 @@ See `Install environment with Anaconda`_.
 
 FAQs
 ====
-* ModuleNotFoundError; climada libraries are not found. Try to include *climada_python* path in the environment *climada_env* path as suggested in Section 2 of Install environment with Anaconda`_. If it does not work you can always include the path manually before executing your code:
+* ModuleNotFoundError; climada libraries are not found. Try to include *climada_python* path in the environment *climada_env* path as suggested in Section 2 of `Install environment with Anaconda`_. If it does not work you can always include the path manually before executing your code::
 
     import sys
     sys.path.append('path/to/climada_python')
 
-* ModuleNotFoundError; python library not found. It might happen that the pip dependencies of *env_climada.yml* (the ones specified after ``pip:``) have not been installed in the environment *climada_env*. You can then install manually these dependencies as follows:
+* ModuleNotFoundError; python library not found. It might happen that the pip dependencies of *env_climada.yml* (the ones specified after ``pip:``) have not been installed in the environment *climada_env*. You can then install manually these dependencies as follows::
 
     source activate climada_env
     pip install library_name
