@@ -20,7 +20,7 @@ CLIMADA stands for **clim**ate **ada**ptation and is a probabilistic natural cat
 Installation
 ------------
 
-Follow the [Installation](file:///Users/aznarsig/Documents/Python/climada_python/doc/_build/html/install.html#installation) instructions to install climada's development version and climada's stable version.
+Follow the [Installation](https://climada-python.readthedocs.io/en/latest/install.html) instructions to install climada's development version and climada's stable version.
 
 Configuration options
 ---------------------
