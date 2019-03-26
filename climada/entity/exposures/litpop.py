@@ -33,7 +33,7 @@ from iso3166 import countries as iso_cntry
 import gdal
 from pint import UnitRegistry
 
-from climada.entity.exposures import nightlight as nightlight
+from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
@@ -175,7 +175,7 @@ class LitPop(Exposures):
                     country_info[country_new], admin1_info[country_new] =\
                         _get_country_info(country_new)
                 del country_new
-            if len(country_list) == 0:
+            if not country_list:
                 LOGGER.error('No valid country chosen. Operation aborted.')
                 raise ValueError
             else:
@@ -196,8 +196,8 @@ class LitPop(Exposures):
             country_info[country_list[0]], admin1_info[country_list[0]]\
                 = _get_country_info(country_list[0])
         else:
-            LOGGER.error('Country parameter data type not recognised. '\
-                         + 'Operation aborted.')
+            LOGGER.error('Country parameter data type not recognised. \
+                         Operation aborted.')
             raise TypeError
         all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
@@ -231,7 +231,7 @@ class LitPop(Exposures):
                                     points2check=all_coords)
             litpop_curr = litpop_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-            if fin_mode=='none':
+            if fin_mode == 'none':
                 LOGGER.info('fin_mode=none --> no downscaling; admin1_calc is ignored')
             elif admin1_calc == 1:
                 litpop_curr = _calc_admin1(curr_country,\
@@ -259,9 +259,8 @@ class LitPop(Exposures):
 
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
-        LOGGER.info("Creating the LitPop exposure took "\
-                        + str(round(time.time() - start_time, 2)) +"s")
-
+        LOGGER.info("Creating the LitPop exposure took %i s", \
+                        int(round(time.time() - start_time, 2)))
         # self.set_geometry_points()
         self.check()
 
@@ -287,7 +286,7 @@ class LitPop(Exposures):
                     * int(iso_cntry.get(cntry_info[1]).numeric)
         except KeyError:
             lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(curr_country).numeric)            
+                    * int(iso_cntry.get(curr_country).numeric)       
         lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
         return lp_ent
 
@@ -372,31 +371,38 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
 
     nightlights = _get_box_blackmarble(cut_bbox,\
                                     resolution=resolution, return_coords=0)
-    gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
+    gpw = gpw_import.get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
                                   return_coords=0, reference_year=reference_year)
     bm_temp = np.ones(nightlights.shape)
     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
     bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
-           dtype='uint16')+int(exponents[1]>0))
-    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1]>0))
+           dtype='uint16')+int(exponents[1] > 0))
+    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1] > 0))
     del bm_temp
 
-    litpop_data = _LitPop_multiply_box(nightlights, gpw, \
-                                       x=exponents[0], y=exponents[1])
+    litpop_data = _LitPop_multiply(nightlights, gpw, exponents=exponents)
 
     if return_coords == 1:
         lon, lat = _litpop_box2coords(cut_bbox, resolution, 0)
         return litpop_data, lon, lat
     return litpop_data
-def _LitPop_multiply_box(nightlights, gpw, x=1, y=1):
+def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
     '''
     PURPOSE:
-        Multiplication of lit (nightlights^x) and pop (gpw^y) to get LitPop.
-        Both factors can be included once or to the power of x / y to
-        increase their weight.
+        Pixel-wise multiplication of lit (nightlights^exponents[0]) and pop
+        (gpw^exponents[1]) to compute LitPop.
+        Both factors are included to the power of lit_exp / pop_exp to
+        change their weight.
+    INPUTS:
+        nightlights (dataframe): gridded nightlights data
+        gpw (dataframe): gridded population data
+        exponents (list of two integers): exponents for nightlights and
+            population data, default = [1, 1]
+    OUTPUT:
+        litpop_data (dataframe): gridded resulting LitPop
     '''
-    litpop_data = pd.SparseArray(np.multiply(nightlights.values**x, \
-                                            gpw.values**y),\
+    litpop_data = pd.SparseArray(np.multiply(nightlights.values**exponents[0], \
+                                            gpw.values**exponents[1]),\
                                             fill_value=0)
     return litpop_data
 
@@ -551,9 +557,8 @@ def _match_target_res(target_res='NA'):
     res_list = [30, 60, 120, 300, 600, 3600]
     out_res = min(res_list, key=lambda x: abs(x-target_res))
     if out_res != target_res:
-        LOGGER.warning('Not one of the legacy resoultions selected. '\
-                    + 'In case of problems, consider adjusting it to '\
-                    + '%s arc-sec.', out_res)
+        LOGGER.warning('Not one of the legacy resoultions selected. Consider \
+                       adjusting it to %s arc-sec.', out_res)
 
 def _shape_cutter(shape, **opt_args):
     """ Checks whether given coordinates are within a shape or not. Can also
@@ -635,16 +640,12 @@ def _shape_cutter(shape, **opt_args):
             if (i > 0) & (check_enclaves == 1):
                 temp_path = path.Path(all_coords_shape[shape.parts[i]:end_idx])
                 for idx, val in enumerate(sub_shape_path):
-                    if val.contains_point(temp_path.vertices[0]):
-                        #Only check if the first three vertices of the new
-                        # shape is in any of the old shapes for speed
-                        if len(temp_path.vertices) > 2:
-                            if val.contains_point\
-                                (temp_path.vertices[1])\
-                                & val.contains_point\
-                                (temp_path.vertices[2]):
-                                add2enclave = 1
-                                break
+                    if val.contains_point(temp_path.vertices[0]) and \
+                    len(temp_path.vertices) > 2 and \
+                    val.contains_point(temp_path.vertices[1]) and\
+                    val.contains_point(temp_path.vertices[2]):
+                        add2enclave = 1
+                        break
                 if add2enclave == 1:
                     enclave_paths.append(temp_path)
                     temp_path = []
@@ -666,17 +667,12 @@ def _shape_cutter(shape, **opt_args):
     del all_coords_shape
     incl_coords = []
     for _, val in enumerate(sub_shape_path):
-        """stdout.write("\rChecking points in subshape " + str(j+1)\
-             + " of " +str(len(sub_shape_path))\
-             + ". Note: The first few subshapes are usually the largest"\
-             + " and hence slowest.")
-        stdout.flush()"""
         add_points = _mask_from_path(val, resolution)
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
         del add_points
     stdout.write('\n')
-    if (check_enclaves == 1) & (len(enclave_paths) > 0):
+    if check_enclaves == 1 and not enclave_paths:
         excl_coords = []
         LOGGER.debug('Removing enclaves...')
         for _, val in enumerate(enclave_paths):
@@ -708,7 +704,7 @@ def _shape_cutter(shape, **opt_args):
     if check_plot == 1:
         plt.scatter(lon, lat, cmap='plasma', marker=',')
         _plot_shape_to_plot(shape, shape_format)
-        if (check_enclaves == 1) & (len(enclave_paths) > 0):
+        if check_enclaves == 1 and not enclave_paths:
             _plot_paths_to_plot(enclave_paths, enclave_format)
     if point_format == 1:
         if return_mask == 1:
@@ -813,7 +809,6 @@ def _mask_from_shape(check_shape, **opt_args):
     enclave_paths = []
     add2enclave = 0
     if sub_shapes > 1:
-
         for i in range(0, sub_shapes):
             if i == (sub_shapes-1):
                 end_idx = len(check_shape.points)-1
@@ -823,16 +818,14 @@ def _mask_from_shape(check_shape, **opt_args):
                 temp_path = path.Path(all_coords_shape\
                                       [check_shape.parts[i]:end_idx])
                 for idx, val in enumerate(sub_shape_path):
-                    if val.contains_point(temp_path.vertices[0]):
+                    if val.contains_point(temp_path.vertices[0]) and \
+                        len(temp_path.vertices) > 2 and \
+                        val.contains_point(temp_path.vertices[1]) and\
+                        val.contains_point(temp_path.vertices[2]):
                     #Only check if the first three vertices of the new shape
                     # is in any of the old shapes for speed
-                        if len(temp_path.vertices) > 2:
-                            if val.contains_point\
-                                (temp_path.vertices[1])\
-                                & val.contains_point\
-                                (temp_path.vertices[2]):
-                                add2enclave = 1
-                                break
+                        add2enclave = 1
+                        break
                 if add2enclave == 1:
                     enclave_paths.append(temp_path)
                     temp_path = []
@@ -854,17 +847,12 @@ def _mask_from_shape(check_shape, **opt_args):
     del all_coords_shape
     incl_coords = []
     for _, val in enumerate(sub_shape_path):
-        """stdout.write("\rChecking points in subshape " + str(j+1)\
-             + " of " +str(len(sub_shape_path))\
-             + ". Note: The first few subshapes are usually the largest"\
-             + " and hence slowest.")
-        stdout.flush()"""
         add_points = _mask_from_path(val, resolution)
         if not add_points is None:
             [incl_coords.append(point) for point in add_points]
         del add_points
     # stdout.write('\n')
-    if (check_enclaves == 1) & (len(enclave_paths) > 0):
+    if check_enclaves == 1 and not enclave_paths:
         excl_coords = []
         LOGGER.debug('Removing enclaves...')
         for _, val in enumerate(enclave_paths):
@@ -1002,12 +990,11 @@ def _get_iso3(country_name):
                 break
     del field
     for rec in shp.records():
-        if len(country_name) == 3:
-            if rec[field_adm].casefold() == country_name:
-                return rec[field_adm]
-        else:
-            if rec[field_name].casefold() == country_name:
-                return rec[field_adm]
+        if len(country_name) == 3 and rec[field_adm].casefold() == country_name:
+            return rec[field_adm]
+        elif rec[field_name].casefold() == country_name:
+            return rec[field_adm]
+    return ""
 
 def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group'):
     """ Append factor to convert GDP to physcial asset values according to
@@ -1033,16 +1020,15 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
         for cntry_iso, cntry_val in cntry_info.items():
             _, inc_grp = income_group(cntry_iso, ref_year, shp_file)
             cntry_val.append(inc_grp+1)
-    elif fin_mode in ['gdp', 'pc', 'none', 'norm']:
+    elif fin_mode in ('gdp', 'pc', 'none', 'norm'):
         for cntry_iso, cntry_val in cntry_info.items():
             cntry_val.append(1)
-    elif fin_mode == 'nfw' or fin_mode == 'tw':
+    elif fin_mode in ('nfw', 'tw'):
         for cntry_iso, cntry_val in cntry_info.items():
             _, wealthtogdp_factor = wealth2gdp(cntry_iso, fin_mode == 'nfw', ref_year)
             if np.isnan(wealthtogdp_factor):
                 LOGGER.warning("Missing factor for country %s.", cntry_iso)
-                LOGGER.warning("Factor to convert GDP to assets will be set to 1 "\
-                        + "(total asset value corresponds to GDP).")
+                LOGGER.warning("Factor to convert GDP to assets will be set to 1.")
                 wealthtogdp_factor = 1
             cntry_val.append(wealthtogdp_factor)
     else:
@@ -1097,10 +1083,9 @@ def _gsdp_read(country_iso3, admin1_shape_data,\
                         out_dict[country_name] =\
                             admin1_xls_data['GSDP_ref'][idx2]
         return out_dict
-    else:
-        LOGGER.warning('No file for %s could be found in %s.', country_iso3, look_folder)
-        LOGGER.warning('No admin1 data is calculated in this case.')
-        return None
+    LOGGER.warning('No file for %s could be found in %s.', country_iso3, look_folder)
+    LOGGER.warning('No admin1 data is calculated in this case.')
+    return None
 
 def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
     ''' Checks if an Excel file with the name file_name in the folder
@@ -1291,8 +1276,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                     else:
                         litpop_data = pd.SparseArray([val*mult if\
                               masks_adm1[idx3][idx] == 1 else val for idx, val in\
-                              enumerate(litpop_data.values)], fill_value=0)                 
-
+                              enumerate(litpop_data.values)], fill_value=0)            
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share':[],\
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
@@ -1827,23 +1811,19 @@ def admin1_validation(country, methods, exponents, **args):
         _, gdp_val = gdp(cntry_iso, reference_year, shp_file)
         cntry_val.append(gdp_val)
     _get_gdp2asset_factor(country_info, reference_year, shp_file, fin_mode=fin_mode)
-
     curr_shp = _get_country_shape(country_list[0], 0)
-    
     all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
     mask = _mask_from_shape(curr_shp, resolution=resolution,\
                             points2check=all_coords)
-    
 
     # Get LitPop, Lit and Pop, etc:
     nightlights = _get_box_blackmarble(cut_bbox,\
                                 resolution=resolution, return_coords=0)
 
     bm_temp = np.ones(nightlights.shape)
-    
      # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
     bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, \
-           dtype='uint16')) 
+           dtype='uint16'))
     del nightlights
 
     nightlights0 = pd.SparseArray(bm_temp, fill_value=0)
@@ -1852,7 +1832,7 @@ def admin1_validation(country, methods, exponents, **args):
     del bm_temp
     nightlights1 = nightlights1[mask.sp_index.indices]
 
-    gpw = gpw_import._get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
+    gpw = gpw_import.get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
                               return_coords=0, reference_year=reference_year)
     gpw = gpw[mask.sp_index.indices]
 
@@ -1869,13 +1849,12 @@ def admin1_validation(country, methods, exponents, **args):
     LOGGER.info('Loop through methods...')
     for i in np.arange(0, len(methods)):
         LOGGER.info('%s :', methods[i])
-        if exponents[i][1]==0: # Lit only, use Lit in [0, 255]
-            _data = _LitPop_multiply_box(nightlights0, gpw, \
+        if exponents[i][1] == 0: # Lit only, use Lit in [0, 255]
+            _data = _LitPop_multiply(nightlights0, gpw, \
                                          x=exponents[i][0], y=0)
-        else: # Pop is used, use Lit+1 in [1, 256] 
-            _data = _LitPop_multiply_box(nightlights1, gpw, \
+        else: # Pop is used, use Lit+1 in [1, 256]
+            _data = _LitPop_multiply(nightlights1, gpw, \
                                          x=exponents[i][0], y=exponents[i][1])
-            
         _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\

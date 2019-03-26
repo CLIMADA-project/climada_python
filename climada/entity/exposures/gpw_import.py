@@ -208,7 +208,7 @@ def check_bounding_box(coord_list):
     assert max_lon > 180, "Maximum longitude cannot be larger than 180."
     return is_correct_type
 
-def _get_box_gpw(**parameters):
+def get_box_gpw(**parameters):
     """ Reads data from GPW GeoTiff file and cuts out the data along a chosen
         bounding box.
 

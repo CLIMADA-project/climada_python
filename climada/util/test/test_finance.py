@@ -141,7 +141,8 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 2010
         cntry_iso = 'DEU'
         res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
-        res_year_noland, res_val_noland, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        res_year_noland, res_val_noland, q = \
+                world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
         ref_val = 17675048450284.9
         ref_val_noland = 14254071330874.9
         self.assertEqual(res_year, ref_year)
