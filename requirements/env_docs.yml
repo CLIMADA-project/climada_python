@@ -10,6 +10,9 @@ dependencies:
   - geos=3.6.2
   - geopandas=0.4.0
   - h5py=2.7.1
+  - ipython=6.3.1
+  - ipython_genutils=0.2.0
+  - jsonschema=2.6.0
   - matplotlib=2.2.2
   - mkl
   - mkl_fft
@@ -32,6 +35,7 @@ dependencies:
   - scipy=1.1.0
   - setuptools=39.1.0
   - shapely=1.6.4
+  - sphinx=1.7.4
   - tabulate=0.8.2
   - tqdm=4.23.4
   - xarray=0.10.2
@@ -42,5 +46,6 @@ dependencies:
     - multiprocess==0.70.5
     - pathos==0.2.1
     - pint==0.8.1
+    - pox==0.2.3
     - ppft==1.6.4.7.1
 
