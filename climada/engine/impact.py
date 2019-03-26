@@ -114,19 +114,29 @@ class Impact():
         Examples:
             Use Entity class:
 
-            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
-            >>> entity = Entity() # Load entity with default values
-            >>> entity.exposures = Exposures(ENT_TEMPLATE_XLS) # Set exposures
-            >>> tc_impact = Impact()
-            >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
+            >>> haz = Hazard('TC') # Set hazard
+            >>> haz.read_mat(HAZ_DEMO_MAT)
+            >>> haz.check()
+            >>> ent = Entity() # Load entity with default values
+            >>> ent.read_excel(ENT_TEMPLATE_XLS) # Set exposures
+            >>> ent.check()
+            >>> imp = Impact()
+            >>> imp.calc(ent.exposures, ent.impact_funcs, haz)
+            >>> imp.calc_freq_curve().plot()
 
             Specify only exposures and impact functions:
 
-            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
-            >>> funcs = ImpactFuncSet(ENT_TEMPLATE_XLS) # Set impact functions
-            >>> exposures = Exposures(ENT_TEMPLATE_XLS) # Set exposures
-            >>> tc_impact = Impact()
-            >>> tc_impact.calc(exposures, funcs, hazard)
+            >>> haz = Hazard('TC') # Set hazard
+            >>> haz.read_mat(HAZ_DEMO_MAT)
+            >>> haz.check()
+            >>> funcs = ImpactFuncSet()
+            >>> funcs.read_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> funcs.check()
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> exp.check()
+            >>> imp = Impact()
+            >>> imp.calc(exp, funcs, haz)
+            >>> imp.aai_agg
         """
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
