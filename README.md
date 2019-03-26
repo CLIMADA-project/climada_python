@@ -10,7 +10,7 @@ Date: 2018-11-06
 
 Version: 0.2.1
 
-See [documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial).
+See [documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial/1_main_climada.ipynb).
 
 Introduction
 ------------
@@ -20,7 +20,7 @@ CLIMADA stands for **clim**ate **ada**ptation and is a probabilistic natural cat
 Installation
 ------------
 
-Follow the [Installation](https://github.com/davidnbresch/climada_python/blob/master/doc/source/install.rst) instructions to install climada's development version and climada's stable version.
+Follow the [Installation](https://climada-python.readthedocs.io/en/latest/install.html) instructions to install climada's development version and climada's stable version.
 
 Configuration options
 ---------------------

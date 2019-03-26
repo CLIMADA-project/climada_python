@@ -1773,7 +1773,7 @@ def admin1_validation(country, methods, exponents, **args):
     """
     res_km = args.get('res_km', 1)
     res_arcsec = args.get('res_arcsec', [])
-    check_plot = args.get('ckeck_plot', True)
+    check_plot = args.get('check_plot', True)
     fin_mode = 'gdp'
     reference_year = 2015
     #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
@@ -1850,9 +1850,9 @@ def admin1_validation(country, methods, exponents, **args):
     for i in np.arange(0, len(methods)):
         LOGGER.info('%s :', methods[i])
         if exponents[i][1] == 0: # Lit only, use Lit in [0, 255]
-            _data = _LitPop_multiply(nightlights0, gpw, exponents=exponents)
+            _data = _LitPop_multiply(nightlights0, gpw, exponents=exponents[i])
         else: # Pop is used, use Lit+1 in [1, 256]
-            _data = _LitPop_multiply(nightlights1, gpw, exponents=exponents)
+            _data = _LitPop_multiply(nightlights1, gpw, exponents=exponents[i])
         _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\
