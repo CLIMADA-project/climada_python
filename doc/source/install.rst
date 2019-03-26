@@ -7,13 +7,16 @@ Please execute the instructions of the following text boxes in a Terminal or Ana
 
 Download
 ========
-Download or clone the GitHub repository `climada_python <https://github.com/CLIMADA-project/climada_python.git>`_.
-To clone it, you need to first `install git <https://www.linode.com/docs/development/version-control/how-to-install-git-on-linux-mac-and-windows/>`_ or install `GitHub Desktop <https://desktop.github.com>`_. Use afterwards the following command line or GitHub Desktop (depending on your git installation choice) with climada_python's URL to clone the repository::
+**Version in development**: Download or clone the GitHub repository `climada_python <https://github.com/CLIMADA-project/climada_python.git>`_.
+
+To clone the repository, you need to first `install git <https://www.linode.com/docs/development/version-control/how-to-install-git-on-linux-mac-and-windows/>`_ or install `GitHub Desktop <https://desktop.github.com>`_. Afterwards you can use the following command line or GitHub Desktop options (depending on your git installation choice) with climada_python's URL::
 
   git clone https://github.com/CLIMADA-project/climada_python.git
 
-Developers with Unix
-====================
+**Stable version**: Download the last CLIMADA release available in `climada releases <https://github.com/CLIMADA-project/climada_python/releases>`_ as a zip or tar.gz file.
+
+Unix Operating System
+=====================
 
 .. _Install environment with Anaconda:
 
@@ -76,8 +79,8 @@ If you use conda, you might use the following commands to update the environment
 If any problem occurs during this process, consider reinstalling everything from scratch following the `Installation`_ instructions. 
 You can find more information about virtual environments with conda `here <https://conda.io/docs/user-guide/tasks/manage-environments.html>`_.
 
-Developers with Windows
-=======================
+Windows Operating System
+========================
 
 Install environment with Anaconda
 ---------------------------------
