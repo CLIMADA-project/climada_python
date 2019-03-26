@@ -4,4 +4,5 @@ Tutorial
 Getting started
 ---------------
 
-Work in progress. See the tutorial in Jupyter scripts `climada tutorial <https://github.com/davidnbresch/climada_python/tree/master/script/tutorial>`_.
+See the interactive tutorial `climada tutorial <https://github.com/CLIMADA-project/climada_python/blob/master/script/tutorial/1_main_climada.ipynb>`_.
+To use it, climada needs to be installed (see installation instructions).
