@@ -12,22 +12,13 @@ climada\.entity\.measures\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.measures\.measure module
------------------------------------------
+climada\.entity\.measures\.measure\_set module
+----------------------------------------------
 
-.. automodule:: climada.entity.measures.measure
+.. automodule:: climada.entity.measures.measure_set
     :members:
     :undoc-members:
     :show-inheritance:
-
-climada\.entity\.measures\.source module
-----------------------------------------
-
-.. automodule:: climada.entity.measures.source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Module contents
 ---------------

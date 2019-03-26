@@ -7,8 +7,8 @@ Please execute the instructions of the following text boxes in a Terminal or Ana
 
 Download
 ========
-Download or clone the GitHub repository `climada_python <https://github.com/davidnbresch/climada_python.git>`_. 
-To clone it, you might want to use the `GitHub Desktop <https://desktop.github.com>`_ or the command line with the provided URL::
+Download or clone the GitHub repository `climada_python <https://github.com/CLIMADA-project/climada_python.git>`_.
+To clone it, you need to first `install git <https://www.linode.com/docs/development/version-control/how-to-install-git-on-linux-mac-and-windows/>`_ or install `GitHub Desktop <https://desktop.github.com>`_. Use afterwards the following command line or GitHub Desktop (depending on your git installation choice) with climada_python's URL to clone the repository::
 
   git clone https://github.com/CLIMADA-project/climada_python.git
 
@@ -30,7 +30,9 @@ Install environment with Anaconda
    cd envs/climada_env/lib/python3.6/site-packages
    echo '/your/path/to/climada_python/' > climada_env_path.pth
 
-3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and launch Spyder. Open the file containing all the unit tests, ``tests_runner.py`` in ``climada_python`` folder. If the installation has been successful, an OK will appear at the end of the execution.
+3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the unit tests, ``tests_runner.py`` in ``climada_python`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 5min).
+
+4. **Run tutorials**: In the *Home* section of Anaconda, with *climada_env* selected, install and launch *jupyter notebook*. A browser window will show up. Navigate to your ``climada_python`` repository and open ``climada_python/script/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing.
 
 Install environment with Miniconda
 ----------------------------------
@@ -52,6 +54,12 @@ Install environment with Miniconda
     source deactivate
   
  If the installation has been successful, an OK will appear at the end of the execution.
+
+4. **Run tutorials**: Install and launch *jupyter notebook*::
+
+    jupyter notebook --notebook-dir /path/to/climada_python
+
+ A browser window will show up. Open ``climada_python/script/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing.
 
 Update climada's environment
 ----------------------------
@@ -76,3 +84,14 @@ Install environment with Anaconda
 
 See `Install environment with Anaconda`_.
 
+FAQs
+====
+* ModuleNotFoundError; climada libraries are not found. Try to include *climada_python* path in the environment *climada_env* path as suggested in Section 2 of Install environment with Anaconda`_. If it does not work you can always include the path manually before executing your code:
+
+    import sys
+    sys.path.append('path/to/climada_python')
+
+* ModuleNotFoundError; python library not found. It might happen that the pip dependencies of *env_climada.yml* (the ones specified after ``pip:``) have not been installed in the environment *climada_env*. You can then install manually these dependencies as follows:
+
+    source activate climada_env
+    pip install library_name
