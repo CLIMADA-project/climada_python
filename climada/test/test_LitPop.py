@@ -21,11 +21,12 @@ import unittest
 import numpy as np
 
 from climada.entity.exposures.litpop import LitPop
+from climada.entity.exposures import litpop as lp
 from climada.util.finance import world_bank_wealth_account
 
 # ---------------------
-class TestDefault(unittest.TestCase):
-    """Test data availability checks (blackmarble nightlight and gpw population):"""
+class TestLitPopExposure(unittest.TestCase):
+    """Test LitPop exposure data model:"""
 
     def test_switzerland300_pass(self):
         """Create LitPop entity for Switzerland on 300 arcsec:"""
@@ -122,6 +123,18 @@ class TestDefault(unittest.TestCase):
         self.assertTrue(ent.value.sum() == comparison_total_val)
         self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
 
+class TestValidation(unittest.TestCase):
+    """Test LitPop exposure data model:"""
+
+    def test_validation_switzerland30(self):
+        """Validation for Switzerland: two combinations of Lit and Pop,
+            checking Pearson correlation coefficient and RMSF"""
+        rho = lp.admin1_validation('CHE', ['LitPop', 'Lit5'], [[1, 1], [5, 0]],\
+                                    res_arcsec=30, check_plot=False)[0]
+        self.assertTrue(np.int(round(rho[0]*1e12)) == 945416798729)
+        self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
