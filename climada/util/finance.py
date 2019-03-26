@@ -68,13 +68,11 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
                        2: 4, # High income: nonOECD
                        1: 4  # High income: OECD
                       }
-""" Meaning of values of natural earth's income groups. """
+""" Meaning of values of natural earth's income groups."""
 
 FILE_GWP_WEALTH2GDP_FACTORS = 'WEALTH2GDP_factors_CRI_2016.csv'
 """ File with wealth-to-GDP factors from the
 Credit Suisse's Global Wealth Report 2017 (household wealth)"""
-
-FILE_WORLD_BANK_WEALTH_ACC
 
 def _nat_earth_shp(resolution='10m', category='cultural',
                    name='admin_0_countries'):
@@ -245,7 +243,8 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
 
     return close_year, close_val
 
-def wealth2gdp(cntry_iso, non_financial = True, ref_year=2016, file_name = FILE_GWP_WEALTH2GDP_FACTORS):
+def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
+               file_name=FILE_GWP_WEALTH2GDP_FACTORS):
     """ Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
         Missing value: returns NaN.
@@ -281,11 +280,11 @@ def wealth2gdp(cntry_iso, non_financial = True, ref_year=2016, file_name = FILE_
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
-    val = np.around(val,5)
+    val = np.around(val, 5)
     return ref_year, val
 
-def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", \
-                              no_land = True):
+def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
+                              no_land=True):
     """
     Download and unzip wealth accounting historical data (1995, 2000, 2005, 2010, 2014)
     from World Bank (https://datacatalog.worldbank.org/dataset/wealth-accounting).
@@ -296,18 +295,23 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
         ref_year (int): reference year
                          - available in data: 1995, 2000, 2005, 2010, 2014
                          - other years between 1995 and 2014 are interpolated
-                         - for years outside range, indicator is scaled proportionally to GDP
+                         - for years outside range, indicator is scaled
+                             proportionally to GDP
         variable_name (str): select one variable, i.e.:
             'NW.PCA.TO': Produced capital stock of country
-                         incl. manufactured or built assets such as machinery, equipment, and physical structures
+                         incl. manufactured or built assets such as machinery,
+                         equipment, and physical structures
                          and value of built-up urban land (24% mark-up)
             'NW.PCA.PC': Produced capital stock per capita
-                         incl. manufactured or built assets such as machinery, equipment, and physical structures
+                         incl. manufactured or built assets such as machinery,
+                         equipment, and physical structures
                          and value of built-up urban land (24% mark-up)
-            'NW.NCA.TO': Total natural capital of country. Natural capital includes the valuation of
-                        fossil fuel energy (oil, gas, hard and soft coal) and
-                        minerals (bauxite, copper, gold, iron ore, lead, nickel, phosphate, silver, tin, and zinc),
-                        agricultural land (cropland and pastureland), forests (timber and some nontimber forest products), and
+            'NW.NCA.TO': Total natural capital of country. Natural capital 
+                        includes the valuation of fossil fuel energy (oil, gas,
+                        hard and soft coal) and minerals (bauxite, copper, gold,
+                        iron ore, lead, nickel, phosphate, silver, tin, and zinc),
+                        agricultural land (cropland and pastureland),
+                        forests (timber and some nontimber forest products), and
                         protected areas.
             'NW.TOW.TO': Total wealth of country.
             Note: Values are measured at market exchange rates in constant 2014 US dollars,
@@ -335,17 +339,18 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
         raise
 
     data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso) \
-                  & data_wealth['Indicator Code'].str.contains(variable_name)].loc[:,'1995':'2014']
-    years = list(map(int,list(data_wealth)))
+                  & data_wealth['Indicator Code'].\
+                  str.contains(variable_name)].loc[:, '1995':'2014']
+    years = list(map(int, list(data_wealth)))
     if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name: # if country is not found in data
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
         ref_year_fac, fac = wealth2gdp(cntry_iso)
-        return gdp_year, np.around((fac*gdp_val),1), 0
+        return gdp_year, np.around((fac*gdp_val), 1), 0
     if ref_year in years: # indicator for reference year is available directly
-        result = data_wealth.loc[:,np.str(ref_year)].values[0]
+        result = data_wealth.loc[:, np.str(ref_year)].values[0]
     elif ref_year > np.min(years) and ref_year < np.max(years): # interpolate
-        result = np.interp(ref_year, years, data_wealth.values[0,:])
+        result = np.interp(ref_year, years, data_wealth.values[0, :])
     elif ref_year < np.min(years): # scale proportionally to GDP
         gdp_year, gdp0_val = gdp(cntry_iso, np.min(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
@@ -354,8 +359,8 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name = "NW.PCA.TO", 
     else:
         gdp_year, gdp0_val = gdp(cntry_iso, np.max(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0,-1]*gdp_val/gdp0_val
+        result = data_wealth.values[0, -1]*gdp_val/gdp0_val
         ref_year = gdp_year
     if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
         result = result/1.24
-    return ref_year, np.around(result,1), 1
+    return ref_year, np.around(result, 1), 1
