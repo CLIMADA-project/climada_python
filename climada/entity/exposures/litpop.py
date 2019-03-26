@@ -286,7 +286,7 @@ class LitPop(Exposures):
                     * int(iso_cntry.get(cntry_info[1]).numeric)
         except KeyError:
             lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(curr_country).numeric)       
+                    * int(iso_cntry.get(curr_country).numeric)  
         lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
         return lp_ent
 
@@ -1276,7 +1276,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                     else:
                         litpop_data = pd.SparseArray([val*mult if\
                               masks_adm1[idx3][idx] == 1 else val for idx, val in\
-                              enumerate(litpop_data.values)], fill_value=0)            
+                              enumerate(litpop_data.values)], fill_value=0)         
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share':[],\
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
@@ -1850,11 +1850,9 @@ def admin1_validation(country, methods, exponents, **args):
     for i in np.arange(0, len(methods)):
         LOGGER.info('%s :', methods[i])
         if exponents[i][1] == 0: # Lit only, use Lit in [0, 255]
-            _data = _LitPop_multiply(nightlights0, gpw, \
-                                         x=exponents[i][0], y=0)
+            _data = _LitPop_multiply(nightlights0, gpw, exponents=exponents)
         else: # Pop is used, use Lit+1 in [1, 256]
-            _data = _LitPop_multiply(nightlights1, gpw, \
-                                         x=exponents[i][0], y=exponents[i][1])
+            _data = _LitPop_multiply(nightlights1, gpw, exponents=exponents)
         _, rho[i*n_scores:(i*n_scores)+n_scores], adm0[methods[i]], adm1[methods[i]] = \
                 _calc_admin1(country_list[0],\
                 country_info[country_list[0]], admin1_info[country_list[0]],\
