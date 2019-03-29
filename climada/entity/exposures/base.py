@@ -113,6 +113,17 @@ class Exposures(GeoDataFrame):
     def _constructor(self):
         return Exposures
 
+    def __init__(self, *args, **kwargs):
+        """ Initialize. Copy attributes of input DataFrame. """
+        if len(args):
+            for var_meta in self._metadata:
+                try:
+                    val_meta = getattr(args[0], var_meta)
+                    setattr(self, var_meta, val_meta)
+                except AttributeError:
+                    pass
+        super(Exposures, self).__init__(*args, **kwargs)
+
     def check(self):
         """ Check which variables are present """
         # check metadata
@@ -284,11 +295,16 @@ class Exposures(GeoDataFrame):
             raster_res (float, optional): desired resolution of the raster
             save_tiff (str, optional): file name to save the raster in tiff
                 format, if provided
+            raster_f (lambda function): transformation to use to data. Default:
+                log10 adding 1.
+            label (str): colorbar label
             kwargs (optional): arguments for imshow matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if not 'geometry' in self.columns:
+            self.set_geometry_points()
         crs_epsg, crs_unit = self._get_transformation()
         if not res:
             res_lat, res_lon = np.diff(self.latitude.values), np.diff(self.longitude.values)
@@ -298,9 +314,6 @@ class Exposures(GeoDataFrame):
         LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
                     raster_res, crs_unit)
 
-        # generate polygons of resolution
-        if not 'geometry' in self.columns:
-            self.set_geometry_points()
         exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
         # construct raster
         xmin, ymin, xmax, ymax = self.total_bounds
@@ -335,6 +348,38 @@ class Exposures(GeoDataFrame):
         cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
 
         return fig, axis
+
+    def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
+                     buffer=0.0, extend='neither', zoom=10,
+                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png', 
+                     **kwargs):
+        """ Scatter points over satellite image using contextily 
+        
+         Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            zoom (int, optional): zoom coefficient used in the satellite image
+            url (str, optional): satellite image source.
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        if not 'geometry' in self.columns:
+            self.set_geometry_points()
+        crs_ori = self.crs
+        self.to_crs(epsg=3857, inplace=True)
+        fig, ax = self.plot_scatter(mask, ignore_zero, pop_name, buffer, extend,
+                                    shapes=False, **kwargs)
+        u_plot.add_basemap(ax[0, 0], zoom, url, flip=True)
+        ax[0, 0].set_axis_off()
+        self.to_crs(crs_ori, inplace=True)
+        return fig, ax
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
@@ -410,7 +455,7 @@ class Exposures(GeoDataFrame):
 
         Returns
         -------
-            GeoDataFrame
+            Exposures
         """
         # FIXME: this will likely be unnecessary if removed from GeoDataFrame
         data = self._data

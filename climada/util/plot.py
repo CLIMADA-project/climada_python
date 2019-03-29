@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import box
 import cartopy.crs as ccrs
+import contextily as ctx
 from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
@@ -119,7 +120,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
 
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
                            buffer=BUFFER, extend='neither', \
-                           proj=ccrs.PlateCarree(), **kwargs):
+                           proj=ccrs.PlateCarree(), shapes=True, **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -168,7 +169,8 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         # Binned image with coastlines
         extent = _get_borders(coord, buffer, proj)
         axis.set_extent((extent), proj)
-        add_shapes(axis)
+        if shapes:
+            add_shapes(axis)
         if pop_name:
             add_populated_places(axis, extent, proj)
 
@@ -506,3 +508,12 @@ def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
     min_lat = max(np.min(geo_coord[:, 0])-buffer, proj.y_limits[0])
     max_lat = min(np.max(geo_coord[:, 0])+buffer, proj.y_limits[1])
     return [min_lon, max_lon, min_lat, max_lat]
+
+def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png', 
+                flip=False):
+    xmin, xmax, ymin, ymax = ax.axis()
+    basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+    if flip:
+        basemap = np.flip(basemap, 0)
+    ax.imshow(basemap, extent=extent, interpolation='bilinear')
+    ax.axis((xmin, xmax, ymin, ymax))
