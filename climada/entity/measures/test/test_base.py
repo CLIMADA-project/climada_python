@@ -46,7 +46,7 @@ class TestApply(unittest.TestCase):
         """Test _change_imp_func"""
         meas = MeasureSet()
         meas.read_mat(ENT_TEST_MAT)
-        act_1 = meas.get_measure('Mangroves')
+        act_1 = meas.get_measure(name='Mangroves')[0]
 
         imp_set = ImpactFuncSet()
         imp_tc = ImpactFunc()
@@ -61,7 +61,7 @@ class TestApply(unittest.TestCase):
         imp_tc.paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
                                0.398500000000000, 0.657000000000000, 1.000000000000000,
                                1.000000000000000, 1.000000000000000])
-        imp_set.add_func(imp_tc)
+        imp_set.append(imp_tc)
         new_imp = act_1._change_imp_func(imp_set).get_func('XX')[0]
 
         self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
@@ -73,11 +73,11 @@ class TestApply(unittest.TestCase):
             1.000000000000000, 1.000000000000000])))
         self.assertFalse(id(new_imp) == id(imp_tc))
 
-    def test_cutoff_hazard_damage_pass(self):
+    def test_cutoff_hazard_pass(self):
         """Test _cutoff_hazard_damage"""
         meas = MeasureSet()
         meas.read_mat(ENT_TEST_MAT)
-        act_1 = meas.get_measure('Seawall')
+        act_1 = meas.get_measure(name='Seawall')[0]
 
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
@@ -92,19 +92,58 @@ class TestApply(unittest.TestCase):
 
         self.assertFalse(id(new_haz) == id(haz))
 
-        pos_ref = np.array([6222, 13166, 7314, 11697, 7318, 7319, 7478, 5326, 5481, 7471,
-                   7480, 6224, 4812, 5759, 777, 5530, 7476, 5489, 5528, 5529,
-                   4813, 5329, 7192, 4284, 7195, 5527, 5490, 7479, 7311, 5352,
-                   7194, 11698, 4283, 5979, 3330, 5977, 9052, 3895, 780,
-                   7102, 5971, 8678, 4820, 5328, 6246, 11699, 12499, 7200, 3327,
-                   779, 12148, 6247, 5485, 11695, 5950, 7433, 5948, 1077, 5949,
-                   1071, 4097, 7103, 9054, 5140, 2430, 9051, 9053, 5945, 13200,
-                   13501, 9135, 7698, 6250]) - 1
+        pos_no_null = np.array([ 6249,  7697,  9134, 13500, 13199,  5944,  9052,  9050,  2429,
+                                5139,  9053,  7102,  4096,  1070,  5948,  1076,  5947,  7432,
+                                5949, 11694,  5484,  6246, 12147,   778,  3326,  7199, 12498,
+                               11698,  6245,  5327,  4819,  8677,  5970,  7101,   779,  3894,
+                                9051,  5976,  3329,  5978,  4282, 11697,  7193,  5351,  7310,
+                                7478,  5489,  5526,  7194,  4283,  7191,  5328,  4812,  5528,
+                                5527,  5488,  7475,  5529,   776,  5758,  4811,  6223,  7479,
+                                7470,  5480,  5325,  7477,  7318,  7317, 11696,  7313, 13165,
+                                6221])
         all_haz = np.arange(haz.intensity.shape[0])
-        all_haz[pos_ref] = -1
+        all_haz[pos_no_null] = -1
         pos_null = np.argwhere(all_haz > 0).reshape(-1)
         for i_ev in pos_null:
             self.assertEqual(new_haz.intensity[i_ev, :].max(), 0)
+
+
+    def test_cutoff_hazard_region_pass(self):
+        """Test _cutoff_hazard_damage in specific region"""
+        meas = MeasureSet()
+        meas.read_mat(ENT_TEST_MAT)
+        act_1 = meas.get_measure(name='Seawall')[0]
+        act_1.exp_region_id = 1
+
+        haz = Hazard('TC')
+        haz.read_mat(HAZ_TEST_MAT)
+        exp = Exposures()
+        exp.read_mat(ENT_TEST_MAT)
+        exp['region_id'] = np.zeros(exp.shape[0])
+        exp.region_id.values[10:] = 1
+
+        imp_set = ImpactFuncSet()
+        imp_set.read_mat(ENT_TEST_MAT)
+
+        new_haz = act_1._cutoff_hazard_damage(exp, imp_set, haz)
+
+        self.assertFalse(id(new_haz) == id(haz))
+
+        pos_no_null = np.array([ 6249,  7697,  9134, 13500, 13199,  5944,  9052,  9050,  2429,
+                                5139,  9053,  7102,  4096,  1070,  5948,  1076,  5947,  7432,
+                                5949, 11694,  5484,  6246, 12147,   778,  3326,  7199, 12498,
+                               11698,  6245,  5327,  4819,  8677,  5970,  7101,   779,  3894,
+                                9051,  5976,  3329,  5978,  4282, 11697,  7193,  5351,  7310,
+                                7478,  5489,  5526,  7194,  4283,  7191,  5328,  4812,  5528,
+                                5527,  5488,  7475,  5529,   776,  5758,  4811,  6223,  7479,
+                                7470,  5480,  5325,  7477,  7318,  7317, 11696,  7313, 13165,
+                                6221])
+        all_haz = np.arange(haz.intensity.shape[0])
+        all_haz[pos_no_null] = -1
+        pos_null = np.argwhere(all_haz > 0).reshape(-1)
+        centr_null = np.unique(exp.centr_[exp.region_id==0])
+        for i_ev in pos_null:
+            self.assertEqual(new_haz.intensity[i_ev, centr_null].max(), 0)
 
     def test_change_exposures_if_pass(self):
         """Test _change_exposures_if"""
@@ -119,7 +158,7 @@ class TestApply(unittest.TestCase):
         imp_tc.intensity = np.arange(10, 100, 10)
         imp_tc.mdd = np.arange(10, 100, 10)
         imp_tc.paa = np.arange(10, 100, 10)
-        imp_set.add_func(imp_tc)
+        imp_set.append(imp_tc)
 
         imp_tc = ImpactFunc()
         imp_tc.haz_type = 'TC'
@@ -300,10 +339,12 @@ class TestApply(unittest.TestCase):
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
-        entity.measures.get_measure('Mangroves').haz_type = 'TC'
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        for meas in entity.measures.get_measure('TC'):
+            meas.haz_type = 'TC'
         entity.check()
         
-        new_exp, new_ifs, new_haz = entity.measures.get_measure('Mangroves').apply(entity.exposures, \
+        new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures, \
             entity.impact_funcs, hazard)
 
         self.assertTrue(new_exp is entity.exposures)
@@ -337,10 +378,13 @@ class TestApply(unittest.TestCase):
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
-        entity.measures.get_measure('Mangroves').haz_type = 'TC'
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        entity.measures.get_measure(name='Mangroves', haz_type='TC').haz_type = 'TC'
+        for meas in entity.measures.get_measure('TC'):
+            meas.haz_type = 'TC'
         entity.check()
 
-        imp, risk_transf = entity.measures.get_measure('Mangroves').calc_impact(
+        imp, risk_transf = entity.measures.get_measure('TC', 'Mangroves').calc_impact(
                 entity.exposures, entity.impact_funcs, hazard)
 
         self.assertAlmostEqual(imp.aai_agg, 4.850407096284983e+09)
@@ -373,15 +417,19 @@ class TestApply(unittest.TestCase):
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
         entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
-        entity.measures.get_measure('Beach nourishment').haz_type = 'TC'
-        entity.measures.get_measure('Beach nourishment').hazard_inten_imp = (1, 0)
-        entity.measures.get_measure('Beach nourishment').mdd_impact = (1, 0)
-        entity.measures.get_measure('Beach nourishment').paa_impact = (1, 0)
-        entity.measures.get_measure('Beach nourishment').risk_transf_attach = 5.0e8
-        entity.measures.get_measure('Beach nourishment').risk_transf_cover = 1.0e9
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        for meas in entity.measures.get_measure('TC'):
+            meas.haz_type = 'TC'
+        meas = entity.measures.get_measure(name='Beach nourishment', haz_type='TC')
+        meas.haz_type = 'TC'
+        meas.hazard_inten_imp = (1, 0)
+        meas.mdd_impact = (1, 0)
+        meas.paa_impact = (1, 0)
+        meas.risk_transf_attach = 5.0e8
+        meas.risk_transf_cover = 1.0e9
         entity.check()
 
-        imp, risk_transf = entity.measures.get_measure('Beach nourishment').calc_impact(
+        imp, risk_transf = entity.measures.get_measure(name='Beach nourishment', haz_type='TC').calc_impact(
                 entity.exposures, entity.impact_funcs, hazard)
 
         self.assertAlmostEqual(imp.aai_agg, 6.280804242609713e+09)

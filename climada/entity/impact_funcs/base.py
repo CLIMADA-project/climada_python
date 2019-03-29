@@ -86,7 +86,7 @@ class ImpactFunc():
         if self.name != str(self.id):
             title += ': %s' % self.name
         graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
-                         'Percentage (%)', title)
+                         'Impact (%)', title)
         graph.add_curve(self.intensity, self.mdd * 100, 'b', label='MDD')
         graph.add_curve(self.intensity, self.paa * 100, 'r', label='PAA')
         graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \

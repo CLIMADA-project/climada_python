@@ -52,22 +52,20 @@ class TestContainer(unittest.TestCase):
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
-                             level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.add_func(vulner_1)
+                             level='WARNING') as cm:
+            imp_fun.append(vulner_1)
         self.assertIn("Input ImpactFunc's hazard type not set.", cm.output[0])
 
         vulner_1.haz_type = 'TC'
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
-                             level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.add_func(vulner_1)
+                             level='WARNING') as cm:
+            imp_fun.append(vulner_1)
         self.assertIn("Input ImpactFunc's id not set.", cm.output[0])
 
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
                              level='ERROR') as cm:
             with self.assertRaises(ValueError):
-                imp_fun.add_func(45)
+                imp_fun.append(45)
         self.assertIn("Input value is not of type ImpactFunc.", cm.output[0])
 
     def test_remove_func_pass(self):
@@ -76,7 +74,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         imp_fun.remove_func()
         self.assertEqual(0, len(imp_fun._data))
 
@@ -86,7 +84,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', level='WARNING') as cm:
             imp_fun.remove_func('FL')
         self.assertIn('No ImpactFunc with hazard FL.', cm.output[0])
@@ -100,21 +98,21 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
         self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
         vulner_2 = ImpactFunc()
         vulner_2.id = 1
         vulner_2.haz_type = 'TC'
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
         self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
         vulner_3 = ImpactFunc()
         vulner_3.id = 1
         vulner_3.haz_type = 'FL'
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         self.assertEqual(2, len(imp_fun.get_hazard_types()))
         self.assertIn('TC', imp_fun.get_hazard_types())
         self.assertIn('FL', imp_fun.get_hazard_types())
@@ -127,7 +125,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, len(imp_fun.get_ids()))
         self.assertIn('TC', imp_fun.get_ids())
         self.assertEqual(1, len(imp_fun.get_ids('TC')))
@@ -136,7 +134,7 @@ class TestContainer(unittest.TestCase):
         vulner_2 = ImpactFunc()
         vulner_2.id = 3
         vulner_2.haz_type = 'TC'
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
         self.assertEqual(1, len(imp_fun.get_ids()))
         self.assertIn('TC', imp_fun.get_ids())
         self.assertEqual(2, len(imp_fun.get_ids('TC')))
@@ -145,7 +143,7 @@ class TestContainer(unittest.TestCase):
         vulner_3 = ImpactFunc()
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         self.assertEqual(2, len(imp_fun.get_ids()))
         self.assertIn('TC', imp_fun.get_ids())
         self.assertIn('FL', imp_fun.get_ids())
@@ -160,7 +158,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual([], imp_fun.get_ids('TC'))
 
     def test_get_func_pass(self):
@@ -169,7 +167,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, len(imp_fun.get_func('WS')))
         self.assertEqual(1, len(imp_fun.get_func(fun_id=56)))
         self.assertIs(vulner_1, imp_fun.get_func('WS', 56))
@@ -177,7 +175,7 @@ class TestContainer(unittest.TestCase):
         vulner_2 = ImpactFunc()
         vulner_2.haz_type = 'WS'
         vulner_2.id = 6
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
         self.assertEqual(2, len(imp_fun.get_func('WS')))
         self.assertEqual(1, len(imp_fun.get_func(fun_id=6)))
         self.assertIs(vulner_2, imp_fun.get_func('WS', 6))
@@ -185,7 +183,7 @@ class TestContainer(unittest.TestCase):
         vulner_3 = ImpactFunc()
         vulner_3.haz_type = 'TC'
         vulner_3.id = 6
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         self.assertEqual(2, len(imp_fun.get_func(fun_id=6)))
         self.assertEqual(1, len(imp_fun.get_func(fun_id=56)))
         self.assertEqual(2, len(imp_fun.get_func('WS')))
@@ -202,7 +200,7 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual([], imp_fun.get_func('TC'))
 
     def test_size_pass(self):
@@ -213,12 +211,12 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, imp_fun.size())
         self.assertEqual(1, imp_fun.size('WS', 56))
         self.assertEqual(1, imp_fun.size('WS'))
         self.assertEqual(1, imp_fun.size(fun_id=56))
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, imp_fun.size())
         self.assertEqual(1, imp_fun.size('WS', 56))
         self.assertEqual(1, imp_fun.size('WS'))
@@ -227,7 +225,7 @@ class TestContainer(unittest.TestCase):
         vulner_2 = ImpactFunc()
         vulner_2.haz_type = 'WS'
         vulner_2.id = 5
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
         self.assertEqual(2, imp_fun.size())
         self.assertEqual(1, imp_fun.size('WS', 56))
         self.assertEqual(2, imp_fun.size('WS'))
@@ -237,7 +235,7 @@ class TestContainer(unittest.TestCase):
         vulner_3 = ImpactFunc()
         vulner_3.haz_type = 'TC'
         vulner_3.id = 5
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         self.assertEqual(3, imp_fun.size())
         self.assertEqual(1, imp_fun.size('TC', 5))
         self.assertEqual(2, imp_fun.size('WS'))
@@ -252,13 +250,13 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(0, imp_fun.size('TC', 3))
         self.assertEqual(0, imp_fun.size(fun_id=3))
             
-    def test_add_func_pass(self):
-        """Test add_func adds ImpactFunc to ImpactFuncSet correctly."""
+    def test_append_pass(self):
+        """Test append adds ImpactFunc to ImpactFuncSet correctly."""
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, len(imp_fun._data))
         self.assertIn('TC', imp_fun._data.keys())
         self.assertEqual(1, len(imp_fun._data['TC']))
@@ -267,7 +265,7 @@ class TestContainer(unittest.TestCase):
         vulner_2 = ImpactFunc()
         vulner_2.id = 3
         vulner_2.haz_type = 'TC'
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
         self.assertEqual(1, len(imp_fun._data))
         self.assertIn('TC', imp_fun._data.keys())
         self.assertEqual(2, len(imp_fun._data['TC']))
@@ -277,7 +275,7 @@ class TestContainer(unittest.TestCase):
         vulner_3 = ImpactFunc()
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         self.assertEqual(2, len(imp_fun._data))
         self.assertIn('TC', imp_fun._data.keys())
         self.assertIn('FL', imp_fun._data.keys())
@@ -293,12 +291,12 @@ class TestContainer(unittest.TestCase):
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         imp_fun.remove_func()
         self.assertEqual(0, len(imp_fun.get_hazard_types()))
         self.assertEqual(0, len(imp_fun.get_ids()))
 
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
         self.assertEqual('TC', imp_fun.get_hazard_types()[0])
         self.assertEqual(1, len(imp_fun.get_ids()))
@@ -315,7 +313,7 @@ class TestChecker(unittest.TestCase):
         vulner.intensity = np.array([1, 2, 3])
         vulner.mdd = np.array([1, 2, 3])
         vulner.paa = np.array([1, 2])
-        imp_fun.add_func(vulner)
+        imp_fun.append(vulner)
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
@@ -331,37 +329,37 @@ class TestChecker(unittest.TestCase):
         vulner.intensity = np.array([1, 2, 3])
         vulner.mdd = np.array([1, 2])
         vulner.paa = np.array([1, 2, 3])
-        imp_fun.add_func(vulner)
+        imp_fun.append(vulner)
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 imp_fun.check()
         self.assertIn('Invalid ImpactFunc.mdd size: 3 != 2.', cm.output[0])
 
-class TestAppend(unittest.TestCase):
-    """Check append function"""
-    def test_append_to_empty_same(self):
-        """Append ImpactFuncSet to empty one."""     
+class TestExtend(unittest.TestCase):
+    """Check extend function"""
+    def test_extend_to_empty_same(self):
+        """Extend ImpactFuncSet to empty one."""     
         imp_fun = ImpactFuncSet()
         imp_fun_add = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun_add.add_func(vulner_1)
+        imp_fun_add.append(vulner_1)
 
         vulner_2 = ImpactFunc()
         vulner_2.id = 3
         vulner_2.haz_type = 'TC'
-        imp_fun_add.add_func(vulner_2)
+        imp_fun_add.append(vulner_2)
 
         vulner_3 = ImpactFunc()
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
-        imp_fun_add.add_func(vulner_3)
+        imp_fun_add.append(vulner_3)
         
         imp_fun_add.tag.file_name = 'file1.txt'
         
-        imp_fun.append(imp_fun_add)
+        imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
         self.assertEqual(imp_fun.size(), 3)
@@ -370,59 +368,59 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(imp_fun.tag.file_name, imp_fun_add.tag.file_name)
         self.assertEqual(imp_fun.tag.description, imp_fun_add.tag.description)
 
-    def test_append_equal_same(self):
-        """Append the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""     
+    def test_extend_equal_same(self):
+        """Extend the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""     
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
         
         imp_fun_add = ImpactFuncSet()
-        imp_fun_add.add_func(vulner_1)
+        imp_fun_add.append(vulner_1)
         
-        imp_fun.append(imp_fun_add)
+        imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
         self.assertEqual(imp_fun.size(), 1)
         self.assertEqual(imp_fun.size('TC'), 1)
 
-    def test_append_different_append(self):
-        """Append ImpactFuncSet with same and new values. The vulnerabilities
+    def test_extend_different_extend(self):
+        """Extend ImpactFuncSet with same and new values. The vulnerabilities
         with repeated id are overwritten."""
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun.add_func(vulner_1)
+        imp_fun.append(vulner_1)
 
         vulner_2 = ImpactFunc()
         vulner_2.id = 3
         vulner_2.haz_type = 'TC'
-        imp_fun.add_func(vulner_2)
+        imp_fun.append(vulner_2)
 
         vulner_3 = ImpactFunc()
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
-        imp_fun.add_func(vulner_3)
+        imp_fun.append(vulner_3)
         
         imp_fun_add = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
-        imp_fun_add.add_func(vulner_1)
+        imp_fun_add.append(vulner_1)
 
         vulner_2 = ImpactFunc()
         vulner_2.id = 1
         vulner_2.haz_type = 'WS'
-        imp_fun_add.add_func(vulner_2)
+        imp_fun_add.append(vulner_2)
 
         vulner_3 = ImpactFunc()
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
-        imp_fun_add.add_func(vulner_3)
+        imp_fun_add.append(vulner_3)
         
-        imp_fun.append(imp_fun_add)
+        imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
         self.assertEqual(imp_fun.size(), 4)
@@ -612,7 +610,7 @@ class TestWriter(unittest.TestCase):
         imp1.intensity = np.arange(100)
         imp1.mdd = np.arange(100) * 0.5
         imp1.paa = np.ones(100)
-        imp_funcs.add_func(imp1)
+        imp_funcs.append(imp1)
         
         imp2 = ImpactFunc()
         imp2.id = 2
@@ -622,7 +620,7 @@ class TestWriter(unittest.TestCase):
         imp2.intensity = np.arange(102)
         imp2.mdd = np.arange(102) * 0.25
         imp2.paa = np.ones(102)
-        imp_funcs.add_func(imp2)
+        imp_funcs.append(imp2)
 
         imp3 = ImpactFunc()
         imp3.id = 1
@@ -632,7 +630,7 @@ class TestWriter(unittest.TestCase):
         imp3.intensity = np.arange(86)
         imp3.mdd = np.arange(86) * 0.15
         imp3.paa = np.ones(86)
-        imp_funcs.add_func(imp3)
+        imp_funcs.append(imp3)
 
         imp4 = ImpactFunc()
         imp4.id = 15
@@ -642,7 +640,7 @@ class TestWriter(unittest.TestCase):
         imp4.intensity = np.arange(5)
         imp4.mdd = np.arange(5)
         imp4.paa = np.ones(5)
-        imp_funcs.add_func(imp4)
+        imp_funcs.append(imp4)
 
         file_name = os.path.join(CURR_DIR, 'test_write.xlsx')
         imp_funcs.write_excel(file_name)
@@ -678,7 +676,7 @@ class TestWriter(unittest.TestCase):
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtend))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))

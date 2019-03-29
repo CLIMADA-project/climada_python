@@ -47,7 +47,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1).mdd), 25)
 
-        self.assertIn('risk transfer', def_entity.measures.get_names())
+        self.assertIn('risk transfer', def_entity.measures.get_names('TC'))
 
         self.assertEqual(def_entity.disc_rates.years[5], 2005)
 
@@ -82,7 +82,7 @@ class TestCheck(unittest.TestCase):
         """Wrong measures"""
         ent = Entity()
         ent.read_excel(ENT_TEMPLATE_XLS)
-        actions = ent.measures.get_measure()
+        actions = ent.measures.get_measure('TC')
         actions[0].color_rgb = np.array([1, 2])
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):

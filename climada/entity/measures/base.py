@@ -95,7 +95,10 @@ class Measure():
         Raises:
             ValueError
         """
-        check.size(3, self.color_rgb, 'Measure.color_rgb')
+        try:
+            check.size(3, self.color_rgb, 'Measure.color_rgb')
+        except ValueError:
+            check.size(4, self.color_rgb, 'Measure.color_rgb')
         check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
         check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         check.size(2, self.paa_impact, 'Measure.paa_impact')
@@ -126,14 +129,14 @@ class Measure():
         Returns:
             Exposures, ImpactFuncSet, Hazard
         """
-        # chenge hazard
+        # change hazard
         new_haz = self._change_all_hazard(hazard)
-        new_exp = self._change_all_exposures(exposures)
         # change exposures
+        new_exp = self._change_all_exposures(exposures)
         new_exp = self._change_exposures_if(new_exp)
         # change impact functions
         new_ifs = self._change_imp_func(imp_fun_set)
-        # cutoff events whose damage happen with high frequency
+        # cutoff events whose damage happen with high frequency (in region if specified)
         new_haz = self._cutoff_hazard_damage(new_exp, new_ifs, new_haz)
         # apply all previous changes only to the selected exposures
         new_exp, new_ifs, new_haz = self._filter_exposures(exposures, \
@@ -272,7 +275,12 @@ class Measure():
                      self.hazard_freq_cutoff)
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(exposures, if_set, hazard)
+        exp_imp = exposures
+        if self.exp_region_id != 0:
+            # compute impact only in selected region
+            exp_imp = exposures[exposures.region_id == self.exp_region_id]
+            exp_imp = Exposures(exp_imp)
+        imp.calc(exp_imp, if_set, hazard)
 
         new_haz = copy.deepcopy(hazard)
         sort_idxs = np.argsort(imp.at_event)[::-1]
@@ -280,7 +288,7 @@ class Measure():
         cutoff = exceed_freq > self.hazard_freq_cutoff
         sel_haz = sort_idxs[cutoff]
         new_haz_inten = new_haz.intensity.tolil()
-        new_haz_inten[sel_haz, :] = np.zeros(new_haz.intensity.shape[1])
+        new_haz_inten[sel_haz, :] = np.zeros((sel_haz.size, new_haz.intensity.shape[1]))
         new_haz.intensity = new_haz_inten.tocsr()
         return new_haz
 
