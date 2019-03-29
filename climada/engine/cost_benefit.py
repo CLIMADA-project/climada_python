@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define CostBenefit class.
 """
 
-__all__ = ['CostBenefit', 'risk_aai_agg']
+__all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import logging
 import numpy as np
@@ -51,6 +51,30 @@ def risk_aai_agg(impact):
         float
     """
     return impact.aai_agg
+
+def risk_rp_100(impact):
+    """Risk measurement as exceedance impact at 100 years return period.
+
+    Parameters:
+        impact (Impact): an Impact instance
+
+    Returns:
+        float
+    """
+    efc = impact.calc_freq_curve([100])
+    return efc.impact[0]
+
+def risk_rp_250(impact):
+    """Risk measurement as exceedance impact at 250 years return period.
+
+    Parameters:
+        impact (Impact): an Impact instance
+
+    Returns:
+        float
+    """
+    efc = impact.calc_freq_curve([250])
+    return efc.impact[0]
 
 class CostBenefit():
     """Impact definition. Compute from an entity (exposures and impact
@@ -140,7 +164,7 @@ class CostBenefit():
         self.unit = entity.exposures.value_unit
 
         # save measure colors
-        for meas in entity.measures.get_measure():
+        for meas in entity.measures.get_measure(hazard.tag.haz_type):
             self.color_rgb[meas.name] = meas.color_rgb
 
         if not haz_future and not ent_future:
@@ -295,6 +319,8 @@ class CostBenefit():
         time_dep = self._time_dependency_array()
         risk_curr = self._npv_unaverted_impact(risk_future, entity.disc_rates,
                                                time_dep)
+        LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.present_year,
+                    risk_future))
 
         # changing future
         time_dep = self._time_dependency_array(imp_time_depen)
@@ -308,6 +334,8 @@ class CostBenefit():
         risk_future = fut_risk
         risk_tot = self._npv_unaverted_impact(risk_future, entity.disc_rates,
                                               time_dep, curr_risk)
+        LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.future_year,
+                    risk_future))
 
         axis.bar(1, risk_curr/norm_fact)
         axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
@@ -328,6 +356,8 @@ class CostBenefit():
         plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
+        axis.set_title('Total accumulated damage from {:d} to {:d}'.format(
+                self.present_year, self.future_year))
 
         return fig, axis
 
@@ -362,7 +392,7 @@ class CostBenefit():
             impact_meas['no measure']['impact'] = imp_tmp
 
         # compute impact for each measure
-        for measure in meas_set.get_measure():
+        for measure in meas_set.get_measure(hazard.tag.haz_type):
             imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = measure.cost
@@ -443,6 +473,9 @@ class CostBenefit():
         Parameters:
             imp_time_depen (float, optional): parameter which represent time
                 evolution of impact. Time array is all ones if not provided
+
+        Returns:
+            np.array
         """
         n_years = self.future_year - self.present_year + 1
         if imp_time_depen:
