@@ -373,7 +373,7 @@ class TestCalc(unittest.TestCase):
 class TestRiskFuncs(unittest.TestCase):
     '''Test risk functions definitions'''
 
-    def test_impact():
+    def test_impact(self):
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
