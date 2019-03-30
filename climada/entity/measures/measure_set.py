@@ -257,7 +257,7 @@ class MeasureSet():
             int
         """
         if (haz_type is not None) and (name is not None) and \
-        (isinstance(self.get_func(haz_type, name), Measure)):
+        (isinstance(self.get_measure(haz_type, name), Measure)):
             return 1
         if (haz_type is not None) or (name is not None):
             return len(self.get_measure(haz_type, name))
@@ -276,7 +276,7 @@ class MeasureSet():
                     LOGGER.error("Wrong Measure.name: %s != %s.", name, \
                                  meas.name)
                     raise ValueError
-                if (key_haz != meas.haz_type):
+                if key_haz != meas.haz_type:
                     LOGGER.error("Wrong Measure.haz_type: %s != %s.",\
                                  key_haz, meas.haz_type)
                     raise ValueError
@@ -456,19 +456,19 @@ class MeasureSet():
                   var_names['col_name']['paa_b'], var_names['col_name']['fun_map'],
                   var_names['col_name']['exp_set'], var_names['col_name']['exp_reg'],
                   var_names['col_name']['risk_att'], var_names['col_name']['risk_cov'],
-                  var_names['col_name']['haz']]       
+                  var_names['col_name']['haz']]
         for icol, head_dat in enumerate(header):
             mead_ws.write(0, icol, head_dat)
         row_ini = 1
-        for haz_type, haz_dict in self._data.items():
+        for _, haz_dict in self._data.items():
             for meas_name, meas in haz_dict.items():
-             xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
-                        meas.cost, meas.hazard_inten_imp[0],
-                        meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
-                        meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
-                        meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
-                        meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
-                        meas.risk_transf_cover, meas.haz_type]
+                xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
+                            meas.cost, meas.hazard_inten_imp[0],
+                            meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
+                            meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
+                            meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
+                            meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
+                            meas.risk_transf_cover, meas.haz_type]
             write_meas(row_ini, mead_ws, xls_data)
             row_ini += 1
-        meas_wb.close()               
+        meas_wb.close()

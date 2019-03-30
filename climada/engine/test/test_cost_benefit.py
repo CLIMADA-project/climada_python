@@ -382,7 +382,7 @@ class TestRiskFuncs(unittest.TestCase):
         impact = Impact()
         ent.exposures.assign_centroids(hazard)
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
-        return impact        
+        return impact
 
     def test_risk_aai_agg_pass(self):
         """Test risk_aai_agg"""

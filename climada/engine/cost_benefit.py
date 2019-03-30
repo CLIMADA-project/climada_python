@@ -320,7 +320,7 @@ class CostBenefit():
         risk_curr = self._npv_unaverted_impact(risk_future, entity.disc_rates,
                                                time_dep)
         LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.present_year,
-                    risk_future))
+                                                           risk_future))
 
         # changing future
         time_dep = self._time_dependency_array(imp_time_depen)
@@ -335,7 +335,7 @@ class CostBenefit():
         risk_tot = self._npv_unaverted_impact(risk_future, entity.disc_rates,
                                               time_dep, curr_risk)
         LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.future_year,
-                    risk_future))
+                                                           risk_future))
 
         axis.bar(1, risk_curr/norm_fact)
         axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
@@ -357,7 +357,7 @@ class CostBenefit():
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
         axis.set_title('Total accumulated damage from {:d} to {:d}'.format(
-                self.present_year, self.future_year))
+            self.present_year, self.future_year))
 
         return fig, axis
 
@@ -515,7 +515,7 @@ class CostBenefit():
 
         table = []
         headers = ['Measure', 'Cost ' + norm_name, 'Benefit ' + norm_name, 'Benefit/Cost']
-        for meas_name in self.benefit.keys():
+        for meas_name in self.benefit:
             table.append([meas_name, \
             self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact, \
             self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])

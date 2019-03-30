@@ -34,9 +34,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import box
 import cartopy.crs as ccrs
-import contextily as ctx
 from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+import contextily as ctx
 
 from climada.util.files_handler import to_list
 
@@ -509,11 +509,18 @@ def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
     max_lat = min(np.max(geo_coord[:, 0])+buffer, proj.y_limits[1])
     return [min_lon, max_lon, min_lat, max_lat]
 
-def add_basemap(ax, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png', 
+def add_basemap(axis, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                 flip=False):
-    xmin, xmax, ymin, ymax = ax.axis()
+    """ Add image to given axis. Coordinates need to be in epsg=3857.
+
+    Parameters:
+        (cartopy.mpl.geoaxes.GeoAxesSubplot): plot axis
+        zoom (int, optional): zoom coefficient used in the satellite image
+        url (str, optional): image source, e.g. ctx.sources.OSM_C
+    """
+    xmin, xmax, ymin, ymax = axis.axis()
     basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
     if flip:
         basemap = np.flip(basemap, 0)
-    ax.imshow(basemap, extent=extent, interpolation='bilinear')
-    ax.axis((xmin, xmax, ymin, ymax))
+    axis.imshow(basemap, extent=extent, interpolation='bilinear')
+    axis.axis((xmin, xmax, ymin, ymax))

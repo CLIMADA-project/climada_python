@@ -22,7 +22,7 @@ import os
 import unittest
 import numpy as np
 import pandas as pd
-import geopandas
+import geopandas as gpd
 import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
@@ -47,7 +47,7 @@ def good_exposures():
     data['region_id'] = np.array([1, 2, 3])
     data[INDICATOR_CENTR + 'TC'] = np.array([1, 2, 3])
 
-    expo = Exposures(geopandas.GeoDataFrame(data=data))
+    expo = Exposures(gpd.GeoDataFrame(data=data))
     return expo
 
 class TestFuncs(unittest.TestCase):
@@ -271,6 +271,15 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp_tr.tag.description, '')
         self.assertEqual(exp_tr.tag.file_name, '')
+    
+    def test_constructoer_pass(self):
+        """ Test initialization with input GeiDataFrame """
+        in_gpd = gpd.GeoDataFrame()
+        in_gpd['value'] = np.zeros(10)
+        in_gpd.ref_year = 2015
+        in_exp = Exposures(in_gpd)
+        self.assertEqual(in_exp.ref_year, 2015)
+        self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
     
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)

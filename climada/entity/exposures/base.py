@@ -351,10 +351,10 @@ class Exposures(GeoDataFrame):
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png', 
+                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                      **kwargs):
-        """ Scatter points over satellite image using contextily 
-        
+        """ Scatter points over satellite image using contextily
+
          Parameters:
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
@@ -364,7 +364,7 @@ class Exposures(GeoDataFrame):
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             zoom (int, optional): zoom coefficient used in the satellite image
-            url (str, optional): satellite image source.
+            url (str, optional): image source, e.g. ctx.sources.OSM_C
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -374,12 +374,12 @@ class Exposures(GeoDataFrame):
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
-        fig, ax = self.plot_scatter(mask, ignore_zero, pop_name, buffer, extend,
-                                    shapes=False, **kwargs)
-        u_plot.add_basemap(ax[0, 0], zoom, url, flip=True)
-        ax[0, 0].set_axis_off()
+        fig, axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                      extend, shapes=False, **kwargs)
+        u_plot.add_basemap(axis[0, 0], zoom, url, flip=True)
+        axis[0, 0].set_axis_off()
         self.to_crs(crs_ori, inplace=True)
-        return fig, ax
+        return fig, axis
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
