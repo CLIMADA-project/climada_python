@@ -42,7 +42,7 @@ class TestIntegr(unittest.TestCase):
         dr_if = ImpactFuncSet()
         if_def = IFDrought()
         if_def.set_default()
-        dr_if.add_func(if_def)
+        dr_if.append(if_def)
         
         exposure_agrar = SpamAgrar()
         exposure_agrar.init_spam_agrar(country='CHE')
