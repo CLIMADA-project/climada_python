@@ -48,7 +48,7 @@ Install environment with Miniconda
     conda env create -f requirements/env_climada.yml --name climada_env
 
 
-During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
+   During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
@@ -66,10 +66,10 @@ During the installation process of Miniconda, you are prompted to set the workin
     source deactivate
   
 
-If the installation has been successful, an OK will appear at the end of the execution.
+   If the installation has been successful, an OK will appear at the end of the execution.
 
-Warning: Executing the whole test_runner takes pretty long and downloads some files to climada_python/data that you might not need.
-Consider aborting the test once you see first "OK"s in the output.
+   Warning: Executing the whole test_runner takes pretty long and downloads some files to climada_python/data that you might not need.
+   Consider aborting the test once you see first "OK"s in the output.
 
 4. **Submit a test BJOB to the queue of the cluster**: Write a shell script that initiates the Python environment climada_env and submit the job::
 
@@ -84,13 +84,13 @@ Consider aborting the test once you see first "OK"s in the output.
     bsub -J "test01" -W 1:00 -R "rusage[mem=5120]" -oo logs/test01.txt -eo logs/e_test01.txt < run_climada_python.sh
 
 
-Notes:
+   Notes:
 
-- Change the script after echo "python3" to the path of the Python script you want to execute
+   - Change the script after echo "python3" to the path of the Python script you want to execute
 
-- Change the working path to the path you have cloned the climada_python repository to
+   - Change the working path to the path you have cloned the climada_python repository to
 
-- Customise the bsub options accordingly
+   - Customise the bsub options accordingly
 
 
 
