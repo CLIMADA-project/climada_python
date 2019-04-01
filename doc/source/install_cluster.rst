@@ -82,6 +82,7 @@ Install environment with Miniconda
     echo "echo script completed" >> run_climada_python.sh
     chmod 755 run_climada_python.sh
     bsub -J "test01" -W 1:00 -R "rusage[mem=5120]" -oo logs/test01.txt -eo logs/e_test01.txt < run_climada_python.sh
+    bjobs
 
 
    Notes:
@@ -91,6 +92,8 @@ Install environment with Miniconda
    - Change the working path to the path you have cloned the climada_python repository to
 
    - Customise the bsub options accordingly
+
+   - Check out https://scicomp.ethz.ch/wiki/Using_the_batch_system#Basic_job_submission for more info on job submission.
 
 
 
