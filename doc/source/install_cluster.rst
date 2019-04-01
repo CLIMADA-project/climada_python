@@ -47,7 +47,8 @@ Install environment with Miniconda
     cd climada_python
     conda env create -f requirements/env_climada.yml --name climada_env
 
-   During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
+
+During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
