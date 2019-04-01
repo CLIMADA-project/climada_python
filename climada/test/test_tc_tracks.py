@@ -132,7 +132,7 @@ class TestIBTracs(unittest.TestCase):
         nc_data=Dataset(fn_nc)
         for i_sel in sel:
             self.assertEqual('WP',
-                             ''.join(nc_data.variables['basin'][i_sel, 0, :].data.astype(str)))
+                             ''.join(nc_data.variables['basin'][i_sel, 0, :].astype(str)))
             isot = nc_data.variables['iso_time'][i_sel, :, :]
             val_len = isot.mask[isot.mask==False].shape[0]//isot.shape[1]
             date = isot.data[:val_len]

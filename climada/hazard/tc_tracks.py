@@ -534,7 +534,7 @@ class TCTracks():
             np.array
         """
         nc_data = Dataset(fn_nc)
-        storm_ids = [''.join(name.data.astype(str))
+        storm_ids = [''.join(name.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
         # fileter name
@@ -552,7 +552,7 @@ class TCTracks():
             # filter basin
             if basin:
                 basin0 = np.array([''.join(bas.astype(str)) \
-                    for bas in nc_data.variables['basin'][:, 0, :].data])[sel_tracks]
+                    for bas in nc_data.variables['basin'][:, 0, :]])[sel_tracks]
                 sel_bas = np.argwhere(basin0 == basin).reshape(-1)
                 if not sel_tracks.size:
                     LOGGER.info('No tracks in basin %s.', basin)
@@ -568,20 +568,20 @@ class TCTracks():
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
-        name = ''.join(nc_data.variables['sid'][i_track].data.astype(str))
-        basin = ''.join(nc_data.variables['basin'][i_track, 0, :].data.astype(str))
+        name = ''.join(nc_data.variables['sid'][i_track].astype(str))
+        basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
         LOGGER.info('Reading %s', name)
 
         isot = nc_data.variables['iso_time'][i_track, :, :]
         val_len = isot.mask[isot.mask == False].shape[0]//isot.shape[1]
         datetimes = list()
-        for date_time in isot.data[:val_len]:
+        for date_time in isot[:val_len]:
             datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
                                                   '%Y-%m-%d %H:%M:%S'))
 
         id_no = float(name.replace('N', '0').replace('S', '1'))
-        lat = nc_data.variables[provider + '_lat'][i_track, :].data[:val_len]
-        lon = nc_data.variables[provider + '_lon'][i_track, :].data[:val_len]
+        lat = nc_data.variables[provider + '_lat'][i_track, :][:val_len]
+        lon = nc_data.variables[provider + '_lon'][i_track, :][:val_len]
 
         max_sus_wind = nc_data.variables[provider + '_wind'][i_track, :]. \
             data[:val_len].astype(float)
@@ -597,13 +597,13 @@ class TCTracks():
             return None
 
         try:
-            rmax = nc_data.variables[provider + '_rmw'][i_track, :].data[:val_len]
+            rmax = nc_data.variables[provider + '_rmw'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No rmax for given provider %s. Set to default.',
                         name, provider)
             rmax = np.zeros(lat.size)
         try:
-            penv = nc_data.variables[provider + '_poci'][i_track, :].data[:val_len]
+            penv = nc_data.variables[provider + '_poci'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No penv for given provider %s. Set to default.',
                         name, provider)
