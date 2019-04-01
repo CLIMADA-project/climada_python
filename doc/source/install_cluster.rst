@@ -10,7 +10,7 @@ For ETH WCR group members, there are two directories that can be used for the in
 
 2. "Work": /cluster/work/climate/USERNAME
 
-The advantage of using "Home" is that it is the location with the fastest access for the use python and CLIMADA.
+The advantage of using "Home" is that it is the location with the fastest access for the use of python and CLIMADA.
 The disadvantage of "Home" is the limited quota of 20 GB and 100'000 files, since both miniconda and CLIMADA come with many single files.
 If you don't have many other files stored in "Home", (1) is the recommended option. Otherwise go for (2).
 
