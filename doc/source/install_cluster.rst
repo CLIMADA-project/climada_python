@@ -5,16 +5,19 @@ Installation on a server / the Euler Cluster (ETH internal)
 
 Please execute the instructions of the following text boxes in a Terminal.
 For ETH WCR group members, there are two directories that can be used for the installation:
+
 1. "Home": /cluster/home/USERNAME/
+
 2. "Work": /cluster/work/climate/USERNAME
+
 The advantage of using "Home" is that it is the location with the fastest access for the use python and CLIMADA.
 The disadvantage of "Home" is the limited quota of 20 GB and 100'000 files, since both miniconda and CLIMADA come with many single files.
-If you don't have many other files stored in "Home", (1) is the recommended option. Otherwise got for (2)
+If you don't have many other files stored in "Home", (1) is the recommended option. Otherwise go for (2).
 
 For all steps listed below, first enter the Cluster via SSH.
 
 On the server, go to either your "Home" or your "Work" environment. In the following we will go for option (2) and install everything in the "Work" path.
-If you are using a different server or option, please customise the paths in each step.
+If you are using a different server or option, please customise the paths in each step::
 
     cd /cluster/work/climate/USERNAME
 
@@ -44,7 +47,7 @@ Install environment with Miniconda
     cd climada_python
     conda env create -f requirements/env_climada.yml --name climada_env
 
- During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
+   During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
@@ -61,9 +64,10 @@ Install environment with Miniconda
     python3 tests_runner.py
     source deactivate
   
- If the installation has been successful, an OK will appear at the end of the execution.
- Warning: Executing the whole test_runner takes pretty long and downloads some files to climada_python/data that you might not need.
- Consider aborting the test once you see first "OK"s in the output.
+    If the installation has been successful, an OK will appear at the end of the execution.
+
+    Warning: Executing the whole test_runner takes pretty long and downloads some files to climada_python/data that you might not need.
+    Consider aborting the test once you see first "OK"s in the output.
 
 4. **Submit a test BJOB to the queue of the cluster**: Write a shell script that initiates the Python environment climada_env and submit the job::
 
@@ -79,10 +83,13 @@ Install environment with Miniconda
 
 
 
- Notes:
- - Change the script after echo "python3" to the path of the Python script you want to execute.
- - Change the working path to the path you have cloned the climada_python repository to.
- - Customise the bsub options accordingly
+    Notes:
+
+    - Change the script after echo "python3" to the path of the Python script you want to execute
+
+    - Change the working path to the path you have cloned the climada_python repository to
+
+    - Customise the bsub options accordingly
 
 
 
