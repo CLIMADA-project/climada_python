@@ -123,6 +123,38 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.value.sum() == comparison_total_val)
         self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
 
+class TestLitPopFunctionIntegration(unittest.TestCase):
+    """Test the integration of major functions within the LitPop module"""
+
+    def test_calc_admin1(self):
+        """test function _calc_admin1 for Switzerland.
+        All required functions are tested in unit tests"""
+        resolution = 300
+        curr_country = 'CHE'
+        country_info = dict()
+        admin1_info = dict()
+        country_info[curr_country], admin1_info[curr_country] = \
+            lp._get_country_info(curr_country)
+        curr_shp = lp._get_country_shape(curr_country, 0)
+        for cntry_iso, cntry_val in country_info.items():
+            _, total_asset_val = lp.gdp(cntry_iso, 2016, curr_shp)
+            cntry_val.append(total_asset_val)
+        lp._get_gdp2asset_factor(country_info, 2016, curr_shp, fin_mode='gdp')
+        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
+        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
+        mask = lp._mask_from_shape(curr_shp, resolution=resolution,\
+                                    points2check=all_coords)
+        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, \
+                                      [3, 0])
+        litpop_curr = litpop_data[mask.sp_index.indices]
+        lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
+        litpop_curr = lp._calc_admin1(curr_country, country_info[curr_country],\
+                                      admin1_info[curr_country], litpop_curr,\
+                 list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0, \
+                 check_plot=0, masks_adm1=[], return_data=1)
+        self.assertEqual(len(litpop_curr), 699)
+        self.assertEqual(max(litpop_curr), 80006939425.49625)
+
 class TestValidation(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -136,5 +168,6 @@ class TestValidation(unittest.TestCase):
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctionIntegration))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -124,28 +124,7 @@ class TestLitPopFunctions(unittest.TestCase):
         litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
         self.assertEqual(len(litpop_data), 25)
         self.assertEqual(max(litpop_data), 544316890)
-"""        
-    def test_calc_admin1(self):
-        # test function _calc_admin1 for Switzerland. TODO
-        resolution = 300   
-        curr_country = 'CHE'
-        country_info = dict()
-        admin1_info = dict()
-        country_info[curr_country], admin1_info[curr_country] = \
-            lp._get_country_info(curr_country)
-        curr_shp = lp._get_country_shape(curr_country, 0)
-        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
-        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
-        mask = lp._mask_from_shape(curr_shp, resolution=resolution,\
-                                    points2check=all_coords)
-        litpop_data, lon, lat = lp._get_litpop_box(cut_bbox, resolution, 1, 2016, \
-                                      [3, 0])
-        litpop_data = litpop_data[mask.sp_index.indices]
-        litpop_data = lp._calc_admin1(curr_country, country_info[curr_country],\
-                                      admin1_info[curr_country], litpop_data,\
-                 list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0, \
-                 check_plot=0, masks_adm1=[], return_data=1)
-"""        
+
         
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctions)
