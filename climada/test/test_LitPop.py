@@ -19,9 +19,11 @@ Tests on LitPop exposures.
 
 import unittest
 import numpy as np
+import pandas as pd
 
 from climada.entity.exposures.litpop import LitPop
 from climada.entity.exposures import litpop as lp
+from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
 
 # ---------------------
@@ -166,7 +168,22 @@ class TestFunctionIntegration(unittest.TestCase):
                  check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
         self.assertEqual(max(litpop_curr), 80006939425.49625)
-
+        
+    def test_gpw_import(self):
+        """test import of population data (Gridded Population of the World GWP)
+        via function gpw_import.get_box_gpw() for Swaziland"""
+        bbox = [30.78291, -27.3164, 32.11741, -25.73600]
+        gpw, lon, lat = gpw_import.get_box_gpw(cut_bbox=bbox, resolution=300,\
+                                  return_coords=1, reference_year=2015)
+        self.assertEqual(len(gpw), 323)
+        self.assertAlmostEqual(max(gpw), 103069.515625)
+        self.assertEqual(type(gpw), \
+                         type(pd.SparseArray(data=1, fill_value=0)))
+        self.assertAlmostEqual(lat[0], -27.3164)
+        self.assertAlmostEqual(lat[1], 0.083333333)
+        self.assertAlmostEqual(lon[0], 30.78291)
+        self.assertAlmostEqual(lon[1], 0.083333333)
+        
 class TestValidation(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -179,7 +196,7 @@ class TestValidation(unittest.TestCase):
         self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestValidation))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
