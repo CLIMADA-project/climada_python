@@ -198,12 +198,21 @@ class TestFunc(unittest.TestCase):
         ))
 
         self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
-        self.assertAlmostEqual(res.bounds.iloc[0,0], -11.800084333105298)
         self.assertTrue(
-            np.allclose(res.bounds.iloc[1,1], lat[0])
+            np.allclose(res.bounds.iloc[1, 1], lat[0])
         )
-        self.assertAlmostEqual(res.bounds.iloc[0,2], np.max(lon))
-        self.assertAlmostEqual(res.bounds.iloc[0,3], np.max(lat))
+        self.assertTrue(
+            np.allclose(res.bounds.iloc[0, 0], -11.800084333105298) or
+            np.allclose(res.bounds.iloc[1, 0], -11.800084333105298)
+        )
+        self.assertTrue(
+            np.allclose(res.bounds.iloc[0, 2], np.max(lon)) or
+            np.allclose(res.bounds.iloc[1, 2], np.max(lon))
+        )
+        self.assertTrue(
+            np.allclose(res.bounds.iloc[0, 3], np.max(lat)) or
+            np.allclose(res.bounds.iloc[1, 3], np.max(lat))
+        )
 
     def test_get_country_geometries_all_pass(self):
         """get_country_geometries with no countries or extent; i.e. the whole

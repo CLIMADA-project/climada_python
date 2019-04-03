@@ -19,9 +19,11 @@ Tests on LitPop exposures.
 
 import unittest
 import numpy as np
+import pandas as pd
 
 from climada.entity.exposures.litpop import LitPop
 from climada.entity.exposures import litpop as lp
+from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
 
 # ---------------------
@@ -57,7 +59,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
 
-    def test_switzerland30_normPopulation_pass(self):
+    def test_switzerland30normPop_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
         country_name = ['CHE']
         resolution = 30
@@ -123,6 +125,65 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.value.sum() == comparison_total_val)
         self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
 
+class TestFunctionIntegration(unittest.TestCase):
+    """Test the integration of major functions within the LitPop module"""
+
+    def test_get_litpop_box(self):
+        """test functions _litpop_box2coords and _get_litpop_box for Taiwan"""
+        curr_country = 'TWN'
+        resolution = 3000
+        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
+        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
+        self.assertEqual(len(all_coords), 25)
+        self.assertTrue(117.91666666666666 and 22.08333333333333 in min(all_coords))
+        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
+        self.assertEqual(len(litpop_data), 25)
+        self.assertEqual(max(litpop_data), 544316890)
+
+    def test_calc_admin1(self):
+        """test function _calc_admin1 for Switzerland.
+        All required functions are tested in unit tests"""
+        resolution = 300
+        curr_country = 'CHE'
+        country_info = dict()
+        admin1_info = dict()
+        country_info[curr_country], admin1_info[curr_country] = \
+            lp._get_country_info(curr_country)
+        curr_shp = lp._get_country_shape(curr_country, 0)
+        for cntry_iso, cntry_val in country_info.items():
+            _, total_asset_val = lp.gdp(cntry_iso, 2016, curr_shp)
+            cntry_val.append(total_asset_val)
+        lp._get_gdp2asset_factor(country_info, 2016, curr_shp, fin_mode='gdp')
+        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
+        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
+        mask = lp._mask_from_shape(curr_shp, resolution=resolution,\
+                                    points2check=all_coords)
+        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, \
+                                      [3, 0])
+        litpop_curr = litpop_data[mask.sp_index.indices]
+        lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
+        litpop_curr = lp._calc_admin1(curr_country, country_info[curr_country],\
+                                      admin1_info[curr_country], litpop_curr,\
+                 list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0, \
+                 check_plot=0, masks_adm1=[], return_data=1)
+        self.assertEqual(len(litpop_curr), 699)
+        self.assertEqual(max(litpop_curr), 80006939425.49625)
+        
+    def test_gpw_import(self):
+        """test import of population data (Gridded Population of the World GWP)
+        via function gpw_import.get_box_gpw() for Swaziland"""
+        bbox = [30.78291, -27.3164, 32.11741, -25.73600]
+        gpw, lon, lat = gpw_import.get_box_gpw(cut_bbox=bbox, resolution=300,\
+                                  return_coords=1, reference_year=2015)
+        self.assertEqual(len(gpw), 323)
+        self.assertAlmostEqual(max(gpw), 103069.515625)
+        self.assertEqual(type(gpw), \
+                         type(pd.SparseArray(data=1, fill_value=0)))
+        self.assertAlmostEqual(lat[0], -27.3164)
+        self.assertAlmostEqual(lat[1], 0.083333333)
+        self.assertAlmostEqual(lon[0], 30.78291)
+        self.assertAlmostEqual(lon[1], 0.083333333)
+        
 class TestValidation(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -135,6 +196,7 @@ class TestValidation(unittest.TestCase):
         self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestValidation))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
