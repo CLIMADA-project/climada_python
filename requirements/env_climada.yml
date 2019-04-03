@@ -41,6 +41,7 @@ dependencies:
     - contextily==0.99.0
     - iso3166==0.9
     - multiprocess==0.70.5
+    - nbimporter==0.3.1
     - pathos==0.2.1
     - pint==0.8.1
     - ppft==1.6.4.7.1
