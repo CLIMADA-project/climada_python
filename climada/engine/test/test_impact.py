@@ -33,6 +33,8 @@ from climada.util.constants import ENT_DEMO_TODAY
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
+DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
+
 class TestFreqCurve(unittest.TestCase):
     '''Test exceedence frequency curve computation'''
     def test_ref_value_pass(self):
@@ -306,7 +308,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.dirname(__file__) + 'test.csv'
+        file_name = os.path.join(DATA_FOLDER, 'test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -345,7 +347,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.dirname(__file__) + 'test.csv'
+        file_name = os.path.join(DATA_FOLDER, 'test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -361,6 +363,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_read_excel_pass(self):
         """ Test write and read in excel """
@@ -373,7 +376,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
-        file_name = os.path.dirname(__file__) + 'test.xlsx'
+        file_name = os.path.join(DATA_FOLDER, 'test.xlsx')
         imp_write.write_excel(file_name)
 
         imp_read = Impact()
@@ -390,6 +393,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_imp_mat(self):
         """ Test write_excel_imp_mat function """
@@ -402,7 +406,7 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[4, :] = np.arange(4)*5
         impact.imp_mat = impact.imp_mat.tocsr()
 
-        file_name = os.path.dirname(__file__) + '/test_imp_mat'
+        file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
         impact.write_sparse_csr(file_name)
         read_imp_mat = Impact().read_sparse_csr(file_name+'.npz')
         for irow in range(5):
