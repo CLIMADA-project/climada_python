@@ -33,15 +33,15 @@ names_path = '~.p'
 reg_ID_path = '~.p'
 date_path = '~.p'
 EMdat_raw = pd.read_excel('~.xlsx')
-a = 'yyyy-mm-dd'
-b = 'yyyy-mm-dd'
+start = 'yyyy-mm-dd'
+end = 'yyyy-mm-dd'
 
 # assign hazard to EMdat event
 
 data = assign_hazard_to_EMdat(certainty_level = 'low',intensity_path_haz = intensity_path,
                              names_path_haz = names_path, reg_ID_path_haz = reg_ID_path,
                              date_path_haz = date_path, EMdat_data = EMdat_raw,
-                             start_time = a, end_time = b,keep_checks = True)
+                             start_time = start, end_time = end, keep_checks = True)
 check_assigned_track(lookup = data, checkset = checkset)
 
 ###############################################################################
