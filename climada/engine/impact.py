@@ -178,7 +178,7 @@ class Impact():
         if if_haz not in exposures and INDICATOR_IF not in exposures:
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
-        elif if_haz not in exposures:
+        if if_haz not in exposures:
             LOGGER.info('Missing exposures impact functions for hazard %s. ' +\
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
@@ -221,7 +221,7 @@ class Impact():
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
-                                 var_name=None, **kwargs):
+                                 **kwargs):
         """Plot hexbin expected annual impact of each exposure.
 
         Parameters:
@@ -233,21 +233,20 @@ class Impact():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            var_name (str, optional): Colorbar label
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, ax = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
-                                      extend, **kwargs)
-        ax[0, 0].set_title('Expected annual impact')
-        return fig, ax
+        fig, axes = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
+                                        extend, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
                                   pop_name=True, buffer=0.0, extend='neither',
-                                  var_name=None, **kwargs):
+                                  **kwargs):
         """Plot scatter expected annual impact of each exposure.
 
         Parameters:
@@ -259,21 +258,20 @@ class Impact():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            var_name (str, optional): Colorbar label
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, ax = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                      extend, **kwargs)
-        ax[0, 0].set_title('Expected annual impact')
-        return fig, ax
+        fig, axes = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                         extend, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
-                                  raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
-                                  label='value (log10)', **kwargs):
+                                 raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                                 label='value (log10)', **kwargs):
         """Plot raster expected annual impact of each exposure.
 
         Parameters:
@@ -291,15 +289,15 @@ class Impact():
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, ax = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
-                                       label, **kwargs)
-        ax[0, 0].set_title('Expected annual impact')
-        return fig, ax
+        fig, axes = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
+                                        label, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
-                                 buffer=0.0, extend='neither', zoom=10,
-                                 url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
-                                 **kwargs):
+                                  buffer=0.0, extend='neither', zoom=10,
+                                  url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                  **kwargs):
         """Plot basemap expected annual impact of each exposure.
 
         Parameters:
@@ -319,10 +317,10 @@ class Impact():
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, ax = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
-                                       extend, zoom, url, **kwargs)
-        ax[0, 0].set_title('Expected annual impact')
-        return fig, ax
+        fig, axes = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
+                                         extend, zoom, url, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
     def write_csv(self, file_name):
         """ Write data into csv file. imp_mat is not saved.
