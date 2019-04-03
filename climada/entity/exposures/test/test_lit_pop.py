@@ -16,9 +16,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Unit Tests on LitPop exposures.
 """
+import numpy as np
 import unittest
 from climada.entity.exposures import litpop as lp
 
+def _rnd(number, dec=6):
+    return np.around(number, decimals=dec)
 # ---------------------
 class TestLitPopClass(unittest.TestCase):
     """Unit tests for the LitPop exposure class"""
@@ -35,22 +38,22 @@ class TestLitPopFunctions(unittest.TestCase):
         """test _get_country_shape function: get shape and bbox for Belgium"""
         shp = lp._get_country_shape('BEL', only_geo=0)
         self.assertEqual(len(shp.bbox), 4)
-        self.assertEqual(shp.bbox[0], 2.5217999276904663)
-        self.assertEqual(shp.bbox[3], 51.49623769100013)
+        self.assertEqual(_rnd(shp.bbox[0]), _rnd(2.5217999276904663))
+        self.assertEqual(_rnd(shp.bbox[3]), _rnd(51.49623769100013))
         self.assertTrue(0 in shp.parts)
         self.assertEqual(len(shp.parts), 1)
         self.assertEqual(len(shp.points), 653)
-        self.assertEqual(max(shp.points)[0], 6.374525187000074)
+        self.assertEqual(_rnd(max(shp.points)[0]), _rnd(6.374525187000074))
         self.assertEqual(shp.shapeType, 5)
 
     def test_getcountryshape_NZL(self):
         """test _get_country_shape function: get shape and bbox for New Zealand"""
         shp = lp._get_country_shape('NZL', only_geo=0)
-        self.assertEqual(shp.bbox[0], -177.95799719999985)
+        self.assertEqual(_rnd(shp.bbox[0]), _rnd(-177.95799719999985))
         self.assertEqual(len(shp.parts), 25)
         self.assertEqual(max(shp.parts), 4500)
         self.assertEqual(len(shp.points), 4509)
-        self.assertEqual(min(shp.points)[1], -29.22275155999992)
+        self.assertEqual(_rnd(min(shp.points)[1]), _rnd(-29.22275155999992))
         self.assertEqual(shp.shapeType, 5)
 
     def test_get_country_bbox(self):
@@ -59,7 +62,7 @@ class TestLitPopFunctions(unittest.TestCase):
         self.assertEqual(len(lat), len(lon))
         self.assertEqual(len(lat), 86)
         self.assertEqual(len(bbox), 4)
-        self.assertTrue(32.117398316000106 in bbox)
+        self.assertTrue(_rnd(32.117398316000106) in _rnd(bbox))
 
     def test_get_country_info(self):
         """test _get_country_info function (Togo and Russia)"""
@@ -77,20 +80,20 @@ class TestLitPopFunctions(unittest.TestCase):
         # shape:
         shp = country_info['RUS'][2]
         self.assertEqual(len(shp.bbox), 4)
-        self.assertEqual(shp.bbox[0], -179.9999999999999)
-        self.assertEqual(shp.bbox[3], 81.85871002800009)
+        self.assertEqual(_rnd(shp.bbox[0]), _rnd(-179.9999999999999))
+        self.assertEqual(_rnd(shp.bbox[3]), _rnd(81.85871002800009))
         self.assertTrue(10691 and 140 and 10634 in shp.parts)
         self.assertEqual(len(shp.parts), 214)
         self.assertEqual(len(shp.points), 36776)
-        self.assertEqual(min(shp.points)[1], 65.06622947500016)
+        self.assertEqual(_rnd(min(shp.points)[1]), _rnd(65.06622947500016))
         self.assertEqual(shp.shapeType, 5)
         # admin-1 record:
         self.assertEqual(admin1_info['TGO'][4].attributes['name_nl'], 'Maritime')
         self.assertEqual(admin1_info['TGO'][4].attributes['woe_id'], 56048437)
         self.assertEqual(admin1_info['TGO'][3].attributes['gn_name'], 'Region des Plateaux')
         self.assertEqual(admin1_info['RUS'][0].attributes['postal'], 'GA')
-        self.assertTrue(49.0710110480001 in admin1_info['RUS'][0].bounds)
-        self.assertEqual(admin1_info['RUS'][0].geometry.area, 11.832370529488792)
+        self.assertTrue(_rnd(49.0710110480001) in _rnd((admin1_info['RUS'][0].bounds)))
+        self.assertEqual(_rnd(admin1_info['RUS'][0].geometry.area), _rnd(11.832370529488792))
         # index out of bounds:
         with self.assertRaises(IndexError):
             admin1_info['TGO'][5].attributes['woe_id']
@@ -113,7 +116,8 @@ class TestLitPopFunctions(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertTrue(117.91666666666666 and 22.08333333333333 in min(all_coords))
+        self.assertTrue(_rnd(117.91666666666666) and _rnd(22.08333333333333)\
+                        in _rnd(min(all_coords)))
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctions)
