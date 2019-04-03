@@ -57,7 +57,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
 
-    def test_switzerland30_normPopulation_pass(self):
+    def test_switzerland30normPop_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
         country_name = ['CHE']
         resolution = 30
@@ -123,8 +123,20 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.value.sum() == comparison_total_val)
         self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
 
-class TestLitPopFunctionIntegration(unittest.TestCase):
+class TestFunctionIntegration(unittest.TestCase):
     """Test the integration of major functions within the LitPop module"""
+
+    def test_get_litpop_box(self):
+        """test functions _litpop_box2coords and _get_litpop_box for Taiwan"""
+        curr_country = 'TWN'
+        resolution = 3000
+        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
+        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
+        self.assertEqual(len(all_coords), 25)
+        self.assertTrue(117.91666666666666 and 22.08333333333333 in min(all_coords))
+        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
+        self.assertEqual(len(litpop_data), 25)
+        self.assertEqual(max(litpop_data), 544316890)
 
     def test_calc_admin1(self):
         """test function _calc_admin1 for Switzerland.
@@ -168,6 +180,6 @@ class TestValidation(unittest.TestCase):
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctionIntegration))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

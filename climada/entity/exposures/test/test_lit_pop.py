@@ -16,29 +16,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Unit Tests on LitPop exposures.
 """
-
 import unittest
-import numpy as np
-
-from climada.entity.exposures.litpop import LitPop
 from climada.entity.exposures import litpop as lp
-
-
 
 # ---------------------
 class TestLitPopClass(unittest.TestCase):
-
+    """Unit tests for the LitPop exposure class"""
     def test_wrong_iso3_fail(self):
         """Wrong ISO3 code"""
-        ent = LitPop()
+        ent = lp.LitPop()
         with self.assertRaises(ValueError):
-            ent = LitPop()
             ent.set_country('OYY')
 
 class TestLitPopFunctions(unittest.TestCase):
     """Test LitPop Class methods"""
 
-    def test_get_country_shape_BEL(self):
+    def test_getcountryshape_BEL(self):
         """test _get_country_shape function: get shape and bbox for Belgium"""
         shp = lp._get_country_shape('BEL', only_geo=0)
         self.assertEqual(len(shp.bbox), 4)
@@ -50,7 +43,7 @@ class TestLitPopFunctions(unittest.TestCase):
         self.assertEqual(max(shp.points)[0], 6.374525187000074)
         self.assertEqual(shp.shapeType, 5)
 
-    def test_get_country_shape_NZL(self):
+    def test_getcountryshape_NZL(self):
         """test _get_country_shape function: get shape and bbox for New Zealand"""
         shp = lp._get_country_shape('NZL', only_geo=0)
         self.assertEqual(shp.bbox[0], -177.95799719999985)
@@ -67,7 +60,7 @@ class TestLitPopFunctions(unittest.TestCase):
         self.assertEqual(len(lat), 86)
         self.assertEqual(len(bbox), 4)
         self.assertTrue(32.117398316000106 in bbox)
-    
+
     def test_get_country_info(self):
         """test _get_country_info function (Togo and Russia)"""
         countries = ['TGO', 'RUS']
@@ -76,7 +69,7 @@ class TestLitPopFunctions(unittest.TestCase):
         for country in countries:
             country_info[country], admin1_info[country] = \
             lp._get_country_info(country)
-        
+
         # meta information:
         self.assertEqual(country_info['TGO'][0], 217)
         self.assertEqual(country_info['RUS'][0], 189)
@@ -113,19 +106,15 @@ class TestLitPopFunctions(unittest.TestCase):
         self.assertTrue(mask.values.max())
         self.assertTrue(140 and 7663 in mask.sp_index.indices)
 
-    def test_litpop_data(self):
-        """test functions _litpop_box2coords and _get_litpop_box for Taiwan"""
+    def test_litpop_box2coords(self):
+        """test function _litpop_box2coords for Taiwan"""
         curr_country = 'TWN'
         resolution = 3000
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
         self.assertTrue(117.91666666666666 and 22.08333333333333 in min(all_coords))
-        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
-        self.assertEqual(len(litpop_data), 25)
-        self.assertEqual(max(litpop_data), 544316890)
 
-        
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctions)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopClass))
