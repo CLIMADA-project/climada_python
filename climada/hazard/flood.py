@@ -61,7 +61,7 @@ class RiverFlood(Hazard):
         self._n_events = 0
 
     def set_from_nc(self, flood_dir=None, centroids=None,
-                    years=['2006'], rf_model='WaterGAP2',
+                    years=['2000'], rf_model='WaterGAP2',
                     cl_model='miroc5', scenario='historical',
                     prot_std='flopros'):
         """Wrapper to fill hazard from nc_flood file
@@ -84,11 +84,10 @@ class RiverFlood(Hazard):
             raise AttributeError
         if centroids is not None:
             self.centroids = centroids
-            intensity, fraction = self._read_nc(years)
-            self.centroids.plot()
         else:
-            LOGGER.error('No centroids set')  # check this
-            raise AttributeError
+            self.centroids = RiverFlood.select_area("DEU")
+        intensity, fraction = self._read_nc(years)
+        self.centroids.plot()
         if scenario == 'historical':
             self.orig = np.full((self._n_events), True, dtype=bool)
         else:
@@ -97,7 +96,6 @@ class RiverFlood(Hazard):
         self.fraction = sparse.csr_matrix(fraction)
 
         self.event_id = np.arange(1, self._n_events + 1)
-        # ?????
         self.frequency = np.ones(self._n_events) / self._n_events
         return self
 
@@ -153,6 +151,9 @@ class RiverFlood(Hazard):
     def __select_events(self, time, years):
         event_names = list(map(str, pd.to_datetime(time).year))
         event_index = np.where(np.isin(event_names, years))[0]
+        if not event_index:
+            LOGGER.error('Years not in file')  # check this
+            raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index]).
                                year))
         return event_index
