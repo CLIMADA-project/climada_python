@@ -367,6 +367,7 @@ class Exposures(GeoDataFrame):
             url (str, optional): image source, e.g. ctx.sources.OSM_C
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
+
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
