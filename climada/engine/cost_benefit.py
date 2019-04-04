@@ -24,7 +24,7 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
 from climada.engine.impact import Impact
@@ -197,7 +197,7 @@ class CostBenefit():
         self._print_results()
 
     def plot_cost_benefit(self):
-        """ Plot cost-benefit graph. Call after calc()
+        """ Plot cost-benefit graph. Call after calc().
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -238,13 +238,13 @@ class CostBenefit():
         return fig, axis
 
     def plot_event_view(self, return_per=(10, 25, 100)):
-        """ Plot averted damages for return periods. Call after calc()
+        """ Plot averted damages for return periods. Call after calc().
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future:
-            LOGGER.error('Compute COstBenefit.calc() first')
+            LOGGER.error('Compute CostBenefit.calc() first')
             raise ValueError
         fig, axis = plt.subplots(1, 1)
         avert_rp = dict()
@@ -274,8 +274,9 @@ class CostBenefit():
         return fig, axis
 
     def plot_waterfall(self, hazard, entity, haz_future, ent_future,
-                       risk_func=risk_aai_agg, imp_time_depen=1):
-        """ Plot waterfall graph. Can be called before and after calc()
+                       risk_func=risk_aai_agg):
+        """ Plot waterfall graph with given risk metric. Can be called before
+        and after calc().
 
         Parameters:
             hazard (Hazard): hazard
@@ -285,8 +286,6 @@ class CostBenefit():
             ent_future (Entity): entity in the future
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Default: 1 (linear).
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -315,28 +314,102 @@ class CostBenefit():
         norm_fact, norm_name = self._norm_values(curr_risk)
 
         # current situation
-        risk_future = curr_risk
+        LOGGER.info('Risk at {:d}: {:.3e}'.format(self.present_year, curr_risk))
+
+        # changing future
+        # socio-economic dev
+        imp = Impact()
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
+        risk_dev = risk_func(imp)
+        # current situation
+        LOGGER.info('Risk with development at {:d}: {:.3e}'.format(self.future_year,
+                                                                   risk_dev))
+
+        # socioecon + cc
+        LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.\
+                    format(self.future_year, fut_risk))
+
+        axis.bar(1, curr_risk/norm_fact)
+        axis.text(1, curr_risk/norm_fact, str(int(round(curr_risk/norm_fact))), \
+            horizontalalignment='center', verticalalignment='bottom', \
+            fontsize=12, color='k')
+        axis.bar(2, height=(risk_dev-curr_risk)/norm_fact, bottom=curr_risk/norm_fact)
+        axis.text(2, curr_risk/norm_fact + (risk_dev-curr_risk)/norm_fact/2, \
+            str(int(round((risk_dev-curr_risk)/norm_fact))), \
+            horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
+        axis.bar(3, height=(fut_risk-risk_dev)/norm_fact, bottom=risk_dev/norm_fact)
+        axis.text(3, risk_dev/norm_fact + (fut_risk-risk_dev)/norm_fact/2, \
+            str(int(round((fut_risk-risk_dev)/norm_fact))), \
+            horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
+        axis.bar(4, height=fut_risk/norm_fact)
+        axis.text(4, fut_risk/norm_fact, str(int(round(fut_risk/norm_fact))), \
+                  horizontalalignment='center', verticalalignment='bottom', \
+                  fontsize=12, color='k')
+        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
+            'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
+        axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
+        axis.set_title('Risk at {:d} and {:d}'.format(self.present_year, self.future_year))
+        return fig, axis
+
+    def plot_waterfall_accumulated(self, hazard, entity, haz_future, ent_future,
+                                   risk_func=risk_aai_agg, imp_time_depen=1,
+                                   plot_arrow=True):
+        """ Plot waterfall graph with accumulated values from present to future
+        year. Call after calc(). Provide same risk_func and imp_time_depen as
+        in calc.
+
+        Parameters:
+            hazard (Hazard): hazard
+            entity (Entity): entity
+            haz_future (Hazard): hazard in the future (future year provided at
+                ent_future)
+            ent_future (Entity): entity in the future
+            risk_func (func, optional): function describing risk measure given
+                an Impact. Default: average annual impact (aggregated).
+            imp_time_depen (float, optional): parameter which represent time
+                evolution of impact. Default: 1 (linear).
+            plot_arrow (bool, optional): plot adaptation arrow
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        if not self.imp_meas_future or not self.imp_meas_present:
+            LOGGER.error('Compute CostBenefit.calc() first')
+            raise ValueError
+        if ent_future.exposures.ref_year == entity.exposures.ref_year:
+            LOGGER.error('Same reference years for future and present entities.')
+            raise ValueError
+
+        self.present_year = entity.exposures.ref_year
+        self.future_year = ent_future.exposures.ref_year
+
+        # current situation
+        curr_risk = self.imp_meas_present['no measure']['risk']
         time_dep = self._time_dependency_array()
-        risk_curr = self._npv_unaverted_impact(risk_future, entity.disc_rates,
+        risk_curr = self._npv_unaverted_impact(curr_risk, entity.disc_rates,
                                                time_dep)
-        LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.present_year,
-                                                           risk_future))
+        LOGGER.info('Current total risk at {:d}: {:.3e}'.format(self.future_year,
+                                                                risk_curr))
 
         # changing future
         time_dep = self._time_dependency_array(imp_time_depen)
         # socio-economic dev
         imp = Impact()
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
-        risk_future = risk_func(imp)
-        risk_dev = self._npv_unaverted_impact(risk_future, entity.disc_rates,
+        risk_dev = self._npv_unaverted_impact(risk_func(imp), entity.disc_rates,
                                               time_dep, curr_risk)
-        # socioecon + cc
-        risk_future = fut_risk
-        risk_tot = self._npv_unaverted_impact(risk_future, entity.disc_rates,
-                                              time_dep, curr_risk)
-        LOGGER.info('Risk function at {:d}: {:.3e}'.format(self.future_year,
-                                                           risk_future))
+        LOGGER.info('Total risk with development at {:d}: {:.3e}'.format( \
+            self.future_year, risk_dev))
 
+        # socioecon + cc
+        risk_tot = self._npv_unaverted_impact(self.imp_meas_future['no measure']['risk'], \
+            entity.disc_rates, time_dep, curr_risk)
+        LOGGER.info('Total risk with development and climate change at {:d}: {:.3e}'.\
+            format(self.future_year, risk_tot))
+
+        # plot
+        fig, axis = plt.subplots(1, 1)
+        norm_fact, norm_name = self._norm_values(curr_risk)
         axis.bar(1, risk_curr/norm_fact)
         axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
             horizontalalignment='center', verticalalignment='bottom', \
@@ -349,16 +422,27 @@ class CostBenefit():
         axis.text(3, risk_dev/norm_fact + (risk_tot-risk_dev)/norm_fact/2, \
             str(int(round((risk_tot-risk_dev)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        axis.bar(4, height=risk_tot/norm_fact)
+        bar_4 = axis.bar(4, height=risk_tot/norm_fact)
         axis.text(4, risk_tot/norm_fact, str(int(round(risk_tot/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
+
+        if plot_arrow:
+            bar_bottom, bar_top = bar_4[0].get_bbox().get_points()
+            axis.text(bar_top[0] - (bar_top[0]-bar_bottom[0])/2, bar_top[1],
+                      "Averted", ha="center", va="top", rotation=270, size=15)
+            arrow_len = min(np.array(list(self.benefit.values())).sum()/norm_fact,
+                            risk_tot/norm_fact)
+            axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0]-bar_bottom[0])/2, \
+                bar_top[1]), (bar_top[0]- (bar_top[0]-bar_bottom[0])/2, \
+                risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', \
+                alpha=0.4))
+
         plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
-        axis.set_title('Total accumulated damage from {:d} to {:d}'.format(
-            self.present_year, self.future_year))
-
+        axis.set_title('Total accumulated impact from {:d} to {:d}'.format( \
+                       self.present_year, self.future_year))
         return fig, axis
 
     def _calc_impact_measures(self, hazard, exposures, meas_set, imp_fun_set, \
