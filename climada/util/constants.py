@@ -27,6 +27,8 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
+           'GLB_CENTROIDS_NC',
+           'NAT_REG_ID',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
            'EXP_DEMO_H5']
@@ -44,7 +46,8 @@ SYSTEM_DIR = os.path.abspath(os.path.join(DATA_DIR, 'system'))
 """ Folder containing the data used internally """
 
 
-
+GLB_CENTROIDS_NC = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
+""" Global centroids nc."""
 
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """ Global centroids."""
@@ -54,6 +57,8 @@ ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
 
 HAZ_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'hazard_template.xlsx')
 """ Hazard template in xls format."""
+NAT_REG_ID = os.path.join(SYSTEM_DIR, 'NatID_RegID.xlsx')
+""" Look-up table ISO3 codes"""
 
 
 HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
