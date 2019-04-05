@@ -82,6 +82,7 @@ class TCTracks():
                 - max_sustained_wind_unit (attrs)
                 - central_pressure_unit (attrs)
                 - name (attrs)
+                - sid (attrs)
                 - orig_event_flag (attrs)
                 - data_provider (attrs)
                 - basin (attrs)
@@ -109,7 +110,8 @@ class TCTracks():
         """Get track with provided name. Return all tracks if no name provided.
 
         Parameters:
-            track_name (str, optional): name of track (ibtracsID for IBTrACS)
+            track_name (str, optional): name or sid (ibtracsID for IBTrACS)
+                of track
 
         Returns:
             xarray.Dataset or [xarray.Dataset]
@@ -120,7 +122,7 @@ class TCTracks():
             return self.data
 
         for track in self.data:
-            if track.name == track_name:
+            if track.name == track_name or track.sid == track_name:
                 return track
 
         LOGGER.info('No track with name %s found.', track_name)
@@ -333,8 +335,8 @@ class TCTracks():
             i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
             i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
             i_track.attrs['orig_event_flag'] = False
-            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + \
-                                    str(i_ens+1)
+            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens+1)
+            i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens+1)
             i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
 
             ens_track.append(i_track)
@@ -506,6 +508,7 @@ class TCTracks():
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
         tr_ds.attrs['name'] = name
+        tr_ds.attrs['sid'] = name
         tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
@@ -572,7 +575,7 @@ class TCTracks():
             [nc_data.variables['name'][i_track].mask==False].data.astype(str))
         sid = ''.join(nc_data.variables['sid'][i_track].astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
-        LOGGER.info('Reading %s', name)
+        LOGGER.info('Reading %s: %s', sid, name)
 
         isot = nc_data.variables['iso_time'][i_track, :, :]
         val_len = isot.mask[isot.mask == False].shape[0]//isot.shape[1]
