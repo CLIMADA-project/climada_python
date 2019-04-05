@@ -351,7 +351,7 @@ class Hazard():
             np.ndarray (return_periods.size x num_centroids)
         """
         inten_stats = self.local_exceedance_inten(np.array(return_periods))
-        colbar_name = 'Wind intensity (' + self.units + ')'
+        colbar_name = 'Intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
