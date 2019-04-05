@@ -568,7 +568,9 @@ class TCTracks():
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
-        name = ''.join(nc_data.variables['sid'][i_track].astype(str))
+        name = ''.join(nc_data.variables['name'][i_track] \
+            [nc_data.variables['name'][i_track].mask==False].data.astype(str))
+        sid = ''.join(nc_data.variables['sid'][i_track].astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
         LOGGER.info('Reading %s', name)
 
@@ -579,7 +581,7 @@ class TCTracks():
             datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
                                                   '%Y-%m-%d %H:%M:%S'))
 
-        id_no = float(name.replace('N', '0').replace('S', '1'))
+        id_no = float(sid.replace('N', '0').replace('S', '1'))
         lat = nc_data.variables[provider + '_lat'][i_track, :][:val_len]
         lon = nc_data.variables[provider + '_lon'][i_track, :][:val_len]
 
@@ -593,20 +595,20 @@ class TCTracks():
         np.all(max_sus_wind == nc_data.variables[provider + '_wind']._FillValue) \
         and np.all(cen_pres == nc_data.variables[provider + '_pres']._FillValue)):
             LOGGER.warning('Skipping %s. It does not contain valid values. ' +\
-                           'Try another provider.', name)
+                           'Try another provider.', sid)
             return None
 
         try:
             rmax = nc_data.variables[provider + '_rmw'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No rmax for given provider %s. Set to default.',
-                        name, provider)
+                        sid, provider)
             rmax = np.zeros(lat.size)
         try:
             penv = nc_data.variables[provider + '_poci'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No penv for given provider %s. Set to default.',
-                        name, provider)
+                        sid, provider)
             penv = np.ones(lat.size)*self._set_penv(basin)
 
         tr_ds = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, \
@@ -616,7 +618,7 @@ class TCTracks():
         # deal with nans
         tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes, basin)
         if not tr_ds.shape[0]:
-            LOGGER.warning('Skipping %s. No usable data.', name)
+            LOGGER.warning('Skipping %s. No usable data.', sid)
             return None
         # ensure environmental pressure > central pressure
         chg_pres = (tr_ds.central_pressure > tr_ds.environmental_pressure).values
@@ -627,7 +629,7 @@ class TCTracks():
         tr_ds.coords['lat'] = ('time', tr_ds.lat)
         tr_ds.coords['lon'] = ('time', tr_ds.lon)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
-            'name': name, 'orig_event_flag': True, 'data_provider': provider, \
+            'name': name, 'sid': sid, 'orig_event_flag': True, 'data_provider': provider, \
             'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
         return tr_ds
 
