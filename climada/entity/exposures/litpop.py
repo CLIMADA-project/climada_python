@@ -674,7 +674,7 @@ def _shape_cutter(shape, **opt_args):
     stdout.write('\n')
     if check_enclaves == 1 and not enclave_paths:
         excl_coords = []
-        LOGGER.debug('Removing enclaves...')
+        # LOGGER.debug('Removing enclaves...')
         for _, val in enumerate(enclave_paths):
             temp_excl_points = _mask_from_path(val, resolution)
             if not temp_excl_points is None:
@@ -683,7 +683,7 @@ def _shape_cutter(shape, **opt_args):
         excl_coords = set(tuple(row) for row in excl_coords)
         incl_coords = [point for point in incl_coords if point not\
                        in excl_coords]
-    LOGGER.debug('Successfully isolated coordinates from shape')
+    # LOGGER.debug('Successfully isolated coordinates from shape')
     total_bbox = np.array((min([x[0] for x in shape.points]),\
       min([x[1] for x in shape.points]), max(x[0] for x in shape.points),\
       max(x[1] for x in shape.points)))
@@ -708,15 +708,15 @@ def _shape_cutter(shape, **opt_args):
             _plot_paths_to_plot(enclave_paths, enclave_format)
     if point_format == 1:
         if return_mask == 1:
-            LOGGER.debug('Cutting the shape took %s s',\
-                         str(round(time.time()-curr_time, 2)))
+#            LOGGER.debug('Cutting the shape took %s s',\
+#                         str(round(time.time()-curr_time, 2)))
             return zip(lon, lat), enclave_paths, mask
-        LOGGER.debug('Cutting the shape took %s s',\
-                     str(round(time.time()-curr_time, 2)))
+#        LOGGER.debug('Cutting the shape took %s s',\
+#                     str(round(time.time()-curr_time, 2)))
         return incl_coords, enclave_paths
 
-    LOGGER.debug('Cutting the shape took %s s',\
-                 str(round(time.time()-curr_time, 2)))
+#    LOGGER.debug('Cutting the shape took %s s',\
+#                 str(round(time.time()-curr_time, 2)))
     if return_mask == 1:
         return lon, lat, enclave_paths, mask
     lat = [x[1] for x in incl_coords]
@@ -804,7 +804,7 @@ def _mask_from_shape(check_shape, **opt_args):
                      of type from package "shapefile".')
     sub_shapes = len(check_shape.parts)
     all_coords_shape = [(x, y) for x, y in check_shape.points]
-    LOGGER.debug('Extracting subshapes and detecting enclaves...')
+    # LOGGER.debug('Extracting subshapes and detecting enclaves...')
     sub_shape_path = []
     enclave_paths = []
     add2enclave = 0
@@ -1485,12 +1485,11 @@ def read_bm_file(bm_path, filename):
                 coordinates can be calculated.
     """
     try:
-        LOGGER.debug('Trying to import the file %s.', os.path.join(bm_path, filename))
+        LOGGER.debug('Importing %s.', os.path.join(bm_path, filename))
         curr_file = gdal.Open(os.path.join(bm_path, filename))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1
-        LOGGER.debug('Reading file completed: %s.', os.path.join(bm_path, filename))
         return arr1, curr_file
     except:
         LOGGER.error('Failed: Importing %s', str(curr_file))
@@ -1563,8 +1562,8 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
                 arr1[j], curr_file = read_bm_file(bm_path,\
                                                   BM_FILENAMES[num_i*2+j])
                 if zoom_factor != 1:
-                    LOGGER.debug('Resizing image according to chosen '\
-                                + 'resolution')
+#                    LOGGER.debug('Resizing image according to chosen '\
+#                                + 'resolution')
                     arr1[j] = pd.SparseDataFrame(nd.zoom(arr1[j], zoom_factor,\
                                                  order=1))
                 else:
@@ -1607,7 +1606,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
         else:
             nightlight_temp = pd.concat((nightlight_temp, arr1), 1)
         del arr1
-    LOGGER.debug('Reducing to one dimension...')
+    # LOGGER.debug('Reducing to one dimension...')
     nightlight_intensity = pd.SparseArray(nightlight_temp.values\
                                           .reshape((-1,), order='F'),\
                                           dtype='float')
@@ -1684,8 +1683,6 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         col_max = min(col_max+1, ((maxlon_tile-minlon_tile)\
                                   -(deg_per_pix/2))*(1/deg_per_pix))
         bm_data = bm_data[row_min:row_max, col_min:col_max]
-    LOGGER.debug('Cutting the bounding box took %i s.', \
-                 int(round(time.time()-start_time)))
     return bm_data
 
 def _get_box_blackmarble(cut_bbox, **args):
@@ -1727,7 +1724,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     # Download necessary files:
     if not np.array_equal(req_sat_files, files_exist):
         try:
-            LOGGER.debug('Attempting to download %s', str(int(sum(req_sat_files)-sum(files_exist))))
+            LOGGER.debug('Downloading %s', str(int(sum(req_sat_files)-sum(files_exist))))
             nightlight.download_nl_files(req_sat_files, files_exist,\
                                          dwnl_path=bm_path, year=2016)
         except:
@@ -1735,7 +1732,7 @@ def _get_box_blackmarble(cut_bbox, **args):
                      Operation aborted.')
             raise
     # Read corresponding files
-    LOGGER.debug('Reading and cropping neccessary BM files.')
+    # LOGGER.debug('Reading and cropping neccessary BM files.')
     nightlight_intensity = get_bm(req_sat_files, resolution=resolution,\
                                   return_coords=0, cut_bbox=cut_bbox,\
                                   bm_path=bm_path)[0]
