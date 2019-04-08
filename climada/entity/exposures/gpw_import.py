@@ -161,7 +161,7 @@ def get_box_gpw(**parameters):
                                       + 'The data can be downloaded from '\
                                       + 'http://sedac.ciesin.columbia.edu/'\
                                       + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Trying to import the file %s', str(fname))
+        LOGGER.debug('Importing %s', str(fname))
         gpw_file = gdal.Open(fname)
         band1 = gpw_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
