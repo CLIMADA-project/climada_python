@@ -122,7 +122,9 @@ class TCTracks():
             return self.data
 
         for track in self.data:
-            if track.name == track_name or track.sid == track_name:
+            if track.name == track_name:
+                return track
+            if hasattr(track, 'sid') and track.sid == track_name:
                 return track
 
         LOGGER.info('No track with name %s found.', track_name)
