@@ -42,6 +42,7 @@ dependencies:
   - xlrd=1.1.0
   - xlsxwriter=1.1.2
   - pip:
+    - contextily==0.99.0
     - iso3166==0.9
     - multiprocess==0.70.5
     - pathos==0.2.1
