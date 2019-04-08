@@ -127,7 +127,7 @@ class TCTracks():
             if hasattr(track, 'sid') and track.sid == track_name:
                 return track
 
-        LOGGER.info('No track with name %s found.', track_name)
+        LOGGER.info('No track with name or sid %s found.', track_name)
         return []
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
