@@ -6,7 +6,7 @@ Latest CLIMADA in Python - please see https://github.com/davidnbresch/climada fo
 
 Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz.ch>
 
-Date: 2018-11-06
+Date: 2019-04-08
 
 Version: 1.2.3
 
