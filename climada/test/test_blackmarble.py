@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -46,6 +46,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
         self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12*(4+1), 4))
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
     def test_sint_maarten_pass(self):
         country_name = ['Sint Maarten']
@@ -54,6 +55,7 @@ class Test2013(unittest.TestCase):
             ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertIn('GDP SXM 2014: 3.658e+08.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
@@ -61,6 +63,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
         self.assertAlmostEqual(ent.value.sum(), 3.658e+08*(4+1))
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
     def test_anguilla_pass(self):
         country_name = ['Anguilla']
@@ -69,6 +72,7 @@ class Test2013(unittest.TestCase):
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn("Anguilla 2013 GDP: 1.754e+08 income group: 3", ent.tag.description)
         self.assertAlmostEqual(ent.value.sum(), 1.754e+08*(3+1))
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
 class Test1968(unittest.TestCase):
     """Test black marble of previous years to 1992."""
@@ -86,6 +90,7 @@ class Test1968(unittest.TestCase):
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
         self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10*(4+1), 4))
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
 class Test2012(unittest.TestCase):
     """Test year 2012 flags."""
@@ -121,6 +126,7 @@ class Test2012(unittest.TestCase):
         self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
         size3 = ent.value.size
         self.assertEqual(size1, size3)
+        self.assertEqual(ent.crs, {'init': 'epsg:4326'})
 
 class BMFuncs(unittest.TestCase):
     """Test plot functions."""

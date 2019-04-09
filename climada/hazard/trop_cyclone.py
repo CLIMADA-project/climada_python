@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -151,7 +151,7 @@ class TropCyclone(Hazard):
         new_haz.event_id = np.array([1])
         # frequency set when all tracks available
         new_haz.frequency = np.array([1])
-        new_haz.event_name = [track.name]
+        new_haz.event_name = [track.sid]
         new_haz.fraction = new_haz.intensity.copy()
         new_haz.fraction.data.fill(1)
         # store date of start

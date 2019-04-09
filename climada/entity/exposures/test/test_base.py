@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -22,12 +22,14 @@ import os
 import unittest
 import numpy as np
 import pandas as pd
-import geopandas
+import geopandas as gpd
+import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
 
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR, add_sea
+from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
+INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT, DEF_CRS
 from climada.hazard.base import Hazard
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM
 
@@ -45,10 +47,10 @@ def good_exposures():
     data['region_id'] = np.array([1, 2, 3])
     data[INDICATOR_CENTR + 'TC'] = np.array([1, 2, 3])
 
-    expo = Exposures(geopandas.GeoDataFrame(data=data))
+    expo = Exposures(gpd.GeoDataFrame(data=data))
     return expo
 
-class TestAssign(unittest.TestCase):
+class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
@@ -56,8 +58,7 @@ class TestAssign(unittest.TestCase):
         # Fill with dummy values
         expo = good_exposures()
         # Fill with dummy values the centroids
-        haz = Hazard()
-        haz.tag.haz_type = 'TC'
+        haz = Hazard('TC')
         haz.centroids.coord = np.ones((expo.shape[0]+6, 2))
         # assign
         expo.assign_centroids(haz)
@@ -65,22 +66,54 @@ class TestAssign(unittest.TestCase):
         # check assigned variable has been set with correct length
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
 
+    def test_get_transform_4326_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy.crs.PlateCarree)
+        self.assertEqual(unit, '°')
+
+    def test_get_transform_3395_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        expo.set_geometry_points()
+        expo.to_crs(epsg=3395, inplace=True)
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy.crs.Mercator)
+        self.assertEqual(unit, 'm')
+
+    def test_get_transform_3035_pass(self):
+        """ Check that assigned attribute is correctly set."""
+        # Fill with dummy values
+        expo = good_exposures()
+        expo.check()
+        expo.set_geometry_points()
+        expo.to_crs(epsg=3035, inplace=True)
+        res, unit = expo._get_transformation()
+        self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
+        self.assertEqual(unit, 'm')
+
 class TestChecker(unittest.TestCase):
     """Test logs of check function """
 
-    def test_info_logs(self):
+    def test_info_logs_pass(self):
         """Wrong exposures definition"""
         expo = good_exposures()
 
         with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
             expo.check()
-        self.assertIn('tag metadata set to default value', cm.output[0])
-        self.assertIn('ref_year metadata set to default value', cm.output[1])
-        self.assertIn('value_unit metadata set to default value', cm.output[2])
-        self.assertIn('geometry not set', cm.output[3])
+        self.assertIn('crs set to default value', cm.output[0])
+        self.assertIn('tag metadata set to default value', cm.output[1])
+        self.assertIn('ref_year metadata set to default value', cm.output[2])
+        self.assertIn('value_unit metadata set to default value', cm.output[3])
+        self.assertIn('geometry not set', cm.output[5])
         self.assertIn('cover not set', cm.output[4])
 
-    def test_error_logs(self):
+    def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
         expo = expo.drop(['longitude'],axis=1)
@@ -90,10 +123,19 @@ class TestChecker(unittest.TestCase):
                 expo.check()
         self.assertIn('longitude missing', cm.output[0])
 
+    def test_error_geometry_fail(self):
+        """Wrong exposures definition"""
+        expo = good_exposures()
+        expo.set_geometry_points()
+        expo.latitude.values[0] = 5
+
+        with self.assertRaises(ValueError):
+            expo.check()
+
 class TestIO(unittest.TestCase):
     """ Check constructor Exposures through DataFrames readers """
 
-    def test_read_template(self):
+    def test_read_template_pass(self):
         """Wrong exposures definition"""
         df = pd.read_excel(ENT_TEMPLATE_XLS)
         exp_df = Exposures(df)
@@ -103,10 +145,11 @@ class TestIO(unittest.TestCase):
         exp_df.value_unit = 'XSD'
         exp_df.check()
 
-    def test_io_hdf5(self):
+    def test_io_hdf5_pass(self):
         """ write and read hdf5 """
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
         exp_df.set_geometry_points()
+        exp_df.check()
         # set metadata
         exp_df.ref_year = 2020
         exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
@@ -144,9 +187,7 @@ class TestAddSea(unittest.TestCase):
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = Exposures()
-
         exp['value'] = np.arange(0, 1.0e6, 1.0e5)
-
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
         exp['latitude'] = np.linspace(min_lat, max_lat, 10)
@@ -155,6 +196,7 @@ class TestAddSea(unittest.TestCase):
         exp['if_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
+        exp.check()
 
         sea_coast = 100
         sea_res_km = 50
@@ -186,9 +228,63 @@ class TestAddSea(unittest.TestCase):
             exp_sea.latitude.values[-1]], [exp_sea.longitude.values[-2], \
             exp_sea.latitude.values[-2]]])[0][1], sea_res_km)
 
+
+class TestGeoDFFuncs(unittest.TestCase):
+    """ Check constructor Exposures through DataFrames readers """
+    def test_copy_pass(self):
+        """Test copy function."""
+        exp = good_exposures()
+        exp.check()
+        exp_copy = exp.copy()
+        self.assertIsInstance(exp_copy, Exposures)
+        self.assertEqual(exp_copy.crs, exp.crs)
+        self.assertEqual(exp_copy.ref_year, exp.ref_year)
+        self.assertEqual(exp_copy.value_unit, exp.value_unit)
+        self.assertEqual(exp_copy.tag.description, exp.tag.description)
+        self.assertEqual(exp_copy.tag.file_name, exp.tag.file_name)
+        self.assertTrue(np.array_equal(exp_copy.latitude.values, exp.latitude.values))
+        self.assertTrue(np.array_equal(exp_copy.longitude.values, exp.longitude.values))
+
+    def test_to_crs_inplace_pass(self):
+        """Test to_crs function inplace."""
+        exp = good_exposures()
+        exp.set_geometry_points()
+        exp.check()
+        exp.to_crs({'init': 'epsg:3395'}, inplace=True)
+        self.assertIsInstance(exp, Exposures)
+        self.assertEqual(exp.crs, {'init': 'epsg:3395'})
+        self.assertEqual(exp.ref_year, DEF_REF_YEAR)
+        self.assertEqual(exp.value_unit, DEF_VALUE_UNIT)
+        self.assertEqual(exp.tag.description, '')
+        self.assertEqual(exp.tag.file_name, '')
+
+    def test_to_crs_pass(self):
+        """Test to_crs function copy."""
+        exp = good_exposures()
+        exp.set_geometry_points()
+        exp.check()
+        exp_tr = exp.to_crs({'init': 'epsg:3395'})
+        self.assertIsInstance(exp, Exposures)
+        self.assertEqual(exp.crs, DEF_CRS)
+        self.assertEqual(exp_tr.crs, {'init': 'epsg:3395'})
+        self.assertEqual(exp_tr.ref_year, DEF_REF_YEAR)
+        self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
+        self.assertEqual(exp_tr.tag.description, '')
+        self.assertEqual(exp_tr.tag.file_name, '')
+    
+    def test_constructoer_pass(self):
+        """ Test initialization with input GeiDataFrame """
+        in_gpd = gpd.GeoDataFrame()
+        in_gpd['value'] = np.zeros(10)
+        in_gpd.ref_year = 2015
+        in_exp = Exposures(in_gpd)
+        self.assertEqual(in_exp.ref_year, 2015)
+        self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
+    
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

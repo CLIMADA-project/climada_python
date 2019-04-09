@@ -19,14 +19,6 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.source module
-------------------------------
-
-.. automodule:: climada.hazard.source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.tag module
 ---------------------------
 

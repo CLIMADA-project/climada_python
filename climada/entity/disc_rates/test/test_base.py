@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -23,9 +23,11 @@ import unittest
 import numpy as np
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_MAT, ENT_DEMO_TODAY
+from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 CURR_DIR = os.path.dirname(__file__)
+ENT_TEST_MAT = os.path.join(CURR_DIR,
+                            '../../exposures/test/data/demo_today.mat')
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""
@@ -223,7 +225,7 @@ class TestReaderMat(unittest.TestCase):
         # Read demo excel file
         disc_rate = DiscRates()
         description = 'One single file.'
-        disc_rate.read_mat(ENT_DEMO_MAT, description)
+        disc_rate.read_mat(ENT_TEST_MAT, description)
 
         # Check results
         n_rates = 51
@@ -238,7 +240,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_MAT)
+        self.assertEqual(disc_rate.tag.file_name, ENT_TEST_MAT)
         self.assertEqual(disc_rate.tag.description, description)
 
 

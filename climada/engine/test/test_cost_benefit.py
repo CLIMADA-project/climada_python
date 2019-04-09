@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -26,11 +26,15 @@ import numpy as np
 from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
-from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP
-from climada.util.constants import ENT_DEMO_MAT, ENT_DEMO_FUTURE, ENT_DEMO_TODAY
+from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP, \
+risk_rp_100, risk_rp_250
+from climada.engine import Impact
+from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
 HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
 HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
+ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
+                            '../../entity/exposures/test/data/demo_today.mat')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -39,13 +43,15 @@ class TestSteps(unittest.TestCase):
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
 
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.read_mat(ENT_TEST_MAT)
         entity.check()
-        for meas in entity.measures.get_measure():
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
+        entity.check()
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -105,13 +111,14 @@ class TestSteps(unittest.TestCase):
 
     def test_calc_cb_no_change_pass(self):
         """Test _calc_cost_benefit without present value against reference value"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
-        entity.check()
-        for meas in entity.measures.get_measure():
+        entity.read_mat(ENT_TEST_MAT)
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
+        entity.check()
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -140,13 +147,14 @@ class TestSteps(unittest.TestCase):
 
     def test_calc_cb_change_pass(self):
         """Test _calc_cost_benefit with present value against reference value"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
-        entity.read_mat(ENT_DEMO_MAT)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
-        entity.check()
-        for meas in entity.measures.get_measure():
+        entity.read_mat(ENT_TEST_MAT)
+        entity.measures._data['TC'] = entity.measures._data.pop('XX')
+        for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
+        entity.check()
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -155,8 +163,6 @@ class TestSteps(unittest.TestCase):
         ent_future = Entity()
         ent_future.read_excel(ENT_DEMO_FUTURE)
         ent_future.check()
-        for meas in ent_future.measures.get_measure():
-            meas.haz_type = 'TC'
 
         haz_future = copy.deepcopy(hazard)
         haz_future.intensity.data += 25
@@ -300,7 +306,8 @@ class TestCalc(unittest.TestCase):
     def test_calc_change_pass(self):
         """Test calc with future change"""
         # present
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
         entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
@@ -337,7 +344,8 @@ class TestCalc(unittest.TestCase):
 
     def test_calc_no_change_pass(self):
         """Test calc without future change"""
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
         entity.check()
@@ -362,7 +370,46 @@ class TestCalc(unittest.TestCase):
 
         self.assertEqual(cost_ben.tot_climate_risk, 1.2150496306913972e+11)
 
+class TestRiskFuncs(unittest.TestCase):
+    '''Test risk functions definitions'''
+
+    def test_impact(self):
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.check()
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        impact = Impact()
+        ent.exposures.assign_centroids(hazard)
+        impact.calc(ent.exposures, ent.impact_funcs, hazard)
+        return impact
+
+    def test_risk_aai_agg_pass(self):
+        """Test risk_aai_agg"""
+        impact = self.test_impact()
+        risk = risk_aai_agg(impact)
+        self.assertAlmostEqual(6.512201157564421e+09, risk, 5)
+        self.assertTrue(np.isclose(6.512201157564421e+09, risk))
+
+    def test_risk_rp_100_pass(self):
+        """Test risk_rp_100"""
+        impact = self.test_impact()
+        exc_freq = impact.calc_freq_curve([100])
+
+        risk = risk_rp_100(impact)
+        self.assertAlmostEqual(exc_freq.impact[0], risk)
+
+    def test_risk_rp_200_pass(self):
+        """Test risk_rp_200"""
+        impact = self.test_impact()
+        exc_freq = impact.calc_freq_curve([250])
+
+        risk = risk_rp_250(impact)
+        self.assertAlmostEqual(exc_freq.impact[0], risk)
+
 # Execute Tests
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs)
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

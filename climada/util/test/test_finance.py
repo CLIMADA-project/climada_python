@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -140,11 +140,13 @@ class TestWBWealthAccount(unittest.TestCase):
         """ Test Processed Capital value Germany 2010."""
         ref_year = 2010
         cntry_iso = 'DEU'
-        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
-        res_year_noland, res_val_noland = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
+        res_year_noland, res_val_noland, q = \
+                world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
         ref_val = 17675048450284.9
         ref_val_noland = 14254071330874.9
         self.assertEqual(res_year, ref_year)
+        self.assertEqual(q, 1)
         self.assertEqual(res_val, ref_val)
         self.assertEqual(res_year_noland, ref_year)
         self.assertEqual(res_val_noland, ref_val_noland)
@@ -153,7 +155,7 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 2008
         cntry_iso = 'CHE'
         var_name = 'NW.PCA.PC'
-        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, \
+        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
                                         variable_name=var_name, no_land=0)
         ref_val = 328398.7
         self.assertEqual(res_year, ref_year)
@@ -163,7 +165,7 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 1985
         cntry_iso = 'IND'
         var_name = 'NW.TOW.TO'
-        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, \
+        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
                                         variable_name=var_name)
         ref_val = 5415188681962.3
         self.assertEqual(res_year, ref_year)
@@ -172,8 +174,9 @@ class TestWBWealthAccount(unittest.TestCase):
         """ Test Processed Capital value Cuba 2015 (missing value)."""
         ref_year = 2015
         cntry_iso = 'CUB'
-        res_year, res_val = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
         ref_val = 108675762920.0
+        self.assertEqual(q, 0)
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
 

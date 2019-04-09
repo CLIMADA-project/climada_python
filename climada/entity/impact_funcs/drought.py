@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -55,7 +55,7 @@ class IFDrought(ImpactFunc):
         self.paa = [1,1,0,0]
         
     def set_default_sum(self):
-        self.haz_type = "DR"
+        self.haz_type = "DR_sum"
         self.id = 1
         self.name = "drought default sum"
         self.intensity_unit = "NA"
@@ -63,6 +63,15 @@ class IFDrought(ImpactFunc):
         self.mdd = [1,0.65,0.5,0.3,0,0]
         self.paa = [1,1,1,1,0,0]
         
+    def set_default_sumthr(self):
+        self.haz_type = "DR_sumthr"
+        self.id = 1
+        self.name = "drought default sum - thr"
+        self.intensity_unit = "NA"
+        self.intensity = [-8, -5, -2, 0]
+        self.mdd = [0.7,0.3,0,0]
+        self.paa = [1,1,0,0]        
+          
     def set_step(self):
         self.haz_type = "DR"
         self.id = 1

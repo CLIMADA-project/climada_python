@@ -2,34 +2,51 @@ name: climada_env
 channels:
   - defaults
 dependencies:
+  - blas=1.0
   - cartopy=0.16.0
-  - dill==0.2.7.1
+  - cython=0.26
+  - dill=0.2.7.1
+  - gdal
   - geos=3.6.2
+  - geopandas=0.4.0
   - h5py=2.7.1
   - ipython=6.3.1
   - ipython_genutils=0.2.0
   - jsonschema=2.6.0
   - matplotlib=2.2.2
+  - mkl
+  - mkl_fft
+  - mkl_random
+  - netcdf4
   - numba=0.37.0
   - numpy=1.14.2
+  - nbconvert=5.4.1
   - pandas=0.23.0
   - pandas-datareader=0.6.0
   - pip=10.0.1
-  - proj4=4.9.3
-  - pyproj=1.9.5.1
+  - proj4
+  - pysocks=1.6.8
+  - pyshp=1.2.12
+  - pytables=3.4.4
   - python=3.6.5
+  - rasterio=0.36.0
+  - requests=2.19.1
   - scikit-learn=0.19.1
   - scipy=1.1.0
   - setuptools=39.1.0
   - shapely=1.6.4
   - sphinx=1.7.4
+  - tabulate=0.8.2
   - tqdm=4.23.4
-  - xarray==0.10.2
+  - xarray=0.10.2
   - xlrd=1.1.0
+  - xlsxwriter=1.1.2
   - pip:
+    - contextily==0.99.0
     - iso3166==0.9
     - multiprocess==0.70.5
     - pathos==0.2.1
     - pint==0.8.1
     - pox==0.2.3
     - ppft==1.6.4.7.1
+

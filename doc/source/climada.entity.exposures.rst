@@ -12,18 +12,18 @@ climada\.entity\.exposures\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.source module
------------------------------------------
-
-.. automodule:: climada.entity.exposures.source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.exposures\.black_marble module
 -----------------------------------------------
 
 .. automodule:: climada.entity.exposures.black_marble
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.entity\.exposures\.litpop module
+-----------------------------------------------
+
+.. automodule:: climada.entity.exposures.litpop
     :members:
     :undoc-members:
     :show-inheritance:

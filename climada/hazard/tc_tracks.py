@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -82,6 +82,7 @@ class TCTracks():
                 - max_sustained_wind_unit (attrs)
                 - central_pressure_unit (attrs)
                 - name (attrs)
+                - sid (attrs)
                 - orig_event_flag (attrs)
                 - data_provider (attrs)
                 - basin (attrs)
@@ -109,7 +110,8 @@ class TCTracks():
         """Get track with provided name. Return all tracks if no name provided.
 
         Parameters:
-            track_name (str, optional): name of track (ibtracsID for IBTrACS)
+            track_name (str, optional): name or sid (ibtracsID for IBTrACS)
+                of track
 
         Returns:
             xarray.Dataset or [xarray.Dataset]
@@ -122,15 +124,17 @@ class TCTracks():
         for track in self.data:
             if track.name == track_name:
                 return track
+            if hasattr(track, 'sid') and track.sid == track_name:
+                return track
 
-        LOGGER.info('No track with name %s found.', track_name)
+        LOGGER.info('No track with name or sid %s found.', track_name)
         return []
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
                             year_range=(1980, 2018), basin=None):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
-        and radius_max_wind.
+        and radius_max_wind. Checks environmental_pressure > central_pressure.
 
         Parameters:
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
@@ -152,10 +156,11 @@ class TCTracks():
                 raise err
 
         sel_tracks = self._filter_ibtracs(fn_nc, storm_id, year_range, basin)
-        chunksize = min(self.size, 100)
-        self.data = Pool().map(self._read_one_raw, itertools.repeat(fn_nc), \
-            sel_tracks, itertools.repeat(provider), chunksize=chunksize)
-        self.data = [track for track in self.data if track is not None]
+        nc_data = Dataset(fn_nc)
+        all_tracks = []
+        for i_track in sel_tracks:
+            all_tracks.append(self._read_one_raw(nc_data, i_track, provider))
+        self.data = [track for track in all_tracks if track is not None]
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file.
@@ -332,8 +337,8 @@ class TCTracks():
             i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
             i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
             i_track.attrs['orig_event_flag'] = False
-            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + \
-                                    str(i_ens+1)
+            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens+1)
+            i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens+1)
             i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
 
             ens_track.append(i_track)
@@ -505,6 +510,7 @@ class TCTracks():
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
         tr_ds.attrs['name'] = name
+        tr_ds.attrs['sid'] = name
         tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
@@ -533,7 +539,7 @@ class TCTracks():
             np.array
         """
         nc_data = Dataset(fn_nc)
-        storm_ids = [''.join(name.data.astype(str))
+        storm_ids = [''.join(name.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
         # fileter name
@@ -551,7 +557,7 @@ class TCTracks():
             # filter basin
             if basin:
                 basin0 = np.array([''.join(bas.astype(str)) \
-                    for bas in nc_data.variables['basin'][:, 0, :].data])[sel_tracks]
+                    for bas in nc_data.variables['basin'][:, 0, :]])[sel_tracks]
                 sel_bas = np.argwhere(basin0 == basin).reshape(-1)
                 if not sel_tracks.size:
                     LOGGER.info('No tracks in basin %s.', basin)
@@ -559,29 +565,30 @@ class TCTracks():
                 sel_tracks = sel_tracks[sel_bas]
         return sel_tracks
 
-    def _read_one_raw(self, fn_nc, i_track, provider):
+    def _read_one_raw(self, nc_data, i_track, provider):
         """Fill given track.
 
             Parameters:
-            fn_nc (str): ibtracs netcdf data file name
+            nc_data (Dataset): netcdf data set
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
-        nc_data = Dataset(fn_nc)
-        name = ''.join(nc_data.variables['sid'][i_track].data.astype(str))
-        basin = ''.join(nc_data.variables['basin'][i_track, 0, :].data.astype(str))
-        LOGGER.info('Reading %s', name)
+        name = ''.join(nc_data.variables['name'][i_track] \
+            [nc_data.variables['name'][i_track].mask==False].data.astype(str))
+        sid = ''.join(nc_data.variables['sid'][i_track].astype(str))
+        basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
+        LOGGER.info('Reading %s: %s', sid, name)
 
         isot = nc_data.variables['iso_time'][i_track, :, :]
         val_len = isot.mask[isot.mask == False].shape[0]//isot.shape[1]
         datetimes = list()
-        for date_time in isot.data[:val_len]:
+        for date_time in isot[:val_len]:
             datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
                                                   '%Y-%m-%d %H:%M:%S'))
 
-        id_no = float(name.replace('N', '0').replace('S', '1'))
-        lat = nc_data.variables[provider + '_lat'][i_track, :].data[:val_len]
-        lon = nc_data.variables[provider + '_lon'][i_track, :].data[:val_len]
+        id_no = float(sid.replace('N', '0').replace('S', '1'))
+        lat = nc_data.variables[provider + '_lat'][i_track, :][:val_len]
+        lon = nc_data.variables[provider + '_lon'][i_track, :][:val_len]
 
         max_sus_wind = nc_data.variables[provider + '_wind'][i_track, :]. \
             data[:val_len].astype(float)
@@ -593,48 +600,45 @@ class TCTracks():
         np.all(max_sus_wind == nc_data.variables[provider + '_wind']._FillValue) \
         and np.all(cen_pres == nc_data.variables[provider + '_pres']._FillValue)):
             LOGGER.warning('Skipping %s. It does not contain valid values. ' +\
-                           'Try another provider.', name)
+                           'Try another provider.', sid)
             return None
 
         try:
-            rmax = nc_data.variables[provider + '_rmw'][i_track, :].data[:val_len]
+            rmax = nc_data.variables[provider + '_rmw'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No rmax for given provider %s. Set to default.',
-                        name, provider)
+                        sid, provider)
             rmax = np.zeros(lat.size)
         try:
-            penv = nc_data.variables[provider + '_poci'][i_track, :].data[:val_len]
+            penv = nc_data.variables[provider + '_poci'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No penv for given provider %s. Set to default.',
-                        name, provider)
-            penv = np.ones(lat.size)*1010
-            if basin in ('NI', 'SI', 'WP'):
-                penv = np.ones(lat.size)*1005
-            elif basin == 'SP':
-                penv = np.ones(lat.size)*1004
+                        sid, provider)
+            penv = np.ones(lat.size)*self._set_penv(basin)
 
         tr_ds = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, \
             'radius_max_wind': rmax.astype('float'), 'max_sustained_wind': max_sus_wind, \
             'central_pressure': cen_pres, 'environmental_pressure': penv.astype('float')})
 
         # deal with nans
-        tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes)
-
+        tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes, basin)
         if not tr_ds.shape[0]:
-            LOGGER.warning('Skipping %s. No usable data.', name)
+            LOGGER.warning('Skipping %s. No usable data.', sid)
             return None
+        # ensure environmental pressure > central pressure
+        chg_pres = (tr_ds.central_pressure > tr_ds.environmental_pressure).values
+        tr_ds.environmental_pressure.values[chg_pres] = tr_ds.central_pressure.values[chg_pres]
 
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
         tr_ds.coords['lat'] = ('time', tr_ds.lat)
         tr_ds.coords['lon'] = ('time', tr_ds.lon)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
-            'name': name, 'orig_event_flag': True, 'data_provider': provider, \
+            'name': name, 'sid': sid, 'orig_event_flag': True, 'data_provider': provider, \
             'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
         return tr_ds
 
-    @staticmethod
-    def _deal_nans(tr_ds, nc_data, provider, datetimes):
+    def _deal_nans(self, tr_ds, nc_data, provider, datetimes, basin):
         """ Remove or substitute fill values of netcdf variables. """
         # remove nan coordinates
         tr_ds.drop(tr_ds[tr_ds.lat == nc_data.variables[provider + '_lat']. \
@@ -649,7 +653,8 @@ class TCTracks():
         # fill nans of environmental_pressure and radius_max_wind
         tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
             nc_data.variables[provider + '_poci']._FillValue] = np.nan
-        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4).bfill(limit=4)
+        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
+            bfill(limit=4).fillna(self._set_penv(basin))
         tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
             nc_data.variables[provider + '_rmw']._FillValue] = np.nan
         tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
@@ -662,6 +667,17 @@ class TCTracks():
             tr_ds.time_step.values[0] = tr_ds.time_step.values[-1]
 
         return tr_ds
+
+    @staticmethod
+    def _set_penv(basin):
+        """ Set environmental pressure depending on basin """
+        penv = 1010
+        if basin in ('NI', 'SI', 'WP'):
+            penv = 1005
+        elif basin == 'SP':
+            penv = 1004
+        return penv
+
 
 def _calc_land_geom(ens_track):
     """Compute land geometry used for land distance computations.
@@ -776,13 +792,11 @@ def _solve_decay_p_function(ps_y, p_y, x_val):
     Get B coefficient."""
     return -np.log((ps_y - p_y)/(ps_y - 1.0)) / x_val
 
-def _calc_decay_ps_value(track, p_landfall, s_rel):
+def _calc_decay_ps_value(track, p_landfall, pos, s_rel):
     if s_rel:
-        p_land_s = track.environmental_pressure[np.argwhere(
-            track.on_land.values).squeeze((-1,))[-1]].values
+        p_land_s = track.environmental_pressure[pos].values
     else:
-        p_land_s = track.central_pressure[np.argwhere(
-            track.on_land.values).squeeze((-1,))[-1]].values
+        p_land_s = track.central_pressure[pos].values
     return float(p_land_s / p_landfall)
 
 def _decay_values(track, land_geom, s_rel):
@@ -830,7 +844,7 @@ def _decay_values(track, land_geom, s_rel):
             p_land = track.central_pressure[sea_land-1:land_sea].values
             p_land = (p_land[1:]/p_land[0]).tolist()
 
-            p_land_s = _calc_decay_ps_value(track, p_landfall, s_rel)
+            p_land_s = _calc_decay_ps_value(track, p_landfall, land_sea-1, s_rel)
             p_land_s = len(p_land)*[p_land_s]
 
             if ss_scale_idx not in v_lf:
@@ -875,6 +889,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
         y_val = np.array(val_lf)
         v_coef = _solve_decay_v_function(y_val, x_val_ss)
         v_coef = v_coef[np.isfinite(v_coef)]
+        v_coef = np.mean(v_coef)
 
         ps_y_val = np.array(p_lf[ss_scale][0])
         y_val = np.array(p_lf[ss_scale][1])
@@ -884,9 +899,12 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
         ps_y_val = ps_y_val[valid_p]
         y_val = y_val[valid_p]
         p_coef = _solve_decay_p_function(ps_y_val, y_val, x_val_ss[valid_p])
+        ps_y_val = np.mean(ps_y_val)
+        p_coef = np.mean(p_coef)
 
-        v_rel[ss_scale] = np.mean(v_coef)
-        p_rel[ss_scale] = (np.mean(ps_y_val), np.mean(p_coef))
+        if np.isfinite(v_coef) and np.isfinite(ps_y_val) and np.isfinite(ps_y_val):
+            v_rel[ss_scale] = v_coef
+            p_rel[ss_scale] = (ps_y_val, p_coef)
 
     scale_fill = np.array(list(p_rel.keys()))
     if not scale_fill.size:
@@ -965,13 +983,17 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             continue
         if land_sea - sea_land == 1:
             continue
-        p_decay = _calc_decay_ps_value(track, p_landfall, s_rel)
+        p_decay = _calc_decay_ps_value(track, p_landfall, land_sea-1, s_rel)
         p_decay = _decay_p_function(p_decay, p_rel[ss_scale_idx][1], \
             track.dist_since_lf[sea_land:land_sea].values)
+        # dont applay decay if it would decrease central pressure
+        p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1]/p_landfall
         track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
         v_decay = _decay_v_function(v_rel[ss_scale_idx], \
             track.dist_since_lf[sea_land:land_sea].values)
+        # dont applay decay if it would increas wind speeds
+        v_decay[v_decay > 1] = track.max_sustained_wind[sea_land:land_sea][v_decay > 1]/v_landfall
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea between two landfalls

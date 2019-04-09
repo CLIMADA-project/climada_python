@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -25,11 +25,14 @@ import logging
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point
+import cartopy.crs as ccrs
 from geopandas import GeoDataFrame
+from rasterio.features import rasterize
+from rasterio.transform import from_origin
+import rasterio
+import matplotlib.pyplot as plt
 
 from climada.entity.tag import Tag
-#from climada.entity.exposures.source import DEF_VAR_MAT, _read_mat_obligatory, \
-#_read_mat_optional, _read_mat_metadata
 import climada.util.hdf5_handler as hdf5
 from climada.util.constants import ONE_LAT_KM
 from climada.util.coordinates import coord_on_land
@@ -49,6 +52,9 @@ DEF_REF_YEAR = 2018
 
 DEF_VALUE_UNIT = 'USD'
 """ Default reference year """
+
+DEF_CRS = {'init': 'epsg:4326'}
+""" Default coordinate reference system WGS 84 """
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
@@ -78,8 +84,9 @@ class Exposures(GeoDataFrame):
         latitude (pd.Series): latitude
         longitude (pd.Series): longitude
         value (pd.Series): a value for each exposure
-        if_ (pd.Series): e.g. if_TC. impact functions id for hazard TC. There
-            might be different hazards defined: if_TC, if_FL, ...
+        if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
+            There might be different hazards defined: if_TC, if_FL, ...
+            If not provided, set to default 'if_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
         deductible (pd.Series, optional): deductible value for each exposure
@@ -92,53 +99,83 @@ class Exposures(GeoDataFrame):
     """
     _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit']
 
-    vars_oblig = ['value', 'latitude', 'longitude', INDICATOR_IF]
+    vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_CENTR, 'geometry']
+    vars_def = [INDICATOR_IF]
     """Name of variables that can be computed."""
 
-    vars_opt = ['deductible', 'cover', 'category_id', 'region_id']
+    vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
+                'region_id', 'geometry']
     """Name of the variables that aren't need to compute the impact."""
 
     @property
     def _constructor(self):
         return Exposures
 
+    def __init__(self, *args, **kwargs):
+        """ Initialize. Copy attributes of input DataFrame. """
+        if len(args):
+            for var_meta in self._metadata:
+                try:
+                    val_meta = getattr(args[0], var_meta)
+                    setattr(self, var_meta, val_meta)
+                except AttributeError:
+                    pass
+        super(Exposures, self).__init__(*args, **kwargs)
+
     def check(self):
         """ Check which variables are present """
         # check metadata
         for var in self._metadata:
-            if var[0] != '_' and var not in self.__dict__:
+            if var[0] == '_':
+                continue
+            try:
+                if getattr(self, var) is None and var == 'crs':
+                    self.crs = DEF_CRS
+                    LOGGER.info('%s set to default value: %s', var, self.__dict__[var])
+            except AttributeError:
                 if var == 'tag':
                     self.tag = Tag()
                 elif var == 'ref_year':
                     self.ref_year = DEF_REF_YEAR
                 elif var == 'value_unit':
                     self.value_unit = DEF_VALUE_UNIT
-                LOGGER.info('%s metadata set to default value: %s', var,
-                            self.__dict__[var])
+                LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
 
         for var in self.vars_oblig:
-            if var == INDICATOR_IF:
-                found = np.array([var in var_col for var_col in self.columns]).any()
-            else:
-                found = var in self.columns
-            if not found:
+            if not var in self.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError
 
         for var in self.vars_def:
+            if var == INDICATOR_IF:
+                found = np.array([var in var_col for var_col in self.columns]).any()
+                if INDICATOR_IF in self.columns:
+                    LOGGER.info("Hazard type not set in %s", var)
+            else:
+                found = var in self.columns
+            if not found and var == INDICATOR_IF:
+                LOGGER.info("Setting %s to default impact functions ids 1.", var)
+                self[INDICATOR_IF] = np.ones(self.shape[0], dtype=int)
+            elif not found:
+                LOGGER.info("%s not set.", var)
+
+        for var in self.vars_opt:
             if var == INDICATOR_CENTR:
                 found = np.array([var in var_col for var_col in self.columns]).any()
+                if INDICATOR_CENTR in self.columns:
+                    LOGGER.info("Hazard type not set in %s", var)
             else:
                 found = var in self.columns
             if not found:
                 LOGGER.info("%s not set.", var)
-
-        for var in self.vars_opt:
-            if var not in self.columns:
-                LOGGER.info("%s not set.", var)
+            elif var == 'geometry' and \
+            (self.geometry.values[0].x != self.longitude.values[0] or \
+            self.geometry.values[0].y != self.latitude.values[0]):
+                LOGGER.error('Geometry values do not correspond to latitude ' +\
+                'and longitude. Use set_geometry_points() or set_lat_lon().')
+                raise ValueError
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
@@ -177,17 +214,51 @@ class Exposures(GeoDataFrame):
         self['latitude'] = self.geometry[:].y
         self['longitude'] = self.geometry[:].x
 
-    def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
-                    buffer_deg=0.0, extend='neither', **kwargs):
-        """Plot exposures values sum binned over Earth's map. An other function
-        for the bins can be set through the key reduce_C_function.
+    def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
+                     buffer=0.0, extend='neither', **kwargs):
+        """Plot exposures geometry's value sum scattered over Earth's map.
+        The plot will we projected according to the current crs.
+
         Parameters:
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
-            buffer_deg (float, optional): border to add to coordinates in deg.
-                Default: 0.0.
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        crs_epsg, _ = self._get_transformation()
+        title = self.tag.description
+        cbar_label = 'Value (%s)' % self.value_unit
+        if mask is None:
+            mask = np.ones((self.shape[0],), dtype=bool)
+        if ignore_zero:
+            pos_vals = self.value[mask].values > 0
+        else:
+            pos_vals = np.ones((self.value[mask].values.size,), dtype=bool)
+        value = self.value[mask][pos_vals].values
+        coord = np.stack([self.latitude[mask][pos_vals].values,
+                          self.longitude[mask][pos_vals].values], axis=1)
+        return u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
+            pop_name, buffer, extend, proj=crs_epsg, **kwargs)
+
+    def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
+                    buffer=0.0, extend='neither', **kwargs):
+        """Plot exposures geometry's value sum binned over Earth's map.
+        An other function for the bins can be set through the key reduce_C_function.
+        The plot will we projected according to the current crs.
+
+        Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
@@ -195,6 +266,7 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        crs_epsg, _ = self._get_transformation()
         title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
@@ -209,7 +281,106 @@ class Exposures(GeoDataFrame):
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title, \
-            pop_name, buffer_deg, extend, **kwargs)
+            pop_name, buffer, extend, proj=crs_epsg, **kwargs)
+
+    def plot_raster(self, res=None, raster_res=None, save_tiff=None,
+                    raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                    label='value (log10)', **kwargs):
+        """ Generate raster from points geometry and plot it using log10 scale:
+        np.log10((np.fmax(raster+1, 1))).
+
+        Parameters:
+            res (float, optional): resolution of current data in units of latitude
+                and longitude, approximated if not provided.
+            raster_res (float, optional): desired resolution of the raster
+            save_tiff (str, optional): file name to save the raster in tiff
+                format, if provided
+            raster_f (lambda function): transformation to use to data. Default:
+                log10 adding 1.
+            label (str): colorbar label
+            kwargs (optional): arguments for imshow matplotlib function
+
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        if not 'geometry' in self.columns:
+            self.set_geometry_points()
+        crs_epsg, crs_unit = self._get_transformation()
+        if not res:
+            res_lat, res_lon = np.diff(self.latitude.values), np.diff(self.longitude.values)
+            res = min(res_lat[res_lat > 0].min(), res_lon[res_lon > 0].min())
+        if not raster_res:
+            raster_res = res
+        LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
+                    raster_res, crs_unit)
+
+        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
+        # construct raster
+        xmin, ymin, xmax, ymax = self.total_bounds
+        rows = int(np.ceil((ymax-ymin) /  raster_res))
+        cols = int(np.ceil((xmax-xmin) / raster_res))
+        res_x, res_y = (xmax - xmin) / cols, (ymax - ymin) / rows
+        ras_trans = from_origin(xmin - res_x / 2, ymax + res_y / 2, res_x, res_y)
+        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
+                           out_shape=(rows, cols), transform=ras_trans, fill=0,
+                           all_touched=True, dtype=rasterio.float32, )
+        # save tiff
+        if save_tiff is not None:
+            ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff', \
+                height=raster.shape[0], width=raster.shape[1], count=1, \
+                dtype=np.float32, crs=self.crs, transform=ras_trans)
+            ras_tiff.write(raster.astype(np.float32), 1)
+            ras_tiff.close()
+        # make plot
+        fig, axis = u_plot.make_map(proj=crs_epsg)
+        cbar_ax = fig.add_axes([0.99, 0.238, 0.03, 0.525])
+        fig.subplots_adjust(hspace=0, wspace=0)
+        axis[0, 0].set_extent([max(xmin, crs_epsg.x_limits[0]),
+                               min(xmax, crs_epsg.x_limits[1]),
+                               max(ymin, crs_epsg.y_limits[0]),
+                               min(ymax, crs_epsg.y_limits[1])], crs_epsg)
+        u_plot.add_shapes(axis[0, 0])
+        imag = axis[0, 0].imshow(raster_f(raster), **kwargs, origin='upper',
+                                 extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
+        plt.colorbar(imag, cax=cbar_ax, label=label)
+        plt.draw()
+        posn = axis[0, 0].get_position()
+        cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
+
+        return fig, axis
+
+    def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
+                     buffer=0.0, extend='neither', zoom=10,
+                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                     **kwargs):
+        """ Scatter points over satellite image using contextily
+
+         Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            zoom (int, optional): zoom coefficient used in the satellite image
+            url (str, optional): image source, e.g. ctx.sources.OSM_C
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        if not 'geometry' in self.columns:
+            self.set_geometry_points()
+        crs_ori = self.crs
+        self.to_crs(epsg=3857, inplace=True)
+        fig, axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                      extend, shapes=False, **kwargs)
+        u_plot.add_basemap(axis[0, 0], zoom, url, flip=True)
+        axis[0, 0].set_axis_off()
+        self.to_crs(crs_ori, inplace=True)
+        return fig, axis
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
@@ -218,11 +389,7 @@ class Exposures(GeoDataFrame):
 
         var_meta = {}
         for var in self._metadata:
-            if var[0] != '_':
-                try:
-                    var_meta[var] = getattr(self, var)
-                except AttributeError:
-                    pass
+            var_meta[var] = getattr(self, var)
 
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
@@ -265,18 +432,58 @@ class Exposures(GeoDataFrame):
         Exposures.__init__(self, data=exposures)
         _read_mat_metadata(self, data, file_name, var_names)
 
+    #
+    # Implement geopandas methods
+    #
+
+    def to_crs(self, crs=None, epsg=None, inplace=False):
+        res = super(Exposures, self).to_crs(crs, epsg, inplace)
+        if res is not None:
+            res.set_lat_lon()
+            return res
+
+        self.set_lat_lon()
+        return None
+
+    to_crs.__doc__ = GeoDataFrame.to_crs.__doc__
+
     def copy(self, deep=True):
-        """
-        Make a copy of this GeoDataFrame object
+        """ Make a copy of this Exposures object.
+
         Parameters
         ----------
-        deep : boolean, default True
-            Make a deep copy, i.e. also copy data
+        deep (bool): Make a deep copy, i.e. also copy data. Default True.
+
         Returns
         -------
-        copy : GeoDataFrame
+            Exposures
         """
-        return Exposures(GeoDataFrame.copy(self, deep))
+        # FIXME: this will likely be unnecessary if removed from GeoDataFrame
+        data = self._data
+        if deep:
+            data = data.copy()
+        return Exposures(data).__finalize__(self)
+
+    def _get_transformation(self):
+        """ Get projection and its units to use in cartopy transforamtions from
+        current crs
+
+        Returns:
+            ccrs.Projection, str
+        """
+        try:
+            if self.crs['init'][-4:] == '3395':
+                crs_epsg = ccrs.Mercator()
+            else:
+                crs_epsg = ccrs.epsg(self.crs['init'][-4:])
+        except ValueError:
+            crs_epsg = ccrs.PlateCarree()
+
+        try:
+            units = crs_epsg.proj4_params['units']
+        except KeyError:
+            units = '°'
+        return crs_epsg, units
 
 def add_sea(exposures, sea_res):
     """ Add sea to geometry's surroundings with given resolution. region_id

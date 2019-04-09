@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -185,20 +185,40 @@ class StormEurope(Hazard):
         """
         LOGGER.info('Constructing centroids from %s', file_name)
         ncdf = xr.open_dataset(file_name)
-        lats = ncdf.latitude.data
-        lons = ncdf.longitude.data
+        if hasattr(ncdf, 'latitude'):
+            lats = ncdf.latitude.data
+            lons = ncdf.longitude.data
+            new_coord = np.array([
+                    np.repeat(lats, len(lons)),
+                    np.tile(lons, len(lats)),
+                    ]).T
+        elif hasattr(ncdf,'lat'):
+            lats = ncdf.lat.data
+            lons = ncdf.lon.data
+            new_coord = np.array([
+                    np.repeat(lats, len(lons)),
+                    np.tile(lons, len(lats)),
+                    ]).T
+        elif hasattr(ncdf,'lat_1'):
+            lats = ncdf.lat_1.data
+            lons = ncdf.lon_1.data
+            new_coord = np.array([
+                    lats.reshape(-1),
+                    lons.reshape(-1),
+                    ]).T
+        else:
+            raise AttributeError('netcdf file has no field named latitude or other know abrivation for coordinates.') 
+            
         cent = Centroids()
-        cent.coord = np.array([
-            np.repeat(lats, len(lons)),
-            np.tile(lons, len(lats)),
-        ]).T
+        cent.coord = new_coord
         cent.id = np.arange(0, len(cent.coord))
-        cent.resolution = (float(ncdf.geospatial_lat_resolution),
-                           float(ncdf.geospatial_lon_resolution))
+        if hasattr(ncdf,'geospatial_lat_resolution'):
+            cent.resolution = (float(ncdf.geospatial_lat_resolution),
+                               float(ncdf.geospatial_lon_resolution))
+            cent.set_area_per_centroid()
         cent.tag.description = 'Centroids constructed from: ' + file_name
         ncdf.close()
 
-        cent.set_area_per_centroid()
         cent.set_on_land()
 
         return cent

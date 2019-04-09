@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -38,7 +38,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = Hazard('TC', HAZ_DEMO_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_DEMO_MAT)
         _, myax = hazard.plot_intensity(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
                       myax[0][0].get_title())
@@ -76,7 +77,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_fraction_pass(self):
         """Generate all possible plots of the hazard fraction."""
-        hazard = Hazard('TC', HAZ_DEMO_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_DEMO_MAT)
         _, myax = hazard.plot_fraction(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', \
                       myax[0][0].get_title())
@@ -121,7 +123,8 @@ class TestPlotter(unittest.TestCase):
         myent = Entity()
         myent.read_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
-        myhaz = Hazard('TC', HAZ_DEMO_MAT)
+        myhaz = Hazard('TC')
+        myhaz.read_mat(HAZ_DEMO_MAT)
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()

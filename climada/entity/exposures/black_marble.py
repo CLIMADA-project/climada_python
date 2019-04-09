@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -112,7 +112,7 @@ class BlackMarble(Exposures):
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        self.check()
+        self.crs = {'init': 'epsg:4326'}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,

@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -21,6 +21,7 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
+import ast
 import logging
 import csv
 from itertools import zip_longest
@@ -30,6 +31,7 @@ import pandas as pd
 import xlsxwriter
 
 from climada.entity.tag import Tag
+from climada.entity.exposures.base import Exposures, DEF_CRS
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
@@ -65,6 +67,7 @@ class Impact():
         self.event_name = list()
         self.date = np.array([], int)
         self.coord_exp = np.ndarray([], float)
+        self.crs = DEF_CRS
         self.eai_exp = np.array([])
         self.at_event = np.array([])
         self.frequency = np.array([])
@@ -114,19 +117,29 @@ class Impact():
         Examples:
             Use Entity class:
 
-            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
-            >>> entity = Entity() # Load entity with default values
-            >>> entity.exposures = Exposures(ENT_TEMPLATE_XLS) # Set exposures
-            >>> tc_impact = Impact()
-            >>> tc_impact.calc(entity.exposures, entity.impact_functs, hazard)
+            >>> haz = Hazard('TC') # Set hazard
+            >>> haz.read_mat(HAZ_DEMO_MAT)
+            >>> haz.check()
+            >>> ent = Entity() # Load entity with default values
+            >>> ent.read_excel(ENT_TEMPLATE_XLS) # Set exposures
+            >>> ent.check()
+            >>> imp = Impact()
+            >>> imp.calc(ent.exposures, ent.impact_funcs, haz)
+            >>> imp.calc_freq_curve().plot()
 
             Specify only exposures and impact functions:
 
-            >>> hazard = Hazard(HAZ_DEMO_MAT) # Set hazard
-            >>> funcs = ImpactFuncSet(ENT_TEMPLATE_XLS) # Set impact functions
-            >>> exposures = Exposures(ENT_TEMPLATE_XLS) # Set exposures
-            >>> tc_impact = Impact()
-            >>> tc_impact.calc(exposures, funcs, hazard)
+            >>> haz = Hazard('TC') # Set hazard
+            >>> haz.read_mat(HAZ_DEMO_MAT)
+            >>> haz.check()
+            >>> funcs = ImpactFuncSet()
+            >>> funcs.read_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> funcs.check()
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> exp.check()
+            >>> imp = Impact()
+            >>> imp.calc(exp, funcs, haz)
+            >>> imp.aai_agg
         """
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
@@ -140,14 +153,14 @@ class Impact():
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
         self.date = hazard.date
-        self.coord_exp = np.zeros((exposures.shape[0], 2))
-        self.coord_exp[:, 0] = exposures.latitude.values
-        self.coord_exp[:, 1] = exposures.longitude.values
+        self.coord_exp = np.stack([exposures.latitude.values,
+                                   exposures.longitude.values], axis=1)
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
         self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
                     'haz': hazard.tag}
+        self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
@@ -162,10 +175,13 @@ class Impact():
         # Get damage functions for this hazard
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if if_haz not in exposures:
-            LOGGER.error('Missing exposures column %s. No exposures with impact'\
-                         +' functions for peril %s.', if_haz, hazard.tag.haz_type)
+        if if_haz not in exposures and INDICATOR_IF not in exposures:
+            LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
+        if if_haz not in exposures:
+            LOGGER.info('Missing exposures impact functions for hazard %s. ' +\
+                        'Using impact functions in %s.', if_haz, INDICATOR_IF)
+            if_haz = INDICATOR_IF
 
         # Check if deductible and cover should be applied
         insure_flag = False
@@ -203,80 +219,108 @@ class Impact():
         if save_mat:
             self.imp_mat = self.imp_mat.tocsr()
 
-    def plot_eai_exposure(self, mask=None, ignore_zero=True,
-                          pop_name=True, buffer_deg=0.0, extend='neither',
-                          var_name=None, **kwargs):
-        """Plot expected annual impact of each exposure.
+    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
+                                 pop_name=True, buffer=0.0, extend='neither',
+                                 **kwargs):
+        """Plot hexbin expected annual impact of each exposure.
 
         Parameters:
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
-            buffer_deg (float, optional): border to add to coordinates.
+            buffer (float, optional): border to add to coordinates.
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            var_name (str, optional): Colorbar label
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        title = 'Expected annual impact'
-        if var_name is None:
-            var_name = 'Impact (' + self.unit + ')'
-        if mask is None:
-            mask = np.ones((self.eai_exp.size,), dtype=bool)
-        if ignore_zero:
-            pos_vals = self.eai_exp[mask] > 0
-        else:
-            pos_vals = np.ones((self.eai_exp[mask].size,), dtype=bool)
-        if 'reduce_C_function' not in kwargs:
-            kwargs['reduce_C_function'] = np.sum
-        return u_plot.geo_bin_from_array(self.eai_exp[mask][pos_vals], \
-            self.coord_exp[mask][pos_vals], var_name, title, pop_name, \
-            buffer_deg, extend, **kwargs)
+        eai_exp = self._build_exp()
+        fig, axes = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
+                                        extend, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
-    def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
-        """Compute impact for inpute exposure indexes and impact function.
+    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
+                                  pop_name=True, buffer=0.0, extend='neither',
+                                  **kwargs):
+        """Plot scatter expected annual impact of each exposure.
 
         Parameters:
-            exp_iimp (np.array): exposures indexes
-            exposures (Exposures): exposures instance
-            hazard (Hazard): hazard instance
-            imp_fun (ImpactFunc): impact function instance
-            insure_flag (bool): consider deductible and cover of exposures
+            mask (np.array, optional): mask to apply to eai_exp plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates.
+                Default: 1.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            kwargs (optional): arguments for hexbin matplotlib function
+
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if not exp_iimp.size:
-            return
+        eai_exp = self._build_exp()
+        fig, axes = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                         extend, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
-        # get assigned centroids
-        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
+    def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
+                                 raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                                 label='value (log10)', **kwargs):
+        """Plot raster expected annual impact of each exposure.
 
-        # get affected intensities
-        inten_val = hazard.intensity[:, icens].todense()
-        # get affected fractions
-        fract = hazard.fraction[:, icens]
-        # impact = fraction * mdr * value
-        impact = fract.multiply(imp_fun.calc_mdr(inten_val)). \
-            multiply(exposures.value.values[exp_iimp])
+        Parameters:
+            res (float, optional): resolution of current data in units of latitude
+                and longitude, approximated if not provided.
+            raster_res (float, optional): desired resolution of the raster
+            save_tiff (str, optional): file name to save the raster in tiff
+                format, if provided
+            raster_f (lambda function): transformation to use to data. Default:
+                log10 adding 1.
+            label (str): colorbar label
+            kwargs (optional): arguments for imshow matplotlib function
 
-        if insure_flag and impact.nonzero()[0].size:
-            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
-            impact = np.minimum(np.maximum(impact - \
-                exposures.deductible.values[exp_iimp] * paa, 0), \
-                exposures.cover.values[exp_iimp])
-            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
-                hazard.frequency.reshape(-1, 1), axis=0)
-        else:
-            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
-                impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        eai_exp = self._build_exp()
+        fig, axes = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
+                                        label, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
-        self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
-        self.tot_value += np.sum(exposures.value.values[exp_iimp])
-        if not isinstance(self.imp_mat, list):
-            self.imp_mat[:, exp_iimp] = impact
+    def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
+                                  buffer=0.0, extend='neither', zoom=10,
+                                  url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                  **kwargs):
+        """Plot basemap expected annual impact of each exposure.
+
+        Parameters:
+            mask (np.array, optional): mask to apply to eai_exp plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            zoom (int, optional): zoom coefficient used in the satellite image
+            url (str, optional): image source, e.g. ctx.sources.OSM_C
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+
+         Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        eai_exp = self._build_exp()
+        fig, axes = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
+                                         extend, zoom, url, **kwargs)
+        axes[0, 0].set_title('Expected annual impact')
+        return fig, axes
 
     def write_csv(self, file_name):
         """ Write data into csv file. imp_mat is not saved.
@@ -289,7 +333,7 @@ class Impact():
             imp_wr.writerow(["tag_hazard", "tag_exposure", "tag_impact_func",
                              "unit", "tot_value", "aai_agg", "event_id",
                              "event_name", "event_date", "event_frequency",
-                             "at_event", "eai_exp", "exp_lat", "exp_lon"])
+                             "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"])
             csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
@@ -297,7 +341,8 @@ class Impact():
                         [self.unit], [self.tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
                         self.frequency, self.at_event,
-                        self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1]]
+                        self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1],
+                        [str(self.crs)]]
             for values in zip_longest(*csv_data):
                 imp_wr.writerow(values)
 
@@ -320,15 +365,15 @@ class Impact():
         header = ["tag_hazard", "tag_exposure", "tag_impact_func",
                   "unit", "tot_value", "aai_agg", "event_id",
                   "event_name", "event_date", "event_frequency",
-                  "at_event", "eai_exp", "exp_lat", "exp_lon"]
+                  "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
-        data = [self.tag['haz'].haz_type, self.tag['haz'].file_name,
-                self.tag['haz'].description]
+        data = [self.tag['haz'].haz_type, str(self.tag['haz'].file_name),
+                str(self.tag['haz'].description)]
         write_col(0, imp_ws, data)
-        data = [self.tag['exp'].file_name, self.tag['exp'].description]
+        data = [str(self.tag['exp'].file_name), str(self.tag['exp'].description)]
         write_col(1, imp_ws, data)
-        data = [self.tag['if_set'].file_name, self.tag['if_set'].description]
+        data = [str(self.tag['if_set'].file_name), str(self.tag['if_set'].description)]
         write_col(2, imp_ws, data)
         write_col(3, imp_ws, [self.unit])
         write_col(4, imp_ws, [self.tot_value])
@@ -341,6 +386,7 @@ class Impact():
         write_col(11, imp_ws, self.eai_exp)
         write_col(12, imp_ws, self.coord_exp[:, 0])
         write_col(13, imp_ws, self.coord_exp[:, 1])
+        write_col(14, imp_ws, [str(self.crs)])
 
         imp_wb.close()
 
@@ -385,6 +431,7 @@ class Impact():
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
+        self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
                                  str(imp_df.tag_hazard[1]),
                                  str(imp_df.tag_hazard[2]))
@@ -426,6 +473,58 @@ class Impact():
         self.coord_exp = np.zeros((self.eai_exp.size, 2))
         self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
         self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
+        self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+
+    def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
+        """Compute impact for inpute exposure indexes and impact function.
+
+        Parameters:
+            exp_iimp (np.array): exposures indexes
+            exposures (Exposures): exposures instance
+            hazard (Hazard): hazard instance
+            imp_fun (ImpactFunc): impact function instance
+            insure_flag (bool): consider deductible and cover of exposures
+        """
+        if not exp_iimp.size:
+            return
+
+        # get assigned centroids
+        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
+
+        # get affected intensities
+        inten_val = hazard.intensity[:, icens]
+        # get affected fractions
+        fract = hazard.fraction[:, icens]
+        # impact = fraction * mdr * value
+        inten_val.data = imp_fun.calc_mdr(inten_val.data)
+        impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
+
+        if insure_flag and impact.nonzero()[0].size:
+            inten_val = hazard.intensity[:, icens].todense()
+            paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
+            impact = np.minimum(np.maximum(impact - \
+                exposures.deductible.values[exp_iimp] * paa, 0), \
+                exposures.cover.values[exp_iimp])
+            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
+                hazard.frequency.reshape(-1, 1), axis=0)
+        else:
+            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
+                impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
+
+        self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
+        self.tot_value += np.sum(exposures.value.values[exp_iimp])
+        if not isinstance(self.imp_mat, list):
+            self.imp_mat[:, exp_iimp] = impact
+
+    def _build_exp(self):
+        eai_exp = Exposures()
+        eai_exp['value'] = self.eai_exp
+        eai_exp['latitude'] = self.coord_exp[:, 0]
+        eai_exp['longitude'] = self.coord_exp[:, 1]
+        eai_exp.crs = self.crs
+        eai_exp.value_unit = self.unit
+        eai_exp.check()
+        return eai_exp
 
 class ImpactFreqCurve():
     """ Impact exceedence frequency curve.

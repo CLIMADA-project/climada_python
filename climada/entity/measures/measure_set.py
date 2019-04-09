@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -23,6 +23,7 @@ __all__ = ['MeasureSet']
 
 import copy
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
@@ -101,23 +102,24 @@ class MeasureSet():
             >>> act_1.mdd_impact = (1, 0)
             >>> act_1.paa_impact = (1, 0)
             >>> meas = MeasureSet()
-            >>> meas.add_Measure(act_1)
+            >>> meas.append(act_1)
             >>> meas.tag.description = "my dummy MeasureSet."
             >>> meas.check()
 
             Read measures from file and checks consistency data:
 
-            >>> meas = MeasureSet(ENT_TEMPLATE_XLS)
+            >>> meas = MeasureSet()
+            >>> meas.read_excel(ENT_TEMPLATE_XLS)
         """
         self.clear()
 
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self._data = dict() # {name: Measure()}
+        self._data = dict() # {hazard_type : {name: Measure()}}
 
-    def add_measure(self, meas):
-        """Add an Measure.
+    def append(self, meas):
+        """Append an Measure. Override if same name and haz_type.
 
         Parameters:
             meas (Measure): Measure instance
@@ -128,53 +130,138 @@ class MeasureSet():
         if not isinstance(meas, Measure):
             LOGGER.error("Input value is not of type Measure.")
             raise ValueError
+        if not meas.haz_type:
+            LOGGER.warning("Input Measure's hazard type not set.")
         if not meas.name:
-            LOGGER.error("Input Measure's name not set.")
-            raise ValueError
-        self._data[meas.name] = meas
+            LOGGER.warning("Input Measure's name not set.")
+        if meas.haz_type not in self._data:
+            self._data[meas.haz_type] = dict()
+        self._data[meas.haz_type][meas.name] = meas
 
-    def remove_measure(self, name=None):
-        """Remove Measure with provided name. Delete all Measures if no input
-        name
+    def remove_measure(self, haz_type=None, name=None):
+        """Remove impact function(s) with provided hazard type and/or id.
+        If no input provided, all impact functions are removed.
 
         Parameters:
+            haz_type (str, optional): all impact functions with this hazard
             name (str, optional): measure name
-
-        Raises:
-            ValueError
         """
-        if name is not None:
+        if (haz_type is not None) and (name is not None):
             try:
-                del self._data[name]
+                del self._data[haz_type][name]
             except KeyError:
-                LOGGER.warning('No Measure with name %s.', name)
+                LOGGER.info("No Measure with hazard %s and id %s.", \
+                             haz_type, name)
+        elif haz_type is not None:
+            try:
+                del self._data[haz_type]
+            except KeyError:
+                LOGGER.info("No Measure with hazard %s.", haz_type)
+        elif name is not None:
+            haz_remove = self.get_hazard_types(name)
+            if not haz_remove:
+                LOGGER.info("No Measure with name %s.", name)
+            for haz in haz_remove:
+                del self._data[haz][name]
         else:
             self._data = dict()
 
-    def get_measure(self, name=None):
-        """Get Measure with input name. Get all if no name provided.
+    def get_measure(self, haz_type=None, name=None):
+        """Get ImpactFunc(s) of input hazard type and/or id.
+        If no input provided, all impact functions are returned.
+
+        Parameters:
+            haz_type (str, optional): hazard type
+            name (str, optional): measure name
+
+        Returns:
+            Measure (if haz_type and name),
+            list(Measure) (if haz_type or name),
+            {Measure.haz_type: {Measure.name : Measure}} (if None)
+        """
+        if (haz_type is not None) and (name is not None):
+            try:
+                return self._data[haz_type][name]
+            except KeyError:
+                LOGGER.info("No Measure with hazard %s and id %s.", \
+                            haz_type, name)
+                return list()
+        elif haz_type is not None:
+            try:
+                return list(self._data[haz_type].values())
+            except KeyError:
+                LOGGER.info("No Measure with hazard %s.", haz_type)
+                return list()
+        elif name is not None:
+            haz_return = self.get_hazard_types(name)
+            if not haz_return:
+                LOGGER.info("No Measure with name %s.", name)
+            meas_return = []
+            for haz in haz_return:
+                meas_return.append(self._data[haz][name])
+            return meas_return
+        else:
+            return self._data
+
+    def get_hazard_types(self, meas=None):
+        """Get measures hazard types contained for the name provided.
+        Return all hazard types if no input name.
 
         Parameters:
             name (str, optional): measure name
 
         Returns:
-            list(Measure)
+            list(str)
         """
-        if name is not None:
-            try:
-                return self._data[name]
-            except KeyError:
-                return list()
-        else:
-            return list(self._data.values())
+        if meas is None:
+            return list(self._data.keys())
 
-    def get_names(self):
-        """Get all Measure names"""
-        return list(self._data.keys())
+        haz_return = []
+        for haz, haz_dict in self._data.items():
+            if meas in haz_dict:
+                haz_return.append(haz)
+        return haz_return
 
-    def num_measures(self):
-        """Get number of measures contained """
-        return len(self._data.keys())
+    def get_names(self, haz_type=None):
+        """Get measures names contained for the hazard type provided.
+        Return all names for each hazard type if no input hazard type.
+
+        Parameters:
+            haz_type (str, optional): hazard type from which to obtain the names
+
+        Returns:
+            list(Measure.name) (if haz_type provided),
+            {Measure.haz_type : list(Measure.name)} (if no haz_type)
+        """
+        if haz_type is None:
+            out_dict = dict()
+            for haz, haz_dict in self._data.items():
+                out_dict[haz] = list(haz_dict.keys())
+            return out_dict
+
+        try:
+            return list(self._data[haz_type].keys())
+        except KeyError:
+            LOGGER.info("No Measure with hazard %s.", haz_type)
+            return list()
+
+    def size(self, haz_type=None, name=None):
+        """Get number of measures contained with input hazard type and
+        /or id. If no input provided, get total number of impact functions.
+
+        Parameters:
+            haz_type (str, optional): hazard type
+            name (str, optional): measure name
+
+        Returns:
+            int
+        """
+        if (haz_type is not None) and (name is not None) and \
+        (isinstance(self.get_measure(haz_type, name), Measure)):
+            return 1
+        if (haz_type is not None) or (name is not None):
+            return len(self.get_measure(haz_type, name))
+        return sum(len(meas_list) for meas_list in self.get_names().values())
 
     def check(self):
         """Check instance attributes.
@@ -182,30 +269,43 @@ class MeasureSet():
         Raises:
             ValueError
         """
-        for act_name, act in self._data.items():
-            if (act_name != act.name) | (act.name == ''):
-                raise ValueError('Wrong Measure.name: %s != %s' %\
-                                (act_name, act.name))
-            act.check()
+        for key_haz, meas_dict in self._data.items():
+            def_color = plt.cm.get_cmap('Greys', len(meas_dict))
+            for i_meas, (name, meas) in enumerate(meas_dict.items()):
+                if (name != meas.name) | (name == ''):
+                    LOGGER.error("Wrong Measure.name: %s != %s.", name, \
+                                 meas.name)
+                    raise ValueError
+                if key_haz != meas.haz_type:
+                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",\
+                                 key_haz, meas.haz_type)
+                    raise ValueError
+                # set default color if not set
+                if np.array_equal(meas.color_rgb, np.zeros(3)):
+                    meas.color_rgb = def_color(i_meas)
+                meas.check()
 
-    def append(self, meas):
-        """Check and append measures of input MeasureSet to current MeasureSet.
-        Overwrite Measure if same name.
+    def extend(self, meas_set):
+        """Extend measures of input MeasureSet to current
+        MeasureSet. Overwrite Measure if same name and haz_type.
 
         Parameters:
-            meas (MeasureSet): MeasureSet instance to append
+            impact_funcs (MeasureSet): ImpactFuncSet instance to extend
 
         Raises:
             ValueError
         """
-        meas.check()
-        if self.num_measures() == 0:
-            self.__dict__ = copy.deepcopy(meas.__dict__)
+        meas_set.check()
+        if self.size() == 0:
+            self.__dict__ = copy.deepcopy(meas_set.__dict__)
             return
 
-        self.tag.append(meas.tag)
-        for measure in meas.get_measure():
-            self.add_measure(measure)
+        self.tag.append(meas_set.tag)
+
+        new_func = meas_set.get_measure()
+        for _, meas_dict in new_func.items():
+            for _, meas in meas_dict.items():
+                self.append(meas)
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
@@ -256,7 +356,7 @@ class MeasureSet():
                 meas.risk_transf_attach = data[var_names['var_name']['risk_att']][idx][0]
                 meas.risk_transf_cover = data[var_names['var_name']['risk_cov']][idx][0]
 
-                measures.add_measure(meas)
+                measures.append(meas)
 
         data = hdf5.read(file_name)
         self.clear()
@@ -320,7 +420,7 @@ class MeasureSet():
                 meas.risk_transf_attach = dfr[var_names['col_name']['risk_att']][idx]
                 meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
 
-                measures.add_measure(meas)
+                measures.append(meas)
 
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
@@ -360,14 +460,15 @@ class MeasureSet():
         for icol, head_dat in enumerate(header):
             mead_ws.write(0, icol, head_dat)
         row_ini = 1
-        for meas_name, meas in self._data.items():
-            xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
-                        meas.cost, meas.hazard_inten_imp[0],
-                        meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
-                        meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
-                        meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
-                        meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
-                        meas.risk_transf_cover, meas.haz_type]
+        for _, haz_dict in self._data.items():
+            for meas_name, meas in haz_dict.items():
+                xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
+                            meas.cost, meas.hazard_inten_imp[0],
+                            meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
+                            meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
+                            meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
+                            meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
+                            meas.risk_transf_cover, meas.haz_type]
             write_meas(row_ini, mead_ws, xls_data)
             row_ini += 1
         meas_wb.close()

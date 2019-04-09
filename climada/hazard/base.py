@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -19,33 +19,66 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Hazard.
 """
 
-__all__ = ['Hazard',
-           'FILE_EXT']
+__all__ = ['Hazard']
 
-import os
 import copy
 import logging
 import datetime as dt
 import warnings
 import numpy as np
 from scipy import sparse
+import pandas as pd
+import h5py
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.base import Centroids
-from climada.hazard.source import READ_SET
-from climada.util.files_handler import to_list, get_file_names
 import climada.util.plot as u_plot
 import climada.util.checker as check
 import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
+import climada.util.hdf5_handler as hdf5
 
 LOGGER = logging.getLogger(__name__)
 
-FILE_EXT = {'.mat':  'MAT',
-            '.xls':  'XLS',
-            '.xlsx': 'XLS'
-           }
-""" Supported files format to read from """
+DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
+                                'freq' : 'hazard_frequency'
+                               },
+                 'col_name': {'cen_id' : 'centroid_id/event_id',
+                              'even_id' : 'event_id',
+                              'even_dt' : 'event_date',
+                              'even_name' : 'event_name',
+                              'freq' : 'frequency',
+                              'orig': 'orig_event_flag'
+                             },
+                 'col_centroids': {'sheet_name': 'centroids',
+                                   'col_name': {'cen_id' : 'centroid_id',
+                                                'lat' : 'latitude',
+                                                'lon' : 'longitude'
+                                               }
+                                  }
+                }
+""" Excel variable names """
+
+DEF_VAR_MAT = {'field_name': 'hazard',
+               'var_name': {'per_id' : 'peril_ID',
+                            'even_id' : 'event_ID',
+                            'ev_name' : 'name',
+                            'freq' : 'frequency',
+                            'inten': 'intensity',
+                            'unit': 'units',
+                            'frac': 'fraction',
+                            'comment': 'comment',
+                            'datenum': 'datenum',
+                            'orig': 'orig_event_flag'
+                           },
+               'var_cent': {'field_names': ['centroids', 'hazard'],
+                            'var_name': {'cen_id' : 'centroid_ID',
+                                         'lat' : 'lat',
+                                         'lon' : 'lon'
+                                        }
+                           }
+              }
+""" MATLAB variable names """
 
 class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
@@ -96,37 +129,27 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', file_name='', description='', centroids=None):
-        """Initialize values from given file, if given.
+    def __init__(self, haz_type):
+        """Initialize values.
 
         Parameters:
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
-            file_name (str or list(str), optional): absolute file name(s) or \
-                folder name containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
-            centroids (Centroids or list(Centroids), optional): Centroids
-
-        Raises:
-            ValueError
 
         Examples:
             Fill hazard values by hand:
 
-            >>> haz = Hazard()
+            >>> haz = Hazard('TC')
             >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
             >>> ...
 
             Take hazard values from file:
 
             >>> haz = Hazard('TC', HAZ_DEMO_MAT)
+            >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
 
-            Take centriods from a different source:
-
-            >>> centr = Centroids(HAZ_DEMO_MAT, 'Centroids demo')
-            >>> haz = Hazard('TC', HAZ_DEMO_MAT, 'Demo hazard.', centr)
         """
         self.tag = TagHazard()
+        self.tag.haz_type = haz_type
         self.units = ''
         self.centroids = Centroids()
         # following values are defined for each event
@@ -138,15 +161,6 @@ class Hazard():
         # following values are defined for each event and centroid
         self.intensity = sparse.csr_matrix(np.empty((0, 0))) # events x centroids
         self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-
-        if '.' in haz_type and file_name == '':
-            LOGGER.error("Provide hazard type.")
-            raise ValueError
-        self.tag.haz_type = haz_type
-        if file_name != '':
-            if haz_type == '':
-                LOGGER.warning("Hazard type acronym not provided.")
-            self.read(file_name, description, centroids)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -167,33 +181,65 @@ class Hazard():
         self.centroids.check()
         self._check_events()
 
-    def read(self, files, description='', centroids=None, var_names=None):
-        """Set and check hazard, and centroids if not provided, from file.
+    def read_mat(self, file_name, description='', centroids=None,
+                 var_names=DEF_VAR_MAT):
+        """Read climada hazard generate with the MATLAB code.
 
         Parameters:
-            files (str or list(str)): absolute file name(s) or folder name
-                containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
-            centroids (Centroids or list(Centroids), optional): Centroids
-            var_names (dict or list(dict), default): name of the variables in
-                the file (default: DEF_VAR_NAME defined in the source modules)
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            centroids (Centroids, optional): provide centroids if not contained
+                in the file
+            var_names (dict, default): name of the variables in the file,
+                default: DEF_VAR_MAT constant
 
         Raises:
-            ValueError
+            KeyError
+        """
+        self.clear()
+        self.tag.file_name = file_name
+        self.tag.description = description
+        try:
+            data = hdf5.read(file_name)
+            try:
+                data = data[var_names['field_name']]
+            except KeyError:
+                pass
+
+            haz_type = hdf5.get_string(data[var_names['var_name']['per_id']])
+            self.tag.haz_type = haz_type
+            self._read_centroids(centroids=centroids, var_names=var_names['var_cent'])
+            self._read_att_mat(data, file_name, var_names)
+        except KeyError as var_err:
+            LOGGER.error("Not existing variable: %s", str(var_err))
+            raise var_err
+
+    def read_excel(self, file_name, description='', centroids=None,
+                   var_names=DEF_VAR_EXCEL):
+        """Read climada hazard generate with the MATLAB code.
+
+        Parameters:
+            file_name (str): absolute file name
+            description (str, optional): description of the data
+            centroids (Centroids, optional): provide centroids if not contained
+                in the file
+            var_names (dict, default): name of the variables in the file,
+                default: DEF_VAR_EXCEL constant
+
+        Raises:
+            KeyError
         """
         haz_type = self.tag.haz_type
-        # Construct absolute path file names
-        all_files = get_file_names(files)
-        if not all_files:
-            LOGGER.warning('No valid file provided: %s', files)
-        desc_list = to_list(len(all_files), description, 'description')
-        centr_list = to_list(len(all_files), centroids, 'centroids')
-        var_list = to_list(len(all_files), var_names, 'var_names')
         self.clear()
-        for file, desc, centr, var in zip(all_files, desc_list, centr_list,
-                                          var_list):
-            self.append(self._read_one(file, haz_type, desc, centr, var))
+        self.tag.file_name = file_name
+        self.tag.haz_type = haz_type
+        self.tag.description = description
+        try:
+            self._read_centroids(centroids=centroids, var_names=var_names['col_centroids'])
+            self._read_att_excel(file_name, var_names)
+        except KeyError as var_err:
+            LOGGER.error("Not existing variable: %s", str(var_err))
+            raise var_err
 
     def select(self, date=None, orig=None, reg_id=None):
         """Select events within provided date and/or historical or synthetical.
@@ -208,7 +254,10 @@ class Hazard():
         Returns:
             Hazard or children
         """
-        haz = self.__class__()
+        try:
+            haz = self.__class__()
+        except TypeError:
+            haz = Hazard(self.tag.haz_type)
         sel_ev = np.ones(self.event_id.size, bool)
         sel_cen = np.ones(self.centroids.size, bool)
 
@@ -302,7 +351,7 @@ class Hazard():
             np.ndarray (return_periods.size x num_centroids)
         """
         inten_stats = self.local_exceedance_inten(np.array(return_periods))
-        colbar_name = 'Wind intensity (' + self.units + ')'
+        colbar_name = 'Intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
@@ -553,37 +602,80 @@ class Hazard():
         self.fraction = sparse.csr_matrix(self.fraction[mask].\
         reshape(self.event_id.size, self.intensity.shape[1]))
 
-    @staticmethod
-    def get_sup_file_format():
-        """ Get supported file extensions that can be read.
-
-        Returns:
-            list(str)
-        """
-        return list(FILE_EXT.keys())
-
-    @staticmethod
-    def get_def_file_var_names(src_format):
-        """Get default variable names for given file format.
-
-        Parameters:
-            src_format (str): extension of the file, e.g. '.xls', '.mat'
-
-        Returns:
-            dict: dictionary with variable names
-        """
-        try:
-            if '.' not in src_format:
-                src_format = '.' + src_format
-            return copy.deepcopy(READ_SET[FILE_EXT[src_format]][0])
-        except KeyError:
-            LOGGER.error('File extension not supported: %s.', src_format)
-            raise ValueError
-
     @property
     def size(self):
         """ Returns number of events """
         return self.event_id.size
+
+    def write_hdf5(self, file_name):
+        """ Write hazard in hdf5 format.
+
+        Parameters:
+            file_name (str): file name to write, with h5 format
+        """
+        hf_data = h5py.File(file_name, 'w')
+        str_dt = h5py.special_dtype(vlen=str)
+        for (var_name, var_val) in self.__dict__.items():
+            if var_name == 'centroids':
+                hf_centr = hf_data.create_group(var_name)
+                hf_centr.create_dataset('latitude', data=var_val.lat)
+                hf_centr.create_dataset('longitude', data=var_val.lon)
+                hf_centr.create_dataset('id', data=var_val.id)
+            elif var_name == 'tag':
+                hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
+                hf_str[0] = var_val.haz_type
+                hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val.file_name)
+                hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val.description)
+            elif isinstance(var_val, sparse.csr_matrix):
+                hf_csr = hf_data.create_group(var_name)
+                hf_csr.create_dataset('data', data=var_val.data)
+                hf_csr.create_dataset('indices', data=var_val.indices)
+                hf_csr.create_dataset('indptr', data=var_val.indptr)
+                hf_csr.attrs['shape'] = var_val.shape
+            elif isinstance(var_val, str):
+                hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
+                hf_str[0] = var_val
+            elif isinstance(var_val, list) and isinstance(var_val[0], str):
+                hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
+                for i_ev, var_ev in enumerate(var_val):
+                    hf_str[i_ev] = var_ev
+            else:
+                hf_data.create_dataset(var_name, data=var_val)
+        hf_data.close()
+
+    def read_hdf5(self, file_name):
+        """ Read hazard in hdf5 format.
+
+        Parameters:
+            file_name (str): file name to read, with h5 format
+        """
+        self.clear()
+        hf_data = h5py.File(file_name, 'r')
+        for (var_name, var_val) in self.__dict__.items():
+            if var_name == 'centroids':
+                hf_centr = hf_data.get(var_name)
+                self.centroids.coord = np.stack([np.array(hf_centr.get('latitude')),
+                                                 np.array(hf_centr.get('longitude'))], axis=1)
+                self.centroids.id = np.array(hf_centr.get('id'))
+            elif var_name == 'tag':
+                self.tag.haz_type = hf_data.get('haz_type')[0]
+                self.tag.file_name = hf_data.get('file_name')[0]
+                self.tag.description = hf_data.get('description')[0]
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, np.array(hf_data.get(var_name)))
+            elif isinstance(var_val, sparse.csr_matrix):
+                hf_csr = hf_data.get(var_name)
+                setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
+                    hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
+            elif isinstance(var_val, str):
+                setattr(self, var_name, hf_data.get(var_name)[0])
+            elif isinstance(var_val, list):
+                setattr(self, var_name, hf_data.get(var_name).value.tolist())
+            else:
+                setattr(self, var_name, hf_data.get(var_name))
+        hf_data.close()
 
     def _append_all(self, list_haz_ev):
         """Append event by event with same centroids. Takes centroids and units
@@ -671,38 +763,6 @@ class Hazard():
         cen_haz[rep_vals.size:] = new_vals
 
         return cen_self, cen_haz
-
-    @classmethod
-    def _read_one(cls, file_name, haz_type, description='', centroids=None, \
-                  var_names=None):
-        """ Read hazard, and centroids if not provided, from input file.
-
-        Parameters:
-            file_name (str): name of the source file
-            haz_type (str): acronym of the hazard type (e.g. 'TC')
-            description (str, optional): description of the source data
-            centroids (Centroids, optional): Centroids instance
-            var_names (dict, optional): name of the variables in the file
-
-        Raises:
-            ValueError, KeyError
-
-        Returns:
-            Hazard or children
-        """
-        LOGGER.info('Reading file: %s', file_name)
-        new_haz = cls()
-        new_haz.tag = TagHazard(haz_type, file_name, description)
-
-        extension = os.path.splitext(file_name)[1]
-        try:
-            reader = READ_SET[FILE_EXT[extension]][1]
-        except KeyError:
-            LOGGER.error('Input file extension not supported: %s.', extension)
-            raise ValueError
-        reader(new_haz, file_name, centroids, var_names)
-
-        return new_haz
 
     def _events_set(self):
         """Generate set of tuples with (event_name, event_date) """
@@ -884,3 +944,99 @@ class Hazard():
         inten_fit[wrong_inten] = 0.
 
         return inten_fit
+
+    def _read_att_mat(self, data, file_name, var_names):
+        """ Read MATLAB hazard's attributes. """
+        self.frequency = np.squeeze(data[var_names['var_name']['freq']])
+        self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
+        self.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
+            astype(np.int, copy=False))
+        try:
+            self.units = hdf5.get_string(data[var_names['var_name']['unit']])
+        except KeyError:
+            pass
+
+        n_cen = len(self.centroids.id)
+        n_event = len(self.event_id)
+        try:
+            self.intensity = hdf5.get_sparse_csr_mat( \
+                data[var_names['var_name']['inten']], (n_event, n_cen))
+        except ValueError as err:
+            LOGGER.error('Size missmatch in intensity matrix.')
+            raise err
+        try:
+            self.fraction = hdf5.get_sparse_csr_mat( \
+                data[var_names['var_name']['frac']], (n_event, n_cen))
+        except ValueError as err:
+            LOGGER.error('Size missmatch in fraction matrix.')
+            raise err
+        except KeyError:
+            self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
+                                                      dtype=np.float))
+        # Event names: set as event_id if no provided
+        try:
+            self.event_name = hdf5.get_list_str_from_ref(
+                file_name, data[var_names['var_name']['ev_name']])
+        except KeyError:
+            self.event_name = list(self.event_id)
+        try:
+            comment = hdf5.get_string(data[var_names['var_name']['comment']])
+            self.tag.description += ' ' + comment
+        except KeyError:
+            pass
+
+        try:
+            datenum = data[var_names['var_name']['datenum']].squeeze()
+            self.date = np.array([(dt.datetime.fromordinal(int(date)) + \
+                dt.timedelta(days=date%1)- \
+                dt.timedelta(days=366)).toordinal() for date in datenum])
+        except KeyError:
+            pass
+
+    def _read_centroids(self, centroids, var_names):
+        """Read centroids file if no centroids provided"""
+        if centroids is None:
+            self.centroids = Centroids()
+            self.centroids.read(self.tag.file_name, self.tag.description,
+                                var_names)
+        else:
+            self.centroids = centroids
+
+    def _read_att_excel(self, file_name, var_names):
+        """ Read Excel hazard's attributes. """
+        num_cen = self.centroids.id.size
+        dfr = pd.read_excel(file_name, var_names['sheet_name']['freq'])
+
+        num_events = dfr.shape[0]
+        self.frequency = dfr[var_names['col_name']['freq']].values
+        self.orig = dfr[var_names['col_name']['orig']].values.astype(bool)
+        self.event_id = dfr[var_names['col_name']['even_id']].values. \
+            astype(int, copy=False)
+        self.date = dfr[var_names['col_name']['even_dt']].values. \
+            astype(int, copy=False)
+        self.event_name = dfr[var_names['col_name']['even_name']].values.tolist()
+
+        dfr = pd.read_excel(file_name, var_names['sheet_name']['inten'])
+        # number of events (ignore centroid_ID column)
+        # check the number of events is the same as the one in the frequency
+        if dfr.shape[1] - 1 is not num_events:
+            LOGGER.error('Hazard intensity is given for a number of events ' \
+                    'different from the number of defined in its frequency: ' \
+                    '%s != %s', dfr.shape[1] - 1, num_events)
+            raise ValueError
+        # check number of centroids is the same as retrieved before
+        if dfr.shape[0] is not num_cen:
+            LOGGER.error('Hazard intensity is given for a number of centroids ' \
+                    'different from the number of centroids defined: %s != %s', \
+                    dfr.shape[0], num_cen)
+            raise ValueError
+        # check centroids ids are correct
+        if not np.array_equal(dfr[var_names['col_name']['cen_id']].values,
+                              self.centroids.id[-num_cen:]):
+            LOGGER.error('Hazard intensity centroids ids do not match ' \
+                         'previously defined centroids.')
+            raise ValueError
+
+        self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events+1].transpose())
+        self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
+                                                  dtype=np.float))

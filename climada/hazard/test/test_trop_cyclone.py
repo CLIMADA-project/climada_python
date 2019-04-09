@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -144,7 +144,7 @@ class TestReader(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
 
         tc_haz1 = TropCyclone()
-        tc_haz1.read(HAZ_TEST_MAT)
+        tc_haz1.read_mat(HAZ_TEST_MAT)
 
         tc_haz2 = TropCyclone()
         tc_haz2.set_from_tracks(tc_track, CENTR_TEST_BRB)

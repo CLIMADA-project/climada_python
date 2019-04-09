@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -59,6 +59,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track.data[0].orig_event_flag, 1)
         self.assertEqual(tc_track.data[0].name, '1951239N12334')
+        self.assertEqual(tc_track.data[0].sid, '1951239N12334')
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].data_provider, 'hurdat_atl')
         self.assertTrue(np.isnan(tc_track.data[0].basin))
@@ -67,6 +68,26 @@ class TestIBTracs(unittest.TestCase):
         
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
+
+    def test_penv_pass(self):
+        """ Test _set_penv method."""
+        tc_track = TCTracks()
+        basin = 'US'
+        self.assertEqual(tc_track._set_penv(basin), 1010)
+        basin = 'NA'
+        self.assertEqual(tc_track._set_penv(basin), 1010)
+        basin = 'SA'
+        self.assertEqual(tc_track._set_penv(basin), 1010)
+        basin = 'NI'
+        self.assertEqual(tc_track._set_penv(basin), 1005)
+        basin = 'SI'
+        self.assertEqual(tc_track._set_penv(basin), 1005)
+        basin = 'SP'
+        self.assertEqual(tc_track._set_penv(basin), 1004)
+        basin = 'WP'
+        self.assertEqual(tc_track._set_penv(basin), 1005)
+        basin = 'EP'
+        self.assertEqual(tc_track._set_penv(basin), 1010)
 
     def test_get_track_pass(self):
         """ Test get_track."""
@@ -89,7 +110,7 @@ class TestFuncs(unittest.TestCase):
 
         self.assertEqual(tc_track.data[0].time.size, 223)
         self.assertAlmostEqual(tc_track.data[0].lon.values[11], -27.426151640151684)
-        self.assertEqual(tc_track.data[0].lat[23], 12.300006169591480)
+        self.assertAlmostEqual(tc_track.data[0].lat[23], 12.300006169591480)
         self.assertEqual(tc_track.data[0].time_step[7], 1)
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
@@ -210,8 +231,8 @@ class TestFuncs(unittest.TestCase):
         v_lf, p_lf, x_val = tc._decay_values(tc_track.data[0], land_geom, s_rel)
 
         ss_category = 6
-        s_cell_1 = 1*[1.0672358591248665]
-        s_cell_2 = 8*[1.0471204188481675]
+        s_cell_1 = 1*[1.0149413347244263]
+        s_cell_2 = 8*[1.047120451927185]
         s_cell = s_cell_1 + s_cell_2
         p_vs_lf_time_relative = [1.0149413020277482, 1.018848167539267, 1.037696335078534, \
                                  1.0418848167539267, 1.043979057591623, 1.0450261780104713, \
@@ -404,9 +425,9 @@ class TestFuncs(unittest.TestCase):
         tr_ds.on_land[on_land_idx] = True
         p_landfall = 100
 
-        res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=True)
+        res = tc._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=True)
         self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx]/p_landfall))
-        res = tc._calc_decay_ps_value(tr_ds, p_landfall, s_rel=False)
+        res = tc._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=False)
         self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx]/p_landfall))
 
     def test_category_pass(self):

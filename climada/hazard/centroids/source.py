@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -42,9 +42,9 @@ DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
 """ MATLAB variable names """
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
-                 'col_name': {'cen_id' : 'centroid_ID',
-                              'lat' : 'Latitude',
-                              'lon' : 'Longitude',
+                 'col_name': {'cen_id' : 'centroid_id',
+                              'lat' : 'latitude',
+                              'lon' : 'longitude',
                              }
                 }
 """ Excel variable names """

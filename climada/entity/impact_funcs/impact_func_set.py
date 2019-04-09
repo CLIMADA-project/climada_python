@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -83,7 +83,7 @@ class ImpactFuncSet():
             >>> fun_1.paa = np.array([0, 1])
             >>> fun_1.mdd = np.array([0, 0.5])
             >>> imp_fun = ImpactFuncSet()
-            >>> imp_fun.add_func(fun_1)
+            >>> imp_fun.append(fun_1)
             >>> imp_fun.check()
 
             Read impact functions from file and checks consistency data.
@@ -96,10 +96,10 @@ class ImpactFuncSet():
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self._data = dict() # {hazard_id : {id:ImpactFunc}}
+        self._data = dict() # {hazard_type : {id:ImpactFunc}}
 
-    def add_func(self, func):
-        """Add a ImpactFunc. Overwrite existing if same id.
+    def append(self, func):
+        """Append a ImpactFunc. Overwrite existing if same id and haz_type.
 
         Parameters:
             func (ImpactFunc): ImpactFunc instance
@@ -111,17 +111,15 @@ class ImpactFuncSet():
             LOGGER.error("Input value is not of type ImpactFunc.")
             raise ValueError
         if not func.haz_type:
-            LOGGER.error("Input ImpactFunc's hazard type not set.")
-            raise ValueError
+            LOGGER.warning("Input ImpactFunc's hazard type not set.")
         if not func.id:
-            LOGGER.error("Input ImpactFunc's id not set.")
-            raise ValueError
+            LOGGER.warning("Input ImpactFunc's id not set.")
         if func.haz_type not in self._data:
             self._data[func.haz_type] = dict()
         self._data[func.haz_type][func.id] = func
 
     def remove_func(self, haz_type=None, fun_id=None):
-        """Remove vulenerability(ies) with provided hazard type and/or id.
+        """Remove impact function(s) with provided hazard type and/or id.
         If no input provided, all impact functions are removed.
 
         Parameters:
@@ -157,12 +155,13 @@ class ImpactFuncSet():
             fun_id (int, optional): ImpactFunc id
 
         Returns:
-            list(ImpactFunc) (if haz_type and/or fun_id), {ImpactFunc.haz_type:
-            {ImpactFunc.id : ImpactFunc}} (if None)
+            ImpactFunc (if haz_type and fun_id),
+            list(ImpactFunc) (if haz_type or fun_id),
+            {ImpactFunc.haz_type: {ImpactFunc.id : ImpactFunc}} (if None)
         """
         if (haz_type is not None) and (fun_id is not None):
             try:
-                return [self._data[haz_type][fun_id]]
+                return self._data[haz_type][fun_id]
             except KeyError:
                 return list()
         elif haz_type is not None:
@@ -187,7 +186,7 @@ class ImpactFuncSet():
             fun_id (int, optional): id of an impact function
 
         Returns:
-            list
+            list(str)
         """
         if fun_id is None:
             return list(self._data.keys())
@@ -231,9 +230,11 @@ class ImpactFuncSet():
         Returns:
             int
         """
+        if (haz_type is not None) and (fun_id is not None) and \
+        (isinstance(self.get_func(haz_type, fun_id), ImpactFunc)):
+            return 1
         if (haz_type is not None) or (fun_id is not None):
             return len(self.get_func(haz_type, fun_id))
-
         return sum(len(vul_list) for vul_list in self.get_ids().values())
 
     def check(self):
@@ -254,12 +255,12 @@ class ImpactFuncSet():
                     raise ValueError
                 vul.check()
 
-    def append(self, impact_funcs):
+    def extend(self, impact_funcs):
         """Append impact functions of input ImpactFuncSet to current
-        ImpactFuncSet. Overwrite ImpactFunc if same id.
+        ImpactFuncSet. Overwrite ImpactFunc if same id and haz_type.
 
         Parameters:
-            impact_funcs (ImpactFuncSet): ImpactFuncSet instance to append
+            impact_funcs (ImpactFuncSet): ImpactFuncSet instance to extend
 
         Raises:
             ValueError
@@ -274,7 +275,7 @@ class ImpactFuncSet():
         new_func = impact_funcs.get_func()
         for _, vul_dict in new_func.items():
             for _, vul in vul_dict.items():
-                self.add_func(vul)
+                self.append(vul)
 
     def plot(self, haz_type=None, fun_id=None):
         """Plot impact functions of selected hazard (all if not provided) and
@@ -382,7 +383,7 @@ class ImpactFuncSet():
                 func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
                 func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
                 func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
-                self.add_func(func)
+                self.append(func)
         except KeyError as err:
             LOGGER.error("Not existing variable: %s", str(err))
             raise err
@@ -464,7 +465,7 @@ class ImpactFuncSet():
                 func.mdd = df_func[var_names['col_name']['mdd']].values
                 func.paa = df_func[var_names['col_name']['paa']].values
 
-                self.add_func(func)
+                self.append(func)
 
         except KeyError as err:
             LOGGER.error("Not existing variable: %s", str(err))

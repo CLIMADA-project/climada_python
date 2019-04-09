@@ -1,7 +1,7 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
@@ -22,7 +22,6 @@ import os
 import unittest
 import numpy as np
 from scipy import sparse
-import pandas as pd
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -33,6 +32,8 @@ from climada.util.constants import ENT_DEMO_TODAY
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+
+DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
 
 class TestFreqCurve(unittest.TestCase):
     '''Test exceedence frequency curve computation'''
@@ -118,7 +119,8 @@ class TestOneExposure(unittest.TestCase):
         ent.read_excel(ENT_DEMO_TODAY)
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -132,7 +134,7 @@ class TestOneExposure(unittest.TestCase):
         iexp = 5
         # Take its impact function
         imp_id = ent.exposures.if_TC[iexp]
-        imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)[0]
+        imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)
         # Compute
         insure_flag = True
         impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
@@ -174,7 +176,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 
@@ -220,7 +223,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         impact = Impact()
 
@@ -236,6 +240,48 @@ class TestCalc(unittest.TestCase):
             impact.at_event))
         self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.todense(),
             impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
+
+    def test_calc_if_pass(self):
+        """ Execute when no if_HAZ present, but only if_ """
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.exposures.rename(columns={'if_TC':'if_'}, inplace=True)
+        ent.check()
+        
+        # Read default hazard file
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        # Create impact object
+        impact = Impact()
+        impact.calc(ent.exposures, ent.impact_funcs, hazard)
+
+        # Check result
+        num_events = len(hazard.event_id)
+        num_exp = ent.exposures.shape[0]
+        # Check relative errors as well when absolute value gt 1.0e-7
+        # impact.at_event == EDS.damage in MATLAB
+        self.assertEqual(num_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[int(num_events/2)])
+        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
+        self.assertEqual(7.076504723057619e+10, impact.at_event[12147])
+        self.assertEqual(0, impact.at_event[num_events-1])
+        # impact.eai_exp == EDS.ED_at_centroid in MATLAB
+        self.assertEqual(num_exp, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
+        self.assertAlmostEqual(1.373490457046383e+08, \
+                               impact.eai_exp[int(num_exp/2)], 6)
+        self.assertTrue(np.isclose(1.373490457046383e+08, \
+                                          impact.eai_exp[int(num_exp/2)]))
+        self.assertAlmostEqual(1.066837260150042e+08, \
+                               impact.eai_exp[num_exp-1], 6)
+        self.assertTrue(np.isclose(1.066837260150042e+08, \
+                                          impact.eai_exp[int(num_exp-1)]))
+        # impact.tot_value == EDS.Value in MATLAB
+        # impact.aai_agg == EDS.ED in MATLAB
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
+        self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
 class TestIO(unittest.TestCase):
     ''' Test impact calc method.'''
@@ -262,7 +308,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.dirname(__file__) + 'test.csv'
+        file_name = os.path.join(DATA_FOLDER, 'test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -301,7 +347,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.dirname(__file__) + 'test.csv'
+        file_name = os.path.join(DATA_FOLDER, 'test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -317,6 +363,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_read_excel_pass(self):
         """ Test write and read in excel """
@@ -324,11 +371,12 @@ class TestIO(unittest.TestCase):
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard('TC', HAZ_TEST_MAT)
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
-        file_name = os.path.dirname(__file__) + 'test.xlsx'
+        file_name = os.path.join(DATA_FOLDER, 'test.xlsx')
         imp_write.write_excel(file_name)
 
         imp_read = Impact()
@@ -345,6 +393,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(0, len([i for i, j in
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_imp_mat(self):
         """ Test write_excel_imp_mat function """
@@ -357,7 +406,7 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[4, :] = np.arange(4)*5
         impact.imp_mat = impact.imp_mat.tocsr()
 
-        file_name = os.path.dirname(__file__) + '/test_imp_mat'
+        file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
         impact.write_sparse_csr(file_name)
         read_imp_mat = Impact().read_sparse_csr(file_name+'.npz')
         for irow in range(5):

@@ -24,122 +24,7 @@ YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
 BUFFER_VAL = -340282306073709652508363335590014353408
 # Hard coded value which is used for NANs in original GPW data
 
-def read_gpw_file(**parameters):
-    """ Reads data from GPW GeoTiff file and cutsout the data for the
-        according country.
 
-    Optional parameters:
-        gpw_path (str): absolute path where files are stored. Default: SYSTEM_DIR
-        resolution (int): the resolution in which the data output is created.
-        country_adm0 (str): Three letter country code of country to be cut out.
-            No default
-        country_cut_mode (int): Defines how the country is cut out:
-            if 0: the country is only cut out with a bounding box
-            if 1: the country is cut out along it's borders
-            Default: = 1 #TODO: Unimplemented
-        cut_bbox (1x4 array-like): Bounding box (ESRI type) to be cut out.
-            the layout of the bounding box corresponds to the bounding box of
-            the ESRI shape files and is as follows:
-            [minimum longitude, minimum latitude, maximum longitude, maxmimum
-             latitude]
-            if country_cut_mode = 1, the cut_bbox is overwritten/ignored.
-        result_mode (int): Determines whether latitude and longitude are
-            delievered along with gpw data (0) or only gpw_data is returned (1)
-            Default = 1.
-        reference_year (int): reference year, available years are:
-            2000, 2005, 2010, 2015 (default), 2020
-
-    Returns:
-        tile_temp (pandas SparseArray): GPW data
-        lon (list): list with longitudinal infomation on the GPW data. Same
-            dimensionality as tile_temp (only returned if result_mode=1)
-        lat (list): list with latitudinal infomation on the GPW data. Same
-            dimensionality as tile_temp (only returned if result_mode=1)
-    """
-    gpw_path = parameters.get('gpw_path', SYSTEM_DIR)
-    resolution = parameters.get('resolution', 30)
-    cut_bbox = parameters.get('cut_bbox')
-    country_adm0 = parameters.get('country_adm0')
-#    country_cut_mode = parameters.get('country_cut_mode', 1)
-    result_mode = parameters.get('result_mode', 0)
-    reference_year = parameters.get('reference_year', 2015)
-    # find nearest available year:
-    year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
-    filename_GPW = FILENAME_GPW0 + str(year) + FILENAME_GPW1
-    LOGGER.debug('Reference year: %i. Nearest available year for GWP population data: %i',\
-                 reference_year, year)
-#    if cut_bbox is None and not (country_adm0 is None):
-#        cut_bbox = LitPop._check_bbox_country_cut_mode(country_cut_mode,\
-#                                                       cut_bbox, country_adm0)
-    if (cut_bbox is None) & (result_mode == 0):
-    # If we don't have a bbox by now and we need one, we just use the global
-        cut_bbox = np.array((-180, -90, 180, 90))
-    zoom_factor = 30/resolution # Orignal resolution is arc-seconds
-    try:
-        fname = os.path.join(gpw_path, filename_GPW)
-        if not os.path.isfile(fname):
-            if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
-                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],\
-                                  shell=True)
-                raise FileExistsError('The file ' + str(fname) + ' could not '\
-                                      + 'be found. Please download the file '\
-                                      + 'first or choose a different folder. '\
-                                      + 'Instructions on how to download the '\
-                                      + 'file has been openend in your PDF '\
-                                      + 'viewer.')
-            else:
-                raise FileExistsError('The file ' + str(fname) + ' could not '\
-                                      + 'be found. Please download the file '\
-                                      + 'first or choose a different folder. '\
-                                      + 'The data can be downloaded from '\
-                                      + 'http://sedac.ciesin.columbia.edu/'\
-                                      + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Trying to import the file %s', str(fname))
-        gpw_file = gdal.Open(fname)
-        band1 = gpw_file.GetRasterBand(1)
-        arr1 = band1.ReadAsArray()
-        del band1, gpw_file
-        arr1[arr1 < 0] = 0
-        if arr1.shape != (17400, 43200):
-            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '\
-                           + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
-            LOGGER.warning('Expected dimensions: 17400x43200.')
-        if zoom_factor != 1:
-            tile_temp = nd.zoom(arr1, zoom_factor, order=1)
-        else:
-            tile_temp = arr1
-        del arr1
-        if tile_temp.ndim == 2:
-            if not cut_bbox is None:
-                tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution)
-        else:
-            LOGGER.error('Error: Matrix has an invalid number of dimensions \
-                         (more than 2). Could not proceed operation.')
-            raise TypeError
-        tile_temp = tile_temp.reshape((tile_temp.size,), order='F')
-        country_shape = LitPop._get_country_shape(country_adm0)
-        check_points = LitPop._litpop_box2coords(cut_bbox, resolution, 1)
-        lat, lon, encl, mask = LitPop._shape_cutter(country_shape, resolution\
-                                                    =resolution,\
-                                                    return_mask=1,\
-                                                    point_format=0,\
-                                                    check_points\
-                                                    =check_points)
-        del encl
-        if not len(mask) == len(tile_temp):
-            LOGGER.warning('Warning: length of mask and data not equal: '\
-                   + '{} and {}'.format(str(len(mask)), str(len(tile_temp))))
-        tile_temp = tile_temp[mask.sp_index.indices]
-        if result_mode == 1:
-            return tile_temp, lat, lon
-
-        del mask, lat, lon
-        return tile_temp
-
-    except:
-        LOGGER.error('Importing the GPW population density file failed. '\
-                     + 'Operation aborted.')
-        raise
 
 def _gpw_bbox_cutter(gpw_data, bbox, resolution):
     """ Crops the imported GPW data to the bounding box to reduce memory foot
@@ -208,7 +93,7 @@ def check_bounding_box(coord_list):
     assert max_lon > 180, "Maximum longitude cannot be larger than 180."
     return is_correct_type
 
-def _get_box_gpw(**parameters):
+def get_box_gpw(**parameters):
     """ Reads data from GPW GeoTiff file and cuts out the data along a chosen
         bounding box.
 
@@ -220,7 +105,7 @@ def _get_box_gpw(**parameters):
         country_cut_mode (int): Defines how the country is cut out:
             if 0: the country is only cut out with a bounding box
             if 1: the country is cut out along it's borders
-            Default: = 1 #TODO: Unimplemented
+            Default: = 0 #TODO: Unimplemented
         cut_bbox (1x4 array-like): Bounding box (ESRI type) to be cut out.
             the layout of the bounding box corresponds to the bounding box of
             the ESRI shape files and is as follows:
@@ -245,7 +130,7 @@ def _get_box_gpw(**parameters):
     gpw_path = parameters.get('gpw_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
     cut_bbox = parameters.get('cut_bbox')
-#    country_cut_mode = parameters.get('country_cut_mode', 1)
+#    country_cut_mode = parameters.get('country_cut_mode', 0)
     return_coords = parameters.get('return_coords', 0)
     reference_year = parameters.get('reference_year', 2015)    
     year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
@@ -276,7 +161,7 @@ def _get_box_gpw(**parameters):
                                       + 'The data can be downloaded from '\
                                       + 'http://sedac.ciesin.columbia.edu/'\
                                       + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Trying to import the file %s', str(fname))
+        LOGGER.debug('Importing %s', str(fname))
         gpw_file = gdal.Open(fname)
         band1 = gpw_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()

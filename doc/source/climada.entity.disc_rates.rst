@@ -12,15 +12,6 @@ climada\.entity\.disc\_rates\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.disc\_rates\.source module
--------------------------------------------
-
-.. automodule:: climada.entity.disc_rates.source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 

@@ -20,14 +20,6 @@ climada\.entity\.impact\_funcs\.impact\_func\_set module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.source module
----------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.source
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.trop_cyclone module
 ---------------------------------------------------
 
