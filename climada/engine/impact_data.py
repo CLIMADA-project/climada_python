@@ -18,31 +18,35 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 functions to merge EMDAT damages to hazard events
 """
-
+import logging
 import pandas as pd
 import numpy as np
 import pickle
 from iso3166 import countries as iso_cntry
-import climada
+from cartopy.io import shapereader
+# import climada
 from datetime import datetime
 
-# inputs
-checkset = pd.read_csv('~.csv')
-intensity_path = '~.p'
-names_path = '~.p'
-reg_ID_path = '~.p'
-date_path = '~.p'
-EMdat_raw = pd.read_excel('~.xlsx')
-start = 'yyyy-mm-dd'
-end = 'yyyy-mm-dd'
+LOGGER = logging.getLogger(__name__)
 
-# assign hazard to EMdat event
-
-data = assign_hazard_to_EMdat(certainty_level = 'low',intensity_path_haz = intensity_path,
-                             names_path_haz = names_path, reg_ID_path_haz = reg_ID_path,
-                             date_path_haz = date_path, EMdat_data = EMdat_raw,
-                             start_time = start, end_time = end, keep_checks = True)
-check_assigned_track(lookup = data, checkset = checkset)
+if False:
+    # inputs
+    checkset = pd.read_csv('~.csv')
+    intensity_path = '~.p'
+    names_path = '~.p'
+    reg_ID_path = '~.p'
+    date_path = '~.p'
+    EMdat_raw = pd.read_excel('~.xlsx')
+    start = 'yyyy-mm-dd'
+    end = 'yyyy-mm-dd'
+    
+    # assign hazard to EMdat event
+    
+    data = assign_hazard_to_EMdat(certainty_level = 'low',intensity_path_haz = intensity_path,
+                                 names_path_haz = names_path, reg_ID_path_haz = reg_ID_path,
+                                 date_path_haz = date_path, EMdat_data = EMdat_raw,
+                                 start_time = start, end_time = end, keep_checks = True)
+    check_assigned_track(lookup = data, checkset = checkset)
 
 ###############################################################################
 
@@ -340,3 +344,72 @@ def check_assigned_track(lookup, checkset):
     wrong = len(check.ibtracsID.values)-not_assigned-correct
     print('%.1f%% tracks assigned correctly, %.1f%% wrongly, %.1f%% not assigned' %(correct/check_size*100,wrong/check_size*100,not_assigned/check_size*100))
 
+def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True):
+    """return list of all countries exposed to a chosen hazard type
+    from EMDAT data as CSV.
+    
+    Parameters:
+        hazard_name (str): Disaster (sub-)type accordung EMDAT terminology, i.e.:
+            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+            Storm, Volcanic activity, Wildfire;
+            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+            Tsunami, etc.
+        emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
+            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+        ignore_missing (boolean): Ignore countries that that exist in EMDAT but
+            are missing in iso_cntry(). Default: True.
+    Returns:
+        exp_iso: List of ISO3-codes of countries impacted by the disaster type
+        exp_name: List of names of countries impacted by the disaster type
+            """
+    out = pd.read_csv(emdat_file_csv, encoding = "ISO-8859-1", header=1)
+    # List of countries that exist in EMDAT but are missing in iso_cntry():
+    #(these countries are ignored)
+    list_miss = ['Netherlands Antilles', 'Guadeloupe', 'Martinique', \
+                 'Réunion', 'Tokelau', 'Azores Islands', 'Canary Is']
+    # list_miss_iso = ['ANT', 'GLP', 'MTQ', 'REU', 'TKL', '', '']
+    exp_iso = []
+    exp_name = []
+    shp_file = shapereader.natural_earth(resolution='10m',
+                                         category='cultural',
+                                         name='admin_0_countries')
+    shp_file = shapereader.Reader(shp_file)
+
+    # countries with TCs:
+    if len(out[out['Disaster subtype'] == hazard_name])>0:
+        uni_cntry = np.unique(out[out['Disaster subtype'] == hazard_name]['Country'].values)
+    elif len(out[out['Disaster type'] == hazard_name])>0:
+        uni_cntry = np.unique(out[out['Disaster type'] == hazard_name]['Country'].values)
+    else:
+        LOGGER.error('Disaster (sub-)type not found.')
+    for cntry in uni_cntry:
+        if (cntry in list_miss) and not ignore_missing:
+            print(cntry, '... not in iso_cntry')
+            exp_iso.append('ZZZ')
+            exp_name.append(cntry)  
+        elif cntry not in list_miss:
+            if '(the)' in cntry:
+                cntry = cntry.strip('(the)').rstrip()
+            cntry = cntry.replace(' (the', ',').replace(')','')
+            cntry = cntry.replace(' (', ', ').replace(')','')
+            if cntry == 'Saint Barth?lemy':
+                cntry = 'Saint Barthélemy'
+            if cntry == 'Saint Martin, French Part':
+                cntry = 'Saint Martin (French part)'
+            if cntry == 'Sint Maarten, Dutch part':
+                cntry = 'Sint Maarten (Dutch part)'
+            if cntry == 'Swaziland':
+                cntry = 'Eswatini'
+            if cntry == 'Virgin Island, British':
+                cntry = 'Virgin Islands, British'
+            if cntry == 'Virgin Island, U.S.':
+                cntry = 'Virgin Islands, U.S.'
+            if cntry == 'Côte d\x92Ivoire':
+                cntry = "Côte d'Ivoire"
+            if cntry == 'Macedonia, former Yugoslav Republic of':
+                cntry = 'Macedonia, the former Yugoslav Republic of'
+            print(cntry, ':', iso_cntry.get(cntry).name)
+            exp_iso.append(iso_cntry.get(cntry).alpha3)
+            exp_name.append(iso_cntry.get(cntry).name)              
+    return exp_iso, exp_name
