@@ -124,7 +124,7 @@ class TestReaderFirms(unittest.TestCase):
          
          bf.plot_intensity(event=0)
          
-    def test_bush_fire_one_pass(self):
+    def test_bush_fire_random_one_pass(self):
          bf = BushFire()
          centr_res_factor = 1
          

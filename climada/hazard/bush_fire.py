@@ -204,7 +204,7 @@ class BushFire(Hazard):
         LOGGER.info('Computing geographic clusters in consecutive events.')
         # Creation of an identifier for geographical clustering
         cluster_id = np.zeros((firms.index.size,))-1
-        # For each temporal cluster, perform geographical clustering with BDSCAN algo
+        # For each temporal cluster, perform geographical clustering with DBSCAN algo
         for cons_id in np.unique(firms['cons_id'].values):
             temp = np.argwhere(firms['cons_id'].values == cons_id).reshape(-1,)
             lat_lon = firms.reindex(index=temp,
