@@ -1,4 +1,22 @@
-"""Define BushFire class."""
+"""
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Define BushFire class."""
 
 __all__ = ['BushFire']
 
@@ -407,11 +425,7 @@ class BushFire(Hazard):
             temp = temp.reset_index()
             date[ev_id] = temp.at[0, 'datenum']
         self.date = date
-#        delta_time = max(self.date) - min(self.date) +1
-#        delta_time = date.fromordinal(int(np.max(self.date))).year - \
-#            date.fromordinal(int(np.min(self.date))).year + 1
         self.frequency = np.ones(self.event_id.size)
-#        self.frequency = np.ones(self.event_id.size) / delta_time
         self.orig = np.tile(True, len(np.unique(firms['event_id'])))
 
         # Following values are defined for each event and centroid
@@ -680,7 +694,7 @@ class BushFire(Hazard):
         # probabilistic event
         # The brightness value is chosen randomly from the brightness values of
         # the historical event.
-        new_haz = Hazard()
+        new_haz = Hazard(HAZ_TYPE)
         new_haz.intensity = sparse.lil_matrix(np.zeros(len(self.centroids.id)))
         for _, ev_prob in enumerate(ev_proba_uni):
             bright_proba = np.random.choice(self.intensity[ev_id -1].data)
@@ -733,22 +747,17 @@ class BushFire(Hazard):
             ValueError
 
         """
-        temp = []
+        haz = []
         # Next two lines, to keep for debugging
-#        for _, ev_id in enumerate(self.event_id):
-#            temp.extend(self.set_proba_one_event(ev_id, ens_size))
-#        haz = temp
+        for _, ev_id in enumerate(self.event_id):
+            haz.extend(self.set_proba_one_event(ev_id, ens_size))
 
         # problem random num generator in multiprocessing. python 3.7?
-        chunksize = min(ens_size, 1000)
-        temp = Pool().map(self.set_proba_one_event, self.event_id,
-                          itertools.repeat(ens_size, self.event_id.size),
-                          chunksize=chunksize)
-        haz = []
-        for haz_pos, _ in enumerate(temp):
-            for ens_pos, _ in enumerate(np.ones(ens_size)):
-                haz.append(temp[haz_pos][ens_pos])
-
+#        chunksize = min(ens_size, 1000)
+#        haz = Pool().map(self.set_proba_one_event, self.event_id,
+#                          itertools.repeat(ens_size, self.event_id.size),
+#                          chunksize=chunksize)
+        
         LOGGER.debug('Append events.')
         prob_haz = BushFire()
         prob_haz._append_all(haz)
