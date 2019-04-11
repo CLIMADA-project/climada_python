@@ -124,70 +124,69 @@ class TestReaderFirms(unittest.TestCase):
 #         
 #         bf.plot_intensity(event=0)
 #         
-    def test_bush_fire_random_one_pass(self):
-         bf = BushFire()
-         centr_res_factor = 1
-         
-         bf.set_bush_fire (TEST_FIRMS, centr_res_factor, seed = 8)
-         bf_haz = bf.set_proba_one_event(ev_id = 3, ens_size = 3)
-         
-         prob_haz = BushFire()
-         prob_haz._append_all(bf_haz)
-         bf.append(prob_haz)
-         
-         bf.check()
-         
-         self.assertEqual(bf.tag.haz_type, 'BF')
-         self.assertEqual(bf.tag.description, '')
-         self.assertEqual(bf.units, 'K')
-         self.assertEqual(bf.centroids.id.size, 78090)
-         self.assertEqual(bf.event_id.size, 8)
-         self.assertEqual(bf.event_id[0], 1)
-         self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0', '3_gen0', '3_gen1', '3_gen2'])
-         self.assertTrue(np.array_equal(bf.frequency, np.array([0.05, 0.05, 0.05, 0.05, 0.05, 
-                                                                1, 1, 1])))
-         self.assertTrue(isinstance(bf.intensity, sparse.csr_matrix))
-         self.assertTrue(isinstance(bf.fraction, sparse.csr_matrix))
-         self.assertEqual(bf.intensity.shape, (8, 78090))
-         self.assertEqual(bf.fraction.shape, (8, 78090))
-         
-         bf.plot_intensity('3_gen0')
-#         
-#         
-#    def test_bush_fire_one_pass(self):
+#    def test_bush_fire_random_one_pass(self):
 #         bf = BushFire()
 #         centr_res_factor = 1
 #         
 #         bf.set_bush_fire (TEST_FIRMS, centr_res_factor, seed = 8)
-#         bf.set_proba_all_event(ens_size = 3)
+#         bf_haz = bf.set_proba_one_event(ev_id = 3, ens_size = 3)
+#         
+#         prob_haz = BushFire()
+#         prob_haz._append_all(bf_haz)
+#         bf.append(prob_haz)
+#         
 #         bf.check()
 #         
 #         self.assertEqual(bf.tag.haz_type, 'BF')
 #         self.assertEqual(bf.tag.description, '')
 #         self.assertEqual(bf.units, 'K')
 #         self.assertEqual(bf.centroids.id.size, 78090)
-#         self.assertEqual(bf.event_id.size, 20)
+#         self.assertEqual(bf.event_id.size, 8)
 #         self.assertEqual(bf.event_id[0], 1)
-#         self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0', 
-#                                          '1.0_gen0', '1.0_gen1', '1.0_gen2',
-#                                          '2.0_gen0', '2.0_gen1', '2.0_gen2',
-#                                          '3.0_gen0', '3.0_gen1', '3.0_gen2',
-#                                          '4.0_gen0', '4.0_gen1', '4.0_gen2',
-#                                          '5.0_gen0', '5.0_gen1', '5.0_gen2'])
-#         self.assertTrue(np.array_equal(bf.frequency, np.array([0.25, 0.25, 0.25, 0.25, 0.25, 
-#                                                                0.25, 0.25, 0.25,
-#                                                                0.25, 0.25, 0.25,
-#                                                                0.25, 0.25, 0.25,
-#                                                                0.25, 0.25, 0.25,
-#                                                                0.25, 0.25, 0.25])))
+#         self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0', '3_gen0', '3_gen1', '3_gen2'])
+#         self.assertTrue(np.array_equal(bf.frequency, np.array([1, 1, 1, 1, 1, 1, 1, 1])))
 #         self.assertTrue(isinstance(bf.intensity, sparse.csr_matrix))
 #         self.assertTrue(isinstance(bf.fraction, sparse.csr_matrix))
-#         self.assertEqual(bf.intensity.shape, (20, 78090))
-#         self.assertEqual(bf.fraction.shape, (20, 78090)) 
-#         bf.plot_intensity(event='3.0')
-#         bf.plot_intensity(event='3.0_gen0')
-#         bf.plot_intensity(event='3.0_gen1')
-#         bf.plot_intensity(event='3.0_gen2')
+#         self.assertEqual(bf.intensity.shape, (8, 78090))
+#         self.assertEqual(bf.fraction.shape, (8, 78090))
+#         
+#         bf.plot_intensity('3_gen0')
+#         
+#         
+    def test_bush_fire_one_pass(self):
+         bf = BushFire()
+         centr_res_factor = 1
+         
+         bf.set_bush_fire (TEST_FIRMS, centr_res_factor, seed = 8)
+         bf.set_proba_all_event(ens_size = 3)
+         bf.check()
+         
+         self.assertEqual(bf.tag.haz_type, 'BF')
+         self.assertEqual(bf.tag.description, '')
+         self.assertEqual(bf.units, 'K')
+         self.assertEqual(bf.centroids.id.size, 78090)
+         self.assertEqual(bf.event_id.size, 20)
+         self.assertEqual(bf.event_id[0], 1)
+         self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0', 
+                                          '1.0_gen0', '1.0_gen1', '1.0_gen2',
+                                          '2.0_gen0', '2.0_gen1', '2.0_gen2',
+                                          '3.0_gen0', '3.0_gen1', '3.0_gen2',
+                                          '4.0_gen0', '4.0_gen1', '4.0_gen2',
+                                          '5.0_gen0', '5.0_gen1', '5.0_gen2'])
+         self.assertTrue(np.array_equal(bf.frequency, np.array([0.25, 0.25, 0.25, 0.25, 0.25, 
+                                                                0.25, 0.25, 0.25,
+                                                                0.25, 0.25, 0.25,
+                                                                0.25, 0.25, 0.25,
+                                                                0.25, 0.25, 0.25,
+                                                                0.25, 0.25, 0.25])))
+         self.assertTrue(isinstance(bf.intensity, sparse.csr_matrix))
+         self.assertTrue(isinstance(bf.fraction, sparse.csr_matrix))
+         self.assertEqual(bf.intensity.shape, (20, 78090))
+         self.assertEqual(bf.fraction.shape, (20, 78090)) 
+         bf.plot_intensity(event='3.0')
+         bf.plot_intensity(event='3.0_gen0')
+         bf.plot_intensity(event='3.0_gen1')
+         bf.plot_intensity(event='3.0_gen2')
          
 
 
