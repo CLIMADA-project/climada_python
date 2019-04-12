@@ -305,6 +305,28 @@ class Centroids():
             select = shapely.vectorized.contains(geom[0], self.lon, self.lat)
             self.region_id[select] = geom[1]
 
+    def remove_duplicate_coord(self):
+        """ Checks whether there are duplicate coordinates and removes the du-
+        plicates. The first appearance of the coordinates is left untouched
+        while all duplicates later in the array are removed."""
+        if np.unique(self.coord, axis=0).size != 2*self.coord.shape[0]:
+            LOGGER.info('Removing duplicate centroids:')
+            coords, inv, c_dupl = np.unique(self.coord, axis=0, \
+                                          return_inverse=True, return_counts=True)
+            i_delete = []
+            for i_ in np.where(c_dupl > 1)[0]:
+                LOGGER.info(str(coords[i_]))
+                i_delete.extend(np.where(inv == i_)[0][1:])
+            i_delete = np.sort(i_delete)
+            original_len = len(getattr(self, 'coord'))
+            for attribute in self.__dict__.keys():
+                if type(getattr(self, attribute)) is np.ndarray \
+                and len(getattr(self, attribute)) == original_len:
+                    setattr(self, attribute, \
+                            np.delete(getattr(self, attribute), i_delete, axis=0))
+        else:
+            LOGGER.info('No centroids with duplicate coordinates found.')
+
     @property
     def resolution(self):
         """ Returns a tuple of the resolution in the same unit as the coords.

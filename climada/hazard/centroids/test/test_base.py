@@ -46,7 +46,7 @@ class TestLoader(unittest.TestCase):
     def test_check_wrongCoord_fail(self):
         """Wrong centroids definition"""
         cen = self.good_centroids()
-        cen.coord = np.array([[1, 2],[3, 4]])
+        cen.coord = np.array([[1, 2], [3, 4]])
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
@@ -328,14 +328,34 @@ class TestMethods(unittest.TestCase):
         """ Test that the region id setter works """
         centr_brb = Centroids(CENTR_BRB)
         centr_brb.set_region_id()
- 
         self.assertEqual(
             np.count_nonzero(centr_brb.region_id),
             6
         )
         self.assertEqual(centr_brb.region_id[0], 52) # 052 for barbados
 
-
+    def test_remove_duplicate_coord_pass(self):
+        """Test removal of duplicate coords."""
+        centr_brb = Centroids(CENTR_BRB)
+        centr_brb.set_dist_coast()
+        # create duplicates manually:
+        centr_brb.coord[100] = centr_brb.coord[101]
+        centr_brb.coord[120] = centr_brb.coord[101]
+        centr_brb.coord[5] = [12.5, -59.7]
+        centr_brb.coord[133] = [12.5, -59.7]
+        centr_brb.coord[121] = [12.5, -59.7]
+        self.assertEqual(centr_brb.size, 296)
+        with self.assertLogs('climada.hazard.centroids.base', level='INFO') as cm:
+            centr_brb.remove_duplicate_coord()
+        self.assertIn('Removing duplicate centroids', cm.output[0])
+        self.assertIn('12.5 -59.7', cm.output[1])
+        self.assertIn('12.54166', cm.output[2])
+        self.assertEqual(centr_brb.size, 292) # 5 centroids removed...
+        with self.assertLogs('climada.hazard.centroids.base', level='INFO') as cm:
+            centr_brb.remove_duplicate_coord()
+        self.assertIn('No centroids with duplicate coordinates', cm.output[0])
+        self.assertEqual(centr_brb.dist_coast.size, 292)
+        self.assertEqual(centr_brb.id.size, 292)
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSelect)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
