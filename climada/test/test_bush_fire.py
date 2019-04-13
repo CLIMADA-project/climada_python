@@ -191,5 +191,5 @@ class TestReaderFirms(unittest.TestCase):
 
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+#TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
+#unittest.TextTestRunner(verbosity=2).run(TESTS)
