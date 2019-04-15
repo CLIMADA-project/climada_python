@@ -35,7 +35,6 @@ import geopandas as gpd
 from shapely.geometry import Point
 from shapely.ops import transform
 import pyproj
-import pylab as pl
 
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.base import Hazard
@@ -386,7 +385,7 @@ class BushFire(Hazard):
 
         LOGGER.debug('Filling up the matrix.')
         # Matrix intensity: events x centroids
-        # For one event, if more than one points of firms dataframe have the 
+        # For one event, if more than one points of firms dataframe have the
         # same coordinates, take the maximum brightness value
         # of these points (maximal damages).
         # Fill the matrix
@@ -497,7 +496,7 @@ class BushFire(Hazard):
             area_one_year (km2): burned area over one calendar year
         """
         year_list = []
-        for _,datenum in enumerate(self.date):
+        for _, datenum in enumerate(self.date):
             year_list.append(date.fromordinal(int(datenum)).year)
 
         ev_id_selec = []
@@ -757,7 +756,7 @@ class BushFire(Hazard):
 #        haz = Pool().map(self.set_proba_one_event, self.event_id,
 #                          itertools.repeat(ens_size, self.event_id.size),
 #                          chunksize=chunksize)
-        
+
         LOGGER.debug('Append events.')
         prob_haz = BushFire()
         prob_haz._append_all(haz)
@@ -818,5 +817,5 @@ class BushFire(Hazard):
         # Plot the polygone around the fire
 #        _ = plot_polygon(concave_hull)
 #        _ = pl.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
-        
+
         return area_hull_one_event
