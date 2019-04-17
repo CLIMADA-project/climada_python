@@ -18,15 +18,18 @@ from climada.entity.exposures import litpop as LitPop
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
-FILENAME_GPW0 = 'gpw_v4_population_count_rev10_'
-FILENAME_GPW1 = '_30_sec.tif'
+FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
+FOLDER_GPW = os.path.join(SYSTEM_DIR, \
+                          'gpw-v4-population-count-rev%02i_%04i_30_sec_tif')
+GPW_VERSIONS = [11, 10, 12, 13]
+# FILENAME_GPW1 = '_30_sec.tif'
 YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
 BUFFER_VAL = -340282306073709652508363335590014353408
 # Hard coded value which is used for NANs in original GPW data
 
 
 
-def _gpw_bbox_cutter(gpw_data, bbox, resolution):
+def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
     """ Crops the imported GPW data to the bounding box to reduce memory foot
         print after it has been resized to desired resolution.
 
@@ -47,26 +50,32 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution):
     zoom = 30/resolution
     col_min, row_min, col_max, row_max =\
         LitPop._litpop_coords_in_glb_grid(bbox, resolution)
-    row_min, row_max = int(row_min-5*steps_p_res), int(row_max-5*steps_p_res)
-    # accomodate to fact that not the whole grid is present in this dataset
-    if col_max < (43200/zoom)-1:
+
+    # accomodate to fact that not the whole grid is present in the v.10 dataset:
+    if arr1_shape[0]==17400:
+        row_min, row_max = int(row_min-5*steps_p_res), \
+            int(row_max-5*steps_p_res)
+
+    rows_gpw = arr1_shape[0]
+    cols_gpw = arr1_shape[1]
+    if col_max < (cols_gpw/zoom)-1:
         col_max = col_max + 1
-    if row_max < (17400/zoom)-1:
+    if row_max < (rows_gpw/zoom)-1:
         row_max = row_max + 1
     gpw_data = gpw_data[:, col_min:col_max]
 
-    if row_min >= 0 and row_min < (17400/zoom) and row_max >= 0 and\
-        row_max < (17400/zoom):
+    if row_min >= 0 and row_min < (rows_gpw/zoom) and row_max >= 0 and\
+        row_max < (rows_gpw/zoom):
         gpw_data = gpw_data[row_min:row_max, :]
-    elif row_min < 0 and row_max >= 0 and row_max < (17400/zoom):
+    elif row_min < 0 and row_max >= 0 and row_max < (rows_gpw/zoom):
         np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])),\
                        gpw_data[0:row_max, :])
     elif row_min < 0 and row_max < 0:
         gpw_data = np.zeros((row_max-row_min, col_max-col_min))
-    elif row_min < 0 and row_max >= (17400/zoom):
+    elif row_min < 0 and row_max >= (rows_gpw/zoom):
         np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])), gpw_data,\
-                       np.zeros((row_max-(17400/zoom)+1, gpw_data.shape[1])))
-    elif row_min >= (17400/zoom):
+                       np.zeros((row_max-(rows_gpw/zoom)+1, gpw_data.shape[1])))
+    elif row_min >= (rows_gpw/zoom):
         gpw_data = np.zeros((row_max-row_min, col_max-col_min))
     return gpw_data
 
@@ -127,14 +136,13 @@ def get_box_gpw(**parameters):
         lat (list): list with latitudinal infomation on the GPW data. Same
             dimensionality as tile_temp (only returned if return_coords=1)
     """
-    gpw_path = parameters.get('gpw_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
     cut_bbox = parameters.get('cut_bbox')
 #    country_cut_mode = parameters.get('country_cut_mode', 0)
     return_coords = parameters.get('return_coords', 0)
     reference_year = parameters.get('reference_year', 2015)    
     year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
-    filename_GPW = FILENAME_GPW0 + str(year) + FILENAME_GPW1
+
     if year != reference_year:
         LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',\
                     reference_year, year)
@@ -142,9 +150,19 @@ def get_box_gpw(**parameters):
     # If we don't have any bbox by now and we need one, we just use the global
         cut_bbox = np.array((-180, -90, 180, 90))
     zoom_factor = 30/resolution # Orignal resolution is arc-seconds
+    file_exists = False
+    for ver in GPW_VERSIONS:
+        gpw_path = parameters.get('gpw_path', FOLDER_GPW % (ver, year))
+        if not os.path.isdir(gpw_path):
+            gpw_path = SYSTEM_DIR
+        fname = os.path.join(gpw_path, FILENAME_GPW % (ver, year))
+        if os.path.isfile(fname):
+            file_exists = True
+            LOGGER.info('GPW Version v4.%2i' % ver)
+            break
+
     try:
-        fname = os.path.join(gpw_path, filename_GPW)
-        if not os.path.isfile(fname):
+        if not file_exists:
             if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
                 subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],\
                                   shell=True)
@@ -167,10 +185,10 @@ def get_box_gpw(**parameters):
         arr1 = band1.ReadAsArray()
         del band1, gpw_file
         arr1[arr1 < 0] = 0
-        if arr1.shape != (17400, 43200):
+        if arr1.shape != (17400, 43200) and arr1.shape != (21600, 43200):
             LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '\
                            + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
-            LOGGER.warning('Expected dimensions: 17400x43200.')
+            LOGGER.warning('Expected dimensions: 17400x43200 or 21600x43200.')
         if zoom_factor != 1:
             total_population = arr1.sum()
             tile_temp = nd.zoom(arr1, zoom_factor, order=1)
@@ -178,16 +196,17 @@ def get_box_gpw(**parameters):
             tile_temp = tile_temp*(total_population/tile_temp.sum())
         else:
             tile_temp = arr1
-        del arr1
         if tile_temp.ndim == 2:
             if not cut_bbox is None:
-                tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution)
+                tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution, \
+                                             arr1_shape=arr1.shape)
         else:
             LOGGER.error('Error: Matrix has an invalid number of dimensions \
                          (more than 2). Could not continue operation.')
             raise TypeError
         tile_temp = pd.SparseArray(tile_temp.reshape((tile_temp.size,),\
                                    order='F'), fill_value=0)
+        del arr1
         if return_coords == 1:
             lon = tuple((cut_bbox[0], 1/(3600/resolution)))
             lat = tuple((cut_bbox[1], 1/(3600/resolution)))
