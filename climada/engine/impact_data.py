@@ -453,11 +453,11 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
     out_ = out_.reset_index(drop=True)
     return out_, sorted(all_years), country
 
-def emdat_impact_yearlysum(country, hazard_name, emdat_file_csv, year_range, \
+def emdat_impact_yearlysum(countries, hazard_name, emdat_file_csv, year_range, \
                          reference_year=0, imp_str="Total damage ('000 US$)"):
     """function to load EM-DAT data and sum impact per year
     Parameters:
-        country (str): country ISO3-code or name.
+        countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
         hazard_name (str): Hazard name according to EMDAT terminology or
             CLIMADA abbreviation
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
@@ -469,32 +469,45 @@ def emdat_impact_yearlysum(country, hazard_name, emdat_file_csv, year_range, \
             default = "Total damage ('000 US$)"
         
     Returns:
-        yearly_impact (np.array of floats): total impact per year, same unit as chosen impact,
+        yearly_impact (dict, mapping years to impact): 
+            total impact per year, same unit as chosen impact,
             i.e. 1000 current US$ for imp_str="Total damage ('000 US$)".
         all_years (list of int): list of years
     """
-    data, all_years, country = emdat_df_load(country, hazard_name, \
+    
+    out = pd.DataFrame()
+    for country in countries:
+        data, all_years, country = emdat_df_load(country, hazard_name, \
                                             emdat_file_csv, year_range)
-    yearly_impact = np.zeros(len(all_years))
-    if reference_year > 0:
-        gdp_ref = gdp(country, reference_year)[1]
-    for cnt, year in enumerate(all_years):
-        yearly_impact[cnt] = \
-            sum(data.loc[data['Disaster No.'].str.contains(str(year)) == True]\
-                         [imp_str])
+        data_out = pd.DataFrame(index=np.arange(0, len(all_years)), \
+                                columns=['ISO3', 'region_id', 'year', 'impact', \
+                                'reference_year', 'impact_scaled'])
         if reference_year > 0:
-            yearly_impact[cnt]=yearly_impact[cnt] * \
-            gdp_ref / gdp(country, year)[1]
-    return yearly_impact, all_years
+            gdp_ref = gdp(country, reference_year)[1]
+        for cnt, year in enumerate(all_years):
+            data_out.loc[cnt, 'year'] = year
+            data_out.loc[cnt, 'reference_year'] = reference_year
+            data_out.loc[cnt, 'ISO3'] = country
+            data_out.loc[cnt, 'region_id'] = int(iso_cntry.get(country).numeric)
+            data_out.loc[cnt, 'impact'] = \
+                sum(data.loc[data['Disaster No.'].str.contains(str(year)) == True]\
+                             [imp_str])
+            if reference_year > 0:
+                data_out.loc[cnt, 'impact_scaled']=data_out.loc[cnt, 'impact'] * \
+                gdp_ref / gdp(country, year)[1]
+        out = out.append(data_out)
+    out = out.reset_index(drop=True)
+    return out
+    # out.loc[out['year']==1980]['impact'].sum() < sum for year 1980
 
-def emdat_impact_event(country, hazard_name, emdat_file_csv, year_range, \
+def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
                        reference_year=0,  imp_str="Total damage ('000 US$)"):
     """function to load EM-DAT data return impact per event
     
     Parameters:
-        country (str): country ISO3-code or name.
+        countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
         hazard_name (str): Hazard name according to EMDAT terminology or
-            CLIMADA abbreviation
+            CLIMADA abbreviation, i.e. 'TC'
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
             emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
         reference_year (int): reference year of exposures. Impact is scaled
@@ -504,25 +517,38 @@ def emdat_impact_event(country, hazard_name, emdat_file_csv, year_range, \
             default = "Total damage ('000 US$)"
         
     Returns:
-        event_impact (np.array of floats): total impact per event, 
+        out (pandas DataFrame): EMDAT DataFrame with new columns "year",
+            "region_id", and scaled total impact per event with
             same unit as chosen impact,
-            i.e. 1000 current US$ for imp_str="Total damage ('000 US$)".
-        disaster_no (list of str): list of EMDAT-disaster numbers"""
-
-    data, all_years, country = emdat_df_load(country, hazard_name, \
-                                             emdat_file_csv, year_range)
-    event_impact = np.zeros(data.shape[0])
-    disaster_no = list()
-    if reference_year > 0:
-        gdp_ref = gdp(country, reference_year)[1]
-    for cnt in np.arange(data.shape[0]):
-        event_impact[cnt] = data.loc[cnt][imp_str]
-        disaster_no.append(data.loc[cnt]['Disaster No.'])
+            i.e. 1000 current US$ for imp_str="Total damage ('000 US$) scaled".
+    """
+    out = pd.DataFrame()
+    for country in countries:
+        data, all_years, country = emdat_df_load(country, hazard_name, \
+                                                 emdat_file_csv, year_range)
         if reference_year > 0:
-            event_impact[cnt]=event_impact[cnt] * \
-            gdp_ref / \
-            gdp(country, int(data.loc[cnt]['Disaster No.'][0:4]))[1]            
-    return event_impact, disaster_no
+            gdp_ref = gdp(country, reference_year)[1]
+        data['year'] = pd.Series(np.zeros(data.shape[0], dtype='int'), \
+            index=data.index)
+        data['region_id'] = pd.Series(int(iso_cntry.get(country).numeric) + \
+            np.zeros(data.shape[0], dtype='int'), \
+            index=data.index)
+        data['reference_year'] = pd.Series(reference_year+np.zeros(\
+            data.shape[0], dtype='int'), index=data.index)
+        data[imp_str + " scaled"] = pd.Series(np.zeros(data.shape[0], dtype='int'), \
+            index=data.index)
+        for cnt in np.arange(data.shape[0]):
+            data.loc[cnt, 'year'] = int(data.loc[cnt, 'Disaster No.'][0:4])
+            data.loc[cnt, 'reference_year'] = int(reference_year)
+            
+            if data.loc[cnt][imp_str]>0:
+                data.loc[cnt, imp_str + " scaled"] = \
+                    data.loc[cnt, imp_str] * gdp_ref / \
+                    gdp(country, int(data.loc[cnt, 'year']))[1]
+        out = out.append(data)
+        del data
+    out = out.reset_index(drop=True)
+    return out
 
 """
 function emdata = emdat_load_yearlysum(country_emdat,peril_ID,exposure_growth,years_range)
