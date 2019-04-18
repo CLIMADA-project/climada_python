@@ -43,21 +43,11 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
         self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
-
-    def test_switzerland30_pass(self):
-        """Create LitPop entity for Switzerland on 30 arcsec:"""
-        country_name = ['CHE']
-        resolution = 30
-        fin_mode = 'income_group'
-        ent = LitPop()
-        with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, \
-                            fin_mode=fin_mode, reference_year=2016)
-        # print(cm)
-        self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
-        self.assertTrue(ent.region_id.min() == 756)
-        self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
+        self.assertIn('LitPop for Switzerland at 300 as, year=2016', ent.tag.description)
+        self.assertIn('financial mode=income_group', ent.tag.description)
+        self.assertIn('GPW-year=2015', ent.tag.description)
+        self.assertIn('BM-year=2016', ent.tag.description)
+        self.assertIn('exp=[1, 1]', ent.tag.description)
 
     def test_switzerland30normPop_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""

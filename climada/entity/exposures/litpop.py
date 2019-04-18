@@ -44,15 +44,21 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 """Define LitPop class."""
-
-BM_FILENAMES = ['BlackMarble_2016_A1_geo_gray.tif', \
-                    'BlackMarble_2016_A2_geo_gray.tif', \
-                    'BlackMarble_2016_B1_geo_gray.tif', \
-                    'BlackMarble_2016_B2_geo_gray.tif', \
-                    'BlackMarble_2016_C1_geo_gray.tif', \
-                    'BlackMarble_2016_C2_geo_gray.tif', \
-                    'BlackMarble_2016_D1_geo_gray.tif', \
-                    'BlackMarble_2016_D2_geo_gray.tif']
+# Black Marble nightlight tile names, %i represents the Black Marble reference year
+BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif', \
+                    'BlackMarble_%i_A2_geo_gray.tif', \
+                    'BlackMarble_%i_B1_geo_gray.tif', \
+                    'BlackMarble_%i_B2_geo_gray.tif', \
+                    'BlackMarble_%i_C1_geo_gray.tif', \
+                    'BlackMarble_%i_C2_geo_gray.tif', \
+                    'BlackMarble_%i_D1_geo_gray.tif', \
+                    'BlackMarble_%i_D2_geo_gray.tif']
+# years with Black Marble Tiles 
+# https://earthobservatory.nasa.gov/features/NightLights/page3.php
+# Update if new years get available!
+BM_YEARS = [2016, 2012] # latest first
+# Years with GPW population data available:
+GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
 NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
                        magnitude
@@ -151,6 +157,7 @@ class LitPop(Exposures):
         adm1_scatter = args.get('adm1_scatter', False)
         conserve_cntrytotal = args.get('conserve_cntrytotal', True)
         reference_year = args.get('reference_year', 2016)
+        # bm_year = min(BM_YEARS, key=lambda x:abs(x-reference_year))
 #        inherit_admin1_from_admin0 = args.get('inherit_admin1_from_admin0', 1)
         if res_arcsec == []:
             resolution = (res_km/DEF_RES_GPW_KM)*DEF_RES_GPW_ARCSEC
@@ -247,10 +254,13 @@ class LitPop(Exposures):
                                    country_info[curr_country][4])
             lp_cntry.append(self._set_one_country(country_info[curr_country],\
                 litpop_curr, lon, lat, curr_country))
-            tag.description += ("LitPop based asset values for {} at " + \
-                str(int(resolution)) + " arcsec resolution. Financial mode: {}"\
-                + "\n").format(country_info[curr_country][1], fin_mode)
-
+            tag.description += \
+                'LitPop for %s at %i as, year=%i, financial mode=%s, GPW-year=%i, BM-year=%i, exp=[%i, %i]' \
+                % (country_info[curr_country][1], resolution, reference_year, \
+                   fin_mode, \
+                min(GPW_YEARS, key=lambda x:abs(x-reference_year)), \
+                min(BM_YEARS, key=lambda x:abs(x-reference_year)), \
+                exponents[0], exponents[1])
         Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry,
                                                             ignore_index=True)))
         self.ref_year = reference_year
@@ -369,7 +379,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
             return along with the litpop_data (see above).
     '''
 
-    nightlights = _get_box_blackmarble(cut_bbox,\
+    nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year, \
                                     resolution=resolution, return_coords=0)
     gpw = gpw_import.get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,\
                                   return_coords=0, reference_year=reference_year)
@@ -1526,6 +1536,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
             return_coords (boolean): Determines whether latitude and longitude
                 are delievered along with gpw data (1) or only bm_data is
                 returned (1) (Default: 0)
+            reference_year (int): Default = 2016
 
         RETURNS:
             nightlight_intensity (pandas SparseArray): BM data
@@ -1536,6 +1547,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
     """
     bm_path = parameters.get('file_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
+    reference_year = parameters.get('reference_year', 30)
     _match_target_res(resolution)
     cut_bbox = parameters.get('cut_bbox')
     country_adm0 = parameters.get('country_adm0')
@@ -1550,7 +1562,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
     file_count = 0
     zoom_factor = 15/resolution  # Orignal resolution is 15 arc-seconds
     for num_i, _ in enumerate(BM_FILENAMES[::2]):
-        """Due to concat, we have to anlyse the tiles in pairs otherwise the
+        """Due to concat, we have to anlayse the tiles in pairs otherwise the
         data is concatenated in the wrong order"""
         arr1 = [None] * 2 # Prepopulate list
         for j in range(0, 2):
@@ -1560,7 +1572,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
             else:
                 file_count = file_count + 1
                 arr1[j], curr_file = read_bm_file(bm_path,\
-                                                  BM_FILENAMES[num_i*2+j])
+                    BM_FILENAMES[num_i*2+j] % min(BM_YEARS, key=lambda x:abs(x-reference_year)))
                 if zoom_factor != 1:
 #                    LOGGER.debug('Resizing image according to chosen '\
 #                                + 'resolution')
@@ -1702,6 +1714,7 @@ def _get_box_blackmarble(cut_bbox, **args):
             return_coords (boolean): Determines whether latitude and longitude
                 are delievered along with gpw data (1) or only bm_data is
                 returned (1) (Default: 0)
+            reference_year (int): Default: 2016
 
         RETURNS:
             nightlight_intensity (pandas SparseArray): BM data
@@ -1711,22 +1724,23 @@ def _get_box_blackmarble(cut_bbox, **args):
                 dimensionality as tile_temp (only returned if return_coords=1)
     """
     resolution = args.get('resolution', 30)
+    reference_year = args.get('reference_year', 2016)
     return_coords = args.get('return_coords', 0)
     bm_path = args.get('bm_path', SYSTEM_DIR)
     # Determine required satellite files
     req_sat_files = nightlight.check_required_nl_files\
         (cut_bbox)
-    # Check existence of necessary files:
+    # Check existence of necessary files for BM-year:
     files_exist = nightlight.check_nl_local_file_exists\
-        (req_sat_files, bm_path, 2016)[0]
-        # 2016: Deliberately hard-coded year!
-        # TODO: Replace hard-coding of year once other years are implemented
+        (req_sat_files, bm_path, \
+         min(BM_YEARS, key=lambda x:abs(x-reference_year)))[0]
     # Download necessary files:
     if not np.array_equal(req_sat_files, files_exist):
         try:
             LOGGER.debug('Downloading %s', str(int(sum(req_sat_files)-sum(files_exist))))
             nightlight.download_nl_files(req_sat_files, files_exist,\
-                                         dwnl_path=bm_path, year=2016)
+                                         dwnl_path=bm_path, \
+                                         year=min(BM_YEARS, key=lambda x:abs(x-reference_year)))
         except:
             LOGGER.error('Could not download missing satellite data files. \
                      Operation aborted.')
@@ -1735,7 +1749,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     # LOGGER.debug('Reading and cropping neccessary BM files.')
     nightlight_intensity = get_bm(req_sat_files, resolution=resolution,\
                                   return_coords=0, cut_bbox=cut_bbox,\
-                                  bm_path=bm_path)[0]
+                                  bm_path=bm_path, reference_year=reference_year)[0]
     if return_coords == 1:
         lon = tuple((cut_bbox[0], 1/(3600/resolution)))
         lat = tuple((cut_bbox[1], 1/(3600/resolution)))
@@ -1814,7 +1828,7 @@ def admin1_validation(country, methods, exponents, **args):
                             points2check=all_coords)
 
     # Get LitPop, Lit and Pop, etc:
-    nightlights = _get_box_blackmarble(cut_bbox,\
+    nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year, \
                                 resolution=resolution, return_coords=0)
 
     bm_temp = np.ones(nightlights.shape)
