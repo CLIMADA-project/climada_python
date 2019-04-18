@@ -420,7 +420,7 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
             if not verbose:
                 LOGGER.debug(cntry, ':', iso_cntry.get(cntry).name)
             exp_iso.append(iso_cntry.get(cntry).alpha3)
-            exp_name.append(iso_cntry.get(cntry).name)              
+            exp_name.append(iso_cntry.get(cntry).name)           
     return exp_iso, exp_name
 
 def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
@@ -431,6 +431,8 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
         hazard_name = 'Drought'
         
     exp_iso, exp_name= emdat_countries_by_hazard(hazard_name, emdat_file_csv)
+    if type(country) is int:
+        country = iso_cntry.get(country).alpha3
     if country in exp_name:
         country = exp_iso[exp_name.index(country)]
     if country not in exp_iso:
