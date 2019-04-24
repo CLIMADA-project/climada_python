@@ -305,15 +305,19 @@ class TestImpactYearSet(unittest.TestCase):
         imp.date = np.array([732801, 716160, 718313, 712468, 732802, \
                              729285, 732931, 715419, 722404, 718351])
 
-        years_all, iys_all = imp.calc_impact_year_set()
-        years, iys = imp.calc_impact_year_set(all_years=False)
-        self.assertEqual(np.around(sum(iys)), np.around(sum(imp.at_event)))
-        self.assertEqual(sum(iys), sum(iys_all))
+        iys_all = imp.calc_impact_year_set()
+        iys = imp.calc_impact_year_set(all_years=False)
+        self.assertEqual(np.around(sum([iys[year] for year in iys])), \
+                         np.around(sum(imp.at_event)))
+        self.assertEqual(sum([iys[year] for year in iys]), \
+                         sum([iys_all[year] for year in iys_all]))
         self.assertEqual(len(iys), 7)
-        self.assertIn(1951 and 1959 and 2007, years_all[iys_all>0])
-        self.assertAlmostEqual(3598980534.468811, iys_all[56])
-        self.assertEqual(iys[5], iys_all[46])
-        self.assertAlmostEqual(iys[years==1951][0], imp.at_event[3])
+        self.assertEqual(len(iys_all), 57)
+        self.assertIn(1951 and 1959 and 2007, iys_all)
+        self.assertTrue(iys_all[1959]>0)
+        self.assertAlmostEqual(3598980534.468811, iys_all[2007])
+        self.assertEqual(iys[1978], iys_all[1978])
+        self.assertAlmostEqual(iys[1951], imp.at_event[3])
 
 class TestIO(unittest.TestCase):
     ''' Test impact input/output methods.'''
