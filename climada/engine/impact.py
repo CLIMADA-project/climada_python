@@ -412,8 +412,10 @@ class Impact():
             years = np.arange(min(orig_year), max(orig_year)+1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
-        return years, np.array([sum(self.at_event[orig_year==year])
-                                for year in years])
+        year_set = dict()
+        for year in years:
+            year_set[year] = sum(self.at_event[orig_year==year])
+        return year_set
 
     @staticmethod
     def read_sparse_csr(file_name):
