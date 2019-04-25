@@ -8,7 +8,7 @@ Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz
 
 Date: 2019-04-08
 
-Version: 1.2.3
+Version: 1.2.3+
 
 See [documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial/1_main_climada.ipynb).
 
@@ -21,6 +21,17 @@ Installation
 ------------
 
 Follow the [Installation](https://climada-python.readthedocs.io/en/latest/install.html) instructions to install climada's development version and climada's stable version.
+
+Data dependencies
+-----------------
+
+CLIMADA relies on several open data available through APIs (e.g. World Bank, Natural Earth data). Other data need to be downloaded manually by the user. The following table shows these last data sources, their version used, its current availabilty and where they are used within CLIMADA:
+
+| Availability | Name | Version | Link | CLIMADA class | CLIMADA version | CLIMADA tutorial reference |
+|--------------|:----:|--------:|------|:-------------:|----------------:|----------------:|
+| OK | Gridded Population of the World (GPW)  | v4.11 | [GPW v4.11](http://sedac.ciesin.org/data/set/gpw-v4-population-count-rev11) | LitPop | > v1.2.3 | climada_entity_LitPop.ipynb |
+| FAILED | Gridded Population of the World (GPW)  | v4.10 | [GPW v4.10](http://sedac.ciesin.org/data/set/gpw-v4-population-count-rev10) | LitPop | >= v1.2.0 | climada_entity_LitPop.ipynb |
+| OK| International Best Track Archive for Climate Stewardship (IBTrACS) | v04r00 | [IBTrACS v04r00](ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/) | TCTracks | >= v1.2.0 | climada_hazard_TropCyclone.ipynb |
 
 Configuration options
 ---------------------
