@@ -42,7 +42,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(np.int(ent.value.sum().round()) == 3343726398023)
+        self.assertTrue(np.int(ent.value.sum().round()) == 3350905328146)
         self.assertIn('LitPop for Switzerland at 300 as, year=2016', ent.tag.description)
         self.assertIn('financial mode=income_group', ent.tag.description)
         self.assertIn('GPW-year=2015', ent.tag.description)
@@ -96,7 +96,7 @@ class TestLitPopExposure(unittest.TestCase):
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertTrue(np.around(ent.value.sum(), 0) == np.around(comparison_total_val, 0))
-        self.assertTrue(np.int(ent.value.sum().round()) == 2217353764118)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2222114389192)
 
     def test_switzerland300_pc2013_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital:"""
@@ -157,7 +157,7 @@ class TestFunctionIntegration(unittest.TestCase):
                  list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0, \
                  check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
-        self.assertEqual(max(litpop_curr), 80006939425.49625)
+        self.assertEqual(max(litpop_curr), 80178713117.21936)
         
     def test_gpw_import(self):
         """test import of population data (Gridded Population of the World GWP)

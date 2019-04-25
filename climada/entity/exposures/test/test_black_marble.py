@@ -140,9 +140,9 @@ class TestProvinces(unittest.TestCase):
 
         admin1_rec = list(ADM1_FILE.records())
         for rec in admin1_rec:
-            if 'Barcelona' in rec.attributes['name']:
+            if 'Barcelona' == rec.attributes['name']:
                 bcn_geom = rec.geometry
-            if 'Tarragona' in rec.attributes['name']:
+            if 'Tarragona' == rec.attributes['name']:
                 tar_geom = rec.geometry
         admin1_geom = [bcn_geom, tar_geom]
 
@@ -257,7 +257,7 @@ class TestEconIndices(unittest.TestCase):
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
         fill_econ_indicators(ref_year, country_isos, SHP_FILE)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679289166858.236, 4],
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832291693.257, 4],
                             'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21154394545.895, 2]
                            }
         self.assertEqual(country_isos, country_isos_ref)
