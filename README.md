@@ -1,3 +1,5 @@
+[![Build Status](http://ied-wcr-jenkins.ethz.ch:8080/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch:8080/job/climada_ci/)
+
 CLIMADA
 =======
 Python (3.6+) version of CLIMADA
