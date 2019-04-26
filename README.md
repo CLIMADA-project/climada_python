@@ -1,7 +1,5 @@
 [![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch/job/climada_ci/)
 
----
-
 CLIMADA
 =======
 Python (3.6+) version of CLIMADA
