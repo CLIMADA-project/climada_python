@@ -1,5 +1,6 @@
 [![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch/job/climada_ci/)
 [![Documentation build status](https://img.shields.io/readthedocs/climada-python.svg?style=flat-square)](https://readthedocs.org/projects/climada-python/builds/)
+![Jenkins Coverage](https://img.shields.io/jenkins/coverage/cobertura/http/ied-wcr-jenkins.ethz.ch/climada_ci_night.svg)
 
 CLIMADA
 =======
