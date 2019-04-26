@@ -196,29 +196,24 @@ class CostBenefit():
 
         self._print_results()
 
-    def plot_cost_benefit(self):
+    def plot_cost_benefit(self, cb_list=None):
         """ Plot cost-benefit graph. Call after calc().
+
+        Parameters:
+            cb_list (lsit(CostBenefit), optional): if other CostBenefit
+                provided, overlay them all. Used for uncertainty visualization.
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
-        fig, axis = plt.subplots(1, 1)
-        norm_fact, norm_name = self._norm_values(self.tot_climate_risk)
+        if cb_list:
+            cb_uncer = [self]
+            cb_uncer.extend(cb_list)
+            fig, axis = self._plot_list_cost_ben(cb_uncer, 0.5)
+            return fig, axis
 
-        m_names = list(self.cost_ben_ratio.keys())
-        m_cb = np.array([self.cost_ben_ratio[name] for name in m_names])
-        sort_cb = np.argsort(m_cb)
-
-        xmin = 0
-        for meas_id in sort_cb:
-            meas_n = m_names[meas_id]
-            rect = Rectangle((xmin, 0), self.benefit[meas_n]/norm_fact, \
-                1/self.cost_ben_ratio[meas_n], color=self.color_rgb[meas_n])
-            axis.add_patch(rect)
-            axis.text(xmin + (self.benefit[meas_n]/norm_fact)/2,
-                      0.5, meas_n, horizontalalignment='center',
-                      verticalalignment='bottom', rotation=90, fontsize=12)
-            xmin += self.benefit[meas_n]/norm_fact
+        fig, axis = self._plot_list_cost_ben([self], 1)
+        norm_fact, norm_name = self._norm_values(self.tot_climate_risk+0.01)
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
         axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
@@ -230,9 +225,9 @@ class CostBenefit():
 
         axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact),
                              np.array(list(self.benefit.values())).sum()/norm_fact))
-        axis.set_ylim(0, int(1/self.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
-        x_label = 'NPV averted damage over ' + str(self.future_year - self.present_year + 1) + \
-                  ' years (' + self.unit + ' ' + norm_name + ')'
+        axis.set_ylim(0, int(1/np.array(list(self.cost_ben_ratio.values())).min()) + 1)
+        x_label = 'NPV averted damage over ' + str(self.future_year - \
+            self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
         axis.set_xlabel(x_label)
         axis.set_ylabel('Benefit/Cost ratio')
         return fig, axis
@@ -639,3 +634,48 @@ class CostBenefit():
             norm_fact = 1.0e3
             norm_name = 'k'
         return norm_fact, norm_name
+
+    @staticmethod
+    def _plot_list_cost_ben(cb_list, alpha=0.5):
+        """ Overlay cost-benefit bars for every measure
+
+        Parameters:
+            cb_list (list): list of CostBenefit instances with filled values
+            alpha (float, optional): transparency factor (in [0,1])
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        norm_fact = [cb_res._norm_values(cb_res.tot_climate_risk)[0] for cb_res in cb_list]
+        norm_fact = np.array(norm_fact).mean()
+        _, norm_name = CostBenefit._norm_values(norm_fact+0.01)
+
+        fig, axis = plt.subplots(1, 1)
+        m_names = list(cb_list[0].cost_ben_ratio.keys())
+        sort_cb = np.argsort(np.array([cb_list[0].cost_ben_ratio[name] for name in m_names]))
+        xy_lim = [0, 0]
+        for i_cb, cb_res in enumerate(cb_list):
+            xmin = 0
+            for meas_id in sort_cb:
+                meas_n = m_names[meas_id]
+                axis.add_patch(Rectangle((xmin, 0), cb_res.benefit[meas_n]/norm_fact, \
+                    1/cb_res.cost_ben_ratio[meas_n], color=cb_res.color_rgb[meas_n],\
+                    alpha=alpha))
+
+                if i_cb == 0:
+                    axis.text(xmin + (cb_res.benefit[meas_n]/norm_fact)/2,
+                              0.5, meas_n, horizontalalignment='center',
+                              verticalalignment='bottom', rotation=90, fontsize=12)
+                xmin += cb_res.benefit[meas_n]/norm_fact
+
+            xy_lim[0] = max(xy_lim[0], max(int(cb_res.tot_climate_risk/norm_fact), \
+                np.array(list(cb_res.benefit.values())).sum()/norm_fact))
+            xy_lim[1] = max(xy_lim[1], int(1/cb_res.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
+
+        axis.set_xlim(0, xy_lim[0])
+        axis.set_ylim(0, xy_lim[1])
+        axis.set_xlabel('NPV averted damage over ' + \
+                        str(cb_list[0].future_year - cb_list[0].present_year + 1) + \
+                        ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
+        axis.set_ylabel('Benefit/Cost ratio')
+        return fig, axis
