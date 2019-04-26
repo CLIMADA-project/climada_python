@@ -1,4 +1,4 @@
-[![Build Status](http://ied-wcr-jenkins.ethz.ch:8080/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch:8080/job/climada_ci/)
+[![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch/job/climada_ci/)
 
 CLIMADA
 =======
