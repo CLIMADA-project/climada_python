@@ -157,7 +157,7 @@ class TestFunctionIntegration(unittest.TestCase):
                  list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0, \
                  check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
-        self.assertEqual(max(litpop_curr), 80178713117.21936)
+        self.assertAlmostEqual(max(litpop_curr), 80178713117.21936)
         
     def test_gpw_import(self):
         """test import of population data (Gridded Population of the World GWP)
