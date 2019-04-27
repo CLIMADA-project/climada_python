@@ -38,6 +38,9 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'WS'
 """ Hazard type acronym for Winter Storm """
 
+N_PROB_EVENTS = 5 * 6
+""" Number of events per historic event in probabilistic dataset """
+
 
 class StormEurope(Hazard):
     """ A hazard set containing european winter storm events. Historic storm 
@@ -307,8 +310,6 @@ class StormEurope(Hazard):
         Parameters:
             **kwargs: passed on to calc_ssi
 
-    N_PROB_EVENTS = 30
-    """ Number of events per historic event in probabilistic hazardset """
         Attributes:
             ssi (np.array): SSI per event
         """
