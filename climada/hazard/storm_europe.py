@@ -191,14 +191,14 @@ class StormEurope(Hazard):
                     np.repeat(lats, len(lons)),
                     np.tile(lons, len(lats)),
                     ]).T
-        elif hasattr(ncdf,'lat'):
+        elif hasattr(ncdf, 'lat'):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
             new_coord = np.array([
                     np.repeat(lats, len(lons)),
                     np.tile(lons, len(lats)),
                     ]).T
-        elif hasattr(ncdf,'lat_1'):
+        elif hasattr(ncdf, 'lat_1'):
             lats = ncdf.lat_1.data
             lons = ncdf.lon_1.data
             new_coord = np.array([
@@ -206,7 +206,8 @@ class StormEurope(Hazard):
                     lons.reshape(-1),
                     ]).T
         else:
-            raise AttributeError('netcdf file has no field named latitude or other know abrivation for coordinates.') 
+            raise AttributeError('netcdf file has no field named latitude or '
+                                 'other know abrivation for coordinates.')
             
         cent = Centroids()
         cent.coord = new_coord

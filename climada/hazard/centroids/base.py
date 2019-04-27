@@ -298,10 +298,11 @@ class Centroids():
         implement a raster burn method if centroids lie on regular grid. Could
         also employ parallelization.
 
-        Take heed: the natural earth dataset has errors and misclassifies, among
-        others, Norway, Somaliland, and Kosovo, using -99 instead of their
-        assigned codes. Have a look at the natural earth shapefiles and
-        attribute tables. """
+        Take heed: the natural earth dataset has errors and misclassifies,
+        among others, Norway, Somaliland, and Kosovo, using -99 instead of
+        their assigned codes. Have a look at the natural earth shapefiles and
+        attribute tables. 
+        """
         countries = get_country_geometries(extent=self.extent)
         self.region_id = np.zeros(self.size, dtype=int)
         for geom in zip(countries.geometry, countries.ISO_N3):
