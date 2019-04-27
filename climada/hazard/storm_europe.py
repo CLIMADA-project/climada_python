@@ -43,14 +43,14 @@ N_PROB_EVENTS = 5 * 6
 
 
 class StormEurope(Hazard):
-    """ A hazard set containing european winter storm events. Historic storm 
+    """ A hazard set containing european winter storm events. Historic storm
     events can be downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
         ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
             the footprint files; apparently not reproducible from the footprint
             values only.
-        ssi_dawkins (np.array, float): SSI as defined in Dawkins, 2016; see 
+        ssi_dawkins (np.array, float): SSI as defined in Dawkins, 2016; see
             self.set_ssi_dawkins()
         ssi_wisc_gust (np.array): SSI according to the WISC definition,
             calculated using only gust values. See self.set_ssi_wisc_gust()
@@ -209,7 +209,7 @@ class StormEurope(Hazard):
         else:
             raise AttributeError('netcdf file has no field named latitude or '
                                  'other know abrivation for coordinates.')
-            
+
         cent = Centroids()
         cent.coord = new_coord
         cent.id = np.arange(0, len(cent.coord))
@@ -231,15 +231,15 @@ class StormEurope(Hazard):
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
                  threshold=None, sel_cen=None):
         """ Calculate the SSI, method must either be 'dawkins' or 'wisc_gust'.
-        
+
         'dawkins', after Dawkins et al. (2016),
-        doi:10.5194/nhess-16-1999-2016, matches the MATLAB version. 
+        doi:10.5194/nhess-16-1999-2016, matches the MATLAB version.
         ssi = sum_i(area_cell_i * intensity_cell_i^3)
 
         'wisc_gust', according to the WISC Tier 1 definition found at
         https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
         ssi = sum(area_on_land) * mean(intensity)^3
-        
+
         In both definitions, only raster cells that are above the threshold are
         used in the computation.
         Note that this method does not reproduce self.ssi_wisc, presumably
@@ -247,7 +247,7 @@ class StormEurope(Hazard):
         the sustained wind speeds over the 72 hour window. The deviation may
         also be due to differing definitions of what lies on land (i.e. Syria,
         Russia, Northern Africa and Greenland are exempt).
-        
+
         Parameters:
             method (str): Either 'dawkins' or 'wisc_gust'
             intensity (scipy.sparse.csr): Intensity matrix; defaults to
@@ -284,7 +284,7 @@ class StormEurope(Hazard):
             pass
         elif on_land is True:
             sel_cen = cent.on_land
-        else: # select all centroids
+        else:  # select all centroids
             sel_cen = np.ones_like(cent.id, dtype=bool)
 
         ssi = np.zeros(intensity.shape[0])
