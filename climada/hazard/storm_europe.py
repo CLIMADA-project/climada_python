@@ -225,78 +225,94 @@ class StormEurope(Hazard):
         """
         raise NotImplementedError
 
-    def set_ssi_dawkins(self, on_land=True, threshold=None):
-        """ Calculate the SSI according to Dawkins et al. (2016),
-        doi:10.5194/nhess-16-1999-2016
-        The definition used matches the MATLAB version. Threshold value must be
-        set _before_ reading in the footprints.
-
+    def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
+                 threshold=None, sel_cen=None):
+        """ Calculate the SSI, method must either be 'dawkins' or 'wisc_gust'.
+        
+        'dawkins', after Dawkins et al. (2016),
+        doi:10.5194/nhess-16-1999-2016, matches the MATLAB version. 
         ssi = sum_i(area_cell_i * intensity_cell_i^3)
 
+        'wisc_gust', according to the WISC Tier 1 definition found at
+        https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+        ssi = sum(area_on_land) * mean(intensity)^3
+        
+        In both definitions, only raster cells that are above the threshold are
+        used in the computation.
+        Note that this method does not reproduce self.ssi_wisc, presumably
+        because the footprint only contains the maximum wind gusts instead of
+        the sustained wind speeds over the 72 hour window. The deviation may
+        also be due to differing definitions of what lies on land (i.e. Syria,
+        Russia, Northern Africa and Greenland are exempt).
+        
         Parameters:
+            method (str): Either 'dawkins' or 'wisc_gust'
+            intensity (scipy.sparse.csr): Intensity matrix; defaults to
+                self.intensity
             on_land (bool): Only calculate the SSI for areas on land,
                 ignoring the intensities at sea. Defaults to true, whereas
                 the MATLAB version did not.
-            threshold (float, optional): Threshold used in index definition
+            threshold (float, optional): Intensity threshold used in index
+                definition. Cannot be lower than the read-in value.
+            sel_cen (np.array, bool): A boolean vector selecting centroids.
+                Takes precendence over on_land.
 
         Attributes:
             self.ssi_dawkins (np.array): SSI per event
         """
-        if on_land is True:
-            area_c = self.centroids.area_per_centroid \
-                * self.centroids.on_land
+        if intensity is not None:
+            if type(intensity) is not sparse.csr.csr_matrix:
+                intensity = sparse.csr_matrix(intensity)
+            else:
+                pass
         else:
-            area_c = self.centroids.area_per_centroid
-
-        if threshold is None:
             intensity = self.intensity
-        else:
+
+        if threshold is not None:
             assert threshold >= self.intensity_thres, \
                 'threshold cannot be below threshold upon read_footprint'
-            intensity = self.intensity > threshold
+            intensity = intensity > threshold
+        else:
+            intensity = intensity > self.intensity_thres
 
-        self.ssi_dawkins = np.zeros(self.intensity.shape[0])
-
-        for i, inten_i in enumerate(intensity):
-            ssi = area_c * inten_i.power(3).todense().T
-            # crossproduct due to transposition
-            self.ssi_dawkins[i] = ssi.item(0)
-
-    def set_ssi_wisc_gust(self, threshold=None):
-        """ Calculate the SSI according to the WISC definition found at
-        https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
-
-        ssi = sum(area_on_land) * mean(intensity > threshold)^3
-        
-        We assume that only the area where the threshold is exceeded
-        Note that this does not reproduce self.ssi_wisc, presumably because the
-        footprint only contains the maximum wind gusts instead of the sustained
-        wind speeds over the 72 hour window.
-
-        Parameters:
-            threshold (float, optional): Threshold used in index definition
-
-        Attributes:
-            self.ssi_wisc_gust (np.array): SSI per event
-        """
         cent = self.centroids
 
-        if threshold is None:
-            intensity = self.intensity
-        else:
-            assert threshold >= self.intensity_thres, \
-                'threshold cannot be below threshold upon read_footprint'
-            intensity = self.intensity > threshold
+        if sel_cen is not None:
+            pass
+        elif on_land is True:
+            sel_cen = cent.on_land
+        else: # select all centroids
+            sel_cen = np.ones_like(cent.id, dtype=bool)
 
-        self.ssi_wisc_gust = np.zeros(intensity.shape[0])
+        ssi = np.zeros(intensity.shape[0])
 
-        for i, inten_i in enumerate(intensity[:, cent.on_land]):
-            area = np.sum(cent.area_per_centroid[inten_i.indices])
-            inten_mean = np.mean(inten_i)
-            self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
+        if method == 'dawkins':
+            area_c = cent.area_per_centroid * sel_cen
+            for i, inten_i in enumerate(intensity):
+                ssi_i = area_c * inten_i.power(3).todense().T
+                # matrix crossproduct (row x column vector)
+                ssi[i] = ssi_i.item(0)
+
+        elif method == 'wisc_gust':
+            for i, inten_i in enumerate(intensity[:, sel_cen]):
+                area = np.sum(cent.area_per_centroid[inten_i.indices])
+                inten_mean = np.mean(inten_i)
+                ssi[i] = area * np.power(inten_mean, 3)
+
+        return ssi
+
+    def set_ssi(self, **kwargs):
+        """ Wrapper around calc_ssi for setting the self.ssi attribute.
+
+        Parameters:
+            **kwargs: passed on to calc_ssi
 
     N_PROB_EVENTS = 30
     """ Number of events per historic event in probabilistic hazardset """
+        Attributes:
+            ssi (np.array): SSI per event
+        """
+        self.ssi = self.calc_ssi(**kwargs)
 
     def generate_prob_storms(self, region_id=528, **kwargs):
         """ Generates a new hazard set with one original and 29 probabilistic 
