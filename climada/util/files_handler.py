@@ -53,6 +53,9 @@ def download_file(url):
     if req_file.status_code == 404:
         LOGGER.error('Error loading page %s.', url)
         raise ValueError
+    if req_file.status_code == 503:
+        LOGGER.error('Service Unavailable: %s.', url)
+        raise ValueError
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
     file_name = url.split('/')[-1]
