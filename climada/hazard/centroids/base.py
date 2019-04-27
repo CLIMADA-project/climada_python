@@ -195,25 +195,30 @@ class Centroids():
 
         return new_pos
 
-    def select(self, reg_id):
+    def select(self, reg_id=None, sel_cen=None):
         """ Get copy new instance with all the attributs in given region
 
         Parameters:
             reg_id (int or list): regions to select
+            sel_cen (np.array, bool): logical vector of centroids to select
 
         Returns:
             Centroids
         """
         cen = self.__class__()
-        if not isinstance(reg_id, list):
-            reg_id = [reg_id]
-        if isinstance(reg_id, list):
-            sel_cen = np.zeros(self.size, bool)
-            for reg in reg_id:
-                sel_cen = np.logical_or(sel_cen, self.region_id == reg)
-        if not np.any(sel_cen):
-            LOGGER.info('No exposure with region id %s.', reg_id)
-            return None
+
+        if reg_id is None and sel_cen is None:
+            LOGGER.error('Supply either reg_id or sel_cen')
+            return
+        elif sel_cen is not None:
+            pass
+        elif reg_id is not None:
+            if not isinstance(reg_id, list):
+                reg_id = [reg_id]
+            sel_cen = np.isin(self.region_id, reg_id)
+            if not np.any(sel_cen) and reg_id is not None:
+                LOGGER.info('No exposure with region id %s.', reg_id)
+                return None
 
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
