@@ -315,73 +315,84 @@ class StormEurope(Hazard):
         """
         self.ssi = self.calc_ssi(**kwargs)
 
-    def generate_prob_storms(self, region_id=528, **kwargs):
-        """ Generates a new hazard set with one original and 29 probabilistic 
-        storms per historic storm. This represents a partial implementation of 
+    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
+                             **kwargs):
+        """ Generates a new hazard set with one original and 29 probabilistic
+        storms per historic storm. This represents a partial implementation of
         the Monte-Carlo method described in section 2.2 of Schwierz et al.
-        (2010), doi:10.1007/s10584-009-9712-1. 
+        (2010), doi:10.1007/s10584-009-9712-1.
         It omits the rotation of the storm footprints, as well as the pseudo-
         random alterations to the intensity.
 
         In a first step, the original intensity and five additional intensities
-        are saved to an array. In a second step, those 6 possible intensity 
+        are saved to an array. In a second step, those 6 possible intensity
         levels are shifted by n raster pixels into each direction (N/S/E/W).
 
         Caveats:
-            - May not be memory safe for big input or output hazard sets
+            - Memory safety is an issue; trial with the entire dataset resulted
+              in 60GB of swap memory being used...
             - Can only use numeric region_id for country selection
             - Drops event names as provided by WISC
 
         Parameters:
-            region_id (int, list of ints): iso_n3 code of the countries we want 
-                the generated hazard set to be returned for.
+            region_id (int, list of ints, or None): iso_n3 code of the
+                countries we want the generated hazard set to be returned for.
+            spatial_shift (int): amount of raster pixels to shift by
+            ssi_args (dict): A dictionary of arguments passed to calc_ssi
             **kwargs: keyword arguments passed on to self._hist2prob()
 
         Returns:
             new_haz (StormEurope): A new hazard set for the given country.
-                Centroid attributes are preserved. self.orig attribute is set 
-                to True for original storms (event_id ending in 00).
+                Centroid attributes are preserved. self.orig attribute is set
+                to True for original storms (event_id ending in 00). Also
+                contains a ssi_prob attribute,
         """
-        if self.centroids.region_id.size == 0:
-            self.centroids.set_region_id()
-
         # bool vector selecting the targeted centroids
-        if not isinstance(region_id, list):
-            countries = [region_id]
-        # TODO implement region_id = None to select all centroids
-        select_centroids = np.isin(self.centroids.region_id, countries)
+        if reg_id is not None:
+            if self.centroids.region_id.size == 0:
+                self.centroids.set_region_id()
+            if not isinstance(reg_id, list):
+                reg_id = [reg_id]
+            sel_cen = np.isin(self.centroids.region_id, reg_id)
 
-        shape_grid = self.centroids.shape_grid
+        else: # shifting truncates valid centroids
+            sel_cen = np.zeros(self.centroids.shape_grid, bool)
+            sel_cen[
+                spatial_shift:-spatial_shift,
+                spatial_shift:-spatial_shift
+            ] = True
+            sel_cen = sel_cen.reshape(self.centroids.size)
 
         # init probabilistic array
         n_out = N_PROB_EVENTS * self.size
-        intensity_prob = np.ndarray((n_out, np.count_nonzero(select_centroids)))
+        intensity_prob = sparse.lil_matrix((n_out, np.count_nonzero(sel_cen)))
+        ssi = np.zeros(n_out)
 
         LOGGER.info('Commencing probabilistic calculations')
         for index, intensity1d in enumerate(self.intensity):
             # indices for return matrix
-            index_start = index * N_PROB_EVENTS
-            index_end = (index + 1) * N_PROB_EVENTS
+            start = index * N_PROB_EVENTS
+            end = (index + 1) * N_PROB_EVENTS
 
-            # returned slice is of shape (N_PROB_EVENTS, sum(select_centroids))
-            intensity_prob[index_start:index_end, :] =\
+            intensity_prob[start:end, :], ssi[start:end] =\
                 self._hist2prob(
                     intensity1d,
-                    shape_grid,
-                    select_centroids,
-                    **kwargs
+                    sel_cen,
+                    spatial_shift,
+                    ssi_args,
+                    **kwargs,
                 )
 
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
+        new_haz.ssi = ssi
 
         # don't use synthetic dates; just repeat the historic dates
         new_haz.date = np.repeat(self.date, N_PROB_EVENTS)
 
         # subsetting centroids
-        new_haz.centroids = self.centroids.select(reg_id=countries)
-        new_haz.units = 'm/s'
+        new_haz.centroids = self.centroids.select(sel_cen=sel_cen)
 
         # construct new event ids
         base = np.repeat((self.event_id * 100), N_PROB_EVENTS)
@@ -406,29 +417,31 @@ class StormEurope(Hazard):
 
         return new_haz
 
-    @staticmethod
-    def _hist2prob(intensity1d, shape_grid, select_centroids, spatial_shift=4,
+    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
                    power=1.1, scale=0.1):
-        """
-        Internal function, intended to be called from generate_prob_storms.
+        """ Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
         it then moves around by spatial_shift gridpoints to the east, west, and
         north.
 
         Parameters:
             intensity1d (scipy.sparse.csr_matrix, 1 by n): One historic event
-            shape_grid (tuple): Shape of the original footprint grid
-            select_centroids (np.ndarray(dty=bool)): which centroids to return
-            spatial_shift (int): amount of raster pixels to shift by
+            sel_cen (np.ndarray(dty=bool)): which centroids to return
+            spatial_shift (int): amount of raster cells to shift by
             power (float): power to be applied elementwise
             scale (float): weight of probabilistic component
-        """
-        shape_ndarray = shape_grid + tuple([N_PROB_EVENTS])
+            ssi_args (dict): named arguments passed on to calc_ssi
 
-        shape_ndarray = tuple([N_PROB_EVENTS]) + shape_grid
+        Returns:
+            intensity (np.array): Synthetic intensities of shape
+                (N_PROB_EVENTS, length(sel_cen))
+            ssi (np.array): SSI per synthetic event according to provided
+                method.
+        """
+        shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape_grid
 
         # reshape to the raster that the data represents
-        intensity2d = intensity1d.reshape(shape_grid)
+        intensity2d = intensity1d.reshape(self.centroids.shape_grid)
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
@@ -443,12 +456,15 @@ class StormEurope(Hazard):
         # 1. translation only
         intensity3d_prob[0] = intensity2d
 
+        # 2. and 3. plusminus scaled sqrt
         intensity3d_prob[1] = intensity2d - (scale * intensity2d_sqrt)
         intensity3d_prob[2] = intensity2d + (scale * intensity2d_sqrt)
 
+        # 4. and 5. plusminus scaled power
         intensity3d_prob[3] = intensity2d - (scale * intensity2d_pwr)
         intensity3d_prob[4] = intensity2d + (scale * intensity2d_pwr)
 
+        # 6. minus scaled sqrt and pwr
         intensity3d_prob[5] = intensity2d \
                               - (0.5 * scale * intensity2d_pwr) \
                               - (0.5 * scale * intensity2d_sqrt)
@@ -469,6 +485,9 @@ class StormEurope(Hazard):
 
         intensity_out = intensity3d_prob.reshape(
             N_PROB_EVENTS,
-            np.prod(shape_grid)
+            np.prod(self.centroids.shape_grid)
         )
-        return intensity_out[:, select_centroids]
+
+        ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)
+
+        return intensity_out[:, sel_cen], ssi
