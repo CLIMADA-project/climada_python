@@ -40,8 +40,8 @@ HAZ_TYPE = 'WS'
 
 
 class StormEurope(Hazard):
-    """ Contains european winter storm events. Historic storm events can be
-    downloaded at http://wisc.climate.copernicus.eu/
+    """ A hazard set containing european winter storm events. Historic storm 
+    events can be downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
         ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
@@ -62,7 +62,7 @@ class StormEurope(Hazard):
     def __init__(self):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
-        self.ssi_wisc = np.array([], float)
+        self.units = 'm/s'
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
@@ -163,11 +163,9 @@ class StormEurope(Hazard):
         new_haz.date = np.array([datetime64_to_ordinal(ncdf.time.data[0])])
         new_haz.intensity = sparse.csr_matrix(stacked)
         new_haz.ssi_wisc = np.array([float(ncdf.ssi)])
-        new_haz.time_bounds = np.array(ncdf.time_bounds)
 
         # fill in default values
         new_haz.centroids = centroids
-        new_haz.units = 'm/s'
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
         new_haz.fraction = new_haz.intensity.copy().tocsr()
