@@ -1,9 +1,6 @@
 climada\.entity\.impact\_funcs package
 ======================================
 
-Submodules
-----------
-
 climada\.entity\.impact\_funcs\.base module
 -------------------------------------------
 
@@ -28,11 +25,3 @@ climada\.entity\.impact\_funcs\.trop_cyclone module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: climada.entity.impact_funcs
-    :members:
-    :undoc-members:
-    :show-inheritance:

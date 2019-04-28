@@ -1,9 +1,6 @@
 climada\.hazard\.centroids package
 ==================================
 
-Submodules
-----------
-
 climada\.hazard\.centroids\.base module
 ---------------------------------------
 
@@ -28,11 +25,3 @@ climada\.hazard\.centroids\.tag module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: climada.hazard.centroids
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -1,80 +1,59 @@
-CLIMADA
-=======
-Python (3.6+) version of CLIMADA
+[![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch/job/climada_ci/)
+[![Documentation build status](https://img.shields.io/readthedocs/climada-python.svg?style=flat-square)](https://readthedocs.org/projects/climada-python/builds/)
+![Jenkins Coverage](https://img.shields.io/jenkins/coverage/cobertura/http/ied-wcr-jenkins.ethz.ch/climada_ci_night.svg)
 
-Latest CLIMADA in Python - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB)
+# CLIMADA
 
-Authors: David N. Bresch <dbresch@ethz.ch>, Gabriela Aznar Siguan <aznarsig@ethz.ch>
+CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-Date: 2018-11-06
+This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB).
 
-Version: 0.2.1
+## Getting started
 
-See [documentation](http://climada-python.readthedocs.io/en/latest/) and [tutorial](https://github.com/davidnbresch/climada_python/tree/master/script/tutorial/1_main_climada.ipynb).
+CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/install.html).
 
-Introduction
-------------
+Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
-CLIMADA stands for **clim**ate **ada**ptation and is a probabilistic natural catastrophe damage model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
+## Documentation
 
-Installation
-------------
+Documentation is available on Read the Docs:
 
-Follow the [Installation](https://climada-python.readthedocs.io/en/latest/install.html) instructions to install climada's development version and climada's stable version.
+* [online (recommended)](https://climada-python.readthedocs.io/en/stable/)
+* [PDF file](https://buildmedia.readthedocs.org/media/pdf/climada-python/stable/climada-python.pdf)
 
-Configuration options
----------------------
+## Citing CLIMADA
 
-The program searches for a local configuration file located in the current 
-working directory. A static default configuration file is supplied by the package 
-and used as fallback. The local configuration file needs to be called 
-``climada.conf``. All other files will be ignored.
+If you use CLIMADA for academic work please cite:
 
-The climada configuration file is a JSON file and consists of the following values:
+Aznar-Siguan, G. and Bresch, D. N.: CLIMADA – a global weather and climate risk assessment platform, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-2018-338, in review, 2019.
 
-- ``local_data``
-- ``global``
-- ``trop_cyclone``
+Please see all CLIMADA's related scientific publications in our [repository of scientific publications](https://github.com/CLIMADA-project/climada_papers).
 
-A minimal configuration file looks something like this:
+## Contributing
 
-```javascript
-{
-    "local_data":
-    {
-        "save_dir": "./results/"
-    },
+To contribute follow these steps:
 
-    "global":
-    {
-        "log_level": "INFO",
-        "max_matrix_size": 1.0e8
-    },
+1. Fork the project on GitHub (`git clone https://github.com/CLIMADA-project/climada_python.git`).
+2. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
+3. Make well commented and clean commits to the repository. You can make a new branch here if you are modifying more than one part or feature.
+4. Make unit and integration tests on your code, preferably during development.
+5. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
+6. Add your name to the AUTHORS file.
+7. Push the branch to GitHub (`git push origin my-new-feature`).
+8. On GitHub, create a new pull request from the feature branch.
 
-    "trop_cyclone":
-    {
-        "random_seed": 54
-    }
-}
-```
+See our contribution guidelines for more information.
 
-### local_data
-Configuration values related to local data location.
+## Versioning
 
-| Option | Description | Default |
-| ------ | ----------- | ------- |
-| ``save_dir`` | Folder were the variables are saved through the ``save`` command when no absolute path provided. | "./results" |
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [releases on this repository](https://github.com/CLIMADA-project/climada_python/releases).
 
-### global
-| Option | Description | Default |
-| ------ | ----------- | ------- |
-| ``log_level`` | Minimum log level showed by logging: DEBUG, INFO, WARNING, ERROR or CRITICAL. | "INFO" |
-| ``max_matrix_size`` | Maximum matrix size that can be used. Set a lower value if memory issues. | 1.0e8 |
+## License
 
-### trop_cyclone
-Configuration values related to tropical cyclones.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
-| Option | Description | Default |
-| ------ | ----------- | ------- |
-| ``random_seed`` | Seed used for the stochastic tracks generation. | 54 |
+CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, version 3.
 
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details:
+
+<https://www.gnu.org/licenses/lgpl.html>

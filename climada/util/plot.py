@@ -25,7 +25,8 @@ __all__ = ['Graph2D',
            'make_map',
            'add_shapes',
            'add_populated_places',
-           'add_cntry_names'
+           'add_cntry_names',
+           'add_basemap'
           ]
 
 import numpy as np

@@ -11,9 +11,6 @@ import numpy as np
 
 from climada.hazard.bush_fire import BushFire
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-TEST_FIRMS = os.path.join(DATA_DIR, "Victoria_firms.csv")
-#TEST_FIRMS = os.path.join(DATA_DIR, "Spain_2013-2018_firms.csv")
 description = ''
 
 class TestReaderDF(unittest.TestCase):
@@ -35,102 +32,8 @@ class TestReaderDF(unittest.TestCase):
             datenum = datetime.strptime(acq_date, '%Y-%M-%d').toordinal()
             firms.at[index, 'datenum'] = datenum
         return firms, description
-#
-#    def test_read_one_pass(self):
-#        bf = BushFire()
-#        firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
-#             -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-#             -38.095, -37.45],
-#                 'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
-#                       142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
-#                       146.397, 145.361],
-#        'brightness' : [316.5, 150, 500, 312.6, 312.7, 324.4, 373.6,
-#             359.6, 312.9, 100, 400, 500, 300, 250],
-#        'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
-#             '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-25', '2006-01-25',
-#             '2006-01-28', '2006-01-28', '2006-01-30']}
-#
-#        firms, description = TestReaderDF._read_firms_synth(firms)
-#
-#        self.assertEqual(firms['latitude'][0], -38.104)
-#        self.assertEqual(firms['longitude'][0], 146.388)
-#        self.assertEqual(firms['latitude'].iloc[-1], -37.45)
-#        self.assertEqual(firms['longitude'].iloc[-1], 145.361)
-#        self.assertFalse(firms['datenum'][0] == firms['datenum'][9])
-#
-#    def test_cons_days(self):
-#        bf = BushFire()
-#        firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
-#             -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-#             -38.095, -37.45],
-#        'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
-#             142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
-#             146.397, 145.361],
-#        'brightness' : [316.5, 150, 500, 312.6, 312.7, 324.4, 373.6,
-#             359.6, 312.9, 100, 400, 500, 300, 250],
-#        'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
-#             '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-25', '2006-01-25',
-#             '2006-01-28', '2006-01-28', '2006-01-30']}
-#        firms, description = TestReaderDF._read_firms_synth(firms)
-#        # add cons_id
-#        firms = bf._firms_cons_days(firms)
-#
-#        self.assertEqual(firms['cons_id'][0], 0)
-#        self.assertEqual(firms['cons_id'][7], 0)
-#        self.assertEqual(firms['cons_id'][8], 0)
-#        self.assertEqual(firms['cons_id'][9], 0)
-#        self.assertEqual(firms['cons_id'][10], 0)
-#        self.assertEqual(firms['cons_id'][11], 1)
-#        self.assertEqual(firms['cons_id'][12], 1)
-#        self.assertEqual(firms['cons_id'][13], 2)
-#
-#    def clustering(self):
-#        bf = BushFire()
-#        firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
-#             -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-#             -38.095, -37.45],
-#        'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
-#             142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
-#             146.397, 145.361],
-#        'brightness' : [316.5, 150, 500, 312.6, 312.7, 324.4, 373.6,
-#             359.6, 312.9, 100, 400, 500, 300, 250],
-#        'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
-#             '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-25', '2006-01-25',
-#             '2006-01-28', '2006-01-28', '2006-01-30']}
-#        firms, description = TestReaderDF._read_firms_synth(firms)
-#        firms = bf._firms_cons_days(firms)
-#         #add clus_id
-#        firms = bf._firms_clustering(firms)
-#
-#        self.assertEqual(max((firms['clus_id'][:10]).values), 2)
-#        self.assertEqual(max((firms['clus_id'][11:13]).values), 0)
-#
-#    def test_event_one_pass(self):
-#        bf = BushFire()
-#        firms = {'latitude' : [-38.104, -38.104, -38.104, -38.093, -38.095,
-#             -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
-#             -38.095, -37.45],
-#        'longitude' : [146.388, 146.388, 146.388, 146.397, 146.386, 142.43,
-#             142.442, 142.428, 145.361, 146.388, 146.388, 146.388,
-#             146.397, 145.361],
-#        'brightness' : [316.5, 150, 500, 312.6, 312.7, 324.4, 373.6,
-#             359.6, 312.9, 100, 400, 500, 300, 250],
-#        'acq_date' : ['2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24',
-#             '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-24', '2006-01-25', '2006-01-25',
-#             '2006-01-28', '2006-01-28', '2006-01-30']}
-#        firms, description = TestReaderDF._read_firms_synth(firms)
-#        firms = bf._firms_cons_days(firms)
-#        firms = bf._firms_clustering(firms)
-#        #add event_id
-#        firms = bf._firms_event(firms)
-#        centroids = bf._centroids_creation(firms)
-#
-#        self.assertEqual(max((firms['event_id'][:10]).values), 3)
-#        self.assertEqual(firms['event_id'][11], 4)
-#        self.assertEqual(firms['event_id'][12], 4)
-#        self.assertEqual(firms['event_id'][13], 5)
 
-    def test_brightness_one_pass(self):
+    def test_hist_event_one_pass(self):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.104, -38.104, -38.093, -38.095,
              -37.433, -37.421, -37.423, -37.45, -38.104, -38.104, -38.104,
@@ -153,26 +56,65 @@ class TestReaderDF(unittest.TestCase):
              '2008-03-08', '2008-03-08', '2008-03-08']}
 
         firms, description = TestReaderDF._read_firms_synth(firms)
-        firms = bf._firms_cons_days(firms)
-        firms = bf._firms_clustering(firms)
-        firms = bf._firms_event(firms)
-        centroids = bf._centroids_creation(firms)
-         # add brightness matrix
-        brightness, num_centr, latlon = bf._calc_brightness(firms, centroids)
         
-        #check event 1
-        self.assertEqual(brightness[0, 493], 500)
-        self.assertEqual(brightness[0, 1996], 500)
-        self.assertEqual(brightness[0, 1493], 312.7)
-        self.assertEqual(brightness[0, 5993], 312.7)
-        self.assertEqual(brightness[0, 4496], 312.6)
-        self.assertEqual(brightness[0, 10997], 312.6)
-        #check event 2
-        self.assertEqual(brightness[1, 232867], 312.9)
-#        
-    
-
-
+        self.assertEqual(firms['latitude'][0], -38.104)
+        self.assertEqual(firms['longitude'][0], 146.388)
+        self.assertEqual(firms['latitude'].iloc[-1], -38.104)
+        self.assertEqual(firms['longitude'].iloc[-1], 146.388)
+        self.assertFalse(firms['datenum'][0] == firms['datenum'][9])
+        
+        firms = bf._firms_cons_days(firms)
+        
+        self.assertEqual(firms['cons_id'][0], 0)
+        self.assertEqual(firms['cons_id'][7], 0)
+        self.assertEqual(firms['cons_id'][8], 0)
+        self.assertEqual(firms['cons_id'][9], 0)
+        self.assertEqual(firms['cons_id'][10], 0)
+        self.assertEqual(firms['cons_id'][11], 1)
+        self.assertEqual(firms['cons_id'][13], 1)
+        self.assertEqual(firms['cons_id'][15], 2)
+        self.assertEqual(firms['cons_id'][21], 3)
+        self.assertEqual(firms['cons_id'][26], 4)
+        
+        nb_centr_lat = 500
+        nb_centr_lon = 500
+        centroids, res_data = bf._centroids_creation(firms, 1)
+        
+        firms = bf._firms_clustering(firms, res_data)
+        
+        self.assertEqual(max((firms['clus_id'][:10]).values), 2)
+        self.assertEqual(max((firms['clus_id'][11:13]).values), 0)
+        
+        firms = bf._firms_event(firms)
+        
+        self.assertEqual(max((firms['event_id'][:10]).values), 3)
+        self.assertEqual(firms['event_id'][11], 4)
+        self.assertEqual(firms['event_id'][12], 4)
+        self.assertEqual(firms['event_id'][13], 5)
+        
+         # add brightness matrix
+        bf._calc_brightness(firms, centroids)
+       
+        bf.plot_intensity(event=0)
+        bf.plot_intensity(event=1)
+        
+        self.assertEqual(bf.intensity[0, 1172], 500)
+        self.assertEqual(bf.intensity[0, 4714], 312.7)
+        self.assertEqual(bf.intensity[0, 4717], 312.6)
+        self.assertEqual(bf.intensity[1, 227620], 312.9)
+        self.assertEqual(bf.intensity[2, 232658], 324.4)
+        self.assertEqual(bf.intensity[2, 236200], 359.6)
+        self.assertEqual(bf.intensity[2, 237385], 373.6)
+        self.assertEqual(bf.intensity[3, 1172], 500)
+        self.assertEqual(bf.intensity[3, 4717], 300)
+        self.assertEqual(bf.intensity[4, 227620], 250)
+      
+        
+        # add probabilistic event
+        
+        ev_id = 1
+        prob_event = bf._random_bushfire_one_event(ev_id, 1)
+        
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderDF)

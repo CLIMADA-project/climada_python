@@ -283,8 +283,44 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
+class TestImpactYearSet(unittest.TestCase):
+    '''Test calc_impact_year_set method'''
+
+    def test_impact_year_set_sum(self):
+        """Test result against reference value with given events """
+        imp = Impact()
+        imp.frequency = np.ones(10) * 6.211180124223603e-04
+        imp.at_event = np.zeros(10)
+        imp.at_event[0] = 0
+        imp.at_event[1] = 0.400665463736549e9
+        imp.at_event[2] = 3.150330960044466e9
+        imp.at_event[3] = 3.715826406781887e9
+        imp.at_event[4] = 2.900244271902339e9
+        imp.at_event[5] = 0.778570745161971e9
+        imp.at_event[6] = 0.698736262566472e9
+        imp.at_event[7] = 0.381063674256423e9
+        imp.at_event[8] = 0.569142464157450e9
+        imp.at_event[9] = 0.467572545849132e9
+        imp.unit = 'USD'   
+        imp.date = np.array([732801, 716160, 718313, 712468, 732802, \
+                             729285, 732931, 715419, 722404, 718351])
+
+        iys_all = imp.calc_impact_year_set()
+        iys = imp.calc_impact_year_set(all_years=False)
+        self.assertEqual(np.around(sum([iys[year] for year in iys])), \
+                         np.around(sum(imp.at_event)))
+        self.assertEqual(sum([iys[year] for year in iys]), \
+                         sum([iys_all[year] for year in iys_all]))
+        self.assertEqual(len(iys), 7)
+        self.assertEqual(len(iys_all), 57)
+        self.assertIn(1951 and 1959 and 2007, iys_all)
+        self.assertTrue(iys_all[1959]>0)
+        self.assertAlmostEqual(3598980534.468811, iys_all[2007])
+        self.assertEqual(iys[1978], iys_all[1978])
+        self.assertAlmostEqual(iys[1951], imp.at_event[3])
+
 class TestIO(unittest.TestCase):
-    ''' Test impact calc method.'''
+    ''' Test impact input/output methods.'''
 
     def test_write_read_ev_test(self):
         ''' Test result against reference value'''
@@ -418,5 +454,6 @@ class TestIO(unittest.TestCase):
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

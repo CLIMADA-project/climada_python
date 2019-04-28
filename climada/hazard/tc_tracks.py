@@ -82,6 +82,7 @@ class TCTracks():
                 - max_sustained_wind_unit (attrs)
                 - central_pressure_unit (attrs)
                 - name (attrs)
+                - sid (attrs)
                 - orig_event_flag (attrs)
                 - data_provider (attrs)
                 - basin (attrs)
@@ -109,7 +110,8 @@ class TCTracks():
         """Get track with provided name. Return all tracks if no name provided.
 
         Parameters:
-            track_name (str, optional): name of track (ibtracsID for IBTrACS)
+            track_name (str, optional): name or sid (ibtracsID for IBTrACS)
+                of track
 
         Returns:
             xarray.Dataset or [xarray.Dataset]
@@ -122,8 +124,10 @@ class TCTracks():
         for track in self.data:
             if track.name == track_name:
                 return track
+            if hasattr(track, 'sid') and track.sid == track_name:
+                return track
 
-        LOGGER.info('No track with name %s found.', track_name)
+        LOGGER.info('No track with name or sid %s found.', track_name)
         return []
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
@@ -333,8 +337,8 @@ class TCTracks():
             i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
             i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
             i_track.attrs['orig_event_flag'] = False
-            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + \
-                                    str(i_ens+1)
+            i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens+1)
+            i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens+1)
             i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
 
             ens_track.append(i_track)
@@ -506,6 +510,7 @@ class TCTracks():
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
         tr_ds.attrs['name'] = name
+        tr_ds.attrs['sid'] = name
         tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
@@ -568,9 +573,11 @@ class TCTracks():
             i_track (int): track position in netcdf data
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
-        name = ''.join(nc_data.variables['sid'][i_track].astype(str))
+        name = ''.join(nc_data.variables['name'][i_track] \
+            [nc_data.variables['name'][i_track].mask==False].data.astype(str))
+        sid = ''.join(nc_data.variables['sid'][i_track].astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
-        LOGGER.info('Reading %s', name)
+        LOGGER.info('Reading %s: %s', sid, name)
 
         isot = nc_data.variables['iso_time'][i_track, :, :]
         val_len = isot.mask[isot.mask == False].shape[0]//isot.shape[1]
@@ -579,7 +586,7 @@ class TCTracks():
             datetimes.append(dt.datetime.strptime(''.join(date_time.astype(str)),
                                                   '%Y-%m-%d %H:%M:%S'))
 
-        id_no = float(name.replace('N', '0').replace('S', '1'))
+        id_no = float(sid.replace('N', '0').replace('S', '1'))
         lat = nc_data.variables[provider + '_lat'][i_track, :][:val_len]
         lon = nc_data.variables[provider + '_lon'][i_track, :][:val_len]
 
@@ -593,20 +600,20 @@ class TCTracks():
         np.all(max_sus_wind == nc_data.variables[provider + '_wind']._FillValue) \
         and np.all(cen_pres == nc_data.variables[provider + '_pres']._FillValue)):
             LOGGER.warning('Skipping %s. It does not contain valid values. ' +\
-                           'Try another provider.', name)
+                           'Try another provider.', sid)
             return None
 
         try:
             rmax = nc_data.variables[provider + '_rmw'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No rmax for given provider %s. Set to default.',
-                        name, provider)
+                        sid, provider)
             rmax = np.zeros(lat.size)
         try:
             penv = nc_data.variables[provider + '_poci'][i_track, :][:val_len]
         except KeyError:
             LOGGER.info('%s: No penv for given provider %s. Set to default.',
-                        name, provider)
+                        sid, provider)
             penv = np.ones(lat.size)*self._set_penv(basin)
 
         tr_ds = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, \
@@ -616,7 +623,7 @@ class TCTracks():
         # deal with nans
         tr_ds = self._deal_nans(tr_ds, nc_data, provider, datetimes, basin)
         if not tr_ds.shape[0]:
-            LOGGER.warning('Skipping %s. No usable data.', name)
+            LOGGER.warning('Skipping %s. No usable data.', sid)
             return None
         # ensure environmental pressure > central pressure
         chg_pres = (tr_ds.central_pressure > tr_ds.environmental_pressure).values
@@ -627,7 +634,7 @@ class TCTracks():
         tr_ds.coords['lat'] = ('time', tr_ds.lat)
         tr_ds.coords['lon'] = ('time', tr_ds.lon)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 'central_pressure_unit': 'mb', \
-            'name': name, 'orig_event_flag': True, 'data_provider': provider, \
+            'name': name, 'sid': sid, 'orig_event_flag': True, 'data_provider': provider, \
             'basin': basin, 'id_no': id_no, 'category': set_category(max_sus_wind, 'kn')}
         return tr_ds
 
