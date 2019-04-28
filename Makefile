@@ -22,7 +22,7 @@ install_test : ## Test installation was successful
 
 .PHONY : data_test
 data_test : ## Test data APIs
-        python test_data_avail.py
+	python test_data_api.py
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
