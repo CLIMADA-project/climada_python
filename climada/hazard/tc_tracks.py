@@ -28,7 +28,6 @@ import logging
 import datetime as dt
 import array
 import itertools
-import requests
 import numpy as np
 import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
@@ -46,7 +45,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
-from climada.util.files_handler import get_file_names, download_file
+from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -62,8 +61,11 @@ CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """ Color scale to plot the Saffir-Simpson scale."""
 
-IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/IBTrACS.ALL.v04r00.nc'
+IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/'
 """ FTP of IBTrACS netcdf file containing all tracks v4.0 """
+
+IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
+""" IBTrACS v4.0 file all """
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -147,9 +149,9 @@ class TCTracks():
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
         if not glob.glob(fn_nc):
             try:
-                file_down = download_file(IBTRACS_URL)
-                shutil.move(file_down, fn_nc)
-            except (IOError, requests.exceptions.ConnectionError) as err:
+                download_ftp(os.path.join(IBTRACS_URL, IBTRACS_FILE), IBTRACS_FILE)
+                shutil.move(IBTRACS_FILE, fn_nc)
+            except ValueError as err:
                 LOGGER.error('Error while downloading %s. Try to download it '+
                              'manually and put the file in ' +
                              'climada_python/data/system/', IBTRACS_URL)

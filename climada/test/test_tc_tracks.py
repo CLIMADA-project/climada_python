@@ -27,12 +27,17 @@ from netCDF4 import Dataset
 from climada.hazard.tc_tracks import TCTracks, _calc_land_geom, _apply_decay_coeffs
 from climada.util.constants import SYSTEM_DIR
 
+class TestDownload(unittest.TestCase):
+    """Test reading TC from IBTrACS files"""
+
+    def test_raw_ibtracs_empty_pass(self):
+        """ read_ibtracs_netcdf"""
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
+        self.assertEqual(tc_track.get_track(), [])
+
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
-
-    class TestResult(unittest.TestResult):
-        def addError(self, test, err):
-            print('ERROR while downloading Ibtracs file.')
 
     def test_penv_rmax_penv_pass(self):
         """ read_ibtracs_netcdf"""
@@ -49,17 +54,11 @@ class TestIBTracs(unittest.TestCase):
         penv_ref[33] = 1014
         penv_ref[34] = 1014
         penv_ref[35] = 1012
-        
-        self.assertTrue(np.array_equal(tc_track.get_track().environmental_pressure.values, 
-                                       penv_ref))
-        self.assertTrue(np.array_equal(tc_track.get_track().radius_max_wind.values, 
-                                       np.zeros(97)))
 
-    def test_raw_ibtracs_empty_pass(self):
-        """ read_ibtracs_netcdf"""
-        tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
-        self.assertEqual(tc_track.get_track(), [])
+        self.assertTrue(np.array_equal(tc_track.get_track().environmental_pressure.values,
+                                       penv_ref))
+        self.assertTrue(np.array_equal(tc_track.get_track().radius_max_wind.values,
+                                       np.zeros(97)))
 
     def test_read_raw_pass(self):
         """Read a tropical cyclone."""
@@ -107,7 +106,7 @@ class TestIBTracs(unittest.TestCase):
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
                                year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
-        
+
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
         self.assertEqual(tc_track.size, 32)
@@ -145,7 +144,7 @@ class TestIBTracs(unittest.TestCase):
         """ Test decay not implemented when coefficient < 1 """
         track = TCTracks()
         track.read_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
-        
+
         track_gen = track.data[0]
         track_gen['lat'] = np.array([28.20340431, 28.7915261 , 29.38642458, 29.97836984, 30.56844404,
                            31.16265292, 31.74820301, 32.34449825, 32.92261894, 33.47430891,
@@ -180,12 +179,13 @@ class TestIBTracs(unittest.TestCase):
         v_rel = {3: 0.002249541544102336, 1: 0.00046889526284203036, 4: 0.002649273787364977, 2: 0.0016426186150461349, 5: 0.00246400811445618, 7: 0.0030442198547309075, 6: 0.002346537842810565}
         p_rel = {3: (1.028420239620591, 0.003174733355067952), 1: (1.0046803184177564, 0.0007997633912500546), 4: (1.0498749735343516, 0.0034665588904747515), 2: (1.0140127424090262, 0.002131858515233042), 5: (1.0619445995372885, 0.003467268426139696), 7: (1.0894914184297835, 0.004315034379018768), 6: (1.0714354641894077, 0.002783787561718677)}
         track_gen.attrs['orig_event_flag'] = False
-        
+
         cp_ref = np.array([1012., 1012.])
         land_geom = _calc_land_geom([track_gen])
         track_res = _apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
         self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
-    
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIBTracs)
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDownload)
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
 unittest.TextTestRunner(verbosity=2).run(TESTS)

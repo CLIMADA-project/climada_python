@@ -29,6 +29,7 @@ import logging
 import math
 import requests
 import tqdm
+import urllib
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +68,21 @@ def download_file(url):
                               unit='KB', unit_scale=True):
             file.write(data)
     return file_abs_name
+
+def download_ftp(url, file_name):
+    """ Download file from ftp in current folder.
+
+    Parameters:
+        url (str): url containing data to download
+        file_name (str): name of the file to dowload
+
+    Raises:
+        ValueError
+    """
+    try:
+        urllib.request.urlretrieve(url,file_name)
+    except Exception:
+        raise ValueError
 
 def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
