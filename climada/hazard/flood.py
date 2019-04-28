@@ -29,14 +29,20 @@ import xarray as xr
 import pandas as pd
 import math
 import datetime as dt
+import pyproj
+#import matplotlib.pyplot as plt
+import geopandas as gpd
+from shapely.geometry import box, shape
+from climada.util.constants import NAT_REG_ID, DATA_DIR, HAZ_DEMO_FLDPH, HAZ_DEMO_FLFRC, GLB_CENTROIDS_NC
+from pyproj import Proj, transform
+#from shapely.ops import transform
+from functools import partial
 from scipy import sparse
 from numba import jit
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.util.interpolation import interpol_index
-from climada.util.constants import GLB_CENTROIDS_NC
-from climada.util.constants import NAT_REG_ID
-
+from shapely.geometry import Polygon
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,14 +62,15 @@ class RiverFlood(Hazard):
         """Empty constructor"""
 
         Hazard.__init__(self, HAZ_TYPE)
-        self._dph_file = ''
-        self._frc_file = ''
+        self._dph_path = ''
+        self._frc_path = ''
         self._n_events = 0
+        self.fld_area = 0
 
-    def set_from_nc(self, flood_dir=None, centroids=None,
-                    years=['2000'], rf_model='WaterGAP2',
-                    cl_model='miroc5', scenario='historical',
-                    prot_std='flopros'):
+    def set_from_nc(self, flood_dir=None, centroids=None, reg= None,
+                    countries=[], years=[2000], rf_model='ORCHIDEE',
+                    cl_model='gswp3', scenario='', centr_handling='align',
+                    prot_std='flopros', final=None):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
             flood_dir (string): location of flood data
@@ -77,17 +84,35 @@ class RiverFlood(Hazard):
             AttributeError
         """
         if flood_dir is not None:
-            self.__select_ModelRun(flood_dir, rf_model, cl_model, scenario,
-                                   prot_std)
+            if os.path.exists(flood_dir):
+                self.__select_ModelRun(flood_dir, rf_model, cl_model, scenario,
+                                       prot_std)
+            else:
+                LOGGER.warning('Flood directory does not exist,\
+                               setting Demo directory')
+                """TODO: Put demo file in directory"""
+                self._dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDPH)
+                self._frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLFRC)
         else:
-            LOGGER.error('Missing Flood directory')  # check this
-            raise AttributeError
+            LOGGER.warning('Flood directory does not exist,\
+                               setting Demo directory')
+            """TODO: Put demo file in directory"""
+            self._dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDPH)
+            self._frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLFRC)
         if centroids is not None:
             self.centroids = centroids
+            centr_handling = 'align'
+        elif countries or reg:
+            self.centroids = RiverFlood.select_area(countries, reg)
         else:
-            self.centroids = RiverFlood.select_area("DEU")
-        intensity, fraction = self._read_nc(years)
-        self.centroids.plot()
+            centr_handling = 'full_hazard'
+        try:
+            intensity, fraction = self._read_nc(years, centr_handling)
+        except FileNotFoundError:
+            LOGGER.error('Model run does not exist')
+            LOGGER.info('Model run does not exist, check model selection!')
+            raise NameError from FileNotFoundError
+
         if scenario == 'historical':
             self.orig = np.full((self._n_events), True, dtype=bool)
         else:
@@ -99,39 +124,70 @@ class RiverFlood(Hazard):
         self.frequency = np.ones(self._n_events) / self._n_events
         return self
 
-    def _read_nc(self, years):
+    def _read_nc(self, years, centr_handling):
         """ extract and flood intesity and fraction from flood
             data
         Returns:
             np.arrays
         """
-        flood_dph = xr.open_dataset(self._dph_path)
-        flood_frc = xr.open_dataset(self._frc_path)
-        lon = flood_dph.lon.data
-        lat = flood_dph.lat.data
-        time = flood_dph.time.data
-        event_index = self.__select_events(time, years)
-        win = self.__cut_window(lon, lat)
-        lon_coord = lon[win[0, 0]:win[1, 0] + 1]
-        lat_coord = lat[win[0, 1]:win[1, 1] + 1]
-        dph_window = flood_dph.flddph[event_index, win[0, 1]:win[1, 1] + 1,
-                                      win[0, 0]:win[1, 0] + 1].data
-        frc_window = flood_frc.fldfrc[event_index, win[0, 1]:win[1, 1] + 1,
-                                      win[0, 0]:win[1, 0] + 1].data
-        n_centroids = self.centroids.coord.shape[0]
-        self._n_events = dph_window.shape[0]
-        self.date = np.array([dt.datetime(
-            flood_dph.time.dt.year[i], flood_dph.time.dt.month[i],
-            flood_dph.time.dt.day[i]).toordinal() for i in event_index])
-        intensity, fraction = _interpolate(lat_coord, lon_coord,
-                                           dph_window, frc_window,
-                                           self.centroids.coord[:, 1],
-                                           self.centroids.coord[:, 0],
-                                           n_centroids, self._n_events)
+        try:
+            flood_dph = xr.open_dataset(self._dph_path)
+            flood_frc = xr.open_dataset(self._frc_path)
+            lon = flood_dph.lon.data
+            lat = flood_dph.lat.data
+            time = flood_dph.time.data
+            event_index = self.__select_event(time, years)
+            self._n_events = len(event_index)
+            self.date = np.array([dt.datetime(
+                                 flood_dph.time.dt.year[i],
+                                 flood_dph.time.dt.month[i],
+                                 flood_dph.time.dt.day[i]).toordinal()
+                for i in event_index])
+            #self.centr_area(lon, lat)
+        except KeyError:
+            LOGGER.error('Invalid dimensions or variables in file')
+            raise KeyError
+        except OSError:
+            LOGGER.error('Problems while file reading,\
+                         check flood_file specifications')
+            raise NameError
+        if centr_handling == 'full_hazard':
+            if len(event_index) > 1:
+                LOGGER.warning('Calculates global hazard,\
+                               advanced memory requirements')
+            LOGGER.warning('Calculates global hazard,\
+                           select area to reduce runtime')
+            self.__set_centroids_from_file(lon, lat)
+            try:
+                intensity = np.array([flood_dph.flddph[i].data.flatten()
+                                     for i in event_index])
+                fraction = np.array([flood_frc.fldfrc[i].data.flatten()
+                                     for i in event_index])
+            except MemoryError:
+                LOGGER.error('Too many events for grid size')
+                raise MemoryError
+        else:
+            n_centroids = self.centroids.coord.shape[0]
+            win = self.__cut_window(lon, lat)
+            lon_coord = lon[win[0, 0]:win[1, 0] + 1]
+            lat_coord = lat[win[0, 1]:win[1, 1] + 1]
+            dph_window = flood_dph.flddph[event_index, win[0, 1]:win[1, 1] + 1,
+                                          win[0, 0]:win[1, 0] + 1].data
+            frc_window = flood_frc.fldfrc[event_index, win[0, 1]:win[1, 1] + 1,
+                                          win[0, 0]:win[1, 0] + 1].data
+            try:
+                intensity, fraction = _interpolate(lat_coord, lon_coord,
+                                                   dph_window, frc_window,
+                                                   self.centroids.coord[:, 1],
+                                                   self.centroids.coord[:, 0],
+                                                   n_centroids, self._n_events)
+            except MemoryError:
+                LOGGER.error('Too many events for grid size')
+                raise MemoryError
         return intensity, fraction
 
     def __select_ModelRun(self, flood_dir, rf_model, cl_model, scenario,
-                          prot_std):
+                          prot_std, final=None):
         """Provides paths for selected models to incorporate flood depth
         and fraction
         Parameters:
@@ -141,17 +197,27 @@ class RiverFlood(Hazard):
             scenario (string): climate change scenario
             prot_std (string): protection standard
         """
-        self._dph_file = "flddph_{}_{}_{}_{}_gev_picontrol_2006_2300_0.1.nc"\
-                         .format(rf_model, cl_model, scenario, prot_std)
-        self._frc_file = "fldfrc_{}_{}_{}_{}_gev_picontrol_2006_2300_0.1.nc"\
-                         .format(rf_model, cl_model, scenario, prot_std)
-        self._dph_path = os.path.join(flood_dir, self._dph_file)
-        self._frc_path = os.path.join(flood_dir, self._frc_file)
+        if final is None:
+            final = 'gev_0.1.nc'
+        dph_file = 'flddph_{}_{}_{}{}_{}'\
+                         .format(rf_model, cl_model, scenario, prot_std, final)
+        frc_file = 'fldfrc_{}_{}_{}{}_{}'\
+                         .format(rf_model, cl_model, scenario, prot_std, final)
+        self._dph_path = os.path.join(flood_dir, dph_file)
+        self._frc_path = os.path.join(flood_dir, frc_file)
 
-    def __select_events(self, time, years):
-        event_names = list(map(str, pd.to_datetime(time).year))
+    def __set_centroids_from_file(self, lon, lat):
+        self.centroids = Centroids()
+        gridX, gridY = np.meshgrid(lon, lat)
+        self.centroids.coord = np.zeros((gridX.size, 2))
+        self.centroids.coord[:, 1] = gridX.flatten()
+        self.centroids.coord[:, 0] = gridY.flatten()
+        self.centroids.id = np.arange(self.centroids.coord.shape[0])
+
+    def __select_event(self, time, years):
+        event_names = pd.to_datetime(time).year
         event_index = np.where(np.isin(event_names, years))[0]
-        if not event_index:
+        if len(event_index) == 0:
             LOGGER.error('Years not in file')  # check this
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index]).
@@ -179,10 +245,64 @@ class RiverFlood(Hazard):
         window[1, 1] = max(np.where((lat >= lat_min) & (lat <= lat_max))[0])
         return window
 
+    def centr_area(self, lon, lat):
+        centr_area = np.zeros((self.centroids.coord.shape[0]))
+        centr_index = 0
+        dlon = 360 / 8640
+        dlat = 180 / 4320
+        inProj = Proj("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+        outProj = Proj('+proj=aea +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+
+        gdf = gpd.GeoDataFrame()
+        gdf.crs = {'init' :'epsg:4326'}
+        gdf['geometry'] = None
+        gdf['lon'] = None
+        gdf['lat'] = None
+        for i in range(self.centroids.coord.shape[0]):
+            lon = [self.centroids.coord[i, 1] - dlon / 2., self.centroids.coord[i, 1] + dlon / 2.]
+            lat = [self.centroids.coord[i, 0] - dlat / 2., self.centroids.coord[i, 0] + dlat]
+            print(lon)
+            print(lat)
+            xx, yy = transform(inProj, outProj, lon, lat)
+            print(xx)
+            print(yy)
+            box1 = box(xx[0], yy[0], xx[1], yy[1])
+            projected_area = box1.area
+            centr_area[centr_index] = projected_area
+            centr_index += 1
+            #polygon2 = Polygon(((0,0),(0,1),(1,1),(1,0)))
+            # coordinates = [(self.centroids.coord[i, 1] + dlon / 2.,
+            #                     self.centroids.coord[i, 0] + dlat / 2.),
+            #                    (self.centroids.coord[i, 1] + dlon / 2.,
+            #                     self.centroids.coord[i, 0] - dlat / 2.),
+            #                    (self.centroids.coord[i, 1] - dlon / 2.,
+            #                     self.centroids.coord[i, 0] - dlat / 2.),
+            #                    (self.centroids.coord[i, 1] - dlon / 2.,
+            #                     self.centroids.coord[i, 0] + dlat / 2.)]
+            #polygon = Polygon(coordinates)
+            # gdf.loc[i, 'lon'] = self.centroids.coord[i, 1]
+            # gdf.loc[i, 'lat'] = self.centroids.coord[i, 0]
+            # gdf.loc[i, 'geometry'] = box1
+
+
+        #     s = shape(box1)
+        #     s_new = transform(proj, s)
+
+        
+
+        #     #print(s_new)
+        #     centr_area[centr_index] = projected_area
+        #     centr_index += 1
+        self.fld_area = np.sum(centr_area)/1000000.
+        print(centr_area)
+        #gdf["area"] = gdf['geometry'].area
+        #gdf= gdf.to_crs({'init' : 'epsg:25832'})
+        #gdf["area"] = gdf['geometry'].area/ 10**6
+        print(self.fld_area)
+        #print(gdf.sum(axis=0))
     @property
     def dph_file(self):
         return self._dph_file
-
     @property
     def frc_file(self):
         return self._frc_file
@@ -201,16 +321,16 @@ class RiverFlood(Hazard):
             np.array
         """
         centroids = Centroids()
-        natID_info = pd.read_excel(NAT_REG_ID)
+        natID_info = pd.read_csv(NAT_REG_ID)
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
         isimip_lat = isimip_grid.lat.data
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
 
         if countries:
-            natID = natID_info["NatID"][np.isin(natID_info["ISO3"], countries)]
+            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
         elif reg:
-            natID = natID_info["NatID"][np.isin(natID_info["TCRegName"], reg)]
+            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
         else:
             centroids.coord = np.zeros((gridX.size, 2))
             centroids.coord[:, 1] = gridX.flatten()
@@ -226,8 +346,9 @@ class RiverFlood(Hazard):
         centroids.coord[:, 0] = lat_coordinates
         centroids.id = np.arange(centroids.coord.shape[0])
         centroids.set_region_id()
+        #fig, ax = centroids.plot()
+        #plt.show(block=True)
         return centroids
-
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
                  n_centr, n_ev, method='nearest'):
@@ -258,13 +379,13 @@ def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
     fraction = np.zeros((dph_window.shape[0], n_centr))
     for i in range(n_ev):
         intensity[i, :] = sp.interpolate.interpn((lat, lon),
-                                                 dph_window[i, :, :],
+                                                 np.nan_to_num(dph_window[i, :, :]),
                                                  (centr_lat, centr_lon),
                                                  method='nearest',
                                                  bounds_error=False,
                                                  fill_value=None)
         fraction[i, :] = sp.interpolate.interpn((lat, lon),
-                                                frc_window[i, :, :],
+                                                np.nan_to_num(frc_window[i, :, :]),
                                                 (centr_lat, centr_lon),
                                                 method='nearest',
                                                 bounds_error=False,

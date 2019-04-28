@@ -57,12 +57,20 @@ ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
 
 HAZ_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'hazard_template.xlsx')
 """ Hazard template in xls format."""
-NAT_REG_ID = os.path.join(SYSTEM_DIR, 'NatID_RegID.xlsx')
+NAT_REG_ID = os.path.join(SYSTEM_DIR, 'NatRegIDs.csv')
 """ Look-up table ISO3 codes"""
 
 
 HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
 """ Raster file of flood over Venezuela. Model from GAR2015"""
+
+"""TODO: Set real demo file"""
+HAZ_DEMO_FLDPH = os.path.join(DATA_DIR, 'demo', 'test_dph')
+""" NetCDF4 Flood depth from isimip simulations"""
+
+"""TODO: Set real demo file"""
+HAZ_DEMO_FLFRC = os.path.join(DATA_DIR, 'demo', 'test_frc')
+""" NetCDF4 Flood fraction from isimip simulations"""
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
 """ Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids."""
