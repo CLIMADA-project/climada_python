@@ -1,9 +1,6 @@
 climada\.entity\.measures package
 =================================
 
-Submodules
-----------
-
 climada\.entity\.measures\.base module
 --------------------------------------
 
@@ -20,10 +17,3 @@ climada\.entity\.measures\.measure\_set module
     :undoc-members:
     :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: climada.entity.measures
-    :members:
-    :undoc-members:
-    :show-inheritance:

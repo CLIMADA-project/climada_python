@@ -1,9 +1,6 @@
 climada\.util package
 =====================
 
-Submodules
-----------
-
 climada\.util\.checker module
 -----------------------------
 
@@ -76,10 +73,3 @@ climada\.util\.save module
     :undoc-members:
     :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: climada.util
-    :members:
-    :undoc-members:
-    :show-inheritance:

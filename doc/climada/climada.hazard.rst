@@ -1,15 +1,9 @@
 climada\.hazard package
 =======================
 
-Subpackages
------------
-
 .. toctree::
 
     climada.hazard.centroids
-
-Submodules
-----------
 
 climada\.hazard\.base module
 ----------------------------
@@ -43,10 +37,3 @@ climada\.hazard\.tc\_tracks module
     :undoc-members:
     :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: climada.hazard
-    :members:
-    :undoc-members:
-    :show-inheritance:

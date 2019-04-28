@@ -1,9 +1,6 @@
 climada\.entity\.exposures package
 ==================================
 
-Submodules
-----------
-
 climada\.entity\.exposures\.base module
 ---------------------------------------
 
@@ -28,11 +25,3 @@ climada\.entity\.exposures\.litpop module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: climada.entity.exposures
-    :members:
-    :undoc-members:
-    :show-inheritance:

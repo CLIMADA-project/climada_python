@@ -1,18 +1,12 @@
 climada\.entity package
 =======================
 
-Subpackages
------------
-
 .. toctree::
 
     climada.entity.disc_rates
     climada.entity.exposures
     climada.entity.impact_funcs
     climada.entity.measures
-
-Submodules
-----------
 
 climada\.entity\.entity_def module
 ----------------------------------
@@ -30,11 +24,3 @@ climada\.entity\.tag module
     :undoc-members:
     :show-inheritance:
 
-
-Module contents
----------------
-
-.. automodule:: climada.entity
-    :members:
-    :undoc-members:
-    :show-inheritance:

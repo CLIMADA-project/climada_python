@@ -1,9 +1,6 @@
 climada\.engine package
 =======================
 
-Submodules
-----------
-
 climada\.engine\.impact module
 ------------------------------
 
@@ -20,10 +17,3 @@ climada\.engine\.cost\_benefit module
     :undoc-members:
     :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: climada.engine
-    :members:
-    :undoc-members:
-    :show-inheritance:

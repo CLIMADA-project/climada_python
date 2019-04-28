@@ -1,7 +1,7 @@
 .. _Installation_EULER:
 
 Installation on a server / the Euler Cluster (ETH internal)
-************
+***********************************************************
 
 Please execute the instructions of the following text boxes in a Terminal.
 For ETH WCR group members, there are two directories that can be used for the installation:
