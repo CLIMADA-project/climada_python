@@ -16,6 +16,14 @@ unit_test : ## Unit tests execution with coverage and xml reports
 	python -m coverage xml -o coverage.xml
 	python -m coverage html -d coverage
 
+.PHONY : install_test
+install_test : ## Test installation was successful
+	python tests_install.py report
+
+.PHONY : data_test
+data_test : ## Test data APIs
+        python test_data_avail.py
+
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
 	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
