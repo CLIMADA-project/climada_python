@@ -24,12 +24,12 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 import ast
 import logging
 import csv
+import datetime as dt
 from itertools import zip_longest
 import numpy as np
 from scipy import sparse
 import pandas as pd
 import xlsxwriter
-import datetime as dt
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, DEF_CRS
@@ -395,26 +395,26 @@ class Impact():
         """ Write imp_mat matrix in numpy's npz format."""
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
-        
+
     def calc_impact_year_set(self, all_years=True):
         """ Calculate yearly impact from impact data.
 
         Parameters:
             all_years (boolean): return values for all years between first and
             last year with event, including years without any events.
-    
+
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
-                      for date in self.date])
+                              for date in self.date])
         if all_years:
             years = np.arange(min(orig_year), max(orig_year)+1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
         year_set = dict()
         for year in years:
-            year_set[year] = sum(self.at_event[orig_year==year])
+            year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
 
     @staticmethod
