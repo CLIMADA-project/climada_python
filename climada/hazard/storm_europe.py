@@ -24,14 +24,19 @@ __all__ = ['StormEurope']
 import logging
 import numpy as np
 import xarray as xr
+import pandas as pd
+import matplotlib.pyplot as plt
 from scipy import sparse
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
-from climada.util.dates_times import datetime64_to_ordinal, last_year, \
+from climada.util.dates_times import (
+    datetime64_to_ordinal,
+    last_year,
     first_year
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -50,20 +55,19 @@ class StormEurope(Hazard):
         ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
             the footprint files; apparently not reproducible from the footprint
             values only.
-        ssi_dawkins (np.array, float): SSI as defined in Dawkins, 2016; see
-            self.set_ssi_dawkins()
-        ssi_wisc_gust (np.array): SSI according to the WISC definition,
-            calculated using only gust values. See self.set_ssi_wisc_gust()
+        ssi (np.array, float): SSI as set by set_ssi; uses the Dawkins 
+            definition by default.
     """
+
     intensity_thres = 14.7
     """ Intensity threshold for storage in m/s; same as used by WISC SSI
         calculations. """
 
-    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
+    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi'})
     """ Name of the variables that aren't need to compute the impact. """
 
     def __init__(self):
-        """Empty constructor. """
+        """ Calls the Hazard init dunder. Sets unit to 'm/s'. """
         Hazard.__init__(self, HAZ_TYPE)
         self.units = 'm/s'
 
@@ -222,11 +226,6 @@ class StormEurope(Hazard):
 
         return cent
 
-    def plot_ssi(self):
-        """Ought to plot the SSI versus the xs_freq, which presumably is the
-        excess frequency.
-        """
-        raise NotImplementedError
 
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
                  threshold=None, sel_cen=None):
@@ -314,6 +313,37 @@ class StormEurope(Hazard):
             ssi (np.array): SSI per event
         """
         self.ssi = self.calc_ssi(**kwargs)
+
+    def plot_ssi(self):
+        """ Plot the distribution of SSIs versus their cumulative exceedance
+            frequencies, highlighting historical storms in red.
+
+        Returns:
+            fig (matplotlib.figure.Figure)
+            ax (matplotlib.axes._subplots.AxesSubplot)
+        """
+        # data wrangling
+        ssi_freq = pd.DataFrame({
+            'ssi': self.ssi, 
+            'freq': self.frequency, 
+            'orig': self.orig,
+        })
+        ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
+        ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
+        ssi_hist = ssi_freq.loc[ssi_freq.orig]
+
+        # plotting
+        fig, ax = plt.subplots()
+        ax.plot(ssi_freq.freq_cum, ssi_freq.ssi, label='All Events')
+        ax.scatter(ssi_hist.freq_cum, ssi_hist.ssi,
+                   color='red', label='Historic Events')
+        ax.legend()
+        ax.set_xlabel('Exceedance Frequency [1/a]')
+        ax.set_ylabel('Storm Severity Index')
+        ax.ticklabel_format(style='sci', axis='y')
+        plt.show()
+
+        return fig, ax
 
     def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
                              **kwargs):
