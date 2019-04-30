@@ -340,7 +340,7 @@ class StormEurope(Hazard):
         ax.legend()
         ax.set_xlabel('Exceedance Frequency [1/a]')
         ax.set_ylabel('Storm Severity Index')
-        ax.ticklabel_format(style='sci', axis='y')
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
         plt.show()
 
         return fig, ax
