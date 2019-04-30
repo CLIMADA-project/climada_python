@@ -100,6 +100,7 @@ class Centroids():
         self.id = np.array([], int)
         self.region_id = np.array([], int)
         self.name = ''
+        self._resolution = None
 
     def check(self):
         """Check instance attributes. Ids are unique.
@@ -194,25 +195,30 @@ class Centroids():
 
         return new_pos
 
-    def select(self, reg_id):
+    def select(self, reg_id=None, sel_cen=None):
         """ Get copy new instance with all the attributs in given region
 
         Parameters:
             reg_id (int or list): regions to select
+            sel_cen (np.array, bool): logical vector of centroids to select
 
         Returns:
             Centroids
         """
         cen = self.__class__()
-        if not isinstance(reg_id, list):
-            reg_id = [reg_id]
-        if isinstance(reg_id, list):
-            sel_cen = np.zeros(self.size, bool)
-            for reg in reg_id:
-                sel_cen = np.logical_or(sel_cen, self.region_id == reg)
-        if not np.any(sel_cen):
-            LOGGER.info('No exposure with region id %s.', reg_id)
-            return None
+
+        if reg_id is None and sel_cen is None:
+            LOGGER.error('Supply either reg_id or sel_cen')
+            return
+        elif sel_cen is not None:
+            pass
+        elif reg_id is not None:
+            if not isinstance(reg_id, list):
+                reg_id = [reg_id]
+            sel_cen = np.isin(self.region_id, reg_id)
+            if not np.any(sel_cen) and reg_id is not None:
+                LOGGER.info('No exposure with region id %s.', reg_id)
+                return None
 
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
@@ -252,15 +258,12 @@ class Centroids():
         self.dist_coast = dist_to_coast(self.coord)
 
     def set_area_per_centroid(self):
-        """If the centroids are on a regular grid and have their resolution set,
-        set the area_per_centroid attribute, assuming degrees for the points
+        """If the centroids are on a regular grid, we may infer the area per
+        pixel from their spacing, i.e. resolution.
+
+        Sets the area_per_centroid attribute, assuming degrees for the points
         and km2 for the area.
         """
-        try:
-            self.resolution
-        except ValueError:
-            LOGGER.warning('Resolution attribute was not set')
-
         lat_res_km = self.resolution[0] * ONE_LAT_KM
         lat_unique = np.array(np.unique(self.lat))
         lon_res_km = self.resolution[1] * ONE_LAT_KM * \
@@ -295,10 +298,11 @@ class Centroids():
         implement a raster burn method if centroids lie on regular grid. Could
         also employ parallelization.
 
-        Take heed: the natural earth dataset has errors and misclassifies, among
-        others, Norway, Somaliland, and Kosovo, using -99 instead of their
-        assigned codes. Have a look at the natural earth shapefiles and
-        attribute tables. """
+        Take heed: the natural earth dataset has errors and misclassifies,
+        among others, Norway, Somaliland, and Kosovo, using -99 instead of
+        their assigned codes. Have a look at the natural earth shapefiles and
+        attribute tables. 
+        """
         countries = get_country_geometries(extent=self.extent)
         self.region_id = np.zeros(self.size, dtype=int)
         for geom in zip(countries.geometry, countries.ISO_N3):
@@ -331,21 +335,15 @@ class Centroids():
     def resolution(self):
         """ Returns a tuple of the resolution in the same unit as the coords.
         """
+        if self._resolution is None:
+            assert grid_is_regular(self.coord), 'Centroids not a regular grid'
+            lats = np.unique(self.lat)
+            lons = np.unique(self.lon)
+            res_lat = lats[1] - lats[0]
+            res_lon = lons[1] - lons[0]
+            self._resolution = (res_lat, res_lon)
+
         return self._resolution
-
-    @resolution.setter
-    def resolution(self, res):
-        """ Set the resolution asset after making sure that the coordinates are
-        on a regular grid. Coerces floats to a tuple.
-
-        Parameters:
-            res (tuple, float): If float, use same resolution for x and y axis.
-        """
-        assert grid_is_regular(self.coord), 'The coords are not on a regular grid'
-        if isinstance(res, float):
-            res = (res, res)
-        assert isinstance(res, tuple), 'Use a tuple like (lat, lon).'
-        self._resolution = res
 
     @property
     def lat(self):

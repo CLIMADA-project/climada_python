@@ -24,51 +24,57 @@ __all__ = ['StormEurope']
 import logging
 import numpy as np
 import xarray as xr
+import pandas as pd
+import matplotlib.pyplot as plt
 from scipy import sparse
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
-from climada.util.dates_times import datetime64_to_ordinal, last_year, \
+from climada.util.dates_times import (
+    datetime64_to_ordinal,
+    last_year,
     first_year
+)
 
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'WS'
 """ Hazard type acronym for Winter Storm """
 
+N_PROB_EVENTS = 5 * 6
+""" Number of events per historic event in probabilistic dataset """
+
 
 class StormEurope(Hazard):
-    """Contains european winter storm events. Historic storm events can be
-    downloaded at http://wisc.climate.copernicus.eu/
+    """ A hazard set containing european winter storm events. Historic storm
+    events can be downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
-        ssi_wisc (np.array, float): Storm Severity Index as recorded in the
-            footprint files; this is _not_ the same as that computed by the
-            MATLAB climada version. Apparently not reproducible from the
-            max_wind_gust values only.
-        ssi_dawkins (np.array, float): Storm Severity Index as defined in
-            Dawkins, 2016, doi:10.5194/nhess-16-1999-2016
-            Can be set using self.set_ssi_dawkins()
-        ssi_wisc_gust (np.array): SSI according to the WISC definition,
-            calculated using only gust values. See self.set_ssi_wisc_gust()
+        ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
+            the footprint files; apparently not reproducible from the footprint
+            values only.
+        ssi (np.array, float): SSI as set by set_ssi; uses the Dawkins 
+            definition by default.
     """
-    intensity_thres = 14.7
-    """ intensity threshold for storage in m/s; same as in WISC """
 
-    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi_dawkins'})
-    """Name of the variables that aren't need to compute the impact."""
+    intensity_thres = 14.7
+    """ Intensity threshold for storage in m/s; same as used by WISC SSI
+        calculations. """
+
+    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi'})
+    """ Name of the variables that aren't need to compute the impact. """
 
     def __init__(self):
-        """Empty constructor. """
+        """ Calls the Hazard init dunder. Sets unit to 'm/s'. """
         Hazard.__init__(self, HAZ_TYPE)
-        self.ssi_wisc = np.array([], float)
+        self.units = 'm/s'
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc'):
-        """Clear instance and read WISC footprints into it. Read Assumes that
+        """ Clear instance and read WISC footprints into it. Read Assumes that
         all footprints have the same coordinates as the first file listed/first
         file in dir.
 
@@ -123,7 +129,7 @@ class StormEurope(Hazard):
         )
 
         self.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+            HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC historical hazard set.'
         )
         if description is not None:
@@ -164,11 +170,9 @@ class StormEurope(Hazard):
         new_haz.date = np.array([datetime64_to_ordinal(ncdf.time.data[0])])
         new_haz.intensity = sparse.csr_matrix(stacked)
         new_haz.ssi_wisc = np.array([float(ncdf.ssi)])
-        new_haz.time_bounds = np.array(ncdf.time_bounds)
 
         # fill in default values
         new_haz.centroids = centroids
-        new_haz.units = 'm/s'
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
         new_haz.fraction = new_haz.intensity.copy().tocsr()
@@ -180,7 +184,7 @@ class StormEurope(Hazard):
 
     @staticmethod
     def _centroids_from_nc(file_name):
-        """Construct Centroids from the grid described by 'latitude' and
+        """ Construct Centroids from the grid described by 'latitude' and
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
@@ -192,14 +196,14 @@ class StormEurope(Hazard):
                     np.repeat(lats, len(lons)),
                     np.tile(lons, len(lats)),
                     ]).T
-        elif hasattr(ncdf,'lat'):
+        elif hasattr(ncdf, 'lat'):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
             new_coord = np.array([
                     np.repeat(lats, len(lons)),
                     np.tile(lons, len(lats)),
                     ]).T
-        elif hasattr(ncdf,'lat_1'):
+        elif hasattr(ncdf, 'lat_1'):
             lats = ncdf.lat_1.data
             lons = ncdf.lon_1.data
             new_coord = np.array([
@@ -207,156 +211,222 @@ class StormEurope(Hazard):
                     lons.reshape(-1),
                     ]).T
         else:
-            raise AttributeError('netcdf file has no field named latitude or other know abrivation for coordinates.') 
-            
+            raise AttributeError('netcdf file has no field named latitude or '
+                                 'other know abrivation for coordinates.')
+
         cent = Centroids()
         cent.coord = new_coord
         cent.id = np.arange(0, len(cent.coord))
-        if hasattr(ncdf,'geospatial_lat_resolution'):
-            cent.resolution = (float(ncdf.geospatial_lat_resolution),
-                               float(ncdf.geospatial_lon_resolution))
-            cent.set_area_per_centroid()
         cent.tag.description = 'Centroids constructed from: ' + file_name
+
         ncdf.close()
 
+        cent.set_area_per_centroid()
         cent.set_on_land()
 
         return cent
 
-    def plot_ssi(self):
-        """Ought to plot the SSI versus the xs_freq, which presumably is the
-        excess frequency.
-        """
-        raise NotImplementedError
 
-    def set_ssi_dawkins(self, on_land=True, threshold=None):
-        """ Calculate the SSI according to Dawkins, the definition used matches
-        the MATLAB version. Threshold value must be determined _before_ call to
-        self.read_footprints()
+    def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
+                 threshold=None, sel_cen=None):
+        """ Calculate the SSI, method must either be 'dawkins' or 'wisc_gust'.
+
+        'dawkins', after Dawkins et al. (2016),
+        doi:10.5194/nhess-16-1999-2016, matches the MATLAB version.
         ssi = sum_i(area_cell_i * intensity_cell_i^3)
 
+        'wisc_gust', according to the WISC Tier 1 definition found at
+        https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+        ssi = sum(area_on_land) * mean(intensity)^3
+
+        In both definitions, only raster cells that are above the threshold are
+        used in the computation.
+        Note that this method does not reproduce self.ssi_wisc, presumably
+        because the footprint only contains the maximum wind gusts instead of
+        the sustained wind speeds over the 72 hour window. The deviation may
+        also be due to differing definitions of what lies on land (i.e. Syria,
+        Russia, Northern Africa and Greenland are exempt).
+
         Parameters:
+            method (str): Either 'dawkins' or 'wisc_gust'
+            intensity (scipy.sparse.csr): Intensity matrix; defaults to
+                self.intensity
             on_land (bool): Only calculate the SSI for areas on land,
                 ignoring the intensities at sea. Defaults to true, whereas
                 the MATLAB version did not.
-            threshold (float, optional): Threshold used in index definition
+            threshold (float, optional): Intensity threshold used in index
+                definition. Cannot be lower than the read-in value.
+            sel_cen (np.array, bool): A boolean vector selecting centroids.
+                Takes precendence over on_land.
 
         Attributes:
             self.ssi_dawkins (np.array): SSI per event
         """
-        if on_land is True:
-            area_c = self.centroids.area_per_centroid \
-                * self.centroids.on_land
+        if intensity is not None:
+            if type(intensity) is not sparse.csr.csr_matrix:
+                intensity = sparse.csr_matrix(intensity)
+            else:
+                pass
         else:
-            area_c = self.centroids.area_per_centroid
-
-        if threshold is None:
             intensity = self.intensity
-        else:
+
+        if threshold is not None:
             assert threshold >= self.intensity_thres, \
                 'threshold cannot be below threshold upon read_footprint'
-            intensity = self.intensity > threshold
+            intensity = intensity > threshold
+        else:
+            intensity = intensity > self.intensity_thres
 
-        self.ssi_dawkins = np.zeros(self.intensity.shape[0])
-
-        for i, inten_i in enumerate(intensity):
-            ssi = area_c * inten_i.power(3).todense().T
-            # crossproduct due to transposition
-            self.ssi_dawkins[i] = ssi.item(0)
-
-    def set_ssi_wisc_gust(self, threshold=None):
-        """Calculate the SSI according to the WISC definition found at
-        wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
-        ssi = sum(area_on_land) * mean(intensity > threshold)^3
-        We _assume_ that only the area where the threshold is exceeded
-        Note that this does not reproduce self.ssi_wisc, presumably because the
-        footprint only contains the maximum wind gusts instead of the sustained
-        wind speeds over the 72 hour window.
-
-        Parameters:
-            threshold (float, optional): Threshold used in index definition
-
-        Attributes:
-            self.ssi_wisc_gust (np.array): SSI per event
-        """
         cent = self.centroids
 
-        if threshold is None:
-            intensity = self.intensity
-        else:
-            assert threshold >= self.intensity_thres, \
-                'threshold cannot be below threshold upon read_footprint'
-            intensity = self.intensity > threshold
+        if sel_cen is not None:
+            pass
+        elif on_land is True:
+            sel_cen = cent.on_land
+        else:  # select all centroids
+            sel_cen = np.ones_like(cent.id, dtype=bool)
 
-        self.ssi_wisc_gust = np.zeros(intensity.shape[0])
+        ssi = np.zeros(intensity.shape[0])
 
-        for i, inten_i in enumerate(intensity[:, cent.on_land]):
-            area = np.sum(cent.area_per_centroid[inten_i.indices])
-            inten_mean = np.mean(inten_i)
-            self.ssi_wisc_gust[i] = area * np.power(inten_mean, 3)
+        if method == 'dawkins':
+            area_c = cent.area_per_centroid * sel_cen
+            for i, inten_i in enumerate(intensity):
+                ssi_i = area_c * inten_i.power(3).todense().T
+                # matrix crossproduct (row x column vector)
+                ssi[i] = ssi_i.item(0)
 
-    def generate_prob_storms(self, countries=528):
-        """ Generate 6 probabilistic storms per historic storm. As per doi:
-            10.1007/s10584-009-9712-1
+        elif method == 'wisc_gust':
+            for i, inten_i in enumerate(intensity[:, sel_cen]):
+                area = np.sum(cent.area_per_centroid[inten_i.indices])
+                inten_mean = np.mean(inten_i)
+                ssi[i] = area * np.power(inten_mean, 3)
 
-        Caveats of the development version
-            - Does not save generated storms to disk; memory may be limiting
-            - Can only use country code for country selection
-            - Drops event names and ssi as provided by WISC
+        return ssi
 
-        The event ids ending on 00 are historic, the next 29 are synthetic, and
-        so forth for every historic event
+    def set_ssi(self, **kwargs):
+        """ Wrapper around calc_ssi for setting the self.ssi attribute.
 
         Parameters:
-            country (int): iso_n3 code of the country we want the generated
-            hazard set to be returned for.
+            **kwargs: passed on to calc_ssi
+
+        Attributes:
+            ssi (np.array): SSI per event
+        """
+        self.ssi = self.calc_ssi(**kwargs)
+
+    def plot_ssi(self):
+        """ Plot the distribution of SSIs versus their cumulative exceedance
+            frequencies, highlighting historical storms in red.
+
+        Returns:
+            fig (matplotlib.figure.Figure)
+            ax (matplotlib.axes._subplots.AxesSubplot)
+        """
+        # data wrangling
+        ssi_freq = pd.DataFrame({
+            'ssi': self.ssi, 
+            'freq': self.frequency, 
+            'orig': self.orig,
+        })
+        ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
+        ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
+        ssi_hist = ssi_freq.loc[ssi_freq.orig]
+
+        # plotting
+        fig, ax = plt.subplots()
+        ax.plot(ssi_freq.freq_cum, ssi_freq.ssi, label='All Events')
+        ax.scatter(ssi_hist.freq_cum, ssi_hist.ssi,
+                   color='red', label='Historic Events')
+        ax.legend()
+        ax.set_xlabel('Exceedance Frequency [1/a]')
+        ax.set_ylabel('Storm Severity Index')
+        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        plt.show()
+
+        return fig, ax
+
+    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
+                             **kwargs):
+        """ Generates a new hazard set with one original and 29 probabilistic
+        storms per historic storm. This represents a partial implementation of
+        the Monte-Carlo method described in section 2.2 of Schwierz et al.
+        (2010), doi:10.1007/s10584-009-9712-1.
+        It omits the rotation of the storm footprints, as well as the pseudo-
+        random alterations to the intensity.
+
+        In a first step, the original intensity and five additional intensities
+        are saved to an array. In a second step, those 6 possible intensity
+        levels are shifted by n raster pixels into each direction (N/S/E/W).
+
+        Caveats:
+            - Memory safety is an issue; trial with the entire dataset resulted
+              in 60GB of swap memory being used...
+            - Can only use numeric region_id for country selection
+            - Drops event names as provided by WISC
+
+        Parameters:
+            region_id (int, list of ints, or None): iso_n3 code of the
+                countries we want the generated hazard set to be returned for.
+            spatial_shift (int): amount of raster pixels to shift by
+            ssi_args (dict): A dictionary of arguments passed to calc_ssi
+            **kwargs: keyword arguments passed on to self._hist2prob()
 
         Returns:
             new_haz (StormEurope): A new hazard set for the given country.
+                Centroid attributes are preserved. self.orig attribute is set
+                to True for original storms (event_id ending in 00). Also
+                contains a ssi_prob attribute,
         """
-        if self.centroids.region_id.size == 0:
-            self.centroids.set_region_id()
         # bool vector selecting the targeted centroids
-        if not isinstance(countries, list):
-            countries = [countries]
-        select_centroids = np.isin(self.centroids.region_id, countries)
+        if reg_id is not None:
+            if self.centroids.region_id.size == 0:
+                self.centroids.set_region_id()
+            if not isinstance(reg_id, list):
+                reg_id = [reg_id]
+            sel_cen = np.isin(self.centroids.region_id, reg_id)
 
-        shape_grid = self.centroids.shape_grid
+        else: # shifting truncates valid centroids
+            sel_cen = np.zeros(self.centroids.shape_grid, bool)
+            sel_cen[
+                spatial_shift:-spatial_shift,
+                spatial_shift:-spatial_shift
+            ] = True
+            sel_cen = sel_cen.reshape(self.centroids.size)
 
         # init probabilistic array
-        n_events = 6*5
-        n_out = n_events * self.size
-        intensity_prob = np.ndarray((n_out, np.count_nonzero(select_centroids)))
+        n_out = N_PROB_EVENTS * self.size
+        intensity_prob = sparse.lil_matrix((n_out, np.count_nonzero(sel_cen)))
+        ssi = np.zeros(n_out)
 
         LOGGER.info('Commencing probabilistic calculations')
         for index, intensity1d in enumerate(self.intensity):
             # indices for return matrix
-            index_start = index * n_events
-            index_end = (index + 1) * n_events
+            start = index * N_PROB_EVENTS
+            end = (index + 1) * N_PROB_EVENTS
 
-            # returned slice is of (n_events, sum(select_centroids))
-            intensity_prob[index_start:index_end, :] =\
+            intensity_prob[start:end, :], ssi[start:end] =\
                 self._hist2prob(
                     intensity1d,
-                    shape_grid,
-                    select_centroids,
-                    n_events
+                    sel_cen,
+                    spatial_shift,
+                    ssi_args,
+                    **kwargs,
                 )
 
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
+        new_haz.ssi = ssi
 
         # don't use synthetic dates; just repeat the historic dates
-        new_haz.date = np.repeat(self.date, n_events)
+        new_haz.date = np.repeat(self.date, N_PROB_EVENTS)
 
         # subsetting centroids
-        new_haz.centroids = self.centroids.select(reg_id=countries)
-        new_haz.units = 'm/s'
+        new_haz.centroids = self.centroids.select(sel_cen=sel_cen)
 
         # construct new event ids
-        base = np.repeat((self.event_id * 100), n_events)
-        synth_id = np.tile(np.arange(n_events), self.size)
+        base = np.repeat((self.event_id * 100), N_PROB_EVENTS)
+        synth_id = np.tile(np.arange(N_PROB_EVENTS), self.size)
         new_haz.event_id = base + synth_id
 
         # frequency still based on the historic number of years
@@ -366,7 +436,7 @@ class StormEurope(Hazard):
         )
 
         self.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved automatically',
+            HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC probabilistic hazard set using Schwierz et al.'
         )
 
@@ -377,26 +447,31 @@ class StormEurope(Hazard):
 
         return new_haz
 
-    @staticmethod
-    def _hist2prob(intensity1d, shape_grid, select_centroids, n_events,
-                   spatial_shift=4, power=1.1):
-        """
-        Internal function, intended to be called from generate_prob_storms.
+    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
+                   power=1.1, scale=0.1):
+        """ Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
         it then moves around by spatial_shift gridpoints to the east, west, and
         north.
 
         Parameters:
             intensity1d (scipy.sparse.csr_matrix, 1 by n): One historic event
-            shape_grid (tuple): Shape of the original footprint grid
-            select_centroids (np.ndarray(dty=bool))
-        """
-        shape_ndarray = shape_grid + tuple([n_events])
+            sel_cen (np.ndarray(dty=bool)): which centroids to return
+            spatial_shift (int): amount of raster cells to shift by
+            power (float): power to be applied elementwise
+            scale (float): weight of probabilistic component
+            ssi_args (dict): named arguments passed on to calc_ssi
 
-        shape_ndarray = tuple([n_events]) + shape_grid
+        Returns:
+            intensity (np.array): Synthetic intensities of shape
+                (N_PROB_EVENTS, length(sel_cen))
+            ssi (np.array): SSI per synthetic event according to provided
+                method.
+        """
+        shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape_grid
 
         # reshape to the raster that the data represents
-        intensity2d = intensity1d.reshape(shape_grid)
+        intensity2d = intensity1d.reshape(self.centroids.shape_grid)
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
@@ -411,15 +486,18 @@ class StormEurope(Hazard):
         # 1. translation only
         intensity3d_prob[0] = intensity2d
 
-        intensity3d_prob[1] = intensity2d - (0.1 * intensity2d_sqrt)
-        intensity3d_prob[2] = intensity2d + (0.1 * intensity2d_sqrt)
+        # 2. and 3. plusminus scaled sqrt
+        intensity3d_prob[1] = intensity2d - (scale * intensity2d_sqrt)
+        intensity3d_prob[2] = intensity2d + (scale * intensity2d_sqrt)
 
-        intensity3d_prob[3] = intensity2d - (0.1 * intensity2d_pwr)
-        intensity3d_prob[4] = intensity2d + (0.1 * intensity2d_pwr)
+        # 4. and 5. plusminus scaled power
+        intensity3d_prob[3] = intensity2d - (scale * intensity2d_pwr)
+        intensity3d_prob[4] = intensity2d + (scale * intensity2d_pwr)
 
+        # 6. minus scaled sqrt and pwr
         intensity3d_prob[5] = intensity2d \
-                              - (0.05 * intensity2d_pwr) \
-                              - (0.05 * intensity2d_sqrt)
+                              - (0.5 * scale * intensity2d_pwr) \
+                              - (0.5 * scale * intensity2d_sqrt)
 
         # spatial shifts
         # northward
@@ -435,5 +513,11 @@ class StormEurope(Hazard):
         intensity3d_prob[24:30, :, :-spatial_shift] = \
             intensity3d_prob[0:6, :, spatial_shift:]
 
-        intensity_out = intensity3d_prob.reshape(n_events, np.prod(shape_grid))
-        return intensity_out[:, select_centroids]
+        intensity_out = intensity3d_prob.reshape(
+            N_PROB_EVENTS,
+            np.prod(self.centroids.shape_grid)
+        )
+
+        ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)
+
+        return intensity_out[:, sel_cen], ssi
