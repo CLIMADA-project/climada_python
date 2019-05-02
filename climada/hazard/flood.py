@@ -29,21 +29,22 @@ import xarray as xr
 import pandas as pd
 import math
 import datetime as dt
-import pyproj
-#import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt
 import geopandas as gpd
-from shapely.geometry import box, shape
 from climada.util.constants import NAT_REG_ID, DATA_DIR, HAZ_DEMO_FLDPH, HAZ_DEMO_FLFRC, GLB_CENTROIDS_NC
 from pyproj import Proj, transform
+from climada.util.constants import ONE_LAT_KM
+from scipy.interpolate import NearestNDInterpolator
 #from shapely.ops import transform
 from functools import partial
 from scipy import sparse
 from numba import jit
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
-from climada.util.interpolation import interpol_index
+from climada.util.interpolation import index_nn_aprox
 from shapely.geometry import Polygon
-
+from climada.util.coordinates import get_country_geometries
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'RF'
@@ -62,9 +63,6 @@ class RiverFlood(Hazard):
         """Empty constructor"""
 
         Hazard.__init__(self, HAZ_TYPE)
-        self._dph_path = ''
-        self._frc_path = ''
-        self._n_events = 0
         self.fld_area = 0
 
     def set_from_nc(self, flood_dir=None, centroids=None, reg= None,
@@ -80,6 +78,7 @@ class RiverFlood(Hazard):
             cl_model: clima model
             scenario: climate change scenario
             prot_std: protection standard
+            final (string): standard file ending
         raises:
             AttributeError
         """
@@ -106,19 +105,16 @@ class RiverFlood(Hazard):
             self.centroids = RiverFlood.select_area(countries, reg)
         else:
             centr_handling = 'full_hazard'
-        try:
-            intensity, fraction = self._read_nc(years, centr_handling)
-        except FileNotFoundError:
-            LOGGER.error('Model run does not exist')
-            LOGGER.info('Model run does not exist, check model selection!')
-            raise NameError from FileNotFoundError
-
+        #TODO: exceptions could be catched here
+        intensity, fraction = self._read_nc(years, centr_handling)       
         if scenario == 'historical':
             self.orig = np.full((self._n_events), True, dtype=bool)
         else:
             self.orig = np.full((self._n_events), False, dtype=bool)
         self.intensity = sparse.csr_matrix(intensity)
         self.fraction = sparse.csr_matrix(fraction)
+        fig, ax = self.centroids.plot()
+        plt.show(block = True)
 
         self.event_id = np.arange(1, self._n_events + 1)
         self.frequency = np.ones(self._n_events) / self._n_events
@@ -143,7 +139,6 @@ class RiverFlood(Hazard):
                                  flood_dph.time.dt.month[i],
                                  flood_dph.time.dt.day[i]).toordinal()
                 for i in event_index])
-            #self.centr_area(lon, lat)
         except KeyError:
             LOGGER.error('Invalid dimensions or variables in file')
             raise KeyError
@@ -163,6 +158,7 @@ class RiverFlood(Hazard):
                                      for i in event_index])
                 fraction = np.array([flood_frc.fldfrc[i].data.flatten()
                                      for i in event_index])
+                print(intensity)
             except MemoryError:
                 LOGGER.error('Too many events for grid size')
                 raise MemoryError
@@ -184,6 +180,7 @@ class RiverFlood(Hazard):
             except MemoryError:
                 LOGGER.error('Too many events for grid size')
                 raise MemoryError
+        #self.centr_area(lon, lat)
         return intensity, fraction
 
     def __select_ModelRun(self, flood_dir, rf_model, cl_model, scenario,
@@ -212,6 +209,10 @@ class RiverFlood(Hazard):
         self.centroids.coord = np.zeros((gridX.size, 2))
         self.centroids.coord[:, 1] = gridX.flatten()
         self.centroids.coord[:, 0] = gridY.flatten()
+        dlon = np.diff(lon)[0]
+        dlat = np.diff(lat)[0]
+        self.centroids.resolution = (dlon, dlat)
+        self.centroids.set_area_per_centroid()
         self.centroids.id = np.arange(self.centroids.coord.shape[0])
 
     def __select_event(self, time, years):
@@ -245,61 +246,32 @@ class RiverFlood(Hazard):
         window[1, 1] = max(np.where((lat >= lat_min) & (lat <= lat_max))[0])
         return window
 
+    def set_flooded_area(self, centr_indices):
+        area_centr = self.centroids.area_per_centroid[centr_indices]
+        self.fld_area = area_centr * self.fraction[0, centr_indices].transpose()
+
     def centr_area(self, lon, lat):
-        centr_area = np.zeros((self.centroids.coord.shape[0]))
-        centr_index = 0
+        """TODO write method to calculate improved centroids area using 
+           exact coordinate transformation"""
         dlon = 360 / 8640
         dlat = 180 / 4320
+        print(sum(self.centroids.area_per_centroid))
+        centr_area = np.zeros((self.centroids.coord.shape[0]))
+        centr_index = 0
         inProj = Proj("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-        outProj = Proj('+proj=aea +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+        outProj = Proj(init='epsg:3857')
 
-        gdf = gpd.GeoDataFrame()
-        gdf.crs = {'init' :'epsg:4326'}
-        gdf['geometry'] = None
-        gdf['lon'] = None
-        gdf['lat'] = None
         for i in range(self.centroids.coord.shape[0]):
             lon = [self.centroids.coord[i, 1] - dlon / 2., self.centroids.coord[i, 1] + dlon / 2.]
             lat = [self.centroids.coord[i, 0] - dlat / 2., self.centroids.coord[i, 0] + dlat]
-            print(lon)
-            print(lat)
             xx, yy = transform(inProj, outProj, lon, lat)
-            print(xx)
-            print(yy)
             box1 = box(xx[0], yy[0], xx[1], yy[1])
             projected_area = box1.area
             centr_area[centr_index] = projected_area
             centr_index += 1
-            #polygon2 = Polygon(((0,0),(0,1),(1,1),(1,0)))
-            # coordinates = [(self.centroids.coord[i, 1] + dlon / 2.,
-            #                     self.centroids.coord[i, 0] + dlat / 2.),
-            #                    (self.centroids.coord[i, 1] + dlon / 2.,
-            #                     self.centroids.coord[i, 0] - dlat / 2.),
-            #                    (self.centroids.coord[i, 1] - dlon / 2.,
-            #                     self.centroids.coord[i, 0] - dlat / 2.),
-            #                    (self.centroids.coord[i, 1] - dlon / 2.,
-            #                     self.centroids.coord[i, 0] + dlat / 2.)]
-            #polygon = Polygon(coordinates)
-            # gdf.loc[i, 'lon'] = self.centroids.coord[i, 1]
-            # gdf.loc[i, 'lat'] = self.centroids.coord[i, 0]
-            # gdf.loc[i, 'geometry'] = box1
 
 
-        #     s = shape(box1)
-        #     s_new = transform(proj, s)
 
-        
-
-        #     #print(s_new)
-        #     centr_area[centr_index] = projected_area
-        #     centr_index += 1
-        self.fld_area = np.sum(centr_area)/1000000.
-        print(centr_area)
-        #gdf["area"] = gdf['geometry'].area
-        #gdf= gdf.to_crs({'init' : 'epsg:25832'})
-        #gdf["area"] = gdf['geometry'].area/ 10**6
-        print(self.fld_area)
-        #print(gdf.sum(axis=0))
     @property
     def dph_file(self):
         return self._dph_file
@@ -309,6 +281,67 @@ class RiverFlood(Hazard):
 
     @staticmethod
     def select_area(countries=[], reg=[]):
+        """ Extract coordinates of selected countries or region
+        from NatID in a rectangular box. If countries are given countries are cut,
+        if only reg is given, the whole region is cut.
+        Parameters:
+            countries: List of countries
+            reg: List of regions
+        Raises:
+            AttributeError
+        Returns:
+            np.array
+        """
+        centroids = Centroids()
+        natID_info = pd.read_csv(NAT_REG_ID)
+        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+        isimip_lon = isimip_grid.lon.data
+        isimip_lat = isimip_grid.lat.data
+        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
+        dlon = np.diff(isimip_lon)[0]
+        dlat = np.diff(isimip_lat)[0]
+
+        if countries:
+            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
+        elif reg:
+            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
+        else:
+            centroids.coord = np.zeros((gridX.size, 2))
+            centroids.coord[:, 1] = gridX.flatten()
+            centroids.coord[:, 0] = gridY.flatten()
+            centroids.id = np.arange(centroids.coord.shape[0])
+            centroids.resolution = (dlon, dlat)
+            centroids.set_area_per_centroid()
+            centroids.id = np.arange(centroids.coord.shape[0])
+            return centroids
+        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
+        natID_pos = np.isin(isimip_NatIdGrid, natID)
+        lon_coordinates = gridX[natID_pos]
+        lat_coordinates = gridY[natID_pos]
+
+        lon_min = math.floor(min(lon_coordinates))
+        lon_inmin = min(np.where((isimip_lon >= lon_min))[0]) - 1
+        lon_max = math.ceil(max(lon_coordinates))
+        lon_inmax = max(np.where((isimip_lon <= lon_max))[0]) + 1
+        lat_min = math.floor(min(lat_coordinates))
+        lat_inmin = min(np.where((isimip_lat >= lat_min))[0]) - 1
+        lat_max = math.ceil(max(lat_coordinates))
+        lat_inmax = max(np.where((isimip_lat <= lat_max))[0]) + 1
+
+        lon = isimip_lon[lon_inmin: lon_inmax]
+        lat = isimip_lat[lat_inmin: lat_inmax]
+        gridX, gridY = np.meshgrid(lon, lat)
+        centroids.coord = np.zeros((gridX.size, 2))
+        centroids.coord[:, 1] = gridX.flatten()
+        centroids.coord[:, 0] = gridY.flatten()
+        centroids.resolution = (dlon, dlat)
+        centroids.set_area_per_centroid()
+        centroids.id = np.arange(centroids.coord.shape[0])
+        centroids.set_region_id()
+        return centroids
+
+    @staticmethod
+    def select_exact_area(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
         if only reg is given, the whole region is cut.
@@ -326,7 +359,6 @@ class RiverFlood(Hazard):
         isimip_lon = isimip_grid.lon.data
         isimip_lat = isimip_grid.lat.data
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-
         if countries:
             natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
         elif reg:
@@ -346,9 +378,8 @@ class RiverFlood(Hazard):
         centroids.coord[:, 0] = lat_coordinates
         centroids.id = np.arange(centroids.coord.shape[0])
         centroids.set_region_id()
-        #fig, ax = centroids.plot()
-        #plt.show(block=True)
         return centroids
+
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
                  n_centr, n_ev, method='nearest'):

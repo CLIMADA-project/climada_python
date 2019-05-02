@@ -109,42 +109,6 @@ class GDP2Asset(Exposures):
         exp_gdpasset['region_id'] = reg_id_info
         return exp_gdpasset
 
-    @staticmethod
-    def _set_greater_part():
-        # exp_gdpasset = GDP2Asset()
-        # natID_info = pd.read_csv(REGION_MAP)
-        # isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-        # isimip_lon = isimip_grid.lon.data
-        # isimip_lat = isimip_grid.lat.data
-        # gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        # if_rf = self.map_info()
-        # """Maybe remove this condition"""
-        # if countryISO:
-        #     natID = natID_info['ID'][np.isin(natID_info['ISO'], countryISO)]
-        # else:
-        #     coord = np.zeros((gridX.size, 2))
-        #     coord[:, 1] = gridX.flatten()
-        #     coord[:, 0] = gridY.flatten()
-        #     return coord
-        # isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        # natID_pos = np.isin(isimip_NatIdGrid, natID)
-        # lon_coordinates = gridX[natID_pos]
-        # lat_coordinates = gridY[natID_pos]
-        # natID_pos = natID_pos.flatten()
-        # ids = if_rf[natID_pos]
-        # print(ids)
-        # coord = np.zeros((len(lon_coordinates), 2))
-        # coord[:, 1] = lon_coordinates
-        # coord[:, 0] = lat_coordinates
-        # latitude, longitude, assets = self.read_GDP(coord, ref_year)
-        # exp_gdpasset['value'] = assets
-        # exp_gdpasset['latitude'] = latitude
-        # exp_gdpasset['longitude'] = longitude
-        # exp_gdpasset[INDICATOR_IF+DEF_HAZ_TYPE] = if_rf
-
-        return
-
-
 def _read_GDP(shp_exposures, ref_year):
     gdp_file = xr.open_dataset(PATH)
     asset_converter = xr.open_dataset(CONVERTER)
@@ -202,7 +166,6 @@ def map_info():
     transla = fancy_array[natId]
     #print(list(np.unique(transla)[0:8]))
     return transla
-
 
 def assign_reg(Id):
     info = pd.read_csv(REGION_MAP)
