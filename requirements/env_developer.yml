@@ -7,4 +7,3 @@ dependencies:
   - sphinx=1.7.4
   - pip:
     - coverage==4.4.2
-    - xmlrunner==1.7.7

@@ -137,7 +137,6 @@ def read_csv(centroids, file_name, var_names):
     """ Read csv centroids representations. Currently only supports lat/lon
         and region_id.
     """
-    # TODO iterate over additional variables in var_names
     if var_names is None:
         var_names = DEF_VAR_CSV
 

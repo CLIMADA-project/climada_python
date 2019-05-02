@@ -28,7 +28,7 @@ Install environment with Anaconda
    cd envs/climada_env/lib/python3.6/site-packages
    echo '/your/path/to/climada_python-x.y.z/' > climada_env_path.pth
 
-3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 5min).
+3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
 4. **Run tutorials**: In the *Home* section of Anaconda, with *climada_env* selected, install and launch *jupyter notebook*. A browser window will show up. Navigate to your ``climada_python-x.y.z`` repository and open ``doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
 
@@ -52,7 +52,7 @@ Install environment with Miniconda
     python3 tests_install.py
     source deactivate
 
- If the installation has been successful, an OK will appear at the end of the execution.
+ If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
 4. **Run tutorials**: Install and launch *jupyter notebook*::
 

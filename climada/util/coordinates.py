@@ -316,15 +316,15 @@ def shapely_to_pyshp(shapely_geom):
         record.parts = parts
     return record
 
-NE_CRS = {'init': 'epsg:4326'}
+NE_CRS = {'init' : 'epsg:4326'}
 
 def get_country_geometries(country_names=None, extent=None, resolution=10):
-    """Returns a geopandas GeoSeries of natural earth multipolygons of the 
-    specified countries, resp. the countries that lie within the specified 
-    extent. If no arguments are given, simply returns the whole natural earth
-    dataset.
-    Take heed: we assume WGS84 as the CRS unless the Natural Earth download 
-    utility from cartopy starts including the projection information. (They 
+    """Returns a GeoDataFrame with natural earth multipolygons of the
+    specified countries, resp. the parts of the countries that lie within the
+    specified extent. If no arguments are given, simply returns the whole
+    natural earth dataset.
+    Take heed: we assume WGS84 as the CRS unless the Natural Earth download
+    utility from cartopy starts including the projection information. (They
     are saving a whopping 147 bytes by omitting it.) Same goes for UTF.
 
     Parameters:
@@ -343,17 +343,18 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
                                          category='cultural',
                                          name='admin_0_countries')
     nat_earth = geopandas.read_file(shp_file, encoding='UTF-8')
-
+    
     if not nat_earth.crs:
         nat_earth.crs = NE_CRS
-
+    
     if country_names:
-        if isinstance(country_names, str): country_names = [country_names]
+        if isinstance(country_names, str): 
+            country_names = [country_names]
         out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
 
     elif extent:
         bbox = Polygon([
-            (extent[0], extent[2]), 
+            (extent[0], extent[2]),
             (extent[0], extent[3]),
             (extent[1], extent[3]),
             (extent[1], extent[2])
@@ -367,3 +368,4 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         out = nat_earth
 
     return out
+

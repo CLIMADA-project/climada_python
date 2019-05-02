@@ -6,7 +6,7 @@ Data dependencies
 Web APIs
 --------
 CLIMADA relies on open data available through web APIs such as those of the World Bank, Natural Earth, NASA and NOAA.
-You might execute the test ``climada_python-x.y.z/tests_data_api.py`` to check that all the APIs used are active.
+You might execute the test ``climada_python-x.y.z/test_data_api.py`` to check that all the APIs used are active.
 If any is out of service (temporarily or permanently), the test will indicate which one.
 
 Manual download
@@ -22,6 +22,3 @@ As indicated in the software and tutorials, other data might need to be download
 +--------------+--------------------------------------------------------------------+-----------+-----------------------------------------------------------------------------------------+---------------+-----------------+-----------------------------------+
 |   FAILED     | Gridded Population of the World (GPW)                              |    v4.10  |  `GPW v4.10 <http://sedac.ciesin.org/data/set/gpw-v4-population-count-rev10>`_          | LitPop        | >= v1.2.0       | climada_entity_LitPop.ipynb       |
 +--------------+--------------------------------------------------------------------+-----------+-----------------------------------------------------------------------------------------+---------------+-----------------+-----------------------------------+
-|     OK       | International Best Track Archive for Climate Stewardship (IBTrACS) |   v04r00  | `IBTrACS v04r00 <ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/>`_ | TCTracks      | >= v1.2.0       | climada_hazard_TropCyclone.ipynb  |
-+--------------+--------------------------------------------------------------------+-----------+-----------------------------------------------------------------------------------------+---------------+-----------------+-----------------------------------+ 
-

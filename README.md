@@ -10,9 +10,9 @@ This is the Python (3.6+) version of CLIMADA - please see https://github.com/dav
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/install.html).
+CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/guide/install.html).
 
-Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
+Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/guide/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
 
@@ -42,7 +42,7 @@ To contribute follow these steps:
 7. Push the branch to GitHub (`git push origin my-new-feature`).
 8. On GitHub, create a new pull request from the feature branch.
 
-See our contribution guidelines for more information.
+See our [contribution guidelines](https://climada-python.readthedocs.io/en/stable/guide/developer.html) for more information.
 
 ## Versioning
 

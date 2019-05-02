@@ -45,4 +45,4 @@ dependencies:
     - pathos==0.2.1
     - pint==0.8.1
     - ppft==1.6.4.7.1
-
+    - xmlrunner==1.7.7

@@ -42,7 +42,7 @@ from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM
 from climada.util.constants import EARTH_RADIUS_KM
 
-from climada.util.alpha_shape import alpha_shape, plot_polygon
+from climada.util.alpha_shape import alpha_shape
 
 
 LOGGER = logging.getLogger(__name__)
@@ -77,6 +77,7 @@ class BushFire(Hazard):
 
     def __init__(self):
         """Empty constructor. """
+
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_bush_fire(self, csv_firms, centr_res_factor, seed, description=''):
@@ -114,6 +115,37 @@ class BushFire(Hazard):
         # compute brightness and fill class attributes
         self.clear()
         self._calc_brightness(firms, centroids)
+
+    def set_proba_all_event(self, ens_size):
+        """ Generate a set of probabilistic events for all historical event.
+        Parallel process
+
+        Parameters:
+            ens_size (int): number of probabilistic events to generate per
+                historical event
+
+        Raises:
+            ValueError
+
+        """
+        haz = []
+        # Next two lines, to keep for debugging
+        for _, ev_id in enumerate(self.event_id):
+            haz.extend(self._set_proba_one_event(ev_id, ens_size))
+
+        # problem random num generator in multiprocessing. python 3.7?
+#        chunksize = min(ens_size, 1000)
+#        haz = Pool().map(self._set_proba_one_event, self.event_id,
+#                          itertools.repeat(ens_size, self.event_id.size),
+#                          chunksize=chunksize)
+
+        LOGGER.debug('Append events.')
+        prob_haz = BushFire()
+        prob_haz._append_all(haz)
+        self.append(prob_haz)
+
+        # Update the frequency adter adding the probabilistic events
+        self._set_frequency(ens_size)
 
     # Historical event (from FIRMS data)
     @staticmethod
@@ -171,7 +203,6 @@ class BushFire(Hazard):
             firms = temp
             firms = firms.reset_index()
             firms = firms.drop(columns=['index'])
-        print('firms size: %s with threshold = %s', str(firms.size), str(CLEAN_THRESH))
         return firms
 
     @staticmethod
@@ -202,7 +233,6 @@ class BushFire(Hazard):
                 firms.at[index, 'cons_id'] = firms.at[(index-1), 'cons_id']+1
             else:
                 firms.at[index, 'cons_id'] = firms.at[(index-1), 'cons_id']
-        print('nb of temporal clusters', max(firms['cons_id'].values))
         return firms
 
     def _firms_clustering(self, firms, res_data):
@@ -231,7 +261,6 @@ class BushFire(Hazard):
             cluster_cpy = cluster_uni[lat_lon_cpy]
             cluster_id[temp] = cluster_cpy
         firms['clus_id'] = pd.Series(cluster_id)
-        print('Nb of geographical clusters', max(firms['clus_id'].values))
 
         LOGGER.info('Sorting of firms data')
         # Re-order FIRMS file to have clus_id in ascending order inside each cons_id
@@ -348,8 +377,9 @@ class BushFire(Hazard):
                                     firms['longitude'].min() : firms['longitude'].max() : \
                                     complex(0, nb_centr_lon)]).\
                                     reshape(2, nb_centr_lat*nb_centr_lon).transpose()
-        centroids.resolution = ((abs(firms['latitude'].min() - firms['latitude'].max())/nb_centr_lat),
-                                (abs(firms['longitude'].min() - firms['longitude'].max())/nb_centr_lon))
+        centroids._resolution = (\
+            (abs(firms['latitude'].min() - firms['latitude'].max())/nb_centr_lat),
+            (abs(firms['longitude'].min() - firms['longitude'].max())/nb_centr_lon))
         centroids.id = np.arange(len(centroids.coord))
         # Calculate the area attributed to each centroid
         centroids.set_area_per_centroid()
@@ -418,12 +448,12 @@ class BushFire(Hazard):
         self.event_id = np.array(np.unique(firms['event_id'].values))
         self.event_name = list(map(str, self.event_id))
         event_uni, _ = np.unique(firms['event_id'].values, return_inverse=True, axis=0)
-        date = np.zeros(len(np.unique(firms['event_id'].values)))
+        date_tmp = np.zeros(len(np.unique(firms['event_id'].values)))
         for ev_id, event in enumerate(event_uni):
             temp = firms.loc[firms['event_id'] == event, 'datenum']
             temp = temp.reset_index()
-            date[ev_id] = temp.at[0, 'datenum']
-        self.date = date
+            date_tmp[ev_id] = temp.at[0, 'datenum']
+        self.date = date_tmp
         self.frequency = np.ones(self.event_id.size)
         self.orig = np.tile(True, len(np.unique(firms['event_id'])))
 
@@ -477,7 +507,7 @@ class BushFire(Hazard):
         ind, _ = tree.query_radius(np.radians(lat_lon_uni),
                                    r=1/EARTH_RADIUS_KM, count_only=False,
                                    return_distance=True, sort_results=True)
-        LOGGER.debug('brightness np.array for the event')
+        LOGGER.debug('Brightness np.array for the event')
         brightness_ev = sparse.lil_matrix(np.zeros((num_centr)))
         for idx, _ in enumerate(index_uni):
             brightness_ev[0, ind[idx][0]] = bright_one_event[idx]
@@ -505,7 +535,7 @@ class BushFire(Hazard):
                 selec = self.event_id[idx]
                 ev_id_selec.append(selec)
 
-        if len(ev_id_selec) == 0:
+        if not ev_id_selec:
             LOGGER.error('No event for this year')
             raise ValueError
 
@@ -515,7 +545,6 @@ class BushFire(Hazard):
         for _, ev_id in enumerate(ev_id_selec):
             area_one_event.append(self._area_one_event(ev_id))
         area_one_year = area_one_year + sum(area_one_event)
-        print('area_one_year:', year, area_one_year)
         return area_one_year
 
     def _area_one_event(self, ev_id):
@@ -539,7 +568,6 @@ class BushFire(Hazard):
         for _, colv in enumerate(col):
             area_temp = self.centroids.area_per_centroid[colv]
             area_one_event = area_one_event + area_temp
-        print('area_one_event:', ev_id, area_one_event)
         return area_one_event
 
 
@@ -572,7 +600,6 @@ class BushFire(Hazard):
         """
         # Calculate area of historical event
         area_hist_event = self._area_one_event(ev_id)
-        print('event:', ev_id, 'area_hist_event:', area_hist_event)
 
         LOGGER.debug('Start ignition.')
         # Identification of the possible ignition centroids
@@ -716,7 +743,7 @@ class BushFire(Hazard):
 
         return new_haz
 
-    def set_proba_one_event(self, ev_id, ens_size):
+    def _set_proba_one_event(self, ev_id, ens_size):
         """ Generate a set of probabilistic events for a given historical event.
 
         Parameters:
@@ -732,38 +759,6 @@ class BushFire(Hazard):
         for i_ens in range(ens_size):
             bf_haz.append(self._random_bushfire_one_event(ev_id, i_ens))
         return bf_haz
-
-
-    def set_proba_all_event(self, ens_size):
-        """ Generate a set of probabilistic events for all historical event.
-        Parallel process
-
-        Parameters:
-            ens_size (int): number of probabilistic events to generate per
-                historical event
-
-        Raises:
-            ValueError
-
-        """
-        haz = []
-        # Next two lines, to keep for debugging
-        for _, ev_id in enumerate(self.event_id):
-            haz.extend(self.set_proba_one_event(ev_id, ens_size))
-
-        # problem random num generator in multiprocessing. python 3.7?
-#        chunksize = min(ens_size, 1000)
-#        haz = Pool().map(self.set_proba_one_event, self.event_id,
-#                          itertools.repeat(ens_size, self.event_id.size),
-#                          chunksize=chunksize)
-
-        LOGGER.debug('Append events.')
-        prob_haz = BushFire()
-        prob_haz._append_all(haz)
-        self.append(prob_haz)
-
-        # Update the frequency adter adding the probabilistic events
-        self._set_frequency(ens_size)
 
     def _set_frequency(self, ens_size):
         """Set hazard frequency from intensity matrix.
@@ -812,9 +807,10 @@ class BushFire(Hazard):
 
         concave_hull_m = transform(project, concave_hull)  # apply projection
         area_hull_one_event = concave_hull_m.area/10000
-        print('area: %s ha', area_hull_one_event)
+        LOGGER.info('area: %s ha', area_hull_one_event)
 
         # Plot the polygone around the fire
+#        from climada.util.alpha_shape import plot_polygon
 #        _ = plot_polygon(concave_hull)
 #        _ = pl.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
 
