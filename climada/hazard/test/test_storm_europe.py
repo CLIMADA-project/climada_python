@@ -108,20 +108,26 @@ class TestReader(unittest.TestCase):
         )
 
     def test_set_ssi(self):
-        """ Test set_ssi_dawkins and set_ssi_wisc_gust. """
+        """ Test set_ssi with both dawkins and wisc_gust methodology. """
         storms = StormEurope()
         storms.read_footprints(TEST_NCS)
-        storms.set_ssi_dawkins()
-        storms.set_ssi_wisc_gust()
-
-        ssi_dawg = np.asarray([1.50819913e+09, 6.42797447e+08])
-        ssi_gusty = np.asarray([1.48268689e+09, 6.12241392e+08])
-
+        
+        storms.set_ssi(method='dawkins')
+        ssi_dawg = np.asarray([1.51114627e+09, 6.44053524e+08])
         self.assertTrue(
-            np.allclose(storms.ssi_dawkins, ssi_dawg)
+            np.allclose(storms.ssi, ssi_dawg)
         )
+
+        storms.set_ssi(method='wisc_gust')
+        ssi_gusty = np.asarray([1.48558417e+09, 6.13437760e+08])
         self.assertTrue(
-            np.allclose(storms.ssi_wisc_gust, ssi_gusty)
+            np.allclose(storms.ssi, ssi_gusty)
+        )
+
+        storms.set_ssi(threshold=20, on_land=False)
+        ssi_special = np.asarray([3.09951236e+09, 1.29563312e+09])
+        self.assertTrue(
+            np.allclose(storms.ssi, ssi_special)
         )
 
     def test_generate_prob_storms(self):
