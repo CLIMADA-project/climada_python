@@ -113,8 +113,6 @@ class RiverFlood(Hazard):
             self.orig = np.full((self._n_events), False, dtype=bool)
         self.intensity = sparse.csr_matrix(intensity)
         self.fraction = sparse.csr_matrix(fraction)
-        fig, ax = self.centroids.plot()
-        plt.show(block = True)
 
         self.event_id = np.arange(1, self._n_events + 1)
         self.frequency = np.ones(self._n_events) / self._n_events
@@ -334,7 +332,6 @@ class RiverFlood(Hazard):
         centroids.coord = np.zeros((gridX.size, 2))
         centroids.coord[:, 1] = gridX.flatten()
         centroids.coord[:, 0] = gridY.flatten()
-        centroids.resolution = (dlon, dlat)
         centroids.set_area_per_centroid()
         centroids.id = np.arange(centroids.coord.shape[0])
         centroids.set_region_id()
