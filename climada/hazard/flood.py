@@ -45,11 +45,43 @@ from climada.hazard.centroids.base import Centroids
 from climada.util.interpolation import index_nn_aprox
 from shapely.geometry import Polygon
 from climada.util.coordinates import get_country_geometries
+from shapely.geometry import Point
+
+from climada.util.alpha_shape import alpha_shape, plot_polygon
+
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'RF'
 """ Hazard type acronym RiverFlood"""
 
+RF_MODEL = ['ORCHIDEE',
+            'H08',
+            'LPJmL',
+            'MPI-HM',
+            'PCR-GLOBWB',
+            'WaterGAP2',
+            'CLM',
+            'JULES-TUC'
+            'JULES-UoE',
+            'VIC',
+            'VEGAS'
+            ]
+CL_MODEL = ['gfdl-esm2m',
+            'hadgem2-es',
+            'ipsl-cm5a-lr',
+            'miroc5',
+            'wfdei',
+            'gswp3',
+            'princeton',
+            'watch'
+            ]
+SCENARIO = ['',
+            'historical',
+            'rcp26',
+            'rcp60'
+            ]
+
+CENTR_HANDLING = ['align', 'full_hazard']
 
 class RiverFlood(Hazard):
     """Contains flood events
@@ -111,9 +143,10 @@ class RiverFlood(Hazard):
             self.orig = np.full((self._n_events), True, dtype=bool)
         else:
             self.orig = np.full((self._n_events), False, dtype=bool)
+        #fig,ax = self.centroids.plot()
+        #plt.show(block=True)
         self.intensity = sparse.csr_matrix(intensity)
         self.fraction = sparse.csr_matrix(fraction)
-
         self.event_id = np.arange(1, self._n_events + 1)
         self.frequency = np.ones(self._n_events) / self._n_events
         return self
@@ -156,7 +189,6 @@ class RiverFlood(Hazard):
                                      for i in event_index])
                 fraction = np.array([flood_frc.fldfrc[i].data.flatten()
                                      for i in event_index])
-                print(intensity)
             except MemoryError:
                 LOGGER.error('Too many events for grid size')
                 raise MemoryError
@@ -169,6 +201,7 @@ class RiverFlood(Hazard):
                                           win[0, 0]:win[1, 0] + 1].data
             frc_window = flood_frc.fldfrc[event_index, win[0, 1]:win[1, 1] + 1,
                                           win[0, 0]:win[1, 0] + 1].data
+            self. window = win
             try:
                 intensity, fraction = _interpolate(lat_coord, lon_coord,
                                                    dph_window, frc_window,
@@ -209,7 +242,6 @@ class RiverFlood(Hazard):
         self.centroids.coord[:, 0] = gridY.flatten()
         dlon = np.diff(lon)[0]
         dlat = np.diff(lat)[0]
-        self.centroids.resolution = (dlon, dlat)
         self.centroids.set_area_per_centroid()
         self.centroids.id = np.arange(self.centroids.coord.shape[0])
 
@@ -253,7 +285,6 @@ class RiverFlood(Hazard):
            exact coordinate transformation"""
         dlon = 360 / 8640
         dlat = 180 / 4320
-        print(sum(self.centroids.area_per_centroid))
         centr_area = np.zeros((self.centroids.coord.shape[0]))
         centr_index = 0
         inProj = Proj("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
@@ -267,7 +298,6 @@ class RiverFlood(Hazard):
             projected_area = box1.area
             centr_area[centr_index] = projected_area
             centr_index += 1
-
 
 
     @property
@@ -298,7 +328,6 @@ class RiverFlood(Hazard):
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
         dlon = np.diff(isimip_lon)[0]
         dlat = np.diff(isimip_lat)[0]
-
         if countries:
             natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
         elif reg:
@@ -318,16 +347,28 @@ class RiverFlood(Hazard):
         lat_coordinates = gridY[natID_pos]
 
         lon_min = math.floor(min(lon_coordinates))
-        lon_inmin = min(np.where((isimip_lon >= lon_min))[0]) - 1
+        if lon_min <= -179:
+            lon_inmin = 0
+        else:
+            lon_inmin = min(np.where((isimip_lon >= lon_min))[0]) - 1
         lon_max = math.ceil(max(lon_coordinates))
-        lon_inmax = max(np.where((isimip_lon <= lon_max))[0]) + 1
+        if lon_max >= 179:
+            lon_inmax = len(isimip_lon) - 1
+        else:
+            lon_inmax = max(np.where((isimip_lon <= lon_max))[0]) + 1
         lat_min = math.floor(min(lat_coordinates))
-        lat_inmin = min(np.where((isimip_lat >= lat_min))[0]) - 1
+        if lat_min <= -89:
+            lat_inmin = 0
+        else:
+            lat_inmin = min(np.where((isimip_lat >= lat_min))[0]) - 1
         lat_max = math.ceil(max(lat_coordinates))
-        lat_inmax = max(np.where((isimip_lat <= lat_max))[0]) + 1
-
+        if lat_max >= 89:
+            lat_max = len(isimip_lat) - 1
+        else:
+            lat_inmax = max(np.where((isimip_lat <= lat_max))[0]) + 1
         lon = isimip_lon[lon_inmin: lon_inmax]
         lat = isimip_lat[lat_inmin: lat_inmax]
+
         gridX, gridY = np.meshgrid(lon, lat)
         centroids.coord = np.zeros((gridX.size, 2))
         centroids.coord[:, 1] = gridX.flatten()
@@ -368,14 +409,74 @@ class RiverFlood(Hazard):
             return centroids
         isimip_NatIdGrid = isimip_grid.NatIdGrid.data
         natID_pos = np.isin(isimip_NatIdGrid, natID)
+        natID_pos_ind = np.where(natID_pos.flatten() == True)[0]
         lon_coordinates = gridX[natID_pos]
         lat_coordinates = gridY[natID_pos]
         centroids.coord = np.zeros((len(lon_coordinates), 2))
         centroids.coord[:, 1] = lon_coordinates
         centroids.coord[:, 0] = lat_coordinates
         centroids.id = np.arange(centroids.coord.shape[0])
-        centroids.set_region_id()
-        return centroids
+        #centroids.set_region_id()
+        orig_proj = 'epsg:4326'
+        fire = gpd.GeoDataFrame()
+        fire['geometry'] = list(zip(fire_lon, fire_lat))
+        fire['geometry'] = fire['geometry'].apply(Point)
+        return centroids, natID_pos_ind
+    @staticmethod
+    def select_exact_area_polygon(countries=[], reg=[]):
+        """ Extract coordinates of selected countries or region
+        from NatID grid. If countries are given countries are cut,
+        if only reg is given, the whole region is cut.
+        Parameters:
+            countries: List of countries
+            reg: List of regions
+        Raises:
+            AttributeError
+        Returns:
+            np.array
+        """
+        centroids = Centroids()
+        natID_info = pd.read_csv(NAT_REG_ID)
+        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+        isimip_lon = isimip_grid.lon.data
+        isimip_lat = isimip_grid.lat.data
+        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
+        if countries:
+            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
+        elif reg:
+            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
+        else:
+            centroids.coord = np.zeros((gridX.size, 2))
+            centroids.coord[:, 1] = gridX.flatten()
+            centroids.coord[:, 0] = gridY.flatten()
+            centroids.id = np.arange(centroids.coord.shape[0])
+            return centroids
+        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
+        natID_pos = np.isin(isimip_NatIdGrid, natID)
+        lon_coordinates = gridX[natID_pos]
+        lat_coordinates = gridY[natID_pos]
+        centroids.coord = np.zeros((len(lon_coordinates), 2))
+        centroids.coord[:, 1] = lon_coordinates
+        centroids.coord[:, 0] = lat_coordinates
+        centroids.id = np.arange(centroids.coord.shape[0])
+        #centroids.set_region_id()
+        orig_proj = 'epsg:4326'
+        country = gpd.GeoDataFrame()
+        country['geometry'] = list(zip(centroids.coord[:, 1], centroids.coord[:, 0]))
+        country['geometry'] = country['geometry'].apply(Point)
+        country.crs = {'init': orig_proj}
+        points = country.geometry.values
+        concave_hull, _ = alpha_shape(points, alpha=1)
+        #fig = plot_polygon(concave_hull)
+        #plt.show(block=True)
+
+
+
+
+        return concave_hull
+
+
+
 
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
