@@ -273,9 +273,9 @@ class StormEurope(Hazard):
         if threshold is not None:
             assert threshold >= self.intensity_thres, \
                 'threshold cannot be below threshold upon read_footprint'
-            intensity = intensity > threshold
+            intensity = intensity.multiply(intensity > threshold)
         else:
-            intensity = intensity > self.intensity_thres
+            intensity = intensity.multiply(intensity > self.intensity_thres)
 
         cent = self.centroids
 
@@ -284,7 +284,7 @@ class StormEurope(Hazard):
         elif on_land is True:
             sel_cen = cent.on_land
         else:  # select all centroids
-            sel_cen = np.ones_like(cent.id, dtype=bool)
+            sel_cen = np.ones_like(cent.area_per_centroid, dtype=bool)
 
         ssi = np.zeros(intensity.shape[0])
 
@@ -314,7 +314,7 @@ class StormEurope(Hazard):
         """
         self.ssi = self.calc_ssi(**kwargs)
 
-    def plot_ssi(self):
+    def plot_ssi(self, full_area=False):
         """ Plot the distribution of SSIs versus their cumulative exceedance
             frequencies, highlighting historical storms in red.
 
@@ -322,9 +322,14 @@ class StormEurope(Hazard):
             fig (matplotlib.figure.Figure)
             ax (matplotlib.axes._subplots.AxesSubplot)
         """
+        if full_area:
+            ssi = self.ssi_full_area
+        else:
+            ssi = self.ssi
+
         # data wrangling
         ssi_freq = pd.DataFrame({
-            'ssi': self.ssi, 
+            'ssi': ssi, 
             'freq': self.frequency, 
             'orig': self.orig,
         })
@@ -416,7 +421,7 @@ class StormEurope(Hazard):
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
-        new_haz.ssi = ssi
+        new_haz.ssi_full_area = ssi
 
         # don't use synthetic dates; just repeat the historic dates
         new_haz.date = np.repeat(self.date, N_PROB_EVENTS)

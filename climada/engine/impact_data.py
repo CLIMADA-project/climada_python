@@ -497,6 +497,8 @@ def emdat_impact_yearlysum(countries, hazard_name, emdat_file_csv, year_range, \
             data_out.loc[cnt, 'impact'] = \
                 sum(data.loc[data['Disaster No.'].str.contains(str(year))]\
                              [imp_str])
+            if '000 US' in imp_str: # EM-DAT damages provided in '000 USD
+                data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact']*1000
             if reference_year > 0:
                 data_out.loc[cnt, 'impact_scaled'] = data_out.loc[cnt, 'impact'] * \
                 gdp_ref / gdp(country, year)[1]
