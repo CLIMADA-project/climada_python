@@ -10,7 +10,10 @@ from climada.util.constants import SOURCE_DIR
 
 def find_install_tests():
     """ select unit tests."""
-    suite = unittest.TestLoader().discover('climada.engine.test')
+    suite = unittest.TestLoader().discover(start_dir='climada.engine.test',
+                                           pattern='test_cost_benefit.py')
+    suite.addTest(unittest.TestLoader().discover(start_dir='climada.engine.test',
+                                                 pattern='test_impact.py'))
     return suite
 
 def main():
