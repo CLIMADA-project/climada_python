@@ -18,28 +18,33 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define functions to handle with coordinates
 """
-import os.path
+import os
 import logging
 import numpy as np
-import shapefile
+import fiona
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import Polygon
 from sklearn.neighbors import BallTree
-import geopandas
+from fiona.crs import from_epsg
+import geopandas as gpd
+import rasterio
+from rasterio.transform import from_origin
+from rasterio.crs import CRS
+from rasterio.mask import mask
+from rasterio.warp import reproject, Resampling, calculate_default_transform
 
-from climada.util.constants import SYSTEM_DIR, EARTH_RADIUS_KM
+from climada.util.constants import EARTH_RADIUS_KM
+from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 
-GLOBE_LAND = "global_country_borders"
-""" Name of the earth's country borders shape file generated in function
-get_land_geometry"""
+NE_EPSG = 4326
+""" Natural Earth CRS EPSG """
 
-GLOBE_COASTLINES = "global_coastlines"
-""" Name of the earth's coastlines shape file generated in function
-get_coastlines"""
+NE_CRS = from_epsg(NE_EPSG)
+""" Natural Earth CRS """
 
 def grid_is_regular(coord):
     """Return True if grid is regular.
@@ -57,7 +62,7 @@ def grid_is_regular(coord):
         regular = True
     return regular
 
-def get_coastlines(exent=None, resolution=110):
+def get_coastlines(extent=None, resolution=110):
     """Get latitudes and longitudes of the coast lines inside extent. All
     earth if no extent.
 
@@ -67,47 +72,29 @@ def get_coastlines(exent=None, resolution=110):
             110m, i.e. 1:110.000.000
 
     Returns:
-        lat (np.array), lon(np.array)
+        np.array (lat, lon coastlines)
     """
     resolution = nat_earth_resolution(resolution)
-    file_globe = os.path.join(SYSTEM_DIR, GLOBE_COASTLINES + "_" + resolution +
-                              ".shp")
-    if not os.path.isfile(file_globe):
-        shp_file = shapereader.natural_earth(resolution=resolution,
-                                             category='physical',
-                                             name='coastline')
-        shp = shapereader.Reader(shp_file)
-
+    shp_file = shapereader.natural_earth(resolution=resolution,
+                                         category='physical',
+                                         name='coastline')
+    with fiona.open(shp_file) as shp:
         coast_lon, coast_lat = [], []
-        for multi_line in list(shp.geometries()):
-            coast_lon += multi_line.geoms[0].xy[0]
-            coast_lat += multi_line.geoms[0].xy[1]
-        coast = np.array((coast_lat, coast_lon)).transpose()
+        for line in shp:
+            tup_lon, tup_lat = zip(*line['geometry']['coordinates'])
+            coast_lon += list(tup_lon)
+            coast_lat += list(tup_lat)
+        coast = np.array([coast_lat, coast_lon]).transpose()
 
-        LOGGER.info('Writing file %s', file_globe)
+        if extent is None:
+            return coast
 
-        shapewriter = shapefile.Writer()
-        shapewriter.field("global_coastline")
-        converted_shape = shapely_to_pyshp(LineString(coast))
-        shapewriter._shapes.append(converted_shape)
-        shapewriter.record(["empty record"])
-        shapewriter.save(file_globe)
-
-        LOGGER.info('Written file %s', file_globe)
-    else:
-        reader = shapereader.Reader(file_globe)
-        all_geom = list(reader.geometries())[0].geoms[0]
-        coast = np.array((all_geom.xy)).transpose()
-
-    if exent is None:
-        return coast
-
-    in_lon = np.logical_and(coast[:, 1] >= exent[0], coast[:, 1] <= exent[1])
-    in_lat = np.logical_and(coast[:, 0] >= exent[2], coast[:, 0] <= exent[3])
-    return coast[np.logical_and(in_lon, in_lat)].reshape(-1, 2)
+        in_lon = np.logical_and(coast[:, 1] >= extent[0], coast[:, 1] <= extent[1])
+        in_lat = np.logical_and(coast[:, 0] >= extent[2], coast[:, 0] <= extent[3])
+        return coast[np.logical_and(in_lon, in_lat)].reshape(-1, 2)
 
 def dist_to_coast(coord_lat, lon=None):
-    """ Comput distance to coast from input points.
+    """ Comput distance to coast from input points in meters.
 
     Parameters:
         coord_lat (np.array or tuple or float):
@@ -157,12 +144,11 @@ def dist_to_coast(coord_lat, lon=None):
     tree = BallTree(np.radians(coast), metric='haversine')
     dist_coast, _ = tree.query(np.radians(coord), k=1, return_distance=True,
                                dualtree=True, breadth_first=False)
-    return dist_coast.reshape(-1,) * EARTH_RADIUS_KM
+    return dist_coast.reshape(-1,) * EARTH_RADIUS_KM * 1000
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
-    the extent. If all the countries are selected, write shp file in SYSTEM
-    folder which can be directly read in following computations.
+    the extent.
 
     Parameters:
         country_names (list, optional): list with ISO3 names of countries, e.g
@@ -179,25 +165,10 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
                                          category='cultural',
                                          name='admin_0_countries')
     reader = shapereader.Reader(shp_file)
-    file_globe = os.path.join(SYSTEM_DIR, GLOBE_LAND + "_" + resolution +
-                              ".shp")
-    geom = Polygon()
-    if (not os.path.isfile(file_globe)) and (country_names is None) and \
-    (extent is None):
+    if (country_names is None) and (extent is None):
         LOGGER.info("Computing earth's land geometry ...")
         geom = [cntry_geom for cntry_geom in reader.geometries()]
         geom = shapely.ops.cascaded_union(geom)
-
-        LOGGER.info('Writing file %s', file_globe)
-
-        shapewriter = shapefile.Writer()
-        shapewriter.field("global_country_borders")
-        converted_shape = shapely_to_pyshp(geom)
-        shapewriter._shapes.append(converted_shape)
-        shapewriter.record(["empty record"])
-        shapewriter.save(file_globe)
-
-        LOGGER.info('Written file %s', file_globe)
 
     elif country_names:
         countries = list(reader.records())
@@ -206,7 +177,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
                 (country.attributes['WB_A3'] in country_names)]
         geom = shapely.ops.cascaded_union(geom)
 
-    elif extent:
+    else:
         extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
                                (extent[1], extent[3]), (extent[1], extent[2])])
         geom = []
@@ -215,10 +186,6 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
         geom = shapely.ops.cascaded_union(geom)
-    else:
-        geom = list(reader.geometries())
-        geom = shapely.ops.cascaded_union(geom)
-
     return geom
 
 def coord_on_land(lat, lon, land_geom=None):
@@ -264,65 +231,11 @@ def nat_earth_resolution(resolution):
         raise ValueError
     return str(resolution) + 'm'
 
-GEOMETRY_TYPE = {"Null": 0, "Point": 1, "LineString": 3, "Polygon": 5,
-                 "MultiPoint": 8, "MultiLineString": 3, "MultiPolygon": 5}
-
-def shapely_to_pyshp(shapely_geom):
-    """ Shapely geometry to pyshp. Code adapted from
-    https://gis.stackexchange.com/questions/52705/
-    how-to-write-shapely-geometries-to-shapefiles.
-
-    Parameters:
-        shapely_geom(shapely.geometry): shapely geometry to convert
-
-    Returns:
-        shapefile._Shape
-
-    """
-    # first convert shapely to geojson
-    geoj = shapely.geometry.mapping(shapely_geom)
-    # create empty pyshp shape
-    record = shapefile._Shape()
-    # set shapetype
-    pyshptype = GEOMETRY_TYPE[geoj["type"]]
-    record.shapeType = pyshptype
-    # set points and parts
-    if geoj["type"] == "Point":
-        record.points = geoj["coordinates"]
-        record.parts = [0]
-    elif geoj["type"] in ("MultiPoint", "LineString"):
-        record.points = geoj["coordinates"]
-        record.parts = [0]
-    elif geoj["type"] == "Polygon":
-        index = 0
-        points = []
-        parts = []
-        for eachmulti in geoj["coordinates"]:
-            points.extend(eachmulti)
-            parts.append(index)
-            index += len(eachmulti)
-        record.points = points
-        record.parts = parts
-    elif geoj["type"] in ("MultiPolygon", "MultiLineString"):
-        index = 0
-        points = []
-        parts = []
-        for polygon in geoj["coordinates"]:
-            for part in polygon:
-                points.extend(part)
-                parts.append(index)
-                index += len(part)
-        record.points = points
-        record.parts = parts
-    return record
-
-NE_CRS = {'init' : 'epsg:4326'}
-
 def get_country_geometries(country_names=None, extent=None, resolution=10):
-    """Returns a GeoDataFrame with natural earth multipolygons of the
-    specified countries, resp. the parts of the countries that lie within the
-    specified extent. If no arguments are given, simply returns the whole
-    natural earth dataset.
+    """Returns a gpd GeoSeries of natural earth multipolygons of the
+    specified countries, resp. the countries that lie within the specified
+    extent. If no arguments are given, simply returns the whole natural earth
+    dataset.
     Take heed: we assume WGS84 as the CRS unless the Natural Earth download
     utility from cartopy starts including the projection information. (They
     are saving a whopping 147 bytes by omitting it.) Same goes for UTF.
@@ -342,14 +255,13 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     shp_file = shapereader.natural_earth(resolution=resolution,
                                          category='cultural',
                                          name='admin_0_countries')
-    nat_earth = geopandas.read_file(shp_file, encoding='UTF-8')
-    
+    nat_earth = gpd.read_file(shp_file, encoding='UTF-8')
+
     if not nat_earth.crs:
         nat_earth.crs = NE_CRS
-    
+
     if country_names:
-        if isinstance(country_names, str): 
-            country_names = [country_names]
+        if isinstance(country_names, str): country_names = [country_names]
         out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
 
     elif extent:
@@ -359,13 +271,156 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
             (extent[1], extent[3]),
             (extent[1], extent[2])
         ])
-        bbox = geopandas.GeoSeries(bbox)
-        bbox.crs = nat_earth.crs
-        bbox = geopandas.GeoDataFrame({'geometry': bbox})
-        out = geopandas.overlay(nat_earth, bbox, how="intersection")
+        bbox = gpd.GeoSeries(bbox, crs=nat_earth.crs)
+        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=nat_earth.crs)
+        out = gpd.overlay(nat_earth, bbox, how="intersection")
 
     else:
         out = nat_earth
 
     return out
 
+def get_resolution(lat, lon):
+    """ Compute resolution of points in lat and lon
+
+    Parameters:
+        lat (np.array): latitude of points
+        lon (np.array): longitude of points
+
+    Returns:
+        float
+    """
+    res_lat, res_lon = np.diff(lat), np.diff(lon)
+    try:
+        res_lat = res_lat[res_lat > 0].min()
+    except ValueError:
+        res_lat = 0
+    try:
+        res_lon = res_lon[res_lon > 0].min()
+    except ValueError:
+        res_lon = 0
+    return res_lat, res_lon
+
+def points_to_raster(points_bounds, res):
+    """" Transform vector data coordinates to raster. Returns number of rows,
+    columns and affine transformation
+
+    Parameters:
+        points_bounds (tuple): points total bounds (xmin, ymin, xmax, ymax)
+        res (float): resolution of output raster
+
+    Returns:
+        int, int, affine.Affine
+    """
+    xmin, ymin, xmax, ymax = points_bounds
+    rows = int(np.floor((ymax-ymin) /  res) + 1)
+    cols = int(np.floor((xmax-xmin) / res) + 1)
+    ras_trans = from_origin(xmin - res / 2, ymax + res / 2, res, res)
+    return rows, cols, ras_trans
+
+def read_raster(file_name, band=[1], window=False, geometry=False,
+                dst_crs=False, transform=None, width=None, height=None,
+                resampling=Resampling.nearest):
+    """ Read raster of bands and set 0 values to the masked ones. Each
+    band is an event. Select region using window or geometry. Reproject
+    input by proving dst_crs and/or (transform, width, height).
+
+    Parameters:
+        file_name (str): name of the file
+        band (list(int), optional): band number to read. Default: 1
+        window (rasterio.windows.Window, optional): window to read
+        geometry (shapely.geometry, optional): consider pixels only in shape
+        dst_crs (crs, optional): reproject to given crs
+        transform (rasterio.Affine): affine transformation to apply
+        wdith (float): number of lons for transform
+        height (float): number of lats for transform
+        resampling (rasterio.warp,.Resampling optional): resampling
+            function used for reprojection to dst_crs
+
+    Returns:
+        dict (meta), np.array (intensity)
+    """
+    if os.path.splitext(file_name)[1] == '.gz':
+        file_name = '/vsigzip/' + file_name
+    with rasterio.Env():
+        with rasterio.open(file_name, 'r') as src:
+            src_crs = CRS.from_dict(DEF_CRS) if not src.crs else src.crs
+            if dst_crs or transform:
+                LOGGER.debug('Reprojecting ...')
+                if not dst_crs:
+                    dst_crs = src_crs
+                if not transform:
+                    transform, width, height = calculate_default_transform(\
+                        src_crs, dst_crs, src.width, src.height, *src.bounds)
+                dst_meta = src.meta.copy()
+                dst_meta.update({'crs': dst_crs,
+                               'transform': transform,
+                               'width': width,
+                               'height': height
+                              })
+                intensity = np.zeros((len(band), height, width))
+                for idx_band, i_band in enumerate(band):
+                    reproject(source=rasterio.band(src, i_band),
+                              destination=intensity[idx_band, :],
+                              src_transform=src.transform,
+                              src_crs=src_crs,
+                              dst_transform=transform,
+                              dst_crs=dst_crs,
+                              resampling=resampling)
+                    if np.isnan(dst_meta['nodata']):
+                        intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
+                    else:
+                        intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
+                meta = dst_meta
+                return meta, intensity.reshape((len(band), meta['height']*meta['width']))
+            else:
+                meta = src.meta.copy()
+                if geometry:
+                    inten, mask_trans = mask(src, geometry, crop=True, indexes=band)
+                    if np.isnan(meta['nodata']):
+                        inten[np.isnan(inten)] = 0
+                    else:
+                        inten[inten==meta['nodata']] = 0
+                    meta.update({"height": inten.shape[1],
+                                      "width": inten.shape[2],
+                                      "transform": mask_trans})
+                else:
+                    masked_array = src.read(band, window=window, masked=True)
+                    inten = masked_array.data
+                    inten[masked_array.mask] = 0
+                    if window:
+                        meta.update({"height": window.height, \
+                            "width": window.width, \
+                            "transform": rasterio.windows.transform(window, src.transform)})
+                if not meta['crs']:
+                    meta['crs'] = CRS.from_dict(DEF_CRS)
+                band_idx = np.array(band) - 1
+                intensity = inten[band_idx, :]
+                return meta, intensity.reshape((len(band), meta['height']*meta['width']))
+
+def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
+    """ Read vector file format supported by fiona. Each intensity name is
+    considered an event.
+
+    Parameters:
+        file_name (str): vector file with format supported by fiona and
+            'geometry' field.
+        inten_name (list(str)): list of names of the columns of the
+            intensity of each event.
+        dst_crs (crs, optional): reproject to given crs
+
+    Returns:
+        np.array (lat), np.array (lon), geometry (GeiSeries), np.array (intensity)
+    """
+    data_frame = gpd.read_file(file_name)
+    if not data_frame.crs:
+        data_frame.crs = DEF_CRS
+    if dst_crs is None:
+        geometry = data_frame.geometry
+    else:
+        geometry = data_frame.geometry.to_crs(dst_crs)
+    lat, lon = geometry[:].y.values, geometry[:].x.values
+    intensity = np.zeros([len(inten_name), lat.size])
+    for i_inten, inten in enumerate(inten_name):
+        intensity[i_inten, :] = data_frame[inten].values
+    return lat, lon, geometry, intensity

@@ -28,14 +28,13 @@ from shapely.geometry import Point
 import cartopy.crs as ccrs
 from geopandas import GeoDataFrame
 from rasterio.features import rasterize
-from rasterio.transform import from_origin
 import rasterio
 import matplotlib.pyplot as plt
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import ONE_LAT_KM
-from climada.util.coordinates import coord_on_land
+from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.coordinates import coord_on_land, get_resolution, points_to_raster
 from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
@@ -52,9 +51,6 @@ DEF_REF_YEAR = 2018
 
 DEF_VALUE_UNIT = 'USD'
 """ Default reference year """
-
-DEF_CRS = {'init': 'epsg:4326'}
-""" Default coordinate reference system WGS 84 """
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
@@ -307,20 +303,15 @@ class Exposures(GeoDataFrame):
             self.set_geometry_points()
         crs_epsg, crs_unit = self._get_transformation()
         if not res:
-            res_lat, res_lon = np.diff(self.latitude.values), np.diff(self.longitude.values)
-            res = min(res_lat[res_lat > 0].min(), res_lon[res_lon > 0].min())
+            res= min(get_resolution(self.latitude.values, self.longitude.values))
         if not raster_res:
             raster_res = res
         LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
                     raster_res, crs_unit)
-
         exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
         # construct raster
         xmin, ymin, xmax, ymax = self.total_bounds
-        rows = int(np.ceil((ymax-ymin) /  raster_res))
-        cols = int(np.ceil((xmax-xmin) / raster_res))
-        res_x, res_y = (xmax - xmin) / cols, (ymax - ymin) / rows
-        ras_trans = from_origin(xmin - res_x / 2, ymax + res_y / 2, res_x, res_y)
+        rows, cols, ras_trans = points_to_raster((xmin, ymin, xmax, ymax), raster_res)
         raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
                            out_shape=(rows, cols), transform=ras_trans, fill=0,
                            all_touched=True, dtype=rasterio.float32, )
