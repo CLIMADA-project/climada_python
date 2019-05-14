@@ -3,7 +3,7 @@ channels:
   - defaults
 dependencies:
   - mccabe=0.6.1
-  - pylint=1.8.4
-  - sphinx=1.7.4
+  - pylint=2.3.1
+  - sphinx=2.0.1
   - pip:
-    - coverage==4.4.2
+    - coverage==4.5.3
