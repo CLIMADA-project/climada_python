@@ -64,7 +64,7 @@ class Centroids():
 
     Attributes:
         meta (dict, optional): rasterio meta dictionary containing raster
-            properties
+            properties (transform needs to contain upper left corner!)
         lat (np.array, optional): latitude of size size
         lon (np.array, optional): longitude of size size
         geometry (GeoSeries, optional): contains lat and lon crs. Might contain
@@ -74,6 +74,10 @@ class Centroids():
         on_land (np.array, optional): on land (True) and on sea (False) of size size
         region_id (np.array, optional): country region code of size size
     """
+
+    vars_check = {'lat', 'lon', 'geometry', 'area_pixel', 'dist_coast',
+                  'on_land', 'region_id'}
+    """ Variables whose size will be checked """
 
     def __init__(self):
         """ Initialize to None raster and vector """
@@ -91,7 +95,7 @@ class Centroids():
         and geometry.crs. Check attributes sizes """
         n_centr = self.lat.size
         for var_name, var_val in self.__dict__.items():
-            if var_name[0] != '_' and var_name != 'meta':
+            if var_name in self.vars_check:
                 if var_val.size > 0 and var_val.size != n_centr:
                     LOGGER.error('Wrong %s size: %s != %s.', var_name,
                                  str(n_centr), str(var_val.size))
@@ -101,6 +105,9 @@ class Centroids():
             'crs' not in self.meta.keys() or 'transform' not in self.meta.keys():
                 LOGGER.error('Missing meta information: width, height,'\
                              + 'crs or transform')
+                raise ValueError
+            if self.meta['transform'][4] > 0:
+                LOGGER.error('Meta does not contain upper left corner data.')
                 raise ValueError
 
     def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
@@ -302,8 +309,8 @@ class Centroids():
         if self.meta:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
-            i_lat = np.floor((y_lat - self.total_bounds[1])/abs(self.meta['transform'][5]))
-            i_lon = np.floor((x_lon - self.total_bounds[0])/abs(self.meta['transform'][0]))
+            i_lat = np.floor((self.meta['transform'][5]- y_lat)/abs(self.meta['transform'][4]))
+            i_lon = np.floor((x_lon - self.meta['transform'][2])/abs(self.meta['transform'][0]))
             close_idx = int(i_lat*self.meta['width'] + i_lon)
         else:
             self._set_geometry_points()
@@ -436,7 +443,8 @@ class Centroids():
         return centr
 
     def set_lat_lon_to_meta(self):
-        """ Compute meta from lat and lon values """
+        """ Compute meta from lat and lon values. To match the existing lat
+        and lon, lat and lon need to start from the upper left corner!!"""
         self.meta = dict()
         res = min(get_resolution(self.lat, self.lon))
         rows, cols, ras_trans = points_to_raster(self.total_bounds, res)
@@ -504,12 +512,8 @@ class Centroids():
         if self.meta:
             left = self.meta['transform'].xoff
             right = left + self.meta['transform'][0]*self.meta['width']
-            if self.meta['transform'][4] < 0:
-                top = self.meta['transform'].yoff
-                bottom = top + self.meta['transform'][4]*self.meta['height']
-            else:
-                bottom = self.meta['transform'].yoff
-                top = bottom + self.meta['transform'][4]*self.meta['height']
+            top = self.meta['transform'].yoff
+            bottom = top + self.meta['transform'][4]*self.meta['height']
             return left, bottom, right, top
         return self.lon.min(), self.lat.min(), self.lon.max(), self.lat.max()
 
