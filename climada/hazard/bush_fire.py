@@ -392,7 +392,6 @@ class BushFire(Hazard):
         centroids.nb_centr_lat = nb_centr_lat
         centroids.nb_centr_lon = nb_centr_lon
         centroids.empty_geometry_points()
-        centroids.set_lat_lon_to_meta()
         return centroids, res_data
 
     def _calc_brightness(self, firms, centroids):
@@ -624,7 +623,7 @@ class BushFire(Hazard):
         # Iterate the fire according to the propagation rules
         LOGGER.debug('Propagate fire.')
         for _ in range(4000000):
-            if area_prob_event - area_hist_event > 0.01:
+            if area_prob_event - area_hist_event > 0.01 * 1000 * 1000:
                 break
             else:
                 # For each timestep:
