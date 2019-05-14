@@ -28,7 +28,7 @@ from climada.engine import Impact
 from climada.engine.calibration_opt import calib_instance
 from climada.util.constants import ENT_DEMO_TODAY
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
+HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
