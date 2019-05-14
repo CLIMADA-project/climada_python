@@ -25,13 +25,13 @@ from pandas_datareader import wb
 from scipy import sparse
 from scipy import ndimage as nd
 from scipy import stats
-from cartopy.io import shapereader
 import geopandas as gpd
 import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 import gdal
 from pint import UnitRegistry
+from cartopy.io import shapereader
 
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
@@ -950,12 +950,12 @@ def _get_country_info(iso3):
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
-    admin1_recs = shapereader.Reader(admin1_file)
-    admin1_recs = list(admin1_recs.records())
+    admin1_recs = shapefile.Reader(admin1_file)
+#    admin1_recs = list(admin1_recs.records())
     country_admin1 = list()
-    for rec in admin1_recs:
-        if rec.attributes['adm0_a3'] == iso3:
-            country_admin1.append(rec)
+    for rec_i, rec in enumerate(admin1_recs.records()):
+        if rec['adm0_a3'] == iso3:
+            country_admin1.append([admin1_recs.shapes()[rec_i], admin1_recs.records()[rec_i]])
     try:
         iso_num = num_codes.index(iso3)
     except ValueError:
@@ -1075,9 +1075,8 @@ def _gsdp_read(country_iso3, admin1_shape_data,\
             admin1_xls_data = admin1_xls_data.rename(columns=\
                            {admin1_xls_data.columns[-1]:'GSDP_ref'})
 #        prov = admin1_xls_data['State_Province'].tolist()
-        out_dict = dict.fromkeys([nam.attributes['name'] for nam in\
-                           admin1_shape_data])
-        postals = [nam.attributes['postal'] for nam in admin1_shape_data]
+        out_dict = dict.fromkeys([nam[1]['name'] for nam in admin1_shape_data])
+        postals = [nam[1]['postal'] for nam in admin1_shape_data]
         for subnat_shape in out_dict.keys():
             for idx, subnat_xls\
                 in enumerate(admin1_xls_data['State_Province'].tolist()):
@@ -1260,9 +1259,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
                 # start_time = time.time()
-                LOGGER.debug('Caclulating admin1 for %s.', adm1_shp.attributes['name'])
+                LOGGER.debug('Caclulating admin1 for %s.', adm1_shp[1]['name'])
                 if not masks_adm1:
-                    mask_adm1 = _mask_from_shape(adm1_shp._shape,\
+                    mask_adm1 = _mask_from_shape(adm1_shp[0],\
                              resolution=resolution,\
                              points2check=coords)
                     shr_adm0 = sum(litpop_data.values[mask_adm1.values])
@@ -1275,7 +1274,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                 if shr_adm0 > 0:
                     mult = country_info[3]\
                         *country_info[4]\
-                        *gsdp_data[adm1_shp.attributes['name']]/shr_adm0
+                        *gsdp_data[adm1_shp[1]['name']]/shr_adm0
                 else:
                     mult = 0
                 if return_data:
@@ -1296,7 +1295,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
             for idx3, adm1_shp in\
                 enumerate(admin1_info):
                 if not masks_adm1:
-                    mask_adm1 = _mask_from_shape(adm1_shp._shape,\
+                    mask_adm1 = _mask_from_shape(adm1_shp[0],\
                                 resolution=resolution,\
                                 points2check=coords)
                 else:
@@ -1316,7 +1315,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                 enumerate(gsdp_data.values()):
                 if not val is None:
                     LOGGER.debug('Calculating admin1 data for %s.', \
-                                 admin1_info[idx2].attributes['name'])
+                                 admin1_info[1][idx2].attributes['name'])
                     mult = val*admin1_share\
                             *(country_info[3]*country_info[4])\
                             /temp_adm1['LitPop_sum'][idx2]
@@ -1329,7 +1328,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
 
                 else:
                     LOGGER.warning('No admin1 data found for %s.', \
-                                   admin1_info[idx2].attributes['name'])
+                                   admin1_info[1][idx2].attributes['name'])
                     LOGGER.warning('Only admin0 data is calculated in this case.')
             for idx5, _ in enumerate(admin1_info):
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())\
@@ -1473,7 +1472,7 @@ def _litpop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
                   ls="--", c=".3")
     #    plt.annotate(label, xy=(adm0_data, adm1_data), xytext=(-20, 20),
     #        textcoords='offset points', ha='right', va='bottom')
-        plt.suptitle(adm1_info[0].attributes['admin'] + ': rp='\
+        plt.suptitle(adm1_info[1][0].attributes['admin'] + ': rp='\
                      + format(pearsonr, '.2f') + ', rs='\
                      + format(spearmanr, '.2f'), fontsize=18)
         plt.xlabel('Reference GDP share')
@@ -1851,7 +1850,7 @@ def admin1_validation(country, methods, exponents, **args):
     LOGGER.debug('Caclulating admin1 masks...')
     masks_adm1 = dict()
     for idx, adm1_shp in enumerate(admin1_info[country_list[0]]):
-        masks_adm1[idx] = _mask_from_shape(adm1_shp._shape, resolution=resolution,\
+        masks_adm1[idx] = _mask_from_shape(adm1_shp[0], resolution=resolution,\
                   points2check=list(zip(lon, lat)))
     n_scores = 4
     rho = np.zeros(len(methods)*n_scores)

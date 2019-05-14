@@ -187,6 +187,7 @@ class TestValidation(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestValidation))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
