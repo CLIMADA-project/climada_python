@@ -222,12 +222,27 @@ class TCTracks():
         if seed >= 0:
             np.random.seed(seed)
 
-        # problem random num generator in multiprocessing. python 3.7?
-        new_ens = list()
+        random_vec = list()
         for track in self.data:
-            new_ens.extend(self._one_rnd_walk(track, ens_size, ens_amp0,
-                                              ens_amp, max_angle))
-        self.data = new_ens
+            random_vec.append(np.random.uniform(size=ens_size*(2+track.time.size)))
+
+        num_tracks = self.size
+        chunksize = min(num_tracks, 1000)
+        tot_ens = list()
+        for new_ens in Pool().map(self._one_rnd_walk, self.data,
+                                  itertools.repeat(ens_size, num_tracks),
+                                  itertools.repeat(ens_amp0, num_tracks),
+                                  itertools.repeat(ens_amp, num_tracks),
+                                  itertools.repeat(max_angle, num_tracks),
+                                  random_vec, chunksize=chunksize):
+            tot_ens.extend(new_ens)
+        self.data = tot_ens
+
+#        new_ens = list()
+#        for i_track, track in enumerate(self.data):
+#            new_ens.extend(self._one_rnd_walk(track, ens_size, ens_amp0,
+#                                              ens_amp, max_angle, random_vec[i_track]))
+#        self.data = new_ens
 
         if decay:
             try:
@@ -306,8 +321,8 @@ class TCTracks():
         return fig, axis
 
     @staticmethod
-    @jit
-    def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle):
+    @jit(parallel=True)
+    def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
         """ Interpolate values of one track.
 
         Parameters:
@@ -318,8 +333,8 @@ class TCTracks():
         """
         ens_track = list()
         n_dat = track.time.size
-        rand_unif_ini = np.random.uniform(size=(2, ens_size))
-        rand_unif_ang = np.random.uniform(size=ens_size*n_dat)
+        rand_unif_ini = rnd_vec[:2*ens_size].reshape((2, ens_size))
+        rand_unif_ang = rnd_vec[2*ens_size:]
 
         xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
         tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
@@ -348,6 +363,7 @@ class TCTracks():
         return ens_track
 
     @staticmethod
+    @jit(parallel=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """ Interpolate values of one track.
 
@@ -715,7 +731,7 @@ def _track_land_params(track, land_geom):
     track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
 def _dist_since_lf(track):
-    """ Compute the distance to landfall point for every point on land.
+    """ Compute the distance to landfall in km point for every point on land.
     Points on water get nan values.
 
     Parameters:
