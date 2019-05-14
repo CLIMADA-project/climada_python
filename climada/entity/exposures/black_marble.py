@@ -403,6 +403,10 @@ def _cut_country(geom, nightlight, coord_nl):
                                 complex(0, nightlight_reg.shape[1])]
 
     on_land_reg = np.zeros(lat_reg.shape, bool)
+    try:
+        iter(geom)
+    except TypeError:
+        geom = [geom]
     for poly in geom:
         in_lat = math.floor((poly.bounds[1] - lat_reg[0, 0])/coord_nl[0, 1]), \
                  math.ceil((poly.bounds[3] - lat_reg[0, 0])/coord_nl[0, 1])
