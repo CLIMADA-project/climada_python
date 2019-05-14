@@ -674,11 +674,12 @@ class TestWriter(unittest.TestCase):
                 self.assertTrue(np.allclose(ref_fun.paa, fun.paa))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtend))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtend))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

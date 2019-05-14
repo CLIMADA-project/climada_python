@@ -122,7 +122,8 @@ class TestInvalidInput(unittest.TestCase):
         self.assertIn('Invalid input parameter(s).', cm.output[0])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOtherVar))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInvalidInput))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDefault)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOtherVar))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInvalidInput))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

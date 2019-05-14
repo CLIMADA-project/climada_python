@@ -20,12 +20,14 @@ Test StormEurope class
 """
 
 import os
+import copy
 import unittest
 import datetime as dt
 import numpy as np
 from scipy import sparse
 
-from climada.hazard import StormEurope, Centroids
+from climada.hazard.storm_europe import StormEurope
+from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -39,8 +41,6 @@ These test files have been generated using the netCDF kitchen sink:
 ncks -d latitude,50.5,54.0 -d longitude,3.0,7.5 ./file_in.nc ./file_out.nc
 """
 
-TEST_CENTROIDS = Centroids(os.path.join(DATA_DIR, 'fp_centroids-test.csv'))
-
 
 class TestReader(unittest.TestCase):
     """ Test loading functions from the StormEurope class """
@@ -50,9 +50,7 @@ class TestReader(unittest.TestCase):
         cent = StormEurope._centroids_from_nc(TEST_NCS[0])
 
         self.assertTrue(isinstance(cent, Centroids))
-        self.assertTrue(isinstance(cent.coord, np.ndarray))
         self.assertEqual(cent.size, 9944)
-        self.assertEqual(cent.coord.shape[0], cent.id.shape[0])
 
     def test_read_footprints(self):
         """ Test read_footprints function, using two small test files"""
@@ -96,8 +94,13 @@ class TestReader(unittest.TestCase):
 
     def test_read_with_cent(self):
         """ Test read_footprints while passing in a Centroids object """
+        var_names = copy.deepcopy(DEF_VAR_EXCEL)
+        var_names['sheet_name'] = 'fp_centroids-test'
+        var_names['col_name']['region_id'] = 'iso_n3'
+        test_centroids = Centroids()
+        test_centroids.read_excel(os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS, centroids=TEST_CENTROIDS)
+        storms.read_footprints(TEST_NCS, centroids=test_centroids)
 
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(
@@ -113,19 +116,19 @@ class TestReader(unittest.TestCase):
         storms.read_footprints(TEST_NCS)
         
         storms.set_ssi(method='dawkins')
-        ssi_dawg = np.asarray([1.51114627e+09, 6.44053524e+08])
+        ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
         self.assertTrue(
             np.allclose(storms.ssi, ssi_dawg)
         )
 
         storms.set_ssi(method='wisc_gust')
-        ssi_gusty = np.asarray([1.48558417e+09, 6.13437760e+08])
+        ssi_gusty = np.asarray([1.42124571e+09, 5.86870673e+08])
         self.assertTrue(
             np.allclose(storms.ssi, ssi_gusty)
         )
 
         storms.set_ssi(threshold=20, on_land=False)
-        ssi_special = np.asarray([3.09951236e+09, 1.29563312e+09])
+        ssi_special = np.asarray([2.96582030e+09, 1.23980294e+09])
         self.assertTrue(
             np.allclose(storms.ssi, ssi_special)
         )
@@ -152,5 +155,6 @@ class TestReader(unittest.TestCase):
 
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

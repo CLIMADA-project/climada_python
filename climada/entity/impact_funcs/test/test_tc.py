@@ -75,5 +75,6 @@ class TestEmanuelFormula(unittest.TestCase):
             imp_fun.set_emanuel_usa(if_id=5, scale=2, intensity=np.arange(0,6,1))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmanuelFormula)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmanuelFormula)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -39,5 +39,6 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard_set.intensity[112,111], -1.6286273002624512)
     
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

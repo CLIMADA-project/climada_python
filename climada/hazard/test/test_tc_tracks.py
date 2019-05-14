@@ -267,7 +267,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(track.dist_since_lf.values[track.on_land == False].size, 38)
 
         self.assertTrue(track.dist_since_lf.values[-1] >
-                        dist_to_coast(track.lat.values[-1], track.lon.values[-1]))
+                        dist_to_coast(track.lat.values[-1], track.lon.values[-1])/1000)
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall
@@ -489,6 +489,7 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_almost_equal(ref_res, out_pres)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -452,5 +452,6 @@ class TestApply(unittest.TestCase):
         self.assertEqual(risk_transf, 2.3139691495470852e+08)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestApply)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestApply)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

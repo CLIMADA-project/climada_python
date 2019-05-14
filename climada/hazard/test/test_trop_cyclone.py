@@ -29,7 +29,7 @@ import datetime as dt
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import TropCyclone
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -37,10 +37,12 @@ HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
 TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
 
-CENTR_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'centroids/test/data/')
-CENTR_TEST_BRB = Centroids(os.path.join(CENTR_DIR, 'centr_brb_test.mat'))
+CENTR_DIR = os.path.join(os.path.dirname(__file__), 'data/')
+CENTR_TEST_BRB = Centroids()
+CENTR_TEST_BRB.read_mat(os.path.join(CENTR_DIR, 'centr_brb_test.mat'))
 
-CENT_CLB = Centroids(GLB_CENTROIDS_MAT, 'Global Nat centroids')
+CENT_CLB = Centroids()
+CENT_CLB.read_mat(GLB_CENTROIDS_MAT)
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
@@ -57,8 +59,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, 'IBTrACS: 1951239N12334')
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name, GLB_CENTROIDS_MAT)
-        self.assertEqual(tc_haz.centroids.id.size, 1656093)
+        self.assertEqual(tc_haz.centroids.size, 1656093)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.date.size, 1)
         self.assertEqual(dt.datetime.fromordinal(tc_haz.date[0]).year, 1951)
@@ -93,9 +94,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, 'IBTrACS: 1951239N12334')
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name,
-                         CENTR_TEST_BRB.tag.file_name)
-        self.assertEqual(tc_haz.centroids.id.size, 296)
+        self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
@@ -121,9 +120,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, ['IBTrACS: 1951239N12334', 'IBTrACS: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.tag.file_name,
-                         CENTR_TEST_BRB.tag.file_name)
-        self.assertEqual(tc_haz.centroids.id.size, 296)
+        self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
@@ -136,23 +133,6 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
-
-    def test_read_and_tc_fail(self):
-        """ Append Hazard and Tropical Cyclone. Fail because of missing 
-        category in hazard. """
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-
-        tc_haz1 = TropCyclone()
-        tc_haz1.read_mat(HAZ_TEST_MAT)
-
-        tc_haz2 = TropCyclone()
-        tc_haz2.set_from_tracks(tc_track, CENTR_TEST_BRB)
-
-        tc_haz2.append(tc_haz1)
-        self.assertEqual(tc_haz2.intensity.shape, (14451, 396))
-        with self.assertRaises(ValueError):
-            tc_haz2.check()
 
 class TestModel(unittest.TestCase):
     """Test modelling of tropical cyclone"""
@@ -237,7 +217,6 @@ class TestModel(unittest.TestCase):
         self.assertEqual(coastal.size, 1044882)
         self.assertEqual(CENT_CLB.lat[coastal[0]], -55.800000000000004)
         self.assertEqual(CENT_CLB.lon[coastal[0]],  -68.200000000000003)
-        self.assertEqual(CENT_CLB.id[coastal[0]], 1)
 
         self.assertEqual(CENT_CLB.lat[coastal[5]], -55.700000000000003)
         self.assertEqual(CENT_CLB.lat[coastal[10]],  -55.700000000000003)
@@ -249,7 +228,6 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(CENT_CLB.lat[coastal[1044881]], 60.049999999999997)
         self.assertEqual(CENT_CLB.lon[coastal[1044881]],  180.0000000000000)
-        self.assertEqual(CENT_CLB.id[coastal[1044881]], 3043681)
 
     def test_vtrans_correct(self):
         """ Test _vtrans_correct function. Compare to MATLAB reference."""
@@ -408,6 +386,10 @@ class TestModel(unittest.TestCase):
                                    intensity[0, 1630877]))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+#    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
+#if __name__ == "__main__":
+#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)
+##    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+#    unittest.TextTestRunner(verbosity=2).run(TESTS)

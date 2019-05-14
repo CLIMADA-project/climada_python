@@ -140,5 +140,6 @@ class TestPlotter(unittest.TestCase):
         ifc.plot_compare(ifc2)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

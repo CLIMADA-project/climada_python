@@ -253,7 +253,7 @@ class TestWriter(unittest.TestCase):
         disc_rate.years = np.arange(1950, 2150)
         disc_rate.rates = np.ones(disc_rate.years.size)*0.03
 
-        file_name = os.path.join(CURR_DIR, 'test_disc.xlsx')
+        file_name = os.path.join(os.path.join(CURR_DIR, 'data'), 'test_disc.xlsx')
         disc_rate.write_excel(file_name)
         
         disc_read = DiscRates()
@@ -266,12 +266,13 @@ class TestWriter(unittest.TestCase):
         self.assertEqual(disc_read.tag.description, '')
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNetPresValue))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConstructor))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNetPresValue))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

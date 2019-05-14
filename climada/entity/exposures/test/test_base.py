@@ -29,9 +29,9 @@ from climada.util.coordinates import coord_on_land
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
-INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT, DEF_CRS
+INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.hazard.base import Hazard
-from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM
+from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -59,7 +59,7 @@ class TestFuncs(unittest.TestCase):
         expo = good_exposures()
         # Fill with dummy values the centroids
         haz = Hazard('TC')
-        haz.centroids.coord = np.ones((expo.shape[0]+6, 2))
+        haz.centroids.set_lat_lon(np.ones(expo.shape[0]+6), np.ones(expo.shape[0]+6))
         # assign
         expo.assign_centroids(haz)
 
@@ -282,9 +282,10 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
     
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

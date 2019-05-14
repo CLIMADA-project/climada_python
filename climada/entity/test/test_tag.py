@@ -65,5 +65,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual('dummy file 1', tag1.description)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

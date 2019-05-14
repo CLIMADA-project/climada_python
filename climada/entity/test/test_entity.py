@@ -125,6 +125,7 @@ class TestCheck(unittest.TestCase):
         self.assertIn('DiscRates', cm.output[0])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheck))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCheck))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

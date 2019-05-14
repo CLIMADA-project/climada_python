@@ -186,6 +186,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDownload)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDownload)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

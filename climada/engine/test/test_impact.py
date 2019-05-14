@@ -451,9 +451,10 @@ class TestIO(unittest.TestCase):
 
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

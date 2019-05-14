@@ -61,5 +61,6 @@ class TestIntegr(unittest.TestCase):
                 
         
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIntegr)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIntegr)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

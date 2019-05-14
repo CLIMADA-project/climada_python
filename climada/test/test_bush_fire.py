@@ -173,5 +173,6 @@ class TestReaderFirms(unittest.TestCase):
          self.assertEqual(bf.fraction.shape, (20, 78090))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -113,6 +113,7 @@ class TestSetCountry(unittest.TestCase):
                                   check_names=True, **kwds)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSetCountry)
-#TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestXYZ))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSetCountry)
+    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestXYZ))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

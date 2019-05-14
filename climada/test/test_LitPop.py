@@ -186,7 +186,8 @@ class TestValidation(unittest.TestCase):
         self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestValidation))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestValidation))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
