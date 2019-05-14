@@ -33,7 +33,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT
 from climada.util.interpolation import dist_approx
 
@@ -199,6 +199,7 @@ def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
     intensity = _windfield(track, centroids.coord, coastal_idx, mod_id)
     return sparse.csr_matrix(intensity)
 
+@jit
 def _windfield(track, centroids, coastal_idx, model):
     """ Compute windfields (in m/s) in centroids using Holland model 08.
 
@@ -236,7 +237,7 @@ def _windfield(track, centroids, coastal_idx, model):
 
     return intensity
 
-@jit(parallel=True)
+@jit
 def _vtrans(t_lat, t_lon, t_tstep, ureg):
     """ Translational spped at every track node.
 
@@ -259,7 +260,7 @@ def _vtrans(t_lat, t_lon, t_tstep, ureg):
     v_trans[v_trans > v_max] = v_max
     return v_trans
 
-@jit(parallel=True)
+@jit
 def _extra_rad_max_wind(t_cen, t_rad, ureg):
     """ Extrapolate RadiusMaxWind from pressure and change to km.
 
@@ -340,7 +341,7 @@ def _wind_per_node(coastal_centr, t_lat, t_lon, t_rad, t_env, t_cen, t_tstep,
 
     return intensity
 
-@jit(parallel=True)
+@jit
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     """ Compute Hollands translational wind corrections. Returns factor.
 
@@ -386,7 +387,7 @@ def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
 
     return np.multiply(r_arr_normed, cos_phi)
 
-@jit(['f8(f8, f8, f8, f8, f8, f8, f8)'], nopython=True, parallel=True)
+@jit(['f8(f8, f8, f8, f8, f8, f8, f8)'], nopython=True)
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
     """ Halland's 2008 b value computation.
 
@@ -406,7 +407,7 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True)
 def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
     """ Holland symmetric and static wind field (in m/s) according to
     Holland1980 or Holland2008m depending on hol_b parameter.
@@ -430,7 +431,7 @@ def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
     return np.sqrt(100 * hol_b / rho * r_max_norm * (penv - pcen) *
                    np.exp(-r_max_norm) + r_arr_mult**2) - r_arr_mult
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True)
 def _vang_sym(t_env, t_cens, t_lat, t_step, t_rad, r_arr, v_trans, model):
     """ Compute symmetric and static wind field (in m/s) filed (angular
     wind component.
