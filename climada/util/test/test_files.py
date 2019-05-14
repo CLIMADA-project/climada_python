@@ -22,7 +22,8 @@ Test files_handler module.
 import os
 import unittest
 
-from climada.util.files_handler import to_list, get_file_names, download_file
+from climada.util.files_handler import to_list, get_file_names, download_file, \
+get_extension
 from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS
 
 class TestDownloadUrl(unittest.TestCase):
@@ -112,8 +113,30 @@ class TestGetFileNames(unittest.TestCase):
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))
 
+class TestExtension(unittest.TestCase):
+    """ Test get_extension """
+
+    def test_get_extension_no_pass(self):
+        """Test no extension """
+        file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1'
+        self.assertEqual('', get_extension(file_name)[1])
+        self.assertEqual(file_name, get_extension(file_name)[0])
+    
+    def test_get_extension_one_pass(self):
+        """Test not compressed """
+        file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd'
+        self.assertEqual('.grd', get_extension(file_name)[1])
+        self.assertEqual('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1', get_extension(file_name)[0])
+
+    def test_get_extension_two_pass(self):
+        """Test compressed """
+        file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd.gz'
+        self.assertEqual('.grd.gz', get_extension(file_name)[1])
+        self.assertEqual('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1', get_extension(file_name)[0])
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
 TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
+TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtension))
 unittest.TextTestRunner(verbosity=2).run(TESTS)
