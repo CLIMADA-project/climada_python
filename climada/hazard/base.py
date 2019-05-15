@@ -700,7 +700,7 @@ class Hazard():
 
         # Make event id unique
         if np.unique(self.event_id).size != self.event_id.size:
-            LOGGER.debug('Resting event_id.')
+            LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(self.event_id.size) + 1
 
     def remove_duplicates(self):
