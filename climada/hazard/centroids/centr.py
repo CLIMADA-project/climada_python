@@ -27,6 +27,7 @@ from rasterio.warp import Resampling
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
 from shapely.vectorized import contains
+import climada.util.plot as u_plot
 
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
 import climada.util.hdf5_handler as hdf5
@@ -64,7 +65,8 @@ class Centroids():
 
     Attributes:
         meta (dict, optional): rasterio meta dictionary containing raster
-            properties (transform needs to contain upper left corner!)
+            properties: width, height, crs and transform must be present 
+            at least (transform needs to contain upper left corner!)
         lat (np.array, optional): latitude of size size
         lon (np.array, optional): longitude of size size
         geometry (GeoSeries, optional): contains lat and lon crs. Might contain
@@ -388,7 +390,8 @@ class Centroids():
             raise ValueError
 
     def set_dist_coast(self):
-        """ Set dist_coast attribute for every pixel or point """
+        """ Set dist_coast attribute for every pixel or point. Distan to 
+        coast is computed in meters """
         lon, lat = self._ne_crs_xy()
         LOGGER.debug('Setting dist_coast %s points.', str(self.lat.size))
         self.dist_coast = dist_to_coast(lat, lon)
@@ -461,6 +464,25 @@ class Centroids():
         self.lon = x_grid.flatten()
         self.lat = y_grid.flatten()
         self.geometry = GeoSeries(crs=self.meta['crs'])
+
+    def plot(self, **kwargs):
+        """ Plot centroids scatter points over earth.
+
+        Parameters:
+            kwargs (optional): arguments for scatter matplotlib function
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+        """
+        if 's' not in kwargs:
+            kwargs['s'] = 1
+        fig, axis = u_plot.make_map()
+        axis = axis[0][0]
+        u_plot.add_shapes(axis)
+        if self.meta and not self.coord.size:
+            self.set_meta_to_lat_lon()
+        axis.scatter(self.lon, self.lat, **kwargs)
+        return fig, axis
 
     def get_pixels_polygons(self):
         """ Compute a GeoSeries with a polygon for every pixel

@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 import h5py
+import matplotlib.pyplot as plt
 import rasterio
 from rasterio.warp import Resampling
 from rasterio.features import rasterize
@@ -477,6 +478,7 @@ class Hazard():
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
+        self._set_coords_centroids()
         inten_stats = self.local_exceedance_inten(np.array(return_periods))
         colbar_name = 'Intensity (' + self.units + ')'
         title = list()
@@ -486,9 +488,19 @@ class Hazard():
                                              colbar_name, title, **kwargs)
         return fig, axis, inten_stats
 
-    def plot_raster(self, event=None, intensity=True, **kwargs):
+    def plot_raster(self, ev_id=1, intensity=True, **kwargs):
         """ Plot selected event using imshow and without cartopy """
-        raise NotImplementedError
+        if not self.centroids.meta:
+            LOGGER.error('No raster data set')
+            raise ValueError
+        try:
+            event_pos = np.where(self.event_id == ev_id)[0][0]
+        except IndexError:
+            LOGGER.error('Wrong event id: %s.', ev_id)
+            raise ValueError from IndexError
+
+        return plt.imshow(self.intensity[event_pos, :].todense(). \
+                          reshape(self.centroids.shape), **kwargs)
 
     def plot_intensity(self, event=None, centr=None, **kwargs):
         """Plot intensity values for a selected event or centroid.
@@ -513,6 +525,7 @@ class Hazard():
         Raises:
             ValueError
         """
+        self._set_coords_centroids()
         col_label = 'Intensity %s' % self.units
         if event is not None:
             if isinstance(event, str):
@@ -520,7 +533,7 @@ class Hazard():
             return self._event_plot(event, self.intensity, col_label, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
-                centr = self.centroids.get_closest_point(centr[0], centr[1])
+                _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
             return self._centr_plot(centr, self.intensity, col_label)
 
         LOGGER.error("Provide one event id or one centroid id.")
@@ -549,6 +562,7 @@ class Hazard():
         Raises:
             ValueError
         """
+        self._set_coords_centroids()
         col_label = 'Fraction'
         if event is not None:
             if isinstance(event, str):
@@ -556,7 +570,7 @@ class Hazard():
             return self._event_plot(event, self.fraction, col_label, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
-                centr = self.centroids.get_closest_point(centr[0], centr[1])
+                _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
             return self._centr_plot(centr, self.fraction, col_label)
 
         LOGGER.error("Provide one event id or one centroid id.")
@@ -652,6 +666,7 @@ class Hazard():
                     self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
 
+        self._set_coords_centroids()
         if not np.array_equal(self.centroids.coord, hazard.centroids.coord):
             LOGGER.error('Append only events with same centroids.')
             raise ValueError
@@ -756,6 +771,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to write, with h5 format
         """
+        self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
         for (var_name, var_val) in self.__dict__.items():
@@ -871,6 +887,11 @@ class Hazard():
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
         self.event_id = np.arange(1, num_ev+1)
+
+    def _set_coords_centroids(self):
+        """ If centroids are raster, set lat and lon coordinates """
+        if self.centroids.meta and not self.centroids.coord.size:
+            self.centroids.set_meta_to_lat_lon()
 
     def _events_set(self):
         """Generate set of tuples with (event_name, event_date) """
