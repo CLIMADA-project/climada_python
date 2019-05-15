@@ -43,6 +43,7 @@ CENTR_TEST_BRB.read_mat(os.path.join(CENTR_DIR, 'centr_brb_test.mat'))
 
 CENT_CLB = Centroids()
 CENT_CLB.read_mat(GLB_CENTROIDS_MAT)
+CENT_CLB.dist_coast *= 1000 # set dist_coast to m
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
@@ -386,10 +387,10 @@ class TestModel(unittest.TestCase):
                                    intensity[0, 1630877]))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+#TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
 #    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
-#if __name__ == "__main__":
-#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)
-##    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
-#    unittest.TextTestRunner(verbosity=2).run(TESTS)
+#unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
