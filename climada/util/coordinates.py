@@ -340,6 +340,7 @@ def read_raster(file_name, band=[1], window=False, geometry=False,
     Returns:
         dict (meta), np.array (intensity)
     """
+    LOGGER.info('Reading %s', file_name)
     if os.path.splitext(file_name)[1] == '.gz':
         file_name = '/vsigzip/' + file_name
     with rasterio.Env():
@@ -412,6 +413,7 @@ def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
     Returns:
         np.array (lat), np.array (lon), geometry (GeiSeries), np.array (intensity)
     """
+    LOGGER.info('Reading %s', file_name)
     data_frame = gpd.read_file(file_name)
     if not data_frame.crs:
         data_frame.crs = DEF_CRS
