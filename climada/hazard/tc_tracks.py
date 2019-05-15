@@ -40,7 +40,6 @@ from sklearn.neighbors import DistanceMetric
 from netCDF4 import Dataset
 from numba import jit
 from pint import UnitRegistry
-from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
@@ -94,9 +93,14 @@ class TCTracks():
                 - on_land
                 - dist_since_lf
     """
-    def __init__(self):
+    def __init__(self, pool=None):
         """Empty constructor. Read csv IBTrACS files if provided. """
         self.data = list()
+        if pool:
+            self.pool = pool
+            LOGGER.debug('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
 
     def append(self, tracks):
         """Append tracks to current.
@@ -193,10 +197,18 @@ class TCTracks():
         else:
             land_geom = None
 
-        chunksize = min(self.size, 500)
-        self.data = Pool().map(self._one_interp_data, self.data, \
-            itertools.repeat(time_step_h, self.size), \
-            itertools.repeat(land_geom, self.size), chunksize=chunksize)
+        if self.pool:
+            chunksize = min(self.size, 500)
+            self.data = self.pool.map(self._one_interp_data, self.data,
+                                      itertools.repeat(time_step_h, self.size),
+                                      itertools.repeat(land_geom, self.size),
+                                      chunksize=chunksize)
+        else:
+            new_data = list()
+            for track in self.data:
+                new_data.append(self._one_interp_data(track, time_step_h,
+                                land_geom))
+            self.data = new_data
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
         ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
@@ -227,22 +239,22 @@ class TCTracks():
             random_vec.append(np.random.uniform(size=ens_size*(2+track.time.size)))
 
         num_tracks = self.size
-        chunksize = min(num_tracks, 1000)
-        tot_ens = list()
-        for new_ens in Pool().map(self._one_rnd_walk, self.data,
-                                  itertools.repeat(ens_size, num_tracks),
-                                  itertools.repeat(ens_amp0, num_tracks),
-                                  itertools.repeat(ens_amp, num_tracks),
-                                  itertools.repeat(max_angle, num_tracks),
-                                  random_vec, chunksize=chunksize):
-            tot_ens.extend(new_ens)
-        self.data = tot_ens
-
-#        new_ens = list()
-#        for i_track, track in enumerate(self.data):
-#            new_ens.extend(self._one_rnd_walk(track, ens_size, ens_amp0,
-#                                              ens_amp, max_angle, random_vec[i_track]))
-#        self.data = new_ens
+        new_ens = list()
+        if self.pool:
+            chunksize = min(num_tracks, 1000)
+            new_ens = self.pool.map(self._one_rnd_walk, self.data,
+                                    itertools.repeat(ens_size, num_tracks),
+                                    itertools.repeat(ens_amp0, num_tracks),
+                                    itertools.repeat(ens_amp, num_tracks),
+                                    itertools.repeat(max_angle, num_tracks),
+                                    random_vec, chunksize=chunksize)
+        else:
+            for i_track, track in enumerate(self.data):
+                new_ens.append(self._one_rnd_walk(track, ens_size, ens_amp0,
+                               ens_amp, max_angle, random_vec[i_track]))
+        self.data = list()
+        for ens_track in new_ens:
+            self.data.extend(ens_track)
 
         if decay:
             try:
@@ -430,12 +442,17 @@ class TCTracks():
         p_lf = dict()
         # x-scale values to compute landfall decay
         x_val = dict()
-        chunksize = min(len(hist_tracks), 500)
-        for (tv_lf, tp_lf, tx_val) in Pool().map(_decay_values,
-                                                 hist_tracks,
-                                                 itertools.repeat(land_geom),
-                                                 itertools.repeat(s_rel),
-                                                 chunksize=chunksize):
+
+        dec_val = list()
+        if self.pool:
+            chunksize = min(len(hist_tracks), 500)
+            dec_val = self.pool.map(_decay_values, hist_tracks, itertools.repeat(land_geom),
+                                    itertools.repeat(s_rel), chunksize=chunksize)
+        else:
+            for track in hist_tracks:
+                dec_val.append(_decay_values(track, land_geom, s_rel))
+
+        for (tv_lf, tp_lf, tx_val) in dec_val:
             for key in tv_lf.keys():
                 v_lf.setdefault(key, []).extend(tv_lf[key])
                 p_lf.setdefault(key, ([], []))
@@ -478,11 +495,18 @@ class TCTracks():
                 orig_wind.append(np.copy(track.max_sustained_wind.values))
                 orig_pres.append(np.copy(track.central_pressure.values))
 
-        chunksize = min(self.size, 500)
-        self.data = Pool().map(_apply_decay_coeffs, self.data, \
-            itertools.repeat(v_rel), itertools.repeat(p_rel), \
-            itertools.repeat(land_geom), itertools.repeat(s_rel), \
-            chunksize=chunksize)
+        if self.pool:
+            chunksize = min(self.size, 500)
+            self.data =  self.pool.map(_apply_decay_coeffs, self.data,
+                                       itertools.repeat(v_rel), itertools.repeat(p_rel),
+                                       itertools.repeat(land_geom), itertools.repeat(s_rel),
+                                       chunksize=chunksize)
+        else:
+            new_data = list()
+            for track in self.data:
+                new_data.append(_apply_decay_coeffs(track, v_rel, p_rel, \
+                    land_geom, s_rel))
+            self.data = new_data
 
         if check_plot:
             _check_apply_decay_plot(self.data, orig_wind, orig_pres)

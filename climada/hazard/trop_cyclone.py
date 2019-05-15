@@ -29,7 +29,6 @@ from numpy import linalg as LA
 from scipy import sparse
 from pint import UnitRegistry
 from numba import jit
-from pathos.multiprocessing import ProcessingPool as Pool
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
@@ -71,10 +70,16 @@ class TropCyclone(Hazard):
     vars_opt = Hazard.vars_opt.union({'category'})
     """Name of the variables that aren't need to compute the impact."""
 
-    def __init__(self):
+    def __init__(self, pool=None):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
+#        self.pool = Pool()
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08'):
@@ -99,12 +104,18 @@ class TropCyclone(Hazard):
 
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(centroids.size))
-        chunksize = min(num_tracks, 1000)
-        tc_haz = Pool().map(self._tc_from_track, tracks.data,
-                            itertools.repeat(centroids, num_tracks),
-                            itertools.repeat(coastal_idx, num_tracks),
-                            itertools.repeat(model, num_tracks),
-                            chunksize=chunksize)
+        if self.pool:
+            chunksize = min(num_tracks, 1000)
+            tc_haz = self.pool.map(self._tc_from_track, tracks.data,
+                                   itertools.repeat(centroids, num_tracks),
+                                   itertools.repeat(coastal_idx, num_tracks),
+                                   itertools.repeat(model, num_tracks),
+                                   chunksize=chunksize)
+        else:
+            tc_haz = list()
+            for track in tracks.data:
+                tc_haz.append(self._tc_from_track(track, centroids, coastal_idx,
+                                                  model))
         LOGGER.debug('Append events.')
         self._append_all(tc_haz)
         LOGGER.debug('Compute frequency.')
