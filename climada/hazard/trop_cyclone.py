@@ -94,6 +94,8 @@ class TropCyclone(Hazard):
             centroids = Centroids(GLB_CENTROIDS_MAT, 'Global centroids')
         # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
         coastal_idx = coastal_centr_idx(centroids)
+        if not centroids.coord.size:
+            centroids.set_meta_to_lat_lon()
 
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(centroids.size))
@@ -170,11 +172,9 @@ def coastal_centr_idx(centroids, lat_max=61):
     Returns:
         np.array
     """
-    try:
-        centroids.dist_coast
-    except AttributeError:
+    if not centroids.dist_coast.size:
         centroids.set_dist_coast()
-    return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM,
+    return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM*1000,
                           centroids.lat < lat_max).nonzero()[0]
 
 def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
