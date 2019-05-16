@@ -386,11 +386,7 @@ class TestModel(unittest.TestCase):
         self.assertTrue(np.isclose(17.525880201507256,
                                    intensity[0, 1630877]))
 
-# Execute Tests
-#TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-#    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
-#unittest.TextTestRunner(verbosity=2).run(TESTS)
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
