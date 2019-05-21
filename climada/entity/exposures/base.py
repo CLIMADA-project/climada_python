@@ -575,3 +575,23 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
+    
+def _crop(exposure, selection, deep=True):
+    """ Make a cropped copy of this Exposures object.
+
+    Parameters
+    ----------
+    selection (bool): logical array with lenght of index of geodataframe
+    deep (bool): Make a deep copy, i.e. also copy data. Default True.
+
+    Returns
+    -------
+        Exposures
+    """
+    cropped = exposure.copy(deep=deep)
+    cropped = cropped.loc[selection,:]
+    cropped.tag = exposure.tag
+    cropped.tag.description = cropped.tag.description + ', cropped'
+    cropped.ref_year = exposure.ref_year
+    cropped.value_unit = exposure.value_unit
+    return cropped
