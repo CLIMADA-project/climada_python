@@ -591,6 +591,9 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
         out = out.append(data)
         del data
     out = out.reset_index(drop=True)
+    if '000 US' in imp_str: # EM-DAT damages provided in '000 USD
+        out[imp_str + " scaled"] = out[imp_str + " scaled"]*1e3
+        out[imp_str] = out[imp_str]*1e3
     return out
 
 """

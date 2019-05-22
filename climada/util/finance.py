@@ -124,7 +124,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
 
     return close_year, close_val
 
-def gdp(cntry_iso, ref_year, shp_file=None):
+def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     """ Get country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
@@ -134,12 +134,16 @@ def gdp(cntry_iso, ref_year, shp_file=None):
         shp_file (cartopy.io.shapereader.Reader, optional): shape file with
             INCOME_GRP attribute for every country. Load Natural Earth admin0
             if not provided.
+        per_capita (boolean, optional): If True, GDP is returned per capita
 
     Returns:
         float
     """
     try:
-        close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.MKTP.CD')
+        if per_capita:
+            close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.PCAP.CD')
+        else:
+            close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.MKTP.CD')
     except (ValueError, IndexError, requests.exceptions.ConnectionError) \
     as err:
         if isinstance(err, requests.exceptions.ConnectionError):
