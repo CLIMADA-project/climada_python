@@ -86,9 +86,9 @@ class TestCalib(unittest.TestCase):
                 df_in[df_in.columns[1]])))
         self.assertTrue(all(df_out_yearly[df_in.columns[2]].isin(
                 df_in[df_in.columns[2]])))
-        self.assertTrue(all(df_out['impact'].values ==
+        self.assertTrue(all(df_out['impact_CLIMADA'].values ==
                             impact.at_event))
-        self.assertTrue(all(df_out_yearly['impact'].values ==
+        self.assertTrue(all(df_out_yearly['impact_CLIMADA'].values ==
                              [*IYS.values()]))
         
 
