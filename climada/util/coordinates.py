@@ -261,7 +261,8 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         nat_earth.crs = NE_CRS
 
     if country_names:
-        if isinstance(country_names, str): country_names = [country_names]
+        if isinstance(country_names, str):
+            country_names = [country_names]
         out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
 
     elif extent:
@@ -370,10 +371,10 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                         src_meta, dst_crs, src.width, src.height, *src.bounds)
                 dst_meta = src.meta.copy()
                 dst_meta.update({'crs': dst_crs,
-                               'transform': transform,
-                               'width': width,
-                               'height': height
-                              })
+                                 'transform': transform,
+                                 'width': width,
+                                 'height': height
+                                })
                 intensity = np.zeros((len(band), height, width))
                 for idx_band, i_band in enumerate(band):
                     reproject(source=src.read(i_band),
@@ -396,10 +397,10 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                     if np.isnan(meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
-                        inten[inten==meta['nodata']] = 0
+                        inten[inten == meta['nodata']] = 0
                     meta.update({"height": inten.shape[1],
-                                      "width": inten.shape[2],
-                                      "transform": mask_trans})
+                                 "width": inten.shape[2],
+                                 "transform": mask_trans})
                 else:
                     masked_array = src.read(band, window=window, masked=True)
                     inten = masked_array.data

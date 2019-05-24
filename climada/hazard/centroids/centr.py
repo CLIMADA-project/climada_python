@@ -85,7 +85,7 @@ class Centroids():
     def __init__(self):
         """ Initialize to None raster and vector """
         self.meta = dict()
-        self.geometry = GeoSeries(crs=DEF_CRS)
+        self.geometry = GeoSeries()
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -337,7 +337,7 @@ class Centroids():
             width = (right - left)/self.meta['transform'][0]
             height = (bottom - top)/self.meta['transform'][4]
             self.meta = {'dtype':'float32', 'width':width, 'height':height,
-                         'crs':crs, 'transform':Affine(self.meta['transform'][0],
+                         'crs':crs, 'transform':Affine(self.meta['transform'][0], \
                          0.0, left, 0.0, self.meta['transform'][4], top)}
         else:
             LOGGER.debug('Appending points')

@@ -413,7 +413,7 @@ class StormEurope(Hazard):
         new_haz.date = np.repeat(self.date, N_PROB_EVENTS)
 
         # subsetting centroids
-        new_haz.centroids = self.centroids.filter_region(sel_cen=sel_cen)
+        new_haz.centroids = self.centroids.select(sel_cen=sel_cen)
 
         # construct new event ids
         base = np.repeat((self.event_id * 100), N_PROB_EVENTS)

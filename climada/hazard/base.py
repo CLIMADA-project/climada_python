@@ -490,7 +490,17 @@ class Hazard():
         return fig, axis, inten_stats
 
     def plot_raster(self, ev_id=1, intensity=True, **kwargs):
-        """ Plot selected event using imshow and without cartopy """
+        """ Plot selected event using imshow and without cartopy
+
+        Parameters:
+            ev_id (int, optional): event id. Default: 1.
+            intensity (bool, optional): plot intensity if True, fraction otherwise
+            kwargs (optional): arguments for imshow matplotlib function
+
+        Returns:
+            matplotlib.image.AxesImage
+
+        """
         if not self.centroids.meta:
             LOGGER.error('No raster data set')
             raise ValueError
@@ -500,7 +510,10 @@ class Hazard():
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity[event_pos, :].todense(). \
+        if intensity:
+            return plt.imshow(self.intensity[event_pos, :].todense(). \
+                              reshape(self.centroids.shape), **kwargs)
+        return plt.imshow(self.fraction[event_pos, :].todense(). \
                           reshape(self.centroids.shape), **kwargs)
 
     def plot_intensity(self, event=None, centr=None, **kwargs):
@@ -780,10 +793,10 @@ class Hazard():
                 LOGGER.info('Writting %s', file_name)
                 for i_ev in range(variable.shape[0]):
                     raster = rasterize([(x, val) for (x, val) in \
-                                        zip(pixel_geom, np.array(variable[i_ev, :].todense()).reshape(-1))], \
-                                        out_shape=(profile['height'], profile['width']),\
-                                        transform=profile['transform'], fill=0, \
-                                        all_touched=True, dtype=profile['dtype'],)
+                        zip(pixel_geom, np.array(variable[i_ev, :].todense()).reshape(-1))], \
+                        out_shape=(profile['height'], profile['width']),\
+                        transform=profile['transform'], fill=0, \
+                        all_touched=True, dtype=profile['dtype'],)
                     dst.write(raster.astype(profile['dtype']), i_ev+1)
 
     def write_hdf5(self, file_name):
@@ -1174,15 +1187,3 @@ class Hazard():
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events+1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
-
-    def _append_haz_cent(self, centroids):
-        """Append centroids. Get positions of new centroids.
-        Parameters:
-            centroids (Centroids): centroids to append
-        Returns:
-            cen_self (np.array): positions in self of new centroids
-            cen_haz (np.array): corresponding positions in centroids
-        """
-        # append different centroids
-
-

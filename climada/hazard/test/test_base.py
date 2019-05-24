@@ -435,6 +435,7 @@ class TestAppend(unittest.TestCase):
         haz1 = Hazard('TC')
         haz1.read_excel(HAZ_TEMPLATE_XLS)
         haz2 = Hazard('TC')
+        haz2.centroids.geometry.crs = {'init':'epsg:4326'}
         haz1.append(haz2)
         haz1.check()
 
