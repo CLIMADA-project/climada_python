@@ -53,7 +53,7 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif', \
                     'BlackMarble_%i_C2_geo_gray.tif', \
                     'BlackMarble_%i_D1_geo_gray.tif', \
                     'BlackMarble_%i_D2_geo_gray.tif']
-# years with Black Marble Tiles 
+# years with Black Marble Tiles
 # https://earthobservatory.nasa.gov/features/NightLights/page3.php
 # Update if new years get available!
 BM_YEARS = [2016, 2012] # latest first
@@ -296,7 +296,7 @@ class LitPop(Exposures):
                     * int(iso_cntry.get(cntry_info[1]).numeric)
         except KeyError:
             lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(curr_country).numeric)  
+                    * int(iso_cntry.get(curr_country).numeric)
         lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
         return lp_ent
 
@@ -939,9 +939,9 @@ def _get_country_info(iso3):
         if field[0] == 'ADMIN':
             break
     del field
-    for rec_i, rec in enumerate(shp.records()):
+    for rec, rec_shp in zip(shp.records(), shp.shapes()):
         if rec[field_num] == iso3:
-            country_shp = shp.shapes()[rec_i]
+            country_shp = rec_shp
             country_name = rec[field_num2]
             break
 
@@ -951,11 +951,10 @@ def _get_country_info(iso3):
                                             category='cultural',
                                             name='admin_1_states_provinces')
     admin1_recs = shapefile.Reader(admin1_file)
-#    admin1_recs = list(admin1_recs.records())
     country_admin1 = list()
-    for rec_i, rec in enumerate(admin1_recs.records()):
+    for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
         if rec['adm0_a3'] == iso3:
-            country_admin1.append([admin1_recs.shapes()[rec_i], admin1_recs.records()[rec_i]])
+            country_admin1.append([rec_shp, rec])
     try:
         iso_num = num_codes.index(iso3)
     except ValueError:
@@ -1285,7 +1284,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
                     else:
                         litpop_data = pd.SparseArray([val*mult if\
                               masks_adm1[idx3][idx] == 1 else val for idx, val in\
-                              enumerate(litpop_data.values)], fill_value=0)         
+                              enumerate(litpop_data.values)], fill_value=0)
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share':[],\
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
