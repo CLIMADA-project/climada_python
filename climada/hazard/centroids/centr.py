@@ -32,7 +32,8 @@ import climada.util.plot as u_plot
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import get_country_geometries, dist_to_coast, \
-get_resolution, coord_on_land, points_to_raster, read_raster, read_vector, NE_CRS
+get_resolution, coord_on_land, points_to_raster, read_raster, read_vector, NE_CRS, \
+equal_crs
 
 __all__ = ['Centroids']
 
@@ -65,7 +66,7 @@ class Centroids():
 
     Attributes:
         meta (dict, optional): rasterio meta dictionary containing raster
-            properties: width, height, crs and transform must be present 
+            properties: width, height, crs and transform must be present
             at least (transform needs to contain upper left corner!)
         lat (np.array, optional): latitude of size size
         lon (np.array, optional): longitude of size size
@@ -84,7 +85,7 @@ class Centroids():
     def __init__(self):
         """ Initialize to None raster and vector """
         self.meta = dict()
-        self.geometry = GeoSeries()
+        self.geometry = GeoSeries(crs=DEF_CRS)
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -111,6 +112,24 @@ class Centroids():
             if self.meta['transform'][4] > 0:
                 LOGGER.error('Meta does not contain upper left corner data.')
                 raise ValueError
+
+    def equal(self, centr):
+        """ Return true if two centroids equal, false otherwise
+
+        Parameters:
+            centr (Centroids): centroids to compare
+
+        Returns:
+            bool
+        """
+        if self.meta and centr.meta:
+            return equal_crs(self.meta['crs'], centr.meta['crs']) and \
+            self.meta['height'] == centr.meta['height'] and \
+            self.meta['width'] == centr.meta['width'] and \
+            self.meta['transform'] == centr.meta['transform']
+        return equal_crs(self.geometry.crs, centr.geometry.crs) and \
+        self.lat.shape == centr.lat.shape and self.lon.shape == centr.lon.shape and \
+        np.allclose(self.lat, centr.lat) and np.allclose(self.lon, centr.lon)
 
     def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
                                    n_lon, crs=DEF_CRS):
@@ -155,9 +174,9 @@ class Centroids():
         self.__init__()
         self.lat, self.lon, self.geometry = lat, lon, GeoSeries(crs=crs)
 
-    def set_raster_file(self, file_name, band=[1], window=False, geometry=False,
-                        dst_crs=False, transform=None, width=None, height=None,
-                        resampling=Resampling.nearest):
+    def set_raster_file(self, file_name, band=[1], src_crs=None, window=False,
+                        geometry=False, dst_crs=False, transform=None, width=None,
+                        height=None, resampling=Resampling.nearest):
         """ Read raster of bands and set 0 values to the masked ones. Each
         band is an event. Select region using window or geometry. Reproject
         input by proving dst_crs and/or (transform, width, height).
@@ -165,6 +184,7 @@ class Centroids():
         Parameters:
             file_pth (str): path of the file
             band (int, optional): band number to read. Default: 1
+            src_crs (crs, optional): source CRS. Provide it if error without it.
             window (rasterio.windows.Window, optional): window to read
             geometry (shapely.geometry, optional): consider pixels only in shape
             dst_crs (crs, optional): reproject to given crs
@@ -181,9 +201,9 @@ class Centroids():
             np.array
         """
         if not self.meta:
-            self.meta, inten = read_raster(file_name, band, window, geometry,
-                                           dst_crs, transform, width, height,
-                                           resampling)
+            self.meta, inten = read_raster(file_name, band, src_crs, window,
+                                           geometry, dst_crs, transform, width,
+                                           height, resampling)
             return inten
 
         tmp_meta, inten = read_raster(file_name, band, window, geometry, dst_crs,
@@ -217,7 +237,7 @@ class Centroids():
             return inten
         tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name, \
             inten_name, dst_crs)
-        if tmp_geometry.crs != self.geometry.crs or \
+        if not equal_crs(tmp_geometry.crs, self.geometry.crs) or \
         not np.allclose(tmp_lat, self.lat) or\
         not np.allclose(tmp_lon, self.lon):
             LOGGER.error('Vector data inconsistent with contained vector.')
@@ -298,6 +318,38 @@ class Centroids():
         """ Clear vector and raster data """
         self.__init__()
 
+    def append(self, centr):
+        """ Append raster or points. Raster needs to have the same resolution """
+        if self.meta and centr.meta:
+            LOGGER.debug('Appending raster')
+            if centr.meta['crs'] != self.meta['crs']:
+                LOGGER.error('Different CRS not accepted.')
+                raise ValueError
+            if self.meta['transform'][0] != centr.meta['transform'][0] or \
+            self.meta['transform'][4] != centr.meta['transform'][4]:
+                LOGGER.error('Different raster resolutions.')
+                raise ValueError
+            left = min(self.total_bounds[0], centr.total_bounds[0])
+            bottom = min(self.total_bounds[1], centr.total_bounds[1])
+            right = max(self.total_bounds[2], centr.total_bounds[2])
+            top = max(self.total_bounds[3], centr.total_bounds[3])
+            crs = self.meta['crs']
+            width = (right - left)/self.meta['transform'][0]
+            height = (bottom - top)/self.meta['transform'][4]
+            self.meta = {'dtype':'float32', 'width':width, 'height':height,
+                         'crs':crs, 'transform':Affine(self.meta['transform'][0],
+                         0.0, left, 0.0, self.meta['transform'][4], top)}
+        else:
+            LOGGER.debug('Appending points')
+            if not equal_crs(centr.geometry.crs, self.geometry.crs):
+                LOGGER.error('Different CRS not accepted.')
+                raise ValueError
+            lat = np.append(self.lat, centr.lat)
+            lon = np.append(self.lon, centr.lon)
+            crs = self.geometry.crs
+            self.__init__()
+            self.set_lat_lon(lat, lon, crs)
+
     def get_closest_point(self, x_lon, y_lat):
         """ Returns closest centroid and its index to a given point.
 
@@ -315,7 +367,7 @@ class Centroids():
             i_lon = np.floor((x_lon - self.meta['transform'][2])/abs(self.meta['transform'][0]))
             close_idx = int(i_lat*self.meta['width'] + i_lon)
         else:
-            self._set_geometry_points()
+            self.set_geometry_points()
             close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
@@ -345,12 +397,12 @@ class Centroids():
             res = self.meta['transform'].a
         else:
             res = min(get_resolution(self.lat, self.lon))
-        self._set_geometry_points()
+        self.set_geometry_points()
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
         if ('units' in self.geometry.crs and \
         self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-        self.geometry.crs == {'proj':'cea'}:
+        equal_crs(self.geometry.crs, {'proj':'cea'}):
             self.area_pixel = xy_pixels.area.values
         else:
             self.area_pixel = xy_pixels.to_crs(crs={'proj':'cea'}).area.values
@@ -375,7 +427,7 @@ class Centroids():
             lon_unique_len = len(np.unique(self.lon))
             if ('units' in self.geometry.crs and \
             self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-            self.geometry.crs == {'proj':'cea'}:
+            equal_crs(self.geometry.crs, {'proj':'cea'}):
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
                 return
 
@@ -390,7 +442,7 @@ class Centroids():
             raise ValueError
 
     def set_dist_coast(self):
-        """ Set dist_coast attribute for every pixel or point. Distan to 
+        """ Set dist_coast attribute for every pixel or point. Distan to
         coast is computed in meters """
         lon, lat = self._ne_crs_xy()
         LOGGER.debug('Setting dist_coast %s points.', str(self.lat.size))
@@ -408,16 +460,12 @@ class Centroids():
         Returns:
             Centroids
         """
-        self._set_geometry_points()
+        self.set_geometry_points()
         geom_wkb = self.geometry.apply(lambda geom: geom.wkb)
+        sel_cen = geom_wkb.drop_duplicates().index
+        return self.select(sel_cen=sel_cen)
 
-        centr = Centroids()
-        centr.geometry = self.geometry.loc[geom_wkb.drop_duplicates().index]
-        centr.lat = centr.geometry[:].y.values
-        centr.lon = centr.geometry[:].x.values
-        return centr
-
-    def filter_region(self, reg_id=None, sel_cen=None):
+    def select(self, reg_id=None, sel_cen=None):
         """ Return Centroids with points in the given reg_id or within mask
 
         Parameters:
@@ -496,7 +544,7 @@ class Centroids():
                abs(self.meta['transform'].e)) > 1.0e-5:
             LOGGER.error('Area can not be computed for not squared pixels.')
             raise ValueError
-        self._set_geometry_points()
+        self.set_geometry_points()
         return self.geometry.buffer(self.meta['transform'].a/2).envelope
 
     def empty_geometry_points(self):
@@ -544,7 +592,7 @@ class Centroids():
         """ Get [lat, lon] array. Might take some time. """
         return np.array([self.lat, self.lon]).transpose()
 
-    def _set_geometry_points(self):
+    def set_geometry_points(self):
         """ Set geometry points """
         if not self.geometry.size:
             if not self.lat.size or not self.lon.size:
@@ -560,9 +608,9 @@ class Centroids():
         """
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
-        if self.geometry.crs == NE_CRS:
+        if equal_crs(self.geometry.crs, NE_CRS):
             return self.lon, self.lat
-        self._set_geometry_points()
+        self.set_geometry_points()
         xy_points = self.geometry.to_crs(NE_CRS)
         return xy_points.geometry[:].x.values, xy_points.geometry[:].y.values
 

@@ -318,7 +318,19 @@ def points_to_raster(points_bounds, res):
     ras_trans = from_origin(xmin - res / 2, ymax + res / 2, res, res)
     return rows, cols, ras_trans
 
-def read_raster(file_name, band=[1], window=False, geometry=False,
+def equal_crs(crs_one, crs_two):
+    """ Compare two crs
+
+    Parameters:
+        crs_one (dict or string or wkt): user crs
+        crs_two (dict or string or wkt): user crs
+
+    Returns:
+        bool
+    """
+    return CRS.from_user_input(crs_one) == CRS.from_user_input(crs_two)
+
+def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 dst_crs=False, transform=None, width=None, height=None,
                 resampling=Resampling.nearest):
     """ Read raster of bands and set 0 values to the masked ones. Each
@@ -345,14 +357,17 @@ def read_raster(file_name, band=[1], window=False, geometry=False,
         file_name = '/vsigzip/' + file_name
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
-            src_crs = CRS.from_dict(DEF_CRS) if not src.crs else src.crs
+            if src_crs is None:
+                src_meta = CRS.from_dict(DEF_CRS) if not src.crs else src.crs
+            else:
+                src_meta = src_crs
             if dst_crs or transform:
                 LOGGER.debug('Reprojecting ...')
                 if not dst_crs:
-                    dst_crs = src_crs
+                    dst_crs = src_meta
                 if not transform:
                     transform, width, height = calculate_default_transform(\
-                        src_crs, dst_crs, src.width, src.height, *src.bounds)
+                        src_meta, dst_crs, src.width, src.height, *src.bounds)
                 dst_meta = src.meta.copy()
                 dst_meta.update({'crs': dst_crs,
                                'transform': transform,
@@ -361,10 +376,10 @@ def read_raster(file_name, band=[1], window=False, geometry=False,
                               })
                 intensity = np.zeros((len(band), height, width))
                 for idx_band, i_band in enumerate(band):
-                    reproject(source=rasterio.band(src, i_band),
+                    reproject(source=src.read(i_band),
                               destination=intensity[idx_band, :],
                               src_transform=src.transform,
-                              src_crs=src_crs,
+                              src_crs=src_meta,
                               dst_transform=transform,
                               dst_crs=dst_crs,
                               resampling=resampling)

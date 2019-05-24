@@ -187,8 +187,8 @@ class Hazard():
         self._check_events()
 
     def set_raster(self, files_intensity, files_fraction=None, attrs={},
-                   band=[1], window=False, geometry=False, dst_crs=False,
-                   transform=None, width=None, height=None,
+                   band=[1], src_crs=None, window=False, geometry=False,
+                   dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
         """ Append intensity and fraction from raster file. 0s put to the masked
         values. File can be partially read using window OR geometry.
@@ -199,7 +199,8 @@ class Hazard():
             files_intensity (list(str)): file names containing intensity
             files_fraction (list(str)): file names containing fraction
             attrs (dict, optional): name of Hazard attributes and their values
-            band (list(int), optional): bands to read (strating at 1)
+            band (list(int), optional): bands to read (starting at 1)
+            src_crs (crs, optional): source CRS. Provide it if error without it.
             window (rasterio.windows.Windows, optional): window where data is
                 extracted
             geometry (shapely.geometry, optional): consider pixels only in shape
@@ -218,18 +219,18 @@ class Hazard():
 
         self.centroids = Centroids()
         for file in files_intensity:
-            inten = self.centroids.set_raster_file(file, band, window, geometry,
-                                                   dst_crs, transform, width,
-                                                   height, resampling)
+            inten = self.centroids.set_raster_file(file, band, src_crs, window,
+                                                   geometry, dst_crs, transform,
+                                                   width, height, resampling)
             self.intensity = sparse.vstack([self.intensity, inten], format='csr')
         if files_fraction is None:
             self.fraction = self.intensity.copy()
             self.fraction.data.fill(1)
         else:
             for file in files_fraction:
-                fract = self.centroids.set_raster_file(file, band, window, geometry,
-                                                       dst_crs, transform, width,
-                                                       height, resampling)
+                fract = self.centroids.set_raster_file(file, band, src_crs, window,
+                                                       geometry, dst_crs, transform,
+                                                       width, height, resampling)
                 self.fraction = sparse.vstack([self.fraction, fract], format='csr')
 
         if 'event_id' in attrs:
@@ -373,7 +374,7 @@ class Hazard():
 
         Parameters:
             date (tuple(str or int), optional): (initial date, final date) in
-                string ISO format or datetime ordinal integer
+                string ISO format ('2011-01-02') or datetime ordinal integer
             orig (bool, optional): select only historical (True) or only
                 synthetic (False)
             reg_id (int, optional): region identifier of the centroids's
@@ -427,7 +428,7 @@ class Hazard():
                 setattr(haz, var_name, [var_val[idx] for idx in sel_ev])
             elif var_name == 'centroids':
                 if reg_id is not None:
-                    setattr(haz, var_name, var_val.filter_region(reg_id))
+                    setattr(haz, var_name, var_val.select(reg_id))
                 else:
                     setattr(haz, var_name, var_val)
             else:
@@ -666,11 +667,6 @@ class Hazard():
                     self.__dict__[key] = copy.copy(hazard.__dict__[key])
             return
 
-        self._set_coords_centroids()
-        if not np.array_equal(self.centroids.coord, hazard.centroids.coord):
-            LOGGER.error('Append only events with same centroids.')
-            raise ValueError
-
         if (self.units == '') and (hazard.units != ''):
             LOGGER.info("Initial hazard does not have units.")
             self.units = hazard.units
@@ -682,6 +678,7 @@ class Hazard():
             raise ValueError
 
         self.tag.append(hazard.tag)
+        n_ini_ev = self.event_id.size
         # append all 1-dim variables
         for (var_name, var_val), haz_val in zip(self.__dict__.items(),
                                                 hazard.__dict__.values()):
@@ -692,11 +689,35 @@ class Hazard():
             elif isinstance(var_val, list) and var_val:
                 setattr(self, var_name, var_val + haz_val)
 
-        # append intensity and fraction
-        self.intensity = sparse.vstack([self.intensity, \
-            hazard.intensity], format='csr')
-        self.fraction = sparse.vstack([self.fraction, \
-            hazard.fraction], format='csr')
+        # append intensity and fraction:
+        # if same centroids, just append events
+        # else, check centroids correct column
+        if self.centroids.equal(hazard.centroids):
+            self.intensity = sparse.vstack([self.intensity, hazard.intensity],
+                                           format='csr')
+            self.fraction = sparse.vstack([self.fraction, hazard.fraction],
+                                          format='csr')
+        elif hazard.intensity.size:
+            n_ini_cen = self.centroids.size
+            self.centroids.append(hazard.centroids)
+
+            self.intensity = sparse.hstack([self.intensity, \
+                sparse.lil_matrix((self.intensity.shape[0], \
+                self.centroids.size - n_ini_cen))], format='lil')
+            self.fraction = sparse.hstack([self.fraction, \
+                sparse.lil_matrix((self.fraction.shape[0], \
+                self.centroids.size - n_ini_cen))], format='lil')
+            self.intensity = sparse.vstack([self.intensity, \
+                sparse.lil_matrix((hazard.intensity.shape[0],
+                                   self.intensity.shape[1]))], format='lil')
+            self.fraction = sparse.vstack([self.fraction, \
+                sparse.lil_matrix((hazard.intensity.shape[0],
+                                   self.intensity.shape[1]))], format='lil')
+
+            self.intensity[n_ini_ev:, -hazard.intensity.shape[1]:] = hazard.intensity
+            self.fraction[n_ini_ev:, -hazard.intensity.shape[1]:] = hazard.fraction
+            self.intensity = self.intensity.tocsr()
+            self.fraction = self.fraction.tocsr()
 
         # Make event id unique
         if np.unique(self.event_id).size != self.event_id.size:
@@ -1153,3 +1174,15 @@ class Hazard():
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events+1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
+
+    def _append_haz_cent(self, centroids):
+        """Append centroids. Get positions of new centroids.
+        Parameters:
+            centroids (Centroids): centroids to append
+        Returns:
+            cen_self (np.array): positions in self of new centroids
+            cen_haz (np.array): corresponding positions in centroids
+        """
+        # append different centroids
+
+

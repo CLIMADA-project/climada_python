@@ -34,7 +34,7 @@ from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, points_to_raster, read_vector, \
-read_raster, NE_EPSG
+read_raster, NE_EPSG, equal_crs
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -328,7 +328,13 @@ class TestFunc(unittest.TestCase):
 
         meta, inten_all = read_raster(HAZ_DEMO_FL, window=Window(0, 0, 501, 500))
         self.assertTrue(np.array_equal(inten_all, inten_ras))
-        
+
+    def test_compare_crs(self):
+        """ Compare two crs """
+        crs_one = {'init':'epsg:4326'}
+        crs_two = {'init':'epsg:4326', 'no_defs': True}
+        self.assertTrue(equal_crs(crs_one, crs_two))
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
 unittest.TextTestRunner(verbosity=2).run(TESTS)
