@@ -279,7 +279,7 @@ class Measure():
         if self.exp_region_id != 0:
             # compute impact only in selected region
             exp_imp = exposures[exposures.region_id == self.exp_region_id]
-            exp_imp = Exposures(exp_imp)
+            exp_imp = Exposures(exp_imp, crs=exposures.crs)
         imp.calc(exp_imp, if_set, hazard)
 
         new_haz = copy.deepcopy(hazard)
