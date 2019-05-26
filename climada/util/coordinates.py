@@ -291,7 +291,8 @@ def get_resolution(lat, lon):
     Returns:
         float
     """
-    res_lat, res_lon = np.diff(lat), np.diff(lon)
+    # ascending lat and lon
+    res_lat, res_lon = np.diff(np.sort(lat)), np.diff(np.sort(lon))
     try:
         res_lat = res_lat[res_lat > 0].min()
     except ValueError:
