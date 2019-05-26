@@ -113,7 +113,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(len(exp), 60*50)
         self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
-    def test_assign_raster(self):
+    def test_assign_raster_pass(self):
         """ Test assign_centroids with raster hazard """
         exp = Exposures()
         exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
@@ -127,6 +127,18 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000-1)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
+
+
+    def test_assign_raster_same_pass(self):
+        """ Test assign_centroids with raster hazard """
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.check()
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        exp.assign_centroids(haz)
+        self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
+                                       np.arange(haz.centroids.size, dtype=int)))
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function """
@@ -185,13 +197,13 @@ class TestIO(unittest.TestCase):
         exp_df.ref_year = 2020
         exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
-        
+
         file_name = os.path.join(DATA_DIR, 'test_hdf5_exp.h5')
         exp_df.write_hdf5(file_name)
-        
+
         exp_read = Exposures()
         exp_read.read_hdf5(file_name)
-    
+
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
         self.assertEqual(exp_df.crs, exp_read.crs)
@@ -302,7 +314,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp_tr.tag.description, '')
         self.assertEqual(exp_tr.tag.file_name, '')
-    
+
     def test_constructoer_pass(self):
         """ Test initialization with input GeiDataFrame """
         in_gpd = gpd.GeoDataFrame()
@@ -311,7 +323,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         in_exp = Exposures(in_gpd)
         self.assertEqual(in_exp.ref_year, 2015)
         self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
-    
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
