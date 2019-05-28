@@ -20,8 +20,6 @@ init exposures
 """
 from .base import *
 from .black_marble import *
-<<<<<<< HEAD
 from .gdp_asset import *
-=======
 from .litpop import *
->>>>>>> master
+
