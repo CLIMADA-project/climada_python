@@ -84,6 +84,7 @@ class TestApply(unittest.TestCase):
         exp = Exposures()
         exp.read_mat(ENT_TEST_MAT)
         exp.rename(columns={'if_': 'if_TC'}, inplace=True)
+        exp.check()
 
         imp_set = ImpactFuncSet()
         imp_set.read_mat(ENT_TEST_MAT)
@@ -121,6 +122,7 @@ class TestApply(unittest.TestCase):
         exp.read_mat(ENT_TEST_MAT)
         exp['region_id'] = np.zeros(exp.shape[0])
         exp.region_id.values[10:] = 1
+        exp.check()
 
         imp_set = ImpactFuncSet()
         imp_set.read_mat(ENT_TEST_MAT)
@@ -255,6 +257,7 @@ class TestApply(unittest.TestCase):
         exp.rename(columns={'if_':'if_TC', 'centr_':'centr_TC'}, inplace=True)
         exp['region_id'] = np.ones(exp.shape[0])
         exp.region_id.values[:exp.shape[0]//2] = 3
+        exp.check()
 
         imp_set = ImpactFuncSet()
         imp_set.read_mat(ENT_TEST_MAT)
@@ -452,5 +455,6 @@ class TestApply(unittest.TestCase):
         self.assertEqual(risk_transf, 2.3139691495470852e+08)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestApply)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestApply)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

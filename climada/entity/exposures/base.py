@@ -24,18 +24,19 @@ __all__ = ['Exposures', 'add_sea']
 import logging
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from shapely.geometry import Point
 import cartopy.crs as ccrs
 from geopandas import GeoDataFrame
 from rasterio.features import rasterize
-from rasterio.transform import from_origin
 import rasterio
-import matplotlib.pyplot as plt
+from rasterio.warp import Resampling
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import ONE_LAT_KM
-from climada.util.coordinates import coord_on_land
+from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.coordinates import coord_on_land, get_resolution, \
+points_to_raster, read_raster, equal_crs
 from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
@@ -52,9 +53,6 @@ DEF_REF_YEAR = 2018
 
 DEF_VALUE_UNIT = 'USD'
 """ Default reference year """
-
-DEF_CRS = {'init': 'epsg:4326'}
-""" Default coordinate reference system WGS 84 """
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
@@ -83,6 +81,7 @@ class Exposures(GeoDataFrame):
         value_unit (str): metada - unit of the exposures values
         latitude (pd.Series): latitude
         longitude (pd.Series): longitude
+        crs (dict or crs): CRS information inherent to GeoDataFrame.
         value (pd.Series): a value for each exposure
         if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
             There might be different hazards defined: if_TC, if_FL, ...
@@ -179,25 +178,40 @@ class Exposures(GeoDataFrame):
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
-        """ Assign for each exposure coordinate closest hazard coordinate
+        """ Assign for each exposure coordinate closest hazard coordinate.
+        -1 used for disatances > threshold in point distances. If raster hazard,
+        -1 used for centroids outside raster.
 
         Parameters:
-            hazard (Hazard): hazard to match
-            method (str, optional): interpolation method to use. Nearest
-                neighbor (NN) default
-            distance (str, optional): distance to use. Haversine default
+            hazard (Hazard): hazard to match (with raster or vector centroids)
+            method (str, optional): interpolation method to use in vector hazard.
+                Nearest neighbor (NN) default
+            distance (str, optional): distance to use in vector hazard. Haversine
+                default
             threshold (float): distance threshold in km over which no neighbor
-                will be found. Those are assigned with a -1 index. Default 100
+                will be found in vector hazard. Those are assigned with a -1.
+                Default 100 km.
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.shape[0]), str(hazard.centroids.size))
-
-        coord = np.stack([self.latitude.values, self.longitude.values], axis=1)
-        if np.array_equal(coord, hazard.centroids.coord):
-            assigned = np.arange(self.shape[0])
+        if not equal_crs(self.crs, hazard.centroids.crs):
+            LOGGER.error('Set hazard and exposure to same CRS first!')
+            raise ValueError
+        if hazard.centroids.meta:
+            x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2]) \
+                   /hazard.centroids.meta['transform'][0]).astype(int)
+            y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5]) \
+                   /hazard.centroids.meta['transform'][4]).astype(int)
+            assigned = y_i*hazard.centroids.meta['width'] + x_i
+            assigned[assigned < 0] = -1
+            assigned[assigned >= hazard.centroids.size] = -1
         else:
-            assigned = interpol_index(hazard.centroids.coord, coord, \
-                method=method, distance=distance, threshold=threshold)
+            coord = np.stack([self.latitude.values, self.longitude.values], axis=1)
+            if np.array_equal(coord, hazard.centroids.coord):
+                assigned = np.arange(self.shape[0])
+            else:
+                assigned = interpol_index(hazard.centroids.coord, coord, \
+                    method=method, distance=distance, threshold=threshold)
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
@@ -213,6 +227,41 @@ class Exposures(GeoDataFrame):
         LOGGER.info('Setting latitude and longitude attributes.')
         self['latitude'] = self.geometry[:].y
         self['longitude'] = self.geometry[:].x
+
+    def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
+                        geometry=False, dst_crs=False, transform=None,
+                        width=None, height=None, resampling=Resampling.nearest):
+        """ Read raster data and set latitude, longitude and value
+
+        Parameters:
+            file_name (str): file name containing values
+            band (int, optional): bands to read (starting at 1)
+            src_crs (crs, optional): source CRS. Provide it if error without it.
+            window (rasterio.windows.Windows, optional): window where data is
+                extracted
+            geometry (shapely.geometry, optional): consider pixels only in shape
+            dst_crs (crs, optional): reproject to given crs
+            transform (rasterio.Affine): affine transformation to apply
+            wdith (float): number of lons for transform
+            height (float): number of lats for transform
+            resampling (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs
+        """
+        self.__init__()
+        self.tag = Tag()
+        self.tag.file_name = file_name
+        meta, value = read_raster(file_name, [band], src_crs, window,
+                                  geometry, dst_crs, transform, width,
+                                  height, resampling)
+        ulx, xres, _, uly, _, yres = meta['transform'].to_gdal()
+        lrx = ulx + meta['width'] * xres
+        lry = uly + meta['height'] * yres
+        x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
+                                     np.arange(uly+yres/2, lry, yres))
+        self.crs = meta['crs'].to_dict()
+        self['longitude'] = x_grid.flatten()
+        self['latitude'] = y_grid.flatten()
+        self['value'] = value.reshape(-1)
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', **kwargs):
@@ -303,24 +352,19 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if not 'geometry' in self.columns:
+        if 'geometry' not in self.columns:
             self.set_geometry_points()
         crs_epsg, crs_unit = self._get_transformation()
         if not res:
-            res_lat, res_lon = np.diff(self.latitude.values), np.diff(self.longitude.values)
-            res = min(res_lat[res_lat > 0].min(), res_lon[res_lon > 0].min())
+            res = min(get_resolution(self.latitude.values, self.longitude.values))
         if not raster_res:
             raster_res = res
         LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
                     raster_res, crs_unit)
-
         exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
         # construct raster
         xmin, ymin, xmax, ymax = self.total_bounds
-        rows = int(np.ceil((ymax-ymin) /  raster_res))
-        cols = int(np.ceil((xmax-xmin) / raster_res))
-        res_x, res_y = (xmax - xmin) / cols, (ymax - ymin) / rows
-        ras_trans = from_origin(xmin - res_x / 2, ymax + res_y / 2, res_x, res_y)
+        rows, cols, ras_trans = points_to_raster((xmin, ymin, xmax, ymax), raster_res)
         raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
                            out_shape=(rows, cols), transform=ras_trans, fill=0,
                            all_touched=True, dtype=rasterio.float32, )
@@ -371,7 +415,7 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if not 'geometry' in self.columns:
+        if 'geometry' not in self.columns:
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
@@ -584,3 +628,23 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
+
+def _crop(exposure, selection, deep=True):
+    """ Make a cropped copy of this Exposures object.
+
+    Parameters
+    ----------
+    selection (bool): logical array with lenght of index of geodataframe
+    deep (bool): Make a deep copy, i.e. also copy data. Default True.
+
+    Returns
+    -------
+        Exposures
+    """
+    cropped = exposure.copy(deep=deep)
+    cropped = cropped.loc[selection, :]
+    cropped.tag = exposure.tag
+    cropped.tag.description = cropped.tag.description + ', cropped'
+    cropped.ref_year = exposure.ref_year
+    cropped.value_unit = exposure.value_unit
+    return cropped

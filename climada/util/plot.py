@@ -239,7 +239,6 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
             extent[2] : extent[3] : complex(0, RESOLUTION)]
         grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
                            (grid_x, grid_y))
-
         # Add coastline to axis
         axis.set_extent((extent), proj)
         add_shapes(axis)

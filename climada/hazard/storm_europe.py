@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 
 from climada.hazard.base import Hazard
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.centr import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
 from climada.util.dates_times import (
@@ -188,44 +188,30 @@ class StormEurope(Hazard):
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
+        cent = Centroids()
         ncdf = xr.open_dataset(file_name)
         if hasattr(ncdf, 'latitude'):
             lats = ncdf.latitude.data
             lons = ncdf.longitude.data
-            new_coord = np.array([
-                    np.repeat(lats, len(lons)),
-                    np.tile(lons, len(lats)),
-                    ]).T
         elif hasattr(ncdf, 'lat'):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
-            new_coord = np.array([
-                    np.repeat(lats, len(lons)),
-                    np.tile(lons, len(lats)),
-                    ]).T
         elif hasattr(ncdf, 'lat_1'):
             lats = ncdf.lat_1.data
             lons = ncdf.lon_1.data
-            new_coord = np.array([
-                    lats.reshape(-1),
-                    lons.reshape(-1),
-                    ]).T
         else:
             raise AttributeError('netcdf file has no field named latitude or '
                                  'other know abrivation for coordinates.')
-
-        cent = Centroids()
-        cent.coord = new_coord
-        cent.id = np.arange(0, len(cent.coord))
-        cent.tag.description = 'Centroids constructed from: ' + file_name
-
         ncdf.close()
 
-        cent.set_area_per_centroid()
+        lats, lons = np.array([np.repeat(lats, len(lons)),
+                               np.tile(lons, len(lats))])
+        cent = Centroids()
+        cent.set_lat_lon(lats, lons)
+        cent.set_area_pixel()
         cent.set_on_land()
 
         return cent
-
 
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
                  threshold=None, sel_cen=None):
@@ -284,12 +270,12 @@ class StormEurope(Hazard):
         elif on_land is True:
             sel_cen = cent.on_land
         else:  # select all centroids
-            sel_cen = np.ones_like(cent.area_per_centroid, dtype=bool)
+            sel_cen = np.ones_like(cent.area_pixel, dtype=bool)
 
         ssi = np.zeros(intensity.shape[0])
 
         if method == 'dawkins':
-            area_c = cent.area_per_centroid * sel_cen
+            area_c = cent.area_pixel / 1000 / 1000 * sel_cen
             for i, inten_i in enumerate(intensity):
                 ssi_i = area_c * inten_i.power(3).todense().T
                 # matrix crossproduct (row x column vector)
@@ -297,7 +283,7 @@ class StormEurope(Hazard):
 
         elif method == 'wisc_gust':
             for i, inten_i in enumerate(intensity[:, sel_cen]):
-                area = np.sum(cent.area_per_centroid[inten_i.indices])
+                area = np.sum(cent.area_pixel[inten_i.indices]) / 1000 / 1000
                 inten_mean = np.mean(inten_i)
                 ssi[i] = area * np.power(inten_mean, 3)
 
@@ -391,7 +377,7 @@ class StormEurope(Hazard):
             sel_cen = np.isin(self.centroids.region_id, reg_id)
 
         else: # shifting truncates valid centroids
-            sel_cen = np.zeros(self.centroids.shape_grid, bool)
+            sel_cen = np.zeros(self.centroids.shape, bool)
             sel_cen[
                 spatial_shift:-spatial_shift,
                 spatial_shift:-spatial_shift
@@ -473,10 +459,10 @@ class StormEurope(Hazard):
             ssi (np.array): SSI per synthetic event according to provided
                 method.
         """
-        shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape_grid
+        shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape
 
         # reshape to the raster that the data represents
-        intensity2d = intensity1d.reshape(self.centroids.shape_grid)
+        intensity2d = intensity1d.reshape(self.centroids.shape)
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
@@ -520,7 +506,7 @@ class StormEurope(Hazard):
 
         intensity_out = intensity3d_prob.reshape(
             N_PROB_EVENTS,
-            np.prod(self.centroids.shape_grid)
+            np.prod(self.centroids.shape)
         )
 
         ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)

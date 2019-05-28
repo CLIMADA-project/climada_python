@@ -131,6 +131,22 @@ def get_file_names(file_name):
         _process_one_file_name(file_name, file_list)
     return file_list
 
+def get_extension(file_name):
+    """ Get file without extension and its extension (e.g. ".nc", ".grd.gz").
+    
+    Parameters:
+        file_name (str): file name (with or without path)
+    
+    Returns:
+        str, str
+    """
+    file_pth, file_ext = os.path.splitext(file_name)
+    file_pth_bis, file_ext_bis = os.path.splitext(file_pth)
+    if file_ext_bis and file_ext_bis[0] == '.':
+        return file_pth_bis, file_ext_bis + file_ext
+    return file_pth, file_ext
+    
+
 def _process_one_file_name(name, file_list):
     """ Apend to input list the file contained in name
         Tries globbing if name is neither dir nor file.

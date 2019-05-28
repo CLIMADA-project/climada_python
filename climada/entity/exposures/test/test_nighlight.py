@@ -91,5 +91,6 @@ class TestNightLight(unittest.TestCase):
         self.assertRaises(ValueError, nightlight.download_nl_files, (1, 0, 1), (1, 1, 1))
         
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNightLight)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNightLight)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -32,11 +32,12 @@ import pandas as pd
 import xlsxwriter
 
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, DEF_CRS
+from climada.entity.exposures.base import Exposures
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
+from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 

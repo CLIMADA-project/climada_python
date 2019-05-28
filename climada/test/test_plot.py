@@ -57,15 +57,15 @@ class TestPlotter(unittest.TestCase):
                       myax[0][0].get_title())
 
         myfig, _ = hazard.plot_intensity(centr=59)
-        self.assertIn('Centroid ID 59: (29.0, -79.0)', \
+        self.assertIn('Centroid 59: (30.0, -79.0)', \
                       myfig._suptitle.get_text())
 
         myfig, _ = hazard.plot_intensity(centr=-1)
-        self.assertIn('1-largest Centroid. ID 100: (30.0, -75.0)', \
+        self.assertIn('1-largest Centroid. 99: (30.0, -75.0)', \
                       myfig._suptitle.get_text())
 
         myfig, _ = hazard.plot_intensity(centr=-4)
-        self.assertIn('4-largest Centroid. ID 70: (30.0, -78.0)', \
+        self.assertIn('4-largest Centroid. 69: (30.0, -78.0)', \
                       myfig._suptitle.get_text())
 
         myfig, _ = hazard.plot_intensity(centr=0)
@@ -88,11 +88,11 @@ class TestPlotter(unittest.TestCase):
                       myax[0][0].get_title())
 
         myfig, _ = hazard.plot_fraction(centr=59)
-        self.assertIn('Centroid ID 59: (29.0, -79.0)', \
+        self.assertIn('Centroid 59: (30.0, -79.0)', \
                       myfig._suptitle.get_text())
 
         myfig, _ = hazard.plot_fraction(centr=-1)
-        self.assertIn('1-largest Centroid. ID 80: (30.0, -77.0)', \
+        self.assertIn('1-largest Centroid. 79: (30.0, -77.0)', \
                       myfig._suptitle.get_text())
 
     def test_exposures_value_pass(self):
@@ -140,5 +140,6 @@ class TestPlotter(unittest.TestCase):
         ifc.plot_compare(ifc2)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

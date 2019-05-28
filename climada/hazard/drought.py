@@ -273,10 +273,7 @@ class Drought(Hazard):
         lon_1d = lon_2d.reshape(n_centroids,)
         lat_1d = lat_2d.reshape(n_centroids,)
 
-        self.centroids.coord = np.zeros((n_centroids, 2))
-        self.centroids.coord[:, 0] = lat_1d
-        self.centroids.coord[:, 1] = lon_1d
-        self.centroids.id = np.arange(n_centroids)
+        self.centroids.set_lat_lon(lat_1d, lon_1d)
 
         self.event_id = np.arange(1, self.n_years+1, 1)
         # frequency set when all eventsavailable

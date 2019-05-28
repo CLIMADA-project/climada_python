@@ -105,7 +105,7 @@ class TestLitPopFunctions(unittest.TestCase):
         curr_country = 'SWZ'
         curr_shp = lp._get_country_shape(curr_country, 0)
         mask = lp._mask_from_shape(curr_shp, resolution=60)
-        self.assertEqual(mask.size, 5591)
+        self.assertEqual(mask.sp_index.indices.size, 5591)
         self.assertTrue(mask.values.max())
         self.assertIn(140 and 7663, mask.sp_index.indices)
 
@@ -120,6 +120,7 @@ class TestLitPopFunctions(unittest.TestCase):
                         _rnd(min(all_coords)))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctions)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopClass))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopFunctions)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopClass))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

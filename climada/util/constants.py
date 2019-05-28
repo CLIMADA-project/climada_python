@@ -36,6 +36,7 @@ __all__ = ['SOURCE_DIR',
            'EXP_DEMO_H5']
 
 import os
+from fiona.crs import from_epsg
 
 SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           os.pardir))
@@ -101,3 +102,9 @@ ONE_LAT_KM = 111.12
 
 EARTH_RADIUS_KM = 6371
 """ Earth radius in km """
+
+DEF_EPSG = 4326
+""" Default EPSG code """
+
+DEF_CRS = from_epsg(DEF_EPSG)
+""" Default coordinate reference system WGS 84 """

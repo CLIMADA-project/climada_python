@@ -51,10 +51,10 @@ class TestCountryIso(unittest.TestCase):
         self.assertTrue('KOS'in iso_name)
         self.assertEqual(iso_name['CHE'][0], 756)
         self.assertEqual(iso_name['CHE'][1], 'Switzerland')
-        self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.polygon.Polygon)
         self.assertEqual(iso_name['KOS'][0], 0)
         self.assertEqual(iso_name['KOS'][1], 'Kosovo')
-        self.assertIsInstance(iso_name['KOS'][2], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(iso_name['KOS'][2], shapely.geometry.polygon.Polygon)
 
     def test_haiti_pass(self):
         """HTI"""
@@ -80,7 +80,7 @@ class TestCountryIso(unittest.TestCase):
         self.assertEqual(len(iso_name), len(country_name))
         self.assertEqual(iso_name['BOL'][0], 68)
         self.assertEqual(iso_name['BOL'][1], 'Bolivia')
-        self.assertIsInstance(iso_name['BOL'][2], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(iso_name['BOL'][2], shapely.geometry.polygon.Polygon)
 
     def test_korea_pass(self):
         """PRK"""
@@ -98,13 +98,13 @@ class TestProvinces(unittest.TestCase):
         prov_list = ['Barcelona']
         res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
         self.assertEqual(len(res_bcn), 1)
-        self.assertIsInstance(res_bcn[0], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(res_bcn[0], shapely.geometry.polygon.Polygon)
 
         prov_list = ['Barcelona', 'Tarragona']
         res_bcn = _fill_admin1_geom(iso3, admin1_rec, prov_list)
         self.assertEqual(len(res_bcn), 2)
-        self.assertIsInstance(res_bcn[0], shapely.geometry.multipolygon.MultiPolygon)
-        self.assertIsInstance(res_bcn[1], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(res_bcn[0], shapely.geometry.polygon.Polygon)
+        self.assertIsInstance(res_bcn[1], shapely.geometry.polygon.Polygon)
 
     def test_fill_admin1_geom_fail(self):
         """Test function _fill_admin1_geom fail."""
@@ -124,10 +124,10 @@ class TestProvinces(unittest.TestCase):
         self.assertEqual(cntry_admin1, {'CHE': []})
         self.assertIsInstance(countries, list)
 
-        countries = {'Switzerland': ['Zürich']}
+        countries = {'Switzerland': ['ZÃ¼rich']}
         _, cntry_admin1 = country_iso_geom(countries, SHP_FILE)
         self.assertEqual(len(cntry_admin1['CHE']), 1)
-        self.assertIsInstance(cntry_admin1['CHE'][0], shapely.geometry.multipolygon.MultiPolygon)
+        self.assertIsInstance(cntry_admin1['CHE'][0], shapely.geometry.polygon.Polygon)
 
     def test_filter_admin1_pass(self):
         """Test _cut_admin1 pass."""
@@ -302,8 +302,9 @@ class TestEconIndices(unittest.TestCase):
         self.assertAlmostEqual(nightlight.sum(), gdp*(inc_grp+1), 5)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEconIndices)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCountryIso))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNightLight))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestProvinces))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

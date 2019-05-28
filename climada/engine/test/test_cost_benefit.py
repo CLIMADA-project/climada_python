@@ -408,8 +408,9 @@ class TestRiskFuncs(unittest.TestCase):
         self.assertAlmostEqual(exc_freq.impact[0], risk)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs)
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

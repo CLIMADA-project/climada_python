@@ -30,6 +30,7 @@ class TestReaderDF(unittest.TestCase):
             firms.at[index, 'datenum'] = datenum
         return firms, description
 
+
     def test_hist_event_one_pass(self):
         bf = BushFire()
         firms = {'latitude' : [-38.104, -38.104, -38.104, -38.104, -38.104, -38.093, -38.095,
@@ -101,11 +102,11 @@ class TestReaderDF(unittest.TestCase):
         self.assertEqual(bf.intensity[3, 4717], 300)
         self.assertEqual(bf.intensity[4, 227620], 250)
 
-
         # add probabilistic event
         ev_id = 1
         bf._random_bushfire_one_event(ev_id, 1)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderDF)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderDF)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

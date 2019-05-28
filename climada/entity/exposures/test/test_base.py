@@ -26,12 +26,14 @@ import geopandas as gpd
 import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
+from rasterio.windows import Window
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
-INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT, DEF_CRS
+INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.hazard.base import Hazard
-from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM
+from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
+from climada.util.coordinates import equal_crs
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
@@ -57,9 +59,10 @@ class TestFuncs(unittest.TestCase):
         """ Check that assigned attribute is correctly set."""
         # Fill with dummy values
         expo = good_exposures()
+        expo.check()
         # Fill with dummy values the centroids
         haz = Hazard('TC')
-        haz.centroids.coord = np.ones((expo.shape[0]+6, 2))
+        haz.centroids.set_lat_lon(np.ones(expo.shape[0]+6), np.ones(expo.shape[0]+6))
         # assign
         expo.assign_centroids(haz)
 
@@ -96,6 +99,46 @@ class TestFuncs(unittest.TestCase):
         res, unit = expo._get_transformation()
         self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
         self.assertEqual(unit, 'm')
+
+    def test_read_raster_pass(self):
+        """ set_from_raster """
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.check()
+        self.assertTrue(equal_crs(exp.crs, DEF_CRS))
+        self.assertAlmostEqual(exp['latitude'].max(), 10.248220966978932-0.009000000000000341/2)
+        self.assertAlmostEqual(exp['latitude'].min(), 10.248220966978932-0.009000000000000341/2-59*0.009000000000000341)
+        self.assertAlmostEqual(exp['longitude'].min(), -69.2471495969998+0.009000000000000341/2)
+        self.assertAlmostEqual(exp['longitude'].max(), -69.2471495969998+0.009000000000000341/2+49*0.009000000000000341)
+        self.assertEqual(len(exp), 60*50)
+        self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
+
+    def test_assign_raster_pass(self):
+        """ Test assign_centroids with raster hazard """
+        exp = Exposures()
+        exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
+        exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
+        exp.crs = DEF_CRS
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        exp.assign_centroids(haz)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][0], 51)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][1], 100)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000-1)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
+
+
+    def test_assign_raster_same_pass(self):
+        """ Test assign_centroids with raster hazard """
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.check()
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        exp.assign_centroids(haz)
+        self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
+                                       np.arange(haz.centroids.size, dtype=int)))
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function """
@@ -154,13 +197,13 @@ class TestIO(unittest.TestCase):
         exp_df.ref_year = 2020
         exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
-        
+
         file_name = os.path.join(DATA_DIR, 'test_hdf5_exp.h5')
         exp_df.write_hdf5(file_name)
-        
+
         exp_read = Exposures()
         exp_read.read_hdf5(file_name)
-    
+
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
         self.assertEqual(exp_df.crs, exp_read.crs)
@@ -271,7 +314,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp_tr.tag.description, '')
         self.assertEqual(exp_tr.tag.file_name, '')
-    
+
     def test_constructoer_pass(self):
         """ Test initialization with input GeiDataFrame """
         in_gpd = gpd.GeoDataFrame()
@@ -280,11 +323,12 @@ class TestGeoDFFuncs(unittest.TestCase):
         in_exp = Exposures(in_gpd)
         self.assertEqual(in_exp.ref_year, 2015)
         self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
-    
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

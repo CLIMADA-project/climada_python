@@ -117,6 +117,7 @@ class TestOneExposure(unittest.TestCase):
         # Set the entity default file to the demo one
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
+        ent.check()
 
         # Read default hazard file
         hazard = Hazard('TC')
@@ -451,9 +452,10 @@ class TestIO(unittest.TestCase):
 
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

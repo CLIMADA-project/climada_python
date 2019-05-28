@@ -56,7 +56,7 @@ class TestReaderFirms(unittest.TestCase):
         self.assertEqual(bf.tag.haz_type, 'BF')
         self.assertEqual(bf.tag.description, '')
         self.assertEqual(bf.units, 'K')
-        self.assertEqual(bf.centroids.id.size, 78090)
+        self.assertEqual(bf.centroids.size, 78090)
         self.assertEqual(bf.event_id.size, 5)
         self.assertEqual(bf.event_id[0], 1)
         self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0'])
@@ -79,7 +79,7 @@ class TestReaderFirms(unittest.TestCase):
         self.assertEqual(prob_event.tag.haz_type, 'BF')
         self.assertEqual(prob_event.tag.description, '')
         self.assertEqual(prob_event.units, 'K')
-        self.assertEqual(prob_event.centroids.id.size, 78090)
+        self.assertEqual(prob_event.centroids.size, 78090)
         self.assertEqual(prob_event.event_id.size, 1)
         self.assertEqual(prob_event.event_id[0], 1)
         self.assertEqual(prob_event.event_name, ['3_gen1'])
@@ -105,7 +105,7 @@ class TestReaderFirms(unittest.TestCase):
          self.assertEqual(bf.tag.haz_type, 'BF')
          self.assertEqual(bf.tag.description, '')
          self.assertEqual(bf.units, 'K')
-         self.assertEqual(bf.centroids.id.size, 78090)
+         self.assertEqual(bf.centroids.size, 78090)
          self.assertEqual(bf.event_id.size, 5)
          self.assertEqual(bf.event_id[0], 1)
          self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0'])
@@ -119,7 +119,7 @@ class TestReaderFirms(unittest.TestCase):
          bf = BushFire()
          centr_res_factor = 1
 
-         bf.set_bush_fire (TEST_FIRMS, centr_res_factor, seed = 8)
+         bf.set_bush_fire(TEST_FIRMS, centr_res_factor, seed = 8)
          bf_haz = bf._set_proba_one_event(ev_id = 3, ens_size = 3)
 
          prob_haz = BushFire()
@@ -131,7 +131,7 @@ class TestReaderFirms(unittest.TestCase):
          self.assertEqual(bf.tag.haz_type, 'BF')
          self.assertEqual(bf.tag.description, '')
          self.assertEqual(bf.units, 'K')
-         self.assertEqual(bf.centroids.id.size, 78090)
+         self.assertEqual(bf.centroids.size, 78090)
          self.assertEqual(bf.event_id.size, 8)
          self.assertEqual(bf.event_id[0], 1)
          self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0', '3_gen0', '3_gen1', '3_gen2'])
@@ -145,14 +145,14 @@ class TestReaderFirms(unittest.TestCase):
          bf = BushFire()
          centr_res_factor = 1
 
-         bf.set_bush_fire (TEST_FIRMS, centr_res_factor, seed = 8)
+         bf.set_bush_fire(TEST_FIRMS, centr_res_factor, seed = 8)
          bf.set_proba_all_event(ens_size = 3)
          bf.check()
 
          self.assertEqual(bf.tag.haz_type, 'BF')
          self.assertEqual(bf.tag.description, '')
          self.assertEqual(bf.units, 'K')
-         self.assertEqual(bf.centroids.id.size, 78090)
+         self.assertEqual(bf.centroids.size, 78090)
          self.assertEqual(bf.event_id.size, 20)
          self.assertEqual(bf.event_id[0], 1)
          self.assertEqual(bf.event_name, ['1.0', '2.0', '3.0', '4.0', '5.0',
@@ -173,5 +173,6 @@ class TestReaderFirms(unittest.TestCase):
          self.assertEqual(bf.fraction.shape, (20, 78090))
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReaderFirms)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

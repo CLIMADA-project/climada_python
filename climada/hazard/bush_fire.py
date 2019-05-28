@@ -36,7 +36,7 @@ from shapely.geometry import Point
 from shapely.ops import transform
 import pyproj
 
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.centr import Centroids
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM
@@ -372,30 +372,26 @@ class BushFire(Hazard):
             np.cos(np.radians((abs(firms['latitude'].min() - firms['latitude'].max()))/2))
         nb_centr_lat = int(dlat_km/res_data * centr_res_factor)
         nb_centr_lon = int(dlon_km/res_data * centr_res_factor)
-        centroids.coord = (np.mgrid[firms['latitude'].min() : firms['latitude'].max() : \
-                                    complex(0, nb_centr_lat),
-                                    firms['longitude'].min() : firms['longitude'].max() : \
-                                    complex(0, nb_centr_lon)]).\
-                                    reshape(2, nb_centr_lat*nb_centr_lon).transpose()
-        centroids._resolution = (\
-            (abs(firms['latitude'].min() - firms['latitude'].max())/nb_centr_lat),
-            (abs(firms['longitude'].min() - firms['longitude'].max())/nb_centr_lon))
-        centroids.id = np.arange(len(centroids.coord))
+        coord = (np.mgrid[firms['latitude'].min() : firms['latitude'].max() : \
+            complex(0, nb_centr_lat), firms['longitude'].min() : firms['longitude'].max() : \
+            complex(0, nb_centr_lon)]).reshape(2, nb_centr_lat*nb_centr_lon).transpose()
+        centroids.set_lat_lon(coord[:, 0], coord[:, 1])
+
+#        centroids.set_raster_from_pnt_bounds((firms['longitude'].min(),
+#        firms['latitude'].min(), firms['longitude'].max(), firms['latitude'].max()),
+#        res=res_data/centr_res_factor)    ---> propagation works?
+
         # Calculate the area attributed to each centroid
-        centroids.set_area_per_centroid()
+        centroids.set_area_approx()
         # Calculate if the centroids is on land or not
         centroids.set_on_land()
         # Calculate to distance to coast
         centroids.set_dist_coast()
         # Create on land grid
-        centroids.land = np.zeros((nb_centr_lat, nb_centr_lon))
-        for _, centr in enumerate(centroids.id):
-            if centroids.on_land[centr]:
-                centr_ix = int(centr/nb_centr_lon)
-                centr_iy = centr%nb_centr_lon
-                centroids.land[centr_ix, centr_iy] = 1
+        centroids.land = centroids.on_land.reshape((nb_centr_lat, nb_centr_lon)).astype(int)
         centroids.nb_centr_lat = nb_centr_lat
         centroids.nb_centr_lon = nb_centr_lon
+        centroids.empty_geometry_points()
         return centroids, res_data
 
     def _calc_brightness(self, firms, centroids):
@@ -566,7 +562,7 @@ class BushFire(Hazard):
         # Sum the are of each of these centroids
         area_one_event = 0
         for _, colv in enumerate(col):
-            area_temp = self.centroids.area_per_centroid[colv]
+            area_temp = self.centroids.area_pixel[colv]
             area_one_event = area_one_event + area_temp
         return area_one_event
 
@@ -604,13 +600,12 @@ class BushFire(Hazard):
         LOGGER.debug('Start ignition.')
         # Identification of the possible ignition centroids
         pos_centr = np.argwhere(self.intensity[ev_id-1] > 0)
-        for _ in enumerate(self.centroids.id):
+        for _ in range(self.centroids.size):
             centr = np.random.RandomState(8).choice(pos_centr[:, 1])
             # Wiggling
-            centr = self.centroids.get_nearest_id(self.centroids.lat[centr] + \
-                                                  2*(np.random.random()-0.5)*WIGGLE,
-                                                  self.centroids.lon[centr] + \
-                                                  2*(np.random.random()-0.5)*WIGGLE)
+            _, _, centr = self.centroids.get_closest_point( \
+                self.centroids.lon[centr] + 2*(np.random.random()-0.5)*WIGGLE,
+                self.centroids.lat[centr] + 2*(np.random.random()-0.5)*WIGGLE)
             if self.centroids.on_land[centr]:
                 centr_ix = int(centr/self.centroids.nb_centr_lon)
                 centr_iy = centr%self.centroids.nb_centr_lon
@@ -627,8 +622,8 @@ class BushFire(Hazard):
 
         # Iterate the fire according to the propagation rules
         LOGGER.debug('Propagate fire.')
-        for _, _ in enumerate(np.zeros(4000000)):
-            if area_prob_event - area_hist_event > 0.01:
+        for _ in range(4000000):
+            if area_prob_event - area_hist_event > 0.01 * 1000 * 1000:
                 break
             else:
                 # For each timestep:
@@ -693,7 +688,7 @@ class BushFire(Hazard):
                          self.centroids.nb_centr_lon + self.centroids.burned.nonzero()[1])
         area_prob_event = 0
         for _, centr_id in enumerate(centr):
-            area_prob_event = area_prob_event + self.centroids.area_per_centroid[centr_id]
+            area_prob_event = area_prob_event + self.centroids.area_pixel[centr_id]
 
         return area_prob_event
 
@@ -721,7 +716,7 @@ class BushFire(Hazard):
         # The brightness value is chosen randomly from the brightness values of
         # the historical event.
         new_haz = Hazard(HAZ_TYPE)
-        new_haz.intensity = sparse.lil_matrix(np.zeros(len(self.centroids.id)))
+        new_haz.intensity = sparse.lil_matrix(np.zeros(self.centroids.size))
         for _, ev_prob in enumerate(ev_proba_uni):
             bright_proba = np.random.choice(self.intensity[ev_id -1].data)
             new_haz.intensity[0, ev_prob] = bright_proba

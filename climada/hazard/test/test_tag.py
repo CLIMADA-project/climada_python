@@ -112,6 +112,7 @@ class TestJoin(unittest.TestCase):
         self.assertEqual('desc1 + desc2', join_desc)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestJoin))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestAppend)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestJoin))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

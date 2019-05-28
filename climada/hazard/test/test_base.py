@@ -26,8 +26,7 @@ import numpy as np
 from scipy import sparse
 
 from climada.hazard.base import Hazard
-from climada.entity.tag import Tag
-from climada.hazard.centroids.base import Centroids
+from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS
 
@@ -39,9 +38,7 @@ def dummy_hazard():
     hazard.tag.file_name = 'file1.mat'
     hazard.tag.description = 'Description 1'
     hazard.centroids = Centroids()
-    hazard.centroids.tag = Tag('file_1.mat', 'description 1')
-    hazard.centroids.coord = np.array([[1, 2], [3, 4], [5, 6]])
-    hazard.centroids.id = np.array([5, 7, 9])
+    hazard.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
     hazard.event_id = np.array([1, 2, 3, 4])
     hazard.event_name = ['ev1', 'ev2', 'ev3', 'ev4']
     hazard.date = np.array([1, 2, 3, 4])
@@ -67,9 +64,8 @@ class TestLoader(unittest.TestCase):
         """Define well a hazard"""
         haz = Hazard('TC')
         haz.centroids = Centroids()
+        haz.centroids.set_lat_lon(np.array([1, 3]), np.array([2, 3]))
         haz.centroids.region_id = np.array([1, 2])
-        haz.centroids.id = np.array([1, 2])
-        haz.centroids.coord = np.array([[1, 2], [3, 3]])
         haz.event_id = np.array([1, 2, 3])
         haz.event_name = ['A', 'B', 'C']
         haz.frequency = np.array([1, 2, 3])
@@ -83,11 +79,8 @@ class TestLoader(unittest.TestCase):
         """Wrong hazard definition"""
         haz = self.good_hazard()
         haz.centroids.region_id = np.array([1, 2, 3, 4])
-
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                haz.check()
-        self.assertIn('Invalid Centroids.region_id size: 2 != 4.', cm.output[0])
+        with self.assertRaises(ValueError):
+            haz.check()
 
     def test_check_wrongFreq_fail(self):
         """Wrong hazard definition"""
@@ -219,6 +212,29 @@ class TestLoader(unittest.TestCase):
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""
 
+    def test_equal_same(self):
+        """Append the same hazard and remove duplicates, obtain initial hazard."""
+        haz1 = Hazard('TC')
+        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz2 = Hazard('TC')
+        haz2.read_excel(HAZ_TEMPLATE_XLS)
+        haz1.append(haz2)
+        haz1.remove_duplicates()
+        haz1.check()
+        self.assertEqual(haz1.event_name, haz2.event_name)
+        self.assertTrue(np.array_equal(haz1.event_id, haz2.event_id))
+        self.assertTrue(np.array_equal(haz1.frequency, haz2.frequency))
+        self.assertTrue(np.array_equal(haz1.date, haz2.date))
+        self.assertTrue(np.array_equal(haz1.orig, haz2.orig))
+        self.assertTrue(np.array_equal(haz1.intensity.todense(), haz2.intensity.todense()))
+        self.assertTrue(np.array_equal(haz1.fraction.todense(), haz2.fraction.todense()))
+        self.assertTrue((haz1.intensity != haz2.intensity).nnz == 0)
+        self.assertTrue((haz1.fraction != haz2.fraction).nnz == 0)
+        self.assertEqual(haz1.units, haz2.units)
+        self.assertEqual(haz1.tag.file_name, [haz2.tag.file_name, haz2.tag.file_name])
+        self.assertEqual(haz1.tag.haz_type, haz2.tag.haz_type)
+        self.assertEqual(haz1.tag.description, [haz2.tag.description, haz2.tag.description])
+
     def test_same_events_same(self):
         """Append hazard with same events and diff centroids. After removing
         duplicate events, initial events are obtained with 0 intensity and
@@ -228,9 +244,7 @@ class TestRemoveDupl(unittest.TestCase):
         haz2.tag.file_name = 'file2.mat',
         haz2.tag.description = 'Description 2'
         haz2.centroids = Centroids()
-        haz2.centroids.tag = Tag('file_1.mat', 'description 1')
-        haz2.centroids.coord = np.array([[7, 8], [9, 10], [11, 12]])
-        haz2.centroids.id = np.array([5, 7, 9])
+        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
 
         haz2.event_id = haz1.event_id
         haz2.event_name = haz1.event_name
@@ -267,7 +281,6 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertTrue(np.array_equal(haz1.orig, haz_res.orig))
         self.assertTrue(np.array_equal(haz1.event_id, \
                                        haz_res.event_id))
-        self.assertTrue(np.array_equal(haz1.centroids.id, np.array([5, 7, 9, 10, 11, 12])))
         self.assertTrue(np.array_equal(haz1.frequency, haz_res.frequency))
         self.assertEqual(haz_res.units, haz1.units)
 
@@ -276,110 +289,6 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertEqual(haz1.tag.haz_type, haz_res.tag.haz_type)
         self.assertEqual(haz1.tag.description, \
                          [haz_res.tag.description, haz2.tag.description])
-
-    def test_some_diff_extend(self):
-        """Append hazard with some equal events and centroids. After removing
-        duplicates, the row of repeated event is removed.
-        """
-        haz1 = dummy_hazard()
-        haz2 = Hazard('TC')
-        haz2.tag.file_name = 'file2.mat',
-        haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.tag = Tag('file_2.mat', 'description 2')
-        haz2.centroids.coord = np.array([[3, 4], [9, 10], [11, 12]])
-        haz2.centroids.id = np.array([10, 11, 12])
-        haz2.event_id = np.array([5, 6, 7, 8])
-        haz2.event_name = ['ev5', 'ev3', 'ev6', 'ev7']
-        haz2.frequency = np.array([1, 2, 3, 4])
-        haz2.date = np.array([1, 3, 4, 5])
-        haz2.fraction = sparse.csr_matrix([[1, 2, 3], \
-                                           [4, 5, 6], \
-                                           [7, 8, 9], \
-                                           [10, 11, 12]])
-        haz2.intensity = sparse.csr_matrix([[-1, -2, -3], \
-                                            [-4, -5, -6], \
-                                            [-7, -8, -9], \
-                                            [-10, -11, -12]])
-        haz2.units = 'm/s'
-
-        haz1.append(haz2)
-        haz1.remove_duplicates()
-        haz1.check()
-
-        # expected values: ev3 and centroid [3,4] have been overwritten
-        haz1_orig = dummy_hazard()
-        exp_inten = np.zeros((7, 5))
-        exp_inten[0:4, 0:3] = haz1_orig.intensity.todense()
-        # ev5
-        exp_inten[4, 1] = haz2.intensity[0, 0]
-        exp_inten[4, 3:5] = haz2.intensity[0, 1:3].todense()
-        # ev6
-        exp_inten[5, 1] = haz2.intensity[2, 0]
-        exp_inten[5, 3:5] = haz2.intensity[2, 1:3].todense()
-        # ev7
-        exp_inten[6, 1] = haz2.intensity[3, 0]
-        exp_inten[6, 3:5] = haz2.intensity[3, 1:3].todense()
-
-        exp_frac = np.zeros((7, 5))
-        exp_frac[0:4, 0:3] = haz1_orig.fraction.todense()
-        # ev5
-        exp_frac[4, 1] = haz2.fraction[0, 0]
-        exp_frac[4, 3:5] = haz2.fraction[0, 1:3].todense()
-        # ev6
-        exp_frac[5, 1] = haz2.fraction[2, 0]
-        exp_frac[5, 3:5] = haz2.fraction[2, 1:3].todense()
-        # ev7
-        exp_frac[6, 1] = haz2.fraction[3, 0]
-        exp_frac[6, 3:5] = haz2.fraction[3, 1:3].todense()
-
-        exp_freq = haz1_orig.frequency
-        exp_freq = np.append(exp_freq, np.array([haz2.frequency[0], \
-                                      haz2.frequency[2], haz2.frequency[3]]))
-
-        self.assertEqual(haz1.event_id.size, 7)
-        self.assertTrue(sparse.isspmatrix_csr(haz1.intensity))
-        self.assertTrue(sparse.isspmatrix_csr(haz1.fraction))
-        for i_ev in range(haz1.event_id.size):
-            self.assertTrue(any((haz1.intensity[i_ev].todense() == exp_inten).all(1)))
-            self.assertTrue(any((haz1.fraction[i_ev].todense() == exp_frac).all(1)))
-            self.assertTrue(haz1.event_name[i_ev] in haz1_orig.event_name + haz2.event_name)
-            self.assertTrue(haz1.date[i_ev] in np.append(haz1_orig.date, haz2.date))
-            self.assertTrue(haz1.orig[i_ev] in np.append(haz1_orig.orig, haz2.orig))
-            self.assertTrue(haz1.event_id[i_ev] in np.append(haz1_orig.event_id, haz2.event_id))
-            self.assertTrue(haz1.frequency[i_ev] in np.append(haz1_orig.frequency, haz2.frequency))
-
-        self.assertEqual(haz1.centroids.id.size, 5)
-        self.assertTrue(np.array_equal(haz1.centroids.id, np.array([5, 7, 9, 11, 12])))
-        self.assertEqual(haz1_orig.units, haz1.units)
-        self.assertEqual(haz1.tag.file_name, \
-                         [haz1_orig.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
-        self.assertEqual(haz1.tag.description, \
-                         [haz1_orig.tag.description, haz2.tag.description])
-
-    def test_equal_same(self):
-        """Append the same hazard. Obtain initial hazard."""
-        haz1 = Hazard('TC')
-        haz1.read_excel(HAZ_TEMPLATE_XLS)
-        haz2 = Hazard('TC')
-        haz2.read_excel(HAZ_TEMPLATE_XLS)
-        haz1.append(haz2)
-        haz1.remove_duplicates()
-        haz1.check()
-        self.assertEqual(haz1.event_name, haz2.event_name)
-        self.assertTrue(np.array_equal(haz1.event_id, haz2.event_id))
-        self.assertTrue(np.array_equal(haz1.frequency, haz2.frequency))
-        self.assertTrue(np.array_equal(haz1.date, haz2.date))
-        self.assertTrue(np.array_equal(haz1.orig, haz2.orig))
-        self.assertTrue(np.array_equal(haz1.intensity.todense(), haz2.intensity.todense()))
-        self.assertTrue(np.array_equal(haz1.fraction.todense(), haz2.fraction.todense()))
-        self.assertTrue((haz1.intensity != haz2.intensity).nnz == 0)
-        self.assertTrue((haz1.fraction != haz2.fraction).nnz == 0)
-        self.assertEqual(haz1.units, haz2.units)
-        self.assertEqual(haz1.tag.file_name, [haz2.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz2.tag.haz_type)
-        self.assertEqual(haz1.tag.description, [haz2.tag.description, haz2.tag.description])
 
 class TestSelect(unittest.TestCase):
     """Test select method."""
@@ -503,7 +412,7 @@ class TestSelect(unittest.TestCase):
         haz.centroids.region_id = np.array([5, 7, 9])
         sel_haz = haz.select(date=(2,4), orig=False, reg_id=9)
 
-        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(), 
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
                                        haz.centroids.coord[2, :]))
         self.assertEqual(sel_haz.tag, haz.tag)
         self.assertEqual(sel_haz.units, haz.units)
@@ -526,6 +435,7 @@ class TestAppend(unittest.TestCase):
         haz1 = Hazard('TC')
         haz1.read_excel(HAZ_TEMPLATE_XLS)
         haz2 = Hazard('TC')
+        haz2.centroids.geometry.crs = {'init':'epsg:4326'}
         haz1.append(haz2)
         haz1.check()
 
@@ -566,63 +476,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.tag.file_name, haz1_orig.tag.file_name)
         self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
         self.assertEqual(haz1.tag.description, haz1_orig.tag.description)
-
-    def test_all_different_extend(self):
-        """Append totally different hazard."""
-        haz1 = dummy_hazard()
-        haz2 = Hazard('TC')
-        haz2.tag.file_name = 'file2.mat'
-        haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.tag = Tag('file_2.mat', 'description 2')
-        haz2.centroids.coord = np.array([[7, 8], [9, 10], [11, 12]])
-        haz2.centroids.id = np.array([10, 11, 12])
-        haz2.event_id = np.array([5, 6, 7, 8])
-        haz2.event_name = ['ev5', 'ev6', 'ev7', 'ev8']
-        haz2.frequency = np.array([0.9, 0.75, 0.75, 0.22])
-        haz2.fraction = sparse.csr_matrix([[0.2, 0.3, 0.4], \
-                                           [0.1, 0.1, 0.1], \
-                                           [0.3, 0.1, 0.9], \
-                                           [0.3, 0.2, 0.8]])
-        haz2.intensity = sparse.csr_matrix([[0.2, 3.3, 6.4], \
-                                            [1.1, 0.1, 1.01], \
-                                            [8.3, 4.1, 4.0], \
-                                            [9.3, 9.2, 1.7]])
-        haz2.date = np.ones((4,))
-        haz2.orig = np.ones((4,))
-        haz2.units = 'm/s'
-
-        haz1.append(haz2)
-        haz1.check()
-
-        # expected values
-        haz1_orig = dummy_hazard()
-        exp_inten = np.zeros((8, 6))
-        exp_inten[0:4, 0:3] = haz1_orig.intensity.todense()
-        exp_inten[4:8, 3:6] = haz2.intensity.todense()
-        exp_frac = np.zeros((8, 6))
-        exp_frac[0:4, 0:3] = haz1_orig.fraction.todense()
-        exp_frac[4:8, 3:6] = haz2.fraction.todense()
-        self.assertEqual(haz1.event_id.size, 8)
-        self.assertTrue(sparse.isspmatrix_csr(haz1.intensity))
-        self.assertTrue(sparse.isspmatrix_csr(haz1.fraction))
-        for i_ev in range(haz1.event_id.size):
-            self.assertTrue(any((haz1.intensity[i_ev].todense() == exp_inten).all(1)))
-            self.assertTrue(any((haz1.fraction[i_ev].todense() == exp_frac).all(1)))
-            self.assertTrue(haz1.event_name[i_ev] in haz1_orig.event_name + haz2.event_name)
-            self.assertTrue(haz1.date[i_ev] in np.append(haz1_orig.date, haz2.date))
-            self.assertTrue(haz1.orig[i_ev] in np.append(haz1_orig.orig, haz2.orig))
-            self.assertTrue(haz1.event_id[i_ev] in np.append(haz1_orig.event_id, haz2.event_id))
-            self.assertTrue(haz1.frequency[i_ev] in np.append(haz1_orig.frequency, haz2.frequency))
-
-        self.assertEqual(haz1.centroids.id.size, 6)
-        self.assertTrue(np.array_equal(haz1.centroids.id, np.array([5, 7, 9, 10, 11, 12])))
-        self.assertEqual(haz1_orig.units, haz1.units)
-        self.assertEqual(haz1.tag.file_name, \
-                         [haz1_orig.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
-        self.assertEqual(haz1.tag.description, \
-                         [haz1_orig.tag.description, haz2.tag.description])
 
     def test_same_centroids_extend(self):
         """Append hazard with same centroids, different events."""
@@ -669,8 +522,86 @@ class TestAppend(unittest.TestCase):
             self.assertTrue(haz1.event_id[i_ev] in np.append(haz1_orig.event_id, haz2.event_id))
             self.assertTrue(haz1.frequency[i_ev] in np.append(haz1_orig.frequency, haz2.frequency))
 
-        self.assertEqual(haz1.centroids.id.size, 3)
+        self.assertEqual(haz1.centroids.size, 3)
         self.assertTrue(np.array_equal(haz1.centroids.coord, haz2.centroids.coord))
+        self.assertEqual(haz1.tag.file_name, \
+                         [haz1_orig.tag.file_name, haz2.tag.file_name])
+        self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
+        self.assertEqual(haz1.tag.description, \
+                         [haz1_orig.tag.description, haz2.tag.description])
+
+    def test_incompatible_type_fail(self):
+        """Raise error when append two incompatible hazards."""
+        haz1 = dummy_hazard()
+        haz2 = dummy_hazard()
+        haz2.tag.haz_type = 'WS'
+        haz2.tag.file_name = 'file2.mat'
+        haz2.tag.description = 'Description 2'
+        with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                haz1.append(haz2)
+        self.assertIn("Hazards of different type can't be appended: "\
+                         + "TC != WS.", cm.output[0])
+
+    def test_incompatible_units_fail(self):
+        """Raise error when append two incompatible hazards."""
+        haz1 = dummy_hazard()
+        haz2 = dummy_hazard()
+        haz2.units = 'km/h'
+        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
+            with self.assertRaises(ValueError):
+                haz1.append(haz2)
+        self.assertIn("Hazards with different units can't be appended: "\
+            + 'm/s != km/h.', cm.output[0])
+
+    def test_all_different_extend(self):
+        """Append totally different hazard."""
+        haz1 = dummy_hazard()
+        haz2 = Hazard('TC')
+        haz2.tag.file_name = 'file2.mat'
+        haz2.tag.description = 'Description 2'
+        haz2.centroids = Centroids()
+        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
+        haz2.event_id = np.array([5, 6, 7, 8])
+        haz2.event_name = ['ev5', 'ev6', 'ev7', 'ev8']
+        haz2.frequency = np.array([0.9, 0.75, 0.75, 0.22])
+        haz2.fraction = sparse.csr_matrix([[0.2, 0.3, 0.4], \
+                                           [0.1, 0.1, 0.1], \
+                                           [0.3, 0.1, 0.9], \
+                                           [0.3, 0.2, 0.8]])
+        haz2.intensity = sparse.csr_matrix([[0.2, 3.3, 6.4], \
+                                            [1.1, 0.1, 1.01], \
+                                            [8.3, 4.1, 4.0], \
+                                            [9.3, 9.2, 1.7]])
+        haz2.date = np.ones((4,))
+        haz2.orig = np.ones((4,))
+        haz2.units = 'm/s'
+
+        haz1.append(haz2)
+        haz1.check()
+
+        # expected values
+        haz1_orig = dummy_hazard()
+        exp_inten = np.zeros((8, 6))
+        exp_inten[0:4, 0:3] = haz1_orig.intensity.todense()
+        exp_inten[4:8, 3:6] = haz2.intensity.todense()
+        exp_frac = np.zeros((8, 6))
+        exp_frac[0:4, 0:3] = haz1_orig.fraction.todense()
+        exp_frac[4:8, 3:6] = haz2.fraction.todense()
+        self.assertEqual(haz1.event_id.size, 8)
+        self.assertTrue(sparse.isspmatrix_csr(haz1.intensity))
+        self.assertTrue(sparse.isspmatrix_csr(haz1.fraction))
+        for i_ev in range(haz1.event_id.size):
+            self.assertTrue(any((haz1.intensity[i_ev].todense() == exp_inten).all(1)))
+            self.assertTrue(any((haz1.fraction[i_ev].todense() == exp_frac).all(1)))
+            self.assertTrue(haz1.event_name[i_ev] in haz1_orig.event_name + haz2.event_name)
+            self.assertTrue(haz1.date[i_ev] in np.append(haz1_orig.date, haz2.date))
+            self.assertTrue(haz1.orig[i_ev] in np.append(haz1_orig.orig, haz2.orig))
+            self.assertTrue(haz1.event_id[i_ev] in np.append(haz1_orig.event_id, haz2.event_id))
+            self.assertTrue(haz1.frequency[i_ev] in np.append(haz1_orig.frequency, haz2.frequency))
+
+        self.assertEqual(haz1.centroids.size, 6)
+        self.assertEqual(haz1_orig.units, haz1.units)
         self.assertEqual(haz1.tag.file_name, \
                          [haz1_orig.tag.file_name, haz2.tag.file_name])
         self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
@@ -685,9 +616,7 @@ class TestAppend(unittest.TestCase):
         haz2.tag.file_name = 'file2.mat'
         haz2.tag.description = 'Description 2'
         haz2.centroids = Centroids()
-        haz2.centroids.tag = Tag('file_1.mat', 'description 1')
-        haz2.centroids.coord = np.array([[7, 8], [9, 10], [11, 12]])
-        haz2.centroids.id = np.array([5, 7, 9])
+        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
 
         haz2.event_id = haz1.event_id
         haz2.event_name = haz1.event_name.copy()
@@ -728,8 +657,6 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz1.orig,
                                        np.append(haz1_ori.orig, haz2.orig)))
         self.assertTrue(np.array_equal(haz1.event_id, np.arange(1,9)))
-        self.assertTrue(np.array_equal(haz1.centroids.id,
-                                       np.array([5, 7, 9, 10, 11, 12])))
         self.assertTrue(np.array_equal(haz1.frequency,
                                        np.append(haz1_ori.frequency, haz2.frequency)))
         self.assertEqual(haz1_ori.units, haz1.units)
@@ -739,94 +666,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.tag.haz_type, haz1_ori.tag.haz_type)
         self.assertEqual(haz1.tag.description, \
                          [haz1_ori.tag.description, haz2.tag.description])
-
-    def test_some_diff_extend(self):
-        """Append hazard with some equal events and centroids and some new.
-        All events are appended with only new centroids columns."""
-        haz1 = dummy_hazard()
-        haz2 = Hazard('TC')
-        haz2.tag.file_name = 'file2.mat'
-        haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.tag = Tag('file_2.mat', 'description 2')
-        haz2.centroids.coord = np.array([[3, 4], [9, 10], [11, 12]])
-        haz2.centroids.id = np.array([10, 11, 12])
-        haz2.event_id = np.array([5, 6, 7, 8])
-        haz2.event_name = ['ev5', 'ev3', 'ev6', 'ev7']
-        haz2.frequency = np.array([1, 2, 3, 4])
-        haz2.date = np.array([1, 3, 4, 5])
-        haz2.fraction = sparse.csr_matrix([[1, 2, 3], \
-                                           [4, 5, 6], \
-                                           [7, 8, 9], \
-                                           [10, 11, 12]])
-        haz2.intensity = sparse.csr_matrix([[-1, -2, -3], \
-                                            [-4, -5, -6], \
-                                            [-7, -8, -9], \
-                                            [-10, -11, -12]])
-        haz2.units = 'm/s'
-
-        haz1.append(haz2)
-
-        # expected values
-        haz1_ori = dummy_hazard()
-        res_inten = sparse.lil_matrix(np.zeros((8, 5)))
-        res_inten[0:4, 0:3] = haz1_ori.intensity
-        res_inten[4:, 3:] = haz2.intensity[:, 1:]
-        res_inten[4:, 1] = haz2.intensity[:, 0]
-
-        res_frac = sparse.lil_matrix(np.zeros((8, 5)))
-        res_frac[0:4, 0:3] = haz1_ori.fraction
-        res_frac[4:, 3:] = haz2.fraction[:, 1:]
-        res_frac[4:, 1] = haz2.fraction[:, 0]
-
-        self.assertTrue(np.array_equal(res_inten.todense(),
-                                       haz1.intensity.todense()))
-        self.assertTrue(sparse.isspmatrix_csr(haz1.intensity))
-        self.assertTrue(np.array_equal(res_frac.todense(), \
-                                       haz1.fraction.todense()))
-        self.assertTrue(sparse.isspmatrix_csr(haz1.fraction))
-        self.assertEqual(haz1.event_name,
-                         haz1_ori.event_name + haz2.event_name)
-        self.assertTrue(np.array_equal(haz1.date,
-                                       np.append(haz1_ori.date, haz2.date)))
-        self.assertTrue(np.array_equal(haz1.orig,
-                                       np.append(haz1_ori.orig, haz2.orig)))
-        self.assertTrue(np.array_equal(haz1.event_id, np.arange(1,9)))
-        self.assertTrue(np.array_equal(haz1.centroids.id,
-                                       np.array([5, 7, 9, 11, 12])))
-        self.assertTrue(np.array_equal(haz1.frequency,
-                                       np.append(haz1_ori.frequency, haz2.frequency)))
-        self.assertEqual(haz1_ori.units, haz1.units)
-
-        self.assertEqual(haz1.tag.file_name, \
-                         [haz1_ori.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_ori.tag.haz_type)
-        self.assertEqual(haz1.tag.description, \
-                         [haz1_ori.tag.description, haz2.tag.description])
-
-    def test_incompatible_type_fail(self):
-        """Raise error when append two incompatible hazards."""
-        haz1 = dummy_hazard()
-        haz2 = dummy_hazard()
-        haz2.tag.haz_type = 'WS'
-        haz2.tag.file_name = 'file2.mat'
-        haz2.tag.description = 'Description 2'
-        with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                haz1.append(haz2)
-        self.assertIn("Hazards of different type can't be appended: "\
-                         + "TC != WS.", cm.output[0])
-
-    def test_incompatible_units_fail(self):
-        """Raise error when append two incompatible hazards."""
-        haz1 = dummy_hazard()
-        haz2 = dummy_hazard()
-        haz2.units = 'km/h'
-        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                haz1.append(haz2)
-        self.assertIn("Hazards with different units can't be appended: "\
-            + 'm/s != km/h.', cm.output[0])
 
     def test_append_all_pass(self):
         """Test _append_all function."""
@@ -834,9 +673,7 @@ class TestAppend(unittest.TestCase):
         haz_1.tag.file_name = 'file1.mat'
         haz_1.tag.description = 'Description 1'
         haz_1.centroids = Centroids()
-        haz_1.centroids.tag = Tag('file_1.mat', 'description 1')
-        haz_1.centroids.coord = np.array([[1, 2], [3, 4], [5, 6]])
-        haz_1.centroids.id = np.array([5, 7, 9])
+        haz_1.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
         haz_1.event_id = np.array([1])
         haz_1.event_name = ['ev1']
         haz_1.date = np.array([1])
@@ -850,9 +687,7 @@ class TestAppend(unittest.TestCase):
         haz_2.tag.file_name = 'file2.mat'
         haz_2.tag.description = 'Description 2'
         haz_2.centroids = Centroids()
-        haz_2.centroids.tag = Tag('file_2.mat', 'description 2')
-        haz_2.centroids.coord = np.array([[1, 2], [3, 4], [5, 6]])
-        haz_2.centroids.id = np.array([5, 7, 9])
+        haz_2.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
         haz_2.event_id = np.array([1])
         haz_2.event_name = ['ev2']
         haz_2.date = np.array([2])
@@ -886,12 +721,12 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
         self.assertTrue(haz.tag, 'file_1.mat + file_2.mat')
         self.assertTrue(haz.tag, 'Description 1 + Description 2')
-        
+
     def test_append_new_var_pass(self):
         """ New variable appears if hazard to append is empty. """
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
-        
+
         app_haz = Hazard('TC')
         app_haz.append(haz)
         self.assertIn('new_var', app_haz.__dict__)
@@ -900,7 +735,7 @@ class TestAppend(unittest.TestCase):
         """ New variable appears. """
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
-        
+
         app_haz = dummy_hazard()
         app_haz._append_all([haz])
         self.assertIn('new_var', app_haz.__dict__)
@@ -980,9 +815,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.centroids.coord[0][1], 32.57)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][0], -24.7)
         self.assertEqual(hazard.centroids.coord[n_centroids-1][1], 33.88)
-        self.assertEqual(hazard.centroids.id.dtype, int)
-        self.assertEqual(hazard.centroids.id[0], 4001)
-        self.assertEqual(hazard.centroids.id[n_centroids-1], 4045)
 
         self.assertEqual(len(hazard.event_name), 100)
         self.assertEqual(hazard.event_name[12], 'event013')
@@ -1021,49 +853,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.tag.file_name, HAZ_TEMPLATE_XLS)
         self.assertEqual(hazard.tag.description, description)
         self.assertEqual(hazard.tag.haz_type, 'TC')
-
-        # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, HAZ_TEMPLATE_XLS)
-        self.assertEqual(hazard.centroids.tag.description, description)
-
-    def test_wrong_centroid_fail(self):
-        """ Read centroid separately from the hazard. Wrong centroid data in
-        size """
-        # Read demo excel file
-        read_cen = Centroids(HAZ_TEMPLATE_XLS)
-        read_cen.id = np.ones(12)
-        # Read demo excel file
-        hazard = Hazard('TC')
-
-        # Expected exception because centroid size is smaller than the
-        # one provided in the intensity matrix
-        with self.assertRaises(ValueError):
-            hazard.read_excel(HAZ_TEMPLATE_XLS, centroids=read_cen)
-
-    def test_centroid_hazard_pass(self):
-        """ Read centroid separately from the hazard """
-
-        # Read demo excel file
-        description = 'One single file.'
-        centroids = Centroids(HAZ_TEMPLATE_XLS, description)
-        hazard = Hazard('TC')
-        hazard.read_excel(HAZ_TEMPLATE_XLS, description, centroids)
-
-        n_centroids = 45
-        self.assertEqual(hazard.centroids.coord.shape[0], n_centroids)
-        self.assertEqual(hazard.centroids.coord.shape[1], 2)
-        self.assertEqual(hazard.centroids.coord[0][0], -25.95)
-        self.assertEqual(hazard.centroids.coord[0][1], 32.57)
-        self.assertEqual(hazard.centroids.coord[n_centroids-1][0], -24.7)
-        self.assertEqual(hazard.centroids.coord[n_centroids-1][1], 33.88)
-        self.assertEqual(hazard.centroids.id.dtype, int)
-        self.assertEqual(len(hazard.centroids.id), n_centroids)
-        self.assertEqual(hazard.centroids.id[0], 4001)
-        self.assertEqual(hazard.centroids.id[n_centroids-1], 4045)
-
-        # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, HAZ_TEMPLATE_XLS)
-        self.assertEqual(hazard.centroids.tag.description, description)
 
 class TestReaderMat(unittest.TestCase):
     '''Test reader functionality of the ExposuresExcel class'''
@@ -1125,55 +914,13 @@ class TestReaderMat(unittest.TestCase):
                          ' TC hazard event set, generated 14-Nov-2017 10:09:05')
         self.assertEqual(hazard.tag.haz_type, 'TC')
 
-        # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, HAZ_TEST_MAT)
-        self.assertEqual(hazard.centroids.tag.description, '')
-
-    def test_wrong_centroid_error(self):
-        """ Read centroid separately from the hazard. Wrong centroid data in
-        size """
-        # Read demo excel file
-        read_cen = Centroids(HAZ_TEST_MAT)
-        read_cen.id = np.ones(12)
-        # Read demo excel file
-        hazard = Hazard('TC')
-
-        # Expected exception because centroid size is smaller than the
-        # one provided in the intensity matrix
-        with self.assertRaises(ValueError):
-            hazard.read_mat(HAZ_TEST_MAT, centroids=read_cen)
-
-    def test_centroid_hazard_pass(self):
-        """ Read centroid separately from the hazard """
-        # Read demo excel file
-        description = 'One single file.'
-        centroids = Centroids(HAZ_TEST_MAT, description)
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT, 'description', centroids)
-        hazard.units = 'm/s'
-
-        n_centroids = 100
-        self.assertEqual(centroids.coord.shape, (n_centroids, 2))
-        self.assertEqual(centroids.coord[0][0], 21)
-        self.assertEqual(centroids.coord[0][1], -84)
-        self.assertEqual(centroids.coord[n_centroids-1][0], 30)
-        self.assertEqual(centroids.coord[n_centroids-1][1], -75)
-        self.assertEqual(centroids.id.dtype, int)
-        self.assertEqual(centroids.id.shape, (n_centroids, ))
-        self.assertEqual(centroids.id[0], 1)
-        self.assertEqual(centroids.id[n_centroids-1], 100)
-
-        # tag centroids
-        self.assertEqual(hazard.centroids.tag.file_name, HAZ_TEST_MAT)
-        self.assertEqual(hazard.centroids.tag.description, description)
-
 class TestHDF5(unittest.TestCase):
     '''Test reader functionality of the ExposuresExcel class'''
 
     def test_write_read_pass(self):
         ''' Read a hazard mat file correctly.'''
         file_name = os.path.join(DATA_DIR, 'test_haz.h5')
-        
+
         # Read demo excel file
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
@@ -1182,7 +929,7 @@ class TestHDF5(unittest.TestCase):
 
         haz_read = Hazard('TC')
         haz_read.read_hdf5(file_name)
-        
+
         self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
         self.assertIsInstance(haz_read.tag.file_name, str)
         self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
@@ -1192,7 +939,7 @@ class TestHDF5(unittest.TestCase):
         self.assertEqual(hazard.units, haz_read.units)
         self.assertIsInstance(haz_read.units, str)
         self.assertTrue(np.array_equal(hazard.centroids.coord, haz_read.centroids.coord))
-        self.assertTrue(np.array_equal(hazard.centroids.id, haz_read.centroids.id))
+        self.assertEqual(hazard.centroids.crs, haz_read.centroids.crs)
         self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
         self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
         self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
@@ -1206,13 +953,14 @@ class TestHDF5(unittest.TestCase):
         self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

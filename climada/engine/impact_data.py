@@ -31,6 +31,32 @@ from climada.util.finance import gdp
 
 LOGGER = logging.getLogger(__name__)
 
+PERIL_SUBTYPE_MATCH_DICT = dict(TC='Tropical cyclone',
+                                T1='Storm',
+                                TS='Coastal flood',
+                                EQ='Ground movement',
+                                E1='Earthquake',
+                                FL='Riverine flood',
+                                F1='Flood',
+                                F2='Flash flood',
+                                WS='Extra-tropical storm',
+                                W1='Storm',
+                                DR='Drought',
+                                LS='Landslide',
+                                FF='Forest fire',
+                                FW='Wildfire',
+                                FB='Land fire (Brush, Bush, Pastur')
+
+PERIL_TYPE_MATCH_DICT = dict(DR='Drought',
+                             TC='Storm',
+                             EQ='Earthquake',
+                             FL='Flood',
+                             LS='Landslide',
+                             WS='Storm',
+                             VQ='Volcanic activity',
+                             BF='Wildfire',
+                             HW='Extreme temperature')
+
 if False:
     # inputs
     checkset = pd.read_csv('~.csv')
@@ -369,12 +395,20 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
         exp_iso: List of ISO3-codes of countries impacted by the disaster type
         exp_name: List of names of countries impacted by the disaster type
             """
-    if hazard_name == 'TC':
-        hazard_name = 'Tropical cylone'
-    elif hazard_name == 'DR':
-        hazard_name = 'Drought'
+
+
+
+    if hazard_name in PERIL_SUBTYPE_MATCH_DICT.keys():
+        hazard_name = PERIL_SUBTYPE_MATCH_DICT[hazard_name]
+    elif hazard_name in PERIL_TYPE_MATCH_DICT.keys():
+        hazard_name = PERIL_TYPE_MATCH_DICT[hazard_name]
+        LOGGER.debug('Used "Disaster type" instead of "Disaster subtype" for matching hazard_name.')
+
 
     out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=1)
+    if not 'Disaster type' in out.columns:
+        out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=0)
+
     # List of countries that exist in EMDAT but are missing in iso_cntry():
     #(these countries are ignored)
     list_miss = ['Netherlands Antilles', 'Guadeloupe', 'Martinique', \
@@ -434,7 +468,7 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
         hazard_name = 'Drought'
 
     exp_iso, exp_name = emdat_countries_by_hazard(hazard_name, emdat_file_csv)
-    if isinstance(country, int):
+    if isinstance(country, int) | (not isinstance(country,str)):
         country = iso_cntry.get(country).alpha3
     if country in exp_name:
         country = exp_iso[exp_name.index(country)]
@@ -443,6 +477,8 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
 
     all_years = np.arange(min(year_range), max(year_range)+1, 1)
     out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=1)
+    if not 'Disaster type' in out.columns:
+        out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=0)
     out = out[out['ISO'].str.contains(country) == True]
     out_ = out[out['Disaster subtype'].str.contains(hazard_name)]
     out_ = out_.append(out[out['Disaster type'].str.contains(hazard_name)])
@@ -555,6 +591,9 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
         out = out.append(data)
         del data
     out = out.reset_index(drop=True)
+    if '000 US' in imp_str: # EM-DAT damages provided in '000 USD
+        out[imp_str + " scaled"] = out[imp_str + " scaled"]*1e3
+        out[imp_str] = out[imp_str]*1e3
     return out
 
 """

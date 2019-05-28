@@ -310,8 +310,9 @@ class BMFuncs(unittest.TestCase):
             pass
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(Test2013)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test1968))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test2012))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(BMFuncs))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(Test2013)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test1968))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test2012))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(BMFuncs))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
