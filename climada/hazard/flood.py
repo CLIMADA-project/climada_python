@@ -29,22 +29,14 @@ import xarray as xr
 import pandas as pd
 import math
 import datetime as dt
+from datetime import date
 
-import matplotlib.pyplot as plt
 import geopandas as gpd
-from climada.util.constants import NAT_REG_ID, DATA_DIR, HAZ_DEMO_FLDPH, HAZ_DEMO_FLFRC, GLB_CENTROIDS_NC
+from climada.util.constants import NAT_REG_ID, DATA_DIR, HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC, GLB_CENTROIDS_NC
 from pyproj import Proj, transform
-from climada.util.constants import ONE_LAT_KM
-from scipy.interpolate import NearestNDInterpolator
-#from shapely.ops import transform
-from functools import partial
 from scipy import sparse
-from numba import jit
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.base import Centroids
-from climada.util.interpolation import index_nn_aprox
-from shapely.geometry import Polygon
-from climada.util.coordinates import get_country_geometries
 from shapely.geometry import Point
 
 from climada.util.alpha_shape import alpha_shape, plot_polygon
@@ -76,7 +68,7 @@ CL_MODEL = ['gfdl-esm2m',
             'watch'
             ]
 SCENARIO = ['',
-            'historical',
+            '_historical',
             'rcp26',
             'rcp60'
             ]
@@ -96,6 +88,7 @@ class RiverFlood(Hazard):
 
         Hazard.__init__(self, HAZ_TYPE)
         self.fld_area = 0
+        self.fld_area_per_centroid = sparse.csr_matrix([])
 
     def set_from_nc(self, flood_dir=None, centroids=None, reg= None,
                     countries=[], years=[2000], rf_model='ORCHIDEE',
@@ -116,20 +109,20 @@ class RiverFlood(Hazard):
         """
         if flood_dir is not None:
             if os.path.exists(flood_dir):
-                self.__select_ModelRun(flood_dir, rf_model, cl_model, scenario,
+                dph_path, frc_path = self.__select_ModelRun(flood_dir, rf_model, cl_model, scenario,
                                        prot_std)
             else:
                 LOGGER.warning('Flood directory does not exist,\
                                setting Demo directory')
                 """TODO: Put demo file in directory"""
-                self._dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDPH)
-                self._frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLFRC)
+                dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDDPH)
+                frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDFRC)
         else:
             LOGGER.warning('Flood directory does not exist,\
                                setting Demo directory')
             """TODO: Put demo file in directory"""
-            self._dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDPH)
-            self._frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLFRC)
+            dph_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDDPH)
+            frc_path = os.path.join(DATA_DIR, HAZ_DEMO_FLDFRC)
         if centroids is not None:
             self.centroids = centroids
             centr_handling = 'align'
@@ -138,8 +131,8 @@ class RiverFlood(Hazard):
         else:
             centr_handling = 'full_hazard'
         #TODO: exceptions could be catched here
-        intensity, fraction = self._read_nc(years, centr_handling)       
-        if scenario == 'historical':
+        intensity, fraction = self._read_nc(years, centr_handling, dph_path, frc_path)       
+        if scenario == '_historical':
             self.orig = np.full((self._n_events), True, dtype=bool)
         else:
             self.orig = np.full((self._n_events), False, dtype=bool)
@@ -151,25 +144,23 @@ class RiverFlood(Hazard):
         self.frequency = np.ones(self._n_events) / self._n_events
         return self
 
-    def _read_nc(self, years, centr_handling):
+    def _read_nc(self, years, centr_handling, dph_path, frc_path):
         """ extract and flood intesity and fraction from flood
             data
         Returns:
             np.arrays
         """
         try:
-            flood_dph = xr.open_dataset(self._dph_path)
-            flood_frc = xr.open_dataset(self._frc_path)
+            flood_dph = xr.open_dataset(dph_path)
+            flood_frc = xr.open_dataset(frc_path)
             lon = flood_dph.lon.data
             lat = flood_dph.lat.data
             time = flood_dph.time.data
             event_index = self.__select_event(time, years)
             self._n_events = len(event_index)
-            self.date = np.array([dt.datetime(
-                                 flood_dph.time.dt.year[i],
-                                 flood_dph.time.dt.month[i],
-                                 flood_dph.time.dt.day[i]).toordinal()
-                for i in event_index])
+            self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
+                                 flood_dph.time[i].dt.month,
+                                 flood_dph.time[i].dt.day).toordinal() for i in event_index])
         except KeyError:
             LOGGER.error('Invalid dimensions or variables in file')
             raise KeyError
@@ -231,8 +222,10 @@ class RiverFlood(Hazard):
                          .format(rf_model, cl_model, scenario, prot_std, final)
         frc_file = 'fldfrc_{}_{}_{}{}_{}'\
                          .format(rf_model, cl_model, scenario, prot_std, final)
-        self._dph_path = os.path.join(flood_dir, dph_file)
-        self._frc_path = os.path.join(flood_dir, frc_file)
+        dph_path = os.path.join(flood_dir, dph_file)
+        frc_path = os.path.join(flood_dir, frc_file)
+        
+        return dph_path,frc_path
 
     def __set_centroids_from_file(self, lon, lat):
         self.centroids = Centroids()
@@ -251,8 +244,7 @@ class RiverFlood(Hazard):
         if len(event_index) == 0:
             LOGGER.error('Years not in file')  # check this
             raise AttributeError
-        self.event_name = list(map(str, pd.to_datetime(time[event_index]).
-                               year))
+        self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
 
     def __cut_window(self, lon, lat):
@@ -277,9 +269,35 @@ class RiverFlood(Hazard):
         return window
 
     def set_flooded_area(self, centr_indices):
+        """TODO annual flooded area"""
         area_centr = self.centroids.area_per_centroid[centr_indices]
-        self.fld_area = area_centr * self.fraction[0, centr_indices].transpose()
-
+        event_years = np.array([date.fromordinal(self.date[i]).year for i in range(len(self.date))])
+        years = np.unique(event_years)
+        year_event_mask = self.annual_event_mask(event_years, years)
+        try:
+            self.fld_area_per_centroid = np.zeros((self._n_events,len(centr_indices)))
+            self.annual_fld_area_per_centroid = np.zeros((len(years),len(centr_indices)))
+            self.fld_area_per_centroid = np.multiply(self.fraction[:, centr_indices].todense(),area_centr)
+            self.tot_fld_area = np.sum(self.fld_area_per_centroid, axis = 1)
+            for year_ind in range(len(years)):
+                self.annual_fld_area_per_centroid[year_ind,:] = np.sum(self.fld_area_per_centroid[year_event_mask[years, :],:], axis = 0)
+            self.annual_fld_area = np.sum(self.annual_fld_area_per_centroid, axis=1)  
+        except MemoryError:
+            self.fld_area_per_centroid = None
+            self.tot_fld_area = None
+            self.annual_fld_area_per_centroid = None
+            self.annual_fld_area = None
+            LOGGER.warning('Number of events and considered area exceed memory capacities,\
+                           area has not been calculated, attributes set to None')
+            
+    def annual_event_mask(self, event_years, years):
+        event_mask= np.full((len(years), len(event_years)), False, dtype=bool)
+        for year_ind in range(len(years)):
+           events = np.where(event_years == years[year_ind])[0]
+           event_mask[year_ind,events] = True
+        return event_mask
+            
+            
     def centr_area(self, lon, lat):
         """TODO write method to calculate improved centroids area using 
            exact coordinate transformation"""
@@ -299,13 +317,6 @@ class RiverFlood(Hazard):
             centr_area[centr_index] = projected_area
             centr_index += 1
 
-
-    @property
-    def dph_file(self):
-        return self._dph_file
-    @property
-    def frc_file(self):
-        return self._frc_file
 
     @staticmethod
     def select_area(countries=[], reg=[]):
@@ -387,9 +398,9 @@ class RiverFlood(Hazard):
             countries: List of countries
             reg: List of regions
         Raises:
-            AttributeError
+            KeyError
         Returns:
-            np.array
+            centroids
         """
         centroids = Centroids()
         natID_info = pd.read_csv(NAT_REG_ID)
@@ -397,19 +408,22 @@ class RiverFlood(Hazard):
         isimip_lon = isimip_grid.lon.data
         isimip_lat = isimip_grid.lat.data
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        if countries:
-            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
-        elif reg:
-            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
-        else:
-            centroids.coord = np.zeros((gridX.size, 2))
-            centroids.coord[:, 1] = gridX.flatten()
-            centroids.coord[:, 0] = gridY.flatten()
-            centroids.id = np.arange(centroids.coord.shape[0])
-            return centroids
+        try:
+            if countries:
+                natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
+            elif reg:
+                natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
+            else:
+                centroids.coord = np.zeros((gridX.size, 2))
+                centroids.coord[:, 1] = gridX.flatten()
+                centroids.coord[:, 0] = gridY.flatten()
+                centroids.id = np.arange(centroids.coord.shape[0])
+                return centroids
+        except KeyError:
+            LOGGER.error('Selected country or region does not match reference file')
+            raise KeyError   
         isimip_NatIdGrid = isimip_grid.NatIdGrid.data
         natID_pos = np.isin(isimip_NatIdGrid, natID)
-        natID_pos_ind = np.where(natID_pos.flatten() == True)[0]
         lon_coordinates = gridX[natID_pos]
         lat_coordinates = gridY[natID_pos]
         centroids.coord = np.zeros((len(lon_coordinates), 2))
@@ -417,11 +431,8 @@ class RiverFlood(Hazard):
         centroids.coord[:, 0] = lat_coordinates
         centroids.id = np.arange(centroids.coord.shape[0])
         #centroids.set_region_id()
-        orig_proj = 'epsg:4326'
-        fire = gpd.GeoDataFrame()
-        fire['geometry'] = list(zip(fire_lon, fire_lat))
-        fire['geometry'] = fire['geometry'].apply(Point)
-        return centroids, natID_pos_ind
+        return centroids
+
     @staticmethod
     def select_exact_area_polygon(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region

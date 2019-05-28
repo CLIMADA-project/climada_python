@@ -82,7 +82,7 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        exp_gdpasset = GDP2Asset()
+        exp_gdpasset = GDP2Asset() 
         natID_info = pd.read_csv(REGION_MAP)
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
