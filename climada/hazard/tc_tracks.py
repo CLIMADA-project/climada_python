@@ -387,18 +387,25 @@ class TCTracks():
         """
         if track.time.size > 3:
             time_step = str(time_step_h) + 'H'
-            track_int = track.resample(time=time_step). \
-                        interpolate('linear')
-            track_int['time_step'] = ('time', track_int.time.size *
-                                      [time_step_h])
+            track_int = track.resample(time=time_step).interpolate('linear')
+            track_int['time_step'] = ('time', track_int.time.size * [time_step_h])
+            # handle change of sign in longitude
+            pos_lon = track.coords['lon'].values > 0
+            neg_lon = track.coords['lon'].values <= 0
+            if neg_lon.any() and pos_lon.any():
+                if neg_lon[0]:
+                    track.coords['lon'].values[pos_lon] -= 360
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).interpolate('cubic')
+                    track_int.coords['lon'][track_int.coords['lon'] < -180] += 360
+                else:
+                    track.coords['lon'].values[neg_lon] += 360
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).interpolate('cubic')
+                    track_int.coords['lon'][track_int.coords['lon'] > 180] -= 360
+            else:
+                track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
             track_int.coords['lat'] = track.lat.resample(time=time_step).\
                                       interpolate('cubic')
-            track_int.coords['lat'][track_int.coords['lat'] > 90] = 90
-            track_int.coords['lat'][track_int.coords['lat'] < -90] = -90
-            track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                                      interpolate('cubic')
-            track_int.coords['lon'][track_int.coords['lat'] > 180] = 180
-            track_int.coords['lon'][track_int.coords['lat'] < -180] = -180
             track_int.attrs = track.attrs
             track_int.attrs['category'] = set_category( \
                 track.max_sustained_wind.values, \
