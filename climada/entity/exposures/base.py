@@ -246,6 +246,9 @@ class Exposures(GeoDataFrame):
             height (float): number of lats for transform
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
+        
+        Returns:
+            dict (meta raster information)
         """
         self.__init__()
         self.tag = Tag()
@@ -258,10 +261,14 @@ class Exposures(GeoDataFrame):
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
                                      np.arange(uly+yres/2, lry, yres))
-        self.crs = meta['crs'].to_dict()
+        try:
+            self.crs = meta['crs'].to_dict()
+        except AttributeError:
+            self.crs = meta['crs']
         self['longitude'] = x_grid.flatten()
         self['latitude'] = y_grid.flatten()
         self['value'] = value.reshape(-1)
+        return meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', **kwargs):
@@ -352,22 +359,7 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.columns:
-            self.set_geometry_points()
-        crs_epsg, crs_unit = self._get_transformation()
-        if not res:
-            res = min(get_resolution(self.latitude.values, self.longitude.values))
-        if not raster_res:
-            raster_res = res
-        LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
-                    raster_res, crs_unit)
-        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
-        # construct raster
-        xmin, ymin, xmax, ymax = self.total_bounds
-        rows, cols, ras_trans = points_to_raster((xmin, ymin, xmax, ymax), raster_res)
-        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
-                           out_shape=(rows, cols), transform=ras_trans, fill=0,
-                           all_touched=True, dtype=rasterio.float32, )
+        raster, ras_trans = self._to_raster(res, raster_res)
         # save tiff
         if save_tiff is not None:
             ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff', \
@@ -507,6 +499,35 @@ class Exposures(GeoDataFrame):
         if deep:
             data = data.copy()
         return Exposures(data).__finalize__(self)
+
+    def write_raster(self, file_name):
+        
+        raster, ras_trans = self._to_raster()
+        ras_tiff = rasterio.open(file_name, 'w', driver='GTiff', \
+            height=raster.shape[0], width=raster.shape[1], count=1, \
+            dtype=np.float32, crs=self.crs, transform=ras_trans)
+        ras_tiff.write(raster.astype(np.float32), 1)
+        ras_tiff.close()
+
+    def _to_raster(self, res=None, raster_res=None):
+        """ """
+        if 'geometry' not in self.columns:
+            self.set_geometry_points()
+        crs_epsg, crs_unit = self._get_transformation()
+        if not res:
+            res = min(get_resolution(self.latitude.values, self.longitude.values))
+        if not raster_res:
+            raster_res = res
+        LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
+                    raster_res, crs_unit)
+        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
+        # construct raster
+        xmin, ymin, xmax, ymax = self.total_bounds
+        rows, cols, ras_trans = points_to_raster((xmin, ymin, xmax, ymax), raster_res)
+        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
+                           out_shape=(rows, cols), transform=ras_trans, fill=0,
+                           all_touched=True, dtype=rasterio.float32, )
+        return raster, ras_trans
 
     def _get_transformation(self):
         """ Get projection and its units to use in cartopy transforamtions from

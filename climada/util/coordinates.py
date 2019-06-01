@@ -385,7 +385,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                               dst_transform=transform,
                               dst_crs=dst_crs,
                               resampling=resampling)
-                    if np.isnan(dst_meta['nodata']):
+                    if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
                     else:
                         intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
