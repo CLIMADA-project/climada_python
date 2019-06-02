@@ -330,6 +330,7 @@ class Impact():
         Parameters:
             file_name (str): absolute path of the file
         """
+        LOGGER.info('Writing %s', file_name)
         with open(file_name, "w") as imp_file:
             imp_wr = csv.writer(imp_file)
             imp_wr.writerow(["tag_hazard", "tag_exposure", "tag_impact_func",
@@ -354,6 +355,7 @@ class Impact():
         Parameters:
             file_name (str): absolute path of the file
         """
+        LOGGER.info('Writing %s', file_name)
         def write_col(i_col, imp_ws, xls_data):
             """ Write one measure """
             row_ini = 1
@@ -394,6 +396,7 @@ class Impact():
 
     def write_sparse_csr(self, file_name):
         """ Write imp_mat matrix in numpy's npz format."""
+        LOGGER.info('Writing %s', file_name)
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
@@ -428,6 +431,7 @@ class Impact():
         Returns:
             sparse.csr_matrix
         """
+        LOGGER.info('Reading %s', file_name)
         loader = np.load(file_name)
         return sparse.csr_matrix((loader['data'], loader['indices'], loader['indptr']),
                                  shape=loader['shape'])
@@ -438,6 +442,7 @@ class Impact():
         Parameters:
             file_name (str): absolute path of the file
         """
+        LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
         self.__init__()
         self.unit = imp_df.unit[0]
@@ -469,6 +474,7 @@ class Impact():
         Parameters:
             file_name (str): absolute path of the file
         """
+        LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
         self.__init__()
         self.tag['haz'] = TagHaz()
