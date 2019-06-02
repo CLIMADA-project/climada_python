@@ -79,7 +79,6 @@ class TropCyclone(Hazard):
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
         else:
             self.pool = None
-#        self.pool = Pool()
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08'):
