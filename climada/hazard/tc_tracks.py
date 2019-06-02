@@ -395,11 +395,13 @@ class TCTracks():
             if neg_lon.any() and pos_lon.any():
                 if neg_lon[0]:
                     track.coords['lon'].values[pos_lon] -= 360
-                    track_int.coords['lon'] = track.lon.resample(time=time_step).interpolate('cubic')
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
                     track_int.coords['lon'][track_int.coords['lon'] < -180] += 360
                 else:
                     track.coords['lon'].values[neg_lon] += 360
-                    track_int.coords['lon'] = track.lon.resample(time=time_step).interpolate('cubic')
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
                     track_int.coords['lon'][track_int.coords['lon'] > 180] -= 360
             else:
                 track_int.coords['lon'] = track.lon.resample(time=time_step).\
