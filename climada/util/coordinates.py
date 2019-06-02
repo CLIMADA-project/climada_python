@@ -22,12 +22,12 @@ import os
 import copy
 import logging
 import numpy as np
-import fiona
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
 from shapely.geometry import Polygon
 from sklearn.neighbors import BallTree
+import fiona
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
@@ -447,7 +447,7 @@ def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
 
 def write_raster(file_name, data_matrix, meta):
     """ Write raster in GeoTiff format
-    
+
     Parameters:
         fle_name (str): file name to write
         data_matrix (np.array): raster data
@@ -461,4 +461,4 @@ def write_raster(file_name, data_matrix, meta):
         LOGGER.info('Writting %s', file_name)
         dst.write(np.asarray(data_matrix, dtype=rasterio.float32).\
             reshape((data_matrix.shape[0], profile['height'], profile['width'])),
-            indexes=np.arange(1, data_matrix.shape[0]+1))
+                    indexes=np.arange(1, data_matrix.shape[0]+1))

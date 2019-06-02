@@ -856,7 +856,7 @@ class Hazard():
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
-            else:
+            elif var_val is not None:
                 hf_data.create_dataset(var_name, data=var_val)
         hf_data.close()
 
