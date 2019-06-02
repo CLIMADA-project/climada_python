@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 import os
+import copy
 import logging
 import numpy as np
 import fiona
@@ -395,7 +396,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 meta = src.meta.copy()
                 if geometry:
                     inten, mask_trans = mask(src, geometry, crop=True, indexes=band)
-                    if np.isnan(meta['nodata']):
+                    if meta['nodata'] and np.isnan(meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
                         inten[inten == meta['nodata']] = 0
@@ -443,3 +444,21 @@ def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
     for i_inten, inten in enumerate(inten_name):
         intensity[i_inten, :] = data_frame[inten].values
     return lat, lon, geometry, intensity
+
+def write_raster(file_name, data_matrix, meta):
+    """ Write raster in GeoTiff format
+    
+    Parameters:
+        fle_name (str): file name to write
+        data_matrix (np.array): raster data
+        meta (dict): rasterio meta dictionary containing raster
+            properties: width, height, crs and transform must be present
+            at least (transform needs to contain upper left corner!)
+    """
+    profile = copy.deepcopy(meta)
+    profile.update(driver='GTiff', dtype=rasterio.float32, count=data_matrix.shape[0])
+    with rasterio.open(file_name, 'w', **profile) as dst:
+        LOGGER.info('Writting %s', file_name)
+        dst.write(np.asarray(data_matrix, dtype=rasterio.float32).\
+            reshape((data_matrix.shape[0], profile['height'], profile['width'])),
+            indexes=np.arange(1, data_matrix.shape[0]+1))
