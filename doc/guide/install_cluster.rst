@@ -6,17 +6,18 @@ Installation on a server / the Euler Cluster (ETH internal)
 Please execute the instructions of the following text boxes in a Terminal.
 For ETH WCR group members, there are two directories that can be used for the installation:
 
-1. "Home": /cluster/home/USERNAME/
+1. "Work": /cluster/work/climate/USERNAME
 
-2. "Work": /cluster/work/climate/USERNAME
+2. "Home": /cluster/home/USERNAME/
+
 
 The advantage of using "Home" is that it is the location with the fastest access for the use of python and CLIMADA.
 The disadvantage of "Home" is the limited quota of 20 GB and 100'000 files, since both miniconda and CLIMADA come with many single files.
-If you don't have many other files stored in "Home", (1) is the recommended option. Otherwise go for (2).
+Therefore, (1) is the recommended option.
 
 For all steps listed below, first enter the Cluster via SSH.
 
-On the server, go to either your "Home" or your "Work" environment. In the following we will go for option (2) and install everything in the "Work" path.
+On the server, go to either your "Home" or your "Work" environment. In the following we will go for option 1 and install everything in the "Work" path.
 If you are using a different server or option, please customise the paths in each step::
 
     cd /cluster/work/climate/USERNAME
@@ -45,19 +46,22 @@ Install environment with Miniconda
     bash Miniconda3-latest-Linux-x86_64.sh
     rm Miniconda3-latest-Linux-x86_64.sh
     cd climada_python
-    conda env create -f requirements/env_climada.yml --name climada_env
 
 
-   During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
+During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
     conda env create -f requirements/env_climada.yml --name climada_env 
 
+(You might need to restart the terminal for condo to work after installation)
+
    To include *climada_python* in the environment's path, do the following. In your environments folder, for example /cluster/work/climate/USERNAME/miniconda3/*::
    
-    cd envs/climada_env/lib/python3.6/site-packages
+    cd envs/climada_env/lib/pythonX.X/site-packages
     echo '/your/path/to/climada_python/' > climada_env_path.pth
+
+! Replace pythonX.X with the correct version of Python, i.e. python3.7 !
 
 3. **Test installation**: Activate the environment, execute the unit tests and deactivate the environment when finished using climada::
 
