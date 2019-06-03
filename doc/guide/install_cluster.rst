@@ -45,16 +45,17 @@ Install environment with Miniconda
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash Miniconda3-latest-Linux-x86_64.sh
     rm Miniconda3-latest-Linux-x86_64.sh
-    cd climada_python
+    
 
 
 During the installation process of Miniconda, you are prompted to set the working directory according to your choice.
 
 2. **Install dependencies**: Create the virtual environment *climada_env* with climada's dependencies::
 
+    cd /cluster/work/climate/USERNAME/climada_python
     conda env create -f requirements/env_climada.yml --name climada_env 
 
-(You might need to restart the terminal for condo to work after installation)
+(You might need to restart the terminal for the command "conda" to work after installation of miniconda)
 
    To include *climada_python* in the environment's path, do the following. In your environments folder, for example /cluster/work/climate/USERNAME/miniconda3/*::
    
