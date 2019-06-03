@@ -351,6 +351,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         self.tag.file_name = file_name
         self.tag.description = description
@@ -383,6 +384,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         haz_type = self.tag.haz_type
         self.clear()
         self.tag.file_name = file_name
@@ -826,6 +828,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to write, with h5 format
         """
+        LOGGER.info('Writting %s', file_name)
         self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
@@ -866,6 +869,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to read, with h5 format
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
