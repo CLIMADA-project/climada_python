@@ -29,7 +29,8 @@ __all__ = ['SOURCE_DIR',
            'GLB_CENTROIDS_MAT',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
-           'EXP_DEMO_H5']
+           'EXP_DEMO_H5',
+           'WS_DEMO_NC']
 
 import os
 from fiona.crs import from_epsg
@@ -65,6 +66,12 @@ HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
 
 HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
 """ Hazard demo in h5 format: ibtracs from 1975 to 2011 over Florida with 2500 centroids."""
+
+WS_DEMO_NC = [os.path.join(DATA_DIR, 'demo', 'fp_lothar_crop-test.nc'),
+              os.path.join(DATA_DIR, 'demo', 'fp_xynthia_crop-test.nc')]
+""" Winter storm in Europe files. These test files have been generated using
+the netCDF kitchen sink: ncks -d latitude,50.5,54.0 -d longitude,3.0,7.5
+./file_in.nc ./file_out.nc """
 
 
 ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')

@@ -28,26 +28,16 @@ from scipy import sparse
 
 from climada.hazard.storm_europe import StormEurope
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
+from climada.util.constants import WS_DEMO_NC
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-
-fn = [
-    'fp_lothar_crop-test.nc',
-    'fp_xynthia_crop-test.nc',
-]
-TEST_NCS = [os.path.join(DATA_DIR, f) for f in fn]
-""" 
-These test files have been generated using the netCDF kitchen sink:
-ncks -d latitude,50.5,54.0 -d longitude,3.0,7.5 ./file_in.nc ./file_out.nc
-"""
-
 
 class TestReader(unittest.TestCase):
     """ Test loading functions from the StormEurope class """
 
     def test_centroids_from_nc(self):
         """ Test if centroids can be constructed correctly """
-        cent = StormEurope._centroids_from_nc(TEST_NCS[0])
+        cent = StormEurope._centroids_from_nc(WS_DEMO_NC[0])
 
         self.assertTrue(isinstance(cent, Centroids))
         self.assertEqual(cent.size, 9944)
@@ -55,7 +45,7 @@ class TestReader(unittest.TestCase):
     def test_read_footprints(self):
         """ Test read_footprints function, using two small test files"""
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS, description='test_description')
+        storms.read_footprints(WS_DEMO_NC, description='test_description')
 
         self.assertEqual(storms.tag.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
@@ -76,7 +66,7 @@ class TestReader(unittest.TestCase):
     def test_read_with_ref(self):
         """ Test read_footprints while passing in a reference raster. """
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS, ref_raster=TEST_NCS[1])
+        storms.read_footprints(WS_DEMO_NC, ref_raster=WS_DEMO_NC[1])
 
         self.assertEqual(storms.tag.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
@@ -100,7 +90,7 @@ class TestReader(unittest.TestCase):
         test_centroids = Centroids()
         test_centroids.read_excel(os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS, centroids=test_centroids)
+        storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(
@@ -113,7 +103,7 @@ class TestReader(unittest.TestCase):
     def test_set_ssi(self):
         """ Test set_ssi with both dawkins and wisc_gust methodology. """
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS)
+        storms.read_footprints(WS_DEMO_NC)
         
         storms.set_ssi(method='dawkins')
         ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
@@ -137,7 +127,7 @@ class TestReader(unittest.TestCase):
         """ Test the probabilistic storm generator; calls _hist2prob as well as
         Centroids.set_region_id() """
         storms = StormEurope()
-        storms.read_footprints(TEST_NCS)
+        storms.read_footprints(WS_DEMO_NC)
         storms_prob = storms.generate_prob_storms()
 
         self.assertEqual(
