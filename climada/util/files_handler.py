@@ -27,17 +27,26 @@ import os
 import glob
 import logging
 import math
+import urllib
 import requests
 from tqdm import tqdm
-import urllib
 
 LOGGER = logging.getLogger(__name__)
 
 class DownloadProgressBar(tqdm):
-    def update_to(self, b=1, bsize=1, tsize=None):
+    """ Class to use progress bar during dowloading """
+    def update_to(self, blocks=1, bsize=1, tsize=None):
+        """ Update progress bar
+
+        Parameters:
+            blocks (int, otional): Number of blocks transferred so far [default: 1].
+            bsize  (int, otional): Size of each block (in tqdm units) [default: 1].
+            tsize  (int, otional): Total size (in tqdm units). If [default: None]
+                remains unchanged.
+        """
         if tsize is not None:
             self.total = tsize
-        self.update(b * bsize - self.n)
+        self.update(blocks * bsize - self.n)
 
 def download_file(url):
     """ Download file from url in current folder and provide absolute file path
@@ -70,8 +79,8 @@ def download_file(url):
     LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
-                              total=math.ceil(total_size//block_size),
-                              unit='KB', unit_scale=True):
+                         total=math.ceil(total_size//block_size),
+                         unit='KB', unit_scale=True):
             file.write(data)
     return file_abs_name
 
@@ -88,8 +97,8 @@ def download_ftp(url, file_name):
     LOGGER.info('Downloading file %s', file_name)
     try:
         with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
-                                 desc=url.split('/')[-1]) as t:
-            urllib.request.urlretrieve(url, file_name, reporthook=t.update_to)
+                                 desc=url.split('/')[-1]) as prog_bar:
+            urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
     except Exception:
         raise ValueError
 
