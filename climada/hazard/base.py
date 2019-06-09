@@ -936,12 +936,13 @@ class Hazard():
                 elif isinstance(var_val, TagHazard):
                     var_val.append(ev_val)
 
-        self.centroids = Centroids()
-        if list_haz_ev[0].centroids.meta:
-            self.centroids.meta = list_haz_ev[0].centroids.meta
-        else:
-            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
-                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
+        self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
+#        self.centroids = Centroids()
+#        if list_haz_ev[0].centroids.meta:
+#            self.centroids.meta = list_haz_ev[0].centroids.meta
+#        else:
+#            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
+#                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
         self.units = list_haz_ev[0].units
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
