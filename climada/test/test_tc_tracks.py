@@ -140,6 +140,14 @@ class TestIBTracs(unittest.TestCase):
 
         self.assertEqual(sel.size, 48)
 
+    def test_ibtracs_correct_pass(self):
+        """ Check correct_pres option """
+        tc_try = TCTracks()
+        tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289', correct_pres=True)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1011.2906)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1005.7046)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011.6556)
+
     def test_wrong_decay_pass(self):
         """ Test decay not implemented when coefficient < 1 """
         track = TCTracks()

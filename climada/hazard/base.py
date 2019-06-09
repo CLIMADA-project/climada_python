@@ -226,7 +226,7 @@ class Hazard():
 
         self.centroids = Centroids()
         if self.pool:
-            chunksize = min((len(files_intensity)-1)//self.pool.ncpus, 1000)
+            chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
             self.intensity = sparse.csr.csr_matrix(self.centroids.set_raster_file( \
                 files_intensity[0], band, src_crs, window, geometry, dst_crs, \
                 transform, width, height, resampling))

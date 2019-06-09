@@ -142,19 +142,22 @@ class TCTracks():
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
                             year_range=(1980, 2018), basin=None,
-                            file_name='IBTrACS.ALL.v04r00.nc'):
+                            file_name='IBTrACS.ALL.v04r00.nc', correct_pres=False):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
         and radius_max_wind. Checks environmental_pressure > central_pressure.
 
         Parameters:
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
-            storm_id (str, optional): ibtracs if of the storm, e.g. 1988234N13299
+            storm_id (str or list(str), optional): ibtracs if of the storm,
+                e.g. 1988234N13299, [1988234N13299, 1989260N11316]
             year_range(tuple, optional): (min_year, max_year). Default: (1980, 2018)
             basin (str, optional): e.g. US, SA, NI, SI, SP, WP, EP, NA. if not
                 provided, consider all basins.
             file_name (str, optional): name of netcdf file to be dowloaded or located
                 at climada/data/system. Default: 'IBTrACS.ALL.v04r00.nc'.
+            correct_pres (bool, optional): correct central pressure if missing
+                values. Default: False
         """
         self.data = list()
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
@@ -172,7 +175,8 @@ class TCTracks():
         nc_data = Dataset(fn_nc)
         all_tracks = []
         for i_track in sel_tracks:
-            all_tracks.append(self._read_one_raw(nc_data, i_track, provider))
+            all_tracks.append(self._read_one_raw(nc_data, i_track, provider,
+                                                 correct_pres))
         self.data = [track for track in all_tracks if track is not None]
 
     def read_processed_ibtracs_csv(self, file_names):
@@ -268,7 +272,7 @@ class TCTracks():
             land_geom = None
 
         if self.pool:
-            chunksize = min(self.size, 500)
+            chunksize = min(self.size//self.pool.ncpus, 1000)
             self.data = self.pool.map(self._one_interp_data, self.data,
                                       itertools.repeat(time_step_h, self.size),
                                       itertools.repeat(land_geom, self.size),
@@ -311,7 +315,7 @@ class TCTracks():
         num_tracks = self.size
         new_ens = list()
         if self.pool:
-            chunksize = min(num_tracks, 1000)
+            chunksize = min(num_tracks//self.pool.ncpus, 1000)
             new_ens = self.pool.map(self._one_rnd_walk, self.data,
                                     itertools.repeat(ens_size, num_tracks),
                                     itertools.repeat(ens_amp0, num_tracks),
@@ -525,7 +529,7 @@ class TCTracks():
 
         dec_val = list()
         if self.pool:
-            chunksize = min(len(hist_tracks), 500)
+            chunksize = min(len(hist_tracks)//self.pool.ncpus, 1000)
             dec_val = self.pool.map(_decay_values, hist_tracks, itertools.repeat(land_geom),
                                     itertools.repeat(s_rel), chunksize=chunksize)
         else:
@@ -576,7 +580,7 @@ class TCTracks():
                 orig_pres.append(np.copy(track.central_pressure.values))
 
         if self.pool:
-            chunksize = min(self.size, 500)
+            chunksize = min(self.size//self.pool.ncpus, 1000)
             self.data = self.pool.map(_apply_decay_coeffs, self.data,
                                       itertools.repeat(v_rel), itertools.repeat(p_rel),
                                       itertools.repeat(land_geom), itertools.repeat(s_rel),
@@ -653,7 +657,7 @@ class TCTracks():
 
         Parameters:
             fn_nc (str): ibtracs netcdf data file name
-            storm_id (str): ibtrac id of the storm
+            storm_id (str os list): ibtrac id of the storm
             year_range(tuple): (min_year, max_year)
             basin (str): e.g. US, SA, NI, SI, SP, WP, EP, NA
 
@@ -664,9 +668,13 @@ class TCTracks():
         storm_ids = [''.join(name.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
-        # fileter name
+        # filter name
         if storm_id:
-            sel_tracks = np.array([storm_ids.index(storm_id)])
+            if not isinstance(storm_id, list):
+                storm_id = [storm_id]
+            for storm in storm_id:
+                sel_tracks.append(storm_ids.index(storm))
+            sel_tracks = np.array(sel_tracks)
         else:
             # filter years
             years = np.array([int(iso_name[:4]) for iso_name in storm_ids])
@@ -687,7 +695,7 @@ class TCTracks():
                 sel_tracks = sel_tracks[sel_bas]
         return sel_tracks
 
-    def _read_one_raw(self, nc_data, i_track, provider):
+    def _read_one_raw(self, nc_data, i_track, provider, correct_pres=False):
         """Fill given track.
 
             Parameters:
@@ -716,6 +724,9 @@ class TCTracks():
             data[:val_len].astype(float)
         cen_pres = nc_data.variables[provider + '_pres'][i_track, :]. \
             data[:val_len].astype(float)
+
+        if correct_pres:
+            cen_pres = _missing_pressure(cen_pres, max_sus_wind, lat, lon)
 
         if np.all(lon == nc_data.variables[provider + '_lon']._FillValue) or \
         (np.any(lon == nc_data.variables[provider + '_lon']._FillValue) and \
