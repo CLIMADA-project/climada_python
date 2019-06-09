@@ -28,10 +28,16 @@ import glob
 import logging
 import math
 import requests
-import tqdm
+from tqdm import tqdm
 import urllib
 
 LOGGER = logging.getLogger(__name__)
+
+class DownloadProgressBar(tqdm):
+    def update_to(self, b=1, bsize=1, tsize=None):
+        if tsize is not None:
+            self.total = tsize
+        self.update(b * bsize - self.n)
 
 def download_file(url):
     """ Download file from url in current folder and provide absolute file path
@@ -63,7 +69,7 @@ def download_file(url):
     file_abs_name = os.path.abspath(os.path.join(os.getcwd(), file_name))
     LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
-        for data in tqdm.tqdm(req_file.iter_content(block_size),
+        for data in tqdm(req_file.iter_content(block_size),
                               total=math.ceil(total_size//block_size),
                               unit='KB', unit_scale=True):
             file.write(data)
@@ -79,8 +85,11 @@ def download_ftp(url, file_name):
     Raises:
         ValueError
     """
+    LOGGER.info('Downloading file %s', file_name)
     try:
-        urllib.request.urlretrieve(url,file_name)
+        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
+                                 desc=url.split('/')[-1]) as t:
+            urllib.request.urlretrieve(url, file_name, reporthook=t.update_to)
     except Exception:
         raise ValueError
 
@@ -133,10 +142,10 @@ def get_file_names(file_name):
 
 def get_extension(file_name):
     """ Get file without extension and its extension (e.g. ".nc", ".grd.gz").
-    
+
     Parameters:
         file_name (str): file name (with or without path)
-    
+
     Returns:
         str, str
     """
@@ -145,7 +154,6 @@ def get_extension(file_name):
     if file_ext_bis and file_ext_bis[0] == '.':
         return file_pth_bis, file_ext_bis + file_ext
     return file_pth, file_ext
-    
 
 def _process_one_file_name(name, file_list):
     """ Apend to input list the file contained in name
