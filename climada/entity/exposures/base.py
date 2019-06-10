@@ -435,6 +435,7 @@ class Exposures(GeoDataFrame):
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
+        LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
         store.put('exposures', pd.DataFrame(self))
 
@@ -447,6 +448,7 @@ class Exposures(GeoDataFrame):
 
     def read_hdf5(self, file_name):
         """ Read data frame and metadata in hdf5 format """
+        LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
@@ -461,6 +463,7 @@ class Exposures(GeoDataFrame):
             var_names (dict, optional): dictionary containing the name of the
                 MATLAB variables. Default: DEF_VAR_MAT.
         """
+        LOGGER.info('Reading %s', file_name)
         if var_names is None:
             var_names = DEF_VAR_MAT
 
@@ -521,6 +524,7 @@ class Exposures(GeoDataFrame):
         Parameters:
             file_name (str): name output file in tif format
         """
+        LOGGER.info('Writting %s', file_name)
         raster, ras_trans = self._to_raster()
         meta = {'crs': self.crs, 'height':raster.shape[0], 'width':raster.shape[1],
                 'transform': ras_trans}

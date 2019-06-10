@@ -226,7 +226,7 @@ class Hazard():
 
         self.centroids = Centroids()
         if self.pool:
-            chunksize = min((len(files_intensity)-1)//self.pool.ncpus, 1000)
+            chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
             self.intensity = sparse.csr.csr_matrix(self.centroids.set_raster_file( \
                 files_intensity[0], band, src_crs, window, geometry, dst_crs, \
                 transform, width, height, resampling))
@@ -351,6 +351,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         self.tag.file_name = file_name
         self.tag.description = description
@@ -383,6 +384,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         haz_type = self.tag.haz_type
         self.clear()
         self.tag.file_name = file_name
@@ -826,6 +828,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to write, with h5 format
         """
+        LOGGER.info('Writting %s', file_name)
         self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
@@ -866,6 +869,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to read, with h5 format
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
@@ -932,12 +936,13 @@ class Hazard():
                 elif isinstance(var_val, TagHazard):
                     var_val.append(ev_val)
 
-        self.centroids = Centroids()
-        if list_haz_ev[0].centroids.meta:
-            self.centroids.meta = list_haz_ev[0].centroids.meta
-        else:
-            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
-                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
+        self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
+#        self.centroids = Centroids()
+#        if list_haz_ev[0].centroids.meta:
+#            self.centroids.meta = list_haz_ev[0].centroids.meta
+#        else:
+#            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
+#                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
         self.units = list_haz_ev[0].units
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
