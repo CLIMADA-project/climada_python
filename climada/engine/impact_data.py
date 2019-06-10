@@ -68,13 +68,12 @@ if False:
     start = 'yyyy-mm-dd'
     end = 'yyyy-mm-dd'
 
-    # assign hazard to EMdat event
-
-    data = assign_hazard_to_EMdat(certainty_level='low',intensity_path_haz = intensity_path,
-                                 names_path_haz = names_path, reg_ID_path_haz = reg_ID_path,
-                                 date_path_haz = date_path, EMdat_data = EMdat_raw,
-                                 start_time = start, end_time = end, keep_checks = True)
-    check_assigned_track(lookup = data, checkset = checkset)
+# assign hazard to EMdat event
+    data = assign_hazard_to_EMdat(certainty_level='low', intensity_path_haz=intensity_path,
+                                  names_path_haz=names_path, reg_ID_path_haz=reg_ID_path,
+                                  date_path_haz=date_path, EMdat_data=EMdat_raw,
+                                  start_time=start, end_time=end, keep_checks=True)
+    check_assigned_track(lookup=data, checkset=checkset)
 
 ###############################################################################
 
@@ -82,10 +81,10 @@ def assign_hazard_to_EMdat(certainty_level, intensity_path_haz, names_path_haz,
                            reg_ID_path_haz, date_path_haz, EMdat_data,
                            start_time, end_time, keep_checks=False):
     """assign_hazard_to_EMdat: link EMdat event to hazard
-
         Parameters:
             input files (paths):
-                intensity: sparse matrix with hazards as rows and grid points as cols, values only at location with impacts
+                intensity: sparse matrix with hazards as rows and grid points as cols,
+                values only at location with impacts
                 names: identifier for each hazard (i.e. IBtracID) (rows of the matrix)
                 reg_ID: ISO country ID of each grid point (cols of the matrix)
                 date: start date of each hazard (rows of the matrix)
@@ -110,7 +109,7 @@ def assign_hazard_to_EMdat(certainty_level, intensity_path_haz, names_path_haz,
 
     #### adjust EMdat_data to the path!!
     print("Start preparing damage set")
-    lookup = create_lookup(EMdat_data, start_time, end_time, disaster_subtype = 'Tropical cyclone')
+    lookup = create_lookup(EMdat_data, start_time, end_time, disaster_subtype='Tropical cyclone')
     # calculate possible hits
     print("Calculate possible hits")
     hit5 = EMdat_possible_hit(lookup=lookup, hit_countries=hit_countries, delta_t=5)
@@ -128,50 +127,52 @@ def assign_hazard_to_EMdat(certainty_level, intensity_path_haz, names_path_haz,
     hit50 = EMdat_possible_hit(lookup=lookup, hit_countries=hit_countries, delta_t=50)
     hit50_match = match_EM_ID(lookup=lookup, poss_hit=hit50)
     print("5/5")
-    
+
     # assign only tracks with high certainty
     print("Assign tracks")
     if certainty_level == 'high':
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit50_match, level=1)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit15_match, possible_tracks_2=hit50_match, level=2)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit25_match, possible_tracks_2=hit50_match, level=3)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit25_match, level=4)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit15_match, possible_tracks_2=hit25_match, level=5)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit50_match, level=1)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit15_match,
+                                    possible_tracks_2=hit50_match, level=2)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit25_match,
+                                    possible_tracks_2=hit50_match, level=3)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit25_match, level=4)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit15_match,
+                                    possible_tracks_2=hit25_match, level=5)
     # assign all tracks
     elif certainty_level == 'low':
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit5_match, possible_tracks_2=hit50_match, level=1)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit50_match, level=2)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit15_match, possible_tracks_2=hit50_match, level=3)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit5_match, possible_tracks_2=hit25_match, level=4)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit25_match, level=5)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit15_match, possible_tracks_2=hit25_match, level=6)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit5_match, possible_tracks_2=hit15_match, level=7)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit15_match, level=8)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit5_match, possible_tracks_2=hit10_match, level=9)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit15_match, possible_tracks_2=hit15_match, level=10)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit10_match, possible_tracks_2=hit10_match, level=11)
-        lookup = assign_track_to_EM(lookup = lookup, possible_tracks_1=hit5_match, possible_tracks_2=hit5_match, level=12)
-
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit5_match,
+                                    possible_tracks_2=hit50_match, level=1)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit50_match, level=2)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit15_match,
+                                    possible_tracks_2=hit50_match, level=3)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit5_match,
+                                    possible_tracks_2=hit25_match, level=4)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit25_match, level=5)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit15_match,
+                                    possible_tracks_2=hit25_match, level=6)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit5_match,
+                                    possible_tracks_2=hit15_match, level=7)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit15_match, level=8)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit5_match,
+                                    possible_tracks_2=hit10_match, level=9)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit15_match,
+                                    possible_tracks_2=hit15_match, level=10)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit10_match,
+                                    possible_tracks_2=hit10_match, level=11)
+        lookup = assign_track_to_EM(lookup=lookup, possible_tracks_1=hit5_match,
+                                    possible_tracks_2=hit5_match, level=12)
     if keep_checks == False:
         lookup = lookup.drop(['Date_start_EM_ordinal', 'possible_track', \
                               'possible_track_all'], axis=1)
     lookup.groupby('allocation_level').count()
     print('(%d/%s) tracks allocated' %(len(lookup[lookup.allocation_level.notnull()]), len(lookup)))
     return lookup
-
-
-    """hit_country_per_hazard: create list of hit countries from hazard set
-
-        Parameters:
-            input files:
-                intensity: sparse matrix with hazards 
-                as rows and grid points as cols, values only at location with impacts
-                names: identifier for each hazard (i.e. IBtracID) (rows of the matrix)
-                reg_ID: ISO country ID of each grid point (cols of the matrix)
-                date: start date of each hazard (rows of the matrix)
-    Returns:
-        pd.dataframe with all hit countries per hazard
-    """
 
 
 def hit_country_per_hazard(intensity_path, names_path, reg_ID_path, date_path):
