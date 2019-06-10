@@ -18,20 +18,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test flood module.
 """
-import os
 import unittest
 import datetime as dt
 import numpy as np
 from datetime import date
 from climada.hazard.flood import RiverFlood
-from climada.util.constants import DATA_DIR
+from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 
-HAZ_DEMO_FLDDPH = os.path.join(DATA_DIR, 'demo', 'flddph_WaterGAP2_miroc5\
-                               _historical_flopros_gev_picontrol_2000_0.1.nc')
-HAZ_DEMO_FLDFRC = os.path.join(DATA_DIR, 'demo', 'fldfrc_WaterGAP2_miroc5\
-                               _historical_flopros_gev_picontrol_2000_0.1.nc')
 
-        
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
     

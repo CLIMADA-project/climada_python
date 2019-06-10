@@ -30,6 +30,9 @@ __all__ = ['SOURCE_DIR',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
            'GLB_CENTROIDS_NC',
+           'DEMO_GDP2ASSET',
+           'CONVERTER',
+           'FLOOD_IF_DIR',
            'NAT_REG_ID',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
@@ -81,6 +84,14 @@ HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
 HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
 """ Hazard demo in h5 format: ibtracs from 1975 to 2011 over Florida with 2500 centroids."""
 
+DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
+"""Exposure demo file for GDP2Asset"""
+
+CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
+"""GDP2Asset coverter for GDP2Asset exposures"""
+
+FLOOD_IF_DIR = os.path.join(SYSTEM_DIR, 'FloodImpactFnc')
+"""Flood impct function directory"""
 
 ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 """ Entity demo present in xslx format."""

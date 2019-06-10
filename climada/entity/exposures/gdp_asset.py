@@ -31,6 +31,7 @@ import geopandas as gpd
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import GLB_CENTROIDS_NC
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR, DATA_DIR
+from climada.util.constants import DEMO_GDP2ASSET, CONVERTER
 from climada.util.interpolation import interpol_index
 from climada.util.constants import DEF_CRS
 from netCDF4 import Dataset
@@ -39,11 +40,6 @@ from datetime import datetime
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
-
-DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
-CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
-
-REGION_MAP = NAT_REG_ID
 
 
 class GDP2Asset(Exposures):
@@ -102,8 +98,7 @@ class GDP2Asset(Exposures):
             np.array
         """
         exp_gdpasset = GDP2Asset()
-        natID_info = pd.read_csv(REGION_MAP)
-        print(countryISO)
+        natID_info = pd.read_csv(NAT_REG_ID)
         try:
             isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
             isimip_lon = isimip_grid.lon.data

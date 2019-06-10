@@ -30,7 +30,7 @@ from os import walk
 
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity import ImpactFuncSet
-from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
+from climada.util.constants import NAT_REG_ID, FLOOD_IF_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
@@ -44,7 +44,6 @@ DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
                               'unit': 'Intensity_unit'
                               }
                  }
-FLOOD_IF_DIR = os.path.join(SYSTEM_DIR, 'FloodImpactFnc')
 
 
 class IFRiverFlood(ImpactFunc):

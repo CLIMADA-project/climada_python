@@ -17,15 +17,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Unit Tests on GDP2Asset exposures.
 
 """
-import os
 import numpy as np
 import unittest
 import pandas as pd
 from climada.entity.exposures import gdp_asset as ga
-from climada.util.constants import DATA_DIR, NAT_REG_ID
-
-
-DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
+from climada.util.constants import NAT_REG_ID, DEMO_GDP2ASSET
 
 
 class TestGDP2AssetClass(unittest.TestCase):

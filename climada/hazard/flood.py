@@ -32,6 +32,7 @@ import datetime as dt
 from datetime import date
 import geopandas as gpd
 from climada.util.constants import NAT_REG_ID, DATA_DIR, GLB_CENTROIDS_NC
+from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.util.interpolation import interpol_index
 from scipy import sparse
 from climada.hazard.base import Hazard
@@ -40,10 +41,7 @@ from shapely.geometry import Point
 
 from climada.util.alpha_shape import alpha_shape
 
-HAZ_DEMO_FLDDPH = os.path.join(DATA_DIR, 'demo',
-                               'flddph_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
-HAZ_DEMO_FLDFRC = os.path.join(DATA_DIR, 'demo',
-                               'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+
 
 
 LOGGER = logging.getLogger(__name__)

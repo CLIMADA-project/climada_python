@@ -19,13 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Tests on GDP2Asset.
 """
-import os
 import unittest
 from climada.entity.exposures import gdp_asset as ga
-from climada.util.constants import DATA_DIR
-
-
-DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
 
 
 class TestGDP2AssetClassCountries(unittest.TestCase):
