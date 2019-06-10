@@ -884,7 +884,7 @@ def _dist_since_lf(track):
             np.cumsum(dist_since_lf[sea_land+1:land_sea])
 
     dist_since_lf *= EARTH_RADIUS_KM
-    dist_since_lf[np.logical_not(track.on_land)] = np.nan
+    dist_since_lf[np.logical_not(track.on_land.values)] = np.nan
 
     return dist_since_lf
 
