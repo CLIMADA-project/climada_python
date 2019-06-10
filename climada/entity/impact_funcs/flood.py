@@ -26,38 +26,43 @@ import os
 import numpy as np
 import pandas as pd
 from os import walk
+
+
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity import ImpactFuncSet
-
+from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
-                 'col_name': {'func_id' : 'DamageFunID',
-                              'inten' : 'Intensity',
-                              'mdd' : 'MDD',
-                              'paa' : 'PAA',
-                              'mdr' : 'MDR',
-                              'name' : 'name',
-                              'peril' : 'peril_ID',
-                              'unit' : 'Intensity_unit'
-                             }
-                }
+                 'col_name': {'func_id': 'DamageFunID',
+                              'inten': 'Intensity',
+                              'mdd': 'MDD',
+                              'paa': 'PAA',
+                              'mdr': 'MDR',
+                              'name': 'name',
+                              'peril': 'peril_ID',
+                              'unit': 'Intensity_unit'
+                              }
+                 }
+FLOOD_IF_DIR = os.path.join(SYSTEM_DIR, 'FloodImpactFnc')
 
 
 class IFRiverFlood(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
-    def __init__(self, region = None):
+    def __init__(self, region=None):
         ImpactFunc.__init__(self)
         self.haz_type = 'RF'
         self.continent = region
 
-    def read_excel(self, if_func_dir, file_name = None, var_names=DEF_VAR_EXCEL):
+    def read_excel(self, if_func_dir, file_name=None,
+                   var_names=DEF_VAR_EXCEL):
         """Read excel file following template and store variables.
 
         Parameters:
             file_name (str): absolute file name
-            description (str, optional): descriptionfrom climada.entity import ImpactFuncSet of the data
+            description (str, optional): descriptionfrom climada.
+            entity import ImpactFuncSet of the data
             var_names (dict, optional): name of the variables in the file
         """
         if file_name is None:
@@ -96,7 +101,7 @@ class IFRiverFlood(ImpactFunc):
             string
         """
 
-        if not sector == residential:
+        if not sector == 'residential':
             LOGGER.error('Damage categories other than residential\
                           are not yet implemented')
             raise NotImplementedError
@@ -126,24 +131,30 @@ class IFRiverFlood(ImpactFunc):
         """Assigns new if id"""
         self.id = new_id
 
-    @staticmethod
-    def flood_imp_func_set(flood_if_dir):
-        """Builds impact function set for river flood, using standard files
-        raises:
-            NameError
-        Returns:
-            ImpactFunctionSet
-        """
-        if_files = []
-        if_set = ImpactFuncSet()
-        if not os.path.exists(flood_if_dir):
-            LOGGER.error('Impact function directory does not exist')
-            raise NameError
-        for (dirpath, dirnames, filenames) in walk(flood_if_dir):
-            if_files.extend(filenames)
-        for i in range(len(if_files)):
-            ifrf = IFRiverFlood()
-            ifrf.read_excel(flood_if_dir, if_files[i])
-            ifrf.set_id(i + 1)
-            if_set.append(ifrf)
-        return if_set
+
+def flood_imp_func_set(flood_if_dir=FLOOD_IF_DIR):
+    """Builds impact function set for river flood, using standard files
+    raises:
+        NameError
+    Returns:
+        ImpactFunctionSet
+    """
+    if_files = []
+    if_set = ImpactFuncSet()
+    if not os.path.exists(flood_if_dir):
+        LOGGER.error('Impact function directory does not exist')
+        raise NameError
+    for (dirpath, dirnames, filenames) in walk(flood_if_dir):
+        if_files.extend(filenames)
+    for i in range(len(if_files)):
+        ifrf = IFRiverFlood()
+        ifrf.read_excel(flood_if_dir, if_files[i])
+        ifrf.set_id(i + 1)
+        if_set.append(ifrf)
+    return if_set
+
+
+def assign_if_simple(exposure, country):
+    info = pd.read_csv(NAT_REG_ID)
+    if_id = info.loc[info['ISO'] == country, 'if_RF'].values[0]
+    exposure['if_RF'] = if_id
