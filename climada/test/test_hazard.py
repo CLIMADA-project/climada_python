@@ -49,6 +49,20 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.intensity.todense(), haz_read.intensity.todense()))
         self.assertEqual(np.unique(np.array(haz_fl.fraction.todense())).size, 2)
 
+    def test_read_raster_pool_pass(self):
+        """ Test set_raster with pool """
+        from pathos.pools import ProcessPool as Pool
+        pool = Pool()
+        haz_fl = Hazard('FL', pool)
+        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl.check()
+
+        self.assertEqual(haz_fl.intensity.shape, (1, 1032226))
+        self.assertEqual(haz_fl.intensity.min(), -9999.0)
+        self.assertAlmostEqual(haz_fl.intensity.max(), 4.662774085998535)
+        pool.close()
+        pool.join()
+
     def test_read_write_vector_pass(self):
         """ Test write_raster: Hazard from vector data"""
         haz_fl = Hazard('FL')

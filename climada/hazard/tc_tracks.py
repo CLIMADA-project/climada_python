@@ -40,6 +40,7 @@ from sklearn.neighbors import DistanceMetric
 from netCDF4 import Dataset
 from numba import jit
 from pint import UnitRegistry
+import scipy.io.matlab as matlab
 
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
@@ -65,6 +66,9 @@ IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcd
 
 IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
 """ IBTrACS v4.0 file all """
+
+DEF_ENV_PRESSURE = 1010
+""" Default environmental pressure """
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -137,20 +141,26 @@ class TCTracks():
         return []
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
-                            year_range=(1980, 2018), basin=None):
+                            year_range=(1980, 2018), basin=None,
+                            file_name='IBTrACS.ALL.v04r00.nc', correct_pres=False):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
         and radius_max_wind. Checks environmental_pressure > central_pressure.
 
         Parameters:
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
-            storm_id (str, optional): ibtracs if of the storm, e.g. 1988234N13299
+            storm_id (str or list(str), optional): ibtracs if of the storm,
+                e.g. 1988234N13299, [1988234N13299, 1989260N11316]
             year_range(tuple, optional): (min_year, max_year). Default: (1980, 2018)
             basin (str, optional): e.g. US, SA, NI, SI, SP, WP, EP, NA. if not
                 provided, consider all basins.
+            file_name (str, optional): name of netcdf file to be dowloaded or located
+                at climada/data/system. Default: 'IBTrACS.ALL.v04r00.nc'.
+            correct_pres (bool, optional): correct central pressure if missing
+                values. Default: False
         """
         self.data = list()
-        fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
+        fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
         if not glob.glob(fn_nc):
             try:
                 download_ftp(os.path.join(IBTRACS_URL, IBTRACS_FILE), IBTRACS_FILE)
@@ -165,7 +175,8 @@ class TCTracks():
         nc_data = Dataset(fn_nc)
         all_tracks = []
         for i_track in sel_tracks:
-            all_tracks.append(self._read_one_raw(nc_data, i_track, provider))
+            all_tracks.append(self._read_one_raw(nc_data, i_track, provider,
+                                                 correct_pres))
         self.data = [track for track in all_tracks if track is not None]
 
     def read_processed_ibtracs_csv(self, file_names):
@@ -179,6 +190,69 @@ class TCTracks():
         all_file = get_file_names(file_names)
         for file in all_file:
             self._read_one_csv(file)
+
+    def read_simulations_emanuel(self, file_names, hemisphere='S'):
+        """Fill from Kerry Emanuel tracks.
+
+        Parameters:
+            file_names (str or list(str)): absolute file name(s) or
+                folder name containing the files to read.
+            hemisphere (str, optional): 'S', 'N' or 'both'. Default: 'S'
+        """
+        corr_files = ['temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat', \
+                      'temp_gfdl520thcal.mat', 'temp_gfdl5rcp85cal_full.mat', \
+                      'temp_hadgem20thcal.mat', 'temp_hadgemrcp85cal_full.mat', \
+                      'temp_miroc20thcal.mat', 'temp_mirocrcp85cal_full.mat', \
+                      'temp_mpi20thcal.mat', 'temp_mpircp85cal_full.mat', \
+                      'temp_mri20thcal.mat', 'temp_mrircp85cal_full.mat']
+        all_file = get_file_names(file_names)
+
+        if hemisphere == 'S':
+            hem_min, hem_max = -90, 0
+        elif hemisphere == 'N':
+            hem_min, hem_max = 0, 90
+        else:
+            hem_min, hem_max = -90, 90
+
+        self.data = list()
+        for file in all_file:
+            LOGGER.info('Reading %s.', file)
+            data = matlab.loadmat(file)
+            data_lon, data_lat, data_y, data_m, data_d, data_h, data_r, \
+            data_v, data_p = data['longstore'], data['latstore'], data['yearstore'], \
+            data['monthstore'], data['daystore'], data['hourstore'], data['rmstore'], \
+            data['vstore'], data['pstore']
+            LOGGER.info('Loading %s tracks (each %s nodes), representing %s years.', \
+                        data_lat.shape[0], data_lat.shape[1], data_lat.shape[0]//600)
+            for i_track in range(data_lat.shape[0]):
+                pos = np.argwhere(np.logical_and(np.abs(data_lat[i_track, :]) > 0, \
+                    np.abs(data_lon[i_track, :]) > 0)).reshape(-1)
+                if hem_min > data_lat[i_track, pos].min() or \
+                hem_max < data_lat[i_track, pos].max():
+                    continue
+                datetimes = []
+                for month, day, hour in  zip(data_m[i_track, pos], \
+                data_d[i_track, pos], data_h[i_track, pos]):
+                    datetimes.append(dt.datetime(data_y[0, i_track], month, day, hour))
+                datetimes = np.array(datetimes)
+                tr_ds = xr.Dataset({ \
+                    'time_step': ('time', np.diff(data_h[i_track, pos]).min() * \
+                                  np.ones(datetimes.size)), \
+                    'radius_max_wind': ('time', data_r[i_track, pos]/1.852), \
+                    'max_sustained_wind': ('time', data_v[i_track, pos]), \
+                    'central_pressure': ('time', data_p[i_track, pos]), \
+                    'environmental_pressure': ('time', np.ones(datetimes.size)*DEF_ENV_PRESSURE)}, \
+                    coords={'time': datetimes, 'lat': ('time', data_lat[i_track, pos]), \
+                    'lon': ('time', data_lon[i_track, pos])}, \
+                    attrs={'max_sustained_wind_unit':'kn', \
+                    'central_pressure_unit':'mb', 'name':str(i_track), 'sid':str(i_track), \
+                    'orig_event_flag':True, 'data_provider':'Emanuel', 'basin':hemisphere, \
+                    'id_no':i_track})
+                tr_ds.attrs['category'] = set_category(tr_ds.max_sustained_wind.values, \
+                    tr_ds.max_sustained_wind_unit, SAFFIR_SIM_CAT)
+                if os.path.basename(file) in corr_files:
+                    tr_ds['radius_max_wind'] *= 2
+                self.data.append(tr_ds)
 
     def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
@@ -198,7 +272,7 @@ class TCTracks():
             land_geom = None
 
         if self.pool:
-            chunksize = min(self.size, 500)
+            chunksize = min(self.size//self.pool.ncpus, 1000)
             self.data = self.pool.map(self._one_interp_data, self.data,
                                       itertools.repeat(time_step_h, self.size),
                                       itertools.repeat(land_geom, self.size),
@@ -207,7 +281,7 @@ class TCTracks():
             new_data = list()
             for track in self.data:
                 new_data.append(self._one_interp_data(track, time_step_h,
-                                land_geom))
+                                                      land_geom))
             self.data = new_data
 
     def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
@@ -241,7 +315,7 @@ class TCTracks():
         num_tracks = self.size
         new_ens = list()
         if self.pool:
-            chunksize = min(num_tracks, 1000)
+            chunksize = min(num_tracks//self.pool.ncpus, 1000)
             new_ens = self.pool.map(self._one_rnd_walk, self.data,
                                     itertools.repeat(ens_size, num_tracks),
                                     itertools.repeat(ens_amp0, num_tracks),
@@ -250,7 +324,7 @@ class TCTracks():
                                     random_vec, chunksize=chunksize)
         else:
             for i_track, track in enumerate(self.data):
-                new_ens.append(self._one_rnd_walk(track, ens_size, ens_amp0,
+                new_ens.append(self._one_rnd_walk(track, ens_size, ens_amp0, \
                                ens_amp, max_angle, random_vec[i_track]))
         self.data = list()
         for ens_track in new_ens:
@@ -387,18 +461,28 @@ class TCTracks():
         """
         if track.time.size > 3:
             time_step = str(time_step_h) + 'H'
-            track_int = track.resample(time=time_step). \
-                        interpolate('linear')
-            track_int['time_step'] = ('time', track_int.time.size *
-                                      [time_step_h])
+            track_int = track.resample(time=time_step).interpolate('linear')
+            track_int['time_step'] = ('time', track_int.time.size * [time_step_h])
+            # handle change of sign in longitude
+            pos_lon = track.coords['lon'].values > 0
+            neg_lon = track.coords['lon'].values <= 0
+            if neg_lon.any() and pos_lon.any() and \
+            np.any(abs(track.coords['lon'].values[pos_lon]) > 170):
+                if neg_lon[0]:
+                    track.coords['lon'].values[pos_lon] -= 360
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
+                    track_int.coords['lon'][track_int.coords['lon'] < -180] += 360
+                else:
+                    track.coords['lon'].values[neg_lon] += 360
+                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
+                    track_int.coords['lon'][track_int.coords['lon'] > 180] -= 360
+            else:
+                track_int.coords['lon'] = track.lon.resample(time=time_step).\
+                    interpolate('cubic')
             track_int.coords['lat'] = track.lat.resample(time=time_step).\
                                       interpolate('cubic')
-            track_int.coords['lat'][track_int.coords['lat'] > 90] = 90
-            track_int.coords['lat'][track_int.coords['lat'] < -90] = -90
-            track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                                      interpolate('cubic')
-            track_int.coords['lon'][track_int.coords['lat'] > 180] = 180
-            track_int.coords['lon'][track_int.coords['lat'] < -180] = -180
             track_int.attrs = track.attrs
             track_int.attrs['category'] = set_category( \
                 track.max_sustained_wind.values, \
@@ -445,7 +529,7 @@ class TCTracks():
 
         dec_val = list()
         if self.pool:
-            chunksize = min(len(hist_tracks), 500)
+            chunksize = min(len(hist_tracks)//self.pool.ncpus, 1000)
             dec_val = self.pool.map(_decay_values, hist_tracks, itertools.repeat(land_geom),
                                     itertools.repeat(s_rel), chunksize=chunksize)
         else:
@@ -496,11 +580,11 @@ class TCTracks():
                 orig_pres.append(np.copy(track.central_pressure.values))
 
         if self.pool:
-            chunksize = min(self.size, 500)
-            self.data =  self.pool.map(_apply_decay_coeffs, self.data,
-                                       itertools.repeat(v_rel), itertools.repeat(p_rel),
-                                       itertools.repeat(land_geom), itertools.repeat(s_rel),
-                                       chunksize=chunksize)
+            chunksize = min(self.size//self.pool.ncpus, 1000)
+            self.data = self.pool.map(_apply_decay_coeffs, self.data,
+                                      itertools.repeat(v_rel), itertools.repeat(p_rel),
+                                      itertools.repeat(land_geom), itertools.repeat(s_rel),
+                                      chunksize=chunksize)
         else:
             new_data = list()
             for track in self.data:
@@ -573,7 +657,7 @@ class TCTracks():
 
         Parameters:
             fn_nc (str): ibtracs netcdf data file name
-            storm_id (str): ibtrac id of the storm
+            storm_id (str os list): ibtrac id of the storm
             year_range(tuple): (min_year, max_year)
             basin (str): e.g. US, SA, NI, SI, SP, WP, EP, NA
 
@@ -584,9 +668,13 @@ class TCTracks():
         storm_ids = [''.join(name.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
-        # fileter name
+        # filter name
         if storm_id:
-            sel_tracks = np.array([storm_ids.index(storm_id)])
+            if not isinstance(storm_id, list):
+                storm_id = [storm_id]
+            for storm in storm_id:
+                sel_tracks.append(storm_ids.index(storm))
+            sel_tracks = np.array(sel_tracks)
         else:
             # filter years
             years = np.array([int(iso_name[:4]) for iso_name in storm_ids])
@@ -607,7 +695,7 @@ class TCTracks():
                 sel_tracks = sel_tracks[sel_bas]
         return sel_tracks
 
-    def _read_one_raw(self, nc_data, i_track, provider):
+    def _read_one_raw(self, nc_data, i_track, provider, correct_pres=False):
         """Fill given track.
 
             Parameters:
@@ -616,7 +704,7 @@ class TCTracks():
             provider (str): data provider. e.g. usa, newdelhi, bom, cma, tokyo
         """
         name = ''.join(nc_data.variables['name'][i_track] \
-            [nc_data.variables['name'][i_track].mask==False].data.astype(str))
+            [nc_data.variables['name'][i_track].mask == False].data.astype(str))
         sid = ''.join(nc_data.variables['sid'][i_track].astype(str))
         basin = ''.join(nc_data.variables['basin'][i_track, 0, :].astype(str))
         LOGGER.info('Reading %s: %s', sid, name)
@@ -636,6 +724,9 @@ class TCTracks():
             data[:val_len].astype(float)
         cen_pres = nc_data.variables[provider + '_pres'][i_track, :]. \
             data[:val_len].astype(float)
+
+        if correct_pres:
+            cen_pres = _missing_pressure(cen_pres, max_sus_wind, lat, lon)
 
         if np.all(lon == nc_data.variables[provider + '_lon']._FillValue) or \
         (np.any(lon == nc_data.variables[provider + '_lon']._FillValue) and \
@@ -793,7 +884,7 @@ def _dist_since_lf(track):
             np.cumsum(dist_since_lf[sea_land+1:land_sea])
 
     dist_since_lf *= EARTH_RADIUS_KM
-    dist_since_lf[np.logical_not(track.on_land)] = np.nan
+    dist_since_lf[np.logical_not(track.on_land.values)] = np.nan
 
     return dist_since_lf
 
@@ -1206,7 +1297,43 @@ def _missing_pressure(cen_pres, v_max, lat, lon):
 #        cen_pres = 1024.688+0.055*lat-0.028*lon-0.815*v_max      # peduzzi
     return cen_pres
 
-def set_category(max_sus_wind, max_sus_wind_unit):
+def _change_max_wind_unit(wind, unit_orig, unit_dest):
+    """ Compute maximum wind speed in unit_dest
+
+    Parameters:
+        wind (np.array): wind
+        unit_orig (str): units of wind
+        unit_dest (str): units to change wind
+
+    Returns:
+        double
+    """
+    ureg = UnitRegistry()
+    if unit_orig in ('kn', 'kt'):
+        ur_orig = ureg.knot
+    elif unit_orig == 'mph':
+        ur_orig = ureg.mile / ureg.hour
+    elif unit_orig == 'm/s':
+        ur_orig = ureg.meter / ureg.second
+    elif unit_orig == 'km/h':
+        ur_orig = ureg.kilometer / ureg.hour
+    else:
+        LOGGER.error('Unit not recognised %s.', unit_orig)
+        raise ValueError
+    if unit_dest in ('kn', 'kt'):
+        ur_dest = ureg.knot
+    elif unit_dest == 'mph':
+        ur_dest = ureg.mile / ureg.hour
+    elif unit_dest == 'm/s':
+        ur_dest = ureg.meter / ureg.second
+    elif unit_dest == 'km/h':
+        ur_dest = ureg.kilometer / ureg.hour
+    else:
+        LOGGER.error('Unit not recognised %s.', unit_dest)
+        raise ValueError
+    return (np.nanmax(wind) * ur_orig).to(ur_dest).magnitude
+
+def set_category(max_sus_wind, max_sus_wind_unit, saffir_scale=None):
     """Add storm category according to saffir-simpson hurricane scale
 
       - -1 tropical depression
@@ -1220,24 +1347,20 @@ def set_category(max_sus_wind, max_sus_wind_unit):
     Parameters:
         max_sus_wind (np.array): max sustained wind
         max_sus_wind_unit (str): units of max sustained wind
+        saffir_scale (list, optional): Saffir-Simpson scale in same units as wind
 
     Returns:
         double
     """
-    ureg = UnitRegistry()
-    if max_sus_wind_unit in ('kn', 'kt'):
-        unit = ureg.knot
-    elif max_sus_wind_unit == 'mph':
-        unit = ureg.mile / ureg.hour
-    elif max_sus_wind_unit == 'm/s':
-        unit = ureg.meter / ureg.second
-    elif max_sus_wind_unit == 'km/h':
-        unit = ureg.kilometer / ureg.hour
+    if saffir_scale:
+        max_wind = np.nanmax(max_sus_wind)
+    elif max_sus_wind_unit != 'kn':
+        max_wind = _change_max_wind_unit(max_sus_wind, max_sus_wind_unit, 'kn')
+        saffir_scale = SAFFIR_SIM_CAT
     else:
-        LOGGER.error('Wind not recorded in kn, conversion to kn needed.')
-        raise ValueError
-    max_wind_kn = (np.nanmax(max_sus_wind) * unit).to(ureg.knot).magnitude
+        saffir_scale = SAFFIR_SIM_CAT
+        max_wind = np.nanmax(max_sus_wind)
     try:
-        return (np.argwhere(max_wind_kn < SAFFIR_SIM_CAT) - 1)[0][0]
+        return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1

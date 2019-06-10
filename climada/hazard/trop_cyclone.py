@@ -79,7 +79,6 @@ class TropCyclone(Hazard):
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
         else:
             self.pool = None
-#        self.pool = Pool()
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08'):
@@ -105,7 +104,7 @@ class TropCyclone(Hazard):
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(centroids.size))
         if self.pool:
-            chunksize = min(num_tracks, 1000)
+            chunksize = min(num_tracks//self.pool.ncpus, 1000)
             tc_haz = self.pool.map(self._tc_from_track, tracks.data,
                                    itertools.repeat(centroids, num_tracks),
                                    itertools.repeat(coastal_idx, num_tracks),

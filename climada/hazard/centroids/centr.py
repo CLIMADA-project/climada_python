@@ -206,8 +206,8 @@ class Centroids():
                                            height, resampling)
             return inten
 
-        tmp_meta, inten = read_raster(file_name, band, window, geometry, dst_crs,
-                                      transform, width, height, resampling)
+        tmp_meta, inten = read_raster(file_name, band, src_crs, window, geometry,
+                                      dst_crs, transform, width, height, resampling)
         if (tmp_meta['crs'] != self.meta['crs']) or \
         (tmp_meta['transform'] != self.meta['transform']) or \
         (tmp_meta['height'] != self.meta['height']) or \

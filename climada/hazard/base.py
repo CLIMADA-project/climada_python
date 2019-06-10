@@ -23,6 +23,7 @@ __all__ = ['Hazard']
 
 import ast
 import copy
+import itertools
 import logging
 import datetime as dt
 import warnings
@@ -42,6 +43,7 @@ import climada.util.checker as check
 import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
 import climada.util.hdf5_handler as hdf5
+import climada.util.coordinates as co
 
 LOGGER = logging.getLogger(__name__)
 
@@ -134,7 +136,7 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type):
+    def __init__(self, haz_type, pool=None):
         """Initialize values.
 
         Parameters:
@@ -166,6 +168,11 @@ class Hazard():
         # following values are defined for each event and centroid
         self.intensity = sparse.csr_matrix(np.empty((0, 0))) # events x centroids
         self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
 
     def clear(self):
         """Reinitialize attributes."""
@@ -218,20 +225,40 @@ class Hazard():
         self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         self.centroids = Centroids()
-        for file in files_intensity:
-            inten = self.centroids.set_raster_file(file, band, src_crs, window,
-                                                   geometry, dst_crs, transform,
-                                                   width, height, resampling)
-            self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+        if self.pool:
+            chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
+            self.intensity = sparse.csr.csr_matrix(self.centroids.set_raster_file( \
+                files_intensity[0], band, src_crs, window, geometry, dst_crs, \
+                transform, width, height, resampling))
+            for inten in self.pool.map(self.centroids.set_raster_file, files_intensity[1:], \
+            itertools.repeat(band), itertools.repeat(src_crs), \
+            itertools.repeat(window), itertools.repeat(geometry), \
+            itertools.repeat(dst_crs), itertools.repeat(transform), \
+            itertools.repeat(width), itertools.repeat(height), \
+            itertools.repeat(resampling), chunksize=chunksize):
+                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+            if files_fraction is not None:
+                for fract in self.pool.map(self.centroids.set_raster_file, files_fraction, \
+                itertools.repeat(band), itertools.repeat(src_crs), \
+                itertools.repeat(window), itertools.repeat(geometry), \
+                itertools.repeat(dst_crs), itertools.repeat(transform), \
+                itertools.repeat(width), itertools.repeat(height), \
+                itertools.repeat(resampling), chunksize=chunksize):
+                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+        else:
+            for file in files_intensity:
+                inten = self.centroids.set_raster_file(file, band, src_crs, window, \
+                    geometry, dst_crs, transform, width, height, resampling)
+                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+            if files_fraction is not None:
+                for file in files_fraction:
+                    fract = self.centroids.set_raster_file(file, band, src_crs, \
+                        window, geometry, dst_crs, transform, width, height, resampling)
+                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+
         if files_fraction is None:
             self.fraction = self.intensity.copy()
             self.fraction.data.fill(1)
-        else:
-            for file in files_fraction:
-                fract = self.centroids.set_raster_file(file, band, src_crs, window,
-                                                       geometry, dst_crs, transform,
-                                                       width, height, resampling)
-                self.fraction = sparse.vstack([self.fraction, fract], format='csr')
 
         if 'event_id' in attrs:
             self.event_id = attrs['event_id']
@@ -324,6 +351,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         self.tag.file_name = file_name
         self.tag.description = description
@@ -356,6 +384,7 @@ class Hazard():
         Raises:
             KeyError
         """
+        LOGGER.info('Reading %s', file_name)
         haz_type = self.tag.haz_type
         self.clear()
         self.tag.file_name = file_name
@@ -778,13 +807,7 @@ class Hazard():
         if not intensity:
             variable = self.fraction
         if self.centroids.meta:
-            profile = copy.deepcopy(self.centroids.meta)
-            profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
-            with rasterio.open(file_name, 'w', **profile) as dst:
-                LOGGER.info('Writting %s', file_name)
-                dst.write(np.asarray(variable.todense(), dtype=rasterio.float32).\
-                          reshape((self.size, profile['height'], profile['width'])),
-                          indexes=np.arange(1, self.size+1))
+            co.write_raster(file_name, variable.todense(), self.centroids.meta)
         else:
             pixel_geom = self.centroids.get_pixels_polygons()
             profile = self.centroids.meta
@@ -805,6 +828,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to write, with h5 format
         """
+        LOGGER.info('Writting %s', file_name)
         self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
@@ -835,7 +859,7 @@ class Hazard():
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
-            else:
+            elif var_val is not None:
                 hf_data.create_dataset(var_name, data=var_val)
         hf_data.close()
 
@@ -845,6 +869,7 @@ class Hazard():
         Parameters:
             file_name (str): file name to read, with h5 format
         """
+        LOGGER.info('Reading %s', file_name)
         self.clear()
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
@@ -911,12 +936,13 @@ class Hazard():
                 elif isinstance(var_val, TagHazard):
                     var_val.append(ev_val)
 
-        self.centroids = Centroids()
-        if list_haz_ev[0].centroids.meta:
-            self.centroids.meta = list_haz_ev[0].centroids.meta
-        else:
-            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
-                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
+        self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
+#        self.centroids = Centroids()
+#        if list_haz_ev[0].centroids.meta:
+#            self.centroids.meta = list_haz_ev[0].centroids.meta
+#        else:
+#            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
+#                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
         self.units = list_haz_ev[0].units
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()

@@ -5,6 +5,7 @@ dependencies:
   - blas=1.0
   - cartopy=0.17.0
   - cython=0.29.7
+  - dask=1.2.2
   - dill=0.2.9
   - gdal=2.3.3
   - geos=3.7.1

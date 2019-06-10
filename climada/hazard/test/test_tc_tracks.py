@@ -131,6 +131,98 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
 
+    def test_interp_origin_pass(self):
+        """ Interpolate track to min_time_step crossing lat origin """
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
+        171.257176,  171.946822,  172.5     ,  172.871797,  173.113396,   173.3     ,  173.496375,  173.725522,  174.      ,  174.331591,
+        174.728961,  175.2     ,  175.747632,  176.354929,  177.      ,   177.66677 ,  178.362433,  179.1     ,  179.885288, -179.304661,
+       -178.5     , -177.726442, -176.991938, -176.3     , -175.653595,  -175.053513, -174.5     , -173.992511, -173.527342, -173.1     ,
+       -172.705991, -172.340823, -172.      ])
+        tc_track.data[0].lat.values = np.array([40.196053,
+        40.6     , 40.930215, 41.215674, 41.5     , 41.816354, 42.156065,  42.5     , 42.833998, 43.16377 , 43.5     , 43.847656, 44.188854,
+        44.5     , 44.764269, 44.991925, 45.2     , 45.402675, 45.602707,  45.8     , 45.995402, 46.193543, 46.4     , 46.615718, 46.82312 ,
+        47.      , 47.130616, 47.225088, 47.3     , 47.369224, 47.435786,  47.5     , 47.562858, 47.628064, 47.7     , 47.783047, 47.881586,
+        48.      ])
+        tc_track.equal_timestep(time_step_h=1)
+
+        self.assertEqual(tc_track.data[0].time.size, 223)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[0], 167.207761)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[-1], -172)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[137], 179.75187272)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[138], 179.885288)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[139], -179.98060885)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[140], -179.84595743)
+        self.assertAlmostEqual(tc_track.data[0].lat.values[0], 40.196053)
+        self.assertAlmostEqual(tc_track.data[0].lat.values[-1], 48.)
+        self.assertEqual(tc_track.data[0].time_step[7], 1)
+        self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
+        self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29],
+                               1.005409300000005e+03)
+        self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
+        self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
+        self.assertEqual(tc_track.data[0]['time.year'][13], 1951)
+        self.assertEqual(tc_track.data[0]['time.month'][26], 8)
+        self.assertEqual(tc_track.data[0]['time.day'][7], 27)
+        self.assertEqual(tc_track.data[0].max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
+        self.assertEqual(tc_track.data[0].orig_event_flag, 1)
+        self.assertEqual(tc_track.data[0].name, '1951239N12334')
+        self.assertEqual(tc_track.data[0].data_provider, 'hurdat_atl')
+        self.assertTrue(np.isnan(tc_track.data[0].basin))
+        self.assertEqual(tc_track.data[0].id_no, 1951239012334)
+        self.assertEqual(tc_track.data[0].category, 1)
+
+    def test_interp_origin_inv_pass(self):
+        """ Interpolate track to min_time_step crossing lat origin """
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
+        171.257176,  171.946822,  172.5     ,  172.871797,  173.113396,   173.3     ,  173.496375,  173.725522,  174.      ,  174.331591,
+        174.728961,  175.2     ,  175.747632,  176.354929,  177.      ,   177.66677 ,  178.362433,  179.1     ,  179.885288, -179.304661,
+       -178.5     , -177.726442, -176.991938, -176.3     , -175.653595,  -175.053513, -174.5     , -173.992511, -173.527342, -173.1     ,
+       -172.705991, -172.340823, -172.      ])
+        tc_track.data[0].lon.values = - tc_track.data[0].lon.values
+        tc_track.data[0].lat.values = np.array([40.196053,
+        40.6     , 40.930215, 41.215674, 41.5     , 41.816354, 42.156065,  42.5     , 42.833998, 43.16377 , 43.5     , 43.847656, 44.188854,
+        44.5     , 44.764269, 44.991925, 45.2     , 45.402675, 45.602707,  45.8     , 45.995402, 46.193543, 46.4     , 46.615718, 46.82312 ,
+        47.      , 47.130616, 47.225088, 47.3     , 47.369224, 47.435786,  47.5     , 47.562858, 47.628064, 47.7     , 47.783047, 47.881586,
+        48.      ])
+        tc_track.equal_timestep(time_step_h=1)
+
+        self.assertEqual(tc_track.data[0].time.size, 223)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[0], -167.207761)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[-1], 172)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[137], -179.75187272)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[138], -179.885288)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[139], 179.98060885)
+        self.assertAlmostEqual(tc_track.data[0].lon.values[140], 179.84595743)
+        self.assertAlmostEqual(tc_track.data[0].lat.values[0], 40.196053)
+        self.assertAlmostEqual(tc_track.data[0].lat.values[-1], 48.)
+        self.assertEqual(tc_track.data[0].time_step[7], 1)
+        self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
+        self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29],
+                               1.005409300000005e+03)
+        self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
+        self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
+        self.assertEqual(tc_track.data[0]['time.year'][13], 1951)
+        self.assertEqual(tc_track.data[0]['time.month'][26], 8)
+        self.assertEqual(tc_track.data[0]['time.day'][7], 27)
+        self.assertEqual(tc_track.data[0].max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
+        self.assertEqual(tc_track.data[0].orig_event_flag, 1)
+        self.assertEqual(tc_track.data[0].name, '1951239N12334')
+        self.assertEqual(tc_track.data[0].data_provider, 'hurdat_atl')
+        self.assertTrue(np.isnan(tc_track.data[0].basin))
+        self.assertEqual(tc_track.data[0].id_no, 1951239012334)
+        self.assertEqual(tc_track.data[0].category, 1)
+
+
     def test_random_no_landfall_pass(self):
         """ Test calc_random_walk with decay and no historical tracks with landfall """
         tc_track = TCTracks()

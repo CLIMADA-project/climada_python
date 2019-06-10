@@ -35,8 +35,7 @@ from rasterio.warp import Resampling
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
-from climada.util.coordinates import coord_on_land, get_resolution, \
-points_to_raster, read_raster, equal_crs
+import climada.util.coordinates as co
 from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
@@ -194,7 +193,7 @@ class Exposures(GeoDataFrame):
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.shape[0]), str(hazard.centroids.size))
-        if not equal_crs(self.crs, hazard.centroids.crs):
+        if not co.equal_crs(self.crs, hazard.centroids.crs):
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
@@ -215,12 +214,26 @@ class Exposures(GeoDataFrame):
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
-    def set_geometry_points(self):
+    def set_geometry_points(self, scheduler=None):
         """ Set geometry attribute of GeoDataFrame from latitude and longitude
-        attributes."""
+        attributes.
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
         LOGGER.info('Setting geometry attribute.')
-        self['geometry'] = list(zip(self.longitude, self.latitude))
-        self['geometry'] = self['geometry'].apply(Point)
+        def apply_point(df_exp):
+            return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
+        if not scheduler:
+            self['geometry'] = list(zip(self.longitude, self.latitude))
+            self['geometry'] = self['geometry'].apply(Point)
+        else:
+            import dask.dataframe as dd
+            from multiprocessing import cpu_count
+            ddata = dd.from_pandas(self, npartitions=cpu_count())
+            self['geometry'] = ddata.map_partitions(apply_point, meta=Point).\
+            compute(scheduler=scheduler)
 
     def set_lat_lon(self):
         """ Set latitude and longitude attributes from geometry attribute. """
@@ -246,22 +259,29 @@ class Exposures(GeoDataFrame):
             height (float): number of lats for transform
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
+
+        Returns:
+            dict (meta raster information)
         """
         self.__init__()
         self.tag = Tag()
         self.tag.file_name = file_name
-        meta, value = read_raster(file_name, [band], src_crs, window,
-                                  geometry, dst_crs, transform, width,
-                                  height, resampling)
+        meta, value = co.read_raster(file_name, [band], src_crs, window,
+                                     geometry, dst_crs, transform, width,
+                                     height, resampling)
         ulx, xres, _, uly, _, yres = meta['transform'].to_gdal()
         lrx = ulx + meta['width'] * xres
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
                                      np.arange(uly+yres/2, lry, yres))
-        self.crs = meta['crs'].to_dict()
+        try:
+            self.crs = meta['crs'].to_dict()
+        except AttributeError:
+            self.crs = meta['crs']
         self['longitude'] = x_grid.flatten()
         self['latitude'] = y_grid.flatten()
         self['value'] = value.reshape(-1)
+        return meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', **kwargs):
@@ -352,22 +372,7 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.columns:
-            self.set_geometry_points()
-        crs_epsg, crs_unit = self._get_transformation()
-        if not res:
-            res = min(get_resolution(self.latitude.values, self.longitude.values))
-        if not raster_res:
-            raster_res = res
-        LOGGER.info('Raster from resolution %s%s to %s%s.', res, crs_unit,
-                    raster_res, crs_unit)
-        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
-        # construct raster
-        xmin, ymin, xmax, ymax = self.total_bounds
-        rows, cols, ras_trans = points_to_raster((xmin, ymin, xmax, ymax), raster_res)
-        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
-                           out_shape=(rows, cols), transform=ras_trans, fill=0,
-                           all_touched=True, dtype=rasterio.float32, )
+        raster, ras_trans = self._to_raster(res, raster_res)
         # save tiff
         if save_tiff is not None:
             ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff', \
@@ -376,6 +381,8 @@ class Exposures(GeoDataFrame):
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
+        crs_epsg, _ = self._get_transformation()
+        xmin, ymin, xmax, ymax = self.total_bounds
         fig, axis = u_plot.make_map(proj=crs_epsg)
         cbar_ax = fig.add_axes([0.99, 0.238, 0.03, 0.525])
         fig.subplots_adjust(hspace=0, wspace=0)
@@ -428,6 +435,7 @@ class Exposures(GeoDataFrame):
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
+        LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
         store.put('exposures', pd.DataFrame(self))
 
@@ -440,6 +448,7 @@ class Exposures(GeoDataFrame):
 
     def read_hdf5(self, file_name):
         """ Read data frame and metadata in hdf5 format """
+        LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
@@ -454,6 +463,7 @@ class Exposures(GeoDataFrame):
             var_names (dict, optional): dictionary containing the name of the
                 MATLAB variables. Default: DEF_VAR_MAT.
         """
+        LOGGER.info('Reading %s', file_name)
         if var_names is None:
             var_names = DEF_VAR_MAT
 
@@ -508,6 +518,46 @@ class Exposures(GeoDataFrame):
             data = data.copy()
         return Exposures(data).__finalize__(self)
 
+    def write_raster(self, file_name):
+        """ Write value data into raster file with GeoTiff format
+
+        Parameters:
+            file_name (str): name output file in tif format
+        """
+        LOGGER.info('Writting %s', file_name)
+        raster, ras_trans = self._to_raster()
+        meta = {'crs': self.crs, 'height':raster.shape[0], 'width':raster.shape[1],
+                'transform': ras_trans}
+        co.write_raster(file_name, raster, meta)
+
+    def _to_raster(self, res=None, raster_res=None):
+        """ Compute raster matrix and transformation from value column
+
+        Parameters:
+            res (float, optional): resolution of current data in units of latitude
+                and longitude, approximated if not provided.
+            raster_res (float, optional): desired resolution of the raster
+
+        Returns:
+            np.array, affine.Affine
+
+        """
+        if 'geometry' not in self.columns:
+            self.set_geometry_points()
+        if not res:
+            res = min(co.get_resolution(self.latitude.values, self.longitude.values))
+        if not raster_res:
+            raster_res = res
+        LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
+        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
+        # construct raster
+        xmin, ymin, xmax, ymax = self.total_bounds
+        rows, cols, ras_trans = co.points_to_raster((xmin, ymin, xmax, ymax), raster_res)
+        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
+                           out_shape=(rows, cols), transform=ras_trans, fill=0,
+                           all_touched=True, dtype=rasterio.float32, )
+        return raster, ras_trans
+
     def _get_transformation(self):
         """ Get projection and its units to use in cartopy transforamtions from
         current crs
@@ -556,7 +606,7 @@ def add_sea(exposures, sea_res):
 
     lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-    on_land = np.logical_not(coord_on_land(lat_mgrid, lon_mgrid))
+    on_land = np.logical_not(co.coord_on_land(lat_mgrid, lon_mgrid))
 
     sea_exp = Exposures()
     sea_exp['latitude'] = lat_mgrid[on_land]

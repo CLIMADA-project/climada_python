@@ -36,7 +36,8 @@ __all__ = ['SOURCE_DIR',
            'NAT_REG_ID',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
-           'EXP_DEMO_H5']
+           'EXP_DEMO_H5',
+           'WS_DEMO_NC']
 
 import os
 from fiona.crs import from_epsg
@@ -92,6 +93,13 @@ CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
 
 FLOOD_IF_DIR = os.path.join(SYSTEM_DIR, 'FloodImpactFnc')
 """Flood impct function directory"""
+
+WS_DEMO_NC = [os.path.join(DATA_DIR, 'demo', 'fp_lothar_crop-test.nc'),
+              os.path.join(DATA_DIR, 'demo', 'fp_xynthia_crop-test.nc')]
+""" Winter storm in Europe files. These test files have been generated using
+the netCDF kitchen sink: ncks -d latitude,50.5,54.0 -d longitude,3.0,7.5
+./file_in.nc ./file_out.nc """
+
 
 ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
 """ Entity demo present in xslx format."""

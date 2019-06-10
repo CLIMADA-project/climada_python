@@ -34,6 +34,9 @@ from climada.engine.impact_data import emdat_countries_by_hazard, \
 from climada.hazard import TropCyclone
 from climada.entity.exposures.litpop import LitPop
 
+import logging
+LOGGER = logging.getLogger(__name__)
+
 
 
 def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
@@ -313,114 +316,132 @@ def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
     
     return df_result
 
-#from scipy.optimize import minimize, Bounds
-#
-#
-#def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
-#              impact_data_source, year_range, yearly_impact=True):
-#    """ portrait the difference between modelled and reported impacts for all 
-#    impact functions described in param_full_dict and if_name_or_instance
-#    Parameters:
-#        hazard: list or instance of hazard
-#        exposure: list or instance of exposure of full countries
-#        if_name_or_instance (string or ImpactFunc): the name of a 
-#            parameterisation or an instance of class ImpactFunc
-#            e.g. 'emanuel'
-#        param_dict (dict): a dict containing keys used for 
-#            if_name_or_instance and one set of values
-#            e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
-#        impact_data_source (dict or dataframe): with name of impact data source
-#            and file location or dataframe
-#        year_range
-#        yearly_impact
-#    Returns:
-#            param_dict_result: the parameters with the best calibration results
-#    """
-#    param_dict_result = param_dict
-#    
-#    # prepare hazard and exposure
-#    region_ids = list(np.unique(exposure.region_id))
-#    hazard_type = hazard.tag.haz_type
-#    # prepare impact data
-#    if isinstance(impact_data_source,pd.DataFrame):
-#        df_impact_data = impact_data_source
-#    else:
-#        if list(impact_data_source.keys()) == ['emdat']:
-#            df_impact_data = init_impact_data(hazard_type,region_ids, year_range,impact_data_source['emdat'],year_range[-1])
-#        else:
-#            raise ValueError('other impact data sources not yet implemented.')
-#    # definie specific function to 
-#    def specific_calib(x):
-#        param_dict_temp = dict(zip(param_dict.keys(),x)) ## DOES NOT WORK YET
-#        return calib_instance(hazard,exposure,
-#                              init_if(if_name_or_instance,param_dict_temp)[0],
-#                              df_impact_data,
-#                              yearly_impact=True,return_cost='R2')
-#    # define constraints
-#    if if_name_or_instance == 'emanuel':
-#        A = np.array([[ 2.,-1., 0.],
-#                      [-1., 0., 0.],
-#                      [ 0.,-1., 0.],
-#                      [ 0., 0., 1.],
-#                      [ 0., 0.,-1.]])
-#
-#        b = np.array([0., 0., 0., 1., 0.])
-#        
-#    else:
-##        A = np.array([[ 1., 1.],
-##                      [-1., 2.],
-##                      [-1., 0.],
-##                      [0., -1.],
-##                      [0.,  1.]])
-##
-##        b = np.array([7., 4., 0., 0., 4.])
-#        A=[]
-#    cons = {'type':'ineq',
-#            'fun':lambda x: b - np.dot(A,x),
-#            'jac':lambda x: -A}
-#    #initial values and minimization
-#    x0 = list(param_dict.values())
-#    res = minimize(specific_calib, x0,
-#                   constraints=cons,
+from scipy.optimize import minimize, Bounds, LinearConstraint
+
+
+def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
+              impact_data_source, year_range, yearly_impact=True, 
+              cost_fucntion='R2',show_details= False):
+    """ portrait the difference between modelled and reported impacts for all 
+    impact functions described in param_full_dict and if_name_or_instance
+    Parameters:
+        hazard: list or instance of hazard
+        exposure: list or instance of exposure of full countries
+        if_name_or_instance (string or ImpactFunc): the name of a 
+            parameterisation or an instance of class ImpactFunc
+            e.g. 'emanuel'
+        param_dict (dict): a dict containing keys used for 
+            if_name_or_instance and one set of values
+            e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
+        impact_data_source (dict or dataframe): with name of impact data source
+            and file location or dataframe
+        year_range
+        yearly_impact
+        cost_function (string): the argument for function calib_cost_calc, 
+            default 'R2'
+        show_details (bool): if True, return a tuple with the parameters AND 
+            the details of the optimization like success, 
+            status, number of iterations etc
+        
+    Returns:
+            param_dict_result: the parameters with the best calibration results
+                (or a tuple with (1) the parameters and (2) the optimization output)
+    """
+    param_dict_result = param_dict
+    
+    # prepare hazard and exposure
+    region_ids = list(np.unique(exposure.region_id))
+    hazard_type = hazard.tag.haz_type
+    # prepare impact data
+    if isinstance(impact_data_source,pd.DataFrame):
+        df_impact_data = impact_data_source
+    else:
+        if list(impact_data_source.keys()) == ['emdat']:
+            df_impact_data = init_impact_data(hazard_type,region_ids, year_range,impact_data_source['emdat'],year_range[-1])
+        else:
+            raise ValueError('other impact data sources not yet implemented.')
+    # definie specific function to 
+    def specific_calib(x):
+        param_dict_temp = dict(zip(param_dict.keys(),x)) 
+        print(param_dict_temp)
+        return calib_instance(hazard,exposure,
+                              init_if(if_name_or_instance,param_dict_temp)[0],
+                              df_impact_data,
+                              yearly_impact=yearly_impact,return_cost=cost_fucntion)
+    # define constraints
+    if if_name_or_instance == 'emanuel':
+        cons = [{'type': 'ineq', 'fun': lambda x:  -x[0] + x[1]},
+                 {'type': 'ineq', 'fun': lambda x: -x[2] + 0.9999},
+                 {'type': 'ineq', 'fun': lambda x: x[2]}]
+    else:
+        cons = [{'type': 'ineq', 'fun': lambda x: -x[0] + 2},
+                 {'type': 'ineq', 'fun': lambda x: x[0]},
+                 {'type': 'ineq', 'fun': lambda x: -x[1] + 2},
+                 {'type': 'ineq', 'fun': lambda x: x[1]}]
+
+
+    x0 = list(param_dict.values())
+    res = minimize(specific_calib, x0,
+                   #bounds=bounds,
+#                   bounds=((0.0, np.inf), (0.0, np.inf), (0.0, 1.0)),
+                   constraints=cons,
 #                   method='SLSQP',
-#                   options={'xtol': 1e-5, 'disp': True, 'maxiter': 50})
+                   method='trust-constr',
+                   options={'xtol': 1e-5, 'disp': True, 'maxiter': 500})
+    
+    param_dict_result = dict(zip(param_dict.keys(),res.x))
+    
+    if res.success:
+        LOGGER.info('Optimization successfully finished.')
+    else:
+        LOGGER.info('Opimization did not finish successfully. Check you input'
+                    ' or consult the detailed returns (with argument'
+                    'show_details=True) for further information.')
+    
+    if show_details:
+        return param_dict_result, res
+    
+    return param_dict_result
+
+
+#if __name__ == "__main__":
+#
+# 
+#    ## tryout calib_all
+#    hazard = TropCyclone()
+#    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
+#    exposure = LitPop()
+#    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
+#    if_name_or_instance = 'emanuel'
+#    param_full_dict = {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
 #    
-#    return param_dict_result
-
-
-if __name__ == "__main__":
-# yearly
- 
-    ## tryout calib_all
-    hazard = TropCyclone()
-    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
-    exposure = LitPop()
-    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
-    if_name_or_instance = 'emanuel'
-    param_full_dict = {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
-    
-    impact_data_source = {'emdat':('D:/Documents_DATA/EM-DAT/'
-                                   '20181031_disaster_list_all_non-technological/'
-                                   'ThomasRoosli_2018-10-31.csv')}
-    year_range = [2004, 2017]
-    yearly_impact = True
-    df_result = calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
-                  impact_data_source, year_range, yearly_impact)
-    
-                                    reference_year=REF_YEAR)
+#    impact_data_source = {'emdat':('D:/Documents_DATA/EM-DAT/'
+#                                   '20181031_disaster_list_all_non-technological/'
+#                                   'ThomasRoosli_2018-10-31.csv')}
+#    year_range = [2004, 2017]
+#    yearly_impact = True
+#    df_result = calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
+#                  impact_data_source, year_range, yearly_impact)
+#
+#
 #    ## tryout calib_optimize
 #    hazard = TropCyclone()
 #    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
 #    exposure = LitPop()
 #    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    if_name_or_instance = 'emanuel'
-#    param_dict = {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
+#    param_dict = {'v_thresh': 25.7, 'v_half': 70, 'scale': 0.6}
 #    year_range = [2004, 2017] 
+#    cost_function = 'R2'
+#    show_details = True
+#    yearly_impact = True
 #    impact_data_source = {'emdat':('D:/Documents_DATA/EM-DAT/'
 #                                   '20181031_disaster_list_all_non-technological/'
 #                                   'ThomasRoosli_2018-10-31.csv')}
+#    param_result,result = calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
+#              impact_data_source, year_range, yearly_impact=yearly_impact, 
+#              cost_fucntion=cost_function,show_details= show_details)
 #        
-        
-  
+#  
 
 
