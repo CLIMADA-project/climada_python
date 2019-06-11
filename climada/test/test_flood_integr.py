@@ -184,9 +184,9 @@ class TestRiverFlood(unittest.TestCase):
                          3391)
 
         self.assertAlmostEqual(testRFArea.tot_fld_area_event[0, 0],
-                               229956891.5531019)
+                               229956891.5531019, 5)
         self.assertAlmostEqual(testRFArea.annual_fld_area[0],
-                               229956891.5531019)
+                               229956891.5531019, 5)
 
         testRFset = RiverFlood()
         testRFset.set_from_nc(countries=['AFG'])
@@ -225,13 +225,13 @@ class TestRiverFlood(unittest.TestCase):
                          32610)
 
         self.assertAlmostEqual(testRFset.tot_fld_area_event[0, 0],
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
         self.assertAlmostEqual(testRFset.annual_fld_area[0],
-                               12488484027.165287)
+                               12488484027.165287, 3)
         self.assertAlmostEqual(testRFset.average_annual_fld_area,
-                               8325656018.110191)
+                               8325656018.110191, 4)
         self.assertAlmostEqual(testRFset.average_fld_area_event,
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
     
     def test_cut_flooded_area(self):
         
@@ -250,13 +250,13 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(np.argmax(testRFwin.fld_area_per_centroid[0]),
                          32610)
         self.assertAlmostEqual(testRFwin.tot_fld_area_event[0, 0],
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
         self.assertAlmostEqual(testRFwin.annual_fld_area[0],
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
         self.assertAlmostEqual(testRFwin.average_annual_fld_area,
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
         self.assertAlmostEqual(testRFwin.average_fld_area_event,
-                               6244242013.5826435)
+                               6244242013.5826435, 4)
 
     def test_select_model_run(self):
         testRFModel = RiverFlood()
