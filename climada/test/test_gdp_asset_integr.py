@@ -33,6 +33,7 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
             testGDP2A.set_countries(countries=['OYY'])
         with self.assertRaises(KeyError):
             testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
+
     def test_set_countries(self):
         testGDP2A_DEU = ga.GDP2Asset()
         testGDP2A_DEU.set_countries(countries=['DEU'])
@@ -46,7 +47,8 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
         self.assertAlmostEqual(testGDP2A_DEU.iloc[0, 2], 10.229028999999969)
         self.assertAlmostEqual(testGDP2A_DEU.iloc[0, 3], 3.0)
         self.assertAlmostEqual(testGDP2A_DEU.iloc[0, 4], 11.0)
-        self.assertAlmostEqual(testGDP2A_DEU.iloc[26877, 0], 1054654.9189984929)
+        self.assertAlmostEqual(testGDP2A_DEU.iloc[26877, 0],
+                               1054654.9189984929)
         self.assertAlmostEqual(testGDP2A_DEU.iloc[26877, 1], 55.0622346)
         self.assertAlmostEqual(testGDP2A_DEU.iloc[26877, 2], 8.437365199999988)
 
@@ -58,22 +60,27 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
         self.assertAlmostEqual(testGDP2A_RUS.iloc[0, 4], 9.0)
         self.assertAlmostEqual(testGDP2A_RUS.iloc[1698648, 0], 0.0)
         self.assertAlmostEqual(testGDP2A_RUS.iloc[1698648, 1], 81.8538584)
-        self.assertAlmostEqual(testGDP2A_RUS.iloc[1698648, 2], 59.353950399999974)
+        self.assertAlmostEqual(testGDP2A_RUS.iloc[1698648, 2],
+                               59.353950399999974)
 
         self.assertEqual(testGDP2A_DEU_BRA.shape[0], 437227)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 0], 706843.8067164791)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 1], 47.312247)
-        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 2], 10.229028999999969)
+        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 2],
+                               10.229028999999969)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 3], 3.0)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[0, 4], 11.0)
-        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 0], 835.6131181309585)
-        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 1], 5.22898099999999)
-        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 2], -60.14585840000002)
+        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 0],
+                               835.6131181309585)
+        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 1],
+                               5.22898099999999)
+        self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 2],
+                               -60.14585840000002)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 3], 6.0)
         self.assertAlmostEqual(testGDP2A_DEU_BRA.iloc[437226, 4], 3.0)
 
 
-
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGDP2AssetClassCountries)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(
+            TestGDP2AssetClassCountries)
     unittest.TextTestRunner(verbosity=2).run(TESTS)

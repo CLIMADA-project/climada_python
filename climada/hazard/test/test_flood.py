@@ -18,14 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test flood module.
 """
-import os
 import unittest
 import datetime as dt
 import numpy as np
 from climada.hazard.flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
-
-
 
 
 class TestRiverFlood(unittest.TestCase):
@@ -44,6 +41,10 @@ class TestRiverFlood(unittest.TestCase):
 
     def test_exact_area_selection(self):
         testCentroids = RiverFlood.select_exact_area(['LIE'])
+
+        emptyFlood = RiverFlood()
+        emptyFlood = emptyFlood.set_from_nc(countries=['LIE'],
+                                            centroids=testCentroids)
 
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
@@ -99,33 +100,33 @@ class TestRiverFlood(unittest.TestCase):
 
         testRFset.set_flooded_area()
 
-        self.assertEqual(testRFset.tot_fld_area_event.shape[0], 4)
-        self.assertEqual(testRFset.annual_fld_area.shape[0], 3)
-        self.assertAlmostEqual(np.max(testRFset.fld_area_per_centroid[0]),
+        self.assertEqual(testRFset.fla_event.shape[0], 4)
+        self.assertEqual(testRFset.fla_annual.shape[0], 3)
+        self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[0]),
                                17200498.22927546)
-        self.assertEqual(np.argmax(testRFset.fld_area_per_centroid[0]),
+        self.assertEqual(np.argmax(testRFset.fla_ev_centr[0]),
                          32610)
-        self.assertAlmostEqual(np.max(testRFset.fld_area_per_centroid[2]),
+        self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[2]),
                                17200498.22927546)
-        self.assertEqual(np.argmax(testRFset.fld_area_per_centroid[2]),
+        self.assertEqual(np.argmax(testRFset.fla_ev_centr[2]),
                          32610)
 
-        self.assertAlmostEqual(np.max(testRFset.annual_fld_area_per_centroid[0]),
+        self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[0]),
                                34400996.45855092)
-        self.assertEqual(np.argmax(testRFset.annual_fld_area_per_centroid[0]),
+        self.assertEqual(np.argmax(testRFset.fla_ann_centr[0]),
                          32610)
-        self.assertAlmostEqual(np.max(testRFset.annual_fld_area_per_centroid[2]),
+        self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[2]),
                                17200498.22927546)
-        self.assertEqual(np.argmax(testRFset.annual_fld_area_per_centroid[2]),
+        self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
                          32610)
 
-        self.assertAlmostEqual(testRFset.tot_fld_area_event[0, 0],
+        self.assertAlmostEqual(testRFset.fla_event[0, 0],
                                6244242013.5826435)
-        self.assertAlmostEqual(testRFset.annual_fld_area[0],
+        self.assertAlmostEqual(testRFset.fla_annual[0],
                                12488484027.165287)
-        self.assertAlmostEqual(testRFset.average_annual_fld_area,
+        self.assertAlmostEqual(testRFset.fla_ann_av,
                                8325656018.110191)
-        self.assertAlmostEqual(testRFset.average_fld_area_event,
+        self.assertAlmostEqual(testRFset.fla_ev_av,
                                6244242013.5826435)
 
     def test_select_model_run(self):
@@ -139,12 +140,14 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(testRFModel._select_model_run(flood_dir, rf_model,
                                                        cl_model,
                                                        scenario, prot_std)[0],
-                         '/home/test/flood/flddph_LPJmL_wfdei_flopros_gev_0.1.nc')
-        self.assertEqual(testRFModel._select_model_run(flood_dir, rf_model, 
+                         '/home/test/flood/flddph_LPJmL_wfdei_' +
+                         'flopros_gev_0.1.nc')
+        self.assertEqual(testRFModel._select_model_run(flood_dir, rf_model,
                                                        cl_model, scenario,
-                                                       prot_std, proj = True)[0],
-                         '/home/test/flood/flddph_LPJmL_wfdei_historical_flopros_gev_picontrol_2000_0.1.nc' )
-    
+                                                       prot_std, proj=True)[0],
+                         '/home/test/flood/flddph_LPJmL_wfdei_' +
+                         'historical_flopros_gev_picontrol_2000_0.1.nc')
+
     def test_set_centroids_from_file(self):
         testRFCentr = RiverFlood()
         lon = [1, 2, 3]
@@ -165,12 +168,14 @@ class TestRiverFlood(unittest.TestCase):
         tt4 = dt.datetime.strptime('1990-07-02', '%Y-%m-%d')
         years = [2010, 1997]
         test_time = np.array([tt1, tt2, tt3, tt4])
-        self.assertTrue(np.array_equal(testRFTime._select_event(test_time, years), [1, 2]))
+        self.assertTrue(np.array_equal(
+                        testRFTime._select_event(test_time, years), [1, 2]))
         years = [1988, 1990]
-        self.assertTrue(np.array_equal(testRFTime._select_event(test_time, years), [0, 3]))
-          
+        self.assertTrue(np.array_equal(
+                        testRFTime._select_event(test_time, years), [0, 3]))
+
     def test_cut_window(self):
-        
+
         testRFCut = RiverFlood()
         centr = RiverFlood.select_window_area(['AUT'])
         testRFCut.centroids.lon = centr.lon
@@ -178,7 +183,8 @@ class TestRiverFlood(unittest.TestCase):
         lon = np.arange(7, 20, 0.2)
         lat = np.arange(40, 50, 0.2)
         test_window = [[4, 24], [55, 45]]
-        self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat), test_window))
+        self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
+                                       test_window))
 
 
 #

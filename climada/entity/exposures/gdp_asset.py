@@ -25,21 +25,18 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy as sp
-import math
 import logging
 import geopandas as gpd
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import GLB_CENTROIDS_NC
-from climada.util.constants import NAT_REG_ID, SYSTEM_DIR, DATA_DIR
-from climada.util.constants import DEMO_GDP2ASSET, CONVERTER
-from climada.util.interpolation import interpol_index
+from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
+from climada.util.constants import DEMO_GDP2ASSET
 from climada.util.constants import DEF_CRS
-from netCDF4 import Dataset
-from netCDF4 import num2date, date2num
-from datetime import datetime
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
+
+CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
 
 
 class GDP2Asset(Exposures):
@@ -57,24 +54,23 @@ class GDP2Asset(Exposures):
         Parameters:
             countries (list): list of country names ISO3
             ref_year (int, optional): reference year. Default: 2016
-            res_km (float, optional): approx resolution in km. Default:
-                nightlights resolution.
+            path (string): path to exposure dataset
         """
-        """TODO region selection"""
         gdp2a_list = []
 
         if not countries:
             if reg:
                 natID_info = pd.read_csv(NAT_REG_ID)
-                natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"], reg)]
+                natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
+                                                   reg)]
                 countries = np.array(natISO)
 
         try:
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
-            Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(gdp2a_list,
-                                                                ignore_index=True)))
+            Exposures.__init__(self, gpd.GeoDataFrame(
+                        pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
             LOGGER.error('Exposure country could not be set, check ISO3 or\
                          reference year')
@@ -131,6 +127,7 @@ class GDP2Asset(Exposures):
         exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
         exp_gdpasset['region_id'] = reg_id_info
         return exp_gdpasset
+
 
 def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
     """ Read GDP-values for the selected area and convert it to asset.

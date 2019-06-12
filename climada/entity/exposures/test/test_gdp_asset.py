@@ -35,9 +35,10 @@ class TestGDP2AssetClass(unittest.TestCase):
         with self.assertRaises(KeyError):
             testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
 
+
 class TestGDP2AssetFunctions(unittest.TestCase):
     """Test LitPop Class methods"""
-    
+
     def test_set_one_country(self):
         exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
@@ -56,7 +57,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(exp_test.iloc[10, 2], 9.5623634)
         self.assertAlmostEqual(exp_test.iloc[11, 2], 9.5206968)
         self.assertAlmostEqual(exp_test.iloc[12, 2], 9.5623634)
-        
+
         self.assertAlmostEqual(exp_test.iloc[0, 1], 47.0622474)
         self.assertAlmostEqual(exp_test.iloc[1, 1], 47.0622474)
         self.assertAlmostEqual(exp_test.iloc[2, 1], 47.0622474)
@@ -70,7 +71,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(exp_test.iloc[10, 1], 47.1872472)
         self.assertAlmostEqual(exp_test.iloc[11, 1], 47.2289138)
         self.assertAlmostEqual(exp_test.iloc[12, 1], 47.2289138)
-        
+
         self.assertAlmostEqual(exp_test.iloc[0, 0], 174032107.65846416)
         self.assertAlmostEqual(exp_test.iloc[1, 0], 20386409.991937194)
         self.assertAlmostEqual(exp_test.iloc[2, 0], 2465206.6989314994)
@@ -131,5 +132,6 @@ class TestGDP2AssetFunctions(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestGDP2AssetFunctions)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGDP2AssetClass))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(
+            TestGDP2AssetClass))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

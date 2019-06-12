@@ -31,8 +31,6 @@ __all__ = ['SOURCE_DIR',
            'GLB_CENTROIDS_MAT',
            'GLB_CENTROIDS_NC',
            'DEMO_GDP2ASSET',
-           'CONVERTER',
-           'FLOOD_IF_DIR',
            'NAT_REG_ID',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
@@ -87,12 +85,6 @@ HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
 
 DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
 """Exposure demo file for GDP2Asset"""
-
-CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
-"""GDP2Asset coverter for GDP2Asset exposures"""
-
-FLOOD_IF_DIR = os.path.join(SYSTEM_DIR, 'FloodImpactFnc')
-"""Flood impct function directory"""
 
 WS_DEMO_NC = [os.path.join(DATA_DIR, 'demo', 'fp_lothar_crop-test.nc'),
               os.path.join(DATA_DIR, 'demo', 'fp_xynthia_crop-test.nc')]
