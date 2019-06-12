@@ -215,7 +215,7 @@ class RiverFlood(Hazard):
                 LOGGER.error('Too many events for grid size')
                 raise MemoryError
         else:
-            n_centroids = self.centroids.coord.shape[0]
+            n_centroids = self.centroids.size
             win = self._cut_window(lon, lat)
             lon_coord = lon[win[0, 0]:win[1, 0] + 1]
             lat_coord = lat[win[0, 1]:win[1, 1] + 1]
@@ -266,11 +266,7 @@ class RiverFlood(Hazard):
     def _set_centroids_from_file(self, lon, lat):
         self.centroids = Centroids()
         gridX, gridY = np.meshgrid(lon, lat)
-        self.centroids.lon = np.zeros((gridX.size))
-        self.centroids.lat = np.zeros((gridY.size))
-        self.centroids.lon = gridX.flatten()
-        self.centroids.lat = gridY.flatten()
-        self.centroids.id = np.arange(self.centroids.coord.shape[0])
+        self.centroids.set_lat_lon(gridY.flatten(), gridX.flatten())
 
     def _select_event(self, time, years):
         event_names = pd.to_datetime(time).year
