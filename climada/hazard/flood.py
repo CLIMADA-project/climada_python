@@ -133,22 +133,21 @@ class RiverFlood(Hazard):
                 else:
                     dph_path = HAZ_DEMO_FLDDPH
                     frc_path = HAZ_DEMO_FLDFRC
-                    LOGGER.warning('Flood directory' + flood_dir +
-                                   'does not exist,'+'setting Demo files' +
-                                   str(dph_path) + 'and' + str(frc_path))
+                    LOGGER.warning('Flood directory ' + flood_dir +
+                                   ' does not exist, setting Demo files ' +
+                                   str(dph_path) + ' and ' + str(frc_path))
             else:
                 dph_path = HAZ_DEMO_FLDDPH
                 frc_path = HAZ_DEMO_FLDFRC
-                LOGGER.warning('Flood directory not set' +
-                               'setting Demo files ' +
-                               str(dph_path) + 'and ' + str(frc_path))
-                """TODO: Put demo file in directory"""
+                LOGGER.warning('Flood directory not set ' +
+                               ', setting Demo files ' +
+                               str(dph_path) + ' and ' + str(frc_path))
         else:
             if not os.path.exists(dph_path):
-                LOGGER.error('Invalid flood-file path' + dph_path)
+                LOGGER.error('Invalid flood-file path ' + dph_path)
                 raise NameError
             if not os.path.exists(frc_path):
-                LOGGER.error('Invalid flood-file path' + frc_path)
+                LOGGER.error('Invalid flood-file path ' + frc_path)
                 raise NameError
         if centroids is not None:
             self.centroids = centroids
@@ -189,12 +188,13 @@ class RiverFlood(Hazard):
                                  flood_dph.time[i].dt.day).toordinal()
                                  for i in event_index])
         except KeyError:
-            LOGGER.error('Invalid dimensions or variables in file' +
-                         dph_path + 'or' + frc_path)
+            LOGGER.error('Invalid dimensions or variables in file ' +
+                         dph_path + ' or ' + frc_path)
             raise KeyError
         except OSError:
-            LOGGER.error('Problems while reading file' + dph_path +
-                         'or' + frc_path + 'check flood_file specifications')
+            LOGGER.error('Problems while reading file ' + dph_path +
+                         ' or ' + frc_path +
+                         ' check flood_file specifications')
             raise NameError
         if centr_handling == 'full_hazard':
             if len(event_index) > 1:
@@ -272,7 +272,7 @@ class RiverFlood(Hazard):
         event_names = pd.to_datetime(time).year
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
-            LOGGER.error('No events found for selected str(years)')
+            LOGGER.error('No events found for selected ' + str(years))
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
@@ -337,9 +337,9 @@ class RiverFlood(Hazard):
             self.fla_annual = None
             self.fla_ann_av = None
             self.fla_ev_av = None
-            LOGGER.warning('Number of events and slected area exceed' +
+            LOGGER.warning('Number of events and slected area exceed ' +
                            'memory capacities, area has not been calculated,' +
-                           'attributes set to None')
+                           ' attributes set to None')
 
     def set_flooded_area_cut(self, coordinates, centr_indices=None):
         """ Calculates flooded area for any window given with coordinates or
@@ -380,9 +380,9 @@ class RiverFlood(Hazard):
             self.fla_annual = None
             self.fla_ann_av = None
             self.fla_ev_av = None
-            LOGGER.warning('Number of events and slected area exceed' +
+            LOGGER.warning('Number of events and slected area exceed ' +
                            'memory capacities, area has not been calculated,' +
-                           'attributes set to None')
+                           ' attributes set to None')
 
     def _annual_event_mask(self, event_years, years):
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
@@ -411,13 +411,13 @@ class RiverFlood(Hazard):
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
         if countries:
             if not any(np.isin(natID_info['ISO'], countries)):
-                LOGGER.error('Country ISO3s' + str(countries) + ' unknown')
+                LOGGER.error('Country ISO3s ' + str(countries) + ' unknown')
                 raise KeyError
             natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
         elif reg:
             natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
             if not any(np.isin(natID_info["Reg_name"], reg)):
-                LOGGER.error('Shortcuts' + str(reg) + ' unknown')
+                LOGGER.error('Shortcuts ' + str(reg) + ' unknown')
                 raise KeyError
         else:
             centroids.lat = np.zeros((gridX.size))
@@ -486,12 +486,12 @@ class RiverFlood(Hazard):
         try:
             if countries:
                 if not any(np.isin(natID_info['ISO'], countries)):
-                    LOGGER.error('Country ISO3s' + str(countries) + ' unknown')
+                    LOGGER.error('Country ISO3s ' + str(countries) + ' unknown')
                     raise KeyError
                 natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
             elif reg:
                 if not any(np.isin(natID_info["Reg_name"], reg)):
-                    LOGGER.error('Shortcuts' + str(reg) + ' unknown')
+                    LOGGER.error('Shortcuts ' + str(reg) + ' unknown')
                     raise KeyError
                 natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
             else:
@@ -502,7 +502,7 @@ class RiverFlood(Hazard):
                 centroids.id = np.arange(centroids.lon.shape[0])
                 return centroids
         except KeyError:
-            LOGGER.error('Selected country or region do' +
+            LOGGER.error('Selected country or region do ' +
                          'not match reference file')
             raise KeyError
         isimip_NatIdGrid = isimip_grid.NatIdGrid.data

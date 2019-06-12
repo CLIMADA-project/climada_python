@@ -57,24 +57,23 @@ class GDP2Asset(Exposures):
             path (string): path to exposure dataset
         """
         gdp2a_list = []
-
-        if not countries:
-            if reg:
-                natID_info = pd.read_csv(NAT_REG_ID)
-                natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
-                                                   reg)]
-                countries = np.array(natISO)
-
         try:
+
+            if not countries:
+                if reg:
+                    natID_info = pd.read_csv(NAT_REG_ID)
+                    natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
+                                                       reg)]
+                    countries = np.array(natISO)
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
             Exposures.__init__(self, gpd.GeoDataFrame(
                         pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
-            LOGGER.error('Exposure country could not be set, check ISO3 or\
-                         reference year')
-
+            LOGGER.error('Exposure countries: ' + str(countries) + ' or reg ' +
+                         str(reg) + ' could not be set, check ISO3 or' +
+                         ' reference year ' + str(ref_year))
             raise KeyError
         self.ref_year = ref_year
         self.value_unit = 'USD'
@@ -101,14 +100,14 @@ class GDP2Asset(Exposures):
             isimip_lat = isimip_grid.lat.data
             gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
             if not any(np.isin(natID_info['ISO'], countryISO)):
-                LOGGER.error('Wrong country ISO')
+                LOGGER.error('Wrong country ISO ' + str(countryISO))
                 raise KeyError
             natID = natID_info['ID'][np.isin(natID_info['ISO'], countryISO)]
             reg_id, if_rf = _fast_if_mapping(natID, natID_info)
             isimip_NatIdGrid = isimip_grid.NatIdGrid.data
         except OSError:
-            LOGGER.error('Problems while file reading,\
-                         check exposure_file specifications')
+            LOGGER.error('Problems while reading ,' + path +
+                         ' check exposure_file specifications')
             raise OSError
         natID_pos = np.isin(isimip_NatIdGrid, natID)
         lon_coordinates = gridX[natID_pos]
@@ -147,13 +146,13 @@ def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
         gdp_lat = gdp_file.lat.data
         time = gdp_file.time.dt.year
     except OSError:
-        LOGGER.error('Problems while file reading,\
-                     check flood_file specifications')
+        LOGGER.error('Problems while reading ,' + path +
+                     ' check exposure_file specifications')
         raise OSError
     try:
         year_index = np.where(time == ref_year)[0][0]
     except IndexError:
-        LOGGER.error('No data available for this year')
+        LOGGER.error('No data available for year ' + str(ref_year))
         raise KeyError
     conv_lon = asset_converter.lon.data
     conv_lat = asset_converter.lat.data
@@ -197,6 +196,6 @@ def _fast_if_mapping(countryID, natID_info):
         reg_id = fancy_reg[countryID]
         if_rf = fancy_if[countryID]
     except KeyError:
-        LOGGER.error('County ISO unknown')
+        LOGGER.error('Country ISO unknown')
         raise KeyError
     return reg_id, if_rf
