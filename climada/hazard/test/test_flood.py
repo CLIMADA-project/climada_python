@@ -42,7 +42,6 @@ class TestRiverFlood(unittest.TestCase):
     def test_exact_area_selection(self):
         testCentroids = RiverFlood.select_exact_area(['LIE'])
 
-
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
         self.assertAlmostEqual(testCentroids.lon[1], 9.5623634)
