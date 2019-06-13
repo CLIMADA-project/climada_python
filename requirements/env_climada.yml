@@ -47,3 +47,7 @@ dependencies:
     - pint==0.9
     - ppft==1.6.4.9
     - xmlrunner==1.7.7
+    - overpy==0.4
+    - geoplot==0.2.4 
+    - seaborn==0.9.0
+
