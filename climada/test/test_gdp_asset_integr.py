@@ -33,6 +33,8 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
             testGDP2A.set_countries(countries=['OYY'])
         with self.assertRaises(KeyError):
             testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
+        with self.assertRaises(ValueError):
+            testGDP2A.set_countries()
 
     def test_set_countries(self):
         testGDP2A_DEU = ga.GDP2Asset()
