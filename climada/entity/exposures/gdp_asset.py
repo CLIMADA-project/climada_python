@@ -65,6 +65,10 @@ class GDP2Asset(Exposures):
                     natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
                                                        reg)]
                     countries = np.array(natISO)
+                else:
+                    LOGGER.error('set_countries requires countries or reg')
+                    raise ValueError
+
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
