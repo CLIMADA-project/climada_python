@@ -338,7 +338,8 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 resampling=Resampling.nearest):
     """ Read raster of bands and set 0 values to the masked ones. Each
     band is an event. Select region using window or geometry. Reproject
-    input by proving dst_crs and/or (transform, width, height).
+    input by proving dst_crs and/or (transform, width, height). Returns matrix
+    in 2d: band x coordinates in 1d (evtl. reshape to band x height x width)
 
     Parameters:
         file_name (str): name of the file
@@ -353,7 +354,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
             function used for reprojection to dst_crs
 
     Returns:
-        dict (meta), np.array (intensity)
+        dict (meta), np.array (band x coordinates_in_1d)
     """
     LOGGER.info('Reading %s', file_name)
     if os.path.splitext(file_name)[1] == '.gz':
@@ -450,15 +451,24 @@ def write_raster(file_name, data_matrix, meta):
 
     Parameters:
         fle_name (str): file name to write
-        data_matrix (np.array): raster data
+        data_matrix (np.array): 2d raster data. Either containing one band,
+            or every row is a band and the column represents the grid in 1d.
         meta (dict): rasterio meta dictionary containing raster
             properties: width, height, crs and transform must be present
             at least (transform needs to contain upper left corner!)
     """
-    profile = copy.deepcopy(meta)
-    profile.update(driver='GTiff', dtype=rasterio.float32, count=data_matrix.shape[0])
-    with rasterio.open(file_name, 'w', **profile) as dst:
-        LOGGER.info('Writting %s', file_name)
-        dst.write(np.asarray(data_matrix, dtype=rasterio.float32).\
-            reshape((data_matrix.shape[0], profile['height'], profile['width'])),
-                    indexes=np.arange(1, data_matrix.shape[0]+1))
+    LOGGER.info('Writting %s', file_name)
+    if data_matrix.shape != (meta['height'], meta['width']):
+        # every row is an event (from hazard intensity or fraction) == band
+        profile = copy.deepcopy(meta)
+        profile.update(driver='GTiff', dtype=rasterio.float32, count=data_matrix.shape[0])
+        with rasterio.open(file_name, 'w', **profile) as dst:
+            dst.write(np.asarray(data_matrix, dtype=rasterio.float32).\
+                reshape((data_matrix.shape[0], profile['height'], profile['width'])),
+                        indexes=np.arange(1, data_matrix.shape[0]+1))
+    else:
+        # only one band
+        profile = copy.deepcopy(meta)
+        profile.update(driver='GTiff', dtype=rasterio.float32, count=1)
+        with rasterio.open(file_name, 'w', **profile) as dst:
+            dst.write(np.asarray(data_matrix, dtype=rasterio.float32))
