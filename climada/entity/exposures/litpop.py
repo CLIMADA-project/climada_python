@@ -1869,47 +1869,17 @@ def admin1_validation(country, methods, exponents, **args):
                 check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
     return rho, adm0, adm1
 
-# =============================================================================
-# def population_refined_by_nl(country,exponents, **args):
-#     """ Returns LitPop-exposure. Whereby regions with constant population are 
-# 
-#     Parameters:
-#         country (str): single county. Countries can either be country names 
-#         ('France') or country codes ('FRA').
-# 
-#         exponent (2-vector), same as for LitPop.set_country() i.e.:
-#             - [[1, 1]] for LitPop,
-#             - [[1, 0], [0, 1]] for Lit and Pop (here: default),
-#             - [[3, 0]] for cube of night lights (Lit3)
-#     args: Keyword arguments. The following keywords are recognised:
-#         res_km (float, optional): approx resolution in km. Default: 1km.
-#         res_arcsec (float, optional): resolution in arc-sec. Overrides
-#             res_km if both are delivered
-#         check_plot (boolean, optional): choose if a plot is shown at the
-#             end of the operation.
-#         fin_mode: same as in LitPop.set_country(), but default 'none'
-#         
-#     Returns:
-#         
-#     """
-#     res_km = args.get('res_km', [])
-#     res_arcsec = args.get('res_arcsec', 30)
-#     check_plot = args.get('check_plot', True)
-#     fin_mode = args.get('fin_mdoe', 'none')
-#     reference_year = args.get('reference_year', 2015)
-#     if res_arcsec == []:
-#         resolution = (res_km/DEF_RES_GPW_KM)*DEF_RES_GPW_ARCSEC
-#     else:
-#         resolution = res_arcsec
-#     _match_target_res(resolution)
-#     
-#     exp = LitPop()
-#     exp
-# =============================================================================
-
-    
 
 def exposure_set_admin1(exposure):
+    """ add admin1 ID and name to exposure dataframe"""
+    """
+    Input:
+        exposure: exposure instance
+        
+    Returns:
+        exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
+    """
+    
     exposure['admin1'] = pd.Series()
     exposure['admin1_ID'] = pd.Series()
     count = 0
