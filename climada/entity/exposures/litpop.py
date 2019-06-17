@@ -1763,7 +1763,7 @@ def admin1_validation(country, methods, exponents, **args):
 
     Parameters:
         country (str): list of countries or single county as a
-            sting. Countries can either be country names ('France') or
+            string. Countries can either be country names ('France') or
             country codes ('FRA'), even a mix is possible in the list.
         methods_name (list of str), i.e.:
             - ['LitPop' for LitPop,
@@ -1868,3 +1868,59 @@ def admin1_validation(country, methods, exponents, **args):
                 _data, list(zip(lon, lat)), resolution, True, conserve_cntrytotal=0, \
                 check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
     return rho, adm0, adm1
+
+# =============================================================================
+# def population_refined_by_nl(country,exponents, **args):
+#     """ Returns LitPop-exposure. Whereby regions with constant population are 
+# 
+#     Parameters:
+#         country (str): single county. Countries can either be country names 
+#         ('France') or country codes ('FRA').
+# 
+#         exponent (2-vector), same as for LitPop.set_country() i.e.:
+#             - [[1, 1]] for LitPop,
+#             - [[1, 0], [0, 1]] for Lit and Pop (here: default),
+#             - [[3, 0]] for cube of night lights (Lit3)
+#     args: Keyword arguments. The following keywords are recognised:
+#         res_km (float, optional): approx resolution in km. Default: 1km.
+#         res_arcsec (float, optional): resolution in arc-sec. Overrides
+#             res_km if both are delivered
+#         check_plot (boolean, optional): choose if a plot is shown at the
+#             end of the operation.
+#         fin_mode: same as in LitPop.set_country(), but default 'none'
+#         
+#     Returns:
+#         
+#     """
+#     res_km = args.get('res_km', [])
+#     res_arcsec = args.get('res_arcsec', 30)
+#     check_plot = args.get('check_plot', True)
+#     fin_mode = args.get('fin_mdoe', 'none')
+#     reference_year = args.get('reference_year', 2015)
+#     if res_arcsec == []:
+#         resolution = (res_km/DEF_RES_GPW_KM)*DEF_RES_GPW_ARCSEC
+#     else:
+#         resolution = res_arcsec
+#     _match_target_res(resolution)
+#     
+#     exp = LitPop()
+#     exp
+# =============================================================================
+
+    
+
+def exposure_set_admin1(exposure):
+    exposure['admin1'] = pd.Series()
+    exposure['admin1_ID'] = pd.Series()
+    count = 0
+    for cntry in np.unique(exposure.region_id):
+        _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
+        for idx3, adm1_shp in enumerate(admin1_info):
+            count = count + 1
+            LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
+            mask_adm1 = _mask_from_shape(adm1_shp[0],\
+                     resolution=30,\
+                     points2check=list(zip(exposure.longitude, exposure.latitude)))
+            exposure.admin1_ID[mask_adm1.values] = count
+            exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
+    return exposure
