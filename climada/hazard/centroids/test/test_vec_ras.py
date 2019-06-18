@@ -281,11 +281,11 @@ class TestVector(unittest.TestCase):
         self.assertAlmostEqual(centr.meta['transform'][5], 14.41666666)
 
     def test_get_pixel_polygons_pass(self):
-        """ Test get_pixels_polygons """
+        """ Test calc_pixels_polygons """
         centr = Centroids()
         centr.lat, centr.lon, centr.geometry = self.data_vector()
         centr.geometry.crs = {'init':'epsg:4326'}
-        poly = centr.get_pixels_polygons()
+        poly = centr.calc_pixels_polygons()
         self.assertIsInstance(poly[0], Polygon)
         self.assertTrue(np.allclose(poly.centroid[:].y.values, centr.lat))
         self.assertTrue(np.allclose(poly.centroid[:].x.values, centr.lon))
