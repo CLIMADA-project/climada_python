@@ -25,7 +25,7 @@ import numpy as np
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon
 from sklearn.neighbors import BallTree
 import fiona
 from fiona.crs import from_epsg
@@ -187,6 +187,8 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
         geom = shapely.ops.cascaded_union(geom)
+    if not isinstance(geom, MultiPolygon):
+        geom = MultiPolygon([geom])
     return geom
 
 def coord_on_land(lat, lon, land_geom=None):
