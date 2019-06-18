@@ -286,7 +286,7 @@ class Hazard():
     def set_vector(self, files_intensity, files_fraction=None, attrs={},
                    inten_name=['intensity'], frac_name=['fraction'], dst_crs=None):
         """ Read vector files format supported by fiona. Each intensity name is
-        considered an event.
+        considered an event. 
 
         Parameters:
             files_intensity (list(str)): file names containing intensity
@@ -338,6 +338,15 @@ class Hazard():
             self.orig = np.ones(self.event_id.size, bool)
         if 'unit' in attrs:
             self.unit = attrs['unit']
+
+    def to_raster(self, dst_crs=False, transform=None, width=None, height=None,
+                  resampling=Resampling.nearest):
+        """ Change current geometry or raster to given raster """
+        raise NotImplementedError
+
+    def to_vector(self, geometry):
+        """ Change current raster or geometry to given geometry """
+        raise NotImplementedError
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read climada hazard generate with the MATLAB code.
@@ -809,7 +818,7 @@ class Hazard():
         if self.centroids.meta:
             co.write_raster(file_name, variable.todense(), self.centroids.meta)
         else:
-            pixel_geom = self.centroids.get_pixels_polygons()
+            pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
             profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
             with rasterio.open(file_name, 'w', **profile) as dst:
