@@ -459,7 +459,10 @@ class Impact():
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
-        self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+        try:
+            self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+        except AttributeError:
+            self.crs = DEF_CRS
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
                                  str(imp_df.tag_hazard[1]),
                                  str(imp_df.tag_hazard[2]))
@@ -502,7 +505,10 @@ class Impact():
         self.coord_exp = np.zeros((self.eai_exp.size, 2))
         self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
         self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
-        self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+        try:
+            self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+        except AttributeError:
+            self.crs = DEF_CRS
 
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
         """Compute impact for inpute exposure indexes and impact function.
