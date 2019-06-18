@@ -95,6 +95,7 @@ class TestRiverFlood(unittest.TestCase):
             testRFset.append(testRFaddset)
 
         testRFset.set_flooded_area()
+        self.assertEqual(testRFset.units, 'm')
 
         self.assertEqual(testRFset.fla_event.shape[0], 4)
         self.assertEqual(testRFset.fla_annual.shape[0], 3)
@@ -116,7 +117,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
                          32610)
 
-        self.assertAlmostEqual(testRFset.fla_event[0, 0],
+        self.assertAlmostEqual(testRFset.fla_event[0],
                                6244242013.5826435, 4)
         self.assertAlmostEqual(testRFset.fla_annual[0],
                                12488484027.165287, 3)

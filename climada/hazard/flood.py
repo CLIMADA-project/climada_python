@@ -166,6 +166,7 @@ class RiverFlood(Hazard):
         self.intensity = sparse.csr_matrix(intensity)
         self.fraction = sparse.csr_matrix(fraction)
         self.event_id = np.arange(1, self._n_events + 1)
+        self.units = 'm'
         self.frequency = np.ones(self._n_events) / self._n_events
         return self
 
@@ -320,8 +321,8 @@ class RiverFlood(Hazard):
                                           len(self.centroids.lon)))
             self.fla_ann_centr = np.zeros((len(years),
                                            len(self.centroids.lon)))
-            self.fla_ev_centr = np.multiply(self.fraction.todense(),
-                                            area_centr)
+            self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
+                                                     area_centr))
             self.fla_event = np.sum(self.fla_ev_centr, axis=1)
             for year_ind in range(len(years)):
                 self.fla_ann_centr[year_ind, :] =\
@@ -362,8 +363,8 @@ class RiverFlood(Hazard):
         try:
             self.fla_ev_centr = np.zeros((self._n_events, len(centr_indices)))
             self.fla_ann_centr = np.zeros((len(years), len(centr_indices)))
-            self.fla_ev_centr = np.multiply(
-                    self.fraction[:, centr_indices].todense(), area_centr)
+            self.fla_ev_centr = np.array(np.multiply(
+                    self.fraction[:, centr_indices].todense(), area_centr))
             self.fla_event = np.sum(self.fla_ev_centr, axis=1)
             for year_ind in range(len(years)):
                 self.fla_ann_centr[year_ind, :] = \
@@ -486,7 +487,8 @@ class RiverFlood(Hazard):
         try:
             if countries:
                 if not any(np.isin(natID_info['ISO'], countries)):
-                    LOGGER.error('Country ISO3s ' + str(countries) + ' unknown')
+                    LOGGER.error('Country ISO3s ' + str(countries) +
+                                 ' unknown')
                     raise KeyError
                 natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
             elif reg:

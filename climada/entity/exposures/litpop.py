@@ -1763,7 +1763,7 @@ def admin1_validation(country, methods, exponents, **args):
 
     Parameters:
         country (str): list of countries or single county as a
-            sting. Countries can either be country names ('France') or
+            string. Countries can either be country names ('France') or
             country codes ('FRA'), even a mix is possible in the list.
         methods_name (list of str), i.e.:
             - ['LitPop' for LitPop,
@@ -1868,3 +1868,29 @@ def admin1_validation(country, methods, exponents, **args):
                 _data, list(zip(lon, lat)), resolution, True, conserve_cntrytotal=0, \
                 check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
     return rho, adm0, adm1
+
+
+def exposure_set_admin1(exposure):
+    """ add admin1 ID and name to exposure dataframe"""
+    """
+    Input:
+        exposure: exposure instance
+        
+    Returns:
+        exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
+    """
+    
+    exposure['admin1'] = pd.Series()
+    exposure['admin1_ID'] = pd.Series()
+    count = 0
+    for cntry in np.unique(exposure.region_id):
+        _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
+        for idx3, adm1_shp in enumerate(admin1_info):
+            count = count + 1
+            LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
+            mask_adm1 = _mask_from_shape(adm1_shp[0],\
+                     resolution=30,\
+                     points2check=list(zip(exposure.longitude, exposure.latitude)))
+            exposure.admin1_ID[mask_adm1.values] = count
+            exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
+    return exposure

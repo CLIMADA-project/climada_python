@@ -183,7 +183,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(np.argmax(testRFArea.fla_ann_centr),
                          3391)
 
-        self.assertAlmostEqual(testRFArea.fla_event[0, 0],
+        self.assertAlmostEqual(testRFArea.fla_event[0],
                                229956891.5531019, 5)
         self.assertAlmostEqual(testRFArea.fla_annual[0],
                                229956891.5531019, 5)
@@ -224,7 +224,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
                          32610)
 
-        self.assertAlmostEqual(testRFset.fla_event[0, 0],
+        self.assertAlmostEqual(testRFset.fla_event[0],
                                6244242013.5826435, 4)
         self.assertAlmostEqual(testRFset.fla_annual[0],
                                12488484027.165287, 3)
@@ -249,7 +249,7 @@ class TestRiverFlood(unittest.TestCase):
                                17200498.22927546)
         self.assertEqual(np.argmax(testRFwin.fla_ev_centr[0]),
                          32610)
-        self.assertAlmostEqual(testRFwin.fla_event[0, 0],
+        self.assertAlmostEqual(testRFwin.fla_event[0],
                                6244242013.5826435, 4)
         self.assertAlmostEqual(testRFwin.fla_annual[0],
                                6244242013.5826435, 4)
