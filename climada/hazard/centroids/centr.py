@@ -350,12 +350,14 @@ class Centroids():
             self.__init__()
             self.set_lat_lon(lat, lon, crs)
 
-    def get_closest_point(self, x_lon, y_lat):
+    def get_closest_point(self, x_lon, y_lat, scheduler=None):
         """ Returns closest centroid and its index to a given point.
 
         Parameters:
             x_lon (float): x coord (lon)
             y_lat (float): y coord (lat)
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
 
         Returns:
             x_close (float), y_close (float), idx_close (int)
@@ -367,13 +369,18 @@ class Centroids():
             i_lon = np.floor((x_lon - self.meta['transform'][2])/abs(self.meta['transform'][0]))
             close_idx = int(i_lat*self.meta['width'] + i_lon)
         else:
-            self.set_geometry_points()
+            self.set_geometry_points(scheduler)
             close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self):
-        """ Set region_id attribute for every pixel or point """
-        lon_ne, lat_ne = self._ne_crs_xy()
+    def set_region_id(self, scheduler=None):
+        """ Set region_id attribute for every pixel or point
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        lon_ne, lat_ne = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.lat.size))
         countries = get_country_geometries(extent=(lon_ne.min(), lon_ne.max(),
                                                    lat_ne.min(), lat_ne.max()))
@@ -382,8 +389,13 @@ class Centroids():
             select = contains(geom[0], lon_ne, lat_ne)
             self.region_id[select] = int(geom[1])
 
-    def set_area_pixel(self):
-        """ Set area_pixel attribute for every pixel or point. area in m*m """
+    def set_area_pixel(self, scheduler=None):
+        """ Set area_pixel attribute for every pixel or point. area in m*m
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
         if self.meta:
             if hasattr(self.meta['crs'], 'linear_units') and \
             str.lower(self.meta['crs'].linear_units) in ['m', 'metre', 'meter']:
@@ -397,7 +409,7 @@ class Centroids():
             res = self.meta['transform'].a
         else:
             res = min(get_resolution(self.lat, self.lon))
-        self.set_geometry_points()
+        self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
         if ('units' in self.geometry.crs and \
@@ -441,26 +453,40 @@ class Centroids():
             LOGGER.error('Pixel area of points can not be computed.')
             raise ValueError
 
-    def set_dist_coast(self):
+    def set_dist_coast(self, scheduler=None):
         """ Set dist_coast attribute for every pixel or point. Distan to
-        coast is computed in meters """
-        lon, lat = self._ne_crs_xy()
+        coast is computed in meters
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        lon, lat = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting dist_coast %s points.', str(self.lat.size))
         self.dist_coast = dist_to_coast(lat, lon)
 
-    def set_on_land(self):
-        """ Set on_land attribute for every pixel or point """
-        lon, lat = self._ne_crs_xy()
+    def set_on_land(self, scheduler=None):
+        """ Set on_land attribute for every pixel or point
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        lon, lat = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.on_land = coord_on_land(lat, lon)
 
-    def remove_duplicate_points(self):
+    def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
 
         Returns:
             Centroids
         """
-        self.set_geometry_points()
+        self.set_geometry_points(scheduler)
         geom_wkb = self.geometry.apply(lambda geom: geom.wkb)
         sel_cen = geom_wkb.drop_duplicates().index
         return self.select(sel_cen=sel_cen)
@@ -532,8 +558,12 @@ class Centroids():
         axis.scatter(self.lon, self.lat, **kwargs)
         return fig, axis
 
-    def get_pixels_polygons(self):
-        """ Compute a GeoSeries with a polygon for every pixel
+    def calc_pixels_polygons(self, scheduler=None):
+        """ Return a GeoSeries with a polygon for every pixel
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
 
         Returns:
             GeoSeries
@@ -544,7 +574,7 @@ class Centroids():
                abs(self.meta['transform'].e)) > 1.0e-5:
             LOGGER.error('Area can not be computed for not squared pixels.')
             raise ValueError
-        self.set_geometry_points()
+        self.set_geometry_points(scheduler)
         return self.geometry.buffer(self.meta['transform'].a/2).envelope
 
     def empty_geometry_points(self):
@@ -592,16 +622,37 @@ class Centroids():
         """ Get [lat, lon] array. Might take some time. """
         return np.array([self.lat, self.lon]).transpose()
 
-    def set_geometry_points(self):
-        """ Set geometry points """
+    def set_geometry_points(self, scheduler=None):
+        """ Set geometry attribute of GeoSeries with Points from latitude and
+        longitude attributes if geometry not present.
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        LOGGER.info('Setting geometry points.')
+        def apply_point(df_exp):
+            return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
         if not self.geometry.size:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
-            self.geometry = GeoSeries(list(zip(self.lon, self.lat)), crs=self.geometry.crs)
-            self.geometry = self.geometry.apply(Point)
+            if not scheduler:
+                self.geometry = GeoSeries(list(zip(self.lon, self.lat)),
+                                          crs=self.geometry.crs)
+                self.geometry = self.geometry.apply(Point)
+            else:
+                import dask.dataframe as dd
+                from multiprocessing import cpu_count
+                ddata = dd.from_pandas(self, npartitions=cpu_count())
+                self.geometry = ddata.map_partitions(apply_point, meta=Point).\
+                compute(scheduler=scheduler)
 
-    def _ne_crs_xy(self):
+    def _ne_crs_xy(self, scheduler=None):
         """ Return x (lon) and y (lat) in the CRS of Natural Earth
+
+        Parameter:
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
 
         Returns:
             np.array, np.array
@@ -610,7 +661,7 @@ class Centroids():
             self.set_meta_to_lat_lon()
         if equal_crs(self.geometry.crs, NE_CRS):
             return self.lon, self.lat
-        self.set_geometry_points()
+        self.set_geometry_points(scheduler)
         xy_points = self.geometry.to_crs(NE_CRS)
         return xy_points.geometry[:].x.values, xy_points.geometry[:].y.values
 
