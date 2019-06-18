@@ -420,19 +420,18 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 intensity = inten[band_idx, :]
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
-def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
-    """ Read vector file format supported by fiona. Each intensity name is
+def read_vector(file_name, field_name, dst_crs=None):
+    """ Read vector file format supported by fiona. Each field_name name is
     considered an event.
 
     Parameters:
         file_name (str): vector file with format supported by fiona and
             'geometry' field.
-        inten_name (list(str)): list of names of the columns of the
-            intensity of each event.
+        field_name (list(str)): list of names of the columns with values.
         dst_crs (crs, optional): reproject to given crs
 
     Returns:
-        np.array (lat), np.array (lon), geometry (GeiSeries), np.array (intensity)
+        np.array (lat), np.array (lon), geometry (GeiSeries), np.array (value)
     """
     LOGGER.info('Reading %s', file_name)
     data_frame = gpd.read_file(file_name)
@@ -443,10 +442,10 @@ def read_vector(file_name, inten_name=['intensity'], dst_crs=None):
     else:
         geometry = data_frame.geometry.to_crs(dst_crs)
     lat, lon = geometry[:].y.values, geometry[:].x.values
-    intensity = np.zeros([len(inten_name), lat.size])
-    for i_inten, inten in enumerate(inten_name):
-        intensity[i_inten, :] = data_frame[inten].values
-    return lat, lon, geometry, intensity
+    value = np.zeros([len(field_name), lat.size])
+    for i_inten, inten in enumerate(field_name):
+        value[i_inten, :] = data_frame[inten].values
+    return lat, lon, geometry, value
 
 def write_raster(file_name, data_matrix, meta):
     """ Write raster in GeoTiff format
