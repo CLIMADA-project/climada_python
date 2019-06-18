@@ -34,9 +34,10 @@ from iso3166 import countries as iso_cntry
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.util.constants import SYSTEM_DIR
+from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.finance import gdp, income_group
+from climada.util.coordinates import points_to_raster
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,15 +105,18 @@ class BlackMarble(Exposures):
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list,
-                                                            ignore_index=True)))
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list, \
+            ignore_index=True)), crs=DEF_CRS)
 
         # set metadata
         self.ref_year = ref_year
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        self.crs = {'init': 'epsg:4326'}
+        rows, cols, ras_trans = points_to_raster((self.longitude.min(), \
+            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
+            coord_nl[0, 1])
+        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,

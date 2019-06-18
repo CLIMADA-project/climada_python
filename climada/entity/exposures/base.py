@@ -87,6 +87,10 @@ class Exposures(GeoDataFrame):
             If not provided, set to default 'if_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
+        meta (dict): dictionary containing corresponding raster properties (if any):
+            width, height, crs and transform must be present at least (transform needs
+            to contain upper left corner!). Exposures might not contain all the points
+            of the corresponding raster.
         deductible (pd.Series, optional): deductible value for each exposure
         cover (pd.Series, optional): cover value for each exposure
         category_id (pd.Series, optional): category id for each exposure
@@ -95,7 +99,8 @@ class Exposures(GeoDataFrame):
             TC. There might be different hazards defined: centr_TC, centr_FL, ...
             Computed in method assign_centroids().
     """
-    _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit']
+    _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit',
+                                          'meta']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -139,6 +144,8 @@ class Exposures(GeoDataFrame):
                     self.ref_year = DEF_REF_YEAR
                 elif var == 'value_unit':
                     self.value_unit = DEF_VALUE_UNIT
+                elif var == 'meta':
+                    self.meta = None
                 LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
 
         for var in self.vars_oblig:
@@ -215,14 +222,14 @@ class Exposures(GeoDataFrame):
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
-        """ Set geometry attribute of GeoDataFrame from latitude and longitude
-        attributes.
+        """ Set geometry attribute of GeoDataFrame with Points from latitude and
+        longitude attributes.
 
         Parameter:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        LOGGER.info('Setting geometry attribute.')
+        LOGGER.info('Setting geometry points.')
         def apply_point(df_exp):
             return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
         if not scheduler:
@@ -244,7 +251,7 @@ class Exposures(GeoDataFrame):
     def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
-        """ Read raster data and set latitude, longitude and value
+        """ Read raster data and set latitude, longitude, value and meta
 
         Parameters:
             file_name (str): file name containing values
@@ -259,9 +266,6 @@ class Exposures(GeoDataFrame):
             height (float): number of lats for transform
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
-
-        Returns:
-            dict (meta raster information)
         """
         self.__init__()
         self.tag = Tag()
@@ -281,7 +285,7 @@ class Exposures(GeoDataFrame):
         self['longitude'] = x_grid.flatten()
         self['latitude'] = y_grid.flatten()
         self['value'] = value.reshape(-1)
-        return meta
+        self.meta = meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', **kwargs):
