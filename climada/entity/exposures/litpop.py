@@ -259,8 +259,8 @@ class LitPop(Exposures):
                 'LitPop for %s at %i as, year=%i, financial mode=%s, GPW-year=%i, BM-year=%i, exp=[%i, %i]' \
                 % (country_info[curr_country][1], resolution, reference_year, \
                    fin_mode, \
-                min(GPW_YEARS, key=lambda x:abs(x-reference_year)), \
-                min(BM_YEARS, key=lambda x:abs(x-reference_year)), \
+                min(GPW_YEARS, key=lambda x: abs(x-reference_year)), \
+                min(BM_YEARS, key=lambda x: abs(x-reference_year)), \
                 exponents[0], exponents[1])
         Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry, \
             ignore_index=True)), crs=DEF_CRS)
@@ -1876,9 +1876,9 @@ def admin1_validation(country, methods, exponents, **args):
 
 
 def exposure_set_admin1(exposure):
-    """ add admin1 ID and name to exposure dataframe"""
-    """
-    Input:
+    """ add admin1 ID and name to exposure dataframe
+
+    Parameters:
         exposure: exposure instance
 
     Returns:
