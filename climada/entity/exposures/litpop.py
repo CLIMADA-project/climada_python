@@ -84,10 +84,11 @@ DEF_HAZ_TYPE = ''
 """ Default hazard type used in impact functions id, i.e. TC """
 
 class LitPop(Exposures):
-    """Defines exposures from nightlight intensity (NASA), Gridded Population
-        data (SEDAC), GDP (World Bank) and a conversion factor to calculate
-        asset value from GDP derived from the Global Wealth Databook by the
-        Credit Suisse Research Institute.
+    """Defines exposure values from nightlight intensity (NASA), Gridded Population
+        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank) 
+        or non-financial wealth (Global Wealth Databook by the Credit Suisse 
+        Research Institute.)
+
         Calling sequence example:
         ent = LitPop()
         country_name = ['Switzerland', 'Austria']
@@ -111,8 +112,8 @@ class LitPop(Exposures):
 
     def set_country(self, countries, **args):
         """ Get LitPop based exposre for one country or multiple countries
-        using values at reference year. If GDP or income
-        group not available for that year, consider the value of the closest
+        using values at reference year. If produced capital, GDP, or income
+        group, etc. not available for that year, consider the value of the closest
         available year.
 
         Parameters:
@@ -1661,7 +1662,6 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     Returns:
         bm_data (pandas SparseArray): Cropped BM data
     """
-    start_time = time.time()
     fixed_source_resolution = resolution
     deg_per_pix = 1/(3600/fixed_source_resolution)
     minlat, maxlat, minlon, maxlon = bbox[1], bbox[3], bbox[0], bbox[2]
@@ -1875,13 +1875,12 @@ def admin1_validation(country, methods, exponents, **args):
     return rho, adm0, adm1
 
 
-def exposure_set_admin1(exposure):
+def exposure_set_admin1(exposure, res_arcsec):
     """ add admin1 ID and name to exposure dataframe.
-    The ID is a simple integer, not a universal coding.
-
 
     Parameters:
         exposure: exposure instance
+        res_arcsec: resolution in arc seconds, needs to match exposure resolution
 
     Returns:
         exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
@@ -1895,8 +1894,8 @@ def exposure_set_admin1(exposure):
         for idx3, adm1_shp in enumerate(admin1_info):
             count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
-            mask_adm1 = _mask_from_shape(adm1_shp[0],resolution=30,\
+            mask_adm1 = _mask_from_shape(adm1_shp[0],resolution=res_arcsec,\
                      points2check=list(zip(exposure.longitude, exposure.latitude)))
-            exposure.admin1_ID[mask_adm1.values] = count
+            exposure.admin1_ID[mask_adm1.values] = adm1_shp[1][3]
             exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
     return exposure

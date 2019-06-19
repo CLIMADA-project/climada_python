@@ -24,12 +24,14 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 import ast
 import logging
 import csv
+import warnings
 import datetime as dt
 from itertools import zip_longest
 import numpy as np
 from scipy import sparse
 import pandas as pd
 import xlsxwriter
+
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures
@@ -421,6 +423,108 @@ class Impact():
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
 
+    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+        """ Compute exceedance impact map for given return periods.
+        Requires attribute imp_mat.
+
+        Parameters:
+            return_periods (np.array): return periods to consider
+
+        Returns:
+            np.array
+        """
+        LOGGER.info('Computing exceedance impact map for return periods: %s',
+                    return_periods)
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'\
+                         'instance with parameter save_mat=True')
+            return []
+        num_cen = self.imp_mat.shape[1]
+        imp_stats = np.zeros((len(return_periods), num_cen))
+        cen_step = int(CONFIG['global']['max_matrix_size']/self.imp_mat.shape[0])
+        if not cen_step:
+            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+                         ' > %s', str(self.imp_mat.shape[0]))
+            raise ValueError
+        # separte in chunks
+        chk = -1
+        for chk in range(int(num_cen/cen_step)):
+            self._loc_return_imp(np.array(return_periods), \
+                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                imp_stats[:, chk*cen_step:(chk+1)*cen_step])
+        self._loc_return_imp(np.array(return_periods), \
+            self.imp_mat[:, (chk+1)*cen_step:].todense(), \
+            imp_stats[:, (chk+1)*cen_step:])
+
+        return imp_stats
+
+    def _loc_return_imp(self, return_periods, imp, exc_imp):
+        """ Compute local exceedence impact for given return period.
+
+        Parameters:
+            return_periods (np.array): return periods to consider
+            cen_pos (int): centroid position
+
+        Returns:
+            np.array
+        """
+        # sorted impacts
+        sort_pos = np.argsort(imp, axis=0)[::-1, :]
+        columns = np.ones(imp.shape, int)
+        columns *= np.arange(columns.shape[1])
+        imp_sort = imp[sort_pos, columns]
+        # cummulative frequency at sorted intensity
+        freq_sort = self.frequency[sort_pos]
+        np.cumsum(freq_sort, axis=0, out=freq_sort)
+
+        for cen_idx in range(imp.shape[1]):
+            exc_imp[:, cen_idx] = self._cen_return_imp(
+                imp_sort[:, cen_idx], freq_sort[:, cen_idx],
+                0, return_periods)
+
+    def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
+                    log10_scale=True, **kwargs):
+        """Compute and plot exceedance impact maps for different return periods.
+        Calls local_exceedance_imp.
+
+        Parameters:
+            return_periods (tuple(int), optional): return periods to consider
+            log10_scale (boolean, optional): plot impact as log10(impact)
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
+
+        Returns:
+            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
+            np.ndarray (return_periods.size x num_centroids)
+        """
+        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        if imp_stats == []:
+            print('Error: Attribute imp_mat is empty. Recalculate Impact'\
+                         'instance with parameter save_mat=True')
+            return [], [], []
+        if log10_scale:
+            if np.min(imp_stats) < 0:
+                imp_stats_log = np.log10(abs(imp_stats)+1)
+                colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
+            elif np.min(imp_stats) < 1:
+                imp_stats_log = np.log10(imp_stats+1)
+                colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
+            else:
+                imp_stats_log = np.log10(imp_stats)
+                colbar_name = 'Log10(Impact) (' + self.unit + ')'
+        else:
+            imp_stats_log = imp_stats
+            colbar_name = 'Impact (' + self.unit + ')'
+        title = list()
+        for ret in return_periods:
+            title.append('Return period: ' + str(ret) + ' years')
+        fig, axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
+                                             colbar_name, title, **kwargs)
+
+        return fig, axis, imp_stats
+
     @staticmethod
     def read_sparse_csr(file_name):
         """ Read imp_mat matrix from numpy's npz format.
@@ -561,6 +665,37 @@ class Impact():
         eai_exp.check()
         return eai_exp
 
+    def _cen_return_imp(self, imp, freq, imp_th, return_periods):
+        """From ordered impact and cummulative frequency at centroid, get
+        exceedance impact at input return periods.
+
+        Parameters:
+            imp (np.array): sorted impact at centroid
+            freq (np.array): cummulative frequency at centroid
+            imp_th (float): impact threshold
+            return_periods (np.array): return periods
+
+        Returns:
+            np.array
+        """
+        imp_th = np.asarray(imp > imp_th).squeeze()
+        imp_cen = imp[imp_th]
+        freq_cen = freq[imp_th]
+        if not imp_cen.size:
+            return np.zeros((return_periods.size,))
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
+        except ValueError:
+            pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
+        imp_fit = np.polyval(pol_coef, np.log(1/return_periods))
+        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
+                np.isnan(imp_fit))
+        imp_fit[wrong_inten] = 0.
+
+        return imp_fit
+
 class ImpactFreqCurve():
     """ Impact exceedence frequency curve.
 
@@ -604,3 +739,4 @@ class ImpactFreqCurve():
         graph.add_curve(self.return_per, self.impact, 'b', label=self.label)
         graph.add_curve(ifc.return_per, ifc.impact, 'r', label=ifc.label)
         return graph.get_elems()
+        
