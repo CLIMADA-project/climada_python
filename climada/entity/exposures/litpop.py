@@ -1876,7 +1876,9 @@ def admin1_validation(country, methods, exponents, **args):
 
 
 def exposure_set_admin1(exposure):
-    """ add admin1 ID and name to exposure dataframe
+    """ add admin1 ID and name to exposure dataframe.
+    The ID is a simple integer, not a universal coding.
+
 
     Parameters:
         exposure: exposure instance
@@ -1893,8 +1895,7 @@ def exposure_set_admin1(exposure):
         for idx3, adm1_shp in enumerate(admin1_info):
             count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
-            mask_adm1 = _mask_from_shape(adm1_shp[0],\
-                     resolution=30,\
+            mask_adm1 = _mask_from_shape(adm1_shp[0],resolution=30,\
                      points2check=list(zip(exposure.longitude, exposure.latitude)))
             exposure.admin1_ID[mask_adm1.values] = count
             exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
