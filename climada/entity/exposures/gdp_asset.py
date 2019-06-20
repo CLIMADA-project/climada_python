@@ -27,6 +27,7 @@ import xarray as xr
 import scipy as sp
 import logging
 import geopandas as gpd
+from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import GLB_CENTROIDS_NC
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
@@ -57,6 +58,7 @@ class GDP2Asset(Exposures):
             path (string): path to exposure dataset
         """
         gdp2a_list = []
+        tag = Tag()
         try:
 
             if not countries:
@@ -72,6 +74,8 @@ class GDP2Asset(Exposures):
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
+                tag.description += ("{} GDP2Asset \n").\
+                    format(countries[cntr_ind])
             Exposures.__init__(self, gpd.GeoDataFrame(
                         pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
@@ -81,6 +85,7 @@ class GDP2Asset(Exposures):
             raise KeyError
         self.ref_year = ref_year
         self.value_unit = 'USD'
+        self.tag = tag
         self.crs = DEF_CRS
 
     @staticmethod
