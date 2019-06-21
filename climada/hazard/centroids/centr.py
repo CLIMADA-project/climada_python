@@ -21,6 +21,7 @@ Define Centroids class.
 import copy
 import logging
 import numpy as np
+from scipy import sparse
 import pandas as pd
 from rasterio import Affine
 from rasterio.warp import Resampling
@@ -204,7 +205,7 @@ class Centroids():
             self.meta, inten = read_raster(file_name, band, src_crs, window,
                                            geometry, dst_crs, transform, width,
                                            height, resampling)
-            return inten
+            return sparse.csr_matrix(inten)
 
         tmp_meta, inten = read_raster(file_name, band, src_crs, window, geometry,
                                       dst_crs, transform, width, height, resampling)
@@ -214,7 +215,7 @@ class Centroids():
         (tmp_meta['width'] != self.meta['width']):
             LOGGER.error('Raster data inconsistent with contained raster.')
             raise ValueError
-        return inten
+        return sparse.csr_matrix(inten)
 
     def set_vector_file(self, file_name, inten_name=['intensity'], dst_crs=None):
         """ Read vector file format supported by fiona. Each intensity name is
@@ -234,7 +235,7 @@ class Centroids():
         if not self.geometry.crs:
             self.lat, self.lon, self.geometry, inten = read_vector(file_name, \
                 inten_name, dst_crs)
-            return inten
+            return sparse.csr_matrix(inten)
         tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name, \
             inten_name, dst_crs)
         if not equal_crs(tmp_geometry.crs, self.geometry.crs) or \
@@ -242,7 +243,7 @@ class Centroids():
         not np.allclose(tmp_lon, self.lon):
             LOGGER.error('Vector data inconsistent with contained vector.')
             raise ValueError
-        return inten
+        return sparse.csr_matrix(inten)
 
     def read_mat(self, file_name, var_names=DEF_VAR_MAT):
         """ Read centroids from CLIMADA's MATLAB version

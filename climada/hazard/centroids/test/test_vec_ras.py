@@ -632,7 +632,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(centr.meta['height'], 60)
         self.assertEqual(centr.meta['width'], 50)
         self.assertEqual(inten_ras.shape, (1, 60*50))
-        self.assertAlmostEqual(inten_ras.reshape((60, 50))[25, 12], 0.056825936)
+        self.assertAlmostEqual(inten_ras.reshape((60, 50)).tocsr()[25, 12], 0.056825936)
         
         with self.assertRaises(ValueError):
             centr.set_raster_file(HAZ_DEMO_FL, window=Window(10, 20, 52, 60))

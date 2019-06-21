@@ -227,34 +227,37 @@ class Hazard():
         self.centroids = Centroids()
         if self.pool:
             chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
-            self.intensity = sparse.csr.csr_matrix(self.centroids.set_raster_file( \
+            # set first centroids
+            inten_list = [sparse.csr.csr_matrix(self.centroids.set_raster_file( \
                 files_intensity[0], band, src_crs, window, geometry, dst_crs, \
-                transform, width, height, resampling))
-            for inten in self.pool.map(self.centroids.set_raster_file, files_intensity[1:], \
-            itertools.repeat(band), itertools.repeat(src_crs), \
+                transform, width, height, resampling))]
+            inten_list += self.pool.map(self.centroids.set_raster_file, \
+            files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs), \
             itertools.repeat(window), itertools.repeat(geometry), \
             itertools.repeat(dst_crs), itertools.repeat(transform), \
             itertools.repeat(width), itertools.repeat(height), \
-            itertools.repeat(resampling), chunksize=chunksize):
-                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+            itertools.repeat(resampling), chunksize=chunksize)
+            self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
-                for fract in self.pool.map(self.centroids.set_raster_file, files_fraction, \
-                itertools.repeat(band), itertools.repeat(src_crs), \
+                fract_list = self.pool.map(self.centroids.set_raster_file, \
+                files_fraction, itertools.repeat(band), itertools.repeat(src_crs), \
                 itertools.repeat(window), itertools.repeat(geometry), \
                 itertools.repeat(dst_crs), itertools.repeat(transform), \
                 itertools.repeat(width), itertools.repeat(height), \
-                itertools.repeat(resampling), chunksize=chunksize):
-                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+                itertools.repeat(resampling), chunksize=chunksize)
+                self.fraction = sparse.vstack(fract_list, format='csr')
         else:
+            inten_list = []
             for file in files_intensity:
-                inten = self.centroids.set_raster_file(file, band, src_crs, window, \
-                    geometry, dst_crs, transform, width, height, resampling)
-                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+                inten_list.append(self.centroids.set_raster_file(file, band, src_crs, window, \
+                    geometry, dst_crs, transform, width, height, resampling))
+            self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
+                fract_list = []
                 for file in files_fraction:
-                    fract = self.centroids.set_raster_file(file, band, src_crs, \
-                        window, geometry, dst_crs, transform, width, height, resampling)
-                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+                    fract_list.append(self.centroids.set_raster_file(file, band, src_crs, \
+                        window, geometry, dst_crs, transform, width, height, resampling))
+                self.fraction = sparse.vstack(fract_list, format='csr')
 
         if files_fraction is None:
             self.fraction = self.intensity.copy()
@@ -286,7 +289,7 @@ class Hazard():
     def set_vector(self, files_intensity, files_fraction=None, attrs={},
                    inten_name=['intensity'], frac_name=['fraction'], dst_crs=None):
         """ Read vector files format supported by fiona. Each intensity name is
-        considered an event. 
+        considered an event.
 
         Parameters:
             files_intensity (list(str)): file names containing intensity
