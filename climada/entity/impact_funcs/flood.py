@@ -132,7 +132,20 @@ class IFRiverFlood(ImpactFunc):
         self.mdr = np.array([0.0000, 0.4908, 0.7112, 0.8420, 0.9494, 0.9836,
                              1.0000, 1.0000, 1.0000, 1.0000])
 
-        self.paa = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    
+    def set_IF_ExpPop(self):
+        self.id = 7
+        self.name = "Flood ExpPop"
+        self.continent = 'All'
+        self.intensity = np.array([0., 0.5, 1., 1.5, 2., 3., 4., 5., 6., 12.])
+        self.mdd = np.array([1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000,
+                             1.0000, 1.0000, 1.0000, 1.0000])
+
+        self.mdr = np.array([1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000,
+                             1.0000, 1.0000, 1.0000, 1.0000])
+
+        self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     def _fill_if(self, dfr, var_names):
         """Fills impact function attributes with information from file
@@ -182,6 +195,10 @@ def flood_imp_func_set():
     if_sa = IFRiverFlood()
     if_sa.set_RF_IF_SouthAmerica()
     if_set.append(if_sa)
+
+    if_exp = IFRiverFlood()
+    if_exp.set_IF_ExpPop()
+    if_set.append(if_exp)
 
     return if_set
 

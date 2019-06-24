@@ -25,7 +25,7 @@ class TestIFRiverFlood(unittest.TestCase):
         test_set = fl.flood_imp_func_set()
         self.assertTrue(np.array_equal(test_set.get_hazard_types(),
                         np.array(['RF'])))
-        self.assertEqual(test_set.size(), 6)
+        self.assertEqual(test_set.size(), 7)
 
     def test_set_RF_IF_Africa(self):
 

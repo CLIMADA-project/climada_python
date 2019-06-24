@@ -16,11 +16,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define GDPAsset class.
+Define ExpPop class.
 """
 
-__all__ = ['GDP2Asset']
-import os
+__all__ = ['ExpPop']
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -30,24 +29,24 @@ import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import GLB_CENTROIDS_NC
-from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
-from climada.util.constants import DEMO_GDP2ASSET
+from climada.util.constants import NAT_REG_ID
 from climada.util.constants import DEF_CRS
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
 
-CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
+PEOPLE_DATASET = ('/home/insauer/data/Tobias/' +
+                  'hyde_ssp2_1980-2015_0150as_yearly_zip.nc4')
 
 
-class GDP2Asset(Exposures):
+class ExpPop(Exposures):
 
     @property
     def _constructor(self):
-        return GDP2Asset
+        return ExpPop
 
     def set_countries(self, countries=[], reg=[], ref_year=2000,
-                      path=DEMO_GDP2ASSET):
+                      path=PEOPLE_DATASET):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -74,7 +73,7 @@ class GDP2Asset(Exposures):
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
-                tag.description += ("{} GDP2Asset \n").\
+                tag.description += ("{} Exposed Population\n").\
                     format(countries[cntr_ind])
             Exposures.__init__(self, gpd.GeoDataFrame(
                         pd.concat(gdp2a_list, ignore_index=True)))
@@ -84,12 +83,12 @@ class GDP2Asset(Exposures):
                          ' reference year ' + str(ref_year))
             raise KeyError
         self.ref_year = ref_year
-        self.value_unit = 'USD'
+        self.value_unit = 'people'
         self.tag = tag
         self.crs = DEF_CRS
 
     @staticmethod
-    def _set_one_country(countryISO, ref_year, path=DEMO_GDP2ASSET):
+    def _set_one_country(countryISO, ref_year, path=PEOPLE_DATASET):
         """ Extract coordinates of selected countries or region
         from NatID grid.
         Parameters:
@@ -101,7 +100,7 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        exp_gdpasset = GDP2Asset()
+        exp_people = ExpPop()
         natID_info = pd.read_csv(NAT_REG_ID)
         try:
             isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
@@ -112,35 +111,36 @@ class GDP2Asset(Exposures):
                 LOGGER.error('Wrong country ISO ' + str(countryISO))
                 raise KeyError
             natID = natID_info['ID'][np.isin(natID_info['ISO'], countryISO)]
-            reg_id, if_rf = _fast_if_mapping(natID, natID_info)
             isimip_NatIdGrid = isimip_grid.NatIdGrid.data
         except OSError:
             LOGGER.error('Problems while reading ,' + path +
                          ' check exposure_file specifications')
             raise OSError
+
+        reg_id = natID_info.loc[natID_info['ISO'] == countryISO, 'Reg_ID']
         natID_pos = np.isin(isimip_NatIdGrid, natID)
         lon_coordinates = gridX[natID_pos]
         lat_coordinates = gridY[natID_pos]
         coord = np.zeros((len(lon_coordinates), 2))
         coord[:, 1] = lon_coordinates
         coord[:, 0] = lat_coordinates
-        assets = _read_GDP(coord, ref_year, path)
+        assets = _read_people(coord, ref_year, path)
         reg_id_info = np.zeros((len(assets)))
         nat_id_info = np.zeros((len(assets)))
         reg_id_info[:] = reg_id
         nat_id_info[:] = natID
         if_rf_info = np.zeros((len(assets)))
-        if_rf_info[:] = if_rf
-        exp_gdpasset['value'] = assets
-        exp_gdpasset['latitude'] = coord[:, 0]
-        exp_gdpasset['longitude'] = coord[:, 1]
-        exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
-        exp_gdpasset['region_id'] = reg_id_info
-        exp_gdpasset['country_id'] = nat_id_info
-        return exp_gdpasset
+        if_rf_info[:] = 7
+        exp_people['value'] = assets
+        exp_people['latitude'] = coord[:, 0]
+        exp_people['longitude'] = coord[:, 1]
+        exp_people[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_people['region_id'] = reg_id_info
+        exp_people['country_id'] = nat_id_info
+        return exp_people
 
 
-def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
+def _read_people(shp_exposures, ref_year, path=PEOPLE_DATASET):
     """ Read GDP-values for the selected area and convert it to asset.
         Parameters:
             shp_exposure(2d-array float): coordinates of area
@@ -151,12 +151,13 @@ def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
         Returns:
             np.array
         """
+    ref_year = ref_year-1860
     try:
-        gdp_file = xr.open_dataset(path)
-        asset_converter = xr.open_dataset(CONVERTER)
-        gdp_lon = gdp_file.lon.data
-        gdp_lat = gdp_file.lat.data
-        time = gdp_file.time.dt.year
+        pop_file = xr.open_dataset(filename_or_obj=path, decode_times=False)
+        pop_lon = pop_file.lon.data
+        pop_lat = pop_file.lat.data
+        time = pop_file.time
+        print(time)
     except OSError:
         LOGGER.error('Problems while reading ,' + path +
                      ' check exposure_file specifications')
@@ -164,50 +165,15 @@ def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
     try:
         year_index = np.where(time == ref_year)[0][0]
     except IndexError:
-        LOGGER.error('No data available for year ' + str(ref_year))
+        LOGGER.error('No data available for year ' + str(1860 + ref_year))
         raise KeyError
-    conv_lon = asset_converter.lon.data
-    conv_lat = asset_converter.lat.data
-    gridX, gridY = np.meshgrid(conv_lon, conv_lat)
-    coordinates = np.zeros((gridX.size, 2))
-    coordinates[:, 0] = gridY.flatten()
-    coordinates[:, 1] = gridX.flatten()
-    gdp = gdp_file.gdp_grid[year_index, :, :].data
-    conv_factors = asset_converter.conversion_factor.data
-    asset = gdp * conv_factors
-    asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
-                                   np.nan_to_num(asset),
-                                   (shp_exposures[:, 0],
-                                   shp_exposures[:, 1]),
-                                   method='nearest',
-                                   bounds_error=False,
-                                   fill_value=None)
-    return asset
 
-
-def _fast_if_mapping(countryID, natID_info):
-    """ Assign region-ID and impact function id.
-        Parameters:
-            countryID (int)
-            natID_info: dataframe of lookuptable
-        Raises:
-            KeyError
-        Returns:
-            float,float
-        """
-    nat = natID_info['ID']
-    if_RF = natID_info['if_RF']
-    reg_ID = natID_info['Reg_ID']
-    fancy_if = np.zeros((max(nat) + 1))
-    fancy_if[:] = np.nan
-    fancy_if[nat] = if_RF
-    fancy_reg = np.zeros((max(nat) + 1))
-    fancy_reg[:] = np.nan
-    fancy_reg[nat] = reg_ID
-    try:
-        reg_id = fancy_reg[countryID]
-        if_rf = fancy_if[countryID]
-    except KeyError:
-        LOGGER.error('Country ISO unknown')
-        raise KeyError
-    return reg_id, if_rf
+    pop = pop_file.var1[year_index, :, :].data
+    population = sp.interpolate.interpn((pop_lat, pop_lon),
+                                        np.nan_to_num(pop),
+                                        (shp_exposures[:, 0],
+                                         shp_exposures[:, 1]),
+                                        method='nearest',
+                                        bounds_error=False,
+                                        fill_value=None)
+    return population
