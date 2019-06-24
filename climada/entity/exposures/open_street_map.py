@@ -28,7 +28,7 @@ import pyproj
 from functools import partial
 import overpy
 
-from climada.entity import Exposures
+from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.litpop import LitPop
 
 
