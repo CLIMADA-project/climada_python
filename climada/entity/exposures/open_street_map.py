@@ -64,7 +64,7 @@ def _osm_api_query(item, bbox):
 
     return result_NodesFromWays, result_NodesWaysFromRels
 
-def _format_shape_OSM(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path):
+def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path):
     """ format edges, nodes and relations from overpy result objects into shapes
     Parameters:
         bbox
@@ -202,6 +202,33 @@ def _format_shape_OSM(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
 
     return gdf_all
 
+def _combine_dfs_osm(types, save_path, bbox):
+    """Combine all dataframes from individual features into one GeoDataFrame
+    Parameters:
+        ..
+    Returns:
+        (gdf)
+    """    
+    print('Combining all low-value GeoDataFrames into one GeoDataFrame...')
+    OSM_features_gdf_combined = \
+    GeoDataFrame(pd.DataFrame(columns=['Item', 'Name', 'Type', 'Natural_Type', 'geometry']),
+                 crs='epsg:4326', geometry='geometry')
+    for item in types:
+        print('adding results from %s ...' %item)
+        OSM_features_gdf_combined = \
+        OSM_features_gdf_combined.append(
+            globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))],
+            ignore_index=True)
+    i = 0
+    for geom in OSM_features_gdf_combined.geometry:
+        if geom.type == 'LineString':
+            OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
+        i += 1
+
+    OSM_features_gdf_combined.to_file(save_path +'/OSM_features_'+str(int(bbox[0]))+\
+                                      '_'+str(int(bbox[1]))+'.shp')
+    
+    return OSM_features_gdf_combined
 
 def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
     """
@@ -238,12 +265,13 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
         print('Querying Relations, Nodes and Ways for %s...' %item)
         result_NodesFromWays, result_NodesWaysFromRels = _osm_api_query(item, bbox)
 
-        #Formatting results into correct shapes (LineStrings, Polygons, MultiPolygons)
+        #Formatting results for each feature into correct shapes (LineStrings, Polygons, MultiPolygons)
         print('Converting results for %s to correct geometry and GeoDataFrame: Lines and Polygons'
               %item)
         globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))] = \
-        _format_shape_OSM(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path)
+        _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path)
 
+        #Checkplot for each feature (1 dataframe each)
         if check_plot == 1:
             f, ax = plt.subplots(1)
             ax = globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+\
@@ -251,25 +279,8 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
             f.suptitle(str(item)+'_'+str(int(bbox[0]))+'_'+str(int(bbox[1])))
             plt.show()
 
-    #Combining all results into one GeoDataFrame
-    print('Combining all low-value GeoDataFrames into one GeoDataFrame...')
-    OSM_features_gdf_combined = \
-    GeoDataFrame(pd.DataFrame(columns=['Item', 'Name', 'Type', 'Natural_Type', 'geometry']),
-                 crs='epsg:4326', geometry='geometry')
-    for item in types:
-        print('adding results from %s ...' %item)
-        OSM_features_gdf_combined = \
-        OSM_features_gdf_combined.append(
-            globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))],
-            ignore_index=True)
-    i = 0
-    for geom in OSM_features_gdf_combined.geometry:
-        if geom.type == 'LineString':
-            OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
-        i += 1
-
-    OSM_features_gdf_combined.to_file(save_path +'/OSM_features_'+str(int(bbox[0]))+\
-                                      '_'+str(int(bbox[1]))+'.shp')
+    # Combine all dataframes into one, save with converting all to (multi)polygons.
+    OSM_features_gdf_combined = _combine_dfs_osm(types, save_path, bbox)        
 
     if check_plot == 1:
         f, ax = plt.subplots(1)
@@ -505,7 +516,7 @@ def _get_midpoints(highValueArea):
     High_Value_Area_gdf['projected_area'] = 0
     High_Value_Area_gdf['Midpoint'] = 0
 
-    for index in High_Value_Area_gdf.iterrows():
+    for index in High_Value_Area_gdf.index:
         High_Value_Area_gdf.loc[index, "Midpoint"] = \
         High_Value_Area_gdf.loc[index, "geometry"].centroid.wkt
         s = shape(High_Value_Area_gdf.loc[index, "geometry"])
@@ -547,7 +558,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country):
 
     elif mode == "default": # 5400 Chf / m2 base area
         High_Value_Area_gdf['value'] = 0
-        for index, row in High_Value_Area_gdf.iterrows():
+        for index in High_Value_Area_gdf.index:
             High_Value_Area_gdf.loc[index, 'value'] = \
             High_Value_Area_gdf.loc[index, 'projected_area']*5400
 
