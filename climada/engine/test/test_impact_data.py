@@ -59,7 +59,7 @@ class TestEmdatImport(unittest.TestCase):
         self.assertEqual(df["Total damage ('000 US$)"][1], 2500000000.0)
         self.assertEqual(df["Total damage ('000 US$)"][0], 1800000000.0)
         self.assertAlmostEqual(df["Total damage ('000 US$) scaled"][0], \
-                                  1925085759.346258)
+                                  1925085683.1166406)
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('Drought', list(df['Disaster type']))
         self.assertEqual(2017, df['reference_year'].min())
