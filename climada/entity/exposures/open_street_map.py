@@ -112,9 +112,16 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
                      'Natural_Type': way.tags.get("natural", "n/a"), 'Item': item}
             output2.write({'geometry': geom2, 'properties': prop2})
 
-    gdf_poly = geopandas.read_file(shapeout_poly) #save_path + '/' + shapeout_poly
-
-    gdf_line = geopandas.read_file(shapeout_line) #save_path + '/' + shapeout_line
+    gdf_poly = geopandas.read_file(shapeout_poly)
+    for ending in ['.shp',".cpg",".dbf",".prj",'.shx']:
+        os.remove(save_path + '/' + str(item)+'_poly_'+ str(int(bbox[0]))+\
+                  '_'+str(int(bbox[1]))+ending)
+    gdf_line = geopandas.read_file(shapeout_line)
+    for ending in ['.shp',".cpg",".dbf",".prj",'.shx']:
+        os.remove(save_path + '/' + str(item)+'_line_'+ str(int(bbox[0]))+\
+                  '_'+str(int(bbox[1]))+ending)
+   
+    
             # add buffer to the lines (0.000045° are ~5m)
     for geom in gdf_line.geometry:
         geom = geom.buffer(0.000045)
@@ -195,7 +202,9 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
             geom = mapping(MultiPoly[i])
             output.write({'geometry': geom, 'properties': prop1})
     gdf_multi = geopandas.read_file(shapeout_multi) #save_path + '/' + shapeout_multi)
-
+    for ending in ['.shp',".cpg",".dbf",".prj",'.shx']:
+        os.remove(save_path + '/' + str(item)+'_multi_'+ str(int(bbox[0]))+\
+                  '_'+str(int(bbox[1]))+ending)
     gdf_all = gdf_all.append(gdf_multi, sort=True)
 
     print('Combined all results for %s to one GeoDataFrame: done' %item)
@@ -552,7 +561,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country):
         totalValue = sum(exp_sub.value)
         totalArea = sum(High_Value_Area_gdf['projected_area'])
         High_Value_Area_gdf['value'] = 0
-        for index in High_Value_Area_gdf.iterrows():
+        for index in High_Value_Area_gdf.index:
             High_Value_Area_gdf.loc[index, 'value'] = \
             High_Value_Area_gdf.loc[index, 'projected_area']/totalArea*totalValue
 
