@@ -33,7 +33,7 @@ import climada.util.plot as u_plot
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import get_country_geometries, dist_to_coast, \
-get_resolution, coord_on_land, points_to_raster, read_raster, read_vector, NE_CRS, \
+get_resolution, coord_on_land, pts_to_raster_meta, read_raster, read_vector, NE_CRS, \
 equal_crs
 
 __all__ = ['Centroids']
@@ -160,7 +160,7 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        rows, cols, ras_trans = points_to_raster(points_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
         self.set_raster_from_pix_bounds(ras_trans[5], ras_trans[2], ras_trans[4],
                                         ras_trans[0], rows, cols, crs)
 
@@ -525,7 +525,7 @@ class Centroids():
         and lon, lat and lon need to start from the upper left corner!!"""
         self.meta = dict()
         res = min(get_resolution(self.lat, self.lon))
-        rows, cols, ras_trans = points_to_raster(self.total_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(self.total_bounds, res)
         LOGGER.debug('Resolution points: %s', str(res))
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
 

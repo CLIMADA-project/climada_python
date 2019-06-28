@@ -25,10 +25,8 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from shapely.geometry import Point
 import cartopy.crs as ccrs
 from geopandas import GeoDataFrame
-from rasterio.features import rasterize
 import rasterio
 from rasterio.warp import Resampling
 
@@ -229,18 +227,7 @@ class Exposures(GeoDataFrame):
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        LOGGER.info('Setting geometry points.')
-        def apply_point(df_exp):
-            return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
-        if not scheduler:
-            self['geometry'] = list(zip(self.longitude, self.latitude))
-            self['geometry'] = self['geometry'].apply(Point)
-        else:
-            import dask.dataframe as dd
-            from multiprocessing import cpu_count
-            ddata = dd.from_pandas(self, npartitions=cpu_count())
-            self['geometry'] = ddata.map_partitions(apply_point, meta=Point).\
-            compute(scheduler=scheduler)
+        co.set_df_geometry_points(self, scheduler)
 
     def set_lat_lon(self):
         """ Set latitude and longitude attributes from geometry attribute. """
@@ -358,7 +345,7 @@ class Exposures(GeoDataFrame):
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
-                    label='value (log10)', **kwargs):
+                    label='value (log10)', scheduler=None, **kwargs):
         """ Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -371,22 +358,37 @@ class Exposures(GeoDataFrame):
             raster_f (lambda function): transformation to use to data. Default:
                 log10 adding 1.
             label (str): colorbar label
+            scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
             kwargs (optional): arguments for imshow matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        raster, ras_trans = self._to_raster(res, raster_res)
+        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+            raster = self.value.values.reshape((self.meta['height'], 
+                                                self.meta['width']))
+            # check raster starts by upper left corner
+            if self.latitude.values[0] < self.latitude.values[-1]:
+                raster = np.flip(raster, axis=0)
+            if self.longitude.values[0] > self.longitude.values[-1]:
+                LOGGER.error('Points are not ordered according to meta raster.')
+                raise ValueError
+        else:
+            raster, meta = co.points_to_raster(self, ['value'], res, raster_res, 
+                                               scheduler)
+            raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
         if save_tiff is not None:
             ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff', \
-                height=raster.shape[0], width=raster.shape[1], count=1, \
-                dtype=np.float32, crs=self.crs, transform=ras_trans)
+                height=meta['height'], width=meta['width'], count=1, \
+                dtype=np.float32, crs=self.crs, transform=meta['transform'])
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
         crs_epsg, _ = self._get_transformation()
-        xmin, ymin, xmax, ymax = self.total_bounds
+        xmin, ymin, xmax, ymax = self.longitude.min(), self.latitude.min(), \
+        self.longitude.max(), self.latitude.max()
         fig, axis = u_plot.make_map(proj=crs_epsg)
         cbar_ax = fig.add_axes([0.99, 0.238, 0.03, 0.525])
         fig.subplots_adjust(hspace=0, wspace=0)
@@ -522,45 +524,25 @@ class Exposures(GeoDataFrame):
             data = data.copy()
         return Exposures(data).__finalize__(self)
 
-    def write_raster(self, file_name):
+    def write_raster(self, file_name, value_name='value', scheduler=None):
         """ Write value data into raster file with GeoTiff format
 
         Parameters:
             file_name (str): name output file in tif format
         """
-        LOGGER.info('Writting %s', file_name)
-        raster, ras_trans = self._to_raster()
-        meta = {'crs': self.crs, 'height':raster.shape[0], 'width':raster.shape[1],
-                'transform': ras_trans}
-        co.write_raster(file_name, raster, meta)
-
-    def _to_raster(self, res=None, raster_res=None):
-        """ Compute raster matrix and transformation from value column
-
-        Parameters:
-            res (float, optional): resolution of current data in units of latitude
-                and longitude, approximated if not provided.
-            raster_res (float, optional): desired resolution of the raster
-
-        Returns:
-            np.array, affine.Affine
-
-        """
-        if 'geometry' not in self.columns:
-            self.set_geometry_points()
-        if not res:
-            res = min(co.get_resolution(self.latitude.values, self.longitude.values))
-        if not raster_res:
-            raster_res = res
-        LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
-        exp_poly = self[['value']].set_geometry(self.buffer(res/2).envelope)
-        # construct raster
-        xmin, ymin, xmax, ymax = self.total_bounds
-        rows, cols, ras_trans = co.points_to_raster((xmin, ymin, xmax, ymax), raster_res)
-        raster = rasterize([(x, val) for (x, val) in zip(exp_poly.geometry, exp_poly.value)],
-                           out_shape=(rows, cols), transform=ras_trans, fill=0,
-                           all_touched=True, dtype=rasterio.float32, )
-        return raster, ras_trans
+        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+            raster = self[value_name].values.reshape((self.meta['height'], 
+                                                self.meta['width']))
+            # check raster starts by upper left corner
+            if self.latitude.values[0] < self.latitude.values[-1]:
+                raster = np.flip(raster, axis=0)
+            if self.longitude.values[0] > self.longitude.values[-1]:
+                LOGGER.error('Points are not ordered according to meta raster.')
+                raise ValueError
+            co.write_raster(file_name, raster, self.meta)
+        else:
+            raster, meta = co.points_to_raster(self, [value_name], scheduler=scheduler)
+            co.write_raster(file_name, raster, meta)
 
     def _get_transformation(self):
         """ Get projection and its units to use in cartopy transforamtions from

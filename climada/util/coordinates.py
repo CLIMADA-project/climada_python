@@ -21,11 +21,12 @@ Define functions to handle with coordinates
 import os
 import copy
 import logging
+from multiprocessing import cpu_count
 import numpy as np
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
-from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry import Polygon, MultiPolygon, Point
 from sklearn.neighbors import BallTree
 import fiona
 from fiona.crs import from_epsg
@@ -35,6 +36,8 @@ from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from rasterio.mask import mask
 from rasterio.warp import reproject, Resampling, calculate_default_transform
+from rasterio.features import rasterize
+import dask.dataframe as dd
 
 from climada.util.constants import EARTH_RADIUS_KM
 from climada.util.constants import DEF_CRS
@@ -306,7 +309,7 @@ def get_resolution(lat, lon):
         res_lon = 0
     return res_lat, res_lon
 
-def points_to_raster(points_bounds, res):
+def pts_to_raster_meta(points_bounds, res):
     """" Transform vector data coordinates to raster. Returns number of rows,
     columns and affine transformation
 
@@ -395,30 +398,30 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                         intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
                 meta = dst_meta
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
-            else:
-                meta = src.meta.copy()
-                if geometry:
-                    inten, mask_trans = mask(src, geometry, crop=True, indexes=band)
-                    if meta['nodata'] and np.isnan(meta['nodata']):
-                        inten[np.isnan(inten)] = 0
-                    else:
-                        inten[inten == meta['nodata']] = 0
-                    meta.update({"height": inten.shape[1],
-                                 "width": inten.shape[2],
-                                 "transform": mask_trans})
+
+            meta = src.meta.copy()
+            if geometry:
+                inten, mask_trans = mask(src, geometry, crop=True, indexes=band)
+                if meta['nodata'] and np.isnan(meta['nodata']):
+                    inten[np.isnan(inten)] = 0
                 else:
-                    masked_array = src.read(band, window=window, masked=True)
-                    inten = masked_array.data
-                    inten[masked_array.mask] = 0
-                    if window:
-                        meta.update({"height": window.height, \
-                            "width": window.width, \
-                            "transform": rasterio.windows.transform(window, src.transform)})
-                if not meta['crs']:
-                    meta['crs'] = CRS.from_dict(DEF_CRS)
-                band_idx = np.array(band) - 1
-                intensity = inten[band_idx, :]
-                return meta, intensity.reshape((len(band), meta['height']*meta['width']))
+                    inten[inten == meta['nodata']] = 0
+                meta.update({"height": inten.shape[1],
+                             "width": inten.shape[2],
+                             "transform": mask_trans})
+            else:
+                masked_array = src.read(band, window=window, masked=True)
+                inten = masked_array.data
+                inten[masked_array.mask] = 0
+                if window:
+                    meta.update({"height": window.height, \
+                        "width": window.width, \
+                        "transform": rasterio.windows.transform(window, src.transform)})
+            if not meta['crs']:
+                meta['crs'] = CRS.from_dict(DEF_CRS)
+            band_idx = np.array(band) - 1
+            intensity = inten[band_idx, :]
+            return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
 def read_vector(file_name, field_name, dst_crs=None):
     """ Read vector file format supported by fiona. Each field_name name is
@@ -465,11 +468,78 @@ def write_raster(file_name, data_matrix, meta):
         profile.update(driver='GTiff', dtype=rasterio.float32, count=data_matrix.shape[0])
         with rasterio.open(file_name, 'w', **profile) as dst:
             dst.write(np.asarray(data_matrix, dtype=rasterio.float32).\
-                reshape((data_matrix.shape[0], profile['height'], profile['width'])),
-                        indexes=np.arange(1, data_matrix.shape[0]+1))
+                reshape((data_matrix.shape[0], profile['height'], profile['width'])), \
+                indexes=np.arange(1, data_matrix.shape[0]+1))
     else:
         # only one band
         profile = copy.deepcopy(meta)
         profile.update(driver='GTiff', dtype=rasterio.float32, count=1)
         with rasterio.open(file_name, 'w', **profile) as dst:
             dst.write(np.asarray(data_matrix, dtype=rasterio.float32))
+
+def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
+                     scheduler=None):
+    """ Compute raster matrix and transformation from value column
+
+    Parameters:
+        points_df (GeoDataFrame): contains columns latitude, longitude and in
+            val_names
+        res (float, optional): resolution of current data in units of latitude
+            and longitude, approximated if not provided.
+        raster_res (float, optional): desired resolution of the raster
+        scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+
+    Returns:
+        np.array, affine.Affine
+
+    """
+
+    if not res:
+        res = min(get_resolution(points_df.latitude.values, points_df.longitude.values))
+    if not raster_res:
+        raster_res = res
+
+    def apply_box(df_exp):
+        return df_exp.apply((lambda row: Point(row.longitude, row.latitude). \
+                             buffer(res/2).envelope), axis=1)
+    LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
+    df_poly = points_df[val_names]
+    if not scheduler:
+        df_poly['geometry'] = apply_box(points_df)
+    else:
+        ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
+                               npartitions=cpu_count())
+        df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon).\
+        compute(scheduler=scheduler)
+    # construct raster
+    xmin, ymin, xmax, ymax = points_df.longitude.min(), points_df.latitude.min(), \
+    points_df.longitude.max(), points_df.latitude.max()
+    rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax), raster_res)
+    raster_out = np.zeros((len(val_names), rows, cols))
+    # TODO: parallel rasterize
+    for i_val, val_name in enumerate(val_names):
+        raster_out[i_val, :, :] = rasterize([(x, val) for (x, val) in zip(df_poly.geometry, \
+            df_poly[val_name])], out_shape=(rows, cols), transform=ras_trans, \
+            fill=0, all_touched=True, dtype=rasterio.float32, )
+    meta = {'crs': points_df.crs, 'height':rows, 'width':cols, 'transform': ras_trans}
+    return raster_out, meta
+
+def set_df_geometry_points(df_val, scheduler=None):
+    """ Set given geometry to given dataframe using dask if scheduler
+
+    Parameters:
+        df_val (DataFrame or GeoDataFrame): contains latitude and longitude columns
+        geom_type (shapely.geometry):
+        scheduler (str): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+    """
+    LOGGER.info('Setting geometry points.')
+    def apply_point(df_exp):
+        return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
+    if not scheduler:
+        df_val['geometry'] = apply_point(df_val)
+    else:
+        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
+        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point).\
+        compute(scheduler=scheduler)

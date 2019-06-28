@@ -39,7 +39,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
-from climada.util.coordinates import points_to_raster, get_resolution
+from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class LitPop(Exposures):
         self.ref_year = reference_year
         self.tag = tag
         self.value_unit = 'USD'
-        rows, cols, ras_trans = points_to_raster((self.longitude.min(), \
+        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
             self.latitude.min(), self.longitude.max(), self.latitude.max()), \
             min(get_resolution(self.latitude, self.longitude)))
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}

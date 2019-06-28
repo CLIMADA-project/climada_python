@@ -37,7 +37,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.finance import gdp, income_group
-from climada.util.coordinates import points_to_raster
+from climada.util.coordinates import pts_to_raster_meta
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class BlackMarble(Exposures):
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        rows, cols, ras_trans = points_to_raster((self.longitude.min(), \
+        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
             self.latitude.min(), self.longitude.max(), self.latitude.max()), \
             coord_nl[0, 1])
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
