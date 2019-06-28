@@ -605,7 +605,7 @@ def make_osmexposure(highValueArea, mode="default", country=None, \
     exp_buildings = Exposures(High_Value_Area_gdf)
     exp_buildings.set_lat_lon()
     exp_buildings.check()
-    exp_buildings.write_hdf5(save_path + '/exposure_buildings_'+ mode+ \
+    exp_buildings.write_hdf5(save_path + '/exposure_buildings_'+ mode+'_'+ \
                              str(int(min(High_Value_Area_gdf.bounds.miny)))+ \
                              '_'+str(int(min(High_Value_Area_gdf.bounds.minx)))+'.h5')
 
