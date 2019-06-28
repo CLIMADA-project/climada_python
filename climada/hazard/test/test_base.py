@@ -28,7 +28,8 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
-from climada.util.constants import HAZ_TEMPLATE_XLS
+from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
+from climada.util.coordinates import equal_crs
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
@@ -792,7 +793,6 @@ class TestYearset(unittest.TestCase):
         self.assertTrue(np.array_equal(orig_year_set[2010],
                                        np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
 
-
 class TestReaderExcel(unittest.TestCase):
     '''Test reader functionality of the Hazard class'''
 
@@ -952,6 +952,99 @@ class TestHDF5(unittest.TestCase):
         self.assertTrue(np.array_equal(hazard.fraction.todense(), haz_read.fraction.todense()))
         self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
+class TestCentroids(unittest.TestCase):
+    """Test return period statistics"""
+
+    def test_reproject_raster_pass(self):
+        """ Test reproject_raster reference. """
+        haz_fl = Hazard('FL')
+        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl.check()
+        
+        haz_fl.reproject_raster(dst_crs={'init':'epsg:2202'})
+
+        self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
+        self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
+        self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
+        self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
+        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init':'epsg:2202'}))
+        self.assertEqual(haz_fl.centroids.meta['width'], 968)
+        self.assertEqual(haz_fl.centroids.meta['height'], 1081)
+        self.assertEqual(haz_fl.fraction.min(), 0)
+        self.assertEqual(haz_fl.fraction.max(), 1)
+        self.assertEqual(haz_fl.intensity.min(), -9999)
+        self.assertTrue(haz_fl.intensity.max() < 4.7)
+
+    def test_raster_to_vector_pass(self):
+        """ Test raster_to_vector method """
+        haz_fl = Hazard('FL')
+        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl.check()
+        meta_orig = haz_fl.centroids.meta
+        inten_orig = haz_fl.intensity
+        fract_orig = haz_fl.fraction
+
+        haz_fl.raster_to_vector()
+        
+        self.assertEqual(haz_fl.centroids.meta, dict())
+        self.assertAlmostEqual(haz_fl.centroids.lat.min(), meta_orig['transform'][5]+meta_orig['height']*meta_orig['transform'][4]-meta_orig['transform'][4]/2)
+        self.assertAlmostEqual(haz_fl.centroids.lat.max(), meta_orig['transform'][5]+meta_orig['transform'][4]/2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.max(), meta_orig['transform'][2]+meta_orig['width']*meta_orig['transform'][0]-meta_orig['transform'][0]/2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.min(), meta_orig['transform'][2]+meta_orig['transform'][0]/2)
+        self.assertTrue(equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
+        self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
+        self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
+
+    def test_reproject_vector_pass(self):
+        """ Test reproject_vector """
+        haz_fl = Hazard('FL')
+        haz_fl.event_id = np.array([1])
+        haz_fl.date = np.array([1])
+        haz_fl.frequency = np.array([1])
+        haz_fl.orig = np.array([1])
+        haz_fl.event_name = ['1']
+        haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.check()
+        
+        haz_fl.reproject_vector(dst_crs={'init':'epsg:2202'})
+        self.assertTrue(np.allclose(haz_fl.centroids.lat, np.array([331585.4099637291, 696803.88, 1098649.44])))
+        self.assertTrue(np.allclose(haz_fl.centroids.lon, np.array([11625664.37925186, 11939560.43, 12244857.13])))
+        self.assertTrue(equal_crs(haz_fl.centroids.crs, {'init':'epsg:2202'}))
+        self.assertTrue(np.allclose(haz_fl.intensity.todense(), np.array([0.5, 0.2, 0.1])))
+        self.assertTrue(np.allclose(haz_fl.fraction.todense(), np.array([0.5, 0.2, 0.1])/2))
+
+    def test_vector_to_raster_pass(self):
+        """ Test vector_to_raster """
+        haz_fl = Hazard('FL')
+        haz_fl.event_id = np.array([1])
+        haz_fl.date = np.array([1])
+        haz_fl.frequency = np.array([1])
+        haz_fl.orig = np.array([1])
+        haz_fl.event_name = ['1']
+        haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.check()
+        
+        haz_fl.vector_to_raster()
+        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init':'epsg:4326'}))
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][1], 0)
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][2], 0.5)
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][3], 0)
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][4], -1.0)
+        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][5], 3.5)
+        self.assertEqual(haz_fl.centroids.meta['height'], 3)
+        self.assertEqual(haz_fl.centroids.meta['width'], 3)
+        self.assertEqual(haz_fl.centroids.lat.size, 0)
+        self.assertEqual(haz_fl.centroids.lon.size, 0)
+        self.assertTrue(haz_fl.intensity.min() >= 0)
+        self.assertTrue(haz_fl.intensity.max() <= 0.5)
+        self.assertTrue(haz_fl.fraction.min() >= 0)
+        self.assertTrue(haz_fl.fraction.max() <= 0.5/2)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
@@ -963,4 +1056,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

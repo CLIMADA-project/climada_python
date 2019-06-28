@@ -21,6 +21,7 @@ Test coordinates module.
 
 from cartopy.io import shapereader
 from fiona.crs import from_epsg
+import geopandas as gpd
 import unittest
 import numpy as np
 import shapely
@@ -33,8 +34,8 @@ from rasterio import Affine
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
-get_country_geometries, get_resolution, points_to_raster, read_vector, \
-read_raster, NE_EPSG, equal_crs
+get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
+read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -228,7 +229,7 @@ class TestFunc(unittest.TestCase):
         xmin, ymin, xmax, ymax = -60, -5, -50, 10 # bounds of points == centers pixels
         points_bounds = (xmin, ymin, xmax, ymax)
         res = 0.5
-        rows, cols, ras_trans = points_to_raster(points_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
         self.assertEqual(xmin - res/2 + res * cols, xmax + res/2)
         self.assertEqual(ymax + res/2 - res * rows, ymin - res/2)
         self.assertEqual(ras_trans[0], res)
@@ -335,6 +336,34 @@ class TestFunc(unittest.TestCase):
         crs_two = {'init':'epsg:4326', 'no_defs': True}
         self.assertTrue(equal_crs(crs_one, crs_two))
 
+    def test_set_df_geometry_points_pass(self):
+        """ Test set_df_geometry_points """
+        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
+        df_val['latitude'] = np.ones(10)*40.0
+        df_val['longitude'] = np.ones(10)*0.50
+
+        set_df_geometry_points(df_val)
+        self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10)*0.5))
+        self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10)*40.))
+
+    def test_points_to_raster_pass(self):
+        """ Test points_to_raster """
+        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
+        x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
+        df_val['latitude'] = y.flatten()
+        df_val['longitude'] = x.flatten()
+        df_val['value'] = np.ones(len(df_val))*10
+        raster, meta = points_to_raster(df_val, val_names=['value'])
+        self.assertTrue(equal_crs(meta['crs'], df_val.crs))
+        self.assertAlmostEqual(meta['transform'][0], 0.5)
+        self.assertAlmostEqual(meta['transform'][1], 0)
+        self.assertAlmostEqual(meta['transform'][2], -0.25)
+        self.assertAlmostEqual(meta['transform'][3], 0)
+        self.assertAlmostEqual(meta['transform'][4], -0.5)
+        self.assertAlmostEqual(meta['transform'][5], 50.25)
+        self.assertEqual(meta['height'], 21)
+        self.assertEqual(meta['width'], 5)
+        
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
 unittest.TextTestRunner(verbosity=2).run(TESTS)

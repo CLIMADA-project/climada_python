@@ -29,12 +29,13 @@ import datetime as dt
 import warnings
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from scipy import sparse
 import h5py
 import matplotlib.pyplot as plt
 import rasterio
-from rasterio.warp import Resampling
 from rasterio.features import rasterize
+from rasterio.warp import reproject, Resampling, calculate_default_transform
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -342,14 +343,104 @@ class Hazard():
         if 'unit' in attrs:
             self.unit = attrs['unit']
 
-    def to_raster(self, dst_crs=False, transform=None, width=None, height=None,
-                  resampling=Resampling.nearest):
-        """ Change current geometry or raster to given raster """
-        raise NotImplementedError
+    def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
+                         resampling=Resampling.nearest):
+        """ Change current raster data to other CRS and/or transformation
 
-    def to_vector(self, geometry):
-        """ Change current raster or geometry to given geometry """
-        raise NotImplementedError
+        Parameters:
+            dst_crs (crs, optional): reproject to given crs
+            transform (rasterio.Affine): affine transformation to apply
+            wdith (float): number of lons for transform
+            height (float): number of lats for transform
+            resampling (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs
+        """
+        if not self.centroids.meta:
+            LOGGER.error('Raster not set')
+            raise ValueError
+        if not dst_crs:
+            dst_crs = self.centroids.meta['crs']
+        if transform and not width or transform and not height:
+            LOGGER.error('Provide width and height to given transformation.')
+            raise ValueError
+        if not transform:
+            transform, width, height = calculate_default_transform(\
+            self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'], \
+            self.centroids.meta['height'], self.centroids.meta['transform'][2], \
+            self.centroids.meta['transform'][5] + \
+            self.centroids.meta['height']*self.centroids.meta['transform'][4],
+            self.centroids.meta['transform'][2] + \
+            self.centroids.meta['width']*self.centroids.meta['transform'][0], \
+            self.centroids.meta['transform'][5])
+        dst_meta = self.centroids.meta.copy()
+        dst_meta.update({'crs': dst_crs, 'transform': transform,
+                         'width': width, 'height': height
+                        })
+        intensity = np.zeros((self.size, dst_meta['height'], dst_meta['width']))
+        fraction = np.zeros((self.size, dst_meta['height'], dst_meta['width']))
+        kwargs = {'src_transform': self.centroids.meta['transform'],
+                  'src_crs': self.centroids.meta['crs'],
+                  'dst_transform': transform, 'dst_crs': dst_crs,
+                  'resampling': resampling}
+        for idx_ev, inten in enumerate(self.intensity.todense()):
+            reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
+                self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
+                **kwargs)
+        for idx_ev, fract in enumerate(self.fraction.todense()):
+            reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
+                      self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
+                      **kwargs)
+        self.centroids.meta = dst_meta
+        self.intensity = sparse.csr_matrix(intensity.reshape(self.size, \
+            dst_meta['height'] * dst_meta['width']))
+        self.fraction = sparse.csr_matrix(fraction.reshape(self.size, \
+            dst_meta['height'] * dst_meta['width']))
+        self.check()
+
+    def reproject_vector(self, dst_crs, scheduler=None):
+        """ Change current point data to a a given projection
+
+        Parameters:
+            dst_crs (crs): reproject to given crs
+            scheduler (str, optional): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        self.centroids.set_geometry_points(scheduler)
+        self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
+        self.centroids.lat = self.centroids.geometry[:].y
+        self.centroids.lon = self.centroids.geometry[:].x
+        self.check()
+
+#    def raster_to_vector(self, geometry, crs):
+    def raster_to_vector(self):
+        """ Change current raster to points (center of the pixels) """
+        self.centroids.set_meta_to_lat_lon()
+        self.centroids.meta = dict()
+        self.check()
+
+    def vector_to_raster(self, scheduler=None):
+        """ Change current point data to a raster with same resolution
+
+        Parameters:
+            scheduler (str, optional): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
+        points_df['latitude'] = self.centroids.lat
+        points_df['longitude'] = self.centroids.lon
+        val_names = ['val'+str(i_ev) for i_ev in range(2*self.size)]
+        for i_ev, inten_name in enumerate(val_names):
+            if i_ev < self.size:
+                points_df[inten_name] = np.asarray(self.intensity[i_ev, :].todense()).reshape(-1)
+            else:
+                points_df[inten_name] = np.asarray(self.fraction[i_ev-self.size, :].todense()).\
+                reshape(-1)
+        raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
+        self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
+        self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
+        self.centroids = Centroids()
+        self.centroids.meta = meta
+        self.check()
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read climada hazard generate with the MATLAB code.
@@ -949,12 +1040,6 @@ class Hazard():
                     var_val.append(ev_val)
 
         self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
-#        self.centroids = Centroids()
-#        if list_haz_ev[0].centroids.meta:
-#            self.centroids.meta = list_haz_ev[0].centroids.meta
-#        else:
-#            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
-#                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
         self.units = list_haz_ev[0].units
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
