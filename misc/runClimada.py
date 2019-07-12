@@ -79,23 +79,23 @@ CL_MODEL = ['princeton',
             #'wfdei'
             ]
 
-def schedule_run(run_id,run_index,run_count,single):
-    if not single:
-        run_label = "run%s" % run_id
+def schedule_run(run_nb,flag,RF_model,CL_model):
+    if not flag:
+        run_label = "run%s" % run_nb
         if os.path.exists(run_label):
             run_id += 1
             return
         os.mkdir(run_label)
-        desc = run_description()
-        f = open("%s/parameters.txt" % run_label, 'w')
-        f.write(desc)
-        f.close()
-        run_index.write(run_description_csv(run_label))
-        run_index.write("\n")
-        with open("%s/settings.yml" % run_label, 'w') as f:
-            f.write(pyaml.dump(settings_yml))
-            for nc in glob.glob('*.nc'):
-                copyfile(nc,"%s/%s" % (run_label,nc))
+ #       desc = run_description()
+ #       f = open("%s/parameters.txt" % run_label, 'w')
+ #       f.write(desc)
+ #       f.close()
+ #       run_index.write(run_description_csv(run_label))
+ #       run_index.write("\n")
+        # with open("%s/settings.yml" % run_label, 'w') as f:
+        #     f.write(pyaml.dump(settings_yml))
+        #     for nc in glob.glob('*.nc'):
+        #         copyfile(nc,"%s/%s" % (run_label,nc))
         run_id += 1
     else:
         run_label = "."
@@ -119,7 +119,8 @@ def schedule_run(run_id,run_index,run_count,single):
             "notification": "END,FAIL,TIME_LIMIT" if args.notify else "FAIL,TIME_LIMIT",
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
-            "executable": os.path.join(os.getcwd(), 'acclimate'),
+            "executable": os.path.join(os.getcwd(), 'run_sim.py'),
+            "options": "--RF_model %s --CL_model %s"%(RF_model, CL_model)
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
             "other": "#SBATCH --partition=ram_gpu" if args.largemem else ""
@@ -146,7 +147,7 @@ export LD_LIBRARY_PATH=/home/willner/lib/hdf5/lib:\\$LD_LIBRARY_PATH
 export OMP_PROC_BIND=true
 export OMP_NUM_THREADS=%(num_threads)1d
 ulimit -c unlimited
-%(executable)s settings.yml
+%(executable)s %(options)s
 " | sbatch -Q""" % run_params
 
         if args.verbose:
@@ -154,17 +155,12 @@ ulimit -c unlimited
 
         os.system(cmd)
         run_cnt += 1
+
 num = 1
-if not single:
-    for par in parameters:
-        if "values" not in par:
-            exit("Key 'values' not found")
-        if "name" not in par:
-            exit("Key 'name' not found")
-        if "paths" not in par:
-            exit("Key 'paths' not found")
-        num *= len(par["values"])
-        indices.append(0)
+num *= len(RF_MODEL)
+num *= len(CL_MODEL)
+
+single = True if num == 1 else False
 if num > 1:
     print("Number of runs to be scheduled: %s" % num)
     sys.stdout.write('Run? y/N : ')
@@ -175,26 +171,13 @@ if num > 1:
         if raw_input() != "y":
             exit("Aborted")
 
-with open('settings.yml', 'r') as f:
-    settings_yml = yaml.load(f.read())
-yml_nodes = settings_yml
-
-if not single:
-    run_index = open('index.csv', 'w')
-    run_index.write("\"Run\"")
-    for i in range(len(indices)):
-        run_index.write(",\"%s\"" % parameters[i]["name"])
-        set_in_yml(parameters[i]["paths"], parameters[i]["values"][0])
-    run_index.write("\n")
-    run_id = 0
-    schedule_run()
-    while next_step():
-        schedule_run()
-    run_index.close()
-else:
-    schedule_run()
+enum = 1
+for rf_model in RF_MODEL:
+    cl_model in CL_MODEL:
+    schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model)
+    enum += 1
 if num > 1:
-    print("Scheduled %s runs" % run_cnt)
+    print("Scheduled %s runs" % num)
 
 # def set_in_yml(paths, value):
 #     global yml_nodes
