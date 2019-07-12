@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+import inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
 import argparse
 from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.flood import IFRiverFlood,flood_imp_func_set, assign_if_simple
@@ -30,8 +34,9 @@ args = parser.parse_args()
 
 
 PROT_STD = ['0', '100', 'flopros']
-flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data'
+flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
+output = currentdir
 years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
@@ -42,8 +47,8 @@ continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'South
 
 dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
-                            'Continent': np.full(l, "", dtype=str),
                             'Region': np.full(l, "", dtype=str),
+                            'Continent': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'FloodedArea0': np.full(l, np.nan, dtype=float),
                             'FloodedArea100': np.full(l, np.nan, dtype=float),
@@ -57,19 +62,20 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             })
 maxF = 1
 failureDF = pd.DataFrame(data={'rfModel': np.full(maxF, "", dtype=str),
-                               'CLData': np.full(maxF, "", dtype=str),
-                               'ProtStd': np.full(maxF, "", dtype=str),
+                               'CLData': np.full(maxF, "", dtype=str)
                               })
 if_set = flood_imp_func_set()
 
 fail_lc = 0
 line_counter = 0
 try:
-    for cnt_ind in range(len(isos)):
+    for cnt_ind in range(2):
         country = [isos[cnt_ind]]
         reg = regs[cnt_ind]
         #print(conts[cnt_ind]-1)
         cont = continent_names[int(conts[cnt_ind]-1)]
+        gdpaFix = GDP2Asset()
+        gdpaFix.set_countries(countries=country, ref_year=2005, path = gdp_path)
         for year in range(len(years)):
 
             dataDF.iloc[line_counter, 0] = years[year]
@@ -78,13 +84,13 @@ try:
             dataDF.iloc[line_counter, 3] = cont
             gdpa = GDP2Asset()
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
-            gdpa.check()
+            
 
             for pro_std in range(len(PROT_STD)):
                 dph_path = flood_dir +'flddph_{}_{}_{}_gev_0.1.nc'\
-                   .format(RF_model, args.CL_model, PROT_STD[pro_std])
+                   .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
                 frc_path= flood_dir+'fldfrc_{}_{}_{}_gev_0.1.nc'\
-                   .format(RF_model, args.CL_model, PROT_STD[pro_std])
+                   .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
 
                 if not os.path.exists(dph_path):
                     print('{} path not found'.format(dph_path))
@@ -93,49 +99,46 @@ try:
                     print('{} path not found'.format(frc_path))
                     raise KeyError
 
-
                 rf = RiverFlood()
                 rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=[years[year]])
+                rf.set_flooded_area()
 
                 imp_fl=Impact()
                 imp_fl.calc(gdpa, if_set, rf)
-                rf.set_flooded_area()
+                imp_fix=Impact()
+                imp_fix.calc(gdpaFix, if_set, rf)
+                
                 dataDF.iloc[line_counter, 4] = imp_fl.tot_value
                 dataDF.iloc[line_counter, 5 + pro_std] = rf.fla_annual[0]
-                dataDF.iloc[line_counter, 8 + pro_std] = imp_fl.tot_value
+                dataDF.iloc[line_counter, 8 + pro_std] = imp_fix.at_event[0]
                 dataDF.iloc[line_counter, 11 + pro_std] = imp_fl.at_event[0]
 
             line_counter+=1
-    dataDF.to_csv(output + 'output_{}_{}_{}.csv'.format(RF_model, args.CL_model, PROT_STD[pro_std]))
+    dataDF.to_csv(output + 'output_{}_{}_{}.csv'.format(args.RF_model, args.CL_model, PROT_STD[pro_std]))
 except KeyError:
     print('run failed')
-    failureDF.iloc[fail_lc, 0] = RF_model
+    failureDF.iloc[fail_lc, 0] = args.RF_model
     failureDF.iloc[fail_lc, 1] = args.CL_model
-    failureDF.iloc[fail_lc, 2] = PROT_STD[pro_std]
     fail_lc+=1
 except AttributeError:
     print('run failed')
-    failureDF.iloc[fail_lc, 0] = RF_model
+    failureDF.iloc[fail_lc, 0] = args.RF_model
     failureDF.iloc[fail_lc, 1] = args.CL_model
-    failureDF.iloc[fail_lc, 2] = PROT_STD[pro_std]
     fail_lc+=1
 except NameError:
     print('run failed')
-    failureDF.iloc[fail_lc, 0] = RF_model
+    failureDF.iloc[fail_lc, 0] = args.RF_model
     failureDF.iloc[fail_lc, 1] = args.CL_model
-    failureDF.iloc[fail_lc, 2] = PROT_STD[pro_std]
     fail_lc+=1
 except IOError:
     print('run failed')
-    failureDF.iloc[fail_lc, 0] = RF_model
+    failureDF.iloc[fail_lc, 0] = args.RF_model
     failureDF.iloc[fail_lc, 1] = args.CL_model
-    failureDF.iloc[fail_lc, 2] = PROT_STD[pro_std]
     fail_lc+=1
 except IndexError:
     print('run failed')
-    failureDF.iloc[fail_lc, 0] = RF_model
+    failureDF.iloc[fail_lc, 0] = args.RF_model
     failureDF.iloc[fail_lc, 1] = args.CL_model
-    failureDF.iloc[fail_lc, 2] = PROT_STD[pro_std]
     fail_lc+=1
 
-failureDF.to_csv(output + 'failure_{}_{}_{}.csv'.format(args.RF_model, args.CL_model, PROT_STD[pro_std]))
+failureDF.to_csv(output + 'failure_{}_{}.csv'.format(args.RF_model, args.CL_model))
