@@ -53,9 +53,9 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'FloodedArea0': np.full(l, np.nan, dtype=float),
                             'FloodedArea100': np.full(l, np.nan, dtype=float),
                             'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
-                            'ExpAsset0': np.full(l, np.nan, dtype=float),
-                            'ExpAsset100': np.full(l, np.nan, dtype=float),
-                            'ExpAssetFlopros': np.full(l, np.nan, dtype=float),
+                            'ImpFixExp0': np.full(l, np.nan, dtype=float),
+                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
+                            'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
                             'ImpactAnnual0': np.full(l, np.nan, dtype=float),
                             'ImpactAnnual100': np.full(l, np.nan, dtype=float),
                             'ImpactAnnualFlopros': np.full(l, np.nan, dtype=float)
@@ -69,7 +69,7 @@ if_set = flood_imp_func_set()
 fail_lc = 0
 line_counter = 0
 try:
-    for cnt_ind in range(2):
+    for cnt_ind in range(len(isos)):
         country = [isos[cnt_ind]]
         reg = regs[cnt_ind]
         #print(conts[cnt_ind]-1)
