@@ -70,7 +70,7 @@ if_set = flood_imp_func_set()
 fail_lc = 0
 line_counter = 0
 try:
-    for cnt_ind in range(len(isos)):
+    for cnt_ind in range(1,2):
         country = [isos[cnt_ind]]
         reg = regs[cnt_ind]
         #print(conts[cnt_ind]-1)
@@ -78,7 +78,7 @@ try:
         gdpaFix = GDP2Asset()
         gdpaFix.set_countries(countries=country, ref_year=2005, path = gdp_path)
         for year in range(len(years)):
-
+            print(Country_{}_{}.format(isos[cnt_ind],str(years[year])))
             dataDF.iloc[line_counter, 0] = years[year]
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
