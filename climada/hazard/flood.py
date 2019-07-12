@@ -167,7 +167,10 @@ class RiverFlood(Hazard):
         self.fraction = sparse.csr_matrix(fraction)
         self.event_id = np.arange(1, self._n_events + 1)
         self.units = 'm'
-        self.frequency = np.ones(self._n_events) / self._n_events
+        date_test = np.array([date.fromordinal(self.date[i]).year
+                              for i in range(len(self.date))])
+        time_frame = np.max(date_test) + 1 - np.min(date_test)
+        self.frequency = np.ones(self._n_events) / time_frame
         return self
 
     def _read_nc(self, years, centr_handling, dph_path, frc_path):
@@ -271,6 +274,7 @@ class RiverFlood(Hazard):
 
     def _select_event(self, time, years):
         event_names = pd.to_datetime(time).year
+        print(event_names)
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
             LOGGER.error('No events found for selected ' + str(years))

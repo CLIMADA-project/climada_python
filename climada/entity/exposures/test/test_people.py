@@ -14,7 +14,7 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
-Unit Tests on GDP2Asset exposures.
+Unit Tests on ExpPop exposures.
 
 """
 import numpy as np
