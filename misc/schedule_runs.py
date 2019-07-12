@@ -4,7 +4,7 @@
 import argparse
 import os
 import sys
-import imp
+#import imp
 import glob
 import numpy
 from shutil import copyfile
@@ -47,19 +47,6 @@ args = parser.parse_args()
 indices = []
 sys.dont_write_bytecode = True
 
-def run_description():
-    res = ""
-    for i, ind in enumerate(indices):
-        res += "%s = %s\n" % (parameters[i]
-                              ["name"], parameters[i]["values"][ind])
-    return res
-
-
-def run_description_csv(run_label):
-    res = "\"%s\"" % run_label
-    for i, ind in enumerate(indices):
-        res += ",\"%s\"" % parameters[i]["values"][ind]
-    return res
 
 RF_MODEL = ['ORCHIDEE',
             'CLM',
@@ -83,7 +70,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model):
     if not flag:
         run_label = "run%s" % run_nb
         if os.path.exists(run_label):
-            run_id += 1
+        #    run_id += 1
             return
         os.mkdir(run_label)
  #       desc = run_description()
@@ -96,7 +83,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model):
         #     f.write(pyaml.dump(settings_yml))
         #     for nc in glob.glob('*.nc'):
         #         copyfile(nc,"%s/%s" % (run_label,nc))
-        run_id += 1
+        #run_id += 1
     else:
         run_label = "."
     if args.dry:
@@ -119,8 +106,8 @@ def schedule_run(run_nb,flag,RF_model,CL_model):
             "notification": "END,FAIL,TIME_LIMIT" if args.notify else "FAIL,TIME_LIMIT",
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
-            "executable": os.path.join(os.getcwd(), 'run_sim.py'),
-            "options": "--RF_model %s --CL_model %s"%(RF_model, CL_model)
+            "executable": 'schedule_sim.py',
+            "options": "--RF_model %s --CL_model %s"%(RF_model, CL_model),
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
             "other": "#SBATCH --partition=ram_gpu" if args.largemem else ""
@@ -133,19 +120,19 @@ def schedule_run(run_nb,flag,RF_model,CL_model):
 #SBATCH --qos=%(class)s
 #SBATCH --output=output.txt
 #SBATCH --error=errors.txt
-#SBATCH --account=acclimat
 #SBATCH --export=%(environment)s
 #SBATCH --mail-type=%(notification)s
 #SBATCH --%(node_usage)s
+#SBATCH --account=ebm        
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=%(num_threads)1d
 #SBATCH --mem-per-cpu=%(mem_per_cpu)1d
 #SBATCH --workdir=%(initialdir)s
 %(other)s
-export LD_LIBRARY_PATH=/home/willner/lib/hdf5/lib:\\$LD_LIBRARY_PATH
 export OMP_PROC_BIND=true
 export OMP_NUM_THREADS=%(num_threads)1d
+source activate climada_env        
 ulimit -c unlimited
 %(executable)s %(options)s
 " | sbatch -Q""" % run_params
@@ -154,7 +141,7 @@ ulimit -c unlimited
             print(cmd)
 
         os.system(cmd)
-        run_cnt += 1
+        #run_cnt += 1
 
 num = 1
 num *= len(RF_MODEL)
@@ -173,9 +160,9 @@ if num > 1:
 
 enum = 1
 for rf_model in RF_MODEL:
-    cl_model in CL_MODEL:
-    schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model)
-    enum += 1
+    for cl_model in CL_MODEL:
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model)
+        enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)
 
@@ -217,3 +204,16 @@ if num > 1:
 # else:
 #     single = True
 # run_cnt = 0
+# def run_description():
+#     res = ""
+#     for i, ind in enumerate(indices):
+#         res += "%s = %s\n" % (parameters[i]
+#                               ["name"], parameters[i]["values"][ind])
+#     return res
+
+
+# def run_description_csv(run_label):
+#     res = "\"%s\"" % run_label
+#     for i, ind in enumerate(indices):
+#         res += ",\"%s\"" % parameters[i]["values"][ind]
+#     return res
