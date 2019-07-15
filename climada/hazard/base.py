@@ -795,7 +795,7 @@ class Hazard():
         return orig_yearset
 
     def append(self, hazard):
-        """Append events in hazard. Centroids must be the same.
+        """Append events and centroids in hazard.
 
         Parameters:
             hazard (Hazard): Hazard instance to append to current
@@ -836,7 +836,6 @@ class Hazard():
 
         # append intensity and fraction:
         # if same centroids, just append events
-        # else, check centroids correct column
         if self.centroids.equal(hazard.centroids):
             self.intensity = sparse.vstack([self.intensity, hazard.intensity],
                                            format='csr')

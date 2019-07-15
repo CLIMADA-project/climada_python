@@ -74,7 +74,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertAlmostEqual(tc_track.get_track().max_sustained_wind.values[0], 30)
         self.assertAlmostEqual(tc_track.get_track().central_pressure.values[0], 1008)
         self.assertAlmostEqual(tc_track.get_track().environmental_pressure.values[0], 1012)
-        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[0], 0)
+        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[0], 60)
         self.assertEqual(tc_track.get_track().time.size, 123)
 
         self.assertAlmostEqual(tc_track.get_track().lat.values[-1], 36.8 - 7.629394502828291e-07)

@@ -87,7 +87,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 740)
         self.assertTrue(ent.region_id.max() == 740)
-        self.assertTrue(np.int(ent.value.sum().round()) == 2321765217)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2332806589)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
@@ -210,10 +210,10 @@ class TestSetAdmin1(unittest.TestCase):
         self.assertIn('Chittagong', ent.admin1.values)
         self.assertEqual(len(np.unique(ent.admin1_ID)), 7)
         self.assertEqual(np.min(np.unique(ent.admin1_ID)), 1806.0)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
-#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSetAdmin1))
