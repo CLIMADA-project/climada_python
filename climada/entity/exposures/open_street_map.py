@@ -10,9 +10,9 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
+
 import matplotlib
-matplotlib.use('Qt5Agg', force=True)
-matplotlib.get_backend()
+#matplotlib.use('Qt5Agg', force=True)
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
