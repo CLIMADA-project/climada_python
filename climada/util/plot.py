@@ -29,11 +29,11 @@ __all__ = ['Graph2D',
            'add_basemap'
           ]
 
-import numpy as np
 from scipy.interpolate import griddata
 import six.moves.urllib.request as request
 import six
 from PIL import Image
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import mercantile as mt
