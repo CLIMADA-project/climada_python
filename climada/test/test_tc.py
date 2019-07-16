@@ -36,33 +36,33 @@ CENTR_TEST_BRB.read_mat(os.path.join(DATA_DIR, 'centr_brb_test.mat'))
 
 class TestTCParallel(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files """
-    def test_set_one_file_pass(self):
-        """ Test set function set_from_tracks with one input."""
-
-        pool = Pool()
-
-        tc_track = TCTracks(pool)
-        
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.calc_random_walk()
-        tc_track.equal_timestep()
-
-        tc_haz = TropCyclone(pool)
-        tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
-        tc_haz.check()
-
-        pool.close()
-        pool.join()
-
-        self.assertEqual(tc_haz.tag.haz_type, 'TC')
-        self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.units, 'm/s')
-        self.assertEqual(tc_haz.centroids.size, 296)
-        self.assertEqual(tc_haz.event_id.size, 10)
-        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
-        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
-        self.assertEqual(tc_haz.intensity.shape, (10, 296))
-        self.assertEqual(tc_haz.fraction.shape, (10, 296))
+#    def test_set_one_file_pass(self):
+#        """ Test set function set_from_tracks with one input."""
+#
+#        pool = Pool()
+#
+#        tc_track = TCTracks(pool)
+#        
+#        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+#        tc_track.calc_random_walk()
+#        tc_track.equal_timestep()
+#
+#        tc_haz = TropCyclone(pool)
+#        tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
+#        tc_haz.check()
+#
+#        pool.close()
+#        pool.join()
+#
+#        self.assertEqual(tc_haz.tag.haz_type, 'TC')
+#        self.assertEqual(tc_haz.tag.description, '')
+#        self.assertEqual(tc_haz.units, 'm/s')
+#        self.assertEqual(tc_haz.centroids.size, 296)
+#        self.assertEqual(tc_haz.event_id.size, 10)
+#        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
+#        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+#        self.assertEqual(tc_haz.intensity.shape, (10, 296))
+#        self.assertEqual(tc_haz.fraction.shape, (10, 296))
 
 
 if __name__ == "__main__":
