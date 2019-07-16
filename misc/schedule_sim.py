@@ -70,52 +70,58 @@ if_set = flood_imp_func_set()
 fail_lc = 0
 line_counter = 0
 try:
-    for cnt_ind in range(1,2):
+    for cnt_ind in range(len(isos)):
         country = [isos[cnt_ind]]
         reg = regs[cnt_ind]
         #print(conts[cnt_ind]-1)
         cont = continent_names[int(conts[cnt_ind]-1)]
         gdpaFix = GDP2Asset()
         gdpaFix.set_countries(countries=country, ref_year=2005, path = gdp_path)
-        for year in range(len(years)):
-            print('Country_{}year_{}'.format(isos[cnt_ind],str(years[year])))
-            dataDF.iloc[line_counter, 0] = years[year]
-            dataDF.iloc[line_counter, 1] = country[0]
-            dataDF.iloc[line_counter, 2] = reg
-            dataDF.iloc[line_counter, 3] = cont
-            gdpa = GDP2Asset()
-            gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
+        
+        save_lc = line_counter
+        for pro_std in len(PROT_STD):
+            print('country_{}_{}')
+            line_counter = save_lc
+            dph_path = flood_dir +'flddph_{}_{}_{}_gev_0.1.nc'\
+               .format(rf_mod, cl_mod, PROT_STD[pro_std])
+            frc_path= flood_dir+'fldfrc_{}_{}_{}_gev_0.1.nc'\
+               .format(rf_mod, cl_mod, PROT_STD[pro_std])
+    
+            if not os.path.exists(dph_path):
+                print('{} path not found'.format(dph_path))
+                raise KeyError
+            if not os.path.exists(frc_path):
+                print('{} path not found'.format(frc_path))
+                raise KeyError
             
-
-            for pro_std in range(len(PROT_STD)):
-                dph_path = flood_dir +'flddph_{}_{}_{}_gev_0.1.nc'\
-                   .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-                frc_path= flood_dir+'fldfrc_{}_{}_{}_gev_0.1.nc'\
-                   .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-
-                if not os.path.exists(dph_path):
-                    print('{} path not found'.format(dph_path))
-                    raise KeyError
-                if not os.path.exists(frc_path):
-                    print('{} path not found'.format(frc_path))
-                    raise KeyError
-
-                rf = RiverFlood()
-                rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=[years[year]])
-                rf.set_flooded_area()
-
-                imp_fl=Impact()
-                imp_fl.calc(gdpa, if_set, rf)
-                imp_fix=Impact()
-                imp_fix.calc(gdpaFix, if_set, rf)
+            rf = RiverFlood()
+            rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=years)
+            rf.set_flooded_area()
+            for year in range(len(years)):
+                ini_date = str(years[year]) + '-01-01'
+                fin_date = str(years[year]) + '-12-31'
+                dataDF.iloc[line_counter, 0] = years[year]
+                dataDF.iloc[line_counter, 1] = country[0]
+                dataDF.iloc[line_counter, 2] = reg
+                dataDF.iloc[line_counter, 3] = cont
+                gdpa = GDP2Asset()
                 
-                dataDF.iloc[line_counter, 4] = imp_fl.tot_value
-                dataDF.iloc[line_counter, 5 + pro_std] = rf.fla_annual[0]
-                dataDF.iloc[line_counter, 8 + pro_std] = imp_fix.at_event[0]
-                dataDF.iloc[line_counter, 11 + pro_std] = imp_fl.at_event[0]
+                gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
+                gdpa.check()
+                
+                imp_fl=Impact()
+                imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date,fin_date)))
 
-            line_counter+=1
-    dataDF.to_csv(output + 'output_{}_{}_{}.csv'.format(args.RF_model, args.CL_model, PROT_STD[pro_std]))
+                imp_fix=Impact()
+                imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date,fin_date)))
+
+                dataDF.iloc[line_counter, 4] = imp_fl.tot_value
+                dataDF.iloc[line_counter, 5] = imp_fix.tot_value
+                dataDF.iloc[line_counter, 6 + pro_std] = rf.fla_annual[year]
+                dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
+                dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
+                line_counter+=1
+        dataDF.to_csv('output_{}_{}_fullProt.csv'.format(args.RF_model, args.CL_model))
 except KeyError:
     print('run failed')
     failureDF.iloc[fail_lc, 0] = args.RF_model
@@ -142,4 +148,4 @@ except IndexError:
     failureDF.iloc[fail_lc, 1] = args.CL_model
     fail_lc+=1
 
-failureDF.to_csv(output + 'failure_{}_{}.csv'.format(args.RF_model, args.CL_model))
+failureDF.to_csv('failure_{}_{}.csv'.format(args.RF_model, args.CL_model))
