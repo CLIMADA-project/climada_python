@@ -157,6 +157,7 @@ class RiverFlood(Hazard):
             centr_handling = 'align'
         else:
             centr_handling = 'full_hazard'
+
         intensity, fraction = self._read_nc(years, centr_handling,
                                             dph_path, frc_path)
         if scenario == 'historical':
@@ -169,7 +170,9 @@ class RiverFlood(Hazard):
         self.units = 'm'
         date_test = np.array([date.fromordinal(self.date[i]).year
                               for i in range(len(self.date))])
+        
         time_frame = np.max(date_test) + 1 - np.min(date_test)
+
         self.frequency = np.ones(self._n_events) / time_frame
         return self
 
@@ -227,7 +230,7 @@ class RiverFlood(Hazard):
                                           win[0, 0]:win[1, 0] + 1].data
             frc_window = flood_frc.fldfrc[event_index, win[0, 1]:win[1, 1] + 1,
                                           win[0, 0]:win[1, 0] + 1].data
-            self. window = win
+            self.window = win
             try:
                 intensity, fraction = _interpolate(lat_coord, lon_coord,
                                                    dph_window, frc_window,
@@ -274,7 +277,6 @@ class RiverFlood(Hazard):
 
     def _select_event(self, time, years):
         event_names = pd.to_datetime(time).year
-        print(event_names)
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
             LOGGER.error('No events found for selected ' + str(years))
@@ -517,7 +519,7 @@ class RiverFlood(Hazard):
         lat_coordinates = gridY[natID_pos]
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
         centroids.id = np.arange(centroids.lon.shape[0])
-        centroids.set_region_id()
+        #centroids.set_region_id()
         return centroids
 
     def select_exact_area_polygon(countries=[], reg=[]):
