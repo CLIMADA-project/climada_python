@@ -31,9 +31,14 @@ __all__ = ['Graph2D',
 
 import numpy as np
 from scipy.interpolate import griddata
+import six.moves.urllib.request as request
+import six
+from PIL import Image
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import mercantile as mt
 from shapely.geometry import box
+from cartopy.io.img_tiles import _merge_tiles as merge_tiles
 import cartopy.crs as ccrs
 from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
@@ -509,6 +514,70 @@ def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
     max_lat = min(np.max(geo_coord[:, 0])+buffer, proj.y_limits[1])
     return [min_lon, max_lon, min_lat, max_lat]
 
+def bounds2img(w, s, e, n, zoom, url=ctx.sources.ST_TERRAIN, ll=False):
+    ''' Function from contextily library modified:
+    Take bounding box and zoom and return an image with all the tiles
+    that compose the map and its Spherical Mercator extent.
+
+    ...
+
+    Arguments
+    ---------
+    w       : float
+              West edge
+    s       : float
+              South edge
+    e       : float
+              East edge
+    n       : float
+              Noth edge
+    zoom    : int
+              Level of detail
+    url     : str
+              [Optional. Default: 'http://tile.stamen.com/terrain/tileZ/tileX/tileY.png']
+              URL for tile provider. The placeholders for the XYZ need to be
+              `tileX`, `tileY`, `tileZ`, respectively. IMPORTANT: tiles are
+              assumed to be in the Spherical Mercator projection (EPSG:3857).
+    ll      : Boolean
+              [Optional. Default: False] If True, `w`, `s`, `e`, `n` are
+              assumed to be lon/lat as opposed to Spherical Mercator.
+
+    Returns
+    -------
+    img     : ndarray
+              Image as a 3D array of RGB values
+    extent  : tuple
+              Bounding box [minX, maxX, minY, maxY] of the returned image
+    '''
+    if not ll:
+        # Convert w, s, e, n into lon/lat
+        w, s = ctx.tile._sm2ll(w, s)
+        e, n = ctx.tile._sm2ll(e, n)
+    tiles = []
+    for t in mt.tiles(w, s, e, n, [zoom]):
+        x, y, z = t.x, t.y, t.z
+        tile_url = url.replace('tileX', str(x)).replace('tileY', str(y)).replace('tileZ', str(z))
+        #---
+        req = request.Request(tile_url, data=None, headers={'User-Agent':'Safari'})
+        fh = request.urlopen(req)
+        im_data = six.BytesIO(fh.read())
+        fh.close()
+        imgr = Image.open(im_data)
+        imgr = imgr.convert('RGB')
+        #---
+        img = np.array(imgr)
+        wt, st, et, nt = mt.bounds(t)
+        xr = np.linspace(wt, et, img.shape[0])
+        yr = np.linspace(st, nt, img.shape[1])
+        tiles.append([img, xr, yr, 'lower'])
+    merged, extent = merge_tiles(tiles)[:2]
+    # lon/lat extent --> Spheric Mercator
+    minX, maxX, minY, maxY = extent
+    w, s = mt.xy(minX, minY)
+    e, n = mt.xy(maxX, maxY)
+    extent = w, e, s, n
+    return merged[::-1], extent
+
 def add_basemap(axis, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                 flip=False):
     """ Add image to given axis. Coordinates need to be in epsg=3857.
@@ -519,7 +588,7 @@ def add_basemap(axis, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tile
         url (str, optional): image source, e.g. ctx.sources.OSM_C
     """
     xmin, xmax, ymin, ymax = axis.axis()
-    basemap, extent = ctx.bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
+    basemap, extent = bounds2img(xmin, ymin, xmax, ymax, zoom=zoom, url=url)
     if flip:
         basemap = np.flip(basemap, 0)
     axis.imshow(basemap, extent=extent, interpolation='bilinear')

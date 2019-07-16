@@ -22,6 +22,8 @@ import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import contextily as ctx
+import urllib
 
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
@@ -138,6 +140,19 @@ class TestPlotter(unittest.TestCase):
         ifc2.unit = ''
         ifc2.label = 'prove'
         ifc.plot_compare(ifc2)
+
+    def test_ctx_osm_pass(self):
+        """ Test basemap function using osm images """
+        myexp = Exposures()
+        myexp['latitude'] = np.array([30, 40, 50])
+        myexp['longitude'] = np.array([0, 0, 0])
+        myexp['value'] = np.array([1, 1, 1])
+        myexp.check()
+        
+        try:
+            myexp.plot_basemap(url=ctx.sources.OSM_A)
+        except urllib.error.HTTPError:
+            self.assertEqual(1, 0)
 
 # Execute Tests
 if __name__ == "__main__":
