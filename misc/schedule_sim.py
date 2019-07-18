@@ -68,7 +68,7 @@ if_set = flood_imp_func_set()
 fail_lc = 0
 line_counter = 0
 
-for cnt_ind in range(141, 230):
+for cnt_ind in range(len(isos)):
     country = [isos[cnt_ind]]
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
@@ -101,7 +101,6 @@ for cnt_ind in range(141, 230):
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
             gdpa = GDP2Asset()
-
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
@@ -114,5 +113,5 @@ for cnt_ind in range(141, 230):
             dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
             line_counter+=1
-    dataDF.to_csv('output_{}_{}_fullProtfromMUS.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('output_{}_{}_fullProtAll.csv'.format(args.RF_model, args.CL_model))
 
