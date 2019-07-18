@@ -48,10 +48,10 @@ indices = []
 sys.dont_write_bytecode = True
 
 
-RF_MODEL = [#'ORCHIDEE',
-            #'CLM',
-            #'DBH',
-            #'H08',
+RF_MODEL = ['ORCHIDEE',
+            'CLM',
+            'DBH',
+            'H08',
             'JULES-TUC',
             'JULES-UoE',
             'LPJmL',
