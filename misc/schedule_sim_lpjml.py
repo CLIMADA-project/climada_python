@@ -35,7 +35,7 @@ args = parser.parse_args()
 
 
 PROT_STD = ['0', '100', 'flopros']
-flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
+flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 output = currentdir
 if args.CL_model == 'watch':
