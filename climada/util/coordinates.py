@@ -51,10 +51,13 @@ NE_CRS = from_epsg(NE_EPSG)
 """ Natural Earth CRS """
 
 def grid_is_regular(coord):
-    """Return True if grid is regular.
+    """Return True if grid is regular. If True, returns height and width.
 
     Parameters:
         coord (np.array):
+
+    Returns:
+        bool (is regular), int (height), int (width)
     """
     regular = False
     _, count_lat = np.unique(coord[:, 0], return_counts=True)
@@ -64,7 +67,7 @@ def grid_is_regular(coord):
     if uni_lat_size == uni_lon_size and uni_lat_size == 1 \
     and count_lat[0] > 1 and count_lon[0] > 1:
         regular = True
-    return regular
+    return regular, count_lat[0], count_lon[0]
 
 def get_coastlines(extent=None, resolution=110):
     """Get latitudes and longitudes of the coast lines inside extent. All
