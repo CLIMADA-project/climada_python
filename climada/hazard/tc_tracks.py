@@ -776,8 +776,10 @@ class TCTracks():
         # remove nan coordinates
         tr_ds.drop(tr_ds[tr_ds.lat == nc_data.variables[provider + '_lat']. \
             _FillValue].index, inplace=True)
+        tr_ds.drop(tr_ds[np.isnan(tr_ds.lat.values)].index, inplace=True)
         tr_ds.drop(tr_ds[tr_ds.lon == nc_data.variables[provider + '_lon']. \
             _FillValue].index, inplace=True)
+        tr_ds.drop(tr_ds[np.isnan(tr_ds.lon.values)].index, inplace=True)
         # remove nan central pressures
         tr_ds.drop(tr_ds[tr_ds.central_pressure == nc_data.variables[provider + '_pres']. \
             _FillValue].index, inplace=True)
