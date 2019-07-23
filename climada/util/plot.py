@@ -45,6 +45,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import contextily as ctx
 
 from climada.util.files_handler import to_list
+from climada.util.coordinates import grid_is_regular
 
 
 # Number of pixels in one direction in rendered image
@@ -194,7 +195,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
     return fig, axis_sub
 
 def geo_im_from_array(array_sub, geo_coord, var_name, title,
-                      proj=ccrs.PlateCarree(), **kwargs):
+                      proj=ccrs.PlateCarree(), smooth=True, **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
     Parameters:
@@ -211,7 +212,9 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
             used for all subplots. Otherwise provide as many as subplots in
             array_sub.
         proj (ccrs): coordinate reference system used in coordinates
-        kwargs (optional): arguments for pcolormesh matplotlib function
+        smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
+            True.
+        kwargs (optional): arguments for pcolormesh matplotlib function.
 
     Returns:
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -237,13 +240,24 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         if coord.shape[0] != array_im.size:
             raise ValueError("Size mismatch in input array: %s != %s." % \
                              (coord.shape[0], array_im.size))
-        # Create regular grid where to interpolate the array
+        is_reg, height, width = grid_is_regular(coord)
         extent = _get_borders(coord, proj=proj)
-        grid_x, grid_y = np.mgrid[
-            extent[0] : extent[1] : complex(0, RESOLUTION),
-            extent[2] : extent[3] : complex(0, RESOLUTION)]
-        grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
-                           (grid_x, grid_y))
+        if smooth or not is_reg:
+            # Create regular grid where to interpolate the array
+            grid_x, grid_y = np.mgrid[
+                extent[0] : extent[1] : complex(0, RESOLUTION),
+                extent[2] : extent[3] : complex(0, RESOLUTION)]
+            grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
+                               (grid_x, grid_y))
+        else:
+            grid_x = coord[:, 1].reshape((width, height)).transpose()
+            grid_y = coord[:, 0].reshape((width, height)).transpose()
+            grid_im = np.array(array_im.reshape((width, height)).transpose())
+            if grid_y[0, 0] > grid_y[0, -1]:
+                grid_y = np.flip(grid_y)
+                grid_im = np.flip(grid_im, 1)
+            grid_im = np.resize(grid_im, (height, width, 1))
+
         # Add coastline to axis
         axis.set_extent((extent), proj)
         add_shapes(axis)

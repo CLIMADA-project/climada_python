@@ -485,13 +485,14 @@ class Impact():
                 0, return_periods)
 
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
-                    log10_scale=True, **kwargs):
+                    log10_scale=True, smooth=True, **kwargs):
         """Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
             log10_scale (boolean, optional): plot impact as log10(impact)
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -520,8 +521,8 @@ class Impact():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        fig, axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
-                                             colbar_name, title, **kwargs)
+        fig, axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp, \
+            colbar_name, title, smooth=smooth, **kwargs)
 
         return fig, axis, imp_stats
 

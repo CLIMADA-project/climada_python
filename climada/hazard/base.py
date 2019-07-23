@@ -598,12 +598,14 @@ class Hazard():
 
         return inten_stats
 
-    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), **kwargs):
+    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), smooth=True,
+                          **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -617,38 +619,11 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        fig, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
-                                             colbar_name, title, **kwargs)
+        fig, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,\
+            colbar_name, title, smooth=smooth, **kwargs)
         return fig, axis, inten_stats
 
-    def plot_raster(self, ev_id=1, intensity=True, **kwargs):
-        """ Plot selected event using imshow and without cartopy
-
-        Parameters:
-            ev_id (int, optional): event id. Default: 1.
-            intensity (bool, optional): plot intensity if True, fraction otherwise
-            kwargs (optional): arguments for imshow matplotlib function
-
-        Returns:
-            matplotlib.image.AxesImage
-
-        """
-        if not self.centroids.meta:
-            LOGGER.error('No raster data set')
-            raise ValueError
-        try:
-            event_pos = np.where(self.event_id == ev_id)[0][0]
-        except IndexError:
-            LOGGER.error('Wrong event id: %s.', ev_id)
-            raise ValueError from IndexError
-
-        if intensity:
-            return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
-        return plt.imshow(self.fraction[event_pos, :].todense(). \
-                          reshape(self.centroids.shape), **kwargs)
-
-    def plot_intensity(self, event=None, centr=None, **kwargs):
+    def plot_intensity(self, event=None, centr=None, smooth=True, **kwargs):
         """Plot intensity values for a selected event or centroid.
 
         Parameters:
@@ -662,6 +637,7 @@ class Hazard():
                 plot abs(centr)-largest centroid where higher intensities
                 are reached. If tuple with (lat, lon) plot intensity of nearest
                 centroid.
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -676,7 +652,7 @@ class Hazard():
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.intensity, col_label, **kwargs)
+            return self._event_plot(event, self.intensity, col_label, smooth, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -685,7 +661,7 @@ class Hazard():
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
-    def plot_fraction(self, event=None, centr=None, **kwargs):
+    def plot_fraction(self, event=None, centr=None, smooth=True, **kwargs):
         """Plot fraction values for a selected event or centroid.
 
         Parameters:
@@ -699,6 +675,7 @@ class Hazard():
                 plot abs(centr)-largest centroid where highest fractions
                 are reached. If tuple with (lat, lon) plot fraction of nearest
                 centroid.
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -713,7 +690,7 @@ class Hazard():
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.fraction, col_label, **kwargs)
+            return self._event_plot(event, self.fraction, col_label, smooth, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -961,7 +938,7 @@ class Hazard():
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
-            elif var_val is not None:
+            elif var_val is not None and var_name != 'pool':
                 hf_data.create_dataset(var_name, data=var_val)
         hf_data.close()
 
@@ -1056,7 +1033,7 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, **kwargs):
+    def _event_plot(self, event_id, mat_var, col_name, smooth, **kwargs):
         """"Plot an event of the input matrix.
 
         Parameters:
@@ -1066,6 +1043,7 @@ class Hazard():
                 abs(event_id)-largest event.
             mat_var (sparse matrix): Sparse matrix where each row is an event
             col_name (sparse matrix): Colorbar label
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
@@ -1100,7 +1078,7 @@ class Hazard():
             l_title.append(title)
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord,
-                                        col_name, l_title, **kwargs)
+                                        col_name, l_title, smooth=smooth, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name):
         """"Plot a centroid of the input matrix.
