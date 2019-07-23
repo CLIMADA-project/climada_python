@@ -37,7 +37,7 @@ import cartopy.crs as ccrs
 import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
-from netCDF4 import Dataset
+import netCDF4 as nc
 from numba import jit
 from pint import UnitRegistry
 import scipy.io.matlab as matlab
@@ -142,7 +142,7 @@ class TCTracks():
 
     def read_ibtracs_netcdf(self, provider='usa', storm_id=None,
                             year_range=(1980, 2018), basin=None,
-                            file_name='IBTrACS.ALL.v04r00.nc', correct_pres=False):
+                            file_name='IBTrACS.ALL.v04r00.nc', correct_pres=True):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
         and radius_max_wind. Checks environmental_pressure > central_pressure.
@@ -172,7 +172,7 @@ class TCTracks():
                 raise err
 
         sel_tracks = self._filter_ibtracs(fn_nc, storm_id, year_range, basin)
-        nc_data = Dataset(fn_nc)
+        nc_data = nc.Dataset(fn_nc)
         all_tracks = []
         for i_track in sel_tracks:
             all_tracks.append(self._read_one_raw(nc_data, i_track, provider,
@@ -664,7 +664,7 @@ class TCTracks():
         Returns:
             np.array
         """
-        nc_data = Dataset(fn_nc)
+        nc_data = nc.Dataset(fn_nc)
         storm_ids = [''.join(name.astype(str))
                      for name in nc_data.variables['sid']]
         sel_tracks = []
