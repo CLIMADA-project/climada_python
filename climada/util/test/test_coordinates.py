@@ -43,33 +43,54 @@ class TestFunc(unittest.TestCase):
     def test_is_regular_pass(self):
         """ Test is_regular function. """
         coord = np.array([[1, 2], [4.4, 5.4], [4, 5]])
-        self.assertFalse(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
 
         coord = np.array([[1, 2], [4.4, 5], [4, 5]])
-        self.assertFalse(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
 
         coord = np.array([[1, 2], [4, 5]])
-        self.assertFalse(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
 
         coord = np.array([[1, 2], [4, 5], [1, 5], [4, 3]])
-        self.assertFalse(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 2)
+        self.assertEqual(wid, 1)
 
         coord = np.array([[1, 2], [4, 5], [1, 5], [4, 2]])
-        self.assertTrue(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 2)
+        self.assertEqual(wid, 2)
 
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 5),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
         coord = np.array([grid_x, grid_y]).transpose()
-        self.assertTrue(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 5)
+        self.assertEqual(wid, 5)
 
         grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 4),
                                   0 : 10 : complex(0, 5)]
         grid_x = grid_x.reshape(-1,)
         grid_y = grid_y.reshape(-1,)
         coord = np.array([grid_x, grid_y]).transpose()
-        self.assertTrue(grid_is_regular(coord))
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 5)
+        self.assertEqual(wid, 4)
 
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""
