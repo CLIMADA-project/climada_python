@@ -56,9 +56,9 @@ class TestReader(unittest.TestCase):
         self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
         self.assertEqual(storms.event_id[0], 1)
         self.assertEqual(storms.event_name[0], 'Lothar')
-        self.assertIsInstance(storms.intensity, 
+        self.assertIsInstance(storms.intensity,
                               sparse.csr.csr_matrix)
-        self.assertIsInstance(storms.fraction, 
+        self.assertIsInstance(storms.fraction,
                               sparse.csr.csr_matrix)
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(storms.fraction.shape, (2, 9944))
@@ -104,7 +104,7 @@ class TestReader(unittest.TestCase):
         """ Test set_ssi with both dawkins and wisc_gust methodology. """
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC)
-        
+
         storms.set_ssi(method='dawkins')
         ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
         self.assertTrue(
@@ -132,15 +132,16 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(
             np.count_nonzero(storms.centroids.region_id),
-            6190 
-            # here, we don't rasterise; we check if the centroids lie in a 
+            6190
+            # here, we don't rasterise; we check if the centroids lie in a
             # polygon. that is to say, it's not the majority of a raster pixel,
             # but the centroid's location that is decisive
         )
         self.assertEqual(storms_prob.size, 60)
+        self.assertTrue(np.allclose((1/storms_prob.frequency).astype(int), 360))
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)
         self.assertEqual(storms_prob.centroids.size, 3054)
-        self.assertIsInstance(storms_prob.intensity, 
+        self.assertIsInstance(storms_prob.intensity,
                               sparse.csr.csr_matrix)
 
 
