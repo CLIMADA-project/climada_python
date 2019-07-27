@@ -8,12 +8,6 @@ CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural cat
 
 This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB).
 
-Please cite the following paper when using CLIMADA:
-
-Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-12-3085-2019 
-
-and whereever appropriate provide the link: https://github.com/CLIMADA-project/climada_python
-
 ## Getting started
 
 CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/guide/install.html).
@@ -31,7 +25,7 @@ Documentation is available on Read the Docs:
 
 If you use CLIMADA for academic work please cite:
 
-Aznar-Siguan, G. and Bresch, D. N.: CLIMADA – a global weather and climate risk assessment platform, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-2018-338, in review, 2019.
+Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-12-3085-2019
 
 Please see all CLIMADA's related scientific publications in our [repository of scientific publications](https://github.com/CLIMADA-project/climada_papers).
 
