@@ -35,10 +35,28 @@ args = parser.parse_args()
 
 
 PROT_STD = ['0', '100', 'flopros']
-flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
+#for LPJ longrun
+
+#flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
+#flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 output = currentdir
-years = np.arange(1971, 2011)
+#For lpj longrun
+if args.RF_model == 'lpjml':
+    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
+    if args.CL_model == 'watch':
+        years = np.arange(1901, 2002)
+    else:
+        years = np.arange(1901, 2011)
+else:
+    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
+    years = years = np.arange(1971, 2002)
+# 	if args.CL_model == 'watch':
+#       years = np.arange(1971, 2002)
+#    else:
+#        years = np.arange(1971, 2011)
+
+#years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
 regs = country_info['Reg_name'].tolist()
@@ -113,5 +131,9 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
             line_counter+=1
-    dataDF.to_csv('output_{}_{}_fullProtAll.csv'.format(args.RF_model, args.CL_model))
+    if args.RF_model == 'lpjml':
+        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long.csv'.format(args.RF_model, args.CL_model))
+    else:
+        dataDF.to_csv('output_{}_{}_fullProt_All.csv'.format(args.RF_model, args.CL_model))
+
 
