@@ -38,9 +38,12 @@ from rasterio.mask import mask
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 from rasterio.features import rasterize
 import dask.dataframe as dd
+import pandas as pd
 
 from climada.util.constants import EARTH_RADIUS_KM
 from climada.util.constants import DEF_CRS
+
+pd.options.mode.chained_assignment = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -386,6 +389,10 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                                  'width': width,
                                  'height': height
                                 })
+                kwargs = {}
+                if src.meta['nodata']:
+                    kwargs['src_nodata'] = src.meta['nodata']
+                    kwargs['dst_nodata'] = src.meta['nodata']
                 intensity = np.zeros((len(band), height, width))
                 for idx_band, i_band in enumerate(band):
                     reproject(source=src.read(i_band),
@@ -394,7 +401,8 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                               src_crs=src_meta,
                               dst_transform=transform,
                               dst_crs=dst_crs,
-                              resampling=resampling)
+                              resampling=resampling,
+                              **kwargs)
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
                     else:
