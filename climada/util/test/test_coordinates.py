@@ -198,7 +198,7 @@ class TestFunc(unittest.TestCase):
         iso_countries = ['NLD', 'VNM']
         res = get_country_geometries(iso_countries, resolution=110)
         self.assertIsInstance(res,
-                              geopandas.geodataframe.GeoDataFrame)    
+                              geopandas.geodataframe.GeoDataFrame)
 
     def test_get_country_geometries_extent_pass(self):
         """get_country_geometries by selecting by extent"""
@@ -236,15 +236,15 @@ class TestFunc(unittest.TestCase):
 
     def test_get_resolution_pass(self):
         """ Test _get_resolution method """
-        lat = np.array([13.125, 13.20833333, 13.29166667, 13.125, 
-                        13.20833333, 13.125, 12.625, 12.70833333, 
+        lat = np.array([13.125, 13.20833333, 13.29166667, 13.125,
+                        13.20833333, 13.125, 12.625, 12.70833333,
                         12.79166667, 12.875, 12.95833333, 13.04166667])
         lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667,
                         -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333,
                         -60.2083333333333,-60.2083333333333,-60.2083333333333,-60.2083333333333])
         res_lat, res_lon = get_resolution(lat, lon)
         self.assertAlmostEqual(min(res_lat, res_lon), 0.0833333333333)
-    
+
     def test_vector_to_raster_pass(self):
         """ Test vector_to_raster """
         xmin, ymin, xmax, ymax = -60, -5, -50, 10 # bounds of points == centers pixels
@@ -333,7 +333,7 @@ class TestFunc(unittest.TestCase):
         meta, inten_ras = read_raster(HAZ_DEMO_FL,
             transform=Affine(0.009000000000000341, 0.0, -69.33714959699981,
             0.0, -0.009000000000000341, 10.42822096697894), height=500, width=501)
-        
+
         left = meta['transform'].xoff
         top = meta['transform'].yoff
         bottom = top + meta['transform'][4]*meta['height']
@@ -384,7 +384,8 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(meta['transform'][5], 50.25)
         self.assertEqual(meta['height'], 21)
         self.assertEqual(meta['width'], 5)
-        
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
