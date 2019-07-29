@@ -196,23 +196,30 @@ class CostBenefit():
 
         self._print_results()
 
-    def plot_cost_benefit(self, cb_list=None):
+    def plot_cost_benefit(self, cb_list=None, axis=None, **kwargs):
         """ Plot cost-benefit graph. Call after calc().
 
         Parameters:
-            cb_list (lsit(CostBenefit), optional): if other CostBenefit
+            cb_list (list(CostBenefit), optional): if other CostBenefit
                 provided, overlay them all. Used for uncertainty visualization.
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for Rectangle matplotlib, e.g. alpha=0.5
+                (color is set by measures color attribute)
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
         if cb_list:
+            if 'alpha' not in kwargs:
+                kwargs['alpha'] = 0.5
             cb_uncer = [self]
             cb_uncer.extend(cb_list)
-            fig, axis = self._plot_list_cost_ben(cb_uncer, 0.5)
-            return fig, axis
+            axis = self._plot_list_cost_ben(cb_uncer, axis, **kwargs)
+            return axis
 
-        fig, axis = self._plot_list_cost_ben([self], 1)
+        if 'alpha' not in kwargs:
+            kwargs['alpha'] = 1.0
+        axis = self._plot_list_cost_ben([self], axis, **kwargs)
         norm_fact, norm_name = self._norm_values(self.tot_climate_risk+0.01)
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
         axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
@@ -230,18 +237,25 @@ class CostBenefit():
             self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
         axis.set_xlabel(x_label)
         axis.set_ylabel('Benefit/Cost ratio')
-        return fig, axis
+        return axis
 
-    def plot_event_view(self, return_per=(10, 25, 100)):
+    def plot_event_view(self, return_per=(10, 25, 100), axis=None, **kwargs):
         """ Plot averted damages for return periods. Call after calc().
 
+        Parameters:
+            return_per (list, optional): years to visualize. Default 10, 25, 100
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+                (color is set by measures color attribute)
+
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future:
             LOGGER.error('Compute CostBenefit.calc() first')
             raise ValueError
-        fig, axis = plt.subplots(1, 1)
+        if not axis:
+            _, axis = plt.subplots(1, 1)
         avert_rp = dict()
         ref_imp = np.interp(return_per,
                             self.imp_meas_future['no measure']['efc'].return_per,
@@ -261,15 +275,15 @@ class CostBenefit():
             val_i = [avert_rp[name][rp_i] for name in names_sort]
             cum_effect = np.cumsum(np.array([0] + val_i))
             for (eff, color) in zip(cum_effect[::-1][:-1], color_sort[::-1]):
-                plt.bar(rp_i+1, eff, color=color)
+                plt.bar(rp_i+1, eff, color=color, **kwargs)
             plt.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0))
         axis.set_xlabel('Return Period')
         axis.set_ylabel('Impact ('+ self.unit + ')')
         plt.xticks(np.arange(len(return_per))+1, return_per)
-        return fig, axis
+        return axis
 
     def plot_waterfall(self, hazard, entity, haz_future, ent_future,
-                       risk_func=risk_aai_agg):
+                       risk_func=risk_aai_agg, axis=None, **kwargs):
         """ Plot waterfall graph with given risk metric. Can be called before
         and after calc().
 
@@ -281,9 +295,11 @@ class CostBenefit():
             ent_future (Entity): entity in the future
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
         if ent_future.exposures.ref_year == entity.exposures.ref_year:
             LOGGER.error('Same reference years for future and present entities.')
@@ -305,7 +321,8 @@ class CostBenefit():
         else:
             fut_risk = self.imp_meas_future['no measure']['risk']
 
-        fig, axis = plt.subplots(1, 1)
+        if not axis:
+            _, axis = plt.subplots(1, 1)
         norm_fact, norm_name = self._norm_values(curr_risk)
 
         # current situation
@@ -324,19 +341,19 @@ class CostBenefit():
         LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.\
                     format(self.future_year, fut_risk))
 
-        axis.bar(1, curr_risk/norm_fact)
+        axis.bar(1, curr_risk/norm_fact, **kwargs)
         axis.text(1, curr_risk/norm_fact, str(int(round(curr_risk/norm_fact))), \
             horizontalalignment='center', verticalalignment='bottom', \
             fontsize=12, color='k')
-        axis.bar(2, height=(risk_dev-curr_risk)/norm_fact, bottom=curr_risk/norm_fact)
+        axis.bar(2, height=(risk_dev-curr_risk)/norm_fact, bottom=curr_risk/norm_fact, **kwargs)
         axis.text(2, curr_risk/norm_fact + (risk_dev-curr_risk)/norm_fact/2, \
             str(int(round((risk_dev-curr_risk)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        axis.bar(3, height=(fut_risk-risk_dev)/norm_fact, bottom=risk_dev/norm_fact)
+        axis.bar(3, height=(fut_risk-risk_dev)/norm_fact, bottom=risk_dev/norm_fact, **kwargs)
         axis.text(3, risk_dev/norm_fact + (fut_risk-risk_dev)/norm_fact/2, \
             str(int(round((fut_risk-risk_dev)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        axis.bar(4, height=fut_risk/norm_fact)
+        axis.bar(4, height=fut_risk/norm_fact, **kwargs)
         axis.text(4, fut_risk/norm_fact, str(int(round(fut_risk/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
@@ -344,29 +361,28 @@ class CostBenefit():
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
         axis.set_title('Risk at {:d} and {:d}'.format(self.present_year, self.future_year))
-        return fig, axis
+        return axis
 
-    def plot_waterfall_accumulated(self, hazard, entity, haz_future, ent_future,
+    def plot_waterfall_accumulated(self, hazard, entity, ent_future,
                                    risk_func=risk_aai_agg, imp_time_depen=1,
-                                   plot_arrow=True):
+                                   plot_arrow=True, axis=None, **kwargs):
         """ Plot waterfall graph with accumulated values from present to future
-        year. Call after calc(). Provide same risk_func and imp_time_depen as
-        in calc.
+        year. Call after calc(). Provide same inputs as in calc.
 
         Parameters:
             hazard (Hazard): hazard
             entity (Entity): entity
-            haz_future (Hazard): hazard in the future (future year provided at
-                ent_future)
             ent_future (Entity): entity in the future
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
             imp_time_depen (float, optional): parameter which represent time
                 evolution of impact. Default: 1 (linear).
             plot_arrow (bool, optional): plot adaptation arrow
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future or not self.imp_meas_present:
             LOGGER.error('Compute CostBenefit.calc() first')
@@ -403,21 +419,22 @@ class CostBenefit():
             format(self.future_year, risk_tot))
 
         # plot
-        fig, axis = plt.subplots(1, 1)
+        if not axis:
+            _, axis = plt.subplots(1, 1)
         norm_fact, norm_name = self._norm_values(curr_risk)
-        axis.bar(1, risk_curr/norm_fact)
+        axis.bar(1, risk_curr/norm_fact, **kwargs)
         axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
             horizontalalignment='center', verticalalignment='bottom', \
             fontsize=12, color='k')
-        axis.bar(2, height=(risk_dev-risk_curr)/norm_fact, bottom=risk_curr/norm_fact)
+        axis.bar(2, height=(risk_dev-risk_curr)/norm_fact, bottom=risk_curr/norm_fact, **kwargs)
         axis.text(2, risk_curr/norm_fact + (risk_dev-risk_curr)/norm_fact/2, \
             str(int(round((risk_dev-risk_curr)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        axis.bar(3, height=(risk_tot-risk_dev)/norm_fact, bottom=risk_dev/norm_fact)
+        axis.bar(3, height=(risk_tot-risk_dev)/norm_fact, bottom=risk_dev/norm_fact, **kwargs)
         axis.text(3, risk_dev/norm_fact + (risk_tot-risk_dev)/norm_fact/2, \
             str(int(round((risk_tot-risk_dev)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        bar_4 = axis.bar(4, height=risk_tot/norm_fact)
+        bar_4 = axis.bar(4, height=risk_tot/norm_fact, **kwargs)
         axis.text(4, risk_tot/norm_fact, str(int(round(risk_tot/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
@@ -438,7 +455,7 @@ class CostBenefit():
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
         axis.set_title('Total accumulated impact from {:d} to {:d}'.format( \
                        self.present_year, self.future_year))
-        return fig, axis
+        return axis
 
     def _calc_impact_measures(self, hazard, exposures, meas_set, imp_fun_set, \
         when='future', risk_func=risk_aai_agg, save_imp=False):
@@ -636,21 +653,26 @@ class CostBenefit():
         return norm_fact, norm_name
 
     @staticmethod
-    def _plot_list_cost_ben(cb_list, alpha=0.5):
+    def _plot_list_cost_ben(cb_list, axis=None, **kwargs):
         """ Overlay cost-benefit bars for every measure
 
         Parameters:
             cb_list (list): list of CostBenefit instances with filled values
-            alpha (float, optional): transparency factor (in [0,1])
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for Rectangle matplotlib, e.g. alpha=0.5
+                (color is set by measures color attribute)
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
+        if 'alpha' not in kwargs:
+            kwargs['alpha'] = 0.5
         norm_fact = [cb_res._norm_values(cb_res.tot_climate_risk)[0] for cb_res in cb_list]
         norm_fact = np.array(norm_fact).mean()
         _, norm_name = CostBenefit._norm_values(norm_fact+0.01)
 
-        fig, axis = plt.subplots(1, 1)
+        if not axis:
+            _, axis = plt.subplots(1, 1)
         m_names = list(cb_list[0].cost_ben_ratio.keys())
         sort_cb = np.argsort(np.array([cb_list[0].cost_ben_ratio[name] for name in m_names]))
         xy_lim = [0, 0]
@@ -660,7 +682,7 @@ class CostBenefit():
                 meas_n = m_names[meas_id]
                 axis.add_patch(Rectangle((xmin, 0), cb_res.benefit[meas_n]/norm_fact, \
                     1/cb_res.cost_ben_ratio[meas_n], color=cb_res.color_rgb[meas_n],\
-                    alpha=alpha))
+                    **kwargs))
 
                 if i_cb == 0:
                     axis.text(xmin + (cb_res.benefit[meas_n]/norm_fact)/2,
@@ -678,4 +700,4 @@ class CostBenefit():
                         str(cb_list[0].future_year - cb_list[0].present_year + 1) + \
                         ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
         axis.set_ylabel('Benefit/Cost ratio')
-        return fig, axis
+        return axis

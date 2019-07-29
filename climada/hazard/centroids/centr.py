@@ -139,8 +139,8 @@ class Centroids():
         Parameters:
             xf_lat (float): upper latitude (top)
             xo_lon (float): left longitude
-            d_lat (float): latitude step
-            d_lon (float): longitude step
+            d_lat (float): latitude step (negative)
+            d_lon (float): longitude step (positive)
             n_lat (int): number of latitude points
             n_lon (int): number of longitude points
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
@@ -540,24 +540,23 @@ class Centroids():
         self.lat = y_grid.flatten()
         self.geometry = GeoSeries(crs=self.meta['crs'])
 
-    def plot(self, **kwargs):
+    def plot(self, axis=None, **kwargs):
         """ Plot centroids scatter points over earth.
 
         Parameters:
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for scatter matplotlib function
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
-        if 's' not in kwargs:
-            kwargs['s'] = 1
-        fig, axis = u_plot.make_map()
-        axis = axis[0][0]
+        if not axis:
+            _, axis = u_plot.make_map()
         u_plot.add_shapes(axis)
         if self.meta and not self.coord.size:
             self.set_meta_to_lat_lon()
         axis.scatter(self.lon, self.lat, **kwargs)
-        return fig, axis
+        return axis
 
     def calc_pixels_polygons(self, scheduler=None):
         """ Return a GeoSeries with a polygon for every pixel

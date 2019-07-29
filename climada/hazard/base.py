@@ -31,8 +31,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from scipy import sparse
-import h5py
 import matplotlib.pyplot as plt
+import h5py
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
@@ -411,7 +411,6 @@ class Hazard():
         self.centroids.lon = self.centroids.geometry[:].x
         self.check()
 
-#    def raster_to_vector(self, geometry, crs):
     def raster_to_vector(self):
         """ Change current raster to points (center of the pixels) """
         self.centroids.set_meta_to_lat_lon()
@@ -598,19 +597,20 @@ class Hazard():
 
         return inten_stats
 
-    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), smooth=True,
-                          **kwargs):
+    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
+                          smooth=True, axis=None, **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
+            matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
         self._set_coords_centroids()
@@ -619,11 +619,12 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        fig, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,\
-            colbar_name, title, smooth=smooth, **kwargs)
-        return fig, axis, inten_stats
+        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,\
+            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+        return axis, inten_stats
 
-    def plot_intensity(self, event=None, centr=None, smooth=True, **kwargs):
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
+                       **kwargs):
         """Plot intensity values for a selected event or centroid.
 
         Parameters:
@@ -638,11 +639,12 @@ class Hazard():
                 are reached. If tuple with (lat, lon) plot intensity of nearest
                 centroid.
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+                used in event plots or for plot function used in centroids plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
@@ -652,16 +654,18 @@ class Hazard():
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.intensity, col_label, smooth, **kwargs)
+            return self._event_plot(event, self.intensity, col_label,
+                                    smooth, axis, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
-            return self._centr_plot(centr, self.intensity, col_label)
+            return self._centr_plot(centr, self.intensity, col_label, axis, **kwargs)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
-    def plot_fraction(self, event=None, centr=None, smooth=True, **kwargs):
+    def plot_fraction(self, event=None, centr=None, smooth=True, axis=None,
+                      **kwargs):
         """Plot fraction values for a selected event or centroid.
 
         Parameters:
@@ -676,11 +680,12 @@ class Hazard():
                 are reached. If tuple with (lat, lon) plot fraction of nearest
                 centroid.
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+                used in event plots or for plot function used in centroids plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
@@ -690,11 +695,12 @@ class Hazard():
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.fraction, col_label, smooth, **kwargs)
+            return self._event_plot(event, self.fraction, col_label, smooth, axis,
+                                    **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
-            return self._centr_plot(centr, self.fraction, col_label)
+            return self._centr_plot(centr, self.fraction, col_label, axis, **kwargs)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
@@ -1033,7 +1039,7 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, smooth, **kwargs):
+    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
         """"Plot an event of the input matrix.
 
         Parameters:
@@ -1044,6 +1050,7 @@ class Hazard():
             mat_var (sparse matrix): Sparse matrix where each row is an event
             col_name (sparse matrix): Colorbar label
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
@@ -1077,10 +1084,10 @@ class Hazard():
             array_val.append(im_val)
             l_title.append(title)
 
-        return u_plot.geo_im_from_array(array_val, self.centroids.coord,
-                                        col_name, l_title, smooth=smooth, **kwargs)
+        return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
+                                        l_title, smooth=smooth, axes=axis, **kwargs)
 
-    def _centr_plot(self, centr_idx, mat_var, col_name):
+    def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """"Plot a centroid of the input matrix.
 
         Parameters:
@@ -1092,6 +1099,8 @@ class Hazard():
             mat_var (sparse matrix): Sparse matrix where each column represents
                 a centroid
             col_name (sparse matrix): Colorbar label
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for plot matplotlib function
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -1119,11 +1128,16 @@ class Hazard():
             array_val = np.max(mat_var, axis=1).todense()
             title = '%s max intensity at each event' % self.tag.haz_type
 
-        graph = u_plot.Graph2D(title)
-        graph.add_subplot('Event number', col_name)
-        graph.add_curve(range(len(array_val)), array_val, 'b')
-        graph.set_x_lim(range(len(array_val)))
-        return graph.get_elems()
+        if not axis:
+            fig, axis = plt.subplots(1)
+            fig.suptitle(title)
+        if 'color' not in kwargs:
+            kwargs['color'] = 'b'
+        axis.set_xlabel('Event number')
+        axis.set_ylabel(str(col_name))
+        axis.plot(range(len(array_val)), array_val, **kwargs)
+        axis.set_xlim([0, len(array_val)])
+        return axis
 
     def _loc_return_inten(self, return_periods, inten, exc_inten):
         """ Compute local exceedence intensity for given return period.

@@ -33,6 +33,7 @@ import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
+import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import pandas as pd
 import xarray as xr
@@ -344,22 +345,23 @@ class TCTracks():
         """ Get longitude from coord array """
         return len(self.data)
 
-    def plot(self, title=None):
+    def plot(self, axis=None, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
         Parameters:
-            title (str, optional): plot title
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for LineCollection matplotlib, e.g. alpha=0.5
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
         """
         if not self.size:
             LOGGER.info('No tracks to plot')
             return None
 
         deg_border = 0.5
-        fig, axis = u_plot.make_map()
-        axis = axis[0][0]
+        if not axis:
+            _, axis = u_plot.make_map()
         min_lat, max_lat = 10000, -10000
         min_lon, max_lon = 10000, -10000
         for track in self.data:
@@ -377,19 +379,17 @@ class TCTracks():
         synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
-        if title:
-            axis.set_title(title)
         for track in self.data:
             points = np.array([track.lon.values,
                                track.lat.values]).T.reshape(-1, 1, 2)
             segments = np.concatenate([points[:-1], points[1:]], axis=1)
             if track.orig_event_flag:
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
-                    linestyle='solid', transform=ccrs.PlateCarree(), lw=2)
+                    linestyle='solid', transform=ccrs.PlateCarree(), lw=2, **kwargs)
             else:
                 synth_flag = True
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
-                    linestyle=':', transform=ccrs.PlateCarree(), lw=2)
+                    linestyle=':', transform=ccrs.PlateCarree(), lw=2, **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -404,7 +404,7 @@ class TCTracks():
             leg_names.append('Synthetic')
 
         axis.legend(leg_lines, leg_names, loc=0)
-        return fig, axis
+        return axis
 
     @staticmethod
     @jit(parallel=True)
@@ -1062,22 +1062,24 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
     # One graph per TC category
     for track_cat, color in zip(v_lf.keys(),
                                 cm_mp.rainbow(np.linspace(0, 1, len(v_lf)))):
-        graph = u_plot.Graph2D('', 2)
+        _, axes = plt.subplots(2, 1)
         x_eval = np.linspace(0, np.max(x_val[track_cat]), 20)
 
-        graph.add_subplot('Distance from landfall (km)', \
-            'Max sustained wind relative to landfall', 'Wind')
-        graph.add_curve(x_val[track_cat], v_lf[track_cat], '*', c=color,
-                        label=CAT_NAMES[track_cat])
-        graph.add_curve(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
-                        '-', c=color)
+        axes[0].set_xlabel('Distance from landfall (km)')
+        axes[0].set_ylabel('Max sustained wind relative to landfall')
+        axes[0].set_title('Wind')
+        axes[0].plot(x_val[track_cat], v_lf[track_cat], '*', c=color,
+                     label=CAT_NAMES[track_cat])
+        axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
+                     '-', c=color)
 
-        graph.add_subplot('Distance from landfall (km)', \
-            'Central pressure relative to landfall', 'Pressure')
-        graph.add_curve(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
-                        label=CAT_NAMES[track_cat])
-        graph.add_curve(x_eval, _decay_p_function(p_rel[track_cat][0], \
-            p_rel[track_cat][1], x_eval), '-', c=color)
+        axes[1].set_xlabel('Distance from landfall (km)')
+        axes[1].set_ylabel('Central pressure relative to landfall')
+        axes[1].set_title('Pressure')
+        axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
+                     label=CAT_NAMES[track_cat])
+        axes[1].plot(x_eval, _decay_p_function(p_rel[track_cat][0], \
+                     p_rel[track_cat][1], x_eval), '-', c=color)
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     """ Change track's max sustained wind and central pressure using the land
@@ -1183,23 +1185,35 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                 syn_orig_pres):
     """Plot winds and pressures of synthetic tracks before and after
     correction."""
-    graph_v_b = u_plot.Graph2D('Wind before land decay correction')
-    graph_v_b.add_subplot('Node number', 'Max sustained wind (kn)')
-    graph_v_a = u_plot.Graph2D('Wind after land decay correction')
-    graph_v_a.add_subplot('Node number', 'Max sustained wind (kn)')
+    _, graph_v_b = plt.subplots()
+    graph_v_b.set_title('Wind before land decay correction')
+    graph_v_b.set_xlabel('Node number')
+    graph_v_b.set_ylabel('Max sustained wind (kn)')
 
-    graph_p_b = u_plot.Graph2D('Pressure before land decay correction')
-    graph_p_b.add_subplot('Node number', 'Central pressure (mb)')
-    graph_p_a = u_plot.Graph2D('Pressure after land decay correction')
-    graph_p_a.add_subplot('Node number', 'Central pressure (mb)')
+    _, graph_v_a = plt.subplots()
+    graph_v_a.set_title('Wind after land decay correction')
+    graph_v_a.set_xlabel('Node number')
+    graph_v_a.set_ylabel('Max sustained wind (kn)')
 
-    graph_pd_a = u_plot.Graph2D('Relative pressure after land decay correction')
-    graph_pd_a.add_subplot('Distance from landfall (km)',
-                           'Central pressure relative to landfall')
-    graph_ped_a = u_plot.Graph2D('Environmental - central pressure after land ' +
-                                 'decay correction')
-    graph_ped_a.add_subplot('Distance from landfall (km)',
-                            'Environmental pressure - Central pressure (mb)')
+    _, graph_p_b = plt.subplots()
+    graph_p_b.set_title('Pressure before land decay correctionn')
+    graph_p_b.set_xlabel('Node number')
+    graph_p_b.set_ylabel('Central pressure (mb)')
+
+    _, graph_p_a = plt.subplots()
+    graph_p_a.set_title('Pressure after land decay correctionn')
+    graph_p_a.set_xlabel('Node number')
+    graph_p_a.set_ylabel('Central pressure (mb)')
+
+    _, graph_pd_a = plt.subplots()
+    graph_pd_a.set_title('Relative pressure after land decay correction')
+    graph_pd_a.set_xlabel('Distance from landfall (km)')
+    graph_pd_a.set_ylabel('Central pressure relative to landfall')
+
+    _, graph_ped_a = plt.subplots()
+    graph_ped_a.set_title('Environmental - central pressure after land decay correction')
+    graph_ped_a.set_xlabel('Distance from landfall (km)')
+    graph_ped_a.set_ylabel('Environmental pressure - Central pressure (mb)')
 
     for track, orig_wind, orig_pres in \
     zip(sy_tracks, syn_orig_wind, syn_orig_pres):
@@ -1216,48 +1230,56 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                 ss_scale = np.where(v_lf < SAFFIR_SIM_CAT)[0][0]
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
-                graph_v_a.add_curve(on_land, track.max_sustained_wind[on_land],
-                                    'o', c=CAT_COLORS[ss_scale])
-                graph_v_b.add_curve(on_land, orig_wind[on_land],
-                                    'o', c=CAT_COLORS[ss_scale])
-                graph_p_a.add_curve(on_land, track.central_pressure[on_land],
-                                    'o', c=CAT_COLORS[ss_scale])
-                graph_p_b.add_curve(on_land, orig_pres[on_land],
-                                    'o', c=CAT_COLORS[ss_scale])
-                graph_pd_a.add_curve(track.dist_since_lf[on_land],
-                                     track.central_pressure[on_land]/p_lf,
-                                     'o', c=CAT_COLORS[ss_scale])
-                graph_ped_a.add_curve(track.dist_since_lf[on_land],
-                                      track.environmental_pressure[on_land]-
-                                      track.central_pressure[on_land],
-                                      'o', c=CAT_COLORS[ss_scale])
+                graph_v_a.plot(on_land, track.max_sustained_wind[on_land],
+                               'o', c=CAT_COLORS[ss_scale])
+                graph_v_b.plot(on_land, orig_wind[on_land],
+                               'o', c=CAT_COLORS[ss_scale])
+                graph_p_a.plot(on_land, track.central_pressure[on_land],
+                               'o', c=CAT_COLORS[ss_scale])
+                graph_p_b.plot(on_land, orig_pres[on_land],
+                               'o', c=CAT_COLORS[ss_scale])
+                graph_pd_a.plot(track.dist_since_lf[on_land],
+                                track.central_pressure[on_land]/p_lf,
+                                'o', c=CAT_COLORS[ss_scale])
+                graph_ped_a.plot(track.dist_since_lf[on_land],
+                                 track.environmental_pressure[on_land]-
+                                 track.central_pressure[on_land],
+                                 'o', c=CAT_COLORS[ss_scale])
 
             on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
-            graph_v_a.add_curve(on_sea, track.max_sustained_wind[on_sea],
-                                'o', c='k', markersize=5)
-            graph_v_b.add_curve(on_sea, orig_wind[on_sea],
-                                'o', c='k', markersize=5)
-            graph_p_a.add_curve(on_sea, track.central_pressure[on_sea],
-                                'o', c='k', markersize=5)
-            graph_p_b.add_curve(on_sea, orig_pres[on_sea],
-                                'o', c='k', markersize=5)
+            graph_v_a.plot(on_sea, track.max_sustained_wind[on_sea],
+                           'o', c='k', markersize=5)
+            graph_v_b.plot(on_sea, orig_wind[on_sea],
+                           'o', c='k', markersize=5)
+            graph_p_a.plot(on_sea, track.central_pressure[on_sea],
+                           'o', c='k', markersize=5)
+            graph_p_b.plot(on_sea, orig_pres[on_sea],
+                           'o', c='k', markersize=5)
 
     return graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a
 
 def _check_apply_decay_hist_plot(hist_tracks):
     """Plot winds and pressures of historical tracks."""
-    graph_hv = u_plot.Graph2D('Historical wind')
-    graph_hv.add_subplot('Node number', 'Max sustained wind (kn)')
+    _, graph_hv = plt.subplots()
+    graph_hv.set_title('Historical wind')
+    graph_hv.set_xlabel('Node number')
+    graph_hv.set_ylabel('Max sustained wind (kn)')
 
-    graph_hp = u_plot.Graph2D('Historical pressure')
-    graph_hp.add_subplot('Node number', 'Central pressure (mb)')
+    _, graph_hp = plt.subplots()
+    graph_hp.set_title('Historical pressure')
+    graph_hp.set_xlabel('Node number')
+    graph_hp.set_ylabel('Central pressure (mb)')
 
-    graph_hpd_a = u_plot.Graph2D('Historical relative pressure')
-    graph_hpd_a.add_subplot('Distance from landfall (km)',
-                            'Central pressure relative to landfall')
-    graph_hped_a = u_plot.Graph2D('Historical environmental - central pressure')
-    graph_hped_a.add_subplot('Distance from landfall (km)',
-                             'Environmental pressure - Central pressure (mb)')
+    _, graph_hpd_a = plt.subplots()
+    graph_hpd_a.set_title('Historical relative pressure')
+    graph_hpd_a.set_xlabel('Distance from landfall (km)')
+    graph_hpd_a.set_ylabel('Central pressure relative to landfall')
+
+    _, graph_hped_a = plt.subplots()
+    graph_hped_a.set_title('Historical environmental - central pressure')
+    graph_hped_a.set_xlabel('Distance from landfall (km)')
+    graph_hped_a.set_ylabel('Environmental pressure - Central pressure (mb)')
+
     for track in hist_tracks:
         # Index in land that comes from previous sea index
         sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]+1
@@ -1276,19 +1298,19 @@ def _check_apply_decay_hist_plot(hist_tracks):
                                    'o', c=CAT_COLORS[scale])
                 graph_hp.add_curve(on_land, track.central_pressure[on_land],
                                    'o', c=CAT_COLORS[scale])
-                graph_hpd_a.add_curve(track.dist_since_lf[on_land],
-                                      track.central_pressure[on_land]/p_lf,
-                                      'o', c=CAT_COLORS[scale])
-                graph_hped_a.add_curve(track.dist_since_lf[on_land],
-                                       track.environmental_pressure[on_land]-
-                                       track.central_pressure[on_land],
-                                       'o', c=CAT_COLORS[scale])
+                graph_hpd_a.plot(track.dist_since_lf[on_land],
+                                 track.central_pressure[on_land]/p_lf,
+                                 'o', c=CAT_COLORS[scale])
+                graph_hped_a.plot(track.dist_since_lf[on_land],
+                                  track.environmental_pressure[on_land]-
+                                  track.central_pressure[on_land],
+                                  'o', c=CAT_COLORS[scale])
 
             on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
-            graph_hp.add_curve(on_sea, track.central_pressure[on_sea],
-                               'o', c='k', markersize=5)
-            graph_hv.add_curve(on_sea, track.max_sustained_wind[on_sea],
-                               'o', c='k', markersize=5)
+            graph_hp.plot(on_sea, track.central_pressure[on_sea],
+                          'o', c='k', markersize=5)
+            graph_hv.plot(on_sea, track.max_sustained_wind[on_sea],
+                          'o', c='k', markersize=5)
 
     return graph_hv, graph_hp, graph_hpd_a, graph_hped_a
 

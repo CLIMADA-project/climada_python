@@ -27,14 +27,17 @@ import datetime as dt
 import numpy as np
 from numpy import linalg as LA
 from scipy import sparse
+import matplotlib.animation as animation
 from pint import UnitRegistry
 from numba import jit
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
+from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT
 from climada.util.interpolation import dist_approx
+import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,7 +98,8 @@ class TropCyclone(Hazard):
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids(GLB_CENTROIDS_MAT, 'Global centroids')
+            centroids = Centroids()
+            centroids.read_mat(GLB_CENTROIDS_MAT)
         # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
         coastal_idx = coastal_centr_idx(centroids)
         if not centroids.coord.size:
@@ -120,6 +124,70 @@ class TropCyclone(Hazard):
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
+
+    @staticmethod
+    def video_intensity(track_name, tracks, centroids, file_name=None,
+                        writer=animation.PillowWriter(bitrate=500),
+                        **kwargs):
+        """ Generate video of TC wind fields node by node and returns its
+        corresponding TropCyclone instances and track pieces.
+
+        Parameters:
+            track_name (str): name of the track contained in tracks to record
+            tracks (TCTracks): tracks
+            centroids (Centroids): centroids where wind fields are mapped
+            file_name (str, optional): file name to save video, if provided
+            writer = (matplotlib.animation.*, optional): video writer. Default:
+                pillow with bitrate=500
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
+
+        Returns:
+            list(TropCyclone), list(np.array)
+
+        Raises:
+            ValueError
+        """
+        # initialization
+        track = tracks.get_track(track_name)
+        if not track:
+            LOGGER.error('%s not found in track data.', track_name)
+            raise ValueError
+        idx_plt = np.argwhere(np.logical_and( \
+            track.lon.values < centroids.total_bounds[2] + 1, \
+            centroids.total_bounds[0] - 1 < track.lon.values)).reshape(-1)
+
+        # all nodes
+        tc_list = []
+        tr_coord = {'lat':[], 'lon':[]}
+        for node in range(idx_plt.size):
+            tr_sel = TCTracks()
+            tr_sel.append(track.sel(time=slice(track.time.values[idx_plt[node]], \
+                track.time.values[idx_plt[min(node+1, idx_plt.size-1)]])))
+            tr_coord['lat'].append(tr_sel.data[0].lat.values)
+            tr_coord['lon'].append(tr_sel.data[0].lon.values)
+
+            tc_tmp = TropCyclone()
+            tc_tmp.set_from_tracks(tr_sel, centroids)
+            tc_list.append(tc_tmp)
+
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'Greys'
+        if 'vmin' not in kwargs:
+            kwargs['vmin'] = np.array([tc_.intensity.min() for tc_ in tc_list]).min()
+        if 'vmax' not in kwargs:
+            kwargs['vmax'] = np.array([tc_.intensity.max() for tc_ in tc_list]).max()
+
+        fig, axis = u_plot.make_map()
+        def run(node):
+            tc_list[node].plot_intensity(1, axis=axis, **kwargs)
+            axis.plot(tr_coord['lon'][node], tr_coord['lat'][node], 'k')
+        ani = animation.FuncAnimation(fig, run, frames=idx_plt.size, \
+                                      interval=500, blit=False)
+        if file_name:
+            LOGGER.info('Generating video %s', file_name)
+            ani.save(file_name, writer=writer)
+        return tc_list, tr_coord
 
     def _set_frequency(self, tracks):
         """Set hazard frequency from tracks data.

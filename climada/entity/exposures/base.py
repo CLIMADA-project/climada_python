@@ -25,7 +25,7 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from geopandas import GeoDataFrame
 import rasterio
 from rasterio.warp import Resampling
@@ -275,7 +275,7 @@ class Exposures(GeoDataFrame):
         self.meta = meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
-                     buffer=0.0, extend='neither', **kwargs):
+                     buffer=0.0, extend='neither', axis=None, **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -287,12 +287,13 @@ class Exposures(GeoDataFrame):
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        crs_epsg, _ = self._get_transformation()
+        crs_epsg, _ = u_plot.get_transformation(self.crs)
         title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
         if mask is None:
@@ -305,10 +306,10 @@ class Exposures(GeoDataFrame):
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
-            pop_name, buffer, extend, proj=crs_epsg, **kwargs)
+            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
-                    buffer=0.0, extend='neither', **kwargs):
+                    buffer=0.0, extend='neither', axis=None, **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -321,12 +322,13 @@ class Exposures(GeoDataFrame):
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        crs_epsg, _ = self._get_transformation()
+        crs_epsg, _ = u_plot.get_transformation(self.crs)
         title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
         if 'reduce_C_function' not in kwargs:
@@ -341,11 +343,11 @@ class Exposures(GeoDataFrame):
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title, \
-            pop_name, buffer, extend, proj=crs_epsg, **kwargs)
+            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
-                    label='value (log10)', scheduler=None, **kwargs):
+                    label='value (log10)', scheduler=None, axis=None, **kwargs):
         """ Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -360,13 +362,14 @@ class Exposures(GeoDataFrame):
             label (str): colorbar label
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta['height']*self.meta['width'] == len(self):
-            raster = self.value.values.reshape((self.meta['height'], 
+            raster = self.value.values.reshape((self.meta['height'],
                                                 self.meta['width']))
             # check raster starts by upper left corner
             if self.latitude.values[0] < self.latitude.values[-1]:
@@ -375,7 +378,7 @@ class Exposures(GeoDataFrame):
                 LOGGER.error('Points are not ordered according to meta raster.')
                 raise ValueError
         else:
-            raster, meta = co.points_to_raster(self, ['value'], res, raster_res, 
+            raster, meta = co.points_to_raster(self, ['value'], res, raster_res,
                                                scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
@@ -386,30 +389,27 @@ class Exposures(GeoDataFrame):
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
-        crs_epsg, _ = self._get_transformation()
+        crs_epsg, _ = u_plot.get_transformation(self.crs)
         xmin, ymin, xmax, ymax = self.longitude.min(), self.latitude.min(), \
         self.longitude.max(), self.latitude.max()
-        fig, axis = u_plot.make_map(proj=crs_epsg)
-        cbar_ax = fig.add_axes([0.99, 0.238, 0.03, 0.525])
-        fig.subplots_adjust(hspace=0, wspace=0)
-        axis[0, 0].set_extent([max(xmin, crs_epsg.x_limits[0]),
-                               min(xmax, crs_epsg.x_limits[1]),
-                               max(ymin, crs_epsg.y_limits[0]),
-                               min(ymax, crs_epsg.y_limits[1])], crs_epsg)
-        u_plot.add_shapes(axis[0, 0])
-        imag = axis[0, 0].imshow(raster_f(raster), **kwargs, origin='upper',
-                                 extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
+        if not axis:
+            _, axis = u_plot.make_map(proj=crs_epsg)
+        cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
+            pad=0.1, axes_class=plt.Axes)
+        axis.set_extent([max(xmin, crs_epsg.x_limits[0]), \
+            min(xmax, crs_epsg.x_limits[1]), max(ymin, crs_epsg.y_limits[0]), \
+            min(ymax, crs_epsg.y_limits[1])], crs_epsg)
+        u_plot.add_shapes(axis)
+        imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
+                           extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
         plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.draw()
-        posn = axis[0, 0].get_position()
-        cbar_ax.set_position([posn.x0 + posn.width + 0.01, posn.y0, 0.04, posn.height])
-
-        return fig, axis
+        return axis
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
                      url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
-                     **kwargs):
+                     axis=None, **kwargs):
         """ Scatter points over satellite image using contextily
 
          Parameters:
@@ -422,6 +422,7 @@ class Exposures(GeoDataFrame):
                 [ 'neither' | 'both' | 'min' | 'max' ]
             zoom (int, optional): zoom coefficient used in the satellite image
             url (str, optional): image source, e.g. ctx.sources.OSM_C
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
@@ -432,12 +433,12 @@ class Exposures(GeoDataFrame):
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
-        fig, axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                      extend, shapes=False, **kwargs)
-        u_plot.add_basemap(axis[0, 0], zoom, url, flip=True)
-        axis[0, 0].set_axis_off()
+        axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                 extend, shapes=False, axis=axis, **kwargs)
+        u_plot.add_basemap(axis, zoom, url, flip=True)
+        axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
-        return fig, axis
+        return axis
 
     def write_hdf5(self, file_name):
         """ Write data frame and metadata in hdf5 format """
@@ -531,8 +532,8 @@ class Exposures(GeoDataFrame):
             file_name (str): name output file in tif format
         """
         if self.meta and self.meta['height']*self.meta['width'] == len(self):
-            raster = self[value_name].values.reshape((self.meta['height'], 
-                                                self.meta['width']))
+            raster = self[value_name].values.reshape((self.meta['height'],
+                                                      self.meta['width']))
             # check raster starts by upper left corner
             if self.latitude.values[0] < self.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
@@ -543,27 +544,6 @@ class Exposures(GeoDataFrame):
         else:
             raster, meta = co.points_to_raster(self, [value_name], scheduler=scheduler)
             co.write_raster(file_name, raster, meta)
-
-    def _get_transformation(self):
-        """ Get projection and its units to use in cartopy transforamtions from
-        current crs
-
-        Returns:
-            ccrs.Projection, str
-        """
-        try:
-            if self.crs['init'][-4:] == '3395':
-                crs_epsg = ccrs.Mercator()
-            else:
-                crs_epsg = ccrs.epsg(self.crs['init'][-4:])
-        except ValueError:
-            crs_epsg = ccrs.PlateCarree()
-
-        try:
-            units = crs_epsg.proj4_params['units']
-        except KeyError:
-            units = '°'
-        return crs_epsg, units
 
 def add_sea(exposures, sea_res):
     """ Add sea to geometry's surroundings with given resolution. region_id
@@ -664,23 +644,3 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
-
-def _crop(exposure, selection, deep=True):
-    """ Make a cropped copy of this Exposures object.
-
-    Parameters
-    ----------
-    selection (bool): logical array with lenght of index of geodataframe
-    deep (bool): Make a deep copy, i.e. also copy data. Default True.
-
-    Returns
-    -------
-        Exposures
-    """
-    cropped = exposure.copy(deep=deep)
-    cropped = cropped.loc[selection, :]
-    cropped.tag = exposure.tag
-    cropped.tag.description = cropped.tag.description + ', cropped'
-    cropped.ref_year = exposure.ref_year
-    cropped.value_unit = exposure.value_unit
-    return cropped
