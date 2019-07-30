@@ -333,7 +333,6 @@ class CostBenefit():
         imp = Impact()
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
         risk_dev = risk_func(imp)
-        # current situation
         LOGGER.info('Risk with development at {:d}: {:.3e}'.format(self.future_year,
                                                                    risk_dev))
 
