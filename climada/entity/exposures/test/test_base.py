@@ -23,7 +23,6 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
 from rasterio.windows import Window
