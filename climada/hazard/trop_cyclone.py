@@ -30,6 +30,7 @@ from scipy import sparse
 import matplotlib.animation as animation
 from pint import UnitRegistry
 from numba import jit
+from tqdm import tqdm
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
@@ -153,19 +154,22 @@ class TropCyclone(Hazard):
         if not track:
             LOGGER.error('%s not found in track data.', track_name)
             raise ValueError
-        idx_plt = np.argwhere(np.logical_and( \
+        idx_plt = np.argwhere(np.logical_and(np.logical_and(np.logical_and( \
             track.lon.values < centroids.total_bounds[2] + 1, \
-            centroids.total_bounds[0] - 1 < track.lon.values)).reshape(-1)
+            centroids.total_bounds[0] - 1 < track.lon.values), \
+            track.lat.values < centroids.total_bounds[3] + 1), \
+            centroids.total_bounds[1] - 1 < track.lat.values)).reshape(-1)
 
-        # all nodes
         tc_list = []
         tr_coord = {'lat':[], 'lon':[]}
-        for node in range(idx_plt.size):
+        for node in range(idx_plt.size-2):
+            tr_piece = track.sel(time=slice(track.time.values[idx_plt[node]], \
+                track.time.values[idx_plt[node+2]]))
+            tr_piece.attrs['n_nodes'] = 2 # plot only one node
             tr_sel = TCTracks()
-            tr_sel.append(track.sel(time=slice(track.time.values[idx_plt[node]], \
-                track.time.values[idx_plt[min(node+1, idx_plt.size-1)]])))
-            tr_coord['lat'].append(tr_sel.data[0].lat.values)
-            tr_coord['lon'].append(tr_sel.data[0].lon.values)
+            tr_sel.append(tr_piece)
+            tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
+            tr_coord['lon'].append(tr_sel.data[0].lon.values[:-1])
 
             tc_tmp = TropCyclone()
             tc_tmp.set_from_tracks(tr_sel, centroids)
@@ -178,15 +182,19 @@ class TropCyclone(Hazard):
         if 'vmax' not in kwargs:
             kwargs['vmax'] = np.array([tc_.intensity.max() for tc_ in tc_list]).max()
 
-        fig, axis = u_plot.make_map()
         def run(node):
             tc_list[node].plot_intensity(1, axis=axis, **kwargs)
             axis.plot(tr_coord['lon'][node], tr_coord['lat'][node], 'k')
-        ani = animation.FuncAnimation(fig, run, frames=idx_plt.size, \
-                                      interval=500, blit=False)
+            pbar.update()
+
         if file_name:
             LOGGER.info('Generating video %s', file_name)
+            fig, axis = u_plot.make_map()
+            pbar = tqdm(total=idx_plt.size-2)
+            ani = animation.FuncAnimation(fig, run, frames=idx_plt.size-2,
+                                          interval=500, blit=False)
             ani.save(file_name, writer=writer)
+            pbar.close()
         return tc_list, tr_coord
 
     def _set_frequency(self, tracks):
@@ -308,10 +316,8 @@ def _windfield(track, centroids, coastal_idx, model):
 
     # Compute windfield
     intensity = np.zeros((centroids.shape[0], ))
-    intensity[coastal_idx] = _wind_per_node(centroids[coastal_idx, :], \
-        track.lat.values, track.lon.values, track.radius_max_wind.values, \
-        track.environmental_pressure.values, track.central_pressure.values, \
-        track.time_step.values, v_trans, model)
+    intensity[coastal_idx] = _wind_per_node(centroids[coastal_idx, :], track,
+                                            v_trans, model)
 
     return intensity
 
@@ -368,27 +374,31 @@ def _extra_rad_max_wind(t_cen, t_rad, ureg):
     return (t_rad * ureg.nautical_mile).to(ureg.kilometer).magnitude
 
 @jit(parallel=True)
-def _wind_per_node(coastal_centr, t_lat, t_lon, t_rad, t_env, t_cen, t_tstep,
-                   v_trans, model):
+def _wind_per_node(coastal_centr, track, v_trans, model):
     """ Compute sustained winds at each centroid.
 
     Parameters:
         coastal_centr (2d np.array): centroids
-        t_lat (np.array): track latitudes
-        t_lon (np.array): track longitudes
-        t_rad (np.array): track radius of maximum wind
-        t_env (np.array): track environmental pressures
-        t_cen (np.array): track central pressures
-        t_tstep (np.array): track time steps
+        track (xr.Dataset): track latitudes
         v_trans (np.array): track translational velocity
         model (int): Holland model selection according to MODEL_VANG
 
     Returns:
         2d np.array
     """
+
+    t_lat, t_lon = track.lat.values, track.lon.values
+    t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
+    t_cen, t_tstep = track.central_pressure.values, track.time_step.values
+
     centr_cos_lat = np.cos(np.radians(coastal_centr[:, 0]))
     intensity = np.zeros((coastal_centr.shape[0],))
-    for i_node in range(1, t_lat.size):
+
+    n_nodes = t_lat.size
+    if 'n_nodes' in track.attrs:
+        n_nodes = track.attrs['n_nodes']
+
+    for i_node in range(1, n_nodes):
         # compute distance to all centroids
         r_arr = dist_approx(coastal_centr[:, 0], coastal_centr[:, 1], \
             centr_cos_lat, t_lat[i_node], t_lon[i_node])

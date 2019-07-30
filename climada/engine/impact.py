@@ -33,6 +33,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
+from tqdm import tqdm
 
 
 from climada.entity.tag import Tag
@@ -598,21 +599,27 @@ class Impact():
             self.crs = DEF_CRS
 
     @staticmethod
-    def video_direct_impact(exp, if_set, haz_list, file_name,
+    def video_direct_impact(exp, if_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
                             **kwargs):
         """
+        Computes and generates video of accumulated impact per input events
+        over exposure.
+
         Parameters:
             exp (Exposures): exposures instance, constant during all video
             if_set (ImpactFuncSet): impact functions
-            haz_list (list(Hazard)): list of hazard to represent
+            haz_list (list(Hazard)): every Hazard contains an event; all hazards
+                use the same centroids
             file_name (str, optional): file name to save video, if provided
             writer = (matplotlib.animation.*, optional): video writer. Default:
                 pillow with bitrate=500
-            kwargs (optional): arguments for scatter matplotlib function
-        """
-        fig, axis = u_plot.make_map()
+            kwargs (optional): arguments for scatter matplotlib function used in
+                exposures
 
+        Returns:
+            list(Impact)
+        """
         imp_list = []
         imp_arr = np.zeros(len(exp))
         for i_time, _ in enumerate(haz_list):
@@ -625,26 +632,37 @@ class Impact():
             imp_tmp.eai_exp = imp_arr[save_exp]
             imp_list.append(imp_tmp)
 
-        vmin = np.array([haz.intensity.min() for haz in haz_list]).min()
-        vmax = np.array([haz.intensity.max() for haz in haz_list]).max()
+        v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
+                 np.array([haz.intensity.max() for haz in haz_list]).max(),
+                 np.array([imp.eai_exp.min() for imp in imp_list if imp.eai_exp.size]).min(),
+                 np.array([imp.eai_exp.max() for imp in imp_list if imp.eai_exp.size]).max(),
+                 exp.value.values.min(), exp.value.values.max()]
 
         def run(i_time):
-            haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=vmin, vmax=vmax)
-            exp.plot_scatter(axis=axis, cmap='winter', **kwargs)
+            haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
+                                            vmax=v_lim[1])
+            exp.plot_scatter(axis=axis, cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
             if imp_list[i_time].coord_exp.size:
                 imp_list[i_time].plot_scatter_eai_exposure(ignore_zero=False, \
-                    axis=axis, cmap='autumn_r', **kwargs)
+                    axis=axis, cmap='autumn_r', vmin=v_lim[2], vmax=v_lim[3], **kwargs)
                 fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
             axis.set_ylim(haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max())
             axis.set_title('')
-        ani = animation.FuncAnimation(fig, run, frames=len(haz_list), \
-                                      interval=500, blit=False)
+            pbar.update()
+
         if file_name:
             LOGGER.info('Generating video %s', file_name)
+            fig, axis = u_plot.make_map()
+            ani = animation.FuncAnimation(fig, run, frames=len(haz_list),
+                                          interval=500, blit=False)
+            pbar = tqdm(total=len(haz_list))
             ani.save(file_name, writer=writer)
+            pbar.close()
+
+        return imp_list
 
     def _loc_return_imp(self, return_periods, imp, exc_imp):
         """ Compute local exceedence impact for given return period.
@@ -718,7 +736,8 @@ class Impact():
         eai_exp['longitude'] = self.coord_exp[:, 1]
         eai_exp.crs = self.crs
         eai_exp.value_unit = self.unit
-        eai_exp.check()
+        eai_exp.ref_year = 0
+        eai_exp.tag = Tag()
         return eai_exp
 
     @staticmethod

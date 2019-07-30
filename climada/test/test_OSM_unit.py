@@ -17,18 +17,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Unit Tests on Open Street Map exposures.
 """
 
-import numpy as np
-import math
 import unittest
 from climada.entity.exposures import open_street_map as OSM
-from climada.util.constants import SYSTEM_DIR
 import os
 import random
 import geopandas
 import pandas as pd
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-# just for now: 
+# just for now:
 class TestOSMFunctions(unittest.TestCase):
     """Test OSM Class methods"""
 
@@ -89,7 +86,7 @@ class TestOSMFunctions(unittest.TestCase):
     def test_makeUnion(self):
         """test makeUnion function within get_highValueArea function"""
         gdf_all = geopandas.read_file(os.path.join(DATA_DIR,'OSM_features_47_8.shp'))
-        
+
         # Execute function
         Low_Value_Union = OSM._makeUnion(gdf_all)
         self.assertEqual(Low_Value_Union.type,'MultiPolygon')
@@ -99,7 +96,7 @@ class TestOSMFunctions(unittest.TestCase):
 #    def test_get_litpop_bbox(self):
 #        """test _get_litpop_bbox within get_osmstencil_litpop function"""
 #        # Define and load parameters
-#        country = 'CHE' 
+#        country = 'CHE'
 #        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
 #
 #        # Execute function
@@ -115,7 +112,7 @@ class TestOSMFunctions(unittest.TestCase):
 #        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
 #        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
 #        High_Value_Area_gdf = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
-#        
+#
 #        # execute function
 #        for mode in {'proportional','even'}:
 #            print('testing mode %s' %mode)
@@ -139,7 +136,7 @@ class TestOSMFunctions(unittest.TestCase):
         # Define and load parameters:
         building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR,'buildings_47_8.shp')) # function tested previously
         mode = 'default'     # mode LitPop takes too long for unit test, since loads entire CH-litpop exposure! moved to integration test
-        country = 'CHE' 
+        country = 'CHE'
         # Execute Function
         High_Value_Area_gdf = OSM._assign_values_exposure(building_gdf, mode, country)
         self.assertGreater(High_Value_Area_gdf.loc[random.randint(0,len(High_Value_Area_gdf))].value,0)

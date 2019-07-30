@@ -33,7 +33,7 @@ class TestDownload(unittest.TestCase):
     def test_raw_ibtracs_empty_pass(self):
         """ read_ibtracs_netcdf"""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
         self.assertEqual(tc_track.get_track(), [])
 
 class TestIBTracs(unittest.TestCase):
@@ -108,8 +108,12 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.size, 0)
 
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP', correct_pres=False)
         self.assertEqual(tc_track.size, 32)
+
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
+        self.assertEqual(tc_track.size, 43)
 
     def test_filter_ibtracs_track_pass(self):
         """ Test _filter_ibtracs """

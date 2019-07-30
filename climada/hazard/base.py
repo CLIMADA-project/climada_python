@@ -920,8 +920,9 @@ class Hazard():
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
                 hf_centr = hf_data.create_group(var_name)
-                hf_centr.create_dataset('latitude', data=var_val.lat)
-                hf_centr.create_dataset('longitude', data=var_val.lon)
+                for centr_name, centr_val in var_val.__dict__.items():
+                    if isinstance(centr_val, np.ndarray):
+                        hf_centr.create_dataset(centr_name, data=centr_val)
                 hf_str = hf_centr.create_dataset('crs', (1,), dtype=str_dt)
                 hf_str[0] = str(dict(var_val.crs))
             elif var_name == 'tag':
@@ -961,12 +962,16 @@ class Hazard():
             if var_name == 'centroids':
                 hf_centr = hf_data.get(var_name)
                 try:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')),
-                                               np.array(hf_centr.get('longitude')),
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')),
+                                               np.array(hf_centr.get('lon')),
                                                ast.literal_eval(hf_centr.get('crs')[0]))
                 except TypeError:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')),
-                                               np.array(hf_centr.get('longitude')))
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')),
+                                               np.array(hf_centr.get('lon')))
+                for centr_name in hf_centr.keys():
+                    if centr_name != 'crs' and centr_name != 'lat' and \
+                    centr_name != 'lon':
+                        setattr(self.centroids, centr_name, np.array(hf_centr.get(centr_name)))
             elif var_name == 'tag':
                 self.tag.haz_type = hf_data.get('haz_type')[0]
                 self.tag.file_name = hf_data.get('file_name')[0]
@@ -980,7 +985,7 @@ class Hazard():
             elif isinstance(var_val, str):
                 setattr(self, var_name, hf_data.get(var_name)[0])
             elif isinstance(var_val, list):
-                setattr(self, var_name, hf_data.get(var_name).value.tolist())
+                setattr(self, var_name, np.array(hf_data.get(var_name)).tolist())
             else:
                 setattr(self, var_name, hf_data.get(var_name))
         hf_data.close()
@@ -1129,10 +1134,10 @@ class Hazard():
             title = '%s max intensity at each event' % self.tag.haz_type
 
         if not axis:
-            fig, axis = plt.subplots(1)
-            fig.suptitle(title)
+            _, axis = plt.subplots(1)
         if 'color' not in kwargs:
             kwargs['color'] = 'b'
+        axis.set_title(title)
         axis.set_xlabel('Event number')
         axis.set_ylabel(str(col_name))
         axis.plot(range(len(array_val)), array_val, **kwargs)
