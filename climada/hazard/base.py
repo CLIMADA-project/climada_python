@@ -971,8 +971,7 @@ class Hazard():
                     self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')), \
                         np.array(hf_centr.get('longitude')), crs)
                 for centr_name in hf_centr.keys():
-                    if centr_name != 'crs' and centr_name != 'lat' and \
-                    centr_name != 'lon':
+                    if centr_name not in ('crs', 'lat', 'lon'):
                         setattr(self.centroids, centr_name, np.array(hf_centr.get(centr_name)))
             elif var_name == 'tag':
                 self.tag.haz_type = hf_data.get('haz_type')[0]
