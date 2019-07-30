@@ -21,6 +21,7 @@ Define Hazard.
 
 __all__ = ['Hazard']
 
+import ast
 import copy
 import itertools
 import logging
@@ -963,7 +964,7 @@ class Hazard():
                 hf_centr = hf_data.get(var_name)
                 crs = DEF_CRS
                 if hf_centr.get('crs'):
-                    crs = hf_centr.get('crs')[0]
+                    crs = ast.literal_eval(hf_centr.get('crs')[0])
                 if hf_centr.get('lat'):
                     self.centroids.set_lat_lon(np.array(hf_centr.get('lat')), \
                         np.array(hf_centr.get('lon')), crs)
