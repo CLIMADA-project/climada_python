@@ -18,20 +18,47 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test save module.
 """
+import os
+import copy
 import unittest
 
-from climada.util.save import save
+from climada.util.save import save, load
+
+from climada.util.config import CONFIG
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+IN_CONFIG = copy.copy(CONFIG['local_data']['save_dir'])
 
 class TestSave(unittest.TestCase):
     """Test save function"""
+
+    def setUp(self):
+        CONFIG['local_data']['save_dir'] = DATA_DIR
+
+    def tearDown(self):
+        CONFIG['local_data']['save_dir'] = IN_CONFIG
+
     def test_entity_in_save_dir(self):
         """Returns the same list if its length is correct."""
+        file_name = 'save_test.pkl'
         ent = {'value': [1, 2, 3]}
         with self.assertLogs('climada.util.save', level='INFO') as cm:
-            save('save_test.pkl', ent)
-        self.assertTrue(('save_test.pkl' in cm.output[0]) or \
-                        ('save_test.pkl' in cm.output[1]))        
-            
+            save(file_name, ent)
+        self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
+        self.assertTrue((file_name in cm.output[0]) or \
+                        (file_name in cm.output[1]))
+
+    def test_load_pass(self):
+        """ Load previously saved variable """
+        file_name = 'save_test.pkl'
+        ent = {'value': [1, 2, 3]}
+        save(file_name, ent)
+        res = load(file_name)
+        self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
+        self.assertTrue('value' in res)
+        self.assertTrue(res['value'] == ent['value'])
+
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
 unittest.TextTestRunner(verbosity=2).run(TESTS)
