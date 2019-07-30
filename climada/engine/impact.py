@@ -614,23 +614,25 @@ class Impact():
             file_name (str, optional): file name to save video, if provided
             writer = (matplotlib.animation.*, optional): video writer. Default:
                 pillow with bitrate=500
-            kwargs (optional): arguments for scatter matplotlib function used in
-                exposures
+            kwargs (optional): arguments for scatter (points) or hexbin (raster)
+                matplotlib function used in exposures
 
         Returns:
             list(Impact)
         """
         imp_list = []
+        exp_list = []
         imp_arr = np.zeros(len(exp))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
             imp_tmp.calc(exp, if_set, haz_list[i_time])
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
-            save_exp = np.argwhere(imp_arr > 0).reshape(-1)
+            save_exp = imp_arr > 0
             imp_tmp.coord_exp = imp_tmp.coord_exp[save_exp, :]
             imp_tmp.eai_exp = imp_arr[save_exp]
             imp_list.append(imp_tmp)
+            exp_list.append(np.logical_not(save_exp))
 
         v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
                  np.array([haz.intensity.max() for haz in haz_list]).max(),
@@ -638,14 +640,27 @@ class Impact():
                  np.array([imp.eai_exp.max() for imp in imp_list if imp.eai_exp.size]).max(),
                  exp.value.values.min(), exp.value.values.max()]
 
+        plot_raster = False
+        if exp.meta:
+            plot_raster = True
+
         def run(i_time):
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
                                             vmax=v_lim[1])
-            exp.plot_scatter(axis=axis, cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
-            if imp_list[i_time].coord_exp.size:
-                imp_list[i_time].plot_scatter_eai_exposure(ignore_zero=False, \
-                    axis=axis, cmap='autumn_r', vmin=v_lim[2], vmax=v_lim[3], **kwargs)
-                fig.delaxes(fig.axes[1])
+            if plot_raster:
+                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                                cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
+                if imp_list[i_time].coord_exp.size:
+                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, cmap='autumn_r', \
+                    vmin=v_lim[2], vmax=v_lim[3], **kwargs)
+                    fig.delaxes(fig.axes[1])
+            else:
+                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                                 cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
+                if imp_list[i_time].coord_exp.size:
+                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, cmap='autumn_r', \
+                    vmin=v_lim[2], vmax=v_lim[3], **kwargs)
+                    fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
@@ -738,6 +753,7 @@ class Impact():
         eai_exp.value_unit = self.unit
         eai_exp.ref_year = 0
         eai_exp.tag = Tag()
+        eai_exp.meta = None
         return eai_exp
 
     @staticmethod
