@@ -939,7 +939,7 @@ class TestHDF5(unittest.TestCase):
         self.assertEqual(hazard.units, haz_read.units)
         self.assertIsInstance(haz_read.units, str)
         self.assertTrue(np.array_equal(hazard.centroids.coord, haz_read.centroids.coord))
-        self.assertEqual(hazard.centroids.crs, haz_read.centroids.crs)
+        self.assertTrue(equal_crs(hazard.centroids.crs, haz_read.centroids.crs))
         self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
         self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
         self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
