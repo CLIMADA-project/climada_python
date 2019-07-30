@@ -21,7 +21,6 @@ Define Hazard.
 
 __all__ = ['Hazard']
 
-import ast
 import copy
 import itertools
 import logging
@@ -45,6 +44,7 @@ import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
+from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -961,13 +961,15 @@ class Hazard():
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
                 hf_centr = hf_data.get(var_name)
-                try:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')),
-                                               np.array(hf_centr.get('lon')),
-                                               ast.literal_eval(hf_centr.get('crs')[0]))
-                except TypeError:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')),
-                                               np.array(hf_centr.get('lon')))
+                crs = DEF_CRS
+                if hf_centr.get('crs'):
+                    crs = hf_centr.get('crs')[0]
+                if hf_centr.get('lat'):
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')), \
+                        np.array(hf_centr.get('lon')), crs)
+                else:
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')), \
+                        np.array(hf_centr.get('longitude')), crs)
                 for centr_name in hf_centr.keys():
                     if centr_name != 'crs' and centr_name != 'lat' and \
                     centr_name != 'lon':
