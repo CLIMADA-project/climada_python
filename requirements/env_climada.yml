@@ -51,6 +51,4 @@ dependencies:
     - geoplot==0.2.4 
     - seaborn==0.9.0
     - haversine-2.1.1
-    - django-2.2.3 
-    - image-1.5.27 
     - sqlparse-0.3.0
