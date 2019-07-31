@@ -398,7 +398,7 @@ class TestRaster(unittest.TestCase):
         centr_ras.set_raster_file(HAZ_DEMO_FL, window= Window(0, 0, 50, 60))
         centr_ras.set_region_id()
         self.assertEqual(centr_ras.region_id.size, centr_ras.size)
-        self.assertTrue(np.array_equal(np.unique(centr_ras.region_id), np.array([0, 862])))
+        self.assertTrue(np.array_equal(np.unique(centr_ras.region_id), np.array([862])))
 
     def test_set_geometry_points_pass(self):
         """ Test set_geometry_points """
