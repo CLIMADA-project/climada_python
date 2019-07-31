@@ -50,5 +50,5 @@ dependencies:
     - overpy==0.4
     - geoplot==0.2.4 
     - seaborn==0.9.0
-    - haversine-2.1.1
-    - sqlparse-0.3.0
+    - haversine==2.1.1
+    - sqlparse==0.3.0
