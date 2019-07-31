@@ -27,14 +27,13 @@ from rasterio import Affine
 from rasterio.warp import Resampling
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
-from shapely.vectorized import contains
 import climada.util.plot as u_plot
 
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
 import climada.util.hdf5_handler as hdf5
-from climada.util.coordinates import get_country_geometries, dist_to_coast, \
-get_resolution, coord_on_land, pts_to_raster_meta, read_raster, read_vector, NE_CRS, \
-equal_crs
+from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
+pts_to_raster_meta, read_raster, read_vector, NE_CRS, \
+equal_crs, get_country_code
 
 __all__ = ['Centroids']
 
@@ -375,7 +374,8 @@ class Centroids():
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
     def set_region_id(self, scheduler=None):
-        """ Set region_id attribute for every pixel or point
+        """ Set region_id as country ISO numeric code attribute for every pixel
+        or point
 
         Parameter:
             scheduler (str): used for dask map_partitions. “threads”,
@@ -383,12 +383,7 @@ class Centroids():
         """
         lon_ne, lat_ne = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.lat.size))
-        countries = get_country_geometries(extent=(lon_ne.min(), lon_ne.max(),
-                                                   lat_ne.min(), lat_ne.max()))
-        self.region_id = np.zeros(lon_ne.size, dtype=int)
-        for geom in zip(countries.geometry, countries.ISO_N3):
-            select = contains(geom[0], lon_ne, lat_ne)
-            self.region_id[select] = int(geom[1])
+        self.region_id = get_country_code(lat_ne, lon_ne)
 
     def set_area_pixel(self, scheduler=None):
         """ Set area_pixel attribute for every pixel or point. area in m*m
