@@ -48,7 +48,7 @@ LS_MODEL = ['hist_NASA_COOLR',
             'prob_UNEP_NGI',
             'prob_NASA_NOW']
 
-PATH_LS_NGI_UNEP = os.path.join(DATA_DIR, 'ls_pr_geotagged_masked_global.tif ')
+PATH_LS_NGI_UNEP = os.path.join(LS_FILE_DIR, 'ls_pr_geotagged_masked_global.tif ')
 
 # def get_coolr_shp(save_path=os.getcwd()):
 #    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
