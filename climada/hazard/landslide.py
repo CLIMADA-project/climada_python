@@ -173,9 +173,8 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
 
 
 class Landslide(Hazard):
-    """Contains landslide events.
+    """Landslide Hazard set generation.
     Attributes:
-        LHM (float): likelihood of annual occurrence of a LS per pixel
     """
 
     def __init__(self):
@@ -308,6 +307,29 @@ class Landslide(Hazard):
 
         return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
                               reshape(self.centroids.shape), **kwargs)
+        
+    def plot_events(self, ev_id=1, **kwargs):
+        """ Plot LHM event data using imshow and without cartopy
+
+        Parameters:
+            ev_id (int, optional): event id. Default: 1.
+            intensity (bool, optional): plot intensity if True, fraction otherwise
+            kwargs (optional): arguments for imshow matplotlib function
+
+        Returns:
+            matplotlib.image.AxesImage
+        """
+        if not self.centroids.meta:
+            LOGGER.error('No raster data set')
+            raise ValueError
+        try:
+            event_pos = np.where(self.event_id == ev_id)[0][0]
+        except IndexError:
+            LOGGER.error('Wrong event id: %s.', ev_id)
+            raise ValueError from IndexError
+
+        return plt.imshow(self.intensity[event_pos, :].todense(). \
+                              reshape(self.centroids.shape), **kwargs)    
 
     def _get_hist_events(self, bbox, COOLR_path):
         """for LS_MODEL[0]: load gdf with landslide event POINTS from
@@ -366,7 +388,7 @@ class Landslide(Hazard):
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_raster()
+                ax2 = self.plot_events() #self.plot_raster()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
@@ -420,7 +442,7 @@ class Landslide(Hazard):
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_raster()
+                ax2 = self.plot_events()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
