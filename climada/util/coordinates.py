@@ -109,8 +109,8 @@ def dist_to_coast(coord_lat, lon=None):
     Parameters:
         coord_lat (np.array or tuple or float):
             - np.array with two columns, first for latitude of each point and
-                second with longitude.
-            - np.array with one dimension containing latitudes
+                second with longitude in epsg:4326
+            - np.array with one dimension containing latitudes in epsg:4326
             - tuple with first value latitude, second longitude
             - float with a latitude value
         lon (np.array or float, optional):
@@ -205,8 +205,8 @@ def coord_on_land(lat, lon, land_geom=None):
     All globe considered if no input countries.
 
     Parameters:
-        lat (np.array): latitude of points
-        lon (np.array): longitude of points
+        lat (np.array): latitude of points in epsg:4326
+        lon (np.array): longitude of points in epsg:4326
         land_geom (shapely.geometry.multipolygon.MultiPolygon, optional):
             profiles of land.
 
@@ -292,6 +292,25 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         out = nat_earth
 
     return out
+
+def get_country_code(lat, lon):
+    """ Provide numeric country iso code for every point.
+
+    Parameters:
+        lat (np.array): latitude of points in epsg:4326
+        lon (np.array): longitude of points in epsg:4326
+
+    Returns:
+        np.array(int)
+    """
+    LOGGER.debug('Setting region_id %s points.', str(lat.size))
+    countries = get_country_geometries(extent=(lon.min()-0.001, lon.max()+0.001,
+                                               lat.min()-0.001, lat.max()+0.001))
+    region_id = np.zeros(lon.size, dtype=int)
+    for geom in zip(countries.geometry, countries.ISO_N3):
+        select = shapely.vectorized.contains(geom[0], lon, lat)
+        region_id[select] = int(geom[1])
+    return region_id
 
 def get_resolution(lat, lon):
     """ Compute resolution of points in lat and lon
