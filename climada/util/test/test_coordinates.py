@@ -35,7 +35,8 @@ from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
-read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster
+read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
+get_country_code
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -384,6 +385,17 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(meta['transform'][5], 50.25)
         self.assertEqual(meta['height'], 21)
         self.assertEqual(meta['width'], 5)
+
+    def test_country_code_pass(self):
+        """ Test set_region_id """
+
+        lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667,
+                        -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
+        lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
+        region_id = get_country_code(lat, lon)
+
+        self.assertEqual(np.count_nonzero(region_id), 6)
+        self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
 
 # Execute Tests
 if __name__ == "__main__":
