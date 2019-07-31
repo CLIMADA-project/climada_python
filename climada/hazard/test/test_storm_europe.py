@@ -132,7 +132,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(
             np.count_nonzero(storms.centroids.region_id),
-            6190
+            6402
             # here, we don't rasterise; we check if the centroids lie in a
             # polygon. that is to say, it's not the majority of a raster pixel,
             # but the centroid's location that is decisive
