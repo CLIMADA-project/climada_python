@@ -96,7 +96,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -169,7 +169,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
@@ -236,7 +236,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         kwargs['vmin'] = np.min(array_sub)
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.max(array_sub)
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
