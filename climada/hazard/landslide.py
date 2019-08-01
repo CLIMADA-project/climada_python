@@ -21,12 +21,12 @@ Define Landslide class.
 __all__ = ['Landslide']
 
 import logging
-from scipy import sparse
-from scipy.stats import binom
 import os
 import glob
 import shlex
 import subprocess
+from scipy import sparse
+from scipy.stats import binom
 import geopandas
 import pyproj
 import matplotlib.pyplot as plt
@@ -85,7 +85,7 @@ def get_nowcast_tiff(tif_type="monthly", startTime="", endTime="", save_path=os.
         if startTime > endTime:
             LOGGER.error("Start date must lie before end date. Please change")
             raise ValueError
-            
+
         url = 'https://pmmpublisher.pps.eosdis.nasa.gov/opensearch'
         params = dict(
             q='global_landslide_nowcast',
@@ -109,7 +109,7 @@ def get_nowcast_tiff(tif_type="monthly", startTime="", endTime="", save_path=os.
 
     elif tif_type == "monthly":
 
-        command_line ='curl -LO "https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames/9600x5400_16x9_30p/MonthlyClimatology/[01-12]_ClimatologyMonthly_032818_9600x5400.tif"'
+        command_line = 'curl -LO "https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames/9600x5400_16x9_30p/MonthlyClimatology/[01-12]_ClimatologyMonthly_032818_9600x5400.tif"'
         args = shlex.split(command_line)
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
@@ -129,8 +129,8 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
      Returns:
         combined_nowcasts_LS.tif (tiff): 1 Tiff file combining all input tiffs.
     """
-   
-    
+
+
     # get names of all LS nowcast files present in LS folder
     LS_files = os.path.join(LS_folder_path, search_criteria)
     LS_files = glob.glob(LS_files)
@@ -312,7 +312,7 @@ class Landslide(Hazard):
 
         return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
                               reshape(self.centroids.shape), **kwargs)
-        
+
     def plot_events(self, ev_id=1, **kwargs):
         """ Plot LHM event data using imshow and without cartopy
 
@@ -334,7 +334,7 @@ class Landslide(Hazard):
             raise ValueError from IndexError
 
         return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)    
+                              reshape(self.centroids.shape), **kwargs)
 
     def _get_hist_events(self, bbox, COOLR_path):
         """for LS_MODEL[0]: load gdf with landslide event POINTS from
@@ -343,7 +343,10 @@ class Landslide(Hazard):
         LS_gdf_bbox = LS_gdf.cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
         return LS_gdf_bbox
 
-    def set_LS_model(self, ls_model=LS_MODEL[1], n_years=500, bbox=[], path_sourcefile=PATH_LS_NGI_UNEP, incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
+    def set_LS_model(self, \
+                     ls_model=LS_MODEL[1], n_years=500, bbox=[], \
+                     path_sourcefile=PATH_LS_NGI_UNEP, incl_neighbour=False, \
+                     max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
             ls_model: LS_MODEL[0] (historic, COOLR) or LS_MODEL[1] (prob., UNEP/NGI) or LS_MODEL[2] (prob., NASA Nowcast)
