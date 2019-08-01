@@ -61,20 +61,20 @@ class TestTiffFcts(unittest.TestCase):
         for item in LS_files_monthly:
             os.remove(item)    
 
-    def test_combine_nowcast_tiff(self):
-        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='test_global*.tif', operator="maximum")
-        search_criteria = "combined*.tif"
-        combined_daily = glob.glob(os.path.join(DATA_DIR, search_criteria))
-        self.assertEqual(len(combined_daily), 1)
-        for item in combined_daily:
-            os.remove(item)
-
-        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='*5400_test.tif', operator="sum")
-        search_criteria = "combined*.tif"
-        combined_monthly = glob.glob(os.path.join(DATA_DIR, search_criteria))
-        self.assertEqual(len(combined_monthly),1)
-        for item in combined_monthly:
-            os.remove(item)
+#    def test_combine_nowcast_tiff(self):
+#        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='test_global*.tif', operator="maximum")
+#        search_criteria = "combined*.tif"
+#        combined_daily = glob.glob(os.path.join(DATA_DIR, search_criteria))
+#        self.assertEqual(len(combined_daily), 1)
+#        for item in combined_daily:
+#            os.remove(item)
+#
+#        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='*5400_test.tif', operator="sum")
+#        search_criteria = "combined*.tif"
+#        combined_monthly = glob.glob(os.path.join(DATA_DIR, search_criteria))
+#        self.assertEqual(len(combined_monthly),1)
+#        for item in combined_monthly:
+#            os.remove(item)
         
   
 if __name__ == "__main__":
