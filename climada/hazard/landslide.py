@@ -48,7 +48,7 @@ LS_MODEL = ['hist_NASA_COOLR',
             'prob_UNEP_NGI',
             'prob_NASA_NOW']
 
-PATH_LS_NGI_UNEP = os.path.join(LS_FILE_DIR, 'ls_pr_geotagged_masked_global.tif ')
+PATH_LS_NGI_UNEP = os.path.join(LS_FILE_DIR, 'ls_pr_geotagged_masked_global.tif')
 
 # def get_coolr_shp(save_path=os.getcwd()):
 #    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
@@ -129,7 +129,8 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
      Returns:
         combined_nowcasts_LS.tif (tiff): 1 Tiff file combining all input tiffs.
     """
-
+   
+    
     # get names of all LS nowcast files present in LS folder
     LS_files = os.path.join(LS_folder_path, search_criteria)
     LS_files = glob.glob(LS_files)
@@ -141,6 +142,10 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
         i = 0
         for file in LS_files:
             if i == 0:
+                """
+                Popen(['/usr/bin/env', 'progtorun', other, args], ...)
+                /Users/evelynm/anaconda3/envs/climada_env_new/bin
+                """
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="maximum(A,B)"' \
                 %(combined_layers_path, file, file)
                 args = shlex.split(command_line)
@@ -168,7 +173,7 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
             i = i+1
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
+                                 stderr=subprocess.STDOUT, shell=True)
             stdout, stderr = p.communicate()
 
 
