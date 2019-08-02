@@ -21,12 +21,12 @@ Define Landslide class.
 __all__ = ['Landslide']
 
 import logging
-from scipy import sparse
-from scipy.stats import binom
 import os
 import glob
 import shlex
 import subprocess
+from scipy import sparse
+from scipy.stats import binom
 import geopandas
 import pyproj
 import matplotlib.pyplot as plt
@@ -42,13 +42,13 @@ LOGGER = logging.getLogger(__name__)
 
 LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 
-PATH_LS_NGI_UNEP = os.path.join(LS_FILE_DIR, 'ls_pr_geotagged_masked_global.tif')
-
 HAZ_TYPE = 'LS'
 
 LS_MODEL = ['hist_NASA_COOLR',
             'prob_UNEP_NGI',
             'prob_NASA_NOW']
+
+PATH_LS_NGI_UNEP = os.path.join(LS_FILE_DIR, 'ls_pr_geotagged_masked_global.tif')
 
 # def get_coolr_shp(save_path=os.getcwd()):
 #    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
@@ -85,7 +85,7 @@ def get_nowcast_tiff(tif_type="monthly", startTime="", endTime="", save_path=os.
         if startTime > endTime:
             LOGGER.error("Start date must lie before end date. Please change")
             raise ValueError
-            
+
         url = 'https://pmmpublisher.pps.eosdis.nasa.gov/opensearch'
         params = dict(
             q='global_landslide_nowcast',
@@ -109,7 +109,7 @@ def get_nowcast_tiff(tif_type="monthly", startTime="", endTime="", save_path=os.
 
     elif tif_type == "monthly":
 
-        command_line ='curl -LO "https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames/9600x5400_16x9_30p/MonthlyClimatology/[01-12]_ClimatologyMonthly_032818_9600x5400.tif"'
+        command_line = 'curl -LO "https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames/9600x5400_16x9_30p/MonthlyClimatology/[01-12]_ClimatologyMonthly_032818_9600x5400.tif"'
         args = shlex.split(command_line)
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
@@ -130,6 +130,7 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
         combined_nowcasts_LS.tif (tiff): 1 Tiff file combining all input tiffs.
     """
 
+
     # get names of all LS nowcast files present in LS folder
     LS_files = os.path.join(LS_folder_path, search_criteria)
     LS_files = glob.glob(LS_files)
@@ -141,6 +142,10 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
         i = 0
         for file in LS_files:
             if i == 0:
+                """
+                Popen(['/usr/bin/env', 'progtorun', other, args], ...)
+                /Users/evelynm/anaconda3/envs/climada_env_new/bin
+                """
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="maximum(A,B)"' \
                 %(combined_layers_path, file, file)
                 args = shlex.split(command_line)
@@ -151,7 +156,7 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
             i = i+1
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
+                                 stderr=subprocess.STDOUT, shell=True)
             stdout, stderr = p.communicate()
 
     elif operator == "sum":
@@ -168,14 +173,13 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
             i = i+1
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
+                                 stderr=subprocess.STDOUT, shell=True)
             stdout, stderr = p.communicate()
 
 
 class Landslide(Hazard):
-    """Contains landslide events.
+    """Landslide Hazard set generation.
     Attributes:
-        LHM (float): likelihood of annual occurrence of a LS per pixel
     """
 
     def __init__(self):
@@ -309,6 +313,29 @@ class Landslide(Hazard):
         return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
                               reshape(self.centroids.shape), **kwargs)
 
+    def plot_events(self, ev_id=1, **kwargs):
+        """ Plot LHM event data using imshow and without cartopy
+
+        Parameters:
+            ev_id (int, optional): event id. Default: 1.
+            intensity (bool, optional): plot intensity if True, fraction otherwise
+            kwargs (optional): arguments for imshow matplotlib function
+
+        Returns:
+            matplotlib.image.AxesImage
+        """
+        if not self.centroids.meta:
+            LOGGER.error('No raster data set')
+            raise ValueError
+        try:
+            event_pos = np.where(self.event_id == ev_id)[0][0]
+        except IndexError:
+            LOGGER.error('Wrong event id: %s.', ev_id)
+            raise ValueError from IndexError
+
+        return plt.imshow(self.intensity[event_pos, :].todense(). \
+                              reshape(self.centroids.shape), **kwargs)
+
     def _get_hist_events(self, bbox, COOLR_path):
         """for LS_MODEL[0]: load gdf with landslide event POINTS from
         global landslide catalog (COOLR of NASA) for bbox of interest"""
@@ -316,7 +343,10 @@ class Landslide(Hazard):
         LS_gdf_bbox = LS_gdf.cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
         return LS_gdf_bbox
 
-    def set_LS_model(self, ls_model=LS_MODEL[1], n_years=500, bbox=[], path_sourcefile=PATH_LS_NGI_UNEP, incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
+    def set_LS_model(self, \
+                     ls_model=LS_MODEL[1], n_years=500, bbox=[], \
+                     path_sourcefile=PATH_LS_NGI_UNEP, incl_neighbour=False, \
+                     max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
             ls_model: LS_MODEL[0] (historic, COOLR) or LS_MODEL[1] (prob., UNEP/NGI) or LS_MODEL[2] (prob., NASA Nowcast)
@@ -366,7 +396,7 @@ class Landslide(Hazard):
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_raster()
+                ax2 = self.plot_events() #self.plot_raster()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
@@ -420,7 +450,7 @@ class Landslide(Hazard):
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_raster()
+                ax2 = self.plot_events()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
