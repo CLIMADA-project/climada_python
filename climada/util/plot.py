@@ -44,6 +44,7 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import contextily as ctx
 from rasterio.crs import CRS
+import requests
 
 from climada.util.files_handler import to_list
 from climada.util.coordinates import grid_is_regular
@@ -546,7 +547,7 @@ def get_transformation(crs_in):
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
     except ValueError:
         crs_epsg = ccrs.PlateCarree()
-    except:
+    except requests.exceptions.ConnectionError:
         LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
         crs_epsg = ccrs.PlateCarree()
 

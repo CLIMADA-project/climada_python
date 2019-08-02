@@ -644,13 +644,15 @@ class Impact():
             args_exp['vmin'] = exp.value.values.min()
 
         if 'vmin' not in args_imp:
-            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list if imp.eai_exp.size]).min()
+            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list \
+                if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
             args_exp['vmax'] = exp.value.values.max()
 
         if 'vmax' not in args_imp:
-            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list if imp.eai_exp.size]).max()
+            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list \
+                if imp.eai_exp.size]).max()
 
         if 'cmap' not in args_exp:
             args_exp['cmap'] = 'winter_r'
