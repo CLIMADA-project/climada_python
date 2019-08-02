@@ -114,7 +114,7 @@ def get_nowcast_tiff(tif_type="monthly", startTime="", endTime="", save_path=os.
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT)
-        stdout, stderr = p.communicate()
+        p.communicate()
 
 
 def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="maximum"):
@@ -157,7 +157,7 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, shell=True)
-            stdout, stderr = p.communicate()
+            p.communicate()
 
     elif operator == "sum":
         i = 0
@@ -174,7 +174,7 @@ def combine_nowcast_tiff(LS_folder_path, search_criteria='LS*.tif', operator="ma
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, shell=True)
-            stdout, stderr = p.communicate()
+            p.communicate()
 
 
 class Landslide(Hazard):
@@ -359,22 +359,26 @@ class Landslide(Hazard):
             max_prob (float): maximum occurence probability that should be assigned to
                 categorical hazard maps (as in LS_MODEL[2]). Default is 0.000015
             path_sourcefile (str): if LS_MODEL[1] (probabilistic UNEP/NGI), use  landslide.PATH_LS_NGI_UNEP,
-                since file already stored in climada/data.
+                retrieved previously as descriped in tutorial and stored in climada/data.
                 if LS_MODEL[2] (probabilistic NASA nowcast) provide path to combined daily or
                 monthly rasterfile, retrieved previously with landslide.get_nowcast_tiff() and
                 landslide.combine_nowcast_tiff().
-                if LS_MODEL[0],provide path to shapefile with COOLR data, retrieved previously with
-                landslide.get_coolr_shp()
+                if LS_MODEL[0],provide path to shapefile with COOLR data, retrieved previously as
+                described in tutorial
         Returns:
             Landslide() module: LS hazard set (prob or historic)
         """
 
         if ls_model == LS_MODEL[1]:
             """Method for probabilistic LHM from NGI / UNEP"""
-            window_array = self._get_window_from_coords(path_sourcefile=PATH_LS_NGI_UNEP,\
-                                                        bbox=bbox)
-            pixel_height, pixel_width = self._get_raster_meta(PATH_LS_NGI_UNEP, window_array)
-            self.set_raster([PATH_LS_NGI_UNEP], window=Window(window_array[0], window_array[1],\
+            if not bbox:
+                LOGGER.error('Empty bounding box, please set bounds.')
+                raise ValueError()
+
+            window_array = self._get_window_from_coords(path_sourcefile,\
+                                                        bbox)
+            pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
+            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
                                             window_array[3], window_array[2]))
             self.intensity = self.intensity/10e6 #prob values were initially multiplied by 1 mio
             self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
@@ -392,11 +396,11 @@ class Landslide(Hazard):
 
             if check_plots == 1:
                 fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-                ax1 = self.plot_raw()
+                self.plot_raw(ax=ax1)
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_events() #self.plot_raster()
+                self.plot_events(ax=ax2) #self.plot_raster()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
@@ -404,6 +408,14 @@ class Landslide(Hazard):
         elif ls_model == LS_MODEL[0]:
             """Method for filling  hazard set with historic landslide events from
             global landslide catalog (COOLR of NASA) """
+            if not bbox:
+                LOGGER.error('Empty bounding box, please set bounds.')
+                raise ValueError()
+
+            if path_sourcefile == PATH_LS_NGI_UNEP:
+                LOGGER.error('Wrong sourcefile, please specify one containing historic LS points')
+                raise ValueError()
+
             LS_gdf_bbox = self._get_hist_events(bbox, path_sourcefile)
 
             self.centroids.set_lat_lon(LS_gdf_bbox.latitude, LS_gdf_bbox.longitude)
@@ -423,6 +435,13 @@ class Landslide(Hazard):
             return self
 
         elif ls_model == LS_MODEL[2]:
+            if not bbox:
+                LOGGER.error('Empty bounding box, please set bounds.')
+                raise ValueError()
+
+            if path_sourcefile == PATH_LS_NGI_UNEP:
+                LOGGER.error('Wrong sourcefile, please specify one containing historic LS points')
+                raise ValueError()
             """ Method for probabilistic LHM from daily or monthly aggregated NASA nowcasting """
             window_array = self._get_window_from_coords(path_sourcefile=path_sourcefile,\
                                                         bbox=bbox)
@@ -437,7 +456,7 @@ class Landslide(Hazard):
             self._intensity_prob_to_binom(n_years)
             self.check()
 
-            if incl_neighbour == True:
+            if incl_neighbour:
                 LOGGER.info('Finding neighbouring pixels...')
                 self.centroids.set_meta_to_lat_lon()
                 self.centroids.set_geometry_points()
