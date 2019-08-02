@@ -28,6 +28,7 @@ __all__ = ['geo_bin_from_array',
            'add_basemap'
           ]
 
+import logging
 import six.moves.urllib.request as request
 from scipy.interpolate import griddata
 import six
@@ -47,6 +48,7 @@ from rasterio.crs import CRS
 from climada.util.files_handler import to_list
 from climada.util.coordinates import grid_is_regular
 
+LOGGER = logging.getLogger(__name__)
 
 RESOLUTION = 250
 """ Number of pixels in one direction in rendered image """
@@ -543,6 +545,9 @@ def get_transformation(crs_in):
         else:
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
     except ValueError:
+        crs_epsg = ccrs.PlateCarree()
+    except:
+        LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
         crs_epsg = ccrs.PlateCarree()
 
     try:
