@@ -38,6 +38,7 @@ dependencies:
   - xarray=0.12.1
   - xlrd=1.2.0
   - xlsxwriter=1.1.7
+  - xlwings=0.15.8
   - pip:
     - contextily==0.99.0
     - iso3166==1.0
