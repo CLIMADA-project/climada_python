@@ -31,6 +31,7 @@ import matplotlib.animation as animation
 from pint import UnitRegistry
 from numba import jit
 from tqdm import tqdm
+import time
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
@@ -173,6 +174,8 @@ class TropCyclone(Hazard):
 
             tc_tmp = TropCyclone()
             tc_tmp.set_from_tracks(tr_sel, centroids)
+            tc_tmp.event_name = [track.name + ' ' + time.strftime("%d %h %Y %H:%M", \
+                time.gmtime(tr_sel.data[0].time[1].values.astype(int)/1000000000))]
             tc_list.append(tc_tmp)
 
         if 'cmap' not in kwargs:
@@ -185,6 +188,7 @@ class TropCyclone(Hazard):
         def run(node):
             tc_list[node].plot_intensity(1, axis=axis, **kwargs)
             axis.plot(tr_coord['lon'][node], tr_coord['lat'][node], 'k')
+            axis.set_title(tc_list[node].event_name[0])
             pbar.update()
 
         if file_name:

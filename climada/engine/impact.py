@@ -686,7 +686,7 @@ class Impact():
             fig.delaxes(fig.axes[1])
             axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
             axis.set_ylim(haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max())
-            axis.set_title('')
+            axis.set_title(haz_list[i_time].event_name[0])
             pbar.update()
 
         if file_name:
