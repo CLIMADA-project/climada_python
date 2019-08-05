@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Unit test landslide module.
+Integration tests & long unit test landslide module.
 """
 import unittest
 import os
@@ -34,11 +34,11 @@ import math
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
-""" Unit tests for parts of the LS hazard module, but moved to integration tests 
-for reasons of runtime"""
 
 class TestTiffFcts(unittest.TestCase):
-    """Test functions for getting input tiffs in landslide module, outside Landslide() instance"""
+    """Unit tests for parts of the LS hazard module, but moved to integration tests 
+    for reasons of runtime: Test functions for getting input tiffs in landslide module, 
+    outside Landslide() instance"""
     def test_get_nowcast_tiff(self):
         start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(2), '%Y-%m-%d')
         end_date = dt.datetime.strftime(dt.datetime.now() - timedelta(1), '%Y-%m-%d')
@@ -75,8 +75,36 @@ class TestTiffFcts(unittest.TestCase):
 #        self.assertEqual(len(combined_monthly),1)
 #        for item in combined_monthly:
 #            os.remove(item)
+
+class TestLSHazard(unittest.TestCase):  
+    """Integration test for LS hazard sets build in Landslide module"""
+    def test_set_LSmodel_0(self):
+        """ Test the function set_LS_model for model 0 (historic hazard set)"""
+        LS_hist = Landslide()
+        LS_hist.set_LS_model(ls_model=landslide.LS_MODEL[0], bbox=[48, 10, 45, 7], \
+                     path_sourcefile=os.path.join(DATA_DIR, 'nasa_global_landslide_catalog_point.shp'), check_plots=0)
+        self.assertEqual(LS_hist.size, 49)
+        self.assertEqual(LS_hist.tag.haz_type, 'LS')
+        self.assertEqual(min(LS_hist.intensity.data),1)
+        self.assertEqual(max(LS_hist.intensity.data),1)
+
         
+    def test_set_LSmodel_1(self):
+        """ Test the function set_LS_model for model 1 (probabilistic hazard set)"""
+        LS_prob = Landslide()
+        LS_prob.set_LS_model(ls_model=landslide.LS_MODEL[1], n_years=500, bbox=[48, 10, 45, 7], \
+                     path_sourcefile=os.path.join(DATA_DIR, 'cropping_test_LS.tif'), incl_neighbour=False, \
+                     check_plots=0)
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity_prob.shape,(1, 129600))
+        self.assertEqual(max(LS_prob.intensity.data),1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertEqual(LS_prob.intensity.shape,(1, 129600))
+        self.assertAlmostEqual(max(LS_prob.intensity_prob.data),8.999999999e-05)
+        self.assertEqual(min(LS_prob.intensity_prob.data),5e-07)
+        self.assertEqual(LS_prob.centroids.size, 129600)       
   
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLSHazard))
     unittest.TextTestRunner(verbosity=2).run(TESTS)           
