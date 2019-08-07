@@ -60,10 +60,10 @@ RF_MODEL = ['ORCHIDEE',
             'PCR-GLOBWB',
             'WaterGAP'
             ]
-CL_MODEL = [#'princeton',
-            #'gswp3',
-            'watch'
-            #'wfdei'
+CL_MODEL = ['princeton',
+            'gswp3',
+            'watch',
+            'wfdei'
             ]
 
 def schedule_run(run_nb,flag,RF_model,CL_model):
