@@ -39,6 +39,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.util.coordinates import get_land_geometry
 
+
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'RF'
@@ -467,6 +468,53 @@ class RiverFlood(Hazard):
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
         centroids.set_lat_lon_to_meta()
         return centroids, iso_codes
+    
+    def select_exact_area_polygon(countries=[], reg=[]):
+        """ Extract coordinates of selected countries or region
+        from NatID grid. If countries are given countries are cut,
+        if only reg is given, the whole region is cut.
+        Parameters:
+            countries: List of countries
+            reg: List of regions
+        Raises:
+            AttributeError
+        Returns:
+            np.array
+        """
+        centroids = Centroids()
+        natID_info = pd.read_csv(NAT_REG_ID)
+        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+        isimip_lon = isimip_grid.lon.data
+        isimip_lat = isimip_grid.lat.data
+        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
+        if countries:
+            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
+        elif reg:
+            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
+        else:
+            centroids.coord = np.zeros((gridX.size, 2))
+            centroids.coord[:, 1] = gridX.flatten()
+            centroids.coord[:, 0] = gridY.flatten()
+            centroids.id = np.arange(centroids.coord.shape[0])
+            return centroids
+        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
+        natID_pos = np.isin(isimip_NatIdGrid, natID)
+        lon_coordinates = gridX[natID_pos]
+        lat_coordinates = gridY[natID_pos]
+        centroids.coord = np.zeros((len(lon_coordinates), 2))
+        centroids.coord[:, 1] = lon_coordinates
+        centroids.coord[:, 0] = lat_coordinates
+        centroids.id = np.arange(centroids.coord.shape[0])
+        orig_proj = 'epsg:4326'
+        country = gpd.GeoDataFrame()
+        country['geometry'] = list(zip(centroids.coord[:, 1],
+                                       centroids.coord[:, 0]))
+        country['geometry'] = country['geometry'].apply(Point)
+        country.crs = {'init': orig_proj}
+        points = country.geometry.values
+        concave_hull, _ = alpha_shape(points, alpha=1)
+
+        return concave_hull
 
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
