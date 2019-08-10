@@ -32,12 +32,18 @@ import datetime as dt
 from datetime import date
 from rasterio.warp import Resampling
 import shapely
+import geopandas as gpd
+from sklearn.neighbors import BallTree
 
 from climada.util.constants import NAT_REG_ID, GLB_CENTROIDS_NC
 from climada.util.interpolation import interpol_index
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.util.coordinates import get_land_geometry
+
+from shapely.geometry import Point
+from shapely.geometry.multipolygon import MultiPolygon
+from climada.util.alpha_shape import alpha_shape,plot_polygon
 
 
 LOGGER = logging.getLogger(__name__)
@@ -97,7 +103,7 @@ class RiverFlood(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
-                    countries=[], reg=None, years=[2000]):
+                    centroids=None, countries=[], reg=None, years=[2000]):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
             flood_dir (string): location of flood data
@@ -136,7 +142,7 @@ class RiverFlood(Hazard):
 
         if countries or reg:
             # centroids as points
-            dest_centroids, iso_codes = RiverFlood._select_exact_area(
+            dest_centroids, iso_codes, natID = RiverFlood._select_exact_area(
                 countries, reg)
 
             # envelope containing counties
@@ -149,19 +155,43 @@ class RiverFlood(Hazard):
                                   height=dest_centroids.meta['height'],
                                   resampling=Resampling.nearest)
             self.centroids.set_meta_to_lat_lon()
-            
-            in_country = shapely.vectorized.contains(cntry_geom,
-                                                     self.centroids.lon,
-                                                     self.centroids.lat)
+
+            in_country = self._intersect_area(natID)
             self.intensity = self.intensity[:, in_country]
             self.fraction = self.fraction[:, in_country]
             self.centroids.set_lat_lon(self.centroids.lat[in_country],
                                        self.centroids.lon[in_country])
-        else:
+        elif not centroids:
             # centroids as raster
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path],
                             band=event_index+1)
+        else: # use given centroids
+            if centroids.meta or grid_is_regular(centroids)[0]:
+                if not centroids.meta:
+                    centroids.set_lat_lon_to_meta()
+                self.set_raster(files_intensity=[dph_path],
+                                files_fraction=[frc_path], band=event_index+1,
+                                transform=centroids.meta['transform'],
+                                width=centroids.meta['width'],
+                                height=centroids.meta['height'],
+                                resampling=Resampling.nearest)
+            else:
+                centroids.set_lat_lon_to_meta()
+                self.set_raster(files_intensity=[dph_path],
+                                files_fraction=[frc_path], band=event_index+1,
+                                transform=centroids.meta['transform'],
+                                width=centroids.meta['width'],
+                                height=centroids.meta['height'],
+                                resampling=Resampling.nearest)
+                self.centroids.set_meta_to_lat_lon()
+                tree = BallTree(np.radians(self.centroids.coord), 
+                                metric='haversine')
+                assigned = tree.query(np.radians(centroids.coord), k=1,
+                                      dualtree=True, breadth_first=False)
+                self.centroids = centroids
+                self.intensity = self.intensity[:, assigned]
+                self.fraction = self.fraction[:, assigned]
 
         self.units = 'm'
         self.tag.file_name = dph_path + ';' + frc_path
@@ -178,6 +208,24 @@ class RiverFlood(Hazard):
                               flood_dph.time[i].dt.month,
                               flood_dph.time[i].dt.day).toordinal()
                               for i in event_index])
+
+    def _intersect_area(self, natID):
+        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+        isimip_lon = isimip_grid.lon.data
+        isimip_lat = isimip_grid.lat.data
+        min_lon, min_lat, max_lon, max_lat = self.centroids.total_bounds
+        lon_o = np.argmin(np.abs(min_lon - isimip_lon))
+        lon_f = np.argmin(np.abs(max_lon - isimip_lon))
+        lat_o = np.argmin(np.abs(min_lat - isimip_lat))
+        lat_f = np.argmin(np.abs(max_lat - isimip_lat))
+        isimip_NatIdGrid = isimip_grid.NatIdGrid[lat_o:lat_f+1, lon_o:lon_f+1].data
+        # für alle lander
+        in_country = np.isin(isimip_NatIdGrid, natID)
+        
+        return in_country
+
+
+
 
     def _read_nc(self, years, dph_path, frc_path):
         """ extract and flood intesity and fraction from flood
@@ -437,7 +485,7 @@ class RiverFlood(Hazard):
         natID_info = pd.read_csv(NAT_REG_ID)
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
-        isimip_lat = isimip_grid.lat.data
+        isimip_lat = np.flip(isimip_grid.lat.data)
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
         try:
             if countries:
@@ -467,8 +515,8 @@ class RiverFlood(Hazard):
         lat_coordinates = gridY[natID_pos]
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
         centroids.set_lat_lon_to_meta()
-        return centroids, iso_codes
-    
+        return centroids, iso_codes, natID
+
     def select_exact_area_polygon(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
@@ -481,7 +529,6 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
-        centroids = Centroids()
         natID_info = pd.read_csv(NAT_REG_ID)
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
@@ -492,30 +539,40 @@ class RiverFlood(Hazard):
         elif reg:
             natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
         else:
-            centroids.coord = np.zeros((gridX.size, 2))
-            centroids.coord[:, 1] = gridX.flatten()
-            centroids.coord[:, 0] = gridY.flatten()
-            centroids.id = np.arange(centroids.coord.shape[0])
-            return centroids
+            LOGGER.error('Not valid inputs')
+            raise ValueError
         isimip_NatIdGrid = isimip_grid.NatIdGrid.data
         natID_pos = np.isin(isimip_NatIdGrid, natID)
         lon_coordinates = gridX[natID_pos]
         lat_coordinates = gridY[natID_pos]
-        centroids.coord = np.zeros((len(lon_coordinates), 2))
-        centroids.coord[:, 1] = lon_coordinates
-        centroids.coord[:, 0] = lat_coordinates
-        centroids.id = np.arange(centroids.coord.shape[0])
-        orig_proj = 'epsg:4326'
-        country = gpd.GeoDataFrame()
-        country['geometry'] = list(zip(centroids.coord[:, 1],
-                                       centroids.coord[:, 0]))
-        country['geometry'] = country['geometry'].apply(Point)
-        country.crs = {'init': orig_proj}
-        points = country.geometry.values
-        concave_hull, _ = alpha_shape(points, alpha=1)
+#        orig_proj = 'epsg:4326'
+#        country = gpd.GeoDataFrame()
+#        country['geometry'] = list(zip(lon_coordinates,
+#                                       lat_coordinates))
+#        country['geometry'] = country['geometry'].apply(Point)
+#        country.crs = {'init': orig_proj}
+#        points = country.geometry.values
+        points = list(map(Point, np.array([lon_coordinates, lat_coordinates]).transpose()))
+
+#        points = list(zip(lon_coordinates,
+#                                       lat_coordinates))
+        concave_hull, _ = alpha_shape(points, alpha=20)
+        #plot_polygon(concave_hull)
+
+        for lat, lon in zip(lat_coordinates, lon_coordinates):
+            if not concave_hull.contains(Point(lon, lat)):
+                print('error')
+
 
         return concave_hull
 
+def truncate(f, n):
+    '''Truncates/pads a float f to n decimal places without rounding'''
+    s = '{}'.format(f)
+    if 'e' in s or 'E' in s:
+        return '{0:.{1}f}'.format(f, n)
+    i, p, d = s.partition('.')
+    return '.'.join([i, (d+'0'*n)[:n]])
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
                  n_ev, method='nearest'):

@@ -30,7 +30,7 @@ class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
 
     def test_exact_area_selection(self):
-        testCentroids, iso_codes = RiverFlood._select_exact_area(['LIE'])
+        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(['LIE'])
 
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
@@ -62,12 +62,15 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
         self.assertEqual(iso_codes[0], 'LIE')
 
-        testCentroids, iso_codes = RiverFlood._select_exact_area(['DEU'])
+        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(['DEU'])
         self.assertAlmostEqual(np.max(testCentroids.lon), 15.020687999999979)
         self.assertAlmostEqual(np.min(testCentroids.lon), 5.895702599999964)
         self.assertAlmostEqual(np.max(testCentroids.lat), 55.0622346)
         self.assertAlmostEqual(np.min(testCentroids.lat), 47.312247)
         self.assertEqual(iso_codes[0], 'DEU')
+        
+        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(reg=['SWA'])
+    
 
 #    def test_select_window_area(self):
 #        testWinCentroids = RiverFlood.select_window_area(['DEU'])
@@ -134,20 +137,22 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testRF.fraction[0, 3341441], 0.41666666)
         self.assertAlmostEqual(testRF.fraction[0, 3341442], 0.375)
         self.assertEqual(np.argmax(testRF.fraction[0]), 3341440)
-
-        testRFReg = RiverFlood()
-        testRFReg.set_from_nc(reg='SWA', dph_path=HAZ_DEMO_FLDDPH,
-                              frc_path=HAZ_DEMO_FLDFRC)
-        self.assertEqual(testRFReg.centroids.lat.shape[0], 301181)
+    
+    def test_region_selection(self):
         
-        testCentr = RiverFlood()
-        centr_ori, iso = testCentr._select_exact_area(reg='SWA')
+        testRFReg = RiverFlood()
+        testRFReg.set_from_nc(reg=['SWA'], dph_path=HAZ_DEMO_FLDDPH,
+                              frc_path=HAZ_DEMO_FLDFRC)
+        self.assertEqual(testRFReg.centroids.lat.size, 301181)
+    
+        centr_ori, iso, natID = RiverFlood._select_exact_area(reg=['SWA'])
         centr_ori.set_lat_lon_to_meta()
         
-        for lat, lon in centr_ori.coord:
-            self.AssertEqual(np.argwhere(np.abs(lat - testCentr.centroids.lat)<1.0e-8).size,
-                             centr_ori.meta['width'])
-            self.AssertEqual(np.argwhere(np.abs(lon - testCentr.centroids.lon)<1.0e-8).size,
+        
+#        self.assertEqual(np.argwhere(np.abs(centr_ori.coord[:,0] - testRFReg.centroids.lat)<1.0e-8).size,
+#                         centr_ori.meta['width'])
+        for lon in centr_ori.coord[:,1]:
+            self.assertEqual(np.argwhere(np.abs(lon - testRFReg.centroids.lon)<1.0e-8).size,
                              centr_ori.meta['height'])
 
         self.assertAlmostEqual(np.max(testRFReg.centroids.lon),
@@ -164,11 +169,12 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(np.max(testRFReg.intensity), 16.69780921936035)
 
     def test_flooded_area(self):
+        
         testRFArea = RiverFlood()
 
         testRFArea.set_from_nc(countries=['AUT'], dph_path=HAZ_DEMO_FLDDPH,
                                frc_path=HAZ_DEMO_FLDFRC)
-        self.assertEqual(testRFArea.centroids.lat.shape[0], 5782)
+        self.assertEqual(testRFArea.centroids.lat.size, 5782)
         self.assertAlmostEqual(np.max(testRFArea.centroids.lon),
                                17.104017999999968)
         self.assertAlmostEqual(np.min(testRFArea.centroids.lon),
@@ -178,8 +184,8 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(np.min(testRFArea.centroids.lat),
                                46.39558179999999)
         self.assertEqual(testRFArea.orig[0], 0)
-        self.assertAlmostEqual(np.max(testRFArea.intensity),
-                               9.613386154174805)
+        self.assertEqual(np.max(testRFArea.intensity),
+                         9.613386154174805)
         self.assertEqual(np.argmax(testRFArea.intensity), 2786)
         self.assertAlmostEqual(np.max(testRFArea.fraction),
                                0.5103999972343445)
