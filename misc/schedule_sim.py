@@ -35,7 +35,9 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['0', '100', 'flopros']
+SCENARIO = ['rcp26',
+            'rcp60']
+#PROT_STD = ['0', '100', 'flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -44,18 +46,21 @@ gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downs
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
 output = currentdir
 #For lpj longrun
-if args.RF_model == 'lpjml':
-    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
-    if args.CL_model == 'watch':
-        years = np.arange(1901, 2002)
-    else:
-        years = np.arange(1901, 2011)
-else:
-    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
-    if args.CL_model == 'watch':
-        years = np.arange(1971, 2002)
-    else:
-        years = np.arange(1971, 2011)
+#if args.RF_model == 'lpjml':
+#    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
+#    if args.CL_model == 'watch':
+#        years = np.arange(1901, 2002)
+#    else:
+#        years = np.arange(1901, 2011)
+#else:
+#    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
+#    if args.CL_model == 'watch':
+#        years = np.arange(1971, 2002)
+#    else:
+#        years = np.arange(1971, 2011)
+
+flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods'
+years = np.arange(2006, 2101)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -67,23 +72,23 @@ continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'South
 
 dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
-                            'Region': np.full(l, "", dtype=str),
                             'Continent': np.full(l, "", dtype=str),
+                            'Region': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
-                            'FloodedArea0': np.full(l, np.nan, dtype=float),
-                            'FloodedArea100': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp0': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
-                            'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
-                            'Impact_0': np.full(l, np.nan, dtype=float),
-                            'Impact_100': np.full(l, np.nan, dtype=float),
-                            'Impact_Flopros': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_0': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_Flopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_0': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_Flopros': np.full(l, np.nan, dtype=float)
+                            'FloodedAreaRCP26': np.full(l, np.nan, dtype=float),
+                            'FloodedAreaRCP60': np.full(l, np.nan, dtype=float),
+                            #'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
+                            'ImpFixAssetRCP26': np.full(l, np.nan, dtype=float),
+                            'ImpFixAssetRCP60': np.full(l, np.nan, dtype=float),
+                            #'ImpFixAssetFlopros': np.full(l, np.nan, dtype=float),
+                            'Impact_RCP26': np.full(l, np.nan, dtype=float),
+                            'Impact_RCP60': np.full(l, np.nan, dtype=float),
+                            #'Impact_Flopros': np.full(l, np.nan, dtype=float),
+                            'Impact_2y_RCP26': np.full(l, np.nan, dtype=float),
+                            'Impact_2y_RCP60': np.full(l, np.nan, dtype=float),
+                            'ImpFix_2y_RCP26': np.full(l, np.nan, dtype=float),
+                            'ImpFix_2y_RCP60': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
@@ -100,12 +105,12 @@ for cnt_ind in range(len(isos)):
     gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
 
     save_lc = line_counter
-    for pro_std in range(len(PROT_STD)):
+    for scen in range(len(SCENARIO)):
         line_counter = save_lc
-        dph_path = flood_dir + 'flddph_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-        frc_path= flood_dir + 'fldfrc_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
+        dph_path = flood_dir + 'flddph_{}_{}_{}_flopros_gev_picontrol_2006_2300_0.1.nc'
+            .format(args.RF_model, args.CL_model, SCENARIO[scen])
+        frc_path= flood_dir + 'fldfrc_{}_{}_{}_flopros_gev_picontrol_2006_2300_0.1.nc'
+            .format(args.RF_model, args.CL_model, SCENARIO[scen])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
             break
@@ -119,7 +124,7 @@ for cnt_ind in range(len(isos)):
         rf.set_flooded_area()
         rf.set_flooded_area()
         for year in range(len(years)):
-            print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
+            print('country_{}_year{}_sccenario_{}'.format(country[0], str(years[year]), SCENARIO[scen]))
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
             dataDF.iloc[line_counter, 0] = years[year]
@@ -137,18 +142,18 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
                 imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, 15 + pro_std] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 17 + pro_std] = imp2y_fix.at_event[0]
+                dataDF.iloc[line_counter, 12 + scen] = imp2y_fl.at_event[0]
+                dataDF.iloc[line_counter, 14 + scen] = imp2y_fix.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = imp_fix.tot_value
-            dataDF.iloc[line_counter, 6 + pro_std] = rf.fla_annual[year]
-            dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
-            dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 6 + scen] = rf.fla_annual[year]
+            dataDF.iloc[line_counter, 8 + scen] = imp_fix.at_event[0]
+            dataDF.iloc[line_counter, 10 + scen] = imp_fl.at_event[0]
             line_counter+=1
-    if args.RF_model == 'lpjml':
-        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
-    else:
-        dataDF.to_csv('output_{}_{}_fullProt_All_2y.csv'.format(args.RF_model, args.CL_model))
-
+#    if args.RF_model == 'lpjml':
+#        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
+#    else:
+#        dataDF.to_csv('output_{}_{}_fullProt_All_2y.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('output2b_{}_{}_floprosFull.csv'.format(args.RF_model, args.CL_model))
 

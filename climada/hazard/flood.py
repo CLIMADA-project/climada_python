@@ -190,6 +190,7 @@ class RiverFlood(Hazard):
             lon = flood_dph.lon.data
             lat = flood_dph.lat.data
             time = flood_dph.time.data
+            time = np.array(list(map(np.datetime64, time)))
             event_index = self._select_event(time, years)
             self._n_events = len(event_index)
             try:
@@ -282,12 +283,12 @@ class RiverFlood(Hazard):
         self.centroids.set_lat_lon(gridY.flatten(), gridX.flatten())
 
     def _select_event(self, time, years):
-        event_names = pd.to_datetime(time).year
+        event_names = time.astype('datetime64[Y]').astype(int) + 1970
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
             LOGGER.error('No events found for selected ' + str(years))
             raise AttributeError
-        self.event_name = list(map(str, pd.to_datetime(time[event_index])))
+        self.event_name = list(map(str, event_names[event_index]))
         return event_index
 
     def _cut_window(self, lon, lat):
