@@ -34,9 +34,9 @@ args = parser.parse_args()
 # set all countries
 # set output dir
 
-
-SCENARIO = ['rcp26',
-            'rcp60']
+SCENARIO = ['historical']
+#SCENARIO = ['rcp26',
+#            'rcp60']
 #PROT_STD = ['0', '100', 'flopros']
 #for LPJ longrun
 
@@ -60,7 +60,7 @@ output = currentdir
 #        years = np.arange(1971, 2011)
 
 flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods/'
-years = np.arange(2006, 2100)
+years = np.arange(1861, 1931)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -76,19 +76,19 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Region': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaRCP26': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaRCP60': np.full(l, np.nan, dtype=float),
+                            'FloodedArea_hist': np.full(l, np.nan, dtype=float),
+                            #'FloodedAreaRCP60': np.full(l, np.nan, dtype=float),
                             #'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixAssetRCP26': np.full(l, np.nan, dtype=float),
-                            'ImpFixAssetRCP60': np.full(l, np.nan, dtype=float),
+                            'ImpFixAsset_hist': np.full(l, np.nan, dtype=float),
+                            #'ImpFixAssetRCP60': np.full(l, np.nan, dtype=float),
                             #'ImpFixAssetFlopros': np.full(l, np.nan, dtype=float),
-                            'Impact_RCP26': np.full(l, np.nan, dtype=float),
-                            'Impact_RCP60': np.full(l, np.nan, dtype=float),
+                            'Impact_hist': np.full(l, np.nan, dtype=float),
+                            #'Impact_RCP60': np.full(l, np.nan, dtype=float),
                             #'Impact_Flopros': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_RCP26': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_RCP60': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_RCP26': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_RCP60': np.full(l, np.nan, dtype=float)
+                            'Impact_2y_hist': np.full(l, np.nan, dtype=float),
+                            #'Impact_2y_RCP60': np.full(l, np.nan, dtype=float),
+                            'ImpFix_2y_hist': np.full(l, np.nan, dtype=float),
+                            #'ImpFix_2y_RCP60': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
@@ -123,7 +123,7 @@ for cnt_ind in range(len(isos)):
         rf2y.exclude_returnlevel(RF_PATH_FRC)
         rf.set_flooded_area()
         for year in range(len(years)):
-            print('country_{}_year{}_sccenario_{}'.format(country[0], str(years[year]), SCENARIO[scen]))
+            print('country_{}_year{}_scenario_{}'.format(country[0], str(years[year]), SCENARIO[scen]))
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
             dataDF.iloc[line_counter, 0] = years[year]
@@ -141,18 +141,18 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
                 imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, 12 + scen] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 14 + scen] = imp2y_fix.at_event[0]
+                dataDF.iloc[line_counter, 10 + scen] = imp2y_fl.at_event[0]
+                dataDF.iloc[line_counter, 11 + scen] = imp2y_fix.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = imp_fix.tot_value
             dataDF.iloc[line_counter, 6 + scen] = rf.fla_annual[year]
             dataDF.iloc[line_counter, 8 + scen] = imp_fix.at_event[0]
-            dataDF.iloc[line_counter, 10 + scen] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 9 + scen] = imp_fl.at_event[0]
             line_counter+=1
 #    if args.RF_model == 'lpjml':
 #        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
 #    else:
 #        dataDF.to_csv('output_{}_{}_fullProt_All_2y.csv'.format(args.RF_model, args.CL_model))
-    dataDF.to_csv('output2b_{}_{}_floprosFull.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('output2b_{}_{}_flopros1930.csv'.format(args.RF_model, args.CL_model))
 
