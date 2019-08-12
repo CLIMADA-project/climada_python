@@ -49,25 +49,25 @@ sys.dont_write_bytecode = True
 
 
 RF_MODEL = ['ORCHIDEE',
-            #'CLM',
-            #'DBH',
+            'CLM',
+            'DBH',
             'H08',
-            #'JULES-TUC',
-            #'JULES-UoE',
+            'JULES-TUC',
+            'JULES-UoE',
             'LPJmL',
-            #'MATSIRO',
+            'MATSIRO',
             'MPI-HM',
             'PCR-GLOBWB',
             'WaterGAP2'
             ]
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5'
-            #'princeton',
-            #'gswp3',
-            #'watch',
-            #'wfdei'
+CL_MODEL = [#'gfdl-esm2m',
+            #'hadgem2-es',
+            #'ipsl-cm5a-lr',
+            #'miroc5'
+            'princeton',
+            'gswp3',
+            'watch',
+            'wfdei'
             ]
 
 def schedule_run(run_nb,flag,RF_model,CL_model):

@@ -157,7 +157,6 @@ def _read_people(shp_exposures, ref_year, path=PEOPLE_DATASET):
         pop_lon = pop_file.lon.data
         pop_lat = pop_file.lat.data
         time = pop_file.time
-        print(time)
     except OSError:
         LOGGER.error('Problems while reading ,' + path +
                      ' check exposure_file specifications')
