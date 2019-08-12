@@ -44,7 +44,7 @@ class TestTiffFcts(unittest.TestCase):
         tif_type= ["monthly","daily"]
         
         for item in tif_type:
-            landslide.get_nowcast_tiff(tif_type=item, startTime=start_date, endTime=end_date, save_path=DATA_DIR)
+            landslide.get_nowcast_tiff(tif_type=item, starttime=start_date, endtime=end_date, save_path=DATA_DIR)
             
         search_criteria = "LS*.tif"
         LS_files_daily = glob.glob(os.path.join(DATA_DIR, search_criteria))
@@ -80,7 +80,7 @@ class TestLSHazard(unittest.TestCase):
     def test_set_ls_model_hist(self):
         """ Test the function set_LS_model for model 0 (historic hazard set)"""
         LS_hist = Landslide()
-        LS_hist.set_LS_model(ls_model=landslide.LS_MODEL[0], bbox=[48, 10, 45, 7], \
+        LS_hist.set_ls_model_hist(bbox=[48, 10, 45, 7], \
                      path_sourcefile=os.path.join(DATA_DIR, 'nasa_global_landslide_catalog_point.shp'), check_plots=0)
         self.assertEqual(LS_hist.size, 49)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
@@ -88,7 +88,7 @@ class TestLSHazard(unittest.TestCase):
         self.assertEqual(max(LS_hist.intensity.data),1)
 
         
-    def set_ls_model_prob(self):
+    def test_set_ls_model_prob(self):
         """ Test the function set_LS_model for model versio UNEP_NGI, with and without neighbours"""
         LS_prob = Landslide()
         LS_prob.set_ls_model_prob(ls_model="UNEP_NGI", n_years=500, bbox=[48, 10, 45, 7], \
