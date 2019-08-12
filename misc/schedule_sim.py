@@ -59,8 +59,8 @@ output = currentdir
 #    else:
 #        years = np.arange(1971, 2011)
 
-flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods'
-years = np.arange(2006, 2101)
+flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods/'
+years = np.arange(2006, 2100)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -122,7 +122,6 @@ for cnt_ind in range(len(isos)):
         rf2y = copy.copy(rf)
         rf2y.exclude_returnlevel(RF_PATH_FRC)
         rf.set_flooded_area()
-        rf.set_flooded_area()
         for year in range(len(years)):
             print('country_{}_year{}_sccenario_{}'.format(country[0], str(years[year]), SCENARIO[scen]))
             ini_date = str(years[year]) + '-01-01'
@@ -137,7 +136,7 @@ for cnt_ind in range(len(isos)):
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
             imp_fix=Impact()
             imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
-            if pro_std < 2:
+            if scen < 2:
                 imp2y_fl=Impact()
                 imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
