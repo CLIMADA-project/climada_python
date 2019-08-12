@@ -141,14 +141,14 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
                 imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, 10 + scen] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 11 + scen] = imp2y_fix.at_event[0]
+                dataDF.iloc[line_counter, 9 + scen] = imp2y_fl.at_event[0]
+                dataDF.iloc[line_counter, 10 + scen] = imp2y_fix.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = imp_fix.tot_value
             dataDF.iloc[line_counter, 6 + scen] = rf.fla_annual[year]
-            dataDF.iloc[line_counter, 8 + scen] = imp_fix.at_event[0]
-            dataDF.iloc[line_counter, 9 + scen] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 7 + scen] = imp_fix.at_event[0]
+            dataDF.iloc[line_counter, 8 + scen] = imp_fl.at_event[0]
             line_counter+=1
 #    if args.RF_model == 'lpjml':
 #        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
