@@ -60,7 +60,7 @@ output = currentdir
 #        years = np.arange(1971, 2011)
 
 flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods/'
-years = np.arange(1861, 1931)
+years = np.arange(1931, 2007)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -154,5 +154,5 @@ for cnt_ind in range(len(isos)):
 #        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
 #    else:
 #        dataDF.to_csv('output_{}_{}_fullProt_All_2y.csv'.format(args.RF_model, args.CL_model))
-    dataDF.to_csv('output2b_{}_{}_flopros1930.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('output2b_{}_{}_flopros2007.csv'.format(args.RF_model, args.CL_model))
 
