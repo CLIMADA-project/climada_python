@@ -426,11 +426,11 @@ class Landslide(Hazard):
 
             if check_plots == 1:
                 fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-                self.plot_raw(ax=ax1)
+                self.plot_raw() 
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                self.plot_events(ax=ax2) #self.plot_raster()
+                self.plot_events()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
 
             return self
@@ -474,6 +474,6 @@ class Landslide(Hazard):
             return self
 
         else:
-            LOGGER.error('Specify the LS model to be used for the hazard-set generation as ls_model=LS_MODEL[i]')
+            LOGGER.error('Specify the LS model to be used for the hazard-set generation as ls_model=str')
             raise KeyError
 
