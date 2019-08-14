@@ -58,16 +58,18 @@ RF_MODEL = ['ORCHIDEE',
             'MATSIRO',
             'MPI-HM',
             'PCR-GLOBWB',
-            'WaterGAP2'
+            'WaterGAP',
+            'VIC',
+            'VEGAS'
             ]
 CL_MODEL = [#'gfdl-esm2m',
             #'hadgem2-es',
             #'ipsl-cm5a-lr',
             #'miroc5'
-            'princeton',
-            'gswp3',
-            'watch',
-            'wfdei'
+            'princeton'
+            #'gswp3',
+            #'watch',
+            #'wfdei'
             ]
 
 def schedule_run(run_nb,flag,RF_model,CL_model):

@@ -57,7 +57,7 @@ else:
     if args.CL_model == 'watch':
         years = np.arange(1980, 2002)
     else:
-        years = np.arange(1980, 2011)
+        years = np.arange(1980, 2013)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -71,8 +71,8 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
                             'Region': np.full(l, "", dtype=str),
                             'Continent': np.full(l, "", dtype=str),
-                            'TotalAssetValue': np.full(l, np.nan, dtype=float),
-                            'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
+                            'TotalPopulation': np.full(l, np.nan, dtype=float),
+                            'TotalPopulation2005': np.full(l, np.nan, dtype=float),
                             'FloodedArea0': np.full(l, np.nan, dtype=float),
                             #'FloodedArea100': np.full(l, np.nan, dtype=float),
                             'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
