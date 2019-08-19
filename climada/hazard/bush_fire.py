@@ -121,10 +121,11 @@ class BushFire(Hazard):
             self._firms_event(self.days_thres, firms.cons_id.values,
                               firms.clus_id.values, firms.event_id.values,
                               firms.iter_ev.values, firms.datenum.values)
-            LOGGER.info('Remaining events to identify %s', str(np.argwhere(\
+            LOGGER.info('Remaining events to identify: %s.', str(np.argwhere(\
             firms.iter_ev).size))
 
         # compute brightness and fill class attributes
+        LOGGER.info('Computing intensity of %s events.', np.unique(firms.event_id).size)
         self._calc_brightness(firms, centroids, res_centr)
 
     def set_proba_events(self, ens_size=9, seed=8):
@@ -139,6 +140,7 @@ class BushFire(Hazard):
         Raises:
             ValueError
         """
+        LOGGER.info('Setting up probabilistic events.')
         if self.pool:
             chunksize = min(self.size//self.pool.ncpus, 1000)
             haz_syn = self.pool.map(self._set_proba_one_event, range(self.size),
