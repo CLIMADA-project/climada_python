@@ -129,16 +129,7 @@ class TestLandslideModule(unittest.TestCase):
         self.assertTrue(max(LS_catalogue_part.longitude)<=bbox[1])
         self.assertTrue(min(LS_catalogue_part.longitude)>=bbox[3])
         
-#    def test_set_LS_module(self):
-#        empty_LS = Landslide()
-#        self.assertRaises(ValueError, empty_LS.set_LS_model(ls_model=landslide.LS_MODEL[1]))
-#        self.assertRaises(ValueError, empty_LS.set_LS_model, ls_model=landslide.LS_MODEL[1])
-#        self.assertRaises(ValueError, empty_LS.set_LS_model, ls_model=landslide.LS_MODEL[0], bbox = [47, 8, 44, 5], path_sourcefile = landslide.PATH_UNEP_NGI)
-
-
     
 if __name__ == "__main__":
-#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)
-#    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLandslideModule))
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLandslideModule)
     unittest.TextTestRunner(verbosity=2).run(TESTS)           
