@@ -196,7 +196,7 @@ class Landslide(Hazard):
             window_array (array): corner, width & height for Window() function of rasterio
         """
         with rasterio.open(path_sourcefile) as src:
-            utm = pyproj.Proj(src.crs) # Pass CRS of image from rasterio
+            utm = pyproj.Proj(init='epsg:4326') # Pass CRS of image from rasterio
 
         lonlat = pyproj.Proj(init='epsg:4326')
         lon, lat = (bbox[3], bbox[0])
@@ -375,10 +375,9 @@ class Landslide(Hazard):
             self.centroids.plot()
         return self
 
-    def set_ls_model_prob(self, bbox, path_sourcefile,\
-                     ls_model="UNEP_NGI", n_years=500,\
-                     incl_neighbour=False, \
-                     max_dist=1000, max_prob=0.000015, check_plots=1):
+    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", 
+                          path_sourcefile = [], n_years=500,\
+                     incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
             ls_model (str): UNEP_NGI (prob., UNEP/NGI) or NASA (prob., NASA Nowcast)
@@ -401,6 +400,8 @@ class Landslide(Hazard):
         """
 
         if ls_model == "UNEP_NGI":
+            path_sourcefile = os.path.join(LS_FILE_DIR, 'ls_pr_NGI_UNEP/ls_pr.tif')
+            
             if not bbox:
                 LOGGER.error('Empty bounding box, please set bounds.')
                 raise ValueError()
