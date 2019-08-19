@@ -667,7 +667,7 @@ class Impact():
 
         def run(i_time):
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
-                                            vmax=v_lim[1])
+                                            vmax=v_lim[1], alpha=0.8)
             if plot_raster:
                 exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
                                 pop_name=False, **args_exp)
