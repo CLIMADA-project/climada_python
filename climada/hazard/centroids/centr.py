@@ -625,10 +625,10 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        LOGGER.info('Setting geometry points.')
         def apply_point(df_exp):
             return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
         if not self.geometry.size:
+            LOGGER.info('Setting geometry points.')
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
             if not scheduler:
