@@ -120,7 +120,6 @@ class TestLSHazard(unittest.TestCase):
         self.assertTrue(sum(LS_prob.intensity.data)<sum(LS_prob_nb.intensity.data))
   
 if __name__ == "__main__":
-    #TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLSHazard)
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLSHazard))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLSHazard))
     unittest.TextTestRunner(verbosity=2).run(TESTS)           
