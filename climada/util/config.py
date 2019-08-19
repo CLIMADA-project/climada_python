@@ -30,7 +30,7 @@ import json
 import logging
 from pkg_resources import Requirement, resource_filename
 
-from climada.util.constants import SOURCE_DIR, ENT_TEMPLATE_XLS
+from climada.util.constants import SOURCE_DIR
 
 WORKING_DIR = os.getcwd()
 WINDOWS_END = 'C:\\'
