@@ -260,7 +260,24 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(ras_trans[3], 0.0)
         self.assertEqual(ras_trans[2], xmin - res/2)
         self.assertEqual(ras_trans[5], ymax + res/2)
+        self.assertTrue(ymin >= ymax + res/2 - rows*res)
+        self.assertTrue(xmax <= xmin - res/2 + cols*res)
 
+    def test_pts_to_raster_irreg_pass(self):
+        """ Test pts_to_raster_meta with irregular points """
+        xmin, ymin, xmax, ymax = -124.19473, 32.81908, -114.4632, 42.020759999999996 # bounds of points == centers pixels
+        points_bounds = (xmin, ymin, xmax, ymax)
+        res = 0.013498920086393088
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
+        self.assertEqual(ras_trans[0], res)
+        self.assertEqual(ras_trans[4], -res)
+        self.assertEqual(ras_trans[1], 0.0)
+        self.assertEqual(ras_trans[3], 0.0)
+        self.assertEqual(ras_trans[2], xmin - res/2)
+        self.assertEqual(ras_trans[5], ymax + res/2)
+        self.assertTrue(ymin >= ymax + res/2 - rows*res)
+        self.assertTrue(xmax <= xmin - res/2 + cols*res)        
+        
     def test_read_vector_pass(self):
         """ Test one columns data """
         shp_file = shapereader.natural_earth(resolution='110m', \
