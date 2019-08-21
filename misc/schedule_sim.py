@@ -36,7 +36,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = [flopros']
+PROT_STD = ['flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
