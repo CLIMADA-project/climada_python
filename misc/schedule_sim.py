@@ -107,9 +107,9 @@ for cnt_ind in range(len(isos)):
     for scen in range(len(SCENARIO)):
         line_counter = save_lc
         dph_path = flood_dir +'flddph_{}_{}_{}_flopros_gev_picontrol_2006_2300_0.1.nc'\
-                       .format(args.CL_model, args.CL_model, SCENARIO[scen])
+                       .format(args.RF_model, args.CL_model, SCENARIO[scen])
         frc_path= flood_dir+'fldfrc_{}_{}_{}_flopros_gev_picontrol_2006_2300_0.1.nc'\
-                       .format(args.CL_model, args.CL_model, SCENARIO[scen])
+                       .format(args.RF_model, args.CL_model, SCENARIO[scen])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
             break
