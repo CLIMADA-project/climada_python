@@ -23,7 +23,6 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import cartopy
 from sklearn.neighbors import DistanceMetric
 from climada.util.coordinates import coord_on_land
 from rasterio.windows import Window
@@ -68,37 +67,6 @@ class TestFuncs(unittest.TestCase):
 
         # check assigned variable has been set with correct length
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
-
-    def test_get_transform_4326_pass(self):
-        """ Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        res, unit = expo._get_transformation()
-        self.assertIsInstance(res, cartopy.crs.PlateCarree)
-        self.assertEqual(unit, '°')
-
-    def test_get_transform_3395_pass(self):
-        """ Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        expo.set_geometry_points()
-        expo.to_crs(epsg=3395, inplace=True)
-        res, unit = expo._get_transformation()
-        self.assertIsInstance(res, cartopy.crs.Mercator)
-        self.assertEqual(unit, 'm')
-
-    def test_get_transform_3035_pass(self):
-        """ Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        expo.set_geometry_points()
-        expo.to_crs(epsg=3035, inplace=True)
-        res, unit = expo._get_transformation()
-        self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
-        self.assertEqual(unit, 'm')
 
     def test_read_raster_pass(self):
         """ set_from_raster """
@@ -153,8 +121,9 @@ class TestChecker(unittest.TestCase):
         self.assertIn('tag metadata set to default value', cm.output[1])
         self.assertIn('ref_year metadata set to default value', cm.output[2])
         self.assertIn('value_unit metadata set to default value', cm.output[3])
-        self.assertIn('geometry not set', cm.output[5])
-        self.assertIn('cover not set', cm.output[4])
+        self.assertIn('meta metadata set to default value', cm.output[4])
+        self.assertIn('geometry not set', cm.output[6])
+        self.assertIn('cover not set', cm.output[5])
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""

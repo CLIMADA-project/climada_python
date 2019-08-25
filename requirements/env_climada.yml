@@ -11,7 +11,7 @@ dependencies:
   - geos=3.7.1
   - geopandas=0.4.1
   - h5py=2.9.0
-  - matplotlib=3.0.3
+  - matplotlib=3.1.0
   - mkl=2019.3
   - mkl_fft=1.0.12
   - mkl_random=1.0.2
@@ -47,3 +47,8 @@ dependencies:
     - pint==0.9
     - ppft==1.6.4.9
     - xmlrunner==1.7.7
+    - overpy==0.4
+    - geoplot==0.2.4 
+    - seaborn==0.9.0
+    - haversine==2.1.1
+    - sqlparse==0.3.0

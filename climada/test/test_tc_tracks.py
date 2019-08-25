@@ -33,7 +33,7 @@ class TestDownload(unittest.TestCase):
     def test_raw_ibtracs_empty_pass(self):
         """ read_ibtracs_netcdf"""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
         self.assertEqual(tc_track.get_track(), [])
 
 class TestIBTracs(unittest.TestCase):
@@ -74,7 +74,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertAlmostEqual(tc_track.get_track().max_sustained_wind.values[0], 30)
         self.assertAlmostEqual(tc_track.get_track().central_pressure.values[0], 1008)
         self.assertAlmostEqual(tc_track.get_track().environmental_pressure.values[0], 1012)
-        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[0], 0)
+        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[0], 60)
         self.assertEqual(tc_track.get_track().time.size, 123)
 
         self.assertAlmostEqual(tc_track.get_track().lat.values[-1], 36.8 - 7.629394502828291e-07)
@@ -108,8 +108,12 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.size, 0)
 
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP', correct_pres=False)
         self.assertEqual(tc_track.size, 32)
+
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP')
+        self.assertEqual(tc_track.size, 43)
 
     def test_filter_ibtracs_track_pass(self):
         """ Test _filter_ibtracs """

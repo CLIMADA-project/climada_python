@@ -25,3 +25,12 @@ climada\.entity\.exposures\.litpop module
     :undoc-members:
     :show-inheritance:
 
+climada\.entity\.exposures\.open_street_map module
+--------------------------------------------------
+
+.. automodule:: climada.entity.exposures.open_street_map
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+

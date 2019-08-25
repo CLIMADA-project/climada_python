@@ -23,10 +23,11 @@ Install environment with Anaconda
 
   The installation of the packages will take some minutes. No dialogue box should appear in the meantime. If an error happens, try to solve it looking into the details description.
 
-  *Optional*: To include *climada_python-x.y.z* in the environment's path, do the following. In your environments folder, for example */home/user/anaconda3/*::
+  Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
-   cd envs/climada_env/lib/python3.6/site-packages
-   echo '/your/path/to/climada_python-x.y.z/' > climada_env_path.pth
+   source activate climada_env
+   conda develop /your/path/to/climada_python-x.y.z/
+   conda deactivate
 
 3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
@@ -41,11 +42,12 @@ Install environment with Miniconda
     cd climada_python-x.y.z
     conda env create -f requirements/env_climada.yml --name climada_env
 
-   *Optional*: To include *climada_python-x.y.z* in the environment's path, do the following. In your environments folder, for example */home/user/miniconda3/*::
+  Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
-    cd envs/climada_env/lib/python3.6/site-packages
-    echo '/your/path/to/climada_python-x.y.z/' > climada_env_path.pth
-
+   source activate climada_env
+   conda develop /your/path/to/climada_python-x.y.z/
+   conda deactivate
+ 
 3. **Test installation**: Activate the environment, execute the installation tests and deactivate the environment when finished using climada::
 
     source activate climada_env
@@ -54,8 +56,10 @@ Install environment with Miniconda
 
  If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
-4. **Run tutorials**: Install and launch *jupyter notebook*::
+4. **Run tutorials**: Install and launch *jupyter notebook* in the same environment::
 
+    source activate climada_env
+    conda install jupyter
     jupyter notebook --notebook-dir /path/to/climada_python-x.y.z
 
  A browser window will show up. Open ``climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
@@ -67,12 +71,6 @@ Install environment with Anaconda
 ---------------------------------
 
 See `Install environment with Anaconda`_.
-
-Note: 
-
-In Step 2's optional instructions, to include the path into climada's virtual environment, set a file with format `.pth` containing the path of `climada_python-x.y.z` (e.g. ``C:\\Users\\USERNAME\\Documents\\climada_python-x.y.z\\``) in::
-
-   */Anaconda3/envs/climada_env/Lib/site-packages
 
 FAQs
 ====
@@ -87,3 +85,5 @@ FAQs
     pip install library_name
 
   where ``library_name`` is the missing library.
+
+* Conda right problems in macOS Mojave: try the solutions suggested here `https://github.com/conda/conda/issues/8440 <https://github.com/conda/conda/issues/8440>`_. 

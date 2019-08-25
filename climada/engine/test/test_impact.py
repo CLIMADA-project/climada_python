@@ -450,6 +450,31 @@ class TestIO(unittest.TestCase):
             self.assertTrue(np.array_equal(np.array(read_imp_mat[irow, :].todense()).reshape(-1),
                 np.array(impact.imp_mat[irow, :].todense()).reshape(-1)))
 
+class TestRPmatrix(unittest.TestCase):
+    ''' Test computation of impact per return period for whole exposure'''
+    def test_local_exceedance_imp_pass(self):
+        """ Test calc local impacts per return period """
+         # Read default entity values
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
+        ent.check()
+
+        # Read default hazard file
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        # Create impact object
+        impact = Impact()
+        # Assign centroids to exposures
+        ent.exposures.assign_centroids(hazard)
+        # Compute the impact over the whole exposures
+        impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
+        # Compute the impact per return period over the whole exposures
+        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
+
+        self.assertTrue(isinstance(impact_rp, np.ndarray))
+        self.assertEqual(impact_rp.size, 2*ent.exposures.value.size)
+        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219)
+        self.assertAlmostEqual(np.min(impact_rp), 444457580.13149405)
 
 # Execute Tests
 if __name__ == "__main__":
@@ -458,4 +483,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRPmatrix))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

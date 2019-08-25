@@ -26,6 +26,7 @@ import logging
 from itertools import repeat
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import xlsxwriter
 
 from climada.entity.impact_funcs.base import ImpactFunc
@@ -277,7 +278,7 @@ class ImpactFuncSet():
             for _, vul in vul_dict.items():
                 self.append(vul)
 
-    def plot(self, haz_type=None, fun_id=None):
+    def plot(self, haz_type=None, fun_id=None, axis=None, **kwargs):
         """Plot impact functions of selected hazard (all if not provided) and
         selected function id (all if not provided).
 
@@ -286,23 +287,33 @@ class ImpactFuncSet():
             fun_id (int, optional): id of the function
 
         Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+            matplotlib.axes._subplots.AxesSubplot
         """
         num_plts = self.size(haz_type, fun_id)
+        num_row, num_col = u_plot._get_row_col_size(num_plts)
         # Select all hazard types to plot
         if haz_type is not None:
             hazards = [haz_type]
         else:
             hazards = self._data.keys()
 
-        graph = u_plot.Graph2D('', num_plts)
+        if not axis:
+            _, axis = plt.subplots(num_row, num_col)
+        if num_plts > 1:
+            axes = axis.flatten()
+        else:
+            axes = [axis]
+
+        i_axis = 0
         for sel_haz in hazards:
             if fun_id is not None:
-                self._data[sel_haz][fun_id].plot(graph)
+                self._data[sel_haz][fun_id].plot(axis=axes[i_axis], **kwargs)
+                i_axis += 1
             else:
                 for sel_id in self._data[sel_haz].keys():
-                    self._data[sel_haz][sel_id].plot(graph)
-        return graph.get_elems()
+                    self._data[sel_haz][sel_id].plot(axis=axes[i_axis], **kwargs)
+                    i_axis += 1
+        return axis
 
     def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
         """Read excel file following template and store variables.

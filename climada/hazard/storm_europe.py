@@ -55,7 +55,7 @@ class StormEurope(Hazard):
         ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
             the footprint files; apparently not reproducible from the footprint
             values only.
-        ssi (np.array, float): SSI as set by set_ssi; uses the Dawkins 
+        ssi (np.array, float): SSI as set by set_ssi; uses the Dawkins
             definition by default.
     """
 
@@ -249,7 +249,7 @@ class StormEurope(Hazard):
             self.ssi_dawkins (np.array): SSI per event
         """
         if intensity is not None:
-            if type(intensity) is not sparse.csr.csr_matrix:
+            if not isinstance(intensity, sparse.csr_matrix):
                 intensity = sparse.csr_matrix(intensity)
             else:
                 pass
@@ -315,8 +315,8 @@ class StormEurope(Hazard):
 
         # data wrangling
         ssi_freq = pd.DataFrame({
-            'ssi': ssi, 
-            'freq': self.frequency, 
+            'ssi': ssi,
+            'freq': self.frequency,
             'orig': self.orig,
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
@@ -324,17 +324,17 @@ class StormEurope(Hazard):
         ssi_hist = ssi_freq.loc[ssi_freq.orig]
 
         # plotting
-        fig, ax = plt.subplots()
-        ax.plot(ssi_freq.freq_cum, ssi_freq.ssi, label='All Events')
-        ax.scatter(ssi_hist.freq_cum, ssi_hist.ssi,
-                   color='red', label='Historic Events')
-        ax.legend()
-        ax.set_xlabel('Exceedance Frequency [1/a]')
-        ax.set_ylabel('Storm Severity Index')
-        ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        fig, axs = plt.subplots()
+        axs.plot(ssi_freq.freq_cum, ssi_freq.ssi, label='All Events')
+        axs.scatter(ssi_hist.freq_cum, ssi_hist.ssi,
+                    color='red', label='Historic Events')
+        axs.legend()
+        axs.set_xlabel('Exceedance Frequency [1/a]')
+        axs.set_ylabel('Storm Severity Index')
+        axs.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
         plt.show()
 
-        return fig, ax
+        return fig, axs
 
     def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
                              **kwargs):
@@ -423,8 +423,10 @@ class StormEurope(Hazard):
         # frequency still based on the historic number of years
         new_haz.frequency = np.divide(
             np.ones_like(new_haz.event_id),
-            (last_year(self.date) - first_year(self.date))
+            (last_year(self.date) - first_year(self.date) + 1) # +1 to count years
         )
+        # correct freqeuncy for more years
+        new_haz.frequency = new_haz.frequency*self.size/new_haz.size
 
         self.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
@@ -434,6 +436,7 @@ class StormEurope(Hazard):
         new_haz.fraction = new_haz.intensity.copy().tocsr()
         new_haz.fraction.data.fill(1)
         new_haz.orig = (new_haz.event_id % 100 == 0)
+
         new_haz.check()
 
         return new_haz

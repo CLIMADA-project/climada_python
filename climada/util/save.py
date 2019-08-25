@@ -19,7 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 define save functionalities
 """
 
-__all__ = ['save']
+__all__ = ['save',
+           'load']
 
 import os
 import pickle
@@ -30,7 +31,8 @@ from climada.util.config import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 def save(out_file_name, var):
-    """Save variable with provided file name.
+    """Save variable with provided file name. Uses configuration save_dir folder
+    if no absolute path provided.
 
     Parameters:
         out_file_name (str): file name (absolute path or relative to configured
@@ -56,3 +58,21 @@ def save(out_file_name, var):
     except OSError:
         LOGGER.error('Data is probably too big. Try splitting it.')
         raise ValueError
+
+def load(in_file_name):
+    """ Load variable contained in file. Uses configuration save_dir folder
+    if no absolute path provided.
+
+    Parameters:
+        in_file_name (str)
+
+    Returns:
+        object
+    """
+    abs_path = in_file_name
+    if not os.path.isabs(abs_path):
+        abs_path = os.path.abspath(os.path.join( \
+                CONFIG['local_data']['save_dir'], in_file_name))
+    with open(abs_path, 'rb') as file:
+        data = pickle.load(file)
+    return data

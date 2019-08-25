@@ -26,11 +26,11 @@ from array import array
 import logging
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import xlsxwriter
 
 import climada.util.checker as check
 from climada.entity.tag import Tag
-import climada.util.plot as u_plot
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as hdf5
 
@@ -167,13 +167,25 @@ class DiscRates():
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)
 
-    def plot(self):
-        """Plot discount rates per year."""
-        graph = u_plot.Graph2D('Discount rates')
-        graph.add_subplot('Year', 'discount rate (%)', '')
-        graph.add_curve(self.years, self.rates * 100, 'b')
-        graph.set_x_lim(self.years)
-        return graph.get_elems()
+    def plot(self, axis=None, **kwargs):
+        """Plot discount rates per year.
+
+        Parameters:
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for plot matplotlib function, e.g. marker='x'
+
+        Returns:
+            matplotlib.axes._subplots.AxesSubplot
+        """
+        if not axis:
+            _, axis = plt.subplots(1, 1)
+
+        axis.set_title('Discount rates')
+        axis.set_xlabel('Year')
+        axis.set_ylabel('discount rate (%)')
+        axis.plot(self.years, self.rates*100, **kwargs)
+        axis.set_xlim((self.years.min(), self.years.max()))
+        return axis
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.

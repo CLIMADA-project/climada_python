@@ -25,6 +25,7 @@ from climada.entity.exposures.litpop import LitPop
 from climada.entity.exposures import litpop as lp
 from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
+from climada.util.coordinates import equal_crs
 
 # ---------------------
 class TestLitPopExposure(unittest.TestCase):
@@ -48,6 +49,16 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('GPW-year=2015', ent.tag.description)
         self.assertIn('BM-year=2016', ent.tag.description)
         self.assertIn('exp=[1, 1]', ent.tag.description)
+        self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
+        self.assertEqual(ent.meta['width'], 54)
+        self.assertEqual(ent.meta['height'], 23)
+        self.assertTrue(equal_crs(ent.meta['crs'], {'init': 'epsg:4326'}))
+        self.assertAlmostEqual(ent.meta['transform'][0], 0.08333333333333333)
+        self.assertAlmostEqual(ent.meta['transform'][1], 0)
+        self.assertAlmostEqual(ent.meta['transform'][2], 5.9166666666666)
+        self.assertAlmostEqual(ent.meta['transform'][3], 0)
+        self.assertAlmostEqual(ent.meta['transform'][4], -0.08333333333333333)
+        self.assertAlmostEqual(ent.meta['transform'][5], 47.7499999999999)
 
     def test_switzerland30normPop_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
@@ -76,7 +87,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 740)
         self.assertTrue(ent.region_id.max() == 740)
-        self.assertTrue(np.int(ent.value.sum().round()) == 2321765217)
+        self.assertTrue(np.int(ent.value.sum().round()) == 2332806589)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
@@ -158,7 +169,7 @@ class TestFunctionIntegration(unittest.TestCase):
                  check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
         self.assertAlmostEqual(max(litpop_curr), 80178713117.21936, places=3)
-        
+
     def test_gpw_import(self):
         """test import of population data (Gridded Population of the World GWP)
         via function gpw_import.get_box_gpw() for Swaziland"""
@@ -173,7 +184,7 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertAlmostEqual(lat[1], 0.083333333)
         self.assertAlmostEqual(lon[0], 30.78291)
         self.assertAlmostEqual(lon[1], 0.083333333)
-        
+
 class TestValidation(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -185,9 +196,25 @@ class TestValidation(unittest.TestCase):
         self.assertTrue(np.int(round(rho[0]*1e12)) == 945416798729)
         self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
 
+class TestSetAdmin1(unittest.TestCase):
+    """Test adding name and ID of Admin1-region to exposure"""
+
+    def test_exposure_set_admin1_BGD(self):
+        """Test function exposure_set_admin1 of litpop for Bangladesh"""
+        country_name = ['BGD']
+        resolution = 600
+        ent = LitPop()
+        ent.set_country(country_name, res_arcsec=resolution)
+        ent = lp.exposure_set_admin1(ent, 600)
+        self.assertIn(5492, ent.admin1_ID.values)
+        self.assertIn('Chittagong', ent.admin1.values)
+        self.assertEqual(len(np.unique(ent.admin1_ID)), 7)
+        self.assertEqual(np.min(np.unique(ent.admin1_ID)), 1806.0)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSetAdmin1))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

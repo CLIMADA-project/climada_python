@@ -24,12 +24,17 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 import ast
 import logging
 import csv
+import warnings
 import datetime as dt
 from itertools import zip_longest
 import numpy as np
 from scipy import sparse
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
+from tqdm import tqdm
+
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures
@@ -223,7 +228,7 @@ class Impact():
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
-                                 **kwargs):
+                                 axis=None, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
 
         Parameters:
@@ -235,20 +240,21 @@ class Impact():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, axes = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
-                                        extend, **kwargs)
-        axes[0, 0].set_title('Expected annual impact')
-        return fig, axes
+        axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
+                                   extend, axis=axis, **kwargs)
+        axis.set_title('Expected annual impact')
+        return axis
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
                                   pop_name=True, buffer=0.0, extend='neither',
-                                  **kwargs):
+                                  axis=None, **kwargs):
         """Plot scatter expected annual impact of each exposure.
 
         Parameters:
@@ -260,20 +266,21 @@ class Impact():
                 Default: 1.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, axes = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                         extend, **kwargs)
-        axes[0, 0].set_title('Expected annual impact')
-        return fig, axes
+        axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
+                                    extend, axis=axis, **kwargs)
+        axis.set_title('Expected annual impact')
+        return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
                                  raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
-                                 label='value (log10)', **kwargs):
+                                 label='value (log10)', axis=None, **kwargs):
         """Plot raster expected annual impact of each exposure.
 
         Parameters:
@@ -285,21 +292,22 @@ class Impact():
             raster_f (lambda function): transformation to use to data. Default:
                 log10 adding 1.
             label (str): colorbar label
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, axes = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
-                                        label, **kwargs)
-        axes[0, 0].set_title('Expected annual impact')
-        return fig, axes
+        axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
+                                   label, axis=axis, **kwargs)
+        axis.set_title('Expected annual impact')
+        return axis
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
                                   buffer=0.0, extend='neither', zoom=10,
                                   url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
-                                  **kwargs):
+                                  axis=None, **kwargs):
         """Plot basemap expected annual impact of each exposure.
 
         Parameters:
@@ -312,17 +320,18 @@ class Impact():
                 [ 'neither' | 'both' | 'min' | 'max' ]
             zoom (int, optional): zoom coefficient used in the satellite image
             url (str, optional): image source, e.g. ctx.sources.OSM_C
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
          Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        fig, axes = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
-                                         extend, zoom, url, **kwargs)
-        axes[0, 0].set_title('Expected annual impact')
-        return fig, axes
+        axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
+                                    extend, zoom, url, axis=axis, **kwargs)
+        axis.set_title('Expected annual impact')
+        return axis
 
     def write_csv(self, file_name):
         """ Write data into csv file. imp_mat is not saved.
@@ -421,6 +430,85 @@ class Impact():
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
 
+    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+        """ Compute exceedance impact map for given return periods.
+        Requires attribute imp_mat.
+
+        Parameters:
+            return_periods (np.array): return periods to consider
+
+        Returns:
+            np.array
+        """
+        LOGGER.info('Computing exceedance impact map for return periods: %s',
+                    return_periods)
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'\
+                         'instance with parameter save_mat=True')
+            return []
+        num_cen = self.imp_mat.shape[1]
+        imp_stats = np.zeros((len(return_periods), num_cen))
+        cen_step = int(CONFIG['global']['max_matrix_size']/self.imp_mat.shape[0])
+        if not cen_step:
+            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+                         ' > %s', str(self.imp_mat.shape[0]))
+            raise ValueError
+        # separte in chunks
+        chk = -1
+        for chk in range(int(num_cen/cen_step)):
+            self._loc_return_imp(np.array(return_periods), \
+                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                imp_stats[:, chk*cen_step:(chk+1)*cen_step])
+        self._loc_return_imp(np.array(return_periods), \
+            self.imp_mat[:, (chk+1)*cen_step:].todense(), \
+            imp_stats[:, (chk+1)*cen_step:])
+
+        return imp_stats
+
+    def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
+                    log10_scale=True, smooth=True, axis=None, **kwargs):
+        """Compute and plot exceedance impact maps for different return periods.
+        Calls local_exceedance_imp.
+
+        Parameters:
+            return_periods (tuple(int), optional): return periods to consider
+            log10_scale (boolean, optional): plot impact as log10(impact)
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            kwargs (optional): arguments for pcolormesh matplotlib function
+                used in event plots
+
+        Returns:
+            matplotlib.axes._subplots.AxesSubplot,
+            np.ndarray (return_periods.size x num_centroids)
+        """
+        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        if imp_stats == []:
+            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'\
+                         'instance with parameter save_mat=True')
+            raise ValueError
+        if log10_scale:
+            if np.min(imp_stats) < 0:
+                imp_stats_log = np.log10(abs(imp_stats)+1)
+                colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
+            elif np.min(imp_stats) < 1:
+                imp_stats_log = np.log10(imp_stats+1)
+                colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
+            else:
+                imp_stats_log = np.log10(imp_stats)
+                colbar_name = 'Log10(Impact) (' + self.unit + ')'
+        else:
+            imp_stats_log = imp_stats
+            colbar_name = 'Impact (' + self.unit + ')'
+        title = list()
+        for ret in return_periods:
+            title.append('Return period: ' + str(ret) + ' years')
+        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp, \
+            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+
+        return axis, imp_stats
+
     @staticmethod
     def read_sparse_csr(file_name):
         """ Read imp_mat matrix from numpy's npz format.
@@ -459,7 +547,10 @@ class Impact():
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
-        self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+        try:
+            self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+        except AttributeError:
+            self.crs = DEF_CRS
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
                                  str(imp_df.tag_hazard[1]),
                                  str(imp_df.tag_hazard[2]))
@@ -502,7 +593,136 @@ class Impact():
         self.coord_exp = np.zeros((self.eai_exp.size, 2))
         self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
         self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
-        self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+        try:
+            self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+        except AttributeError:
+            self.crs = DEF_CRS
+
+    @staticmethod
+    def video_direct_impact(exp, if_set, haz_list, file_name='',
+                            writer=animation.PillowWriter(bitrate=500),
+                            imp_thresh=0, args_exp=dict(), args_imp=dict()):
+        """
+        Computes and generates video of accumulated impact per input events
+        over exposure.
+
+        Parameters:
+            exp (Exposures): exposures instance, constant during all video
+            if_set (ImpactFuncSet): impact functions
+            haz_list (list(Hazard)): every Hazard contains an event; all hazards
+                use the same centroids
+            file_name (str, optional): file name to save video, if provided
+            writer = (matplotlib.animation.*, optional): video writer. Default:
+                pillow with bitrate=500
+            imp_thresh (float): represent damages greater than threshold
+            args_exp (optional): arguments for scatter (points) or hexbin (raster)
+                matplotlib function used in exposures
+            args_imp (optional): arguments for scatter (points) or hexbin (raster)
+                matplotlib function used in impact
+
+        Returns:
+            list(Impact)
+        """
+        imp_list = []
+        exp_list = []
+        imp_arr = np.zeros(len(exp))
+        for i_time, _ in enumerate(haz_list):
+            imp_tmp = Impact()
+            imp_tmp.calc(exp, if_set, haz_list[i_time])
+            imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
+            # remove not impacted exposures
+            save_exp = imp_arr > imp_thresh
+            imp_tmp.coord_exp = imp_tmp.coord_exp[save_exp, :]
+            imp_tmp.eai_exp = imp_arr[save_exp]
+            imp_list.append(imp_tmp)
+            exp_list.append(np.logical_not(save_exp))
+
+        v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
+                 np.array([haz.intensity.max() for haz in haz_list]).max()]
+
+        if 'vmin' not in args_exp:
+            args_exp['vmin'] = exp.value.values.min()
+
+        if 'vmin' not in args_imp:
+            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list \
+                if imp.eai_exp.size]).min()
+
+        if 'vmax' not in args_exp:
+            args_exp['vmax'] = exp.value.values.max()
+
+        if 'vmax' not in args_imp:
+            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list \
+                if imp.eai_exp.size]).max()
+
+        if 'cmap' not in args_exp:
+            args_exp['cmap'] = 'winter_r'
+
+        if 'cmap' not in args_imp:
+            args_imp['cmap'] = 'autumn_r'
+
+
+        plot_raster = False
+        if exp.meta:
+            plot_raster = True
+
+        def run(i_time):
+            haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
+                                            vmax=v_lim[1], alpha=0.8)
+            if plot_raster:
+                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                                pop_name=False, **args_exp)
+                if imp_list[i_time].coord_exp.size:
+                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=False,
+                                                              **args_imp)
+                    fig.delaxes(fig.axes[1])
+            else:
+                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                                 pop_name=False, **args_exp)
+                if imp_list[i_time].coord_exp.size:
+                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=False,
+                                                               **args_imp)
+                    fig.delaxes(fig.axes[1])
+            fig.delaxes(fig.axes[1])
+            fig.delaxes(fig.axes[1])
+            axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
+            axis.set_ylim(haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max())
+            axis.set_title(haz_list[i_time].event_name[0])
+            pbar.update()
+
+        if file_name:
+            LOGGER.info('Generating video %s', file_name)
+            fig, axis = u_plot.make_map()
+            ani = animation.FuncAnimation(fig, run, frames=len(haz_list),
+                                          interval=500, blit=False)
+            pbar = tqdm(total=len(haz_list))
+            ani.save(file_name, writer=writer)
+            pbar.close()
+
+        return imp_list
+
+    def _loc_return_imp(self, return_periods, imp, exc_imp):
+        """ Compute local exceedence impact for given return period.
+
+        Parameters:
+            return_periods (np.array): return periods to consider
+            cen_pos (int): centroid position
+
+        Returns:
+            np.array
+        """
+        # sorted impacts
+        sort_pos = np.argsort(imp, axis=0)[::-1, :]
+        columns = np.ones(imp.shape, int)
+        columns *= np.arange(columns.shape[1])
+        imp_sort = imp[sort_pos, columns]
+        # cummulative frequency at sorted intensity
+        freq_sort = self.frequency[sort_pos]
+        np.cumsum(freq_sort, axis=0, out=freq_sort)
+
+        for cen_idx in range(imp.shape[1]):
+            exc_imp[:, cen_idx] = self._cen_return_imp(
+                imp_sort[:, cen_idx], freq_sort[:, cen_idx],
+                0, return_periods)
 
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
         """Compute impact for inpute exposure indexes and impact function.
@@ -552,8 +772,42 @@ class Impact():
         eai_exp['longitude'] = self.coord_exp[:, 1]
         eai_exp.crs = self.crs
         eai_exp.value_unit = self.unit
-        eai_exp.check()
+        eai_exp.ref_year = 0
+        eai_exp.tag = Tag()
+        eai_exp.meta = None
         return eai_exp
+
+    @staticmethod
+    def _cen_return_imp(imp, freq, imp_th, return_periods):
+        """From ordered impact and cummulative frequency at centroid, get
+        exceedance impact at input return periods.
+
+        Parameters:
+            imp (np.array): sorted impact at centroid
+            freq (np.array): cummulative frequency at centroid
+            imp_th (float): impact threshold
+            return_periods (np.array): return periods
+
+        Returns:
+            np.array
+        """
+        imp_th = np.asarray(imp > imp_th).squeeze()
+        imp_cen = imp[imp_th]
+        freq_cen = freq[imp_th]
+        if not imp_cen.size:
+            return np.zeros((return_periods.size,))
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
+        except ValueError:
+            pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
+        imp_fit = np.polyval(pol_coef, np.log(1/return_periods))
+        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
+                np.isnan(imp_fit))
+        imp_fit[wrong_inten] = 0.
+
+        return imp_fit
 
 class ImpactFreqCurve():
     """ Impact exceedence frequency curve.
@@ -573,28 +827,20 @@ class ImpactFreqCurve():
         self.unit = ''
         self.label = ''
 
-    def plot(self):
+    def plot(self, axis=None, **kwargs):
         """Plot impact frequency curve.
 
-        Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
-        """
-        graph = u_plot.Graph2D(self.label)
-        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
-        graph.add_curve(self.return_per, self.impact, 'y')
-        return graph.get_elems()
-
-    def plot_compare(self, ifc):
-        """Plot current and input impact frequency curves in a figure.
+        Parameters:
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for plot matplotlib function, e.g. color='b'
 
         Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+            matplotlib.axes._subplots.AxesSubplot
         """
-        if self.unit != ifc.unit:
-            LOGGER.warning("Comparing between two different units: %s and %s",\
-                         self.unit, ifc.unit)
-        graph = u_plot.Graph2D('', 2)
-        graph.add_subplot('Return period (year)', 'Impact (%s)' % self.unit)
-        graph.add_curve(self.return_per, self.impact, 'b', label=self.label)
-        graph.add_curve(ifc.return_per, ifc.impact, 'r', label=ifc.label)
-        return graph.get_elems()
+        if not axis:
+            _, axis = plt.subplots(1, 1)
+        axis.set_title(self.label)
+        axis.set_xlabel('Return period (year)')
+        axis.set_ylabel('Impact (' + self.unit + ')')
+        axis.plot(self.return_per, self.impact, **kwargs)
+        return axis

@@ -23,9 +23,9 @@ __all__ = ['ImpactFunc']
 
 import logging
 import numpy as np
+import matplotlib.pyplot as plt
 
 import climada.util.checker as check
-import climada.util.plot as plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -69,30 +69,32 @@ class ImpactFunc():
         return np.interp(inten, self.intensity, self.paa) * \
             np.interp(inten, self.intensity, self.mdd)
 
-    def plot(self, graph=None):
+    def plot(self, axis=None, **kwargs):
         """Plot the impact functions MDD, MDR and PAA in one graph, where
         MDR = PAA * MDD.
 
         Parameters:
-            graph (Graph2D, optional): graph where to add the plots
-            show (bool, optional): bool to execute plt.show(). Default: True
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for plot matplotlib function, e.g. marker='x'
 
         Returns:
-            matplotlib.figure.Figure, [matplotlib.axes._subplots.AxesSubplot]
+            matplotlib.axes._subplots.AxesSubplot
         """
-        if graph is None:
-            graph = plot.Graph2D('', 1)
+        if not axis:
+            _, axis = plt.subplots(1, 1)
+
         title = '%s %s' % (self.haz_type, str(self.id))
         if self.name != str(self.id):
             title += ': %s' % self.name
-        graph.add_subplot('Intensity (%s)' % self.intensity_unit, \
-                         'Impact (%)', title)
-        graph.add_curve(self.intensity, self.mdd * 100, 'b', label='MDD')
-        graph.add_curve(self.intensity, self.paa * 100, 'r', label='PAA')
-        graph.add_curve(self.intensity, self.mdd * self.paa * 100, 'k--', \
-                        label='MDR')
-        graph.set_x_lim(self.intensity)
-        return graph.get_elems()
+        axis.set_xlabel('Intensity (' + self.intensity_unit + ')')
+        axis.set_ylabel('Impact (%)')
+        axis.set_title(title)
+        axis.plot(self.intensity, self.mdd * 100, 'b', label='MDD', **kwargs)
+        axis.plot(self.intensity, self.paa * 100, 'r', label='PAA', **kwargs)
+        axis.plot(self.intensity, self.mdd * self.paa * 100, 'k--', label='MDR', **kwargs)
+
+        axis.set_xlim((self.intensity.min(), self.intensity.max()))
+        return axis
 
     def check(self):
         """ Check consistent instance data.

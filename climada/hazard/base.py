@@ -29,12 +29,13 @@ import datetime as dt
 import warnings
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from scipy import sparse
-import h5py
 import matplotlib.pyplot as plt
+import h5py
 import rasterio
-from rasterio.warp import Resampling
 from rasterio.features import rasterize
+from rasterio.warp import reproject, Resampling, calculate_default_transform
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -44,6 +45,7 @@ import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
+from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -227,34 +229,37 @@ class Hazard():
         self.centroids = Centroids()
         if self.pool:
             chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
-            self.intensity = sparse.csr.csr_matrix(self.centroids.set_raster_file( \
+            # set first centroids
+            inten_list = [sparse.csr.csr_matrix(self.centroids.set_raster_file( \
                 files_intensity[0], band, src_crs, window, geometry, dst_crs, \
-                transform, width, height, resampling))
-            for inten in self.pool.map(self.centroids.set_raster_file, files_intensity[1:], \
-            itertools.repeat(band), itertools.repeat(src_crs), \
+                transform, width, height, resampling))]
+            inten_list += self.pool.map(self.centroids.set_raster_file, \
+            files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs), \
             itertools.repeat(window), itertools.repeat(geometry), \
             itertools.repeat(dst_crs), itertools.repeat(transform), \
             itertools.repeat(width), itertools.repeat(height), \
-            itertools.repeat(resampling), chunksize=chunksize):
-                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+            itertools.repeat(resampling), chunksize=chunksize)
+            self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
-                for fract in self.pool.map(self.centroids.set_raster_file, files_fraction, \
-                itertools.repeat(band), itertools.repeat(src_crs), \
+                fract_list = self.pool.map(self.centroids.set_raster_file, \
+                files_fraction, itertools.repeat(band), itertools.repeat(src_crs), \
                 itertools.repeat(window), itertools.repeat(geometry), \
                 itertools.repeat(dst_crs), itertools.repeat(transform), \
                 itertools.repeat(width), itertools.repeat(height), \
-                itertools.repeat(resampling), chunksize=chunksize):
-                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+                itertools.repeat(resampling), chunksize=chunksize)
+                self.fraction = sparse.vstack(fract_list, format='csr')
         else:
+            inten_list = []
             for file in files_intensity:
-                inten = self.centroids.set_raster_file(file, band, src_crs, window, \
-                    geometry, dst_crs, transform, width, height, resampling)
-                self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+                inten_list.append(self.centroids.set_raster_file(file, band, src_crs, window, \
+                    geometry, dst_crs, transform, width, height, resampling))
+            self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
+                fract_list = []
                 for file in files_fraction:
-                    fract = self.centroids.set_raster_file(file, band, src_crs, \
-                        window, geometry, dst_crs, transform, width, height, resampling)
-                    self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+                    fract_list.append(self.centroids.set_raster_file(file, band, src_crs, \
+                        window, geometry, dst_crs, transform, width, height, resampling))
+                self.fraction = sparse.vstack(fract_list, format='csr')
 
         if files_fraction is None:
             self.fraction = self.intensity.copy()
@@ -338,6 +343,104 @@ class Hazard():
             self.orig = np.ones(self.event_id.size, bool)
         if 'unit' in attrs:
             self.unit = attrs['unit']
+
+    def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
+                         resampling=Resampling.nearest):
+        """ Change current raster data to other CRS and/or transformation
+
+        Parameters:
+            dst_crs (crs, optional): reproject to given crs
+            transform (rasterio.Affine): affine transformation to apply
+            wdith (float): number of lons for transform
+            height (float): number of lats for transform
+            resampling (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs
+        """
+        if not self.centroids.meta:
+            LOGGER.error('Raster not set')
+            raise ValueError
+        if not dst_crs:
+            dst_crs = self.centroids.meta['crs']
+        if transform and not width or transform and not height:
+            LOGGER.error('Provide width and height to given transformation.')
+            raise ValueError
+        if not transform:
+            transform, width, height = calculate_default_transform(\
+            self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'], \
+            self.centroids.meta['height'], self.centroids.meta['transform'][2], \
+            self.centroids.meta['transform'][5] + \
+            self.centroids.meta['height']*self.centroids.meta['transform'][4],
+            self.centroids.meta['transform'][2] + \
+            self.centroids.meta['width']*self.centroids.meta['transform'][0], \
+            self.centroids.meta['transform'][5])
+        dst_meta = self.centroids.meta.copy()
+        dst_meta.update({'crs': dst_crs, 'transform': transform,
+                         'width': width, 'height': height
+                        })
+        intensity = np.zeros((self.size, dst_meta['height'], dst_meta['width']))
+        fraction = np.zeros((self.size, dst_meta['height'], dst_meta['width']))
+        kwargs = {'src_transform': self.centroids.meta['transform'],
+                  'src_crs': self.centroids.meta['crs'],
+                  'dst_transform': transform, 'dst_crs': dst_crs,
+                  'resampling': resampling}
+        for idx_ev, inten in enumerate(self.intensity.todense()):
+            reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
+                self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
+                **kwargs)
+        for idx_ev, fract in enumerate(self.fraction.todense()):
+            reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
+                      self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
+                      **kwargs)
+        self.centroids.meta = dst_meta
+        self.intensity = sparse.csr_matrix(intensity.reshape(self.size, \
+            dst_meta['height'] * dst_meta['width']))
+        self.fraction = sparse.csr_matrix(fraction.reshape(self.size, \
+            dst_meta['height'] * dst_meta['width']))
+        self.check()
+
+    def reproject_vector(self, dst_crs, scheduler=None):
+        """ Change current point data to a a given projection
+
+        Parameters:
+            dst_crs (crs): reproject to given crs
+            scheduler (str, optional): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        self.centroids.set_geometry_points(scheduler)
+        self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
+        self.centroids.lat = self.centroids.geometry[:].y
+        self.centroids.lon = self.centroids.geometry[:].x
+        self.check()
+
+    def raster_to_vector(self):
+        """ Change current raster to points (center of the pixels) """
+        self.centroids.set_meta_to_lat_lon()
+        self.centroids.meta = dict()
+        self.check()
+
+    def vector_to_raster(self, scheduler=None):
+        """ Change current point data to a raster with same resolution
+
+        Parameters:
+            scheduler (str, optional): used for dask map_partitions. “threads”,
+                “synchronous” or “processes”
+        """
+        points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
+        points_df['latitude'] = self.centroids.lat
+        points_df['longitude'] = self.centroids.lon
+        val_names = ['val'+str(i_ev) for i_ev in range(2*self.size)]
+        for i_ev, inten_name in enumerate(val_names):
+            if i_ev < self.size:
+                points_df[inten_name] = np.asarray(self.intensity[i_ev, :].todense()).reshape(-1)
+            else:
+                points_df[inten_name] = np.asarray(self.fraction[i_ev-self.size, :].todense()).\
+                reshape(-1)
+        raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
+        self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
+        self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
+        self.centroids = Centroids()
+        self.centroids.meta = meta
+        self.check()
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read climada hazard generate with the MATLAB code.
@@ -495,17 +598,20 @@ class Hazard():
 
         return inten_stats
 
-    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250), **kwargs):
+    def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
+                          smooth=True, axis=None, **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot,
+            matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
         """
         self._set_coords_centroids()
@@ -514,38 +620,12 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        fig, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
-                                             colbar_name, title, **kwargs)
-        return fig, axis, inten_stats
+        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,\
+            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+        return axis, inten_stats
 
-    def plot_raster(self, ev_id=1, intensity=True, **kwargs):
-        """ Plot selected event using imshow and without cartopy
-
-        Parameters:
-            ev_id (int, optional): event id. Default: 1.
-            intensity (bool, optional): plot intensity if True, fraction otherwise
-            kwargs (optional): arguments for imshow matplotlib function
-
-        Returns:
-            matplotlib.image.AxesImage
-
-        """
-        if not self.centroids.meta:
-            LOGGER.error('No raster data set')
-            raise ValueError
-        try:
-            event_pos = np.where(self.event_id == ev_id)[0][0]
-        except IndexError:
-            LOGGER.error('Wrong event id: %s.', ev_id)
-            raise ValueError from IndexError
-
-        if intensity:
-            return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
-        return plt.imshow(self.fraction[event_pos, :].todense(). \
-                          reshape(self.centroids.shape), **kwargs)
-
-    def plot_intensity(self, event=None, centr=None, **kwargs):
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
+                       **kwargs):
         """Plot intensity values for a selected event or centroid.
 
         Parameters:
@@ -559,30 +639,34 @@ class Hazard():
                 plot abs(centr)-largest centroid where higher intensities
                 are reached. If tuple with (lat, lon) plot intensity of nearest
                 centroid.
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+                used in event plots or for plot function used in centroids plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity %s' % self.units
+        col_label = 'Intensity (%s)' % self.units
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.intensity, col_label, **kwargs)
+            return self._event_plot(event, self.intensity, col_label,
+                                    smooth, axis, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
-            return self._centr_plot(centr, self.intensity, col_label)
+            return self._centr_plot(centr, self.intensity, col_label, axis, **kwargs)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
-    def plot_fraction(self, event=None, centr=None, **kwargs):
+    def plot_fraction(self, event=None, centr=None, smooth=True, axis=None,
+                      **kwargs):
         """Plot fraction values for a selected event or centroid.
 
         Parameters:
@@ -596,11 +680,13 @@ class Hazard():
                 plot abs(centr)-largest centroid where highest fractions
                 are reached. If tuple with (lat, lon) plot fraction of nearest
                 centroid.
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+                used in event plots or for plot function used in centroids plots
 
         Returns:
-            matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
+            matplotlib.axes._subplots.AxesSubplot
 
         Raises:
             ValueError
@@ -610,11 +696,12 @@ class Hazard():
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
-            return self._event_plot(event, self.fraction, col_label, **kwargs)
+            return self._event_plot(event, self.fraction, col_label, smooth, axis,
+                                    **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
-            return self._centr_plot(centr, self.fraction, col_label)
+            return self._centr_plot(centr, self.fraction, col_label, axis, **kwargs)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
@@ -692,7 +779,7 @@ class Hazard():
         return orig_yearset
 
     def append(self, hazard):
-        """Append events in hazard. Centroids must be the same.
+        """Append events and centroids in hazard.
 
         Parameters:
             hazard (Hazard): Hazard instance to append to current
@@ -733,7 +820,6 @@ class Hazard():
 
         # append intensity and fraction:
         # if same centroids, just append events
-        # else, check centroids correct column
         if self.centroids.equal(hazard.centroids):
             self.intensity = sparse.vstack([self.intensity, hazard.intensity],
                                            format='csr')
@@ -809,7 +895,7 @@ class Hazard():
         if self.centroids.meta:
             co.write_raster(file_name, variable.todense(), self.centroids.meta)
         else:
-            pixel_geom = self.centroids.get_pixels_polygons()
+            pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
             profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
             with rasterio.open(file_name, 'w', **profile) as dst:
@@ -835,8 +921,9 @@ class Hazard():
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
                 hf_centr = hf_data.create_group(var_name)
-                hf_centr.create_dataset('latitude', data=var_val.lat)
-                hf_centr.create_dataset('longitude', data=var_val.lon)
+                for centr_name, centr_val in var_val.__dict__.items():
+                    if isinstance(centr_val, np.ndarray):
+                        hf_centr.create_dataset(centr_name, data=centr_val)
                 hf_str = hf_centr.create_dataset('crs', (1,), dtype=str_dt)
                 hf_str[0] = str(dict(var_val.crs))
             elif var_name == 'tag':
@@ -859,7 +946,7 @@ class Hazard():
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
-            elif var_val is not None:
+            elif var_val is not None and var_name != 'pool':
                 hf_data.create_dataset(var_name, data=var_val)
         hf_data.close()
 
@@ -875,13 +962,18 @@ class Hazard():
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
                 hf_centr = hf_data.get(var_name)
-                try:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')),
-                                               np.array(hf_centr.get('longitude')),
-                                               ast.literal_eval(hf_centr.get('crs')[0]))
-                except TypeError:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')),
-                                               np.array(hf_centr.get('longitude')))
+                crs = DEF_CRS
+                if hf_centr.get('crs'):
+                    crs = ast.literal_eval(hf_centr.get('crs')[0])
+                if hf_centr.get('lat'):
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')), \
+                        np.array(hf_centr.get('lon')), crs)
+                else:
+                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')), \
+                        np.array(hf_centr.get('longitude')), crs)
+                for centr_name in hf_centr.keys():
+                    if centr_name not in ('crs', 'lat', 'lon'):
+                        setattr(self.centroids, centr_name, np.array(hf_centr.get(centr_name)))
             elif var_name == 'tag':
                 self.tag.haz_type = hf_data.get('haz_type')[0]
                 self.tag.file_name = hf_data.get('file_name')[0]
@@ -895,7 +987,7 @@ class Hazard():
             elif isinstance(var_val, str):
                 setattr(self, var_name, hf_data.get(var_name)[0])
             elif isinstance(var_val, list):
-                setattr(self, var_name, hf_data.get(var_name).value.tolist())
+                setattr(self, var_name, np.array(hf_data.get(var_name)).tolist())
             else:
                 setattr(self, var_name, hf_data.get(var_name))
         hf_data.close()
@@ -937,12 +1029,6 @@ class Hazard():
                     var_val.append(ev_val)
 
         self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
-#        self.centroids = Centroids()
-#        if list_haz_ev[0].centroids.meta:
-#            self.centroids.meta = list_haz_ev[0].centroids.meta
-#        else:
-#            self.centroids.set_lat_lon(list_haz_ev[0].centroids.lat, \
-#                list_haz_ev[0].centroids.lon, list_haz_ev[0].centroids.geometry.crs)
         self.units = list_haz_ev[0].units
         self.intensity = self.intensity.tocsr()
         self.fraction = self.fraction.tocsr()
@@ -960,7 +1046,7 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, **kwargs):
+    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
         """"Plot an event of the input matrix.
 
         Parameters:
@@ -970,6 +1056,8 @@ class Hazard():
                 abs(event_id)-largest event.
             mat_var (sparse matrix): Sparse matrix where each row is an event
             col_name (sparse matrix): Colorbar label
+            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
@@ -1003,10 +1091,10 @@ class Hazard():
             array_val.append(im_val)
             l_title.append(title)
 
-        return u_plot.geo_im_from_array(array_val, self.centroids.coord,
-                                        col_name, l_title, **kwargs)
+        return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
+                                        l_title, smooth=smooth, axes=axis, **kwargs)
 
-    def _centr_plot(self, centr_idx, mat_var, col_name):
+    def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """"Plot a centroid of the input matrix.
 
         Parameters:
@@ -1018,6 +1106,8 @@ class Hazard():
             mat_var (sparse matrix): Sparse matrix where each column represents
                 a centroid
             col_name (sparse matrix): Colorbar label
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for plot matplotlib function
 
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
@@ -1045,11 +1135,16 @@ class Hazard():
             array_val = np.max(mat_var, axis=1).todense()
             title = '%s max intensity at each event' % self.tag.haz_type
 
-        graph = u_plot.Graph2D(title)
-        graph.add_subplot('Event number', col_name)
-        graph.add_curve(range(len(array_val)), array_val, 'b')
-        graph.set_x_lim(range(len(array_val)))
-        return graph.get_elems()
+        if not axis:
+            _, axis = plt.subplots(1)
+        if 'color' not in kwargs:
+            kwargs['color'] = 'b'
+        axis.set_title(title)
+        axis.set_xlabel('Event number')
+        axis.set_ylabel(str(col_name))
+        axis.plot(range(len(array_val)), array_val, **kwargs)
+        axis.set_xlim([0, len(array_val)])
+        return axis
 
     def _loc_return_inten(self, return_periods, inten, exc_inten):
         """ Compute local exceedence intensity for given return period.

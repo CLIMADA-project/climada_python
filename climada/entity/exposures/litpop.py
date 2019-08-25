@@ -38,7 +38,8 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
-from climada.util.constants import SYSTEM_DIR
+from climada.util.constants import SYSTEM_DIR, DEF_CRS
+from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -83,10 +84,11 @@ DEF_HAZ_TYPE = ''
 """ Default hazard type used in impact functions id, i.e. TC """
 
 class LitPop(Exposures):
-    """Defines exposures from nightlight intensity (NASA), Gridded Population
-        data (SEDAC), GDP (World Bank) and a conversion factor to calculate
-        asset value from GDP derived from the Global Wealth Databook by the
-        Credit Suisse Research Institute.
+    """Defines exposure values from nightlight intensity (NASA), Gridded Population
+        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank) 
+        or non-financial wealth (Global Wealth Databook by the Credit Suisse 
+        Research Institute.)
+
         Calling sequence example:
         ent = LitPop()
         country_name = ['Switzerland', 'Austria']
@@ -110,8 +112,8 @@ class LitPop(Exposures):
 
     def set_country(self, countries, **args):
         """ Get LitPop based exposre for one country or multiple countries
-        using values at reference year. If GDP or income
-        group not available for that year, consider the value of the closest
+        using values at reference year. If produced capital, GDP, or income
+        group, etc. not available for that year, consider the value of the closest
         available year.
 
         Parameters:
@@ -258,14 +260,18 @@ class LitPop(Exposures):
                 'LitPop for %s at %i as, year=%i, financial mode=%s, GPW-year=%i, BM-year=%i, exp=[%i, %i]' \
                 % (country_info[curr_country][1], resolution, reference_year, \
                    fin_mode, \
-                min(GPW_YEARS, key=lambda x:abs(x-reference_year)), \
-                min(BM_YEARS, key=lambda x:abs(x-reference_year)), \
+                min(GPW_YEARS, key=lambda x: abs(x-reference_year)), \
+                min(BM_YEARS, key=lambda x: abs(x-reference_year)), \
                 exponents[0], exponents[1])
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry,
-                                                            ignore_index=True)))
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry, \
+            ignore_index=True)), crs=DEF_CRS)
         self.ref_year = reference_year
         self.tag = tag
         self.value_unit = 'USD'
+        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
+            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
+            min(get_resolution(self.latitude, self.longitude)))
+        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
 
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
@@ -1656,7 +1662,6 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     Returns:
         bm_data (pandas SparseArray): Cropped BM data
     """
-    start_time = time.time()
     fixed_source_resolution = resolution
     deg_per_pix = 1/(3600/fixed_source_resolution)
     minlat, maxlat, minlon, maxlon = bbox[1], bbox[3], bbox[0], bbox[2]
@@ -1763,7 +1768,7 @@ def admin1_validation(country, methods, exponents, **args):
 
     Parameters:
         country (str): list of countries or single county as a
-            sting. Countries can either be country names ('France') or
+            string. Countries can either be country names ('France') or
             country codes ('FRA'), even a mix is possible in the list.
         methods_name (list of str), i.e.:
             - ['LitPop' for LitPop,
@@ -1868,3 +1873,29 @@ def admin1_validation(country, methods, exponents, **args):
                 _data, list(zip(lon, lat)), resolution, True, conserve_cntrytotal=0, \
                 check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
     return rho, adm0, adm1
+
+
+def exposure_set_admin1(exposure, res_arcsec):
+    """ add admin1 ID and name to exposure dataframe.
+
+    Parameters:
+        exposure: exposure instance
+        res_arcsec: resolution in arc seconds, needs to match exposure resolution
+
+    Returns:
+        exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
+    """
+
+    exposure['admin1'] = pd.Series()
+    exposure['admin1_ID'] = pd.Series()
+    count = 0
+    for cntry in np.unique(exposure.region_id):
+        _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
+        for idx3, adm1_shp in enumerate(admin1_info):
+            count = count + 1
+            LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
+            mask_adm1 = _mask_from_shape(adm1_shp[0],resolution=res_arcsec,\
+                     points2check=list(zip(exposure.longitude, exposure.latitude)))
+            exposure.admin1_ID[mask_adm1.values] = adm1_shp[1][3]
+            exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
+    return exposure
