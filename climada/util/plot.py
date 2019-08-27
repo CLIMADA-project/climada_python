@@ -28,6 +28,7 @@ __all__ = ['geo_bin_from_array',
            'add_basemap'
           ]
 
+import logging
 import six.moves.urllib.request as request
 from scipy.interpolate import griddata
 import six
@@ -43,10 +44,12 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import contextily as ctx
 from rasterio.crs import CRS
+import requests
 
 from climada.util.files_handler import to_list
 from climada.util.coordinates import grid_is_regular
 
+LOGGER = logging.getLogger(__name__)
 
 RESOLUTION = 250
 """ Number of pixels in one direction in rendered image """
@@ -96,7 +99,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -169,7 +172,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
@@ -236,7 +239,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         kwargs['vmin'] = np.min(array_sub)
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.max(array_sub)
-    if not axes:
+    if axes is None:
         _, axes = make_map(num_im, proj=proj)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
@@ -543,6 +546,9 @@ def get_transformation(crs_in):
         else:
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
     except ValueError:
+        crs_epsg = ccrs.PlateCarree()
+    except requests.exceptions.ConnectionError:
+        LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
         crs_epsg = ccrs.PlateCarree()
 
     try:

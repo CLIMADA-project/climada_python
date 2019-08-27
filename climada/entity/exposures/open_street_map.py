@@ -376,19 +376,20 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
 
     return High_Value_Area
 
-def _get_litpop_bbox(country, highValueArea):
+def _get_litpop_bbox(country, highValueArea, **kwargs):
     """ get litpop exposure for the bbox area of the queried OSM features
     Parameters:
         country (str)
         highValueArea (gdf)
         bbox (array)
+        kwargs (dict): arguments for LitPop set_country method
     Returns:
         exp_sub (exposure)
         High_Value_Area_gdf (gdf)
     """
     # Load LitPop Exposure for whole country, and High Value Area
     exp = LitPop()
-    exp.set_country(country)
+    exp.set_country(country, **kwargs)
     exp.set_geometry_points()
 
     # Crop bbox of High Value Area from Country Exposure
@@ -453,7 +454,7 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     return exp_sub_high
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None, \
-                              save_path=os.getcwd(), check_plot=1):
+                              save_path=os.getcwd(), check_plot=1, **kwargs):
     """
     Generate climada-compatible exposure by downloading LitPop exposure for a bounding box,
     corrected for centroids which lie inside a certain high-value multipolygon area
@@ -466,6 +467,7 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None, \
           If empty, searches for cwd/High_Value_Area_lat_lon.shp
         mode (str): mode of re-assigning low-value points to high-value points.
           "nearest", "even", or "proportional"
+        kwargs (dict): arguments for LitPop set_country method
 
     Returns:
         exp_sub_high_exp (Exposure): (CLIMADA-compatible) with re-allocated asset
@@ -489,7 +491,7 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None, \
     else:
         High_Value_Area_gdf = geopandas.read_file(highValueArea)
 
-    exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf)
+    exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
 
     exp_sub_high = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
 
@@ -542,7 +544,7 @@ def _get_midpoints(highValueArea):
 
     return High_Value_Area_gdf
 
-def _assign_values_exposure(High_Value_Area_gdf, mode, country):
+def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     """ add value-columns to high-resolution exposure gdf
     according to m2 area of underlying features.
 
@@ -550,6 +552,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country):
         High_Value_Area_gdf
         mode
         country
+        kwargs (dict): arguments for LitPop set_country method
 
     Returns:
         exp_sub_high
@@ -557,7 +560,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country):
 
     if mode == "LitPop":
         # assign LitPop values of this area to houses.
-        exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf)
+        exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
         totalValue = sum(exp_sub.value)
         totalArea = sum(High_Value_Area_gdf['projected_area'])
         High_Value_Area_gdf['value'] = 0
@@ -574,7 +577,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country):
     return High_Value_Area_gdf
 
 def make_osmexposure(highValueArea, mode="default", country=None, \
-                              save_path=os.getcwd(), check_plot=1):
+                              save_path=os.getcwd(), check_plot=1, **kwargs):
     """
     Generate climada-compatiple entity by assigning values to midpoints of
     individual house shapes from OSM query, according to surface area and country.
@@ -587,6 +590,7 @@ def make_osmexposure(highValueArea, mode="default", country=None, \
           proportionally to houses (by base area of house)
         Country (str): ISO3 code or name of country in which entity is located.
           Only if mode = LitPop
+        kwargs (dict): arguments for LitPop set_country method
 
     Returns:
         exp_building (Exposure): (CLIMADA-compatible) with allocated asset values.
@@ -599,7 +603,7 @@ def make_osmexposure(highValueArea, mode="default", country=None, \
     """
     High_Value_Area_gdf = _get_midpoints(highValueArea)
 
-    High_Value_Area_gdf = _assign_values_exposure(High_Value_Area_gdf, mode, country)
+    High_Value_Area_gdf = _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs)
 
     # put back into CLIMADA-compatible entity format and save as hdf5 file:
     exp_buildings = Exposures(High_Value_Area_gdf)

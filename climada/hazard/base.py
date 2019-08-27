@@ -651,7 +651,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity %s' % self.units
+        col_label = 'Intensity (%s)' % self.units
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)

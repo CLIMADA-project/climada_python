@@ -349,6 +349,10 @@ def pts_to_raster_meta(points_bounds, res):
     rows = int(np.floor((ymax-ymin) /  res) + 1)
     cols = int(np.floor((xmax-xmin) / res) + 1)
     ras_trans = from_origin(xmin - res / 2, ymax + res / 2, res, res)
+    if xmax > xmin - res / 2 + cols * res:
+        cols += 1
+    if ymin < ymax + res / 2 - rows * res:
+        rows += 1
     return rows, cols, ras_trans
 
 def equal_crs(crs_one, crs_two):

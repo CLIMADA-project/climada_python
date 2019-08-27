@@ -35,7 +35,8 @@ from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
-read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster
+read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
+get_country_code
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -259,7 +260,24 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(ras_trans[3], 0.0)
         self.assertEqual(ras_trans[2], xmin - res/2)
         self.assertEqual(ras_trans[5], ymax + res/2)
+        self.assertTrue(ymin >= ymax + res/2 - rows*res)
+        self.assertTrue(xmax <= xmin - res/2 + cols*res)
 
+    def test_pts_to_raster_irreg_pass(self):
+        """ Test pts_to_raster_meta with irregular points """
+        xmin, ymin, xmax, ymax = -124.19473, 32.81908, -114.4632, 42.020759999999996 # bounds of points == centers pixels
+        points_bounds = (xmin, ymin, xmax, ymax)
+        res = 0.013498920086393088
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
+        self.assertEqual(ras_trans[0], res)
+        self.assertEqual(ras_trans[4], -res)
+        self.assertEqual(ras_trans[1], 0.0)
+        self.assertEqual(ras_trans[3], 0.0)
+        self.assertEqual(ras_trans[2], xmin - res/2)
+        self.assertEqual(ras_trans[5], ymax + res/2)
+        self.assertTrue(ymin >= ymax + res/2 - rows*res)
+        self.assertTrue(xmax <= xmin - res/2 + cols*res)        
+        
     def test_read_vector_pass(self):
         """ Test one columns data """
         shp_file = shapereader.natural_earth(resolution='110m', \
@@ -384,6 +402,17 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(meta['transform'][5], 50.25)
         self.assertEqual(meta['height'], 21)
         self.assertEqual(meta['width'], 5)
+
+    def test_country_code_pass(self):
+        """ Test set_region_id """
+
+        lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667,
+                        -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
+        lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
+        region_id = get_country_code(lat, lon)
+
+        self.assertEqual(np.count_nonzero(region_id), 6)
+        self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
 
 # Execute Tests
 if __name__ == "__main__":

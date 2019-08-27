@@ -601,7 +601,7 @@ class Impact():
     @staticmethod
     def video_direct_impact(exp, if_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
-                            **kwargs):
+                            imp_thresh=0, args_exp=dict(), args_imp=dict()):
         """
         Computes and generates video of accumulated impact per input events
         over exposure.
@@ -614,8 +614,11 @@ class Impact():
             file_name (str, optional): file name to save video, if provided
             writer = (matplotlib.animation.*, optional): video writer. Default:
                 pillow with bitrate=500
-            kwargs (optional): arguments for scatter (points) or hexbin (raster)
+            imp_thresh (float): represent damages greater than threshold
+            args_exp (optional): arguments for scatter (points) or hexbin (raster)
                 matplotlib function used in exposures
+            args_imp (optional): arguments for scatter (points) or hexbin (raster)
+                matplotlib function used in impact
 
         Returns:
             list(Impact)
@@ -628,17 +631,35 @@ class Impact():
             imp_tmp.calc(exp, if_set, haz_list[i_time])
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
-            save_exp = imp_arr > 0
+            save_exp = imp_arr > imp_thresh
             imp_tmp.coord_exp = imp_tmp.coord_exp[save_exp, :]
             imp_tmp.eai_exp = imp_arr[save_exp]
             imp_list.append(imp_tmp)
             exp_list.append(np.logical_not(save_exp))
 
         v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
-                 np.array([haz.intensity.max() for haz in haz_list]).max(),
-                 np.array([imp.eai_exp.min() for imp in imp_list if imp.eai_exp.size]).min(),
-                 np.array([imp.eai_exp.max() for imp in imp_list if imp.eai_exp.size]).max(),
-                 exp.value.values.min(), exp.value.values.max()]
+                 np.array([haz.intensity.max() for haz in haz_list]).max()]
+
+        if 'vmin' not in args_exp:
+            args_exp['vmin'] = exp.value.values.min()
+
+        if 'vmin' not in args_imp:
+            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list \
+                if imp.eai_exp.size]).min()
+
+        if 'vmax' not in args_exp:
+            args_exp['vmax'] = exp.value.values.max()
+
+        if 'vmax' not in args_imp:
+            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list \
+                if imp.eai_exp.size]).max()
+
+        if 'cmap' not in args_exp:
+            args_exp['cmap'] = 'winter_r'
+
+        if 'cmap' not in args_imp:
+            args_imp['cmap'] = 'autumn_r'
+
 
         plot_raster = False
         if exp.meta:
@@ -646,26 +667,26 @@ class Impact():
 
         def run(i_time):
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
-                                            vmax=v_lim[1])
+                                            vmax=v_lim[1], alpha=0.8)
             if plot_raster:
                 exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
-                                cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
+                                pop_name=False, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, cmap='autumn_r', \
-                    vmin=v_lim[2], vmax=v_lim[3], **kwargs)
+                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=False,
+                                                              **args_imp)
                     fig.delaxes(fig.axes[1])
             else:
                 exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=True,
-                                 cmap='winter', vmin=v_lim[4], vmax=v_lim[5], **kwargs)
+                                 pop_name=False, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, cmap='autumn_r', \
-                    vmin=v_lim[2], vmax=v_lim[3], **kwargs)
+                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=False,
+                                                               **args_imp)
                     fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
             axis.set_ylim(haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max())
-            axis.set_title('')
+            axis.set_title(haz_list[i_time].event_name[0])
             pbar.update()
 
         if file_name:
