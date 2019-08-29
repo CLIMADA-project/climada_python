@@ -48,23 +48,28 @@ indices = []
 sys.dont_write_bytecode = True
 
 
-RF_MODEL = ['H08',
+RF_MODEL = ['ORCHIDEE',
+            'DBH',
+            'H08',
             'LPJmL',
             'MPI-HM',
-            'ORCHIDEE',
+            'CLM',
             'PCR-GLOBWB',
-            'WaterGAP2'
-            #'VIC',
-            #'VEGAS'
+            'WaterGAP',
+            'JULES-TUC',
+            'JULES-UoE',
+            'MATSIRO',
+            'VIC',
+            'VEGAS'
             ]
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5'
-            #'princeton',
-            #'gswp3',
-            #'watch',
-            #'wfdei'
+CL_MODEL = [#'gfdl-esm2m',
+            #'hadgem2-es',
+            #'ipsl-cm5a-lr',
+            #'miroc5'
+            'princeton',
+            'gswp3',
+            'watch',
+            'wfdei'
             ]
 
 def schedule_run(run_nb,flag,RF_model,CL_model):
