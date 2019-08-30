@@ -146,7 +146,7 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
             line_counter+=1
     if args.RF_model == 'lpjml':
-        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
+        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long.csv'.format(args.RF_model, args.CL_model))
     else:
         dataDF.to_csv('output_{}_{}_fullProt_All_2yr.csv'.format(args.RF_model, args.CL_model))
 
