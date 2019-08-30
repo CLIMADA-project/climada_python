@@ -151,13 +151,14 @@ class RiverFlood(Hazard):
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path], band=bands.tolist(),
                             geometry=cntry_geom)
+            min_lon, min_lat, max_lon, max_lat = self.centroids.total_bounds
             self.reproject_raster(transform=dest_centroids.meta['transform'],
                                   width=dest_centroids.meta['width'],
                                   height=dest_centroids.meta['height'],
                                   resampling=Resampling.nearest)
             self.centroids.set_meta_to_lat_lon()
-
-            in_country = self._intersect_area(natID)
+            min_lon, min_lat, max_lon, max_lat
+            in_country = self._intersect_area(natID, min_lon, min_lat, max_lon, max_lat)
             in_country = np.flip(in_country, axis = 0).flatten()
             self.centroids.set_lat_lon(self.centroids.lat[in_country],
                                        self.centroids.lon[in_country])
@@ -212,11 +213,11 @@ class RiverFlood(Hazard):
                               flood_dph.time[i].dt.day).toordinal()
                               for i in event_index])
 
-    def _intersect_area(self, natID):
+    def _intersect_area(self, natID, min_lon, min_lat, max_lon, max_lat):
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
         isimip_lat = isimip_grid.lat.data
-        min_lon, min_lat, max_lon, max_lat = self.centroids.total_bounds
+        #min_lon, min_lat, max_lon, max_lat = self.centroids.total_bounds
         lon_o = np.argmin(np.abs(min_lon - isimip_lon))
         lon_f = np.argmin(np.abs(max_lon - isimip_lon))
         lat_o = np.argmin(np.abs(min_lat - isimip_lat))
