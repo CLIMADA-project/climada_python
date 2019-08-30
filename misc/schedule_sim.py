@@ -50,12 +50,12 @@ output = currentdir
 #For lpj longrun
 if args.RF_model == 'lpjml':
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
-    if args.CL_model == 'watch':
+    if args.CL_model == 'watch'
         years = np.arange(1901, 2002)
     else:
         years = np.arange(1901, 2011)
 else:
-    flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods/'
+    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
     if args.CL_model == 'princeton':
         years = np.arange(1971, 2013)
     elif args.CL_model == 'watch':
