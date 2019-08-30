@@ -81,6 +81,7 @@ class GDP2Asset(Exposures):
             raise KeyError
         self.ref_year = ref_year
         self.value_unit = 'USD'
+        self.tag = 'testtag'
         self.crs = DEF_CRS
 
     @staticmethod

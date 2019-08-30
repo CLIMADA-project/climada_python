@@ -138,7 +138,8 @@ class RiverFlood(Hazard):
 
         flood_dph = xr.open_dataset(dph_path)
         time = flood_dph.time.data
-        event_index = self._select_event(time, years)
+        event_index = self._select_event(time, years) 
+        bands = event_index + 1
 
         if countries or reg:
             # centroids as points
@@ -148,7 +149,7 @@ class RiverFlood(Hazard):
             # envelope containing counties
             cntry_geom = get_land_geometry(iso_codes)
             self.set_raster(files_intensity=[dph_path],
-                            files_fraction=[frc_path], band=event_index+1,
+                            files_fraction=[frc_path], band=bands.tolist(),
                             geometry=cntry_geom)
             self.reproject_raster(transform=dest_centroids.meta['transform'],
                                   width=dest_centroids.meta['width'],
@@ -157,10 +158,12 @@ class RiverFlood(Hazard):
             self.centroids.set_meta_to_lat_lon()
 
             in_country = self._intersect_area(natID)
-            self.intensity = self.intensity[:, in_country]
-            self.fraction = self.fraction[:, in_country]
+            in_country = np.flip(in_country, axis = 0).flatten()
             self.centroids.set_lat_lon(self.centroids.lat[in_country],
                                        self.centroids.lon[in_country])
+            self.intensity = self.intensity[:, in_country]
+            self.fraction = self.fraction[:, in_country]
+            
         elif not centroids:
             # centroids as raster
             self.set_raster(files_intensity=[dph_path],
@@ -319,31 +322,19 @@ class RiverFlood(Hazard):
         years = np.unique(event_years)
         year_ev_mk = self._annual_event_mask(event_years, years)
 
-        try:
-            self.fla_ev_centr = np.zeros((self._n_events,
-                                          len(self.centroids.lon)))
-            self.fla_ann_centr = np.zeros((len(years),
-                                           len(self.centroids.lon)))
-            self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
-                                                     area_centr))
-            self.fla_event = np.sum(self.fla_ev_centr, axis=1)
-            for year_ind in range(len(years)):
-                self.fla_ann_centr[year_ind, :] =\
-                    np.sum(self.fla_ev_centr[year_ev_mk[year_ind, :], :],
-                           axis=0)
-            self.fla_annual = np.sum(self.fla_ann_centr, axis=1)
-            self.fla_ann_av = np.mean(self.fla_annual)
-            self.fla_ev_av = np.mean(self.fla_event)
-        except MemoryError:
-            self.fla_ev_centr = None
-            self.tot_fld_area = None
-            self.fla_ann_centr = None
-            self.fla_annual = None
-            self.fla_ann_av = None
-            self.fla_ev_av = None
-            LOGGER.warning('Number of events and slected area exceed ' +
-                           'memory capacities, area has not been calculated,' +
-                           ' attributes set to None')
+        self.fla_ann_centr = np.zeros((len(years),
+                                       len(self.centroids.lon)))
+        self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
+                                                 area_centr))
+        self.fla_event = np.sum(self.fla_ev_centr, axis=1)
+        for year_ind in range(len(years)):
+            self.fla_ann_centr[year_ind, :] =\
+                np.sum(self.fla_ev_centr[year_ev_mk[year_ind, :], :],
+                       axis=0)
+        self.fla_annual = np.sum(self.fla_ann_centr, axis=1)
+        self.fla_ann_av = np.mean(self.fla_annual)
+        self.fla_ev_av = np.mean(self.fla_event)
+        
 
     def set_flooded_area_cut(self, coordinates, centr_indices=None):
         """ Calculates flooded area for any window given with coordinates or
@@ -485,7 +476,7 @@ class RiverFlood(Hazard):
         natID_info = pd.read_csv(NAT_REG_ID)
         isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
         isimip_lon = isimip_grid.lon.data
-        isimip_lat = np.flip(isimip_grid.lat.data)
+        isimip_lat = isimip_grid.lat.data
         gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
         try:
             if countries:
