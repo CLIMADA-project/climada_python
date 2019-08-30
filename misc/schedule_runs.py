@@ -61,7 +61,7 @@ RF_MODEL = [#'ORCHIDEE',
             #'MATSIRO',
             #'VIC',
             #'VEGAS'
-            lpjml
+            'lpjml'
             ]
 CL_MODEL = [#'gfdl-esm2m',
             #'hadgem2-es',
