@@ -283,6 +283,34 @@ class RiverFlood(Hazard):
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
+    
+    def exclude_returnlevel(self, path):
+
+        flood_frc = xr.open_dataset(path)
+        lon = flood_frc.lon.data
+        lat = flood_frc.lat.data
+        win = self._cut_window(lon, lat)
+        frc_window = flood_frc.fldfrc[:, win[0, 1]:win[1, 1] + 1,
+                                      win[0, 0]:win[1, 0] + 1].data
+        lon = lon[win[0, 0]:win[1, 0] + 1]
+        lat = lat[win[0, 1]:win[1, 1] + 1]
+        if lat[0] - lat[1] > 0:
+            lat = np.flipud(lat)
+            frc_window = np.flip(frc_window, axis=1)
+        if lon[0] - lon[1] > 0:
+            lon = np.flipud(lon)
+            frc_window = np.flip(frc_window, axis=2)
+
+        fraction = \
+            sp.interpolate.interpn((lat, lon),
+                                   np.nan_to_num(frc_window[0, :, :]),
+                                   (self.centroids.lat, self.centroids.lon),
+                                   method='nearest',
+                                   bounds_error=False,
+                                   fill_value=None)
+        new_fraction = np.subtract(self.fraction.todense(), fraction)
+        new_fraction = new_fraction.clip(0)
+        self.fraction = sparse.csr_matrix(new_fraction)
 
     def _cut_window(self, lon, lat):
         """ Determine size of window to extract flood data.
