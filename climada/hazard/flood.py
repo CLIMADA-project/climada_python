@@ -249,6 +249,17 @@ class RiverFlood(Hazard):
                 raise MemoryError
 
         return intensity, fraction
+    
+    def set_intesity_threshold(self, threshold):
+        
+        new_intensity = self.intensity.todense()
+        
+        mask = np.less(new_intensity, threshold)
+        new_intensity[mask] = 0
+        
+        self.intensity = sparse.csr_matrix(new_intensity)
+        
+        
 
     def _select_model_run(self, flood_dir, rf_model, cl_model, scenario,
                           prot_std, proj=False):

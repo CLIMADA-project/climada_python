@@ -9,6 +9,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import argparse
 from climada.entity.exposures.gdp_asset import GDP2Asset
+from climada.entity.exposures.exp_people import ExpPop
 from climada.entity.impact_funcs.flood import IFRiverFlood,flood_imp_func_set, assign_if_simple
 from climada.hazard.flood import RiverFlood
 from climada.hazard.centroids import Centroids
@@ -35,13 +36,16 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['0', 'flopros', '100']
+PROT_STD = ['flopros']
 #for LPJ longrun
+SCENARIO = ['rcp26',
+            'rcp60']
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
-gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
-RF_PATH_FRC = '/home/insauer/Tobias/2yr_matsiro/fldfrc24_2.nc'
+#gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
+pop_path = '/home/insauer/Tobias/hyde_ssp2_1860-2100_0150as_yearly_zip.nc4'
+RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
 output = currentdir
 #For lpj longrun
 if args.RF_model == 'lpjml':
@@ -51,8 +55,10 @@ if args.RF_model == 'lpjml':
     else:
         years = np.arange(1901, 2011)
 else:
-    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
-    if args.CL_model == 'watch':
+    flood_dir = '/p/projects/isimip/isimip/ISIMIP2b/DerivedOutputData/Floods/'
+    if args.CL_model == 'princeton':
+        years = np.arange(1971, 2013)
+    elif args.CL_model == 'watch':
         years = np.arange(1971, 2002)
     else:
         years = np.arange(1971, 2011)
@@ -65,25 +71,33 @@ conts = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
+THRESHOLD = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10]
+
 dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
                             'Region': np.full(l, "", dtype=str),
                             'Continent': np.full(l, "", dtype=str),
-                            'TotalAssetValue': np.full(l, np.nan, dtype=float),
-                            'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
-                            'FloodedArea0': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
-                            'FloodedArea100': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp0': np.full(l, np.nan, dtype=float),
-                            'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
-                            'Impact_0': np.full(l, np.nan, dtype=float),
-                            'Impact_Flopros': np.full(l, np.nan, dtype=float),
-                            'Impact_100': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_0': np.full(l, np.nan, dtype=float),
-                            'Impact_2y_Flopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_0': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y_Flopros': np.full(l, np.nan, dtype=float)
+                            'TotalPeople': np.full(l, np.nan, dtype=float),
+                            'FloodedArea': np.full(l, np.nan, dtype=float),
+                            'Thres0': np.full(l, np.nan, dtype=float),
+                            'Thres025': np.full(l, np.nan, dtype=float),
+                            'Thres050': np.full(l, np.nan, dtype=float),
+                            'Thres075': np.full(l, np.nan, dtype=float),
+                            'Thres100': np.full(l, np.nan, dtype=float),
+                            'Thres125': np.full(l, np.nan, dtype=float),
+                            'Thres150': np.full(l, np.nan, dtype=float),
+                            'Thres175': np.full(l, np.nan, dtype=float),
+                            'Thres200': np.full(l, np.nan, dtype=float),
+                            'Thres250': np.full(l, np.nan, dtype=float),
+                            'Thres300': np.full(l, np.nan, dtype=float),
+                            'Thres350': np.full(l, np.nan, dtype=float),
+                            'Thres400': np.full(l, np.nan, dtype=float),
+                            'Thres500': np.full(l, np.nan, dtype=float),
+                            'Thres600': np.full(l, np.nan, dtype=float),
+                            'Thres700': np.full(l, np.nan, dtype=float),
+                            'Thres800': np.full(l, np.nan, dtype=float),
+                            'Thres900': np.full(l, np.nan, dtype=float),
+                            'Thres1000': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
@@ -96,16 +110,14 @@ for cnt_ind in range(len(isos)):
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts[cnt_ind]-1)]
-    gdpaFix = GDP2Asset()
-    gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
 
     save_lc = line_counter
     for pro_std in range(len(PROT_STD)):
         line_counter = save_lc
         dph_path = flood_dir + 'flddph_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-        frc_path= flood_dir + 'fldfrc_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
+           .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
+        frc_path= flood_dir+'fldfrc_{}_{}_{}_gev_0.1.nc'\
+           .format(args.RF_model,args.CL_model, PROT_STD[pro_std])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
             break
@@ -114,40 +126,42 @@ for cnt_ind in range(len(isos)):
             break
         rf = RiverFlood()
         rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=years)
-        rf2y = copy.copy(rf)
-        rf2y.exclude_returnlevel(RF_PATH_FRC)
         rf.set_flooded_area()
+        rf.exclude_returnlevel(RF_PATH_FRC)
         for year in range(len(years)):
-            print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
+            print('country_{}_year{}_protstd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
             dataDF.iloc[line_counter, 0] = years[year]
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
-            gdpa = GDP2Asset()
-            gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
-            imp_fl=Impact()
-            imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
-            imp_fix=Impact()
-            imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
-            if pro_std < 2:
-                imp2y_fl=Impact()
-                imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
-                imp2y_fix=Impact()
-                imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, 15 + pro_std] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 17 + pro_std] = imp2y_fix.at_event[0]
+            
+            gdpa = ExpPop()
+            gdpa.set_countries(countries=country, ref_year=years[year], path = pop_path)
 
+            imp_fl=Impact()
+            imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date,fin_date)))
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
-            dataDF.iloc[line_counter, 5] = imp_fix.tot_value
-            dataDF.iloc[line_counter, 6 + pro_std] = rf.fla_annual[year]
-            dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
-            dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 5] = rf.fla_annual[year]
+            dataDF.iloc[line_counter, 6] = imp_fl.at_event[0]
+            for t,thres in enumerate(THRESHOLD):
+                            
+                rf_thres = copy.copy(rf)
+                rf_thres.set_intesity_threshold(thres)
+                            
+                imp_thr=Impact()
+                imp_thr.calc(gdpa, if_set, rf_thres.select(date=(ini_date,fin_date)))
+                dataDF.iloc[line_counter, t + 7] = imp_thr.at_event[0]
             line_counter+=1
     if args.RF_model == 'lpjml':
-        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long.csv'.format(args.RF_model, args.CL_model))
+        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     else:
-        dataDF.to_csv('output_{}_{}_fullProt_All_2yr.csv'.format(args.RF_model, args.CL_model))
+        dataDF.to_csv('ThresExpPop_{}_{}_flopros_2yr.csv'.format(args.RF_model, args.CL_model))
+
+
+
+
+
 
 
