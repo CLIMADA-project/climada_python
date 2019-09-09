@@ -453,8 +453,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                         "transform": rasterio.windows.transform(window, src.transform)})
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)
-            band_idx = np.array(band) - 1
-            intensity = inten[band_idx, :]
+            intensity = inten[range(len(band)), :]
             return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
 def read_vector(file_name, field_name, dst_crs=None):
