@@ -25,9 +25,14 @@ import pandas as pd
 import numpy as np
 from iso3166 import countries as iso_cntry
 from cartopy.io import shapereader
+import shapefile
 # import climada
 
 from climada.util.finance import gdp
+from climada.util.constants import DEF_CRS
+from climada.engine import Impact
+from climada.entity.tag import Tag
+from climada.hazard.tag import Tag as TagHaz
 
 LOGGER = logging.getLogger(__name__)
 
@@ -462,27 +467,38 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
     return exp_iso, exp_name
 
 def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
-    """function to load EM-DAT data by country, hazard type and year range"""
+    """function to load EM-DAT data by country, hazard type and year range
+    
+    Parameters:
+        country (list of str): country ISO3-codes or names, i.e. ['JAM'].
+            set None or 'all' for all countries"""
+
     if hazard_name == 'TC':
         hazard_name = 'Tropical cyclone'
     elif hazard_name == 'DR':
         hazard_name = 'Drought'
-
-    exp_iso, exp_name = emdat_countries_by_hazard(hazard_name, emdat_file_csv)
-    if isinstance(country, int) | (not isinstance(country,str)):
-        country = iso_cntry.get(country).alpha3
-    if country in exp_name:
-        country = exp_iso[exp_name.index(country)]
     all_years = np.arange(min(year_range), max(year_range)+1, 1)
-    if country not in exp_iso:
-        print('Country ' + country + ' not in EM-DAT for hazard ' + hazard_name)
-        return None, sorted(all_years), country
-
-    
+    # Read CSV file with raw EMDAT data:
     out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=1)
     if not 'Disaster type' in out.columns:
         out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=0)
-    out = out[out['ISO'].str.contains(country) == True]
+    if not country or country == 'all':
+        out['ISO'].replace('', np.nan, inplace=True)
+        out.dropna(subset=['ISO'], inplace=True)
+        out['Disaster type'].replace('', np.nan, inplace=True)
+        out.dropna(subset=['Disaster type'], inplace=True)
+        out['Disaster subtype'].replace('', np.nan, inplace=True)
+        out.dropna(subset=['Disaster subtype'], inplace=True)        
+    else:
+        exp_iso, exp_name = emdat_countries_by_hazard(hazard_name, emdat_file_csv)
+        if isinstance(country, int) | (not isinstance(country,str)):
+            country = iso_cntry.get(country).alpha3
+        if country in exp_name:
+            country = exp_iso[exp_name.index(country)]
+        if country not in exp_iso:
+            print('Country ' + country + ' not in EM-DAT for hazard ' + hazard_name)
+            return None, sorted(all_years), country        
+        out = out[out['ISO'].str.contains(country) == True]
     out_ = out[out['Disaster subtype'].str.contains(hazard_name)]
     out_ = out_.append(out[out['Disaster type'].str.contains(hazard_name)])
     del out
@@ -602,6 +618,138 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
         out[imp_str + " scaled"] = out[imp_str + " scaled"]*1e3
         out[imp_str] = out[imp_str]*1e3
     return out
+
+def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
+                    hazard_name_emdat=None, hazard_type_climada=None, \
+                    reference_year=0, imp_str="Total damage ('000 US$)"):
+    """function to load EM-DAT data return impact per event
+
+    Parameters:
+        countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
+            Set to ['all'] or [None] for all countries
+        hazard_name (str): Hazard name according to EMDAT terminology or
+            CLIMADA abbreviation, i.e. 'TC'
+        emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
+            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+        reference_year (int): reference year of exposures. Impact is scaled
+            proportional to GDP to the value of the reference year. No scaling
+            for 0 (default)
+        imp_str (str): Column name of impact metric in EMDAT CSV,
+            default = "Total damage ('000 US$)"
+
+    Returns:
+        out (instance of climada.engine.Impact): impact object of same format as output from CLIMADA
+            impact computation
+            scaled and un-scaled??
+            i.e. 1000 current US$ for imp_str="Total damage ('000 US$) scaled".
+    """
+    if not hazard_type_climada:
+        if not hazard_name_emdat:
+            LOGGER.error('Either hazard_type_climada or hazard_name_emdat need to be defined.')
+            return None
+        if hazard_name_emdat == 'Tropical cyclone':
+            hazard_type_climada = 'TC'
+        elif hazard_name_emdat == 'Drought':
+            hazard_type_climada = 'DR'
+        elif hazard_name_emdat == 'Landslide':
+            hazard_type_climada = 'LS'
+        elif hazard_name_emdat == 'Riverine flood':
+            hazard_type_climada = 'RF'
+        elif hazard_name_emdat in ['Wildfire', 'Forest Fire', 'Land fire (Brush, Bush, Pasture)']:
+            hazard_type_climada = 'BF'
+        elif hazard_name_emdat == 'Extra-tropical storm':
+            hazard_type_climada = 'WS'
+    elif not hazard_name_emdat:
+        if hazard_type_climada == 'TC':
+            hazard_name_emdat = 'Tropical cyclone'
+        elif hazard_type_climada == 'DR':
+            hazard_name_emdat = 'Drought'
+        elif hazard_type_climada == 'LS':
+            hazard_name_emdat = 'Landslide'
+        elif hazard_type_climada == 'RF':
+            hazard_name_emdat = 'Riverine flood'
+        elif hazard_type_climada == 'BF':
+            hazard_name_emdat = 'Wildfire'
+        elif hazard_type_climada == 'WS':
+            hazard_name_emdat = 'Extra-tropical storm'
+
+    # Inititate Impact-instance:
+    impact_instance = Impact()
+
+    impact_instance.tag = dict()
+    impact_instance.tag['haz'] = TagHaz(haz_type=hazard_type_climada, file_name=emdat_file_csv, description='EM-DAT impact, direct import')
+    impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv, description='EM-DAT impact, direct import')
+    impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
+
+    # Load EM-DAT impact data per event:
+    em_data = emdat_impact_event(countries, hazard_name_emdat, emdat_file_csv, \
+                                 year_range, reference_year=reference_year)
+    
+
+    impact_instance.event_id = np.array(em_data.index, int)
+    impact_instance.event_name = list(em_data['Disaster No.'])
+    date_list = list()
+    for year in list(em_data['year']):
+        date_list.append(datetime.toordinal(datetime.strptime(str(year), '%Y')))
+    for datestr in list(em_data['Start date']):
+        try:
+            date_list.append(datetime.toordinal(datetime.strptime(datestr[-7:], '%m/%Y')))
+        except ValueError:
+            LOGGER.warning('emem_data contains invalid time formats')
+        try:
+            date_list.append(datetime.toordinal(datetime.strptime(datestr, '%d/%m/%Y')))
+        except ValueError:
+            LOGGER.warning('em_data contains invalid time formats')
+    impact_instance.date = np.array(date_list, int)
+
+    impact_instance.crs = DEF_CRS
+    
+    if reference_year == 0:
+        impact_instance.at_event = np.array(em_data[imp_str])
+    else:
+        impact_instance.at_event = np.array(em_data[imp_str + " scaled"])
+    impact_instance.frequency = np.ones(em_data.shape[0])/np.diff(year_range)
+    impact_instance.tot_value = 0
+    impact_instance.aai_agg = sum(impact_instance.at_event * impact_instance.frequency)
+    impact_instance.unit = 'USD'
+    impact_instance.imp_mat = []
+    
+    
+    # init rough exposure with central point per country
+    shp = shapereader.natural_earth(resolution='110m',
+                                             category='cultural',
+                                             name='admin_0_countries')
+    shp = shapefile.Reader(shp)
+    countries_reg_id = list()
+    countries_lat = list()
+    countries_lon = list()
+    impact_instance.eai_exp = np.zeros(len(countries)) # empty: damage at exposure
+    for idx, cntry in enumerate(countries):
+        cntry = iso_cntry.get(cntry).alpha3
+
+        for rec_i, rec in enumerate(shp.records()):
+            if rec[9].casefold() == cntry.casefold():
+                bbox = shp.shapes()[rec_i].bbox
+        countries_lat.append(np.mean([bbox[1], bbox[3]]))
+        countries_lon.append(np.mean([bbox[0], bbox[2]]))
+        countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
+        df_tmp = em_data[em_data['ISO'].str.contains(cntry) == True]
+        if reference_year == 0:
+            impact_instance.eai_exp[idx] = sum(np.array(df_tmp[imp_str])*impact_instance.frequency[0])
+        else:
+            impact_instance.eai_exp[idx] = sum(np.array(df_tmp[imp_str + " scaled"])*impact_instance.frequency[0])
+            
+        
+    impact_instance.coord_exp = np.stack([countries_lat, countries_lon], axis=1)
+    impact_instance.plot_raster_eai_exposure()
+    
+    return impact_instance
+
+        
+    """.coord_exp = np.stack([exposures.latitude.values,
+                                   exposures.longitude.values], axis=1)"""
+
+
 
 """
 function emdata = emdat_load_yearlysum(country_emdat,peril_ID,exposure_growth,years_range)
