@@ -619,21 +619,29 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
         out[imp_str] = out[imp_str]*1e3
     return out
 
-def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
-                    hazard_name_emdat=None, hazard_type_climada=None, \
+def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], countries=None,\
+                    hazard_type_emdat=None, hazard_type_climada=None, \
                     reference_year=0, imp_str="Total damage ('000 US$)"):
     """function to load EM-DAT data return impact per event
 
     Parameters:
-        countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
-            Set to ['all'] or [None] for all countries
-        hazard_name (str): Hazard name according to EMDAT terminology or
-            CLIMADA abbreviation, i.e. 'TC'
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
             emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+
+        hazard_type_emdat (str): Hazard (sub-)type according to EMDAT terminology,
+            i.e. 'Tropical cyclone' for tropical cyclone
+        OR
+        hazard_type_climada (str): Hazard type CLIMADA abbreviation, 
+            i.e. 'TC' for tropical cyclone
+    Optional parameters:
+        year_range (list with 2 integers): start and end year i.e. [1980, 2017]
+            default: 1800 till current year.
+        countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
+            Set to None or ['all'] for all countries (default)
+
         reference_year (int): reference year of exposures. Impact is scaled
             proportional to GDP to the value of the reference year. No scaling
-            for 0 (default)
+            for reference_year=0 (default)
         imp_str (str): Column name of impact metric in EMDAT CSV,
             default = "Total damage ('000 US$)"
 
@@ -644,34 +652,34 @@ def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
             i.e. 1000 current US$ for imp_str="Total damage ('000 US$) scaled".
     """
     if not hazard_type_climada:
-        if not hazard_name_emdat:
-            LOGGER.error('Either hazard_type_climada or hazard_name_emdat need to be defined.')
+        if not hazard_type_emdat:
+            LOGGER.error('Either hazard_type_climada or hazard_type_emdat need to be defined.')
             return None
-        if hazard_name_emdat == 'Tropical cyclone':
+        if hazard_type_emdat == 'Tropical cyclone':
             hazard_type_climada = 'TC'
-        elif hazard_name_emdat == 'Drought':
+        elif hazard_type_emdat == 'Drought':
             hazard_type_climada = 'DR'
-        elif hazard_name_emdat == 'Landslide':
+        elif hazard_type_emdat == 'Landslide':
             hazard_type_climada = 'LS'
-        elif hazard_name_emdat == 'Riverine flood':
+        elif hazard_type_emdat == 'Riverine flood':
             hazard_type_climada = 'RF'
-        elif hazard_name_emdat in ['Wildfire', 'Forest Fire', 'Land fire (Brush, Bush, Pasture)']:
+        elif hazard_type_emdat in ['Wildfire', 'Forest Fire', 'Land fire (Brush, Bush, Pasture)']:
             hazard_type_climada = 'BF'
-        elif hazard_name_emdat == 'Extra-tropical storm':
+        elif hazard_type_emdat == 'Extra-tropical storm':
             hazard_type_climada = 'WS'
-    elif not hazard_name_emdat:
+    elif not hazard_type_emdat:
         if hazard_type_climada == 'TC':
-            hazard_name_emdat = 'Tropical cyclone'
+            hazard_type_emdat = 'Tropical cyclone'
         elif hazard_type_climada == 'DR':
-            hazard_name_emdat = 'Drought'
+            hazard_type_emdat = 'Drought'
         elif hazard_type_climada == 'LS':
-            hazard_name_emdat = 'Landslide'
+            hazard_type_emdat = 'Landslide'
         elif hazard_type_climada == 'RF':
-            hazard_name_emdat = 'Riverine flood'
+            hazard_type_emdat = 'Riverine flood'
         elif hazard_type_climada == 'BF':
-            hazard_name_emdat = 'Wildfire'
+            hazard_type_emdat = 'Wildfire'
         elif hazard_type_climada == 'WS':
-            hazard_name_emdat = 'Extra-tropical storm'
+            hazard_type_emdat = 'Extra-tropical storm'
 
     # Inititate Impact-instance:
     impact_instance = Impact()
@@ -681,8 +689,15 @@ def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
     impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv, description='EM-DAT impact, direct import')
     impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
 
-    # Load EM-DAT impact data per event:
-    em_data = emdat_impact_event(countries, hazard_name_emdat, emdat_file_csv, \
+    if not countries or countries==['all']:
+        df_tmp = emdat_df_load(None, hazard_type_emdat, emdat_file_csv, year_range)[0]
+        countries = list(df_tmp[~df_tmp.ISO.duplicated()].ISO.values)
+        del df_tmp
+    else:
+        if isinstance(countries, str):
+            countries = [countries]
+    # Load EM-DAT impact data by event:
+    em_data = emdat_impact_event(countries, hazard_type_emdat, emdat_file_csv, \
                                  year_range, reference_year=reference_year)
     
 
@@ -691,15 +706,20 @@ def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
     date_list = list()
     for year in list(em_data['year']):
         date_list.append(datetime.toordinal(datetime.strptime(str(year), '%Y')))
+    boolean_warning = True
     for datestr in list(em_data['Start date']):
         try:
             date_list.append(datetime.toordinal(datetime.strptime(datestr[-7:], '%m/%Y')))
         except ValueError:
-            LOGGER.warning('emem_data contains invalid time formats')
+            if boolean_warning:
+                LOGGER.warning('EM_DAT CSV contains invalid time formats')
+                boolean_warning = False
         try:
             date_list.append(datetime.toordinal(datetime.strptime(datestr, '%d/%m/%Y')))
         except ValueError:
-            LOGGER.warning('em_data contains invalid time formats')
+            if boolean_warning:
+                LOGGER.warning('EM_DAT CSV contains invalid time formats')
+                boolean_warning = False
     impact_instance.date = np.array(date_list, int)
 
     impact_instance.crs = DEF_CRS
@@ -741,7 +761,7 @@ def emdat_to_impact(emdat_file_csv, year_range, countries=[None],\
             
         
     impact_instance.coord_exp = np.stack([countries_lat, countries_lon], axis=1)
-    impact_instance.plot_raster_eai_exposure()
+    #impact_instance.plot_raster_eai_exposure()
     
     return impact_instance
 
