@@ -80,25 +80,26 @@ class TestEmdatToImpact(unittest.TestCase):
     """Test import of EM-DAT data (as CSV) to Impact-instance (CLIMADA)"""
     def test_emdat_to_impact_all_countries(self):
         """test import TC EM-DAT to Impact() for all countries in CSV"""
-        impact_emdat = im_d.emdat_to_impact(EMDAT_TEST_CSV, \
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV, \
                                         hazard_type_climada='TC')
         self.assertEqual(142, impact_emdat.event_id.size)
         self.assertEqual(141, impact_emdat.event_id[-1])
         self.assertEqual(0, impact_emdat.event_id[0])
         self.assertIn('2013-0138', impact_emdat.event_name)
+        self.assertEqual('USA', countries[0])
+        self.assertEqual('BGD', countries[1])
         self.assertEqual(2, len(impact_emdat.eai_exp))
         self.assertAlmostEqual(555861710000, np.sum(impact_emdat.at_event))
         self.assertAlmostEqual(2538181324.2009125, impact_emdat.aai_agg)
         self.assertAlmostEqual(2514190913.2420087, impact_emdat.eai_exp[0])
         self.assertAlmostEqual(23990410.958904102, impact_emdat.eai_exp[1])
-        
-        
+
     def test_emdat_to_impact_scale(self):
         """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""    
         impact_emdat = im_d.emdat_to_impact(EMDAT_TEST_CSV,
                                         year_range=[2010, 2016], countries=['USA'],\
                                         hazard_type_emdat='Drought', \
-                                        reference_year=2016)
+                                        reference_year=2016)[0]
         self.assertEqual(10, impact_emdat.event_id.size)
         self.assertEqual(9, impact_emdat.event_id[-1])
         self.assertEqual(0, impact_emdat.event_id[0])
