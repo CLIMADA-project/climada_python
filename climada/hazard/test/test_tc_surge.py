@@ -23,6 +23,10 @@ import os
 import unittest
 import elevation
 
+from climada.util.config import setup_environ
+
+setup_environ()
+
 class TestDEM(unittest.TestCase):
     """ Test use of DEM """
 
@@ -37,4 +41,3 @@ class TestDEM(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDEM)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
