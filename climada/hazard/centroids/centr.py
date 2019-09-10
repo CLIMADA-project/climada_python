@@ -18,18 +18,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define Centroids class.
 """
+
+import os
 import copy
 import logging
 import numpy as np
 from scipy import sparse
 import pandas as pd
 from rasterio import Affine
-from rasterio.warp import Resampling
+from rasterio.warp import Resampling, reproject
+import rasterio
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
-import climada.util.plot as u_plot
+import elevation
 
-from climada.util.constants import DEF_CRS, ONE_LAT_KM
+import climada.util.plot as u_plot
+from climada.util.constants import DEF_CRS, ONE_LAT_KM, SYSTEM_DIR
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
 pts_to_raster_meta, read_raster, read_vector, NE_CRS, \
@@ -57,6 +61,9 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                 }
 """ Excel variable names """
 
+TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
+""" Path of elevation file written in set_elevation """
+
 LOGGER = logging.getLogger(__name__)
 
 class Centroids():
@@ -76,10 +83,11 @@ class Centroids():
         dist_coast (np.array, optional): distance to coast of size size
         on_land (np.array, optional): on land (True) and on sea (False) of size size
         region_id (np.array, optional): country region code of size size
+        elevation (np.array, optional): elevation of size size
     """
 
     vars_check = {'lat', 'lon', 'geometry', 'area_pixel', 'dist_coast',
-                  'on_land', 'region_id'}
+                  'on_land', 'region_id', 'elevation'}
     """ Variables whose size will be checked """
 
     def __init__(self):
@@ -92,6 +100,7 @@ class Centroids():
         self.dist_coast = np.array([])
         self.on_land = np.array([])
         self.region_id = np.array([])
+        self.elevation = np.array([])
 
     def check(self):
         """ Check that either raster meta attribute is set or points lat, lon
@@ -471,6 +480,51 @@ class Centroids():
         lon, lat = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.on_land = coord_on_land(lat, lon)
+
+    def set_elevation(self, product='SRTM1', resampling=Resampling.nearest):
+        """ Set elevation attribute for every pixel or point
+
+        Parameter:
+            product (str, optional): Digital Elevation Model to use with elevation
+                package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
+            resampling (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs
+        """
+        bounds = np.array(self.total_bounds)
+        if self.meta:
+            LOGGER.debug('Setting elevation of raster %s.', str(self.shape))
+            rows, cols = self.shape
+            ras_trans = self.meta['transform']
+        else:
+            LOGGER.debug('Setting elevation of %s points.', str(self.lat.size))
+            rows, cols, ras_trans = pts_to_raster_meta(bounds,
+                                                       min(get_resolution(self.lat, self.lon)))
+
+        bounds += np.array([-.05, -.05, .05, .05])
+        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product)
+        dem_mat = np.zeros((rows, cols))
+        with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
+            nodata = src.nodata
+            reproject(source=src.read(1), destination=dem_mat,
+                      src_transform=src.transform, src_crs=src.crs,
+                      dst_transform=ras_trans, dst_crs=self.crs,
+                      resampling=resampling,
+                      src_nodata=nodata, dst_nodata=nodata)
+
+        profile = {'crs':self.crs, 'transform':ras_trans, 'height':rows, 'width':cols,
+                   'count':1, 'driver':'GTiff', 'dtype':rasterio.int32}
+        with rasterio.open('/Users/aznarsig/Documents/Python/climada_python/climada/hazard/centroids/test/caca.tif', 'w', **profile) as dst:
+            dst.write(dem_mat.astype(rasterio.int32), 1)
+
+        if self.meta:
+            self.elevation = dem_mat.flatten()
+            return
+
+        # search nearest neighbor of each point
+        x_i = ((self.lon - ras_trans[2]) / ras_trans[0]).astype(int)
+        y_i = ((self.lat - ras_trans[5]) / ras_trans[4]).astype(int)
+        self.elevation = dem_mat[y_i, x_i]
+        self.elevation[self.elevation == nodata] = 0
 
     def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
