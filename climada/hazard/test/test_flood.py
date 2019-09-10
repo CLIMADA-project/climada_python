@@ -21,6 +21,7 @@ Test flood module.
 import unittest
 import datetime as dt
 import numpy as np
+import pandas as pd
 from climada.hazard.flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 
@@ -31,9 +32,7 @@ class TestRiverFlood(unittest.TestCase):
 
         emptyFlood = RiverFlood()
         with self.assertRaises(KeyError):
-            RiverFlood.select_exact_area(['OYY'])
-        with self.assertRaises(KeyError):
-            RiverFlood.select_window_area(['OYY'])
+            RiverFlood._select_exact_area(['OYY'])
         with self.assertRaises(AttributeError):
             emptyFlood.set_from_nc(years=[2600], dph_path=HAZ_DEMO_FLDDPH,
                                    frc_path=HAZ_DEMO_FLDFRC)
@@ -41,9 +40,14 @@ class TestRiverFlood(unittest.TestCase):
             emptyFlood.set_from_nc(reg=['OYY'], dph_path=HAZ_DEMO_FLDDPH,
                                    frc_path=HAZ_DEMO_FLDFRC)
 
-    def test_exact_area_selection(self):
-        testCentroids = RiverFlood.select_exact_area(['LIE'])
+    def test_exact_area_selection_country(self):
 
+        testCentroids, isos, natIDs = RiverFlood._select_exact_area(['LIE'])
+
+        self.assertEqual(isos[0], 'LIE')
+        self.assertEqual(natIDs.iloc[0], 118)
+
+        self.assertEqual(testCentroids.shape, (5, 3))
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
         self.assertAlmostEqual(testCentroids.lon[1], 9.5623634)
@@ -72,6 +76,186 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[10], 47.1872472)
         self.assertAlmostEqual(testCentroids.lat[11], 47.2289138)
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
+    
+    def test_exact_area_selection_region(self):
+
+        testCentroids, isos, natIDs = RiverFlood._select_exact_area(reg=['SWA'])
+        self.assertEqual(isos[0], 'AFG')
+        self.assertEqual(isos[3], 'IND')
+        self.assertEqual(isos[8], 'PAK')
+        
+        self.assertEqual(natIDs.iloc[1], 20)
+        self.assertEqual(natIDs.iloc[3], 94)
+        self.assertEqual(natIDs.iloc[7], 155)
+
+        self.assertEqual(testCentroids.shape, (940, 976))
+        self.assertAlmostEqual(np.min(testCentroids.lat), -0.68767620000001, 4)
+        self.assertAlmostEqual(np.max(testCentroids.lat), 38.43726119999998, 4)
+        self.assertAlmostEqual(np.min(testCentroids.lon), 60.52061519999998, 4)
+        self.assertAlmostEqual(np.max(testCentroids.lon), 101.1455501999999, 4)
+        self.assertAlmostEqual(testCentroids.lon[10000], 98.27055479999999, 4)
+        self.assertAlmostEqual(testCentroids.lat[10000], 11.47897099999998, 4)
+
+
+    def test_isimip_country_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       countries=['DEU'])
+        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
+               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
+               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
+               'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
+               'istorical_flopros_gev_picontrol_2000_0.1.nc')
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.tag.file_name, tag)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertEqual(rf.centroids.shape, (187, 220))
+        self.assertAlmostEqual(np.min(rf.centroids.lat), 47.312247000002785, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 55.0622346, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), 5.895702599999964, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 15.020687999996682, 4)
+        self.assertAlmostEqual(rf.centroids.lon[1000], 8.895697799998885, 4)
+        self.assertAlmostEqual(rf.centroids.lat[1000], 54.18723600000031, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 26878))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 10.547529220581055, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 26021, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 26878))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 0.9968000054359436, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 25875, 4)
+
+        return
+    
+    def test_isimip_reg_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       reg=['SWA'])
+        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
+               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
+               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
+               'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
+               'istorical_flopros_gev_picontrol_2000_0.1.nc')
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.tag.file_name, tag)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertEqual(rf.centroids.shape, (877, 976))
+        self.assertAlmostEqual(np.min(rf.centroids.lat), -0.687676199985944, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 38.43726119999998, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), 60.52061519999998, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 101.14555019998537, 4)
+        self.assertAlmostEqual(rf.centroids.lon[10000], 70.31226619999646, 4)
+        self.assertAlmostEqual(rf.centroids.lat[10000], 35.812265400000925, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 301181))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 16.69780921936035, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 258661, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 301181))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 1.0, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 3461, 4)
+        
+        return
+    
+    def test_NATearth_country_flood(self):
+#        rf = RiverFlood()
+#        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+#                       countries=['DEU'], ISINatIDGrid=False)
+#        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
+#               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
+#               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
+#               'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
+#               'istorical_flopros_gev_picontrol_2000_0.1.nc')
+#        self.assertEqual(rf.date[0], 730303)
+#        self.assertEqual(rf.tag.file_name, tag)
+#        self.assertEqual(rf.event_id[0], 0)
+#        self.assertEqual(rf.event_name[0], '2000')
+#        self.assertEqual(rf.orig[0], False)
+#        self.assertAlmostEqual(rf.frequency[0], 1.)
+#
+#        self.assertEqual(rf.centroids.shape, (877, 976))
+        
+        return
+    
+    def test_NATearth_reg_flood(self):
+        return
+    
+    def test_global_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC)
+        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
+               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
+               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
+               'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
+               'istorical_flopros_gev_picontrol_2000_0.1.nc')
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.tag.file_name, tag)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+        
+        self.assertEqual(rf.centroids.shape, (4320, 8640))
+        self.assertAlmostEqual(np.min(rf.centroids.lat), -89.9791666666871, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 89.97916666666667, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), -179.9791666666666, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 179.97916666658486, 4)
+        self.assertAlmostEqual(rf.centroids.lon[10000], -123.31250000001288, 4)
+        self.assertAlmostEqual(rf.centroids.lat[10000], 89.9375, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 37324800))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 19.276295, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 26190437, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 37324800))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 1.0, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 3341440, 4)
+        return
+    
+    def test_centroids_flood(self):
+        testCentroids, isos, natIDs = RiverFlood._select_exact_area(['AFG'])
+        
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       centroids=testCentroids)
+        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
+               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
+               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
+               'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
+               'istorical_flopros_gev_picontrol_2000_0.1.nc')
+#        self.assertEqual(rf.date[0], 730303)
+#        self.assertEqual(rf.tag.file_name, tag)
+#        self.assertEqual(rf.event_id[0], 0)
+#        self.assertEqual(rf.event_name[0], '2000')
+#        self.assertEqual(rf.orig[0], False)
+#        self.assertAlmostEqual(rf.frequency[0], 1.)
+#        
+        return
+    
+    def test_meta_centroids_flood(self):
+        return
+    def test_regularGrid_centroids_flood(self):
+        return
 
     def test_flooded_area(self):
 
@@ -92,37 +276,37 @@ class TestRiverFlood(unittest.TestCase):
                 testRFaddset.event_name = [str(years[i])]
             testRFset.append(testRFaddset)
 
-        testRFset.set_flooded_area()
+        testRFset.set_flooded_area(save_centr=True)
         self.assertEqual(testRFset.units, 'm')
 
         self.assertEqual(testRFset.fla_event.shape[0], 4)
         self.assertEqual(testRFset.fla_annual.shape[0], 3)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[0]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[0]),
-                         32610)
+                         3252)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[2]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[2]),
-                         32610)
+                         3252)
 
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[0]),
-                               34400996.45855092)
+                               34400996.45855092, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[0]),
-                         32610)
+                         3252)
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[2]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
-                         32610)
+                         3252)
 
         self.assertAlmostEqual(testRFset.fla_event[0],
-                               6244242013.5826435, 4)
+                               6244242013.5826435, 3)
         self.assertAlmostEqual(testRFset.fla_annual[0],
                                12488484027.165287, 3)
         self.assertAlmostEqual(testRFset.fla_ann_av,
-                               8325656018.110191, 4)
+                               8325656018.110191, 3)
         self.assertAlmostEqual(testRFset.fla_ev_av,
-                               6244242013.5826435, 4)
+                               6244242013.5826435, 3)
 
     def test_select_events(self):
         testRFTime = RiverFlood()
@@ -138,18 +322,18 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(
                         testRFTime._select_event(test_time, years), [0, 3]))
 
-    def test_cut_window(self):
-
-        testRFCut = RiverFlood()
-        centr = RiverFlood.select_window_area(['AUT'])
-        testRFCut.centroids.lon = centr.lon
-        testRFCut.centroids.lat = centr.lat
-        lon = np.arange(7, 20, 0.2)
-        lat = np.arange(40, 50, 0.2)
-        test_window = [[4, 24], [55, 45]]
-        self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
-                                       test_window))
-
+    def test_intersect_area(self):
+        rf = RiverFlood()
+        testCentroids, isos, natIDs = RiverFlood._select_exact_area(['LIE'])
+        rf.centroids = testCentroids
+        mask = rf._intersect_area(natIDs)
+        self.assertEqual(testCentroids.shape, mask.shape)
+        testmask = np.array([[True, True, True],
+                            [True, True, True],
+                            [True, True, True],
+                            [True, True, False],
+                            [True, True, False]])
+        self.assertTrue(np.array_equal(mask, testmask))
 
 #
 # Execute Tests

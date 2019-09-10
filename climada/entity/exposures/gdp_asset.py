@@ -32,6 +32,7 @@ from climada.util.constants import GLB_CENTROIDS_NC
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
 from climada.util.constants import DEMO_GDP2ASSET
 from climada.util.constants import DEF_CRS
+from climada.entity.tag import Tag
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -81,7 +82,8 @@ class GDP2Asset(Exposures):
             raise KeyError
         self.ref_year = ref_year
         self.value_unit = 'USD'
-        self.tag = 'testtag'
+        self.tag = Tag()
+        self.tag.description = 'GDP2Asset ' + str(self.ref_year)
         self.crs = DEF_CRS
 
     @staticmethod
