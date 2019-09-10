@@ -482,9 +482,12 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
     out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=1)
     if not 'Disaster type' in out.columns:
         out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=0)
+    # Clean data frame from footer in original EM-DAT CSV:
+    out['ISO'].replace('', np.nan, inplace=True)
+    out['ISO'].replace(' Belgium"',np.nan, inplace=True)
+    out.dropna(subset=['ISO'], inplace=True)
+    # Reduce data to country and hazard type selected:
     if not country or country == 'all':
-        out['ISO'].replace('', np.nan, inplace=True)
-        out.dropna(subset=['ISO'], inplace=True)
         out['Disaster type'].replace('', np.nan, inplace=True)
         out.dropna(subset=['Disaster type'], inplace=True)
         out['Disaster subtype'].replace('', np.nan, inplace=True)
@@ -495,13 +498,14 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
             country = iso_cntry.get(country).alpha3
         if country in exp_name:
             country = exp_iso[exp_name.index(country)]
-        if country not in exp_iso:
+        if (country not in exp_iso) or country not in out.ISO.values:
             print('Country ' + country + ' not in EM-DAT for hazard ' + hazard_name)
-            return None, sorted(all_years), country 
+            return None, sorted(all_years), country
         out = out[out['ISO'].str.contains(country)]
     out_ = out[out['Disaster subtype'].str.contains(hazard_name)]
     out_ = out_.append(out[out['Disaster type'].str.contains(hazard_name)])
     del out
+    # filter by years and return output:
     year_boolean = []
     for _, disaster_no in enumerate(out_['Disaster No.']):
         if isinstance(disaster_no, str) and int(disaster_no[0:4]) in all_years:
@@ -655,6 +659,7 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
             impact_instance.coord_exp holds rough central coordinates for each country.
         countries (list): ISO3-codes of countries imn same order as in impact_instance.eai_exp
     """
+    # Mapping of hazard type between EM-DAT and CLIMADA:
     if not hazard_type_climada:
         if not hazard_type_emdat:
             LOGGER.error('Either hazard_type_climada or hazard_type_emdat need to be defined.')
@@ -696,9 +701,8 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
     impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
 
     if not countries or countries == ['all']:
-        df_tmp = emdat_df_load(None, hazard_type_emdat, emdat_file_csv, year_range)[0]
-        countries = list(df_tmp[~df_tmp.ISO.duplicated()].ISO.values)
-        del df_tmp
+        countries = emdat_countries_by_hazard(hazard_type_emdat, emdat_file_csv, \
+                                    ignore_missing=True, verbose=True)[0]
     else:
         if isinstance(countries, str):
             countries = [countries]
@@ -733,7 +737,7 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
         impact_instance.at_event = np.array(em_data[imp_str])
     else:
         impact_instance.at_event = np.array(em_data[imp_str + " scaled"])
-    impact_instance.frequency = np.ones(em_data.shape[0])/np.diff(year_range)
+    impact_instance.frequency = np.ones(em_data.shape[0])/(1+np.diff(year_range))
     impact_instance.tot_value = 0
     impact_instance.aai_agg = sum(impact_instance.at_event * impact_instance.frequency)
     impact_instance.unit = 'USD'
@@ -749,13 +753,22 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
     countries_lon = list()
     impact_instance.eai_exp = np.zeros(len(countries)) # empty: damage at exposure
     for idx, cntry in enumerate(countries):
-        cntry = iso_cntry.get(cntry).alpha3
-
+        try:
+            cntry = iso_cntry.get(cntry).alpha3
+        except KeyError:
+            LOGGER.error('Country not found in iso_country: ' + cntry)
+        cntry_boolean = False
         for rec_i, rec in enumerate(shp.records()):
             if rec[9].casefold() == cntry.casefold():
                 bbox = shp.shapes()[rec_i].bbox
-        countries_lat.append(np.mean([bbox[1], bbox[3]]))
-        countries_lon.append(np.mean([bbox[0], bbox[2]]))
+                cntry_boolean = True
+                break
+        if cntry_boolean:
+            countries_lat.append(np.mean([bbox[1], bbox[3]]))
+            countries_lon.append(np.mean([bbox[0], bbox[2]]))
+        else:
+            countries_lat.append(np.nan)
+            countries_lon.append(np.nan)            
         countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
         df_tmp = em_data[em_data['ISO'].str.contains(cntry)]
         if reference_year == 0:
