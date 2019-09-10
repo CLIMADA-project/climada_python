@@ -127,9 +127,11 @@ def setup_conf_user():
         check_conf()
 
 def setup_environ():
+    """ Parse binary environment and correct if necessary """
     if shutil.which('eio') is None:
         # correct binary path
-        env_cpy = os.environ['PATH'].replace(';', ':')
+        os.environ['PATH'] = os.environ['PATH'].replace(';', ':')
+        env_cpy = os.environ['PATH']
         first_dot = env_cpy.find(':')
         while first_dot >= 0:
             if not os.path.isdir(env_cpy[:first_dot]):
