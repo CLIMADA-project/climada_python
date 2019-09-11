@@ -345,7 +345,7 @@ class Hazard():
             self.unit = attrs['unit']
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
-                         resampling=Resampling.nearest):
+                         resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
         """ Change current raster data to other CRS and/or transformation
 
         Parameters:
@@ -353,8 +353,10 @@ class Hazard():
             transform (rasterio.Affine): affine transformation to apply
             wdith (float): number of lons for transform
             height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+            resampl_inten (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for intensity
+            resampl_fract (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for fraction
         """
         if not self.centroids.meta:
             LOGGER.error('Raster not set')
@@ -382,11 +384,12 @@ class Hazard():
         kwargs = {'src_transform': self.centroids.meta['transform'],
                   'src_crs': self.centroids.meta['crs'],
                   'dst_transform': transform, 'dst_crs': dst_crs,
-                  'resampling': resampling}
+                  'resampling': resampl_inten}
         for idx_ev, inten in enumerate(self.intensity.todense()):
             reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
                 self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
                 **kwargs)
+        kwargs.update(resampling=resampl_fract)
         for idx_ev, fract in enumerate(self.fraction.todense()):
             reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
                       self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
