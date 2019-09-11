@@ -459,8 +459,8 @@ class Centroids():
             raise ValueError
 
     def set_dist_coast(self, scheduler=None):
-        """ Set dist_coast attribute for every pixel or point. Distan to
-        coast is computed in meters
+        """ Set dist_coast attribute for every pixel or point. Distance to
+        coast is computed in meters.
 
         Parameter:
             scheduler (str): used for dask map_partitions. “threads”,
@@ -482,7 +482,7 @@ class Centroids():
         self.on_land = coord_on_land(lat, lon)
 
     def set_elevation(self, product='SRTM1', resampling=Resampling.nearest):
-        """ Set elevation attribute for every pixel or point
+        """ Set elevation in meters for every pixel or point.
 
         Parameter:
             product (str, optional): Digital Elevation Model to use with elevation
@@ -510,11 +510,6 @@ class Centroids():
                       dst_transform=ras_trans, dst_crs=self.crs,
                       resampling=resampling,
                       src_nodata=nodata, dst_nodata=nodata)
-
-        profile = {'crs':self.crs, 'transform':ras_trans, 'height':rows, 'width':cols,
-                   'count':1, 'driver':'GTiff', 'dtype':rasterio.int32}
-        with rasterio.open('/Users/aznarsig/Documents/Python/climada_python/climada/hazard/centroids/test/caca.tif', 'w', **profile) as dst:
-            dst.write(dem_mat.astype(rasterio.int32), 1)
 
         if self.meta:
             self.elevation = dem_mat.flatten()
