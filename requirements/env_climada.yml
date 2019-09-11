@@ -4,6 +4,7 @@ channels:
 dependencies:
   - blas=1.0
   - cartopy=0.17.0
+  - curl=7.65.3
   - cython=0.29.7
   - dask=1.2.2
   - dill=0.2.9
@@ -35,6 +36,7 @@ dependencies:
   - shapely=1.6.4
   - tabulate=0.8.3
   - tqdm=4.31.1
+  - unzip=6.0
   - xarray=0.12.1
   - xlrd=1.2.0
   - xlsxwriter=1.1.7
