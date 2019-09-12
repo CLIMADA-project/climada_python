@@ -64,6 +64,9 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
 TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
 """ Path of elevation file written in set_elevation """
 
+DEM_NODATA = -999
+""" Value to use for no data values in DEM, i.e see points """
+
 LOGGER = logging.getLogger(__name__)
 
 class Centroids():
@@ -481,14 +484,16 @@ class Centroids():
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.on_land = coord_on_land(lat, lon)
 
-    def set_elevation(self, product='SRTM1', resampling=Resampling.nearest):
+    def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA):
         """ Set elevation in meters for every pixel or point.
 
         Parameter:
             product (str, optional): Digital Elevation Model to use with elevation
                 package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+            resampling (rasterio.warp.Resampling, optional): resampling
+                function used for reprojection from DEM to centroids' CRS. Default:
+                average if raster and nearest if points.
+            nodata (int): value to use in DEM no data points, i.e. sea.
         """
         bounds = np.array(self.total_bounds)
         if self.meta:
@@ -500,16 +505,21 @@ class Centroids():
             rows, cols, ras_trans = pts_to_raster_meta(bounds,
                                                        min(get_resolution(self.lat, self.lon)))
 
+        if resampling is None:
+            if self.meta:
+                resampling = Resampling.average
+            else:
+                resampling = Resampling.nearest
         bounds += np.array([-.05, -.05, .05, .05])
-        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product)
+        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
+                       max_download_tiles=200)
         dem_mat = np.zeros((rows, cols))
         with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
-            nodata = src.nodata
             reproject(source=src.read(1), destination=dem_mat,
                       src_transform=src.transform, src_crs=src.crs,
                       dst_transform=ras_trans, dst_crs=self.crs,
                       resampling=resampling,
-                      src_nodata=nodata, dst_nodata=nodata)
+                      src_nodata=src.nodata, dst_nodata=nodata)
 
         if self.meta:
             self.elevation = dem_mat.flatten()
@@ -519,7 +529,6 @@ class Centroids():
         x_i = ((self.lon - ras_trans[2]) / ras_trans[0]).astype(int)
         y_i = ((self.lat - ras_trans[5]) / ras_trans[4]).astype(int)
         self.elevation = dem_mat[y_i, x_i]
-        self.elevation[self.elevation == nodata] = 0
 
     def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
