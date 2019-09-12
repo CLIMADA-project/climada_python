@@ -20,6 +20,7 @@ Define Centroids class.
 """
 
 import os
+import shutil
 import copy
 import logging
 import numpy as np
@@ -68,6 +69,10 @@ DEM_NODATA = -999
 """ Value to use for no data values in DEM, i.e see points """
 
 LOGGER = logging.getLogger(__name__)
+
+if shutil.which('eio') is None:
+    from climada.util.config import setup_environ
+    setup_environ()
 
 class Centroids():
     """ Contains raster or vector centroids. Raster data can be set with
