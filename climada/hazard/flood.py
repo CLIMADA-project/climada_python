@@ -35,7 +35,7 @@ import copy
 from climada.util.constants import NAT_REG_ID, GLB_CENTROIDS_NC
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
-from climada.util.coordinates import get_land_geometry, grid_is_regular
+from climada.util.coordinates import get_land_geometry, read_raster
 
 NATID_INFO = pd.read_csv(NAT_REG_ID)
 
@@ -137,12 +137,14 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
+                    self.centroids.set_meta_to_lat_lon()
                 else:
                     cntry_geom = get_land_geometry(countries)   
                     self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
+                    self.centroids.set_meta_to_lat_lon()
 
         elif not centroids:
             # centroids as raster
@@ -151,31 +153,25 @@ class RiverFlood(Hazard):
                                  band=bands.tolist())
             self.centroids.set_meta_to_lat_lon()
         else:  # use given centroids
-            if centroids.meta or grid_is_regular(centroids)[0]:
-                if not centroids.meta:
-                    centroids.set_lat_lon_to_meta()
-                self.set_raster(files_intensity=[dph_path],
-                                files_fraction=[frc_path], band=bands.tolist(),
-                                transform=centroids.meta['transform'],
-                                width=centroids.meta['width'],
-                                height=centroids.meta['height'],
-                                resampling=Resampling.nearest)
-            else:
-                centroids.set_lat_lon_to_meta()
-                self.set_raster(files_intensity=[dph_path],
-                                files_fraction=[frc_path], band=bands.tolist(),
-                                transform=centroids.meta['transform'],
-                                width=centroids.meta['width'],
-                                height=centroids.meta['height'],
-                                resampling=Resampling.nearest)
-                self.centroids.set_meta_to_lat_lon()
-                tree = BallTree(np.radians(self.centroids.coord),
-                                metric='haversine')
-                assigned = tree.query(np.radians(centroids.coord), k=1,
-                                      dualtree=True, breadth_first=False)
-                self.centroids = centroids
-                self.intensity = self.intensity[:, assigned]
-                self.fraction = self.fraction[:, assigned]
+            #if centroids.meta or grid_is_regular(centroids)[0]:
+            """TODO: implement case when meta or regulargrid is defined
+                     centroids.meta or grid_is_regular(centroids)[0]:
+                     centroids>flood --> error
+                     reprojection, resampling.average (centroids< flood)
+                     (transform)
+                     reprojection change resampling"""    
+            #else:
+            metafrc, fraction = read_raster(frc_path, band=bands.tolist())
+            metaint, intensity = read_raster(dph_path, band=bands.tolist())
+            x_i = ((centroids.lon - metafrc['transform'][2]) / metafrc['transform'][0]).astype(int)
+            y_i = ((centroids.lat - metafrc['transform'][5]) / metafrc['transform'][4]).astype(int)
+            fraction = fraction[:, y_i*metafrc['width'] + x_i]                     # intensit_o is 1d
+            intensity = intensity[:, y_i*metaint['width'] + x_i]
+            self.centroids = centroids
+            self.intensity = sp.sparse.csr_matrix(intensity)
+            self.fraction = sp.sparse.csr_matrix(fraction)
+            
+                
         self.units = 'm'
         self.tag.file_name = dph_path + ';' + frc_path
         self.event_id = np.arange(self.intensity.shape[0])
@@ -218,8 +214,22 @@ class RiverFlood(Hazard):
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
+    
+    def exclude_returnlevel(self, frc_path, centroids):
+        if not os.path.exists(frc_path):
+            LOGGER.error('Invalid ReturnLevel-file path ' + frc_path)
+            raise NameError
+        else:
+            metafrc, fraction = read_raster(frc_path, band=[1])
+            x_i = ((centroids.lon - metafrc['transform'][2]) / metafrc['transform'][0]).astype(int)
+            y_i = ((centroids.lat - metafrc['transform'][5]) / metafrc['transform'][4]).astype(int)
+            fraction = fraction[:, y_i*metafrc['width'] + x_i]                     # intensit_o is 1d
+            new_fraction = np.array(np.subtract(self.fraction.todense(),
+                                                fraction))
+            new_fraction = new_fraction.clip(0)
+            self.fraction = sp.sparse.csr_matrix(new_fraction)
 
-    def exclude_returnlevel(self, path):
+    def exclude_returnlevel_isimip(self, path, ISINatIDGrid=True):
 
         copyCentroids = copy.copy(self.centroids)
 
