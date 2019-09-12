@@ -68,6 +68,9 @@ TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
 DEM_NODATA = -999
 """ Value to use for no data values in DEM, i.e see points """
 
+MAX_DEM_TILES_DOWN = 200
+""" Maximum DEM tiles to dowload """
+
 LOGGER = logging.getLogger(__name__)
 
 if shutil.which('eio') is None:
@@ -502,11 +505,11 @@ class Centroids():
         """
         bounds = np.array(self.total_bounds)
         if self.meta:
-            LOGGER.debug('Setting elevation of raster %s.', str(self.shape))
+            LOGGER.debug('Setting elevation of raster with bounds %s.', str(self.total_bounds))
             rows, cols = self.shape
             ras_trans = self.meta['transform']
         else:
-            LOGGER.debug('Setting elevation of %s points.', str(self.lat.size))
+            LOGGER.debug('Setting elevation of points with bounds %s.', str(self.total_bounds))
             rows, cols, ras_trans = pts_to_raster_meta(bounds,
                                                        min(get_resolution(self.lat, self.lon)))
 
@@ -517,7 +520,7 @@ class Centroids():
                 resampling = Resampling.nearest
         bounds += np.array([-.05, -.05, .05, .05])
         elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
-                       max_download_tiles=200)
+                       max_download_tiles=MAX_DEM_TILES_DOWN)
         dem_mat = np.zeros((rows, cols))
         with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
             reproject(source=src.read(1), destination=dem_mat,
