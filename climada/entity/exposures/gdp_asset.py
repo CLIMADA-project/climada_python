@@ -47,7 +47,7 @@ class GDP2Asset(Exposures):
         return GDP2Asset
 
     def set_countries(self, countries=[], reg=[], ref_year=2000,
-                      path=DEMO_GDP2ASSET):
+                      path=None):
         """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
@@ -55,7 +55,7 @@ class GDP2Asset(Exposures):
         Parameters:
             countries (list): list of country names ISO3
             ref_year (int, optional): reference year. Default: 2016
-            path (string): path to exposure dataset
+            path (string): path to exposure dataset (ISIMIP)
         """
         gdp2a_list = []
         try:
@@ -85,6 +85,7 @@ class GDP2Asset(Exposures):
         self.tag = Tag()
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)
         self.crs = DEF_CRS
+        #meta einfügen
 
     @staticmethod
     def _set_one_country(countryISO, ref_year, path=DEMO_GDP2ASSET):
