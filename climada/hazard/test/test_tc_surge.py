@@ -24,7 +24,7 @@ import unittest
 from scipy import sparse
 
 from climada.hazard.tc_surge import _wind_to_surge, _set_centroids_att, \
-_surge_decay, DECAY_MAX_ELEVATION, DECAY_INLAND_DIST_KM
+_surge_decay, DECAY_MAX_ELEVATION, DECAY_INLAND_DIST_KM, _substract_sparse_surge
 from climada.hazard.centroids.centr import Centroids, DEM_NODATA
 
 class TestModel(unittest.TestCase):
@@ -97,6 +97,8 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(inten_surge.shape, inten.shape)
         self.assertEqual(inten_surge.shape, fract.shape)
+        self.assertIsInstance(fract, sparse.csr_matrix)
+        self.assertIsInstance(inten, sparse.csr_matrix)
         self.assertEqual(self.CENTR_BANG.size, fract.shape[1])
 
         to_zero = np.logical_or(self.CENTR_BANG.elevation > DECAY_MAX_ELEVATION,
@@ -132,6 +134,8 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(inten_surge.shape, inten.shape)
         self.assertEqual(inten_surge.shape, fract.shape)
+        self.assertIsInstance(fract, sparse.csr_matrix)
+        self.assertIsInstance(inten, sparse.csr_matrix)
         self.assertEqual(self.CENTR_BANG.size, fract.shape[1])
 
         to_zero = np.logical_or(self.CENTR_BANG.elevation > DECAY_MAX_ELEVATION,
@@ -170,6 +174,8 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(inten_surge.shape, inten.shape)
         self.assertEqual(inten_surge.shape, fract.shape)
+        self.assertIsInstance(fract, sparse.csr_matrix)
+        self.assertIsInstance(inten, sparse.csr_matrix)
         self.assertEqual(self.CENTR_BANG.size, fract.shape[1])
 
         to_zero = self.CENTR_BANG.elevation > DECAY_MAX_ELEVATION
@@ -190,6 +196,20 @@ class TestModel(unittest.TestCase):
 
         self.CENTR_BANG.meta = save_meta
         self.CENTR_BANG.dist_coast = dist_coast
+
+    def test_substract_sparse_pass(self):
+        """ Test _substract_sparse_surge """
+        decay = np.ones(10)
+        elevation = np.array([-999, -999, -1, 1, 2, -3, 5, 10, 15, 20])
+        inten_surge = sparse.csr_matrix(np.arange(0, 20).reshape(2, 10))
+        inten_out = _substract_sparse_surge(inten_surge, elevation, decay)
+        
+        self.assertEqual(inten_out.min(), 0)
+        self.assertEqual(inten_out[0, 0], 0)
+        self.assertEqual(inten_out[0, 1], 0)
+        self.assertEqual(inten_out[0, 2], 2)
+        self.assertEqual(inten_out[1, -2], 2)
+        self.assertEqual(inten_out[1, -1], 0)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestModel)

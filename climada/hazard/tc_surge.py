@@ -29,7 +29,7 @@ from rasterio.warp import Resampling, reproject
 import elevation
 
 from climada.hazard.base import Hazard
-from climada.hazard.centroids.centr import TMP_ELEVATION_FILE, DEM_NODATA
+from climada.hazard.centroids.centr import TMP_ELEVATION_FILE, DEM_NODATA, MAX_DEM_TILES_DOWN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -141,16 +141,15 @@ def _surge_decay(inten_surge, centroids, dem_product):
         inland_decay = np.zeros(centroids.size)
         inland_decay[centroids.elevation > DECAY_MAX_ELEVATION] = 1000
 
-    remove_elev = centroids.elevation.copy()
-    remove_elev[centroids.elevation == DEM_NODATA] = 0
-    inten_surge = np.maximum(inten_surge - remove_elev - inland_decay, 0)
-    inten_surge = csr_matrix(inten_surge)
+    # substract event by event to avoid to densificate all the matrix
+    inten_surge = _substract_sparse_surge(inten_surge, centroids.elevation, inland_decay)
 
     # if points fraction is ones. if grid fraction is fraction of centroids
     # of DEM on land in given centroids cell.
     if centroids.meta:
         bounds = np.array(centroids.total_bounds) + np.array([-.05, -.05, .05, .05])
-        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=dem_product)
+        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=dem_product,
+                       max_download_tiles=MAX_DEM_TILES_DOWN)
         fract_surge = np.zeros(centroids.shape)
         with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
             on_land = src.read(1)
@@ -169,6 +168,27 @@ def _surge_decay(inten_surge, centroids, dem_product):
         fract_surge.data.fill(1)
 
     return inten_surge, fract_surge
+
+def _substract_sparse_surge(inten_surge, centr_elevation, inland_decay):
+    """ Substract elevation on land and decay coefficient to surge
+
+    Parameter:
+        inten_surge (sparse.csr_matrix): surge matrix
+        centr_elevation (np.array): elevation of each centroid
+        inland_decay (np.array): decay coefficient for each centroid
+
+    Returns:
+        sparse.csr_matrix
+    """
+    remove_elev = centr_elevation.copy()
+    remove_elev[centr_elevation == DEM_NODATA] = 0
+
+    inten_out = inten_surge.tolil()
+    for i_row in range(inten_out.shape[0]):
+        row_pos = inten_out.rows[i_row]
+        inten_out[i_row, row_pos] += -remove_elev[row_pos] - inland_decay[row_pos]
+
+    return inten_out.maximum(0)
 
 def _set_centroids_att(centroids, dist_coast_decay, dem_product, scheduler=None):
     """
