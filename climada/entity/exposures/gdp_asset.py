@@ -87,13 +87,13 @@ class GDP2Asset(Exposures):
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)
         self.crs = DEF_CRS
         # set meta
-#        res = np.diff(self.longitude)[0]
-#        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
-#                                                    self.latitude.min(),
-#                                                    self.longitude.max(),
-#                                                    self.latitude.max()), res)
-#        self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
-#                     'transform': ras_trans}
+        res = np.diff(self.longitude)[0]
+        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
+                                                    self.latitude.min(),
+                                                    self.longitude.max(),
+                                                    self.latitude.max()), res)
+        self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
+                     'transform': ras_trans}
 
     @staticmethod
     def _set_one_country(countryISO, ref_year, path=DEMO_GDP2ASSET):

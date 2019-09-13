@@ -22,15 +22,15 @@ import unittest
 import datetime as dt
 import numpy as np
 from datetime import date
-from climada.hazard.flood import RiverFlood
+from climada.hazard.river_flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
-from climada.hazard.centroids import Centroids
+
 
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
 
     def test_exact_area_selection(self):
-        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(['LIE'])
+        testCentroids, iso, natID = RiverFlood._select_exact_area(['LIE'])
 
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
@@ -60,17 +60,15 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[10], 47.1872472)
         self.assertAlmostEqual(testCentroids.lat[11], 47.2289138)
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
-        self.assertEqual(iso_codes[0], 'LIE')
+        self.assertEqual(iso[0], 'LIE')
 
-        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(['DEU'])
+        testCentroids, iso, natID = RiverFlood._select_exact_area(['DEU'])
         self.assertAlmostEqual(np.max(testCentroids.lon), 15.020687999999979)
         self.assertAlmostEqual(np.min(testCentroids.lon), 5.895702599999964)
         self.assertAlmostEqual(np.max(testCentroids.lat), 55.0622346)
         self.assertAlmostEqual(np.min(testCentroids.lat), 47.312247)
-        self.assertEqual(iso_codes[0], 'DEU')
-        
-        testCentroids, iso_codes, natID = RiverFlood._select_exact_area(reg=['SWA'])
-    
+        self.assertEqual(iso[0], 'DEU')
+
     def test_full_flood(self):
         """ read_flood"""
         testRF = RiverFlood()
@@ -106,23 +104,16 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testRF.fraction[0, 3341441], 0.41666666)
         self.assertAlmostEqual(testRF.fraction[0, 3341442], 0.375)
         self.assertEqual(np.argmax(testRF.fraction[0]), 3341440)
-    
+
     def test_region_selection(self):
-        
+
         testRFReg = RiverFlood()
         testRFReg.set_from_nc(reg=['SWA'], dph_path=HAZ_DEMO_FLDDPH,
-                              frc_path=HAZ_DEMO_FLDFRC)
+                              frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         self.assertEqual(testRFReg.centroids.lat.size, 301181)
-    
+
         centr_ori, iso, natID = RiverFlood._select_exact_area(reg=['SWA'])
         centr_ori.set_lat_lon_to_meta()
-        
-        
-#        self.assertEqual(np.argwhere(np.abs(centr_ori.coord[:,0] - testRFReg.centroids.lat)<1.0e-8).size,
-#                         centr_ori.meta['width'])
-#        for lon in centr_ori.coord[:,1]:
-#            self.assertEqual(np.argwhere(np.abs(lon - testRFReg.centroids.lon)<1.0e-8).size,
-#                             centr_ori.meta['height'])
 
         self.assertAlmostEqual(np.max(testRFReg.centroids.lon),
                                101.14555019999997)
@@ -138,11 +129,11 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(np.max(testRFReg.intensity), 16.69780921936035)
 
     def test_flooded_area(self):
-        
+
         testRFArea = RiverFlood()
 
         testRFArea.set_from_nc(countries=['AUT'], dph_path=HAZ_DEMO_FLDDPH,
-                               frc_path=HAZ_DEMO_FLDFRC)
+                               frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         self.assertEqual(testRFArea.centroids.lat.size, 5782)
         self.assertAlmostEqual(np.max(testRFArea.centroids.lon),
                                17.104017999999968)
@@ -155,19 +146,14 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(testRFArea.orig[0], 0)
         self.assertEqual(np.max(testRFArea.intensity),
                          9.613386154174805)
-        #self.assertEqual(np.argmax(testRFArea.intensity), 2786)
         self.assertAlmostEqual(np.max(testRFArea.fraction),
                                0.5103999972343445)
-#        self.assertEqual(np.argmax(testRFArea.fraction), 3391)
 
         testRFArea.set_flooded_area(save_centr=True)
         self.assertAlmostEqual(np.max(testRFArea.fla_ev_centr),
                                7396511.421906647, 3)
-        #self.assertEqual(np.argmax(testRFArea.fla_ev_centr), 3391)
         self.assertAlmostEqual(np.max(testRFArea.fla_ann_centr),
                                7396511.421906647, 3)
-        #self.assertEqual(np.argmax(testRFArea.fla_ann_centr),
-                         #3391)
 
         self.assertAlmostEqual(testRFArea.fla_event[0],
                                229956891.5531019, 3)
@@ -176,14 +162,15 @@ class TestRiverFlood(unittest.TestCase):
 
         testRFset = RiverFlood()
         testRFset.set_from_nc(countries=['AFG'], dph_path=HAZ_DEMO_FLDDPH,
-                              frc_path=HAZ_DEMO_FLDFRC)
+                              frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         years = [2000, 2001, 2002]
         manipulated_dates = [730303, 730669, 731034]
         for i in range(len(years)):
             testRFaddset = RiverFlood()
             testRFaddset.set_from_nc(countries=['AFG'],
                                      dph_path=HAZ_DEMO_FLDDPH,
-                                     frc_path=HAZ_DEMO_FLDFRC)
+                                     frc_path=HAZ_DEMO_FLDFRC,
+                                     ISINatIDGrid=True)
             testRFaddset.date = [manipulated_dates[i]]
             if i == 0:
                 testRFaddset.event_name = ['2000_2']
@@ -198,20 +185,20 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[0]),
                                17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[0]),
-                         3252)
+                         32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[2]),
                                17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[2]),
-                         3252)
+                         32610)
 
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[0]),
                                34400996.45855092, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[0]),
-                         3252)
+                         32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[2]),
                                17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
-                         3252)
+                         32610)
 
         self.assertAlmostEqual(testRFset.fla_event[0],
                                6244242013.5826435, 3)
@@ -221,7 +208,6 @@ class TestRiverFlood(unittest.TestCase):
                                8325656018.110191, 3)
         self.assertAlmostEqual(testRFset.fla_ev_av,
                                6244242013.5826435, 3)
-
 
     def test_select_events(self):
         testRFTime = RiverFlood()
@@ -238,6 +224,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(testRFTime._select_event(test_time,
                                                                 years),
                         [0, 3]))
+
 
 #
 # Execute Tests

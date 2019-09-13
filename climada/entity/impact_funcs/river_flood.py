@@ -132,7 +132,7 @@ class IFRiverFlood(ImpactFunc):
         self.mdr = np.array([0.0000, 0.4908, 0.7112, 0.8420, 0.9494, 0.9836,
                              1.0000, 1.0000, 1.0000, 1.0000])
 
-        self.paa = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     def _fill_if(self, dfr, var_names):
         """Fills impact function attributes with information from file
