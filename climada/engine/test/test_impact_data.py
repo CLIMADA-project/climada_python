@@ -86,13 +86,15 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertEqual(141, impact_emdat.event_id[-1])
         self.assertEqual(0, impact_emdat.event_id[0])
         self.assertIn('2013-0138', impact_emdat.event_name)
-        self.assertEqual('USA', countries[0])
-        self.assertEqual('BGD', countries[1])
+        self.assertEqual('BGD', countries[0])
+        self.assertEqual('USA', countries[1])
+        self.assertEqual(len(countries), len(impact_emdat.eai_exp))
         self.assertEqual(2, len(impact_emdat.eai_exp))
         self.assertAlmostEqual(555861710000, np.sum(impact_emdat.at_event))
-        self.assertAlmostEqual(2538181324.2009125, impact_emdat.aai_agg)
-        self.assertAlmostEqual(2514190913.2420087, impact_emdat.eai_exp[0])
-        self.assertAlmostEqual(23990410.958904102, impact_emdat.eai_exp[1])
+        self.assertAlmostEqual(0.004545454545454545, np.unique(impact_emdat.frequency)[0])
+        self.assertAlmostEqual(2526644136.363636, impact_emdat.aai_agg)
+        self.assertAlmostEqual(23881363.636363637, impact_emdat.eai_exp[0])
+        self.assertAlmostEqual(2502762772.7272725, impact_emdat.eai_exp[1])
 
     def test_emdat_to_impact_scale(self):
         """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""    
@@ -106,8 +108,9 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertIn('2012-9235', impact_emdat.event_name)
         self.assertEqual(1, len(impact_emdat.eai_exp))
         self.assertAlmostEqual(impact_emdat.aai_agg, impact_emdat.eai_exp[0])
+        self.assertAlmostEqual(0.14285714, np.unique(impact_emdat.frequency)[0])
         self.assertAlmostEqual(73850951957.43886, np.sum(impact_emdat.at_event))
-        self.assertAlmostEqual(12308491992.906475, impact_emdat.aai_agg)
+        self.assertAlmostEqual(10550135993.919838, impact_emdat.aai_agg)
 
 # Execute Tests
 if __name__ == "__main__":

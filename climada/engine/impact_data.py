@@ -768,8 +768,11 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
             countries_lon.append(np.mean([bbox[0], bbox[2]]))
         else:
             countries_lat.append(np.nan)
-            countries_lon.append(np.nan)            
-        countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
+            countries_lon.append(np.nan)
+        try:
+            countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
+        except KeyError:
+            countries_reg_id.append(0)
         df_tmp = em_data[em_data['ISO'].str.contains(cntry)]
         if reference_year == 0:
             impact_instance.eai_exp[idx] = sum(np.array(df_tmp[imp_str])*\
