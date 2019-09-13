@@ -18,18 +18,23 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define Centroids class.
 """
+
+import os
+import shutil
 import copy
 import logging
 import numpy as np
 from scipy import sparse
 import pandas as pd
 from rasterio import Affine
-from rasterio.warp import Resampling
+from rasterio.warp import Resampling, reproject
+import rasterio
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
-import climada.util.plot as u_plot
+import elevation
 
-from climada.util.constants import DEF_CRS, ONE_LAT_KM
+import climada.util.plot as u_plot
+from climada.util.constants import DEF_CRS, ONE_LAT_KM, SYSTEM_DIR
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
 pts_to_raster_meta, read_raster, read_vector, NE_CRS, \
@@ -57,7 +62,20 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                 }
 """ Excel variable names """
 
+TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
+""" Path of elevation file written in set_elevation """
+
+DEM_NODATA = -999
+""" Value to use for no data values in DEM, i.e see points """
+
+MAX_DEM_TILES_DOWN = 200
+""" Maximum DEM tiles to dowload """
+
 LOGGER = logging.getLogger(__name__)
+
+if shutil.which('eio') is None:
+    from climada.util.config import setup_environ
+    setup_environ()
 
 class Centroids():
     """ Contains raster or vector centroids. Raster data can be set with
@@ -76,10 +94,11 @@ class Centroids():
         dist_coast (np.array, optional): distance to coast of size size
         on_land (np.array, optional): on land (True) and on sea (False) of size size
         region_id (np.array, optional): country region code of size size
+        elevation (np.array, optional): elevation of size size
     """
 
     vars_check = {'lat', 'lon', 'geometry', 'area_pixel', 'dist_coast',
-                  'on_land', 'region_id'}
+                  'on_land', 'region_id', 'elevation'}
     """ Variables whose size will be checked """
 
     def __init__(self):
@@ -92,6 +111,7 @@ class Centroids():
         self.dist_coast = np.array([])
         self.on_land = np.array([])
         self.region_id = np.array([])
+        self.elevation = np.array([])
 
     def check(self):
         """ Check that either raster meta attribute is set or points lat, lon
@@ -450,8 +470,8 @@ class Centroids():
             raise ValueError
 
     def set_dist_coast(self, scheduler=None):
-        """ Set dist_coast attribute for every pixel or point. Distan to
-        coast is computed in meters
+        """ Set dist_coast attribute for every pixel or point. Distance to
+        coast is computed in meters.
 
         Parameter:
             scheduler (str): used for dask map_partitions. “threads”,
@@ -471,6 +491,52 @@ class Centroids():
         lon, lat = self._ne_crs_xy(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.on_land = coord_on_land(lat, lon)
+
+    def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA):
+        """ Set elevation in meters for every pixel or point.
+
+        Parameter:
+            product (str, optional): Digital Elevation Model to use with elevation
+                package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
+            resampling (rasterio.warp.Resampling, optional): resampling
+                function used for reprojection from DEM to centroids' CRS. Default:
+                average if raster and nearest if points.
+            nodata (int): value to use in DEM no data points, i.e. sea.
+        """
+        bounds = np.array(self.total_bounds)
+        if self.meta:
+            LOGGER.debug('Setting elevation of raster with bounds %s.', str(self.total_bounds))
+            rows, cols = self.shape
+            ras_trans = self.meta['transform']
+        else:
+            LOGGER.debug('Setting elevation of points with bounds %s.', str(self.total_bounds))
+            rows, cols, ras_trans = pts_to_raster_meta(bounds,
+                                                       min(get_resolution(self.lat, self.lon)))
+
+        if resampling is None:
+            if self.meta:
+                resampling = Resampling.average
+            else:
+                resampling = Resampling.nearest
+        bounds += np.array([-.05, -.05, .05, .05])
+        elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
+                       max_download_tiles=MAX_DEM_TILES_DOWN)
+        dem_mat = np.zeros((rows, cols))
+        with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
+            reproject(source=src.read(1), destination=dem_mat,
+                      src_transform=src.transform, src_crs=src.crs,
+                      dst_transform=ras_trans, dst_crs=self.crs,
+                      resampling=resampling,
+                      src_nodata=src.nodata, dst_nodata=nodata)
+
+        if self.meta:
+            self.elevation = dem_mat.flatten()
+            return
+
+        # search nearest neighbor of each point
+        x_i = ((self.lon - ras_trans[2]) / ras_trans[0]).astype(int)
+        y_i = ((self.lat - ras_trans[5]) / ras_trans[4]).astype(int)
+        self.elevation = dem_mat[y_i, x_i]
 
     def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
@@ -625,10 +691,10 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        LOGGER.info('Setting geometry points.')
         def apply_point(df_exp):
             return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
         if not self.geometry.size:
+            LOGGER.info('Setting geometry points.')
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
             if not scheduler:

@@ -349,6 +349,10 @@ def pts_to_raster_meta(points_bounds, res):
     rows = int(np.floor((ymax-ymin) /  res) + 1)
     cols = int(np.floor((xmax-xmin) / res) + 1)
     ras_trans = from_origin(xmin - res / 2, ymax + res / 2, res, res)
+    if xmax > xmin - res / 2 + cols * res:
+        cols += 1
+    if ymin < ymax + res / 2 - rows * res:
+        rows += 1
     return rows, cols, ras_trans
 
 def equal_crs(crs_one, crs_two):
@@ -449,8 +453,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                         "transform": rasterio.windows.transform(window, src.transform)})
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)
-            band_idx = np.array(band) - 1
-            intensity = inten[band_idx, :]
+            intensity = inten[range(len(band)), :]
             return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
 def read_vector(file_name, field_name, dst_crs=None):

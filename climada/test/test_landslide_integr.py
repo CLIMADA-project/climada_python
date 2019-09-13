@@ -31,24 +31,26 @@ from rasterio.windows import Window
 from climada.hazard import landslide
 from climada.hazard.landslide import Landslide
 import math
+from climada.util.constants import DATA_DIR
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 
+DATA_DIR_TEST = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestTiffFcts(unittest.TestCase):
     """Unit tests for parts of the LS hazard module, but moved to integration tests 
     for reasons of runtime: Test functions for getting input tiffs in landslide module, 
     outside Landslide() instance"""
     def test_get_nowcast_tiff(self):
-        start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(2), '%Y-%m-%d')
+        start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(5), '%Y-%m-%d')
         end_date = dt.datetime.strftime(dt.datetime.now() - timedelta(1), '%Y-%m-%d')
         tif_type= ["monthly","daily"]
         
         for item in tif_type:
-            landslide.get_nowcast_tiff(tif_type=item, startTime=start_date, endTime=end_date, save_path=DATA_DIR)
+            landslide.get_nowcast_tiff(tif_type=item, starttime=start_date, endtime=end_date, save_path=DATA_DIR_TEST)
             
         search_criteria = "LS*.tif"
-        LS_files_daily = glob.glob(os.path.join(DATA_DIR, search_criteria))
+        LS_files_daily = glob.glob(os.path.join(DATA_DIR_TEST, search_criteria))
         search_criteria = "*5400.tif"
         LS_files_monthly = glob.glob(os.path.join(os.getcwd(), search_criteria))
         
@@ -78,23 +80,22 @@ class TestTiffFcts(unittest.TestCase):
 
 class TestLSHazard(unittest.TestCase):  
     """Integration test for LS hazard sets build in Landslide module"""
-    def test_set_LSmodel_0(self):
+    def test_set_ls_model_hist(self):
         """ Test the function set_LS_model for model 0 (historic hazard set)"""
         LS_hist = Landslide()
-        LS_hist.set_LS_model(ls_model=landslide.LS_MODEL[0], bbox=[48, 10, 45, 7], \
-                     path_sourcefile=os.path.join(DATA_DIR, 'nasa_global_landslide_catalog_point.shp'), check_plots=0)
+        LS_hist.set_ls_model_hist(bbox=[48, 10, 45, 7], \
+                     path_sourcefile=os.path.join(DATA_DIR_TEST, 'nasa_global_landslide_catalog_point.shp'), check_plots=0)
         self.assertEqual(LS_hist.size, 49)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
         self.assertEqual(min(LS_hist.intensity.data),1)
         self.assertEqual(max(LS_hist.intensity.data),1)
 
         
-    def test_set_LSmodel_1(self):
-        """ Test the function set_LS_model for model 1 (probabilistic hazard set)"""
+    def test_set_ls_model_prob(self):
+        """ Test the function set_LS_model for model versio UNEP_NGI, with and without neighbours"""
         LS_prob = Landslide()
-        LS_prob.set_LS_model(ls_model=landslide.LS_MODEL[1], n_years=500, bbox=[48, 10, 45, 7], \
-                     path_sourcefile=os.path.join(DATA_DIR, 'cropping_test_LS.tif'), incl_neighbour=False, \
-                     check_plots=0)
+        LS_prob.set_ls_model_prob(ls_model="UNEP_NGI", n_years=500, bbox=[48, 10, 45, 7], \
+                     incl_neighbour=False, check_plots=0)
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
         self.assertEqual(LS_prob.intensity_prob.shape,(1, 129600))
         self.assertEqual(max(LS_prob.intensity.data),1)
@@ -102,7 +103,21 @@ class TestLSHazard(unittest.TestCase):
         self.assertEqual(LS_prob.intensity.shape,(1, 129600))
         self.assertAlmostEqual(max(LS_prob.intensity_prob.data),8.999999999e-05)
         self.assertEqual(min(LS_prob.intensity_prob.data),5e-07)
-        self.assertEqual(LS_prob.centroids.size, 129600)       
+        self.assertEqual(LS_prob.centroids.size, 129600)    
+        
+        LS_prob_nb = Landslide()
+        LS_prob_nb.set_ls_model_prob(ls_model="UNEP_NGI", n_years=500, bbox=[48, 10, 45, 7], \
+                     incl_neighbour=True, check_plots=0)
+        self.assertEqual(LS_prob_nb.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob_nb.intensity_prob.shape,(1, 129600))
+        self.assertEqual(max(LS_prob_nb.intensity.data),1)
+        self.assertEqual(min(LS_prob_nb.intensity.data),0)
+        self.assertEqual(LS_prob_nb.intensity.shape,(1, 129600))
+        self.assertAlmostEqual(max(LS_prob_nb.intensity_prob.data),8.999999999e-05)
+        self.assertEqual(min(LS_prob_nb.intensity_prob.data),5e-07)
+        self.assertEqual(LS_prob_nb.centroids.size, 129600) 
+        
+        self.assertTrue(sum(LS_prob.intensity.data)<sum(LS_prob_nb.intensity.data))
   
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)

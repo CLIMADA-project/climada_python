@@ -345,7 +345,7 @@ class Hazard():
             self.unit = attrs['unit']
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
-                         resampling=Resampling.nearest):
+                         resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
         """ Change current raster data to other CRS and/or transformation
 
         Parameters:
@@ -353,8 +353,10 @@ class Hazard():
             transform (rasterio.Affine): affine transformation to apply
             wdith (float): number of lons for transform
             height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+            resampl_inten (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for intensity
+            resampl_fract (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for fraction
         """
         if not self.centroids.meta:
             LOGGER.error('Raster not set')
@@ -382,11 +384,12 @@ class Hazard():
         kwargs = {'src_transform': self.centroids.meta['transform'],
                   'src_crs': self.centroids.meta['crs'],
                   'dst_transform': transform, 'dst_crs': dst_crs,
-                  'resampling': resampling}
+                  'resampling': resampl_inten}
         for idx_ev, inten in enumerate(self.intensity.todense()):
             reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
                 self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
                 **kwargs)
+        kwargs.update(resampling=resampl_fract)
         for idx_ev, fract in enumerate(self.fraction.todense()):
             reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
                       self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
@@ -500,7 +503,7 @@ class Hazard():
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-    def select(self, date=None, orig=None, reg_id=None):
+    def select(self, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events within provided date and/or (historical or synthetical)
         and/or region. Frequency of the events may need to be recomputed!
 
@@ -511,6 +514,9 @@ class Hazard():
                 synthetic (False)
             reg_id (int, optional): region identifier of the centroids's
                 region_id attibute
+            reset_frequency (boolean): change frequency of events proportional to
+                difference between first and last year (old and new)
+                default = False
 
         Returns:
             Hazard or children
@@ -528,7 +534,6 @@ class Hazard():
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
-
             sel_ev = np.logical_and(date_ini <= self.date,
                                     self.date <= date_end)
             if not np.any(sel_ev):
@@ -565,6 +570,13 @@ class Hazard():
                     setattr(haz, var_name, var_val)
             else:
                 setattr(haz, var_name, var_val)
+        # reset frequency if date span has changed (optional):
+        if reset_frequency:
+            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year - \
+                                    dt.datetime.fromordinal(self.date.min()).year)+1
+            year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year - \
+                                    dt.datetime.fromordinal(haz.date.min()).year)+1                      
+            haz.frequency = haz.frequency*year_span_old/year_span_new
 
         return haz
 
@@ -651,7 +663,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity %s' % self.units
+        col_label = 'Intensity (%s)' % self.units
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)

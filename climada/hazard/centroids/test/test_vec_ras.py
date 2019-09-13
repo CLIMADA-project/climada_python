@@ -24,10 +24,11 @@ import geopandas as gpd
 import unittest
 import numpy as np
 from rasterio.windows import Window
+from rasterio.warp import Resampling
 from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
 
-from climada.hazard.centroids.centr import Centroids
+from climada.hazard.centroids.centr import Centroids, DEM_NODATA
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import NE_EPSG
 
@@ -328,6 +329,23 @@ class TestVector(unittest.TestCase):
         self.assertTrue(centr_bis.equal(centr_bis))
         self.assertTrue(centr.equal(centr))
 
+    def test_elevation_3_pass(self):
+        """ test set_elevation """
+        centr = Centroids()
+        centr.lat, centr.lon, centr.geometry = self.data_vector()
+        centr.geometry.crs = DEF_CRS
+        centr.set_elevation(product='SRTM3', resampling=Resampling.nearest)
+        centr.set_on_land()
+        self.assertTrue(np.all(centr.elevation[centr.on_land]>0))
+        self.assertTrue(np.all(centr.elevation[np.logical_not(centr.on_land)]==DEM_NODATA))
+        self.assertEqual(centr.elevation[0], 23)
+        self.assertEqual(centr.elevation[1], 92)
+        self.assertEqual(centr.elevation[2], 69)
+        self.assertEqual(centr.elevation[3], 77)
+        self.assertEqual(centr.elevation[4], 133)
+        self.assertEqual(centr.elevation[5], 41)
+        self.assertEqual(centr.elevation.min(), DEM_NODATA)
+
 class TestRaster(unittest.TestCase):
     """ Test CentroidsRaster class """
 
@@ -525,11 +543,23 @@ class TestRaster(unittest.TestCase):
         centr_ras = Centroids()
         centr_ras.set_raster_file(HAZ_DEMO_FL, window= Window(0, 0, 50, 60))
         centr_bis = Centroids()
-        centr_bis.set_raster_file(HAZ_DEMO_FL, window= Window(51, 61, 10, 10)) 
+        centr_bis.set_raster_file(HAZ_DEMO_FL, window= Window(51, 61, 10, 10))
         self.assertFalse(centr_ras.equal(centr_bis))
         self.assertFalse(centr_bis.equal(centr_ras))
         self.assertTrue(centr_ras.equal(centr_ras))
         self.assertTrue(centr_bis.equal(centr_bis))
+
+    def test_elevation_3_pass(self):
+        """ Test set_elevation """
+        centr_ras = Centroids()
+        centr_ras.set_raster_file(HAZ_DEMO_FL, window= Window(0, 0, 10, 20))
+        centr_ras.set_elevation(product='SRTM3', resampling=Resampling.nearest)
+        self.assertEqual(centr_ras.elevation.max(), 1052)
+        self.assertEqual(centr_ras.elevation.min(), 357)
+        self.assertEqual(centr_ras.elevation[25], 476)
+        self.assertEqual(centr_ras.elevation[32], 471)
+        self.assertEqual(centr_ras.elevation[0], 695)
+        self.assertEqual(centr_ras.elevation[-1], 661)
 
 class TestCentroids(unittest.TestCase):
     """ Test Centroids class """
@@ -633,7 +663,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(centr.meta['width'], 50)
         self.assertEqual(inten_ras.shape, (1, 60*50))
         self.assertAlmostEqual(inten_ras.reshape((60, 50)).tocsr()[25, 12], 0.056825936)
-        
+
         with self.assertRaises(ValueError):
             centr.set_raster_file(HAZ_DEMO_FL, window=Window(10, 20, 52, 60))
 
