@@ -50,7 +50,7 @@ output = currentdir
 #For lpj longrun
 if args.RF_model == 'lpjml':
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
-    if args.CL_model == 'watch'
+    if args.CL_model == 'watch':
         years = np.arange(1901, 2002)
     else:
         years = np.arange(1901, 2011)
