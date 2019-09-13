@@ -172,6 +172,7 @@ class Impact():
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where(np.logical_and(exposures.value > 0, \
                            exposures[assign_haz] >= 0))[0]
+        self.exp_idx = exp_idx
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 

@@ -335,6 +335,7 @@ class RiverFlood(Hazard):
         """
         self.centroids.set_area_pixel()
         area_centr = self.centroids.area_pixel
+        self.total_area = np.sum(area_centr)
         event_years = np.array([date.fromordinal(self.date[i]).year
                                 for i in range(len(self.date))])
         years = np.unique(event_years)

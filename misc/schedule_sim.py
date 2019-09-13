@@ -36,7 +36,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['flopros']
+PROT_STD = ['0']
 #for LPJ longrun
 SCENARIO = ['rcp26',
             'rcp60']
@@ -79,6 +79,9 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Continent': np.full(l, "", dtype=str),
                             'TotalPeople': np.full(l, np.nan, dtype=float),
                             'FloodedArea': np.full(l, np.nan, dtype=float),
+                            'TotalArea': np.full(l, np.nan, dtype=float),
+                            'AffectedPopArea': np.full(l, np.nan, dtype=float),
+                            'MeanFldDPHAff': np.full(l, np.nan, dtype=float),
                             'Thres0': np.full(l, np.nan, dtype=float),
                             'Thres025': np.full(l, np.nan, dtype=float),
                             'Thres050': np.full(l, np.nan, dtype=float),
@@ -127,7 +130,6 @@ for cnt_ind in range(len(isos)):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=years)
         rf.set_flooded_area()
-        rf.exclude_returnlevel(RF_PATH_FRC)
         for year in range(len(years)):
             print('country_{}_year{}_protstd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
             ini_date = str(years[year]) + '-01-01'
@@ -139,12 +141,15 @@ for cnt_ind in range(len(isos)):
             
             gdpa = ExpPop()
             gdpa.set_countries(countries=country, ref_year=years[year], path = pop_path)
-
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date,fin_date)))
+            affected_ind = imp_fl.exp_idx
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = rf.fla_annual[year]
-            dataDF.iloc[line_counter, 6] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 6] = rf.total_area
+            dataDF.iloc[line_counter, 7] = np.sum(rf.fla_ann_centr[year,affected_ind])
+            dataDF.iloc[line_counter, 8] = np.mean(rf.intensity[year,:].data)
+            dataDF.iloc[line_counter, 9] = imp_fl.at_event[0]
             for t,thres in enumerate(THRESHOLD):
                             
                 rf_thres = copy.copy(rf)
@@ -152,7 +157,7 @@ for cnt_ind in range(len(isos)):
                             
                 imp_thr=Impact()
                 imp_thr.calc(gdpa, if_set, rf_thres.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, t + 7] = imp_thr.at_event[0]
+                dataDF.iloc[line_counter, t + 10] = imp_thr.at_event[0]
             line_counter+=1
     if args.RF_model == 'lpjml':
         dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
