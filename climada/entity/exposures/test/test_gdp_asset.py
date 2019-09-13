@@ -31,9 +31,10 @@ class TestGDP2AssetClass(unittest.TestCase):
         testGDP2A = ga.GDP2Asset()
 
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['OYY'])
+            testGDP2A.set_countries(countries=['OYY'], path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
+            testGDP2A.set_countries(countries=['DEU'], ref_year=2600,
+                                    path=DEMO_GDP2ASSET)
         with self.assertRaises(ValueError):
             testGDP2A.set_countries()
 
@@ -42,9 +43,9 @@ class TestGDP2AssetFunctions(unittest.TestCase):
     """Test LitPop Class methods"""
 
     def test_set_one_country(self):
-        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, DEMO_GDP2ASSET)
+        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
-            ga.GDP2Asset._set_one_country('LIE', 2001, DEMO_GDP2ASSET)
+            ga.GDP2Asset._set_one_country('LIE', 2001, path=DEMO_GDP2ASSET)
 
         self.assertAlmostEqual(exp_test.iloc[0, 2], 9.5206968)
         self.assertAlmostEqual(exp_test.iloc[1, 2], 9.5623634)
@@ -113,9 +114,9 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         coordinates[:, 1] = np.array(exp_test['longitude'])
 
         with self.assertRaises(KeyError):
-            ga._read_GDP(coordinates, ref_year=2600)
+            ga._read_GDP(coordinates, ref_year=2600, path=DEMO_GDP2ASSET)
 
-        testAssets = ga._read_GDP(coordinates, ref_year=2000)
+        testAssets = ga._read_GDP(coordinates, ref_year=2000, path=DEMO_GDP2ASSET)
 
         self.assertAlmostEqual(testAssets[0], 174032107.65846416)
         self.assertAlmostEqual(testAssets[1], 20386409.991937194)

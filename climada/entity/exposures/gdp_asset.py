@@ -96,7 +96,7 @@ class GDP2Asset(Exposures):
                      'transform': ras_trans}
 
     @staticmethod
-    def _set_one_country(countryISO, ref_year, path=DEMO_GDP2ASSET):
+    def _set_one_country(countryISO, ref_year, path=None):
         """ Extract coordinates of selected countries or region
         from NatID grid.
         Parameters:
@@ -144,7 +144,7 @@ class GDP2Asset(Exposures):
         return exp_gdpasset
 
 
-def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
+def _read_GDP(shp_exposures, ref_year, path=None):
     """ Read GDP-values for the selected area and convert it to asset.
         Parameters:
             shp_exposure(2d-array float): coordinates of area

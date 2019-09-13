@@ -21,7 +21,7 @@ Tests on GDP2Asset.
 """
 import unittest
 from climada.entity.exposures import gdp_asset as ga
-
+from climada.util.constants import DEMO_GDP2ASSET
 
 class TestGDP2AssetClassCountries(unittest.TestCase):
     """Unit tests for the GDP2Asset exposure class"""
@@ -30,17 +30,18 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
         testGDP2A = ga.GDP2Asset()
 
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['OYY'])
+            testGDP2A.set_countries(countries=['OYY'], path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
+            testGDP2A.set_countries(countries=['DEU'], ref_year=2600, 
+                                    DEMO_GDP2ASSET)
         with self.assertRaises(ValueError):
             testGDP2A.set_countries()
 
     def test_set_countries(self):
         testGDP2A_DEU = ga.GDP2Asset()
-        testGDP2A_DEU.set_countries(countries=['DEU'])
+        testGDP2A_DEU.set_countries(countries=['DEU'], DEMO_GDP2ASSET)
         testGDP2A_RUS = ga.GDP2Asset()
-        testGDP2A_RUS.set_countries(countries=['RUS'])
+        testGDP2A_RUS.set_countries(countries=['RUS'], DEMO_GDP2ASSET)
         testGDP2A_DEU_BRA = ga.GDP2Asset()
         testGDP2A_DEU_BRA.set_countries(countries=['DEU', 'BRA'])
         self.assertEqual(testGDP2A_DEU.shape[0], 26878)
