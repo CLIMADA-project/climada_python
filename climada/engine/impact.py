@@ -827,11 +827,12 @@ class ImpactFreqCurve():
         self.unit = ''
         self.label = ''
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, log_frequency=False, **kwargs):
         """Plot impact frequency curve.
 
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            log_frequency (boolean): plot logarithmioc exceedance frequency on x-axis
             kwargs (optional): arguments for plot matplotlib function, e.g. color='b'
 
         Returns:
@@ -840,7 +841,12 @@ class ImpactFreqCurve():
         if not axis:
             _, axis = plt.subplots(1, 1)
         axis.set_title(self.label)
-        axis.set_xlabel('Return period (year)')
         axis.set_ylabel('Impact (' + self.unit + ')')
-        axis.plot(self.return_per, self.impact, **kwargs)
+        if log_frequency:
+            axis.set_xlabel('Exceedance frequency (1/year)')
+            axis.set_xscale('log')
+            axis.plot(self.return_per**-1, self.impact, **kwargs)
+        else:
+            axis.set_xlabel('Return period (year)')
+            axis.plot(self.return_per, self.impact, **kwargs)
         return axis
