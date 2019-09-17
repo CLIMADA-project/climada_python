@@ -22,7 +22,7 @@ from climada.engine import Impact
 parser = argparse.ArgumentParser(
     description='run climada for different climate and runoff models')
 parser.add_argument(
-    '--RF_model', type=str, default='H08',
+    '--RF_model', type=int, default='H08',
     help='runoff model')
 parser.add_argument(
     '--CL_model', type=str, default='princeton',
@@ -31,7 +31,7 @@ args = parser.parse_args()
 
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 
-years =  [args.RF_model]
+years = [args.RF_model]
 country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
 regs = country_info['Reg_name'].tolist()
