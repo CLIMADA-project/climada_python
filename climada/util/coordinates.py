@@ -312,12 +312,13 @@ def get_country_code(lat, lon):
         region_id[select] = int(geom[1])
     return region_id
 
-def get_resolution(lat, lon):
+def get_resolution(lat, lon, min_resol=1.0e-8):
     """ Compute resolution of points in lat and lon
 
     Parameters:
         lat (np.array): latitude of points
         lon (np.array): longitude of points
+        min_resol (float, optional): minimum resolution to consider. Default: 1.0e-8.
 
     Returns:
         float
@@ -325,11 +326,11 @@ def get_resolution(lat, lon):
     # ascending lat and lon
     res_lat, res_lon = np.diff(np.sort(lat)), np.diff(np.sort(lon))
     try:
-        res_lat = res_lat[res_lat > 0].min()
+        res_lat = res_lat[res_lat > min_resol].min()
     except ValueError:
         res_lat = 0
     try:
-        res_lon = res_lon[res_lon > 0].min()
+        res_lon = res_lon[res_lon > min_resol].min()
     except ValueError:
         res_lon = 0
     return res_lat, res_lon
