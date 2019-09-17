@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import argparse
 import os
 import sys
@@ -47,29 +46,30 @@ args = parser.parse_args()
 indices = []
 sys.dont_write_bytecode = True
 
+RF_MODEL = numpy.arange(1980,2017)
 
-RF_MODEL = ['ORCHIDEE',
-            'DBH',
-            'H08',
-            'LPJmL',
-            'MPI-HM',
-            'CLM',
-            'PCR-GLOBWB',
-            'WaterGAP',
-            'JULES-TUC',
-            'JULES-UoE',
-            'MATSIRO',
-            'VIC',
-            'VEGAS'
-            #'lpjml'
-            ]
+#RF_MODEL = ['ORCHIDEE',
+#            'DBH',
+#            'H08',
+#            'LPJmL',
+#            'MPI-HM',
+#            'CLM',
+#            'PCR-GLOBWB',
+#            'WaterGAP',
+#            'JULES-TUC',
+#            'JULES-UoE',
+#            'MATSIRO',
+#            'VIC',
+#            'VEGAS'
+#            #'lpjml'
+#            ]
 CL_MODEL = [#'gfdl-esm2m',
             #'hadgem2-es',
             #'ipsl-cm5a-lr',
             #'miroc5'
-            'princeton',
-            'gswp3',
-            'watch',
+            #'princeton',
+            #'gswp3',
+            #'watch',
             'wfdei'
             ]
 

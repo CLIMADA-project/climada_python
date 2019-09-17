@@ -35,7 +35,7 @@ from climada.util.constants import DEMO_GDP2ASSET
 from climada.util.constants import DEF_CRS
 LOGGER = logging.getLogger(__name__)
 
-DEF_HAZ_TYPE = 'RF'
+DEF_HAZ_TYPE = 'TC'
 
 CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
 
@@ -134,7 +134,7 @@ class GDP2Asset(Exposures):
         exp_gdpasset['value'] = assets
         exp_gdpasset['latitude'] = coord[:, 0]
         exp_gdpasset['longitude'] = coord[:, 1]
-        exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = 1#if_rf_info
         exp_gdpasset['region_id'] = reg_id_info
         exp_gdpasset['country_id'] = nat_id_info
         return exp_gdpasset
