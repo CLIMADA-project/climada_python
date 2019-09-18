@@ -36,7 +36,7 @@ country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
 regs = country_info['Reg_name'].tolist()
 conts = country_info['if_RF'].tolist()
-l = len(isos)
+l = len(isos)-2
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
 
@@ -58,9 +58,11 @@ if_set.append(if_TC)
 fail_lc = 0
 line_counter = 0
 basins= ['NI', 'SI', 'EP','WP', 'SP', 'NA']
-test = [0, 175]
-for cnt_ind in range(203, 230):
+skip_cntr = ['KGZ','TJK']
+for cnt_ind in range(len(isos)):
 
+    if isos[cnt_ind] in skip_cntr:
+        continue   
     country = [isos[cnt_ind]]
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
