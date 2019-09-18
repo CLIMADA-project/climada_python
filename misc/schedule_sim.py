@@ -59,7 +59,7 @@ fail_lc = 0
 line_counter = 0
 basins= ['NI', 'SI', 'EP','WP', 'SP', 'NA']
 test = [0, 175]
-for cnt_ind in range(107, 230):
+for cnt_ind in range(202, 230):
 
     country = [isos[cnt_ind]]
     reg = regs[cnt_ind]
@@ -94,7 +94,7 @@ for cnt_ind in range(107, 230):
             if np.sum(imp_TC.at_event) > 0.01:
                 events+=1
             damage += np.sum(imp_TC.at_event)
-            fixDamage += np.sum(imp_TC.at_event)
+            fixDamage += np.sum(imp_TCFix.at_event)
         dataDF.iloc[line_counter, 4] = imp_TC.tot_value
         dataDF.iloc[line_counter, 5] = damage
         dataDF.iloc[line_counter, 6] = fixDamage
