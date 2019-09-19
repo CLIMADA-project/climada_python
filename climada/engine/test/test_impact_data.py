@@ -26,6 +26,7 @@ import climada.engine.impact_data as im_d
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
 EMDAT_TEST_CSV = os.path.join(DATA_FOLDER, 'emdat_testdata_BGD_USA_1970-2017.csv')
+EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.csv')
 
 class TestEmdatImport(unittest.TestCase):
     '''Test import of EM-DAT data (as CSV) for impact data analysis'''
@@ -91,10 +92,10 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertEqual(len(countries), len(impact_emdat.eai_exp))
         self.assertEqual(2, len(impact_emdat.eai_exp))
         self.assertAlmostEqual(555861710000, np.sum(impact_emdat.at_event))
-        self.assertAlmostEqual(0.004545454545454545, np.unique(impact_emdat.frequency)[0])
-        self.assertAlmostEqual(2526644136.363636, impact_emdat.aai_agg)
-        self.assertAlmostEqual(23881363.636363637, impact_emdat.eai_exp[0])
-        self.assertAlmostEqual(2502762772.7272725, impact_emdat.eai_exp[1])
+        self.assertAlmostEqual(0.0208333333333, np.unique(impact_emdat.frequency)[0])
+        self.assertAlmostEqual(11580452291.666666, impact_emdat.aai_agg)
+        self.assertAlmostEqual(109456249.99999999, impact_emdat.eai_exp[0])
+        self.assertAlmostEqual(11470996041.666666, impact_emdat.eai_exp[1])
 
     def test_emdat_to_impact_scale(self):
         """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""    
@@ -111,6 +112,24 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertAlmostEqual(0.14285714, np.unique(impact_emdat.frequency)[0])
         self.assertAlmostEqual(73850951957.43886, np.sum(impact_emdat.at_event))
         self.assertAlmostEqual(10550135993.919838, impact_emdat.aai_agg)
+
+    def test_emdat_to_impact_fakedata(self):
+        """test import TC EM-DAT to Impact() for all countries in CSV"""
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV_FAKE, \
+                                        hazard_type_emdat='Flood')
+        self.assertEqual(6, impact_emdat.event_id.size)
+        self.assertEqual(5, impact_emdat.event_id[-1])
+        self.assertEqual(0, impact_emdat.event_id[0])
+        self.assertIn('2008-0001', impact_emdat.event_name)
+        self.assertEqual('DEU', countries[0])
+        self.assertEqual('CHE', countries[1])
+        self.assertEqual(len(countries), len(impact_emdat.eai_exp))
+        self.assertEqual(2, len(impact_emdat.eai_exp))
+        self.assertAlmostEqual(11000000.0, np.sum(impact_emdat.at_event))
+        self.assertAlmostEqual(0.2, np.unique(impact_emdat.frequency)[0])
+        self.assertAlmostEqual(2200000.0, impact_emdat.aai_agg)
+        self.assertAlmostEqual(200000.0, impact_emdat.eai_exp[0]) # DEU
+        self.assertAlmostEqual(2000000.0, impact_emdat.eai_exp[1]) # CHE
 
 # Execute Tests
 if __name__ == "__main__":

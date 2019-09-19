@@ -466,7 +466,7 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
             exp_name.append(iso_cntry.get(cntry).name)
     return exp_iso, exp_name
 
-def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
+def emdat_df_load(country, hazard_name, emdat_file_csv, year_range=None):
     """function to load EM-DAT data by country, hazard type and year range
 
     Parameters:
@@ -477,7 +477,6 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
         hazard_name = 'Tropical cyclone'
     elif hazard_name == 'DR':
         hazard_name = 'Drought'
-    all_years = np.arange(min(year_range), max(year_range)+1, 1)
     # Read CSV file with raw EMDAT data:
     out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=1)
     if not 'Disaster type' in out.columns:
@@ -500,24 +499,32 @@ def emdat_df_load(country, hazard_name, emdat_file_csv, year_range):
             country = exp_iso[exp_name.index(country)]
         if (country not in exp_iso) or country not in out.ISO.values:
             print('Country ' + country + ' not in EM-DAT for hazard ' + hazard_name)
-            return None, sorted(all_years), country
+            return None, None, country
         out = out[out['ISO'].str.contains(country)]
     out_ = out[out['Disaster subtype'].str.contains(hazard_name)]
     out_ = out_.append(out[out['Disaster type'].str.contains(hazard_name)])
     del out
     # filter by years and return output:
     year_boolean = []
-    for _, disaster_no in enumerate(out_['Disaster No.']):
-        if isinstance(disaster_no, str) and int(disaster_no[0:4]) in all_years:
-            year_boolean.append(True)
-        else:
-            year_boolean.append(False)
-    out_ = out_[year_boolean]
+    if not not year_range: # if year range is given, extract years in range
+        all_years = np.arange(min(year_range), max(year_range)+1, 1)
+        for _, disaster_no in enumerate(out_['Disaster No.']):
+            if isinstance(disaster_no, str) and int(disaster_no[0:4]) in all_years:
+                year_boolean.append(True)
+            else:
+                year_boolean.append(False)
+        out_ = out_[year_boolean]
+    else:
+        years = list()
+        for _, disaster_no in enumerate(out_['Disaster No.']):
+            years.append(int(disaster_no[0:4]))
+        all_years = np.arange(np.unique(years).min(), np.unique(years).max()+1, 1)
+        del years
     out_ = out_[out_['Disaster No.'].str.contains(str())]
     out_ = out_.reset_index(drop=True)
     return out_, sorted(all_years), country
 
-def emdat_impact_yearlysum(countries, hazard_name, emdat_file_csv, year_range, \
+def emdat_impact_yearlysum(countries, hazard_name, emdat_file_csv, year_range=None, \
                          reference_year=0, imp_str="Total damage ('000 US$)"):
     """function to load EM-DAT data and sum impact per year
     Parameters:
@@ -623,7 +630,7 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
         out[imp_str] = out[imp_str]*1e3
     return out
 
-def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], countries=None,\
+def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
                     hazard_type_emdat=None, hazard_type_climada=None, \
                     reference_year=0, imp_str="Total damage ('000 US$)"):
     """function to load EM-DAT data return impact per event
@@ -639,7 +646,7 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
             i.e. 'TC' for tropical cyclone
     Optional parameters:
         year_range (list with 2 integers): start and end year i.e. [1980, 2017]
-            default: 1800 till current year.
+            default: None --> take year range from EM-DAT file
         countries (list of str): country ISO3-codes or names, i.e. ['JAM'].
             Set to None or ['all'] for all countries (default)
 
@@ -737,6 +744,8 @@ def emdat_to_impact(emdat_file_csv, year_range=[1800, datetime.now().year], coun
         impact_instance.at_event = np.array(em_data[imp_str])
     else:
         impact_instance.at_event = np.array(em_data[imp_str + " scaled"])
+    if not year_range:
+        year_range = [em_data['year'].min(), em_data['year'].max()]
     impact_instance.frequency = np.ones(em_data.shape[0])/(1+np.diff(year_range))
     impact_instance.tot_value = 0
     impact_instance.aai_agg = sum(impact_instance.at_event * impact_instance.frequency)
