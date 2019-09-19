@@ -44,7 +44,7 @@ class TestWriteRead(unittest.TestCase):
     def test_write_read_pass(self):
         """ read_ibtracs_netcdf"""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=True)
         tc_track.write_netcdf(DATA_DIR)
 
         tc_read = TCTracks()
