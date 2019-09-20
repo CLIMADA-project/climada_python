@@ -428,6 +428,8 @@ class TCTracks():
         LOGGER.info('Reading %s files.', len(file_tr))
         self.data = list()
         for file in file_tr:
+            if not os.path.splitext(file)[1] == '.nc':
+                continue
             track = xr.open_dataset(file)
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
