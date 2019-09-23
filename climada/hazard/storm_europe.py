@@ -63,13 +63,16 @@ class StormEurope(Hazard):
     """ Intensity threshold for storage in m/s; same as used by WISC SSI
         calculations. """
 
-    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi'})
+    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
     """ Name of the variables that aren't need to compute the impact. """
 
     def __init__(self):
         """ Calls the Hazard init dunder. Sets unit to 'm/s'. """
         Hazard.__init__(self, HAZ_TYPE)
         self.units = 'm/s'
+        self.ssi = np.array([], float)
+        self.ssi_wisc = np.array([], float)
+        self.ssi_full_area = np.array([], float)
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
