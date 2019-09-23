@@ -87,6 +87,8 @@ line_counter = 0
 excl_list = ['ANT','GIB','GLP','GUF','MAC','MCO', 'MYT', 'NRU', 'PCN','PSE', 'REU', 'SCG', 'SJP', 'TKL']
 
 for cnt_ind in range(len(isos)):
+    if isos[cnt_ind] in excl_list:
+        continue
     country = [isos[cnt_ind]]
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
