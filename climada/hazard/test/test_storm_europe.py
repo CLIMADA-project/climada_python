@@ -138,7 +138,9 @@ class TestReader(unittest.TestCase):
             # but the centroid's location that is decisive
         )
         self.assertEqual(storms_prob.size, 60)
-        self.assertTrue(np.allclose((1/storms_prob.frequency).astype(int), 360))
+        self.assertTrue(np.allclose((1/storms_prob.frequency).astype(int), 330))
+        self.assertAlmostEqual(storms.frequency.sum(),
+                               storms_prob.frequency.sum())
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)
         self.assertEqual(storms_prob.centroids.size, 3054)
         self.assertIsInstance(storms_prob.intensity,

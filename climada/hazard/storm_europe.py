@@ -421,12 +421,8 @@ class StormEurope(Hazard):
         new_haz.event_id = base + synth_id
 
         # frequency still based on the historic number of years
-        new_haz.frequency = np.divide(
-            np.ones_like(new_haz.event_id),
-            (last_year(self.date) - first_year(self.date) + 1) # +1 to count years
-        )
-        # correct freqeuncy for more years
-        new_haz.frequency = new_haz.frequency*self.size/new_haz.size
+        new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
+                                      N_PROB_EVENTS)
 
         self.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
