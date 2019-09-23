@@ -814,14 +814,19 @@ class TCTracks():
         # remove repeated dates
         tr_ds.drop_duplicates('time', inplace=True)
         # fill nans of environmental_pressure and radius_max_wind
-        tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
-            nc_data.variables[provider + '_poci']._FillValue] = np.nan
-        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
-            bfill(limit=4).fillna(self._set_penv(basin))
-        tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
-            nc_data.variables[provider + '_rmw']._FillValue] = np.nan
-        tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
-
+        try:
+            tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
+                nc_data.variables[provider + '_poci']._FillValue] = np.nan
+            tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
+                bfill(limit=4).fillna(self._set_penv(basin))
+        except KeyError:
+            pass
+        try:
+            tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
+                nc_data.variables[provider + '_rmw']._FillValue] = np.nan
+            tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
+        except KeyError:
+            pass
         # set time steps
         tr_ds['time_step'] = np.zeros(tr_ds.shape[0])
         for i_time, time in enumerate(tr_ds.time[1:], 1):
