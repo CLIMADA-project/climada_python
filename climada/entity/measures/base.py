@@ -227,9 +227,14 @@ class Measure():
         new_exp = copy.deepcopy(exposures)
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
         to_id = int(self.imp_fun_map[self.imp_fun_map.find('to')+2:])
-        exp_change = np.argwhere(new_exp[INDICATOR_IF+self.haz_type].values == from_id).\
-            reshape(-1)
-        new_exp[INDICATOR_IF+self.haz_type].values[exp_change] = to_id
+        try:
+            exp_change = np.argwhere(new_exp[INDICATOR_IF+self.haz_type].values == from_id).\
+                reshape(-1)
+            new_exp[INDICATOR_IF+self.haz_type].values[exp_change] = to_id
+        except KeyError:
+            exp_change = np.argwhere(new_exp[INDICATOR_IF].values == from_id).\
+                reshape(-1)
+            new_exp[INDICATOR_IF].values[exp_change] = to_id
         return new_exp
 
     def _change_imp_func(self, imp_set):
@@ -295,7 +300,7 @@ class Measure():
     def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
                           new_haz):
         """ Incorporate changes of new elements to previous ones only for the
-        selected exp_region_id. If exp_region_id is -1, all new changes
+        selected exp_region_id. If exp_region_id is 0, all new changes
         will be accepted.
 
         Parameters:
@@ -327,8 +332,11 @@ class Measure():
             new_ifs.get_func()[self.haz_type][key].id = key + IF_ID_FACT
             new_ifs.get_func()[self.haz_type][key + IF_ID_FACT] = \
                 new_ifs.get_func()[self.haz_type][key]
-        new_exp[INDICATOR_IF+self.haz_type] += IF_ID_FACT
-        # collect old impact functions ase well (used by exposures)
+        try:
+            new_exp[INDICATOR_IF+self.haz_type] += IF_ID_FACT
+        except KeyError:
+            new_exp[INDICATOR_IF] += IF_ID_FACT
+        # collect old impact functions as well (used by exposures)
         new_ifs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
 
         # concatenate previous and new exposures
@@ -336,7 +344,10 @@ class Measure():
 
         # put hazard intensities outside region to previous intensities
         exposures.assign_centroids(hazard)
-        centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+        try:
+            centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+        except KeyError:
+            centr = exposures[INDICATOR_CENTR].values[chg_reg]
         centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
         new_haz_inten = new_haz.intensity.tolil()
         new_haz_inten[:, centr] = hazard.intensity[:, centr]
