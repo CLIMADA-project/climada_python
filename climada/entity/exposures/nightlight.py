@@ -70,7 +70,7 @@ BM_FILENAMES = ['BlackMarble_*_A1_geo_gray.tif',
 """Nightlight NASA files which generate the whole earth when put together."""
 
 def check_required_nl_files(bbox, *coords):
-    """ Determines which of the satellite pictures are neccessary for
+    """ Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
     Parameters:
@@ -212,7 +212,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
                 'Climada data directory instead.')
     if np.all(req_files == files_exist):
         LOGGER.debug('All required files already exist. ' +
-                     'No downloads neccessary.')
+                     'No downloads necessary.')
         return None
     try:
         curr_wd = getcwd()
