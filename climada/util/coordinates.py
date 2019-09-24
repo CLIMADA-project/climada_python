@@ -94,7 +94,7 @@ def get_coastlines(bounds=None, resolution=110):
     for row, line in coast_df.iterrows():
         if line.geometry.envelope.intersects(ex_box):
             tot_coast.append(row)
-    if not len(tot_coast):
+    if not tot_coast:
         ex_box = box(bounds[0]-20, bounds[1]-20, bounds[2]+20, bounds[3]+20)
         for row, line in coast_df.iterrows():
             if line.geometry.envelope.intersects(ex_box):
@@ -111,7 +111,7 @@ def convert_wgs_to_utm(lon, lat):
     Return:
         int
     """
-    utm_band = str((math.floor((lon + 180) / 6 ) % 60) + 1)
+    utm_band = str((math.floor((lon + 180) / 6) % 60) + 1)
     if len(utm_band) == 1:
         utm_band = '0'+utm_band
     if lat >= 0:
@@ -138,7 +138,7 @@ def dist_to_coast(coord_lat, lon=None):
         np.array
     """
     if lon is None:
-        if isinstance(coord_lat, gpd.GeoDataFrame) or isinstance(coord_lat, gpd.GeoSeries):
+        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
             if not equal_crs(coord_lat.crs, NE_CRS):
                 LOGGER.error('Input CRS is not %s', str(NE_CRS))
                 raise ValueError
