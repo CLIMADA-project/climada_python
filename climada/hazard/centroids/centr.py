@@ -410,9 +410,10 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon_ne, lat_ne = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.lat.size))
-        self.region_id = get_country_code(lat_ne, lon_ne)
+        self.region_id = get_country_code(ne_geom.geometry[:].y.values,
+                                          ne_geom.geometry[:].x.values)
 
     def set_area_pixel(self, min_resol=1.0e-8, scheduler=None):
         """ Set area_pixel attribute for every pixel or point. area in m*m
@@ -493,9 +494,9 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon, lat = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting dist_coast %s points.', str(self.lat.size))
-        self.dist_coast = dist_to_coast(lat, lon)
+        self.dist_coast = dist_to_coast(ne_geom)
 
     def set_on_land(self, scheduler=None):
         """ Set on_land attribute for every pixel or point
@@ -504,9 +505,9 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon, lat = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-        self.on_land = coord_on_land(lat, lon)
+        self.on_land = coord_on_land(ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
     def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA,
                       min_resol=1.0e-8):
@@ -803,7 +804,7 @@ class Centroids():
                 self.geometry = ddata.map_partitions(apply_point, meta=Point).\
                 compute(scheduler=scheduler)
 
-    def _ne_crs_xy(self, scheduler=None):
+    def _ne_crs_geom(self, scheduler=None):
         """ Return x (lon) and y (lat) in the CRS of Natural Earth
 
         Parameter:
@@ -815,11 +816,10 @@ class Centroids():
         """
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
-        if equal_crs(self.geometry.crs, NE_CRS):
-            return self.lon, self.lat
+        if equal_crs(self.geometry.crs, NE_CRS) and self.geometry.size:
+            return self.geometry
         self.set_geometry_points(scheduler)
-        xy_points = self.geometry.to_crs(NE_CRS)
-        return xy_points.geometry[:].x.values, xy_points.geometry[:].y.values
+        return self.geometry.to_crs(NE_CRS)
 
     def __deepcopy__(self, memo):
         """ Avoid error deep copy in GeoSeries by setting only the crs """

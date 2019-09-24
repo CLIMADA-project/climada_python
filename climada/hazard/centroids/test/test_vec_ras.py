@@ -172,11 +172,12 @@ class TestVector(unittest.TestCase):
         centr.set_area_pixel()
         self.assertEqual(centr.geometry.size, centr.lat.size)
 
-    def test_ne_crs_xy_pass(self):
-        """ Test _ne_crs_xy """
+    def test_ne_crs_geom_pass(self):
+        """ Test _ne_crs_geom """
         centr = Centroids()
         centr.lat, centr.lon, centr.geometry = self.data_vector()
-        lon, lat = centr._ne_crs_xy()
+        xy_vec = centr._ne_crs_geom()
+        lon, lat = xy_vec.geometry[:].x.values, xy_vec.geometry[:].y.values
         self.assertAlmostEqual(4.51072194, lon[0])
         self.assertAlmostEqual(0.00011838, lat[0])
         self.assertAlmostEqual(4.5107354, lon[-1])
@@ -188,8 +189,8 @@ class TestVector(unittest.TestCase):
         centr.lat, centr.lon, centr.geometry = self.data_vector()
         centr.geometry.crs = {'init':'epsg:4326'}
         centr.set_dist_coast()
-        self.assertAlmostEqual(5.798819757520 * 1000, centr.dist_coast[1])
-        self.assertAlmostEqual(166.3650542203 * 1000, centr.dist_coast[-2])
+        self.assertAlmostEqual(2594.2070842031694, centr.dist_coast[1])
+        self.assertAlmostEqual(166295.87602398323, centr.dist_coast[-2])
 
     def test_region_id_pass(self):
         """ Test set_region_id """
@@ -401,13 +402,14 @@ class TestRaster(unittest.TestCase):
         self.assertEqual(centr_ras.meta['width'], 50)
         self.assertEqual(inten_ras.shape, (1, 60*50))
 
-    def test_ne_crs_xy_pass(self):
-        """ Test _ne_crs_xy """
+    def test_ne_crs_geom_pass(self):
+        """ Test _ne_crs_geom """
         centr_ras = Centroids()
         centr_ras.set_raster_file(HAZ_DEMO_FL, window= Window(0, 0, 50, 60))
         centr_ras.meta['crs'] = {'init':'epsg:32632'}
 
-        x_vec, y_vec = centr_ras._ne_crs_xy()
+        xy_vec = centr_ras._ne_crs_geom()
+        x_vec, y_vec = xy_vec.geometry[:].x.values, xy_vec.geometry[:].y.values
         self.assertAlmostEqual(4.51063496489, x_vec[0])
         self.assertAlmostEqual(9.40153761711e-05, y_vec[0])
         self.assertAlmostEqual(4.51063891581, x_vec[-1])
