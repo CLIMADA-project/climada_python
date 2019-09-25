@@ -536,13 +536,13 @@ class Impact():
         self.unit = imp_df.unit[0]
         self.tot_value = imp_df.tot_value[0]
         self.aai_agg = imp_df.aai_agg[0]
-        self.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)]
+        self.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
         num_ev = self.event_id.size
-        self.event_name = imp_df.event_name[:num_ev]
-        self.date = imp_df.event_date[:num_ev]
-        self.at_event = imp_df.at_event[:num_ev]
-        self.frequency = imp_df.event_frequency[:num_ev]
-        self.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)]
+        self.event_name = imp_df.event_name[:num_ev].values.tolist()
+        self.date = imp_df.event_date[:num_ev].values
+        self.at_event = imp_df.at_event[:num_ev].values
+        self.frequency = imp_df.event_frequency[:num_ev].values
+        self.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
         num_exp = self.eai_exp.size
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
@@ -827,11 +827,12 @@ class ImpactFreqCurve():
         self.unit = ''
         self.label = ''
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, log_frequency=False, **kwargs):
         """Plot impact frequency curve.
 
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            log_frequency (boolean): plot logarithmioc exceedance frequency on x-axis
             kwargs (optional): arguments for plot matplotlib function, e.g. color='b'
 
         Returns:
@@ -840,7 +841,12 @@ class ImpactFreqCurve():
         if not axis:
             _, axis = plt.subplots(1, 1)
         axis.set_title(self.label)
-        axis.set_xlabel('Return period (year)')
         axis.set_ylabel('Impact (' + self.unit + ')')
-        axis.plot(self.return_per, self.impact, **kwargs)
+        if log_frequency:
+            axis.set_xlabel('Exceedance frequency (1/year)')
+            axis.set_xscale('log')
+            axis.plot(self.return_per**-1, self.impact, **kwargs)
+        else:
+            axis.set_xlabel('Return period (year)')
+            axis.plot(self.return_per, self.impact, **kwargs)
         return axis

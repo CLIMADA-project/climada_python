@@ -19,12 +19,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Centroids class.
 """
 
+import ast
 import os
 import shutil
 import copy
 import logging
 import numpy as np
 from scipy import sparse
+import h5py
 import pandas as pd
 from rasterio import Affine
 from rasterio.warp import Resampling, reproject
@@ -65,10 +67,10 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
 TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
 """ Path of elevation file written in set_elevation """
 
-DEM_NODATA = -999
+DEM_NODATA = -9999
 """ Value to use for no data values in DEM, i.e see points """
 
-MAX_DEM_TILES_DOWN = 200
+MAX_DEM_TILES_DOWN = 300
 """ Maximum DEM tiles to dowload """
 
 LOGGER = logging.getLogger(__name__)
@@ -116,7 +118,7 @@ class Centroids():
     def check(self):
         """ Check that either raster meta attribute is set or points lat, lon
         and geometry.crs. Check attributes sizes """
-        n_centr = self.lat.size
+        n_centr = self.size
         for var_name, var_val in self.__dict__.items():
             if var_name in self.vars_check:
                 if var_val.size > 0 and var_val.size != n_centr:
@@ -359,16 +361,23 @@ class Centroids():
             self.meta = {'dtype':'float32', 'width':width, 'height':height,
                          'crs':crs, 'transform':Affine(self.meta['transform'][0], \
                          0.0, left, 0.0, self.meta['transform'][4], top)}
+            self.lat, self.lon = np.array([]), np.array([])
         else:
             LOGGER.debug('Appending points')
             if not equal_crs(centr.geometry.crs, self.geometry.crs):
                 LOGGER.error('Different CRS not accepted.')
                 raise ValueError
-            lat = np.append(self.lat, centr.lat)
-            lon = np.append(self.lon, centr.lon)
-            crs = self.geometry.crs
-            self.__init__()
-            self.set_lat_lon(lat, lon, crs)
+            self.lat = np.append(self.lat, centr.lat)
+            self.lon = np.append(self.lon, centr.lon)
+            self.meta = dict()
+
+        # append all 1-dim variables
+        for (var_name, var_val), centr_val in zip(self.__dict__.items(),
+                                                  centr.__dict__.values()):
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
+            var_name not in ('lat', 'lon'):
+                setattr(self, var_name, np.append(var_val, centr_val). \
+                        astype(var_val.dtype, copy=False))
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
         """ Returns closest centroid and its index to a given point.
@@ -401,14 +410,17 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon_ne, lat_ne = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.lat.size))
-        self.region_id = get_country_code(lat_ne, lon_ne)
+        self.region_id = get_country_code(ne_geom.geometry[:].y.values,
+                                          ne_geom.geometry[:].x.values)
 
-    def set_area_pixel(self, scheduler=None):
+    def set_area_pixel(self, min_resol=1.0e-8, scheduler=None):
         """ Set area_pixel attribute for every pixel or point. area in m*m
 
         Parameter:
+            min_resol (float, optional): if centroids are points, use this minimum
+                resolution in lat and lon. Default: 1.0e-8
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -424,7 +436,7 @@ class Centroids():
                 raise ValueError
             res = self.meta['transform'].a
         else:
-            res = min(get_resolution(self.lat, self.lon))
+            res = min(get_resolution(self.lat, self.lon, min_resol))
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
@@ -435,9 +447,14 @@ class Centroids():
         else:
             self.area_pixel = xy_pixels.to_crs(crs={'proj':'cea'}).area.values
 
-    def set_area_approx(self):
+    def set_area_approx(self, min_resol=1.0e-8):
         """ Computes approximated area_pixel values: differentiated per latitude.
-        area in m*m. Faster than set_area_pixel """
+        area in m*m. Faster than set_area_pixel
+
+        Parameter:
+            min_resol (float, optional): if centroids are points, use this minimum
+                resolution in lat and lon. Default: 1.0e-8
+        """
         if self.meta:
             if hasattr(self.meta['crs'], 'linear_units') and \
             str.lower(self.meta['crs'].linear_units) in ['m', 'metre', 'meter']:
@@ -450,7 +467,7 @@ class Centroids():
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
         else:
-            res_lat, res_lon = get_resolution(self.lat, self.lon)
+            res_lat, res_lon = get_resolution(self.lat, self.lon, min_resol)
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
             if ('units' in self.geometry.crs and \
@@ -477,9 +494,9 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon, lat = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting dist_coast %s points.', str(self.lat.size))
-        self.dist_coast = dist_to_coast(lat, lon)
+        self.dist_coast = dist_to_coast(ne_geom)
 
     def set_on_land(self, scheduler=None):
         """ Set on_land attribute for every pixel or point
@@ -488,11 +505,12 @@ class Centroids():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        lon, lat = self._ne_crs_xy(scheduler)
+        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-        self.on_land = coord_on_land(lat, lon)
+        self.on_land = coord_on_land(ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
-    def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA):
+    def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA,
+                      min_resol=1.0e-8):
         """ Set elevation in meters for every pixel or point.
 
         Parameter:
@@ -501,7 +519,9 @@ class Centroids():
             resampling (rasterio.warp.Resampling, optional): resampling
                 function used for reprojection from DEM to centroids' CRS. Default:
                 average if raster and nearest if points.
-            nodata (int): value to use in DEM no data points, i.e. sea.
+            nodata (int, optional): value to use in DEM no data points, i.e. sea.
+            min_resol (float, optional): if centroids are points, minimum
+                resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
         """
         bounds = np.array(self.total_bounds)
         if self.meta:
@@ -510,8 +530,8 @@ class Centroids():
             ras_trans = self.meta['transform']
         else:
             LOGGER.debug('Setting elevation of points with bounds %s.', str(self.total_bounds))
-            rows, cols, ras_trans = pts_to_raster_meta(bounds,
-                                                       min(get_resolution(self.lat, self.lon)))
+            rows, cols, ras_trans = pts_to_raster_meta(bounds, \
+                min(get_resolution(self.lat, self.lon, min_resol)))
 
         if resampling is None:
             if self.meta:
@@ -581,11 +601,16 @@ class Centroids():
             centr.dist_coast = self.dist_coast[sel_cen]
         return centr
 
-    def set_lat_lon_to_meta(self):
+    def set_lat_lon_to_meta(self, min_resol=1.0e-8):
         """ Compute meta from lat and lon values. To match the existing lat
-        and lon, lat and lon need to start from the upper left corner!!"""
+        and lon, lat and lon need to start from the upper left corner!!
+
+        Parameter:
+            min_resol (float, optional): minimum centroids resolution to use
+                in the raster. Default: 1.0e-8.
+        """
         self.meta = dict()
-        res = min(get_resolution(self.lat, self.lon))
+        res = min(get_resolution(self.lat, self.lon, min_resol))
         rows, cols, ras_trans = pts_to_raster_meta(self.total_bounds, res)
         LOGGER.debug('Resolution points: %s', str(res))
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
@@ -642,6 +667,77 @@ class Centroids():
         """ Removes points in geometry. Useful when centroids is used in
         multiprocessing function """
         self.geometry = GeoSeries(crs=self.geometry.crs)
+
+    def write_hdf5(self, file_data):
+        """ Write centroids attributes into hdf5 format.
+
+        Parameter:
+            file_data (str or h5): if string, path to write data. if h5 object,
+                the datasets will be generated there
+        """
+        if isinstance(file_data, str):
+            LOGGER.info('Writting %s', file_data)
+            data = h5py.File(file_data, 'w')
+        else:
+            data = file_data
+        str_dt = h5py.special_dtype(vlen=str)
+        for centr_name, centr_val in self.__dict__.items():
+            if isinstance(centr_val, np.ndarray):
+                data.create_dataset(centr_name, data=centr_val)
+            if centr_name == 'meta' and centr_val:
+                centr_meta = data.create_group(centr_name)
+                for key, value in centr_val.items():
+                    if key not in ('crs', 'transform'):
+                        if not isinstance(value, str):
+                            centr_meta.create_dataset(key, (1,), data=value, dtype=type(value))
+                        else:
+                            hf_str = centr_meta.create_dataset(key, (1,), dtype=str_dt)
+                            hf_str[0] = value
+                    elif key == 'transform':
+                        centr_meta.create_dataset(key, (6,), data=[value.a, value.b, \
+                            value.c, value.d, value.e, value.f], dtype=float)
+        hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
+        hf_str[0] = str(dict(self.crs))
+
+        if isinstance(file_data, str):
+            data.close()
+
+    def read_hdf5(self, file_data):
+        """ Read centroids attributes from hdf5.
+
+        Parameter:
+            file_data (str or h5): if string, path to read data. if h5 object,
+                the datasets will be read from there
+        """
+        if isinstance(file_data, str):
+            LOGGER.info('Reading %s', file_data)
+            data = h5py.File(file_data, 'r')
+        else:
+            data = file_data
+        self.clear()
+        crs = DEF_CRS
+        if data.get('crs'):
+            crs = ast.literal_eval(data.get('crs')[0])
+        if data.get('lat') and data.get('lat').size:
+            self.set_lat_lon(np.array(data.get('lat')), \
+                np.array(data.get('lon')), crs)
+        elif data.get('latitude') and data.get('latitude').size:
+            self.set_lat_lon(np.array(data.get('latitude')), \
+                np.array(data.get('longitude')), crs)
+        else:
+            centr_meta = data.get('meta')
+            self.meta['crs'] = crs
+            for key, value in centr_meta.items():
+                if key != 'transform':
+                    self.meta[key] = value[0]
+                else:
+                    self.meta[key] = Affine(value[0], value[1], value[2],
+                                            value[3], value[4], value[5])
+        for centr_name in data.keys():
+            if centr_name not in ('crs', 'lat', 'lon', 'meta'):
+                setattr(self, centr_name, np.array(data.get(centr_name)))
+        if isinstance(file_data, str):
+            data.close()
 
     @property
     def crs(self):
@@ -708,7 +804,7 @@ class Centroids():
                 self.geometry = ddata.map_partitions(apply_point, meta=Point).\
                 compute(scheduler=scheduler)
 
-    def _ne_crs_xy(self, scheduler=None):
+    def _ne_crs_geom(self, scheduler=None):
         """ Return x (lon) and y (lat) in the CRS of Natural Earth
 
         Parameter:
@@ -720,11 +816,10 @@ class Centroids():
         """
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
-        if equal_crs(self.geometry.crs, NE_CRS):
-            return self.lon, self.lat
+        if equal_crs(self.geometry.crs, NE_CRS) and self.geometry.size:
+            return self.geometry
         self.set_geometry_points(scheduler)
-        xy_points = self.geometry.to_crs(NE_CRS)
-        return xy_points.geometry[:].x.values, xy_points.geometry[:].y.values
+        return self.geometry.to_crs(NE_CRS)
 
     def __deepcopy__(self, memo):
         """ Avoid error deep copy in GeoSeries by setting only the crs """

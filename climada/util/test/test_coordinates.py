@@ -36,7 +36,7 @@ from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
 read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
-get_country_code
+get_country_code, convert_wgs_to_utm
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -111,26 +111,23 @@ class TestFunc(unittest.TestCase):
     def test_get_coastlines_all_pass(self):
         '''Check get_coastlines function over whole earth'''
         coast = get_coastlines(resolution=110)
-        self.assertEqual((5128, 2), coast.shape)
-
-        self.assertEqual(-78.59566741324154, coast[0][0])
-        self.assertEqual(73.60000000000001, coast[-1][0])
-
-        self.assertEqual(-163.7128956777287, coast[0][1])
-        self.assertEqual(-106.6, coast[-1][1])
+        tot_bounds = coast.total_bounds
+        self.assertEqual((134, 1), coast.shape)
+        self.assertAlmostEqual(tot_bounds[0], -180)
+        self.assertAlmostEqual(tot_bounds[1], -85.60903777)
+        self.assertAlmostEqual(tot_bounds[2], 180.00000044)
+        self.assertAlmostEqual(tot_bounds[3], 83.64513)
 
     def test_get_coastlines_pass(self):
         '''Check get_coastlines function in defined extent'''
-        extent = (-100, 95, -55, 35)
-        coast = get_coastlines(extent, resolution=110)
-
-        for lat_val, lon_val in coast:
-            if lon_val < extent[0] or lon_val > extent[1]:
-                self.assertTrue(False)
-            if lat_val < extent[2] or lat_val > extent[3]:
-                self.assertTrue(False)
-
-        self.assertEqual((1234, 2), coast.shape)
+        bounds = (-100, -55, -20, 35)
+        coast = get_coastlines(bounds, resolution=110)
+        ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
+        self.assertEqual(coast.shape[0], 14)
+        self.assertTrue(coast.total_bounds[2] < 0)
+        for row, line in coast.iterrows():
+            if not ex_box.intersects(line.geometry):
+                self.assertEqual(1, 0)
 
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
@@ -184,13 +181,12 @@ class TestFunc(unittest.TestCase):
         self.assertTrue(res[2])
 
     def test_dist_to_coast(self):
-        point = (13.208333333333329, -59.625000000000014)
-        res = dist_to_coast(point)
-        self.assertAlmostEqual(5.7988200982894105*1000, res[0])
+        """ Test point in coast and point not in coast """
+        res = dist_to_coast(13.208333333333329, -59.625000000000014)
+        self.assertAlmostEqual(2594.2071059573445, res[0])
 
-        point = (13.958333333333343, -58.125)
-        res = dist_to_coast(point)
-        self.assertAlmostEqual(166.36505441711506*1000, res[0])
+        res = dist_to_coast(-12.497529, -58.849505)
+        self.assertAlmostEqual(1382985.2459744606, res[0])
 
     def test_get_country_geometries_country_pass(self):
         """ get_country_geometries with selected countries. issues with the
@@ -276,8 +272,8 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(ras_trans[2], xmin - res/2)
         self.assertEqual(ras_trans[5], ymax + res/2)
         self.assertTrue(ymin >= ymax + res/2 - rows*res)
-        self.assertTrue(xmax <= xmin - res/2 + cols*res)        
-        
+        self.assertTrue(xmax <= xmin - res/2 + cols*res)
+
     def test_read_vector_pass(self):
         """ Test one columns data """
         shp_file = shapereader.natural_earth(resolution='110m', \
@@ -413,6 +409,16 @@ class TestFunc(unittest.TestCase):
 
         self.assertEqual(np.count_nonzero(region_id), 6)
         self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
+
+    def test_convert_wgs_to_utm_pass(self):
+        """ Test convert_wgs_to_utm """
+        lat, lon = 17.346597, -62.768669
+        epsg = convert_wgs_to_utm(lon, lat)
+        self.assertEqual(epsg, 32620)
+
+        lat, lon = 41.522410, 1.891026
+        epsg = convert_wgs_to_utm(lon, lat)
+        self.assertEqual(epsg, 32631)
 
 # Execute Tests
 if __name__ == "__main__":

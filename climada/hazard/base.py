@@ -21,7 +21,6 @@ Define Hazard.
 
 __all__ = ['Hazard']
 
-import ast
 import copy
 import itertools
 import logging
@@ -45,7 +44,6 @@ import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
-from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -575,7 +573,7 @@ class Hazard():
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year - \
                                     dt.datetime.fromordinal(self.date.min()).year)+1
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year - \
-                                    dt.datetime.fromordinal(haz.date.min()).year)+1                      
+                                    dt.datetime.fromordinal(haz.date.min()).year)+1
             haz.frequency = haz.frequency*year_span_old/year_span_new
 
         return haz
@@ -927,17 +925,11 @@ class Hazard():
             file_name (str): file name to write, with h5 format
         """
         LOGGER.info('Writting %s', file_name)
-        self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
-                hf_centr = hf_data.create_group(var_name)
-                for centr_name, centr_val in var_val.__dict__.items():
-                    if isinstance(centr_val, np.ndarray):
-                        hf_centr.create_dataset(centr_name, data=centr_val)
-                hf_str = hf_centr.create_dataset('crs', (1,), dtype=str_dt)
-                hf_str[0] = str(dict(var_val.crs))
+                self.centroids.write_hdf5(hf_data.create_group(var_name))
             elif var_name == 'tag':
                 hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
                 hf_str[0] = var_val.haz_type
@@ -973,19 +965,7 @@ class Hazard():
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
-                hf_centr = hf_data.get(var_name)
-                crs = DEF_CRS
-                if hf_centr.get('crs'):
-                    crs = ast.literal_eval(hf_centr.get('crs')[0])
-                if hf_centr.get('lat'):
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')), \
-                        np.array(hf_centr.get('lon')), crs)
-                else:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')), \
-                        np.array(hf_centr.get('longitude')), crs)
-                for centr_name in hf_centr.keys():
-                    if centr_name not in ('crs', 'lat', 'lon'):
-                        setattr(self.centroids, centr_name, np.array(hf_centr.get(centr_name)))
+                self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
                 self.tag.haz_type = hf_data.get('haz_type')[0]
                 self.tag.file_name = hf_data.get('file_name')[0]

@@ -1,0 +1,7 @@
+Start date,End date,Country,ISO,Location,Latitude,Longitude,Magnitude value,Magnitude scale,Disaster type,Disaster subtype,Associated disaster,Associated disaster2,Total deaths,Total affected,Total damage ('000 US$),Insured losses ('000 US$),Disaster name,Disaster No.
+15.01.07,25.01.07,Switzerland,CHE,Zurich,47.37,8.54,1,Km2,Flood,Riverine flood,--,--,0,0,2000,0,FakeFlood1,2007-0001
+15.01.08,26.01.08,Switzerland,CHE,Zurich,47.37,8.54,1,Km2,Flood,Riverine flood,--,--,0,0,2000,0,FakeFlood2,2008-0001
+15.01.09,26.01.09,Switzerland,CHE,Zurich,47.37,8.54,1,Km2,Flood,Riverine flood,--,--,0,0,2000,0,FakeFlood3,2009-0001
+15.01.10,27.01.10,Switzerland,CHE,Zurich,47.37,8.54,1,Km2,Flood,Riverine flood,--,--,0,0,2000,0,FakeFlood4,2010-0001
+15.01.11,28.01.11,Switzerland,CHE,Zurich,47.37,8.54,1,Km2,Flood,Riverine flood,--,--,0,0,2000,0,FakeFlood5,2011-0001
+15.01.11,28.01.11,Germany,DEU,Konstanz,22,22,2,Km2,Flood,Riverine flood,--,--,0,0,1000,0,FakeFlood5,2011-0001

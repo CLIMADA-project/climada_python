@@ -22,13 +22,12 @@ import os
 import copy
 import logging
 from multiprocessing import cpu_count
+import math
 import numpy as np
 from cartopy.io import shapereader
 import shapely.vectorized
 import shapely.ops
-from shapely.geometry import Polygon, MultiPolygon, Point
-from sklearn.neighbors import BallTree
-import fiona
+from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
@@ -40,7 +39,6 @@ from rasterio.features import rasterize
 import dask.dataframe as dd
 import pandas as pd
 
-from climada.util.constants import EARTH_RADIUS_KM
 from climada.util.constants import DEF_CRS
 
 pd.options.mode.chained_assignment = None
@@ -72,62 +70,85 @@ def grid_is_regular(coord):
         regular = True
     return regular, count_lat[0], count_lon[0]
 
-def get_coastlines(extent=None, resolution=110):
-    """Get latitudes and longitudes of the coast lines inside extent. All
-    earth if no extent.
+def get_coastlines(bounds=None, resolution=110):
+    """ Get Polygones of coast intersecting given bounds
 
-    Parameters:
-        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
+    Parameter:
+        bounds (tuple): min_lon, min_lat, max_lon, max_lat in EPSG:4326
         resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
             110m, i.e. 1:110.000.000
 
     Returns:
-        np.array (lat, lon coastlines)
+        GeoDataFrame
     """
     resolution = nat_earth_resolution(resolution)
     shp_file = shapereader.natural_earth(resolution=resolution,
                                          category='physical',
                                          name='coastline')
-    with fiona.open(shp_file) as shp:
-        coast_lon, coast_lat = [], []
-        for line in shp:
-            tup_lon, tup_lat = zip(*line['geometry']['coordinates'])
-            coast_lon += list(tup_lon)
-            coast_lat += list(tup_lat)
-        coast = np.array([coast_lat, coast_lon]).transpose()
+    coast_df = gpd.read_file(shp_file)
+    coast_df.crs = NE_CRS
+    if bounds is None:
+        return coast_df[['geometry']]
+    ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
+    tot_coast = list()
+    for row, line in coast_df.iterrows():
+        if line.geometry.envelope.intersects(ex_box):
+            tot_coast.append(row)
+    if not tot_coast:
+        ex_box = box(bounds[0]-20, bounds[1]-20, bounds[2]+20, bounds[3]+20)
+        for row, line in coast_df.iterrows():
+            if line.geometry.envelope.intersects(ex_box):
+                tot_coast.append(row)
+    return coast_df.iloc[tot_coast][['geometry']]
 
-        if extent is None:
-            return coast
+def convert_wgs_to_utm(lon, lat):
+    """ Get EPSG code of UTM projection for input point in EPSG 4326
 
-        in_lon = np.logical_and(coast[:, 1] >= extent[0], coast[:, 1] <= extent[1])
-        in_lat = np.logical_and(coast[:, 0] >= extent[2], coast[:, 0] <= extent[3])
-        return coast[np.logical_and(in_lon, in_lat)].reshape(-1, 2)
+    Parameter:
+        lon (float): longitude point in EPSG 4326
+        lat (float): latitude of point (lat, lon) in EPSG 4326
+
+    Return:
+        int
+    """
+    utm_band = str((math.floor((lon + 180) / 6) % 60) + 1)
+    if len(utm_band) == 1:
+        utm_band = '0'+utm_band
+    if lat >= 0:
+        epsg_code = '326' + utm_band
+    else:
+        epsg_code = '327' + utm_band
+    return int(epsg_code)
 
 def dist_to_coast(coord_lat, lon=None):
     """ Comput distance to coast from input points in meters.
 
     Parameters:
-        coord_lat (np.array or tuple or float):
+        coord_lat (GeoDataFrame or np.array or float):
+            - GeoDataFrame with geometry column in epsg:4326
             - np.array with two columns, first for latitude of each point and
                 second with longitude in epsg:4326
             - np.array with one dimension containing latitudes in epsg:4326
-            - tuple with first value latitude, second longitude
-            - float with a latitude value
+            - float with a latitude value in epsg:4326
         lon (np.array or float, optional):
-            - np.array with one dimension containing longitudes
-            - float with a longitude value
+            - np.array with one dimension containing longitudes in epsg:4326
+            - float with a longitude value in epsg:4326
 
     Returns:
         np.array
     """
     if lon is None:
-        if isinstance(coord_lat, tuple):
-            coord = np.array([[coord_lat[0], coord_lat[1]]])
+        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
+            if not equal_crs(coord_lat.crs, NE_CRS):
+                LOGGER.error('Input CRS is not %s', str(NE_CRS))
+                raise ValueError
+            geom = coord_lat
         elif isinstance(coord_lat, np.ndarray):
             if coord_lat.shape[1] != 2:
                 LOGGER.error('Missing longitude values.')
                 raise ValueError
-            coord = coord_lat
+            geom = gpd.GeoDataFrame(geometry=list(map(Point, coord_lat[:, 1], coord_lat[:, 0])),
+                                    crs=NE_CRS)
         else:
             LOGGER.error('Missing longitude values.')
             raise ValueError
@@ -136,25 +157,19 @@ def dist_to_coast(coord_lat, lon=None):
             LOGGER.error('Wrong input coordinates size: %s != %s',
                          coord_lat.size, lon.size)
             raise ValueError
-        coord = np.empty((lon.size, 2))
-        coord[:, 0] = coord_lat
-        coord[:, 1] = lon
+        geom = gpd.GeoDataFrame(geometry=list(map(Point, lon, coord_lat)),
+                                crs=NE_CRS)
     elif isinstance(lon, float):
         if not isinstance(coord_lat, float):
             LOGGER.error('Wrong input coordinates values.')
             raise ValueError
-        coord = np.array([[coord_lat, lon]])
+        geom = gpd.GeoDataFrame(geometry=list(map(Point, [lon], [coord_lat])),
+                                crs=NE_CRS)
 
-    marg = 10
-    lat = coord[:, 0]
-    lon = coord[:, 1]
-    coast = get_coastlines((np.min(lon) - marg, np.max(lon) + marg,
-                            np.min(lat) - marg, np.max(lat) + marg), 10)
-
-    tree = BallTree(np.radians(coast), metric='haversine')
-    dist_coast, _ = tree.query(np.radians(coord), k=1, return_distance=True,
-                               dualtree=True, breadth_first=False)
-    return dist_coast.reshape(-1,) * EARTH_RADIUS_KM * 1000
+    to_crs = from_epsg(convert_wgs_to_utm(geom.geometry.iloc[0].x, geom.geometry.iloc[0].y))
+    coast = get_coastlines(geom.total_bounds, 10)
+    coast = coast.to_crs(to_crs).unary_union
+    return geom.to_crs(to_crs).distance(coast).values
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
@@ -312,12 +327,13 @@ def get_country_code(lat, lon):
         region_id[select] = int(geom[1])
     return region_id
 
-def get_resolution(lat, lon):
+def get_resolution(lat, lon, min_resol=1.0e-8):
     """ Compute resolution of points in lat and lon
 
     Parameters:
         lat (np.array): latitude of points
         lon (np.array): longitude of points
+        min_resol (float, optional): minimum resolution to consider. Default: 1.0e-8.
 
     Returns:
         float
@@ -325,11 +341,11 @@ def get_resolution(lat, lon):
     # ascending lat and lon
     res_lat, res_lon = np.diff(np.sort(lat)), np.diff(np.sort(lon))
     try:
-        res_lat = res_lat[res_lat > 0].min()
+        res_lat = res_lat[res_lat > min_resol].min()
     except ValueError:
         res_lat = 0
     try:
-        res_lon = res_lon[res_lon > 0].min()
+        res_lon = res_lon[res_lon > min_resol].min()
     except ValueError:
         res_lon = 0
     return res_lat, res_lon

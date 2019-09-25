@@ -63,13 +63,16 @@ class StormEurope(Hazard):
     """ Intensity threshold for storage in m/s; same as used by WISC SSI
         calculations. """
 
-    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi'})
+    vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
     """ Name of the variables that aren't need to compute the impact. """
 
     def __init__(self):
         """ Calls the Hazard init dunder. Sets unit to 'm/s'. """
         Hazard.__init__(self, HAZ_TYPE)
         self.units = 'm/s'
+        self.ssi = np.array([], float)
+        self.ssi_wisc = np.array([], float)
+        self.ssi_full_area = np.array([], float)
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
@@ -421,12 +424,8 @@ class StormEurope(Hazard):
         new_haz.event_id = base + synth_id
 
         # frequency still based on the historic number of years
-        new_haz.frequency = np.divide(
-            np.ones_like(new_haz.event_id),
-            (last_year(self.date) - first_year(self.date) + 1) # +1 to count years
-        )
-        # correct freqeuncy for more years
-        new_haz.frequency = new_haz.frequency*self.size/new_haz.size
+        new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
+                                      N_PROB_EVENTS)
 
         self.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',

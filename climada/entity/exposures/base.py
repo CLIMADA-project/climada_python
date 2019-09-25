@@ -88,7 +88,7 @@ class Exposures(GeoDataFrame):
         meta (dict): dictionary containing corresponding raster properties (if any):
             width, height, crs and transform must be present at least (transform needs
             to contain upper left corner!). Exposures might not contain all the points
-            of the corresponding raster.
+            of the corresponding raster. Not used in internal computations.
         deductible (pd.Series, optional): deductible value for each exposure
         cover (pd.Series, optional): cover value for each exposure
         category_id (pd.Series, optional): category id for each exposure
