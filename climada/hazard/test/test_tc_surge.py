@@ -134,7 +134,7 @@ class TestModel(unittest.TestCase):
         decay = np.ones(10)
         decay[np.logical_or(elevation <= 0, elevation == DEM_NODATA)] = 0
         inten_surge = sparse.csr_matrix(np.arange(0, 20).reshape(2, 10))
-        inten_out = _substract_sparse_surge(inten_surge, elevation, decay)
+        inten_out = _substract_sparse_surge(inten_surge, elevation, decay, 0)
 
         # no modification where no surge
         self.assertEqual(inten_out[0, 0], 0)
@@ -149,12 +149,32 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(inten_out[0, -1], max(inten_surge[0, -1]-elevation[-1]-decay[-1], 0))
         self.assertAlmostEqual(inten_out[1, -1], max(inten_surge[1, -1]-elevation[-1]-decay[-1], 0))
 
+    def test_substract_sparse_SLR_pass(self):
+        """ Test _substract_sparse_surge with add_sea_level_rise>0 """
+        add_sea_level_rise = np.random.randint(3)+1
+        elevation = np.array([DEM_NODATA, DEM_NODATA, -1, 1, 2, -3, 5, 10, 15, 20])
+        decay = np.ones(10)
+        decay[np.logical_or(elevation <= 0, elevation == DEM_NODATA)] = 0
+        inten_surge = sparse.csr_matrix(np.arange(0, 20).reshape(2, 10))
+        inten_out = _substract_sparse_surge(inten_surge, elevation, decay, add_sea_level_rise)
+
+        # no modification where no surge
+        self.assertEqual(inten_out[0, 0], 0)
+        # modification
+        self.assertAlmostEqual(inten_out[0, 3], inten_surge[0, 3]-elevation[3]-decay[3]+add_sea_level_rise)
+        self.assertAlmostEqual(inten_out[1, 3], inten_surge[1, 3]-elevation[3]-decay[3]+add_sea_level_rise)
+        self.assertAlmostEqual(inten_out[0, 4], inten_surge[0, 4]-elevation[4]-decay[4]+add_sea_level_rise)
+        self.assertAlmostEqual(inten_out[1, 4], inten_surge[1, 4]-elevation[4]-decay[4]+add_sea_level_rise)
+        self.assertAlmostEqual(inten_out[0, -1], max(inten_surge[0, -1]-elevation[-1]-decay[-1]+add_sea_level_rise, 0))
+        self.assertAlmostEqual(inten_out[1, -1], max(inten_surge[1, -1]-elevation[-1]-decay[-1]+add_sea_level_rise, 0))
+
+
     def test_decay_no_fract_pass(self):
         """ Test _surge_decay with set_fraction False """
         inten_surge = sparse.csr_matrix([np.linspace(0, 20, self.CENTR_BANG.size),
                                          np.linspace(0, 5, self.CENTR_BANG.size)])
         inten, fract = _surge_decay(inten_surge, self.CENTR_BANG, 'SRTM3', set_fraction=False,
-                                    min_resol=1.0e-8)
+                                    min_resol=1.0e-8, add_sea_level_rise=0)
 
         self.assertEqual(inten_surge.shape, inten.shape)
         self.assertEqual(inten_surge.shape, fract.shape)
@@ -180,7 +200,7 @@ class TestModel(unittest.TestCase):
         inten_surge = sparse.csr_matrix([np.linspace(0, 20, self.CENTR_BANG.size),
                                          np.linspace(0, 5, self.CENTR_BANG.size)])
         inten, fract = _surge_decay(inten_surge, self.CENTR_BANG, 'SRTM3', set_fraction=True,
-                                    min_resol=1.0e-8)
+                                    min_resol=1.0e-8, add_sea_level_rise=0)
 
         self.assertEqual(inten_surge.shape, inten.shape)
         self.assertEqual(inten_surge.shape, fract.shape)

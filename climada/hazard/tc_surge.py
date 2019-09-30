@@ -61,7 +61,8 @@ class TCSurge(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_from_winds(self, tc_wind, dist_coast_decay=True, dem_product='SRTM3',
-                       min_centr_resol=1.0e-8, as_pixel=None, scheduler=None):
+                       min_centr_resol=1.0e-8, as_pixel=None, scheduler=None,
+                       add_sea_level_rise=0):
         """ Compute tropical cyclone surge from input winds.
 
         Parameters:
@@ -78,6 +79,10 @@ class TCSurge(Hazard):
                 is present, False otherwise.
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
+            add_sea_level_rise (float, optional): sea level rise effect in meters
+                to be added to surge height. Currently only 1 value per computation
+                implemented. TODO: add option to add spatially or temporary 
+                explicit sea level rise values instead of one value for all events.
 
         Raises:
             ValueError
@@ -99,7 +104,8 @@ class TCSurge(Hazard):
 
         # decay surge
         inten_surge, fract_surge = _surge_decay(inten_surge, tc_wind.centroids,
-                                                dem_product, as_pixel, min_centr_resol)
+                                                dem_product, as_pixel, min_centr_resol,
+                                                add_sea_level_rise)
 
         # set other attributes
         self.units = 'm'
@@ -127,7 +133,8 @@ def _wind_to_surge(inten_wind):
     inten_surge.data = 0.1023*np.maximum(inten_wind.data-26.8224, 0)+1.8288
     return inten_surge
 
-def _surge_decay(inten_surge, centroids, dem_product, set_fraction, min_resol):
+def _surge_decay(inten_surge, centroids, dem_product, set_fraction, min_resol, \
+                 add_sea_level_rise):
     """ Substract DEM height and decay factor from initial surge height and
     computes corresponding fraction matrix.
 
@@ -143,7 +150,8 @@ def _surge_decay(inten_surge, centroids, dem_product, set_fraction, min_resol):
     inland_decay = _calc_inland_decay(centroids)
 
     # substract event by event to avoid to densificate all the matrix
-    inten_surge = _substract_sparse_surge(inten_surge, centroids.elevation, inland_decay)
+    inten_surge = _substract_sparse_surge(inten_surge, centroids.elevation, \
+                                          inland_decay, add_sea_level_rise)
 
     # if set_fraction: fraction is fraction of centroids of DEM on land in
     # given centroids cell. Else fraction is ones where intensity.
@@ -212,13 +220,14 @@ def _calc_inland_decay(centroids):
     inland_decay[centroids.elevation <= 0] = 0
     return inland_decay
 
-def _substract_sparse_surge(inten_surge, centr_elevation, inland_decay):
+def _substract_sparse_surge(inten_surge, centr_elevation, inland_decay, add_sea_level_rise):
     """ Substract elevation on land and decay coefficient to surge
 
     Parameter:
         inten_surge (sparse.csr_matrix): surge matrix
         centr_elevation (np.array): elevation of each centroid
         inland_decay (np.array): decay coefficient for each centroid
+        add_sea_level_rise (float): sea level rise in meters to be added to surge
 
     Returns:
         sparse.csr_matrix
@@ -231,7 +240,9 @@ def _substract_sparse_surge(inten_surge, centr_elevation, inland_decay):
     inten_out = inten_surge.tolil()
     for i_row in range(inten_out.shape[0]):
         row_pos = inten_out.rows[i_row] # only apply decay if there is surge
-        inten_out[i_row, row_pos] += -remove_elev[row_pos] - inland_decay[row_pos]
+        inten_out[i_row, row_pos] += -remove_elev[row_pos] - inland_decay[row_pos] +\
+                                     add_sea_level_rise
+                                     
 
     return inten_out.maximum(0)
 
