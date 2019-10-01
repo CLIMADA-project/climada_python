@@ -62,12 +62,12 @@ country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info.loc[country_info['Reg_name'] == 'EUR', 'ISO'].tolist()
 isosAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'ISO'].tolist()
 isos = isos + isosAus
-reg = country_info.loc[country_info['Reg_name'] == 'EUR', 'Reg_name'].tolist()
+regs = country_info.loc[country_info['Reg_name'] == 'EUR', 'Reg_name'].tolist()
 regAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'Reg_name'].tolist()
-reg = reg+regAus
-cont = country_info.loc[country_info['Reg_name'] == 'EUR', 'if_RF'].tolist()
+regs = regs+regAus
+conts = country_info.loc[country_info['Reg_name'] == 'EUR', 'if_RF'].tolist()
 contAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'if_RF'].tolist()
-cont = cont+contAus
+conts = conts+contAus
 
 
 conts = country_info['if_RF'].tolist()
