@@ -59,8 +59,17 @@ else:
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
-isos = country_info['ISO'].tolist()
-regs = country_info['Reg_name'].tolist()
+isos = country_info.loc[country_info['Reg_name'] == 'EUR', 'ISO'].tolist()
+isosAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'ISO'].tolist()
+isos = isos + isosAus
+reg = country_info.loc[country_info['Reg_name'] == 'EUR', 'Reg_name'].tolist()
+regAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'Reg_name'].tolist()
+reg = reg+regAus
+cont = country_info.loc[country_info['Reg_name'] == 'EUR', 'if_RF'].tolist()
+contAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'if_RF'].tolist()
+cont = cont+contAus
+
+
 conts = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
@@ -84,7 +93,7 @@ if_set = flood_imp_func_set()
 
 fail_lc = 0
 line_counter = 0
-excl_list = ['ANT','GIB','GLP','GUF','MAC','MCO', 'MYT', 'NRU', 'PCN','PSE', 'REU', 'SCG', 'SJP', 'TKL']
+excl_list = ['AIA','ANT','GIB','GLP', 'GGY','GUF','JEY','MAC','MCO', 'MYT', 'NRU', 'PCN','PSE', 'REU', 'SCG', 'SJP', 'TKL','SJM']
 
 for cnt_ind in range(len(isos)):
     if isos[cnt_ind] in excl_list:

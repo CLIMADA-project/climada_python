@@ -148,8 +148,11 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     as err:
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
-        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
-                                               'GDP_YEAR', shp_file)
+#        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
+#                                               'GDP_YEAR', shp_file)
+        close_year, close_val = wb_file_read(cntry_iso, ref_year)
+        LOGGER.warning('retrieving GDPs._using file')
+           
     finally:
         LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
                                                   close_val))
@@ -196,6 +199,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
         except (IOError, requests.exceptions.ConnectionError) as err:
             LOGGER.error('Internet connection failed while downloading ' +
                          'historical income groups.')
+            
             raise err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
@@ -368,3 +372,22 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
     if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
         result = result/1.24
     return ref_year, np.around(result, 1), 1
+
+def wb_file_read(cntry_iso, ref_year):
+    wb_path = os.path.join(SYSTEM_DIR, 'GDP.csv')
+    wb_file = pd.read_csv(wb_path)
+    cntry_data = wb_file.loc[wb_file['Country Code'] == cntry_iso]
+    close_sort = cntry_data.iloc[:,np.abs(np.array(
+        cntry_data.columns[4:].astype(int))-ref_year).argsort()+4].\
+        dropna(axis='columns')
+    close_val = close_sort.iloc[0, 0]
+    close_year = int(close_sort.columns[0])
+    return close_year, close_val
+    
+    
+    
+    
+    
+    
+    
+    
