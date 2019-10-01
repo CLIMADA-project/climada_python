@@ -136,7 +136,7 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
             litPop = LitPop()
-            litPop.set_country(country, fin_mode='pc', res_arcsec=120, ref_year=years[year])
+            litPop.set_country(country, fin_mode='pc', res_arcsec=120, reference_year=years[year])
             litPop['if_RF'] = conts[cnt_ind]
             litPop['centr_RF']= litPopFix['centr_RF']
             imp_fl=Impact()
