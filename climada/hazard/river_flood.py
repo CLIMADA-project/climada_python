@@ -112,7 +112,7 @@ class RiverFlood(Hazard):
                 dest_centroids, isos, natID = RiverFlood._select_exact_area(
                     countries, reg)
                 meta_centroids = copy.copy(dest_centroids)
-                meta_centroids.set_lat_lon_to_meta()
+                #meta_centroids.set_lat_lon_to_meta()
 
                 self.set_raster(files_intensity=[dph_path],
                                 files_fraction=[frc_path], band=bands.tolist(),
@@ -141,21 +141,21 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
-                    self.centroids.set_meta_to_lat_lon()
+                    #self.centroids.set_meta_to_lat_lon()
                 else:
                     cntry_geom = get_land_geometry(countries)
                     self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
-                    self.centroids.set_meta_to_lat_lon()
+                    #self.centroids.set_meta_to_lat_lon()
 
         elif not centroids:
             # centroids as raster
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path],
                             band=bands.tolist())
-            self.centroids.set_meta_to_lat_lon()
+            #self.centroids.set_meta_to_lat_lon()
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
             """TODO: implement case when meta or regulargrid is defined
@@ -300,5 +300,6 @@ class RiverFlood(Hazard):
         lon_coordinates = gridX[natID_pos]
         lat_coordinates = gridY[natID_pos]
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
-        # centroids.set_lat_lon_to_meta()
+        centroids.set_region_id()
+        centroids.set_lat_lon_to_meta()
         return centroids, iso_codes, natID
