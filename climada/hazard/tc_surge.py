@@ -69,7 +69,7 @@ class TCSurge(Hazard):
             tc_wind (TropCyclone): tropical cyclone winds
             dist_coast_decay (bool): implement decay according to distance coast
             dem_product (str): DEM to use: 'SRTM1' (30m) or 'SRTM3' (90m)
-            min_centr_resol (float, optional): minimum centroids resolution to
+            min_centr_resol (float, optional): minimum points centroids resolution to
                 use when interpolating DEM data. Used in get_resolution method.
                 If get_resolution(centroids.lat, centroids.lon) gives a too low
                 number, set this parameter to the right centroids resolution.
@@ -81,7 +81,7 @@ class TCSurge(Hazard):
                 “synchronous” or “processes”
             add_sea_level_rise (float, optional): sea level rise effect in meters
                 to be added to surge height. Currently only 1 value per computation
-                implemented. TODO: add option to add spatially or temporary 
+                implemented. TODO: add option to add spatially or temporary
                 explicit sea level rise values instead of one value for all events.
 
         Raises:
@@ -144,6 +144,13 @@ def _surge_decay(inten_surge, centroids, dem_product, set_fraction, min_resol, \
         dem_product (str): DEM to use: 'SRTM1' (30m) or 'SRTM3' (90m)
         set_fraction (bool, optional): set fraction matrix different to ones.
             Default: True
+        min_resol (float, optional): minimum points centroids resolution to
+            use when interpolating DEM data. Used in get_resolution method.
+            If get_resolution(centroids.lat, centroids.lon) gives a too low
+            number, set this parameter to the right centroids resolution.
+            Default: 1.0e-8.
+        add_sea_level_rise (float): sea level rise in meters to be added to surge
+
     Returns:
         inten_surge (sparse.csr_matrix), fract_surge (sparse.csr_matrix)
     """
@@ -242,7 +249,7 @@ def _substract_sparse_surge(inten_surge, centr_elevation, inland_decay, add_sea_
         row_pos = inten_out.rows[i_row] # only apply decay if there is surge
         inten_out[i_row, row_pos] += -remove_elev[row_pos] - inland_decay[row_pos] +\
                                      add_sea_level_rise
-                                     
+
 
     return inten_out.maximum(0)
 
