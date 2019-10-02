@@ -345,14 +345,14 @@ class Measure():
 
         # put hazard intensities outside region to previous intensities
         if hazard is not new_haz:
-            try:
+            if INDICATOR_CENTR+self.haz_type in exposures.columns:
                 centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
-            except KeyError:
+            elif INDICATOR_CENTR in exposures.columns:
                 centr = exposures[INDICATOR_CENTR].values[chg_reg]
-            except KeyError:
+            else:
                 exposures.assign_centroids(hazard)
                 centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
-    
+
             centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
             new_haz_inten = new_haz.intensity.tolil()
             new_haz_inten[:, centr] = hazard.intensity[:, centr]
