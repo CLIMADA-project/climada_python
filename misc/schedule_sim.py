@@ -70,7 +70,6 @@ contAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'if_RF'].tolist()
 conts = conts+contAus
 
 
-conts = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
