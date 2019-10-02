@@ -23,6 +23,7 @@ __all__ = ['MeasureSet']
 
 import copy
 import logging
+import ast
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -351,8 +352,9 @@ class MeasureSet():
 
                 meas.exposures_set = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['exp_set']][idx][0])
-                meas.exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
-
+                exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
+                if exp_region_id:
+                    meas.exp_region_id = [exp_region_id]
                 meas.risk_transf_attach = data[var_names['var_name']['risk_att']][idx][0]
                 meas.risk_transf_cover = data[var_names['var_name']['risk_cov']][idx][0]
 
@@ -408,9 +410,12 @@ class MeasureSet():
 
                 try:
                     meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
-                    meas.exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
+                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name'] \
+                                                          ['exp_reg']][idx])
                 except KeyError:
                     pass
+                except ValueError:
+                    meas.exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
 
                 meas.mdd_impact = (dfr[var_names['col_name']['mdd_a']][idx],
                                    dfr[var_names['col_name']['mdd_b']][idx])
@@ -459,16 +464,14 @@ class MeasureSet():
                   var_names['col_name']['haz']]
         for icol, head_dat in enumerate(header):
             mead_ws.write(0, icol, head_dat)
-        row_ini = 1
-        for _, haz_dict in self._data.items():
+        for row_ini, (_, haz_dict) in enumerate(self._data.items(), 1):
             for meas_name, meas in haz_dict.items():
                 xls_data = [meas_name, ' '.join(list(map(str, meas.color_rgb))),
                             meas.cost, meas.hazard_inten_imp[0],
                             meas.hazard_inten_imp[1], meas.hazard_freq_cutoff,
                             meas.hazard_set, meas.mdd_impact[0], meas.mdd_impact[1],
                             meas.paa_impact[0], meas.paa_impact[1], meas.imp_fun_map,
-                            meas.exposures_set, meas.exp_region_id, meas.risk_transf_attach,
+                            meas.exposures_set, str(meas.exp_region_id), meas.risk_transf_attach,
                             meas.risk_transf_cover, meas.haz_type]
             write_meas(row_ini, mead_ws, xls_data)
-            row_ini += 1
         meas_wb.close()

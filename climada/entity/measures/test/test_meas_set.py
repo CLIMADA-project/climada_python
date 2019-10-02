@@ -462,7 +462,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_man.hazard_inten_imp, (1, -4))
 
         self.assertEqual(act_man.exposures_set, 'nil')
-        self.assertEqual(act_man.exp_region_id, 0)
+        self.assertEqual(act_man.exp_region_id, [])
 
         self.assertEqual(act_man.mdd_impact, (1, 0))
         self.assertEqual(act_man.paa_impact, (1, 0))
@@ -487,7 +487,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
 
         self.assertEqual(act_buil.exposures_set, 'nil')
-        self.assertEqual(act_buil.exp_region_id, 0)
+        self.assertEqual(act_buil.exp_region_id, [])
 
         self.assertEqual(act_buil.mdd_impact, (0.75, 0))
         self.assertEqual(act_buil.paa_impact, (1, 0))
@@ -522,7 +522,7 @@ class TestWriter(unittest.TestCase):
         act_11.mdd_impact = (1, 2)
         act_11.paa_impact = (1, 3)
         act_11.hazard_inten_imp = (1, 2)
-        act_11.exp_region_id = 2
+        act_11.exp_region_id = [2]
 
         act_2 = Measure()
         act_2.name = 'Anything'

@@ -83,7 +83,7 @@ class Measure():
         self.paa_impact = (1, 0) # parameter a and b
 
         # related to change in region
-        self.exp_region_id = 0
+        self.exp_region_id = []
 
         # risk transfer
         self.risk_transf_attach = 0
@@ -281,9 +281,11 @@ class Measure():
         from climada.engine.impact import Impact
         imp = Impact()
         exp_imp = exposures
-        if self.exp_region_id != 0:
+        if self.exp_region_id:
             # compute impact only in selected region
-            exp_imp = exposures[exposures.region_id == self.exp_region_id]
+            in_reg = np.logical_or.reduce([exposures.region_id.values == reg for reg
+                                           in self.exp_region_id])
+            exp_imp = exposures[in_reg]
             exp_imp = Exposures(exp_imp, crs=exposures.crs)
         imp.calc(exp_imp, if_set, hazard)
 
@@ -300,7 +302,7 @@ class Measure():
     def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
                           new_haz):
         """ Incorporate changes of new elements to previous ones only for the
-        selected exp_region_id. If exp_region_id is 0, all new changes
+        selected exp_region_id. If exp_region_id is [], all new changes
         will be accepted.
 
         Parameters:
@@ -314,17 +316,16 @@ class Measure():
         Returns:
             Exposures, ImpactFuncSet, Hazard
         """
-        if self.exp_region_id == 0:
+        if not self.exp_region_id:
             return new_exp, new_ifs, new_haz
 
         if exposures is new_exp:
             new_exp = copy.deepcopy(exposures)
 
-        if hazard is new_haz:
-            new_haz = copy.deepcopy(hazard)
-
-        chg_reg = np.argwhere(self.exp_region_id == exposures.region_id.values).reshape(-1)
-        no_chg_reg = np.argwhere(self.exp_region_id != exposures.region_id.values).reshape(-1)
+        chg_reg = np.logical_or.reduce([exposures.region_id.values == reg for reg
+                                        in self.exp_region_id])
+        no_chg_reg = np.argwhere(np.logical_not(chg_reg)).reshape(-1)
+        chg_reg = np.argwhere(chg_reg).reshape(-1)
 
         # provide new impact functions ids to changed impact functions
         fun_ids = list(new_ifs.get_func()[self.haz_type].keys())
@@ -343,14 +344,18 @@ class Measure():
         new_exp = pd.concat([exposures.iloc[no_chg_reg], new_exp.iloc[chg_reg]])
 
         # put hazard intensities outside region to previous intensities
-        exposures.assign_centroids(hazard)
-        try:
-            centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
-        except KeyError:
-            centr = exposures[INDICATOR_CENTR].values[chg_reg]
-        centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
-        new_haz_inten = new_haz.intensity.tolil()
-        new_haz_inten[:, centr] = hazard.intensity[:, centr]
-        new_haz.intensity = new_haz_inten.tocsr()
+        if hazard is not new_haz:
+            try:
+                centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+            except KeyError:
+                centr = exposures[INDICATOR_CENTR].values[chg_reg]
+            except KeyError:
+                exposures.assign_centroids(hazard)
+                centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+    
+            centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
+            new_haz_inten = new_haz.intensity.tolil()
+            new_haz_inten[:, centr] = hazard.intensity[:, centr]
+            new_haz.intensity = new_haz_inten.tocsr()
 
         return new_exp, new_ifs, new_haz
