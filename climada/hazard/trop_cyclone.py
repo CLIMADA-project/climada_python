@@ -23,6 +23,8 @@ __all__ = ['TropCyclone']
 
 import itertools
 import logging
+import copy
+import time
 import datetime as dt
 import numpy as np
 from numpy import linalg as LA
@@ -31,11 +33,11 @@ import matplotlib.animation as animation
 from pint import UnitRegistry
 from numba import jit
 from tqdm import tqdm
-import time
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.tc_tracks import TCTracks
+from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT
 from climada.util.interpolation import dist_approx
@@ -68,6 +70,14 @@ class TropCyclone(Hazard):
                  3 Hurrican category 3
                  4 Hurrican category 4
                  5 Hurrican category 5
+        basin (list(str)): basin where every event starts
+            'NA' North Atlantic
+            'EP' Eastern North Pacific
+            'WP' Western North Pacific
+            'NI' North Indian
+            'SI' South Indian
+            'SP' Southern Pacific
+            'SA' South Atlantic
     """
     intensity_thres = 17.5
     """ intensity threshold for storage in m/s """
@@ -79,6 +89,7 @@ class TropCyclone(Hazard):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
+        self.basin = list()
         if pool:
             self.pool = pool
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
@@ -126,6 +137,22 @@ class TropCyclone(Hazard):
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
+
+    def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
+        """ Compute future events for given RCP scenario and year
+        Parameters:
+            ref_year (int): year between 2000 ad 2100. Default: 2050
+            rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
+                60 for RCP 6.0 and 85 for RCP 8.5.
+        Returns:
+            TropCyclone
+        """
+        criterion = get_knutson_criterion()
+        scale = calc_scale_knutson(ref_year, rcp_scenario)
+        haz_cc = self._apply_criterion(criterion, scale)
+        haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
+        'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
+        return haz_cc
 
     @staticmethod
     def video_intensity(track_name, tracks, centroids, file_name=None,
@@ -252,7 +279,36 @@ class TropCyclone(Hazard):
             track.time.dt.day[0]).toordinal()])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
+        new_haz.basin = [track.basin]
         return new_haz
+
+    def _apply_criterion(self, criterion, scale):
+        """ Apply changes defined in criterion with a given scale
+        Parameters:
+            criterion (list(dict)): list of criteria
+            scale (float): scale parameter because of chosen year and RCP
+        Returns:
+            TropCyclone
+        """
+        haz_cc = copy.deepcopy(self)
+        for chg in criterion:
+            # filter criteria
+            select = np.ones(haz_cc.size, bool)
+            for var_name, cri_val in chg['criteria'].items():
+                var_val = getattr(haz_cc, var_name)
+                if isinstance(var_val, list):
+                    var_val = np.array(var_val)
+                tmp_select = np.logical_or.reduce([var_val == val for val in cri_val])
+                select = np.logical_and(select, tmp_select)
+            if chg['function'] == np.multiply:
+                change = 1 + (chg['change'] - 1) * scale
+            elif chg['function'] == np.add:
+                change = chg['change'] * scale
+            if select.any():
+                new_val = getattr(haz_cc, chg['variable'])
+                new_val[select] *= change
+                setattr(haz_cc, chg['variable'], new_val)
+        return haz_cc
 
 def coastal_centr_idx(centroids, lat_max=61):
     """ Compute centroids indices which are inside INLAND_MAX_DIST_KM and
