@@ -199,7 +199,8 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
         countries = list(reader.records())
         geom = [country.geometry for country in countries
                 if (country.attributes['ISO_A3'] in country_names) or
-                (country.attributes['WB_A3'] in country_names)]
+                (country.attributes['WB_A3'] in country_names) or
+                (country.attributes['ADM0_A3'] in country_names)]
         geom = shapely.ops.cascaded_union(geom)
 
     else:
