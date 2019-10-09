@@ -8,7 +8,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import argparse
-from climada.entity.exposures.litpop import LitPop
+from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.flood import IFRiverFlood,flood_imp_func_set, assign_if_simple
 from climada.hazard.flood import RiverFlood
 from climada.hazard.centroids import Centroids
@@ -35,7 +35,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['flopros']
+PROT_STD = ['0', '100', 'flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -53,23 +53,15 @@ if args.RF_model == 'lpjml':
 else:
     flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
     if args.CL_model == 'watch':
-        years = np.arange(1980, 2002)
+        years = np.arange(1971, 2002)
     else:
-        years = np.arange(1980, 2011)
+        years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
-isos = country_info.loc[country_info['Reg_name'] == 'EUR', 'ISO'].tolist()
-isosAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'ISO'].tolist()
-isos = isos + isosAus
-regs = country_info.loc[country_info['Reg_name'] == 'EUR', 'Reg_name'].tolist()
-regAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'Reg_name'].tolist()
-regs = regs+regAus
-conts = country_info.loc[country_info['Reg_name'] == 'EUR', 'if_RF'].tolist()
-contAus = country_info.loc[country_info['Reg_name'] == 'AUS', 'if_RF'].tolist()
-conts = conts+contAus
-
-
+isos = country_info['ISO'].tolist()
+regs = country_info['Reg_name'].tolist()
+conts = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
@@ -79,31 +71,36 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Continent': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
-                            'FloodDepthMean': np.full(l, np.nan, dtype=float),
-                            'FloodedArea': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp': np.full(l, np.nan, dtype=float),
-                            'Impact': np.full(l, np.nan, dtype=float),
-                            'Impact_2y': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2y': np.full(l, np.nan, dtype=float),
-                            'FloodDepthMean2y': np.full(l, np.nan, dtype=float)
+                            'FloodedArea0': np.full(l, np.nan, dtype=float),
+                            'FloodedArea100': np.full(l, np.nan, dtype=float),
+                            'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
+                            'ImpFixExp0': np.full(l, np.nan, dtype=float),
+                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
+                            'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
+                            'Impact_0': np.full(l, np.nan, dtype=float),
+                            'Impact_100': np.full(l, np.nan, dtype=float),
+                            'Impact_Flopros': np.full(l, np.nan, dtype=float),
+                            'FloodVol_0': np.full(l, np.nan, dtype=float),
+                            'FloodVol_100': np.full(l, np.nan, dtype=float),
+                            'FloodVol_Flopros': np.full(l, np.nan, dtype=float),
+                            'Impact_2y_0': np.full(l, np.nan, dtype=float),
+                            'Impact_2y_Flopros': np.full(l, np.nan, dtype=float),
+                            'ImpFix_2y_0': np.full(l, np.nan, dtype=float),
+                            'ImpFix_2y_Flopros': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
 
 fail_lc = 0
 line_counter = 0
-excl_list = ['AIA','ANT','GIB','GLP', 'GGY','GUF','JEY','MAC','MCO', 'MYT', 'NRU', 'PCN','PSE', 'REU', 'SCG', 'SJP', 'TKL','SJM']
 
 for cnt_ind in range(len(isos)):
-    if isos[cnt_ind] in excl_list:
-        continue
     country = [isos[cnt_ind]]
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts[cnt_ind]-1)]
-    litPopFix = LitPop()
-    litPopFix.set_country(country, fin_mode='pc', res_arcsec=120, reference_year=2005)
-    litPopFix['if_RF'] = conts[cnt_ind]
+    gdpaFix = GDP2Asset()
+    gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
 
     save_lc = line_counter
     for pro_std in range(len(PROT_STD)):
@@ -123,46 +120,39 @@ for cnt_ind in range(len(isos)):
         rf2y = copy.copy(rf)
         rf2y.exclude_returnlevel(RF_PATH_FRC)
         rf.set_flooded_area()
+        rf.set_flooded_area()
         for year in range(len(years)):
             print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
-            imp_fix=Impact()
-            imp_fix.calc(litPopFix, if_set, rf.select(date=(ini_date, fin_date)))
-            affected_imp_fix = imp_fix.exp_idx
             dataDF.iloc[line_counter, 0] = years[year]
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
-            litPop = LitPop()
-            litPop.set_country(country, fin_mode='pc', res_arcsec=120, reference_year=years[year])
-            litPop['if_RF'] = conts[cnt_ind]
-            litPop['centr_RF']= litPopFix['centr_RF']
+            gdpa = GDP2Asset()
+            gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
             imp_fl=Impact()
-            imp_fl.calc(litPop, if_set, rf.select(date=(ini_date, fin_date)))
-            affected_ind = imp_fl.exp_idx
-            
+            imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
+            imp_fix=Impact()
+            imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
             if pro_std < 2:
                 imp2y_fl=Impact()
-                imp2y_fl.calc(litPop, if_set, rf2y.select(date=(ini_date,fin_date)))
-                affected_imp2y = imp2y_fl.exp_idx
+                imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
-                imp2y_fix.calc(litPopFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                affected_imp2y_fix = imp2y_fix.exp_idx
-                dataDF.iloc[line_counter, 10 + pro_std] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 11 + pro_std] = imp2y_fix.at_event[0]
-                dataDF.iloc[line_counter, 12] = np.mean(rf2y.intensity[year,:].data)
+                imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
+                dataDF.iloc[line_counter, 17 + pro_std] = imp2y_fl.at_event[0]
+                dataDF.iloc[line_counter, 19 + pro_std] = imp2y_fix.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = imp_fix.tot_value
-            dataDF.iloc[line_counter, 6] = np.mean(rf.intensity[year,:].data)
-            dataDF.iloc[line_counter, 7 + pro_std] = rf.fla_annual[year]
-            dataDF.iloc[line_counter, 8 + pro_std] = imp_fix.at_event[0]
-            dataDF.iloc[line_counter, 9 + pro_std] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 6 + pro_std] = rf.fla_annual[year]
+            dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
+            dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 15 + pro_std] = rf.fv_annual[year,0]
             line_counter+=1
     if args.RF_model == 'lpjml':
         dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     else:
-        dataDF.to_csv('output_{}_{}_litPop.csv'.format(args.RF_model, args.CL_model))
+        dataDF.to_csv('output_{}_{}_fullProt_All_2y.csv'.format(args.RF_model, args.CL_model))
 
 

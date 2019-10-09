@@ -366,6 +366,15 @@ class RiverFlood(Hazard):
             LOGGER.warning('Number of events and slected area exceed ' +
                            'memory capacities, area has not been calculated,' +
                            ' attributes set to None')
+    def set_flood_volume(self):
+        """ Calculates flooded area for hazard. sets yearly flooded area and
+            flooded area per event
+        Raises:
+            MemoryError
+        """
+        self.fv_ann_centr = np.multiply(self.fla_ann_centr,self.intensity.todense())
+        self.fv_annual = np.sum(self.fv_ann_centr, axis=1)
+        
 
     def set_flooded_area_cut(self, coordinates, centr_indices=None):
         """ Calculates flooded area for any window given with coordinates or
