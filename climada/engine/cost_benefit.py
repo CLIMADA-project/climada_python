@@ -31,10 +31,6 @@ from climada.engine.impact import Impact
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_RP = np.array([1, 5, 10, 20, 25, 30, 35, 40, 45, 50, 75, 100, 125, 150, \
-                   175, 200, 250, 300, 400, 500, 1000])
-""" Default return periods used for impact exceedance frequency curve """
-
 DEF_PRESENT_YEAR = 2016
 """ Default present reference year """
 
@@ -220,7 +216,7 @@ class CostBenefit():
         if 'alpha' not in kwargs:
             kwargs['alpha'] = 1.0
         axis = self._plot_list_cost_ben([self], axis, **kwargs)
-        norm_fact, norm_name = self._norm_values(self.tot_climate_risk+0.01)
+        norm_fact, norm_name = _norm_values(self.tot_climate_risk+0.01)
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
         axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
@@ -275,14 +271,16 @@ class CostBenefit():
             val_i = [avert_rp[name][rp_i] for name in names_sort]
             cum_effect = np.cumsum(np.array([0] + val_i))
             for (eff, color) in zip(cum_effect[::-1][:-1], color_sort[::-1]):
-                plt.bar(rp_i+1, eff, color=color, **kwargs)
-            plt.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0))
-        axis.set_xlabel('Return Period')
+                axis.bar(rp_i+1, eff, color=color, **kwargs)
+            axis.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0))
+        axis.set_xlabel('Return Period (%s)' % str(self.future_year))
         axis.set_ylabel('Impact ('+ self.unit + ')')
-        plt.xticks(np.arange(len(return_per))+1, return_per)
+        axis.set_xticks(np.arange(len(return_per))+1)
+        axis.set_xticklabels([str(per) for per in return_per])
         return axis
 
-    def plot_waterfall(self, hazard, entity, haz_future, ent_future,
+    @staticmethod
+    def plot_waterfall(hazard, entity, haz_future, ent_future,
                        risk_func=risk_aai_agg, axis=None, **kwargs):
         """ Plot waterfall graph with given risk metric. Can be called before
         and after calc().
@@ -304,41 +302,35 @@ class CostBenefit():
         if ent_future.exposures.ref_year == entity.exposures.ref_year:
             LOGGER.error('Same reference years for future and present entities.')
             raise ValueError
-        self.present_year = entity.exposures.ref_year
-        self.future_year = ent_future.exposures.ref_year
+        present_year = entity.exposures.ref_year
+        future_year = ent_future.exposures.ref_year
 
-        if not self.imp_meas_present:
-            imp = Impact()
-            imp.calc(entity.exposures, entity.impact_funcs, hazard)
-            curr_risk = risk_func(imp)
-        else:
-            curr_risk = self.imp_meas_present['no measure']['risk']
+        imp = Impact()
+        imp.calc(entity.exposures, entity.impact_funcs, hazard)
+        curr_risk = risk_func(imp)
 
-        if not self.imp_meas_future:
-            imp = Impact()
-            imp.calc(ent_future.exposures, ent_future.impact_funcs, haz_future)
-            fut_risk = risk_func(imp)
-        else:
-            fut_risk = self.imp_meas_future['no measure']['risk']
+        imp = Impact()
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, haz_future)
+        fut_risk = risk_func(imp)
 
         if not axis:
             _, axis = plt.subplots(1, 1)
-        norm_fact, norm_name = self._norm_values(curr_risk)
+        norm_fact, norm_name = _norm_values(curr_risk)
 
         # current situation
-        LOGGER.info('Risk at {:d}: {:.3e}'.format(self.present_year, curr_risk))
+        LOGGER.info('Risk at {:d}: {:.3e}'.format(present_year, curr_risk))
 
         # changing future
         # socio-economic dev
         imp = Impact()
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
         risk_dev = risk_func(imp)
-        LOGGER.info('Risk with development at {:d}: {:.3e}'.format(self.future_year,
+        LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year,
                                                                    risk_dev))
 
         # socioecon + cc
         LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.\
-                    format(self.future_year, fut_risk))
+                    format(future_year, fut_risk))
 
         axis.bar(1, curr_risk/norm_fact, **kwargs)
         axis.text(1, curr_risk/norm_fact, str(int(round(curr_risk/norm_fact))), \
@@ -356,10 +348,11 @@ class CostBenefit():
         axis.text(4, fut_risk/norm_fact, str(int(round(fut_risk/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
-        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
-            'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
-        axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
-        axis.set_title('Risk at {:d} and {:d}'.format(self.present_year, self.future_year))
+        axis.set_xticks(np.arange(4)+1)
+        axis.set_xticklabels(['Risk ' + str(present_year), \
+            'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(future_year)])
+        axis.set_ylabel('Impact (' + imp.unit + ' ' + norm_name + ')')
+        axis.set_title('Risk at {:d} and {:d}'.format(present_year, future_year))
         return axis
 
     def plot_waterfall_accumulated(self, hazard, entity, ent_future,
@@ -420,7 +413,7 @@ class CostBenefit():
         # plot
         if not axis:
             _, axis = plt.subplots(1, 1)
-        norm_fact, norm_name = self._norm_values(curr_risk)
+        norm_fact, norm_name = _norm_values(curr_risk)
         axis.bar(1, risk_curr/norm_fact, **kwargs)
         axis.text(1, risk_curr/norm_fact, str(int(round(risk_curr/norm_fact))), \
             horizontalalignment='center', verticalalignment='bottom', \
@@ -449,7 +442,8 @@ class CostBenefit():
                 risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', \
                 alpha=0.4))
 
-        plt.xticks(np.arange(4)+1, ['Risk ' + str(self.present_year), \
+        axis.xticks(np.arange(4)+1)
+        axis.set_xticklabels(['Risk ' + str(self.present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
         axis.set_title('Total accumulated impact from {:d} to {:d}'.format( \
@@ -476,24 +470,26 @@ class CostBenefit():
         impact_meas = dict()
 
         # compute impact without measures
+        LOGGER.debug('%s impact with no measure.' % when)
         imp_tmp = Impact()
         imp_tmp.calc(exposures, imp_fun_set, hazard)
         impact_meas['no measure'] = dict()
         impact_meas['no measure']['cost'] = 0.0
         impact_meas['no measure']['risk'] = risk_func(imp_tmp)
         impact_meas['no measure']['risk_transf'] = 0.0
-        impact_meas['no measure']['efc'] = imp_tmp.calc_freq_curve(DEF_RP)
+        impact_meas['no measure']['efc'] = imp_tmp.calc_freq_curve()
         if save_imp:
             impact_meas['no measure']['impact'] = imp_tmp
 
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.tag.haz_type):
+            LOGGER.debug('%s impact of measure %s.' % (when, measure.name))
             imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = measure.cost
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)
             impact_meas[measure.name]['risk_transf'] = risk_transf
-            impact_meas[measure.name]['efc'] = imp_tmp.calc_freq_curve(DEF_RP)
+            impact_meas[measure.name]['efc'] = imp_tmp.calc_freq_curve()
             if save_imp:
                 impact_meas[measure.name]['impact'] = imp_tmp
 
@@ -605,7 +601,7 @@ class CostBenefit():
 
     def _print_results(self):
         """ Print table with main results """
-        norm_fact, norm_name = self._norm_values(np.array(list(self.benefit.values())).max())
+        norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
 
         table = []
@@ -629,29 +625,6 @@ class CostBenefit():
         print(tabulate(table, tablefmt="simple"))
 
     @staticmethod
-    def _norm_values(value):
-        """ Compute normalization value and name
-
-        Parameters:
-            value (float): value to normalize
-
-        Returns:
-            norm_fact, norm_name
-        """
-        norm_fact = 1.
-        norm_name = ''
-        if value/1.0e9 > 1:
-            norm_fact = 1.0e9
-            norm_name = 'bn'
-        elif value/1.0e6 > 1:
-            norm_fact = 1.0e6
-            norm_name = 'm'
-        elif value/1.0e3 > 1:
-            norm_fact = 1.0e3
-            norm_name = 'k'
-        return norm_fact, norm_name
-
-    @staticmethod
     def _plot_list_cost_ben(cb_list, axis=None, **kwargs):
         """ Overlay cost-benefit bars for every measure
 
@@ -666,9 +639,9 @@ class CostBenefit():
         """
         if 'alpha' not in kwargs:
             kwargs['alpha'] = 0.5
-        norm_fact = [cb_res._norm_values(cb_res.tot_climate_risk)[0] for cb_res in cb_list]
+        norm_fact = [_norm_values(cb_res.tot_climate_risk)[0] for cb_res in cb_list]
         norm_fact = np.array(norm_fact).mean()
-        _, norm_name = CostBenefit._norm_values(norm_fact+0.01)
+        _, norm_name = _norm_values(norm_fact+0.01)
 
         if not axis:
             _, axis = plt.subplots(1, 1)
@@ -700,3 +673,25 @@ class CostBenefit():
                         ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
         axis.set_ylabel('Benefit/Cost ratio')
         return axis
+
+def _norm_values(value):
+    """ Compute normalization value and name
+
+    Parameters:
+        value (float): value to normalize
+
+    Returns:
+        norm_fact, norm_name
+    """
+    norm_fact = 1.
+    norm_name = ''
+    if value/1.0e9 > 1:
+        norm_fact = 1.0e9
+        norm_name = 'bn'
+    elif value/1.0e6 > 1:
+        norm_fact = 1.0e6
+        norm_name = 'm'
+    elif value/1.0e3 > 1:
+        norm_fact = 1.0e3
+        norm_name = 'k'
+    return norm_fact, norm_name
