@@ -27,7 +27,7 @@ from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP, \
-risk_rp_100, risk_rp_250
+risk_rp_100, risk_rp_250, _norm_values
 from climada.engine import Impact
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
@@ -260,43 +260,43 @@ class TestSteps(unittest.TestCase):
     def test_norm_value(self):
         """ Test _norm_values """
         cb = CostBenefit()
-        norm_fact, norm_name = cb._norm_values(1)
+        norm_fact, norm_name = _norm_values(1)
         self.assertEqual(norm_fact, 1)
         self.assertEqual(norm_name, "")
 
-        norm_fact, norm_name = cb._norm_values(10)
+        norm_fact, norm_name = _norm_values(10)
         self.assertEqual(norm_fact, 1)
         self.assertEqual(norm_name, "")
 
-        norm_fact, norm_name = cb._norm_values(100)
+        norm_fact, norm_name = _norm_values(100)
         self.assertEqual(norm_fact, 1)
         self.assertEqual(norm_name, "")
 
-        norm_fact, norm_name = cb._norm_values(1001)
+        norm_fact, norm_name = _norm_values(1001)
         self.assertEqual(norm_fact, 1000)
         self.assertEqual(norm_name, "k")
 
-        norm_fact, norm_name = cb._norm_values(10000)
+        norm_fact, norm_name = _norm_values(10000)
         self.assertEqual(norm_fact, 1000)
         self.assertEqual(norm_name, "k")
 
-        norm_fact, norm_name = cb._norm_values(1.01e6)
+        norm_fact, norm_name = _norm_values(1.01e6)
         self.assertEqual(norm_fact, 1.0e6)
         self.assertEqual(norm_name, "m")
 
-        norm_fact, norm_name = cb._norm_values(1.0e8)
+        norm_fact, norm_name = _norm_values(1.0e8)
         self.assertEqual(norm_fact, 1.0e6)
         self.assertEqual(norm_name, "m")
 
-        norm_fact, norm_name = cb._norm_values(1.01e9)
+        norm_fact, norm_name = _norm_values(1.01e9)
         self.assertEqual(norm_fact, 1.0e9)
         self.assertEqual(norm_name, "bn")
 
-        norm_fact, norm_name = cb._norm_values(1.0e10)
+        norm_fact, norm_name = _norm_values(1.0e10)
         self.assertEqual(norm_fact, 1.0e9)
         self.assertEqual(norm_name, "bn")
 
-        norm_fact, norm_name = cb._norm_values(1.0e12)
+        norm_fact, norm_name = _norm_values(1.0e12)
         self.assertEqual(norm_fact, 1.0e9)
         self.assertEqual(norm_name, "bn")
 
