@@ -199,17 +199,24 @@ class Measure():
         Returns:
             Exposures
         """
-        if self.exposures_set == NULL_STR:
+        if isinstance(self.exposures_set, str) and self.exposures_set == NULL_STR:
             return exposures
 
-        LOGGER.debug('Setting new exposures %s', self.exposures_set)
-        new_exp = Exposures()
-        new_exp.read_hdf5(self.exposures_set)
-        new_exp.check()
+        if isinstance(self.exposures_set, str):
+            LOGGER.debug('Setting new exposures %s', self.exposures_set)
+            new_exp = Exposures()
+            new_exp.read_hdf5(self.exposures_set)
+            new_exp.check()
+        elif isinstance(self.exposures_set, Exposures):
+            LOGGER.debug('Setting new exposures. ')
+            new_exp = copy.deepcopy(self.exposures_set)
+            new_exp.check()
+        else:
+            LOGGER.error('Wrong input exposures.')
+            raise ValueError
 
-        if exposures.shape[0] != new_exp.shape[0] or \
-        not np.array_equal(exposures.latitude.values, new_exp.latitude.values) or \
-        not np.array_equal(exposures.longitude.values, new_exp.longitude.values):
+        if not np.array_equal(np.unique(exposures.latitude.values), np.unique(new_exp.latitude.values)) or \
+        not np.array_equal(np.unique(exposures.longitude.values), np.unique(new_exp.longitude.values)):
             LOGGER.warning('Exposures locations have changed.')
 
         return new_exp
@@ -246,6 +253,10 @@ class Measure():
         Returns:
             ImpactFuncSet
         """
+        if self.hazard_inten_imp == (1, 0) and self.mdd_impact == (1, 0)\
+        and self.paa_impact == (1, 0):
+            return imp_set
+
         new_imp_set = copy.deepcopy(imp_set)
         for imp_fun in new_imp_set.get_func(self.haz_type):
             LOGGER.debug('Transforming impact functions.')
@@ -276,8 +287,6 @@ class Measure():
         if self.hazard_freq_cutoff == 0:
             return hazard
 
-        LOGGER.debug('Cutting events whose damage have a frequency > %s.',
-                     self.hazard_freq_cutoff)
         from climada.engine.impact import Impact
         imp = Impact()
         exp_imp = exposures
@@ -289,6 +298,8 @@ class Measure():
             exp_imp = Exposures(exp_imp, crs=exposures.crs)
         imp.calc(exp_imp, if_set, hazard)
 
+        LOGGER.debug('Cutting events whose damage have a frequency > %s.',
+                     self.hazard_freq_cutoff)
         new_haz = copy.deepcopy(hazard)
         sort_idxs = np.argsort(imp.at_event)[::-1]
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
