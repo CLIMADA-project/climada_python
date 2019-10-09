@@ -580,7 +580,6 @@ def set_df_geometry_points(df_val, scheduler=None):
 
     Parameters:
         df_val (DataFrame or GeoDataFrame): contains latitude and longitude columns
-        geom_type (shapely.geometry):
         scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
     """
