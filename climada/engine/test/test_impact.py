@@ -308,6 +308,9 @@ class TestImpactYearSet(unittest.TestCase):
 
         iys_all = imp.calc_impact_year_set()
         iys = imp.calc_impact_year_set(all_years=False)
+        iys_all_yr = imp.calc_impact_year_set(year_range=(1975, 2000))
+        iys_yr = imp.calc_impact_year_set(all_years=False, year_range=[1975, 2000])
+        iys_all_yr_1940 = imp.calc_impact_year_set(all_years=True, year_range=[1940, 2000])
         self.assertEqual(np.around(sum([iys[year] for year in iys])), \
                          np.around(sum(imp.at_event)))
         self.assertEqual(sum([iys[year] for year in iys]), \
@@ -319,6 +322,23 @@ class TestImpactYearSet(unittest.TestCase):
         self.assertAlmostEqual(3598980534.468811, iys_all[2007])
         self.assertEqual(iys[1978], iys_all[1978])
         self.assertAlmostEqual(iys[1951], imp.at_event[3])
+        # year range (yr):
+        self.assertEqual(len(iys_yr), 2)
+        self.assertEqual(len(iys_all_yr), 26)
+        self.assertEqual(sum([iys_yr[year] for year in iys_yr]), \
+                         sum([iys_all_yr[year] for year in iys_all_yr]))
+        self.assertIn(1997 and 1978, iys_yr)
+        self.assertFalse(2007 in iys_yr)
+        self.assertFalse(1959 in iys_yr)
+        self.assertEqual(len(iys_all_yr_1940), 61)
+        
+    def test_impact_year_set_empty(self):
+        """Test result for empty impact """
+        imp = Impact()
+        iys_all = imp.calc_impact_year_set()
+        iys = imp.calc_impact_year_set(all_years=False)
+        self.assertEqual(len(iys), 0)
+        self.assertEqual(len(iys_all), 0)
 
 class TestIO(unittest.TestCase):
     ''' Test impact input/output methods.'''

@@ -91,6 +91,7 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertEqual('USA', countries[1])
         self.assertEqual(len(countries), len(impact_emdat.eai_exp))
         self.assertEqual(2, len(impact_emdat.eai_exp))
+        self.assertEqual(impact_emdat.date.size, impact_emdat.frequency.size)
         self.assertAlmostEqual(555861710000, np.sum(impact_emdat.at_event))
         self.assertAlmostEqual(0.0208333333333, np.unique(impact_emdat.frequency)[0])
         self.assertAlmostEqual(11580452291.666666, impact_emdat.aai_agg)
