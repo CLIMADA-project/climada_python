@@ -218,12 +218,12 @@ class CostBenefit():
         axis = self._plot_list_cost_ben([self], axis, **kwargs)
         norm_fact, norm_name = _norm_values(self.tot_climate_risk+0.01)
         axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
-        axis.text(self.tot_climate_risk/norm_fact, 1.0, 'Tot risk', horizontalalignment='center',
+        axis.text(self.tot_climate_risk/norm_fact, 0, '  Tot risk', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
 
         text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
         axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
-        axis.text(text_pos, 1.0, 'AAI', horizontalalignment='center',
+        axis.text(text_pos, 0, '  AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
 
         axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact),
