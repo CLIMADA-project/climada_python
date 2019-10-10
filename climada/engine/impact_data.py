@@ -716,9 +716,11 @@ def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
     # Load EM-DAT impact data by event:
     em_data = emdat_impact_event(countries, hazard_type_emdat, emdat_file_csv, \
                                  year_range, reference_year=reference_year)
-
+    if em_data.empty:
+        return impact_instance, countries
     impact_instance.event_id = np.array(em_data.index, int)
     impact_instance.event_name = list(em_data['Disaster No.'])
+
     date_list = list()
     for year in list(em_data['year']):
         date_list.append(datetime.toordinal(datetime.strptime(str(year), '%Y')))
