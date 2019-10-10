@@ -26,7 +26,7 @@ import numpy as np
 from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
-from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, DEF_RP, \
+from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
 risk_rp_100, risk_rp_250, _norm_values
 from climada.engine import Impact
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
@@ -66,7 +66,9 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.imp_meas_future['no measure']['cost'], 0)
         self.assertEqual(cost_ben.imp_meas_future['no measure']['risk'], 6.51220115756442e+09)
-        self.assertTrue(np.array_equal(cost_ben.imp_meas_future['no measure']['efc'].return_per, DEF_RP))
+        new_efc = cost_ben.imp_meas_future['no measure']['impact'].calc_freq_curve()
+        self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['no measure']['efc'].return_per))
+        self.assertTrue(np.allclose(new_efc.impact, cost_ben.imp_meas_future['no measure']['efc'].impact))
         self.assertEqual(cost_ben.imp_meas_future['no measure']['impact'].at_event.nonzero()[0].size, 841)
         self.assertEqual(cost_ben.imp_meas_future['no measure']['impact'].at_event[14082], 8.801682862431524e+06)
         self.assertEqual(cost_ben.imp_meas_future['no measure']['impact'].tot_value, 6.570532945599105e+11)
@@ -74,8 +76,9 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['cost'], 1.3117683608515418e+09)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['risk'], 4.850407096284983e+09)
-        self.assertEqual(cost_ben.imp_meas_future['Mangroves']['efc'].impact[1], 9.566015222449379e+08)
-        self.assertTrue(np.array_equal(cost_ben.imp_meas_future['Mangroves']['efc'].return_per, DEF_RP))
+        new_efc = cost_ben.imp_meas_future['Mangroves']['impact'].calc_freq_curve()
+        self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Mangroves']['efc'].return_per))
+        self.assertTrue(np.allclose(new_efc.impact, cost_ben.imp_meas_future['Mangroves']['efc'].impact))
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['impact'].at_event.nonzero()[0].size, 665)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['impact'].at_event[13901], 1.29576562770977e+09)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['impact'].tot_value, 6.570532945599105e+11)
@@ -83,8 +86,9 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['cost'], 1.728000000000000e+09)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['risk'], 5.188921355413834e+09)
-        self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['efc'].impact[2], 8.406917562074616e+09)
-        self.assertTrue(np.array_equal(cost_ben.imp_meas_future['Beach nourishment']['efc'].return_per, DEF_RP))
+        new_efc = cost_ben.imp_meas_future['Beach nourishment']['impact'].calc_freq_curve()
+        self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Beach nourishment']['efc'].return_per))
+        self.assertTrue(np.allclose(new_efc.impact, cost_ben.imp_meas_future['Beach nourishment']['efc'].impact))
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].at_event.nonzero()[0].size, 702)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].at_event[1110], 0.0)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].eai_exp[5], 1.1133679079730146e+08)
@@ -93,7 +97,9 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['cost'], 8.878779433630093e+09)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 4.736400526119911e+09)
-        self.assertTrue(np.array_equal(cost_ben.imp_meas_future['Seawall']['efc'].return_per, DEF_RP))
+        new_efc = cost_ben.imp_meas_future['Seawall']['impact'].calc_freq_curve()
+        self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Seawall']['efc'].return_per))
+        self.assertTrue(np.allclose(new_efc.impact, cost_ben.imp_meas_future['Seawall']['efc'].impact))
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].at_event.nonzero()[0].size, 73)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].at_event[1229], 0.0)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].tot_value, 6.570532945599105e+11)
@@ -101,8 +107,9 @@ class TestSteps(unittest.TestCase):
 
         self.assertEqual(cost_ben.imp_meas_future['Building code']['cost'], 9.200000000000000e+09)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.884150868173321e+09)
-        self.assertEqual(cost_ben.imp_meas_future['Building code']['efc'].impact[1], 1.4311415248995776e+09)
-        self.assertTrue(np.array_equal(cost_ben.imp_meas_future['Building code']['efc'].return_per, DEF_RP))
+        new_efc = cost_ben.imp_meas_future['Building code']['impact'].calc_freq_curve()
+        self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Building code']['efc'].return_per))
+        self.assertTrue(np.allclose(new_efc.impact, cost_ben.imp_meas_future['Building code']['efc'].impact))
         self.assertEqual(cost_ben.imp_meas_future['Building code']['impact'].at_event.nonzero()[0].size, 841)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['impact'].at_event[122], 0.0)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['impact'].eai_exp[11], 7.757060129393841e+07)
@@ -259,7 +266,6 @@ class TestSteps(unittest.TestCase):
 
     def test_norm_value(self):
         """ Test _norm_values """
-        cb = CostBenefit()
         norm_fact, norm_name = _norm_values(1)
         self.assertEqual(norm_fact, 1)
         self.assertEqual(norm_name, "")

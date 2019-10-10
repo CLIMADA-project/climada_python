@@ -212,6 +212,8 @@ class TestApply(unittest.TestCase):
         ref_exp.read_hdf5(EXP_DEMO_H5)
 
         exposures = Exposures()
+        exposures['latitude'] = np.ones(10)
+        exposures['longitude'] = np.ones(10)
         new_exp = meas._change_all_exposures(exposures)
 
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
