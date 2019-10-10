@@ -599,7 +599,7 @@ def emdat_impact_event(countries, hazard_name, emdat_file_csv, year_range, \
     """
     out = pd.DataFrame()
     for country in countries:
-        data, all_years, country = emdat_df_load(country, hazard_name, \
+        data, _, country = emdat_df_load(country, hazard_name, \
                                                  emdat_file_csv, year_range)
         if data is None:
             continue
@@ -660,7 +660,7 @@ def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
         impact_instance (instance of climada.engine.Impact):
             impact object of same format as output from CLIMADA
             impact computation
-            scaled with GDPto reference_year if reference_year noit equal 0
+            scaled with GDP to reference_year if reference_year noit equal 0
             i.e. 1000 current US$ for imp_str="Total damage ('000 US$) scaled".
             impact_instance.eai_exp holds expected annual impact for each country.
             impact_instance.coord_exp holds rough central coordinates for each country.
@@ -723,19 +723,20 @@ def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
     for year in list(em_data['year']):
         date_list.append(datetime.toordinal(datetime.strptime(str(year), '%Y')))
     boolean_warning = True
-    for datestr in list(em_data['Start date']):
+    for idx, datestr in enumerate(list(em_data['Start date'])):
         try:
-            date_list.append(datetime.toordinal(datetime.strptime(datestr[-7:], '%m/%Y')))
+            date_list[idx] = datetime.toordinal(datetime.strptime(datestr[-7:], '%m/%Y'))
         except ValueError:
             if boolean_warning:
                 LOGGER.warning('EM_DAT CSV contains invalid time formats')
                 boolean_warning = False
         try:
-            date_list.append(datetime.toordinal(datetime.strptime(datestr, '%d/%m/%Y')))
+            date_list[idx] = datetime.toordinal(datetime.strptime(datestr, '%d/%m/%Y'))
         except ValueError:
             if boolean_warning:
                 LOGGER.warning('EM_DAT CSV contains invalid time formats')
                 boolean_warning = False
+        
     impact_instance.date = np.array(date_list, int)
 
     impact_instance.crs = DEF_CRS
