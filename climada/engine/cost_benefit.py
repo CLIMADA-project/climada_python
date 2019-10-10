@@ -241,6 +241,7 @@ class CostBenefit():
         # cost-benefit computation: fill measure's benefit and cost_ben_ratio
         time_dep = self._time_dependency_array(imp_time_depen)
         self._cost_ben_one(new_name, self.imp_meas_future[new_name], disc_rates, time_dep)
+        self._print_results()
 
     def plot_cost_benefit(self, cb_list=None, axis=None, **kwargs):
         """ Plot cost-benefit graph. Call after calc().
