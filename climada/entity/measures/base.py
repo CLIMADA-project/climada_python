@@ -164,7 +164,7 @@ class Measure():
             imp_layer = np.minimum(np.maximum(imp.at_event - self.risk_transf_attach, 0),
                                    self.risk_transf_cover)
             risk_transfer = np.sum(imp_layer * imp.frequency)
-            imp.at_event = np.maximum(imp.at_event -imp_layer, 0)
+            imp.at_event = np.maximum(imp.at_event - imp_layer, 0)
             imp.aai_agg = np.sum(imp.at_event * imp.frequency)
             # expected annual impact per exposure no longer valid
             imp.eai_exp = np.array([])
@@ -215,8 +215,10 @@ class Measure():
             LOGGER.error('Wrong input exposures.')
             raise ValueError
 
-        if not np.array_equal(np.unique(exposures.latitude.values), np.unique(new_exp.latitude.values)) or \
-        not np.array_equal(np.unique(exposures.longitude.values), np.unique(new_exp.longitude.values)):
+        if not np.array_equal(np.unique(exposures.latitude.values),
+                              np.unique(new_exp.latitude.values)) or \
+        not np.array_equal(np.unique(exposures.longitude.values),
+                           np.unique(new_exp.longitude.values)):
             LOGGER.warning('Exposures locations have changed.')
 
         return new_exp
@@ -305,9 +307,10 @@ class Measure():
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
         cutoff = exceed_freq > self.hazard_freq_cutoff
         sel_haz = sort_idxs[cutoff]
-        new_haz_inten = new_haz.intensity.tolil()
-        new_haz_inten[sel_haz, :] = np.zeros((sel_haz.size, new_haz.intensity.shape[1]))
-        new_haz.intensity = new_haz_inten.tocsr()
+        for row in sel_haz:
+            new_haz.intensity.data[new_haz.intensity.indptr[row]: \
+                new_haz.intensity.indptr[row+1]] = 0
+        new_haz.intensity.eliminate_zeros()
         return new_haz
 
     def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
