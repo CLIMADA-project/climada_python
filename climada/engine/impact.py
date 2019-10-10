@@ -409,23 +409,33 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def calc_impact_year_set(self, all_years=True):
+    def calc_impact_year_set(self, all_years=True, year_range=[]):
         """ Calculate yearly impact from impact data.
 
         Parameters:
             all_years (boolean): return values for all years between first and
             last year with event, including years without any events.
+            year_range (tuple or list with integers): start and end year
 
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
-        if all_years:
+        if orig_year.size==0 and len(year_range)==0:
+            return dict()
+        if orig_year.size==0 or (len(year_range)>0 and all_years):
+            years = np.arange(min(year_range), max(year_range)+1)
+        elif all_years:
             years = np.arange(min(orig_year), max(orig_year)+1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
+        if not len(year_range)==0:
+            years = years[years>=min(year_range)]
+            years = years[years<=max(year_range)]
+            
         year_set = dict()
+        
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
