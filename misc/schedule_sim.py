@@ -120,6 +120,7 @@ for cnt_ind in range(len(isos)):
         rf2y = copy.copy(rf)
         rf2y.exclude_returnlevel(RF_PATH_FRC)
         rf.set_flooded_area()
+        rf.set_flood_volume()
         for year in range(len(years)):
             print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
             ini_date = str(years[year]) + '-01-01'
