@@ -139,7 +139,8 @@ class TropCyclone(Hazard):
         self.tag.description = description
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
-        """ Compute future events for given RCP scenario and year
+        """ Compute future events for given RCP scenario and year. RCP 4.5
+        from Knutson et al 2015.
         Parameters:
             ref_year (int): year between 2000 ad 2100. Default: 2050
             rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
