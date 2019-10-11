@@ -140,8 +140,8 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
                 imp2y_fix=Impact()
                 imp2y_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
-                dataDF.iloc[line_counter, 17 + pro_std] = imp2y_fl.at_event[0]
-                dataDF.iloc[line_counter, 19 + pro_std] = imp2y_fix.at_event[0]
+                dataDF.iloc[line_counter, 18 + pro_std] = imp2y_fl.at_event[0]
+                dataDF.iloc[line_counter, 20 + pro_std] = imp2y_fix.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl.tot_value
             dataDF.iloc[line_counter, 5] = imp_fix.tot_value
