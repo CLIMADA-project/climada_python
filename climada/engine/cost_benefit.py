@@ -207,7 +207,7 @@ class CostBenefit():
         self._print_results()
 
     def combine_measures(self, in_meas_names, new_name, new_color, disc_rates,
-                         risk_transf=(0, 0), imp_time_depen=None, risk_func=risk_aai_agg):
+                         risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg):
         """ Compute cost-benefit of the combination of (independent) measures
         previously computed by calc with save_imp=True. Appended to dictionaries of
         measures. The benefits of the measures per event are added and risk transfer
@@ -219,8 +219,10 @@ class CostBenefit():
             new_color (np.array): color code RGB for new measure, e.g.
                 np.array([0.1, 0.1, 0.1])
             disc_rates (DiscRates): discount rates instance
-            risk_transf (tuple): Risk transfer values (attachment, cover) to use
-                to resulting combined impact.
+            risk_transf (tuple): Risk transfer values (attachment, cover, cost)
+                to use to resulting combined impact. Cost: nly structuring and
+                transaction costs, expected loss will be added to come to total
+                cost of risk transfer.
             imp_time_depen (float, optional): parameter which represents time
                 evolution of impact (super- or sublinear). If None: all years
                 count the same when there is no future hazard nor entity and 1
@@ -674,8 +676,16 @@ class CostBenefit():
         if when='present'.
 
         Parameters:
-
-
+            in_meas_names (list(str)): list with names of measures to combine
+            new_name (str): name to give to the new resulting measure
+            risk_transf (tuple): Risk transfer values (attachment, cover, cost)
+                to use to resulting combined impact. Cost: nly structuring and
+                transaction costs, expected loss will be added to come to total
+                cost of risk transfer.
+            risk_func (func, optional): function describing risk measure given
+                an Impact. Default: average annual impact (aggregated).
+            when (str): 'present' or 'future' making reference to which dictionary
+                to fill (imp_meas_present or imp_meas_future respectively)
         """
         if when == 'future':
             imp_dict = self.imp_meas_future
@@ -688,11 +698,13 @@ class CostBenefit():
         new_imp.at_event = np.maximum(imp_dict['no measure']['impact'].at_event
                                       - sum_ben, 0)
         risk_transfer = 0
-        if risk_transf != (0, 0):
+        risk_cost = 0
+        if risk_transf != (0, 0, 0):
             imp_layer = np.minimum(np.maximum(new_imp.at_event - risk_transf[0], 0),
                                    risk_transf[1])
             risk_transfer = np.sum(imp_layer * new_imp.frequency)
             new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
+            risk_cost = risk_transf[2]
         new_imp.eai_exp = np.array([])
         new_imp.aai_agg = sum(new_imp.at_event * new_imp.frequency)
 
@@ -701,7 +713,7 @@ class CostBenefit():
         imp_dict[new_name]['efc'] = new_imp.calc_freq_curve()
         imp_dict[new_name]['risk'] = risk_func(new_imp)
         imp_dict[new_name]['cost'] = np.array([imp_dict[name]['cost'] \
-                                               for name in in_meas_names]).sum()
+            for name in in_meas_names]).sum() + risk_cost
         imp_dict[new_name]['risk_transf'] = risk_transfer
 
     def _print_results(self):

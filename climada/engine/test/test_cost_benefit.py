@@ -394,7 +394,7 @@ class TestSteps(unittest.TestCase):
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
         cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
-            entity.disc_rates, risk_transf=(0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
+            entity.disc_rates, risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
 
         self.assertTrue(np.allclose(cost_ben.color_rgb[new_name], new_color))
 
@@ -440,7 +440,7 @@ class TestSteps(unittest.TestCase):
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
         cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
-            entity.disc_rates, risk_transf=(0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
+            entity.disc_rates, risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
 
         self.assertTrue(np.allclose(cost_ben.color_rgb[new_name], new_color))
         self.assertEqual(len(cost_ben.imp_meas_present), 0)
@@ -474,7 +474,7 @@ class TestSteps(unittest.TestCase):
 
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
-        risk_transf=(1.0e7, 15.0e11)
+        risk_transf=(1.0e7, 15.0e11, 1.0e5)
         cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
             entity.disc_rates, risk_transf=risk_transf, imp_time_depen=None, risk_func=risk_aai_agg)
 
@@ -492,12 +492,12 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk'],
                                np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
         self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['cost'],
-                               cost_ben.imp_meas_future['Mangroves']['cost']+cost_ben.imp_meas_future['Seawall']['cost'])
+            cost_ben.imp_meas_future['Mangroves']['cost']+cost_ben.imp_meas_future['Seawall']['cost']+risk_transf[2])
         self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['efc'].impact,
                                     cost_ben.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
         self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk_transf'], risk_transfer)
         self.assertAlmostEqual(cost_ben.benefit[new_name], 121496503208.77686)
-        self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.657679121323168)
+        self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.6576799443921235)
 
 class TestCalc(unittest.TestCase):
     '''Test calc'''
