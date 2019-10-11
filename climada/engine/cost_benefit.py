@@ -24,6 +24,7 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 import copy
 import logging
 import numpy as np
+import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
@@ -170,9 +171,10 @@ class CostBenefit():
         # save measure colors
         for meas in entity.measures.get_measure(hazard.tag.haz_type):
             self.color_rgb[meas.name] = meas.color_rgb
+        self.color_rgb['no measure'] = colors.to_rgb('deepskyblue')
 
-        if future_year is None:
-            future_year = entity.exposures.ref_year + 1
+        if future_year is None and ent_future is None:
+            future_year = entity.exposures.ref_year
 
         if not haz_future and not ent_future:
             self.future_year = future_year
@@ -268,14 +270,16 @@ class CostBenefit():
             kwargs['alpha'] = 1.0
         axis = self._plot_list_cost_ben([self], axis, **kwargs)
         norm_fact, norm_name = _norm_values(self.tot_climate_risk+0.01)
-        axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
-        axis.text(self.tot_climate_risk/norm_fact, 0, '  Tot risk', horizontalalignment='center',
-                  verticalalignment='bottom', rotation=90, fontsize=12, color='r')
 
         text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
         axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
         axis.text(text_pos, 0, '  AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
+        if abs(text_pos - self.tot_climate_risk/norm_fact) > 1:
+            axis.scatter(self.tot_climate_risk/norm_fact, 0, c='r', zorder=200, clip_on=False)
+            axis.text(self.tot_climate_risk/norm_fact, 0, '  Tot risk', \
+                horizontalalignment='center', verticalalignment='bottom', rotation=90, \
+                fontsize=12, color='r')
 
         axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact),
                              np.array(list(self.benefit.values())).sum()/norm_fact))
@@ -759,7 +763,7 @@ class CostBenefit():
 
                 if i_cb == 0:
                     axis.text(xmin + (cb_res.benefit[meas_n]/norm_fact)/2,
-                              0.5, meas_n, horizontalalignment='center',
+                              0, '  ' + meas_n, horizontalalignment='center',
                               verticalalignment='bottom', rotation=90, fontsize=12)
                 xmin += cb_res.benefit[meas_n]/norm_fact
 
