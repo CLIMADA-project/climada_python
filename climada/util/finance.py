@@ -310,7 +310,7 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
                          incl. manufactured or built assets such as machinery,
                          equipment, and physical structures
                          and value of built-up urban land (24% mark-up)
-            'NW.NCA.TO': Total natural capital of country. Natural capital 
+            'NW.NCA.TO': Total natural capital of country. Natural capital
                         includes the valuation of fossil fuel energy (oil, gas,
                         hard and soft coal) and minerals (bauxite, copper, gold,
                         iron ore, lead, nickel, phosphate, silver, tin, and zinc),
