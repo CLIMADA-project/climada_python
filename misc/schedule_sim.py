@@ -35,7 +35,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['0', '100', 'flopros']
+PROT_STD = ['0', 'flopros', '100']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -72,17 +72,17 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
                             'FloodedArea0': np.full(l, np.nan, dtype=float),
-                            'FloodedArea100': np.full(l, np.nan, dtype=float),
                             'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
+                            'FloodedArea100': np.full(l, np.nan, dtype=float),
                             'ImpFixExp0': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
                             'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
+                            'ImpFixExp100': np.full(l, np.nan, dtype=float),
                             'Impact_0': np.full(l, np.nan, dtype=float),
-                            'Impact_100': np.full(l, np.nan, dtype=float),
                             'Impact_Flopros': np.full(l, np.nan, dtype=float),
+                            'Impact_100': np.full(l, np.nan, dtype=float),
                             'FloodVol_0': np.full(l, np.nan, dtype=float),
-                            'FloodVol_100': np.full(l, np.nan, dtype=float),
                             'FloodVol_Flopros': np.full(l, np.nan, dtype=float),
+                            'FloodVol_100': np.full(l, np.nan, dtype=float),
                             'Impact_2y_0': np.full(l, np.nan, dtype=float),
                             'Impact_2y_Flopros': np.full(l, np.nan, dtype=float),
                             'ImpFix_2y_0': np.full(l, np.nan, dtype=float),
@@ -119,7 +119,6 @@ for cnt_ind in range(len(isos)):
         rf.set_from_nc(dph_path=dph_path, frc_path=frc_path, countries=country, years=years)
         rf2y = copy.copy(rf)
         rf2y.exclude_returnlevel(RF_PATH_FRC)
-        rf.set_flooded_area()
         rf.set_flooded_area()
         for year in range(len(years)):
             print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
