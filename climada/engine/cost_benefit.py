@@ -247,6 +247,19 @@ class CostBenefit():
         self._cost_ben_one(new_name, self.imp_meas_future[new_name], disc_rates, time_dep)
         self._print_results()
 
+    def remove_measure(self, meas_name):
+        """ Remove computed values of given measure
+
+        Parameters:
+            meas_name (str): name of measure to remove
+        """
+        del self.color_rgb[meas_name]
+        del self.benefit[meas_name]
+        del self.cost_ben_ratio[meas_name]
+        del self.imp_meas_future[meas_name]
+        if self.imp_meas_present:
+            del self.imp_meas_present[meas_name]
+
     def plot_cost_benefit(self, cb_list=None, axis=None, **kwargs):
         """ Plot cost-benefit graph. Call after calc().
 
