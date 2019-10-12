@@ -499,6 +499,32 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.benefit[new_name], 121496503208.77686)
         self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.6576799443921235)
 
+    def test_remove_measure(self):
+        """ Test remove_measure method """
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        entity = Entity()
+        entity.read_excel(ENT_DEMO_TODAY)
+        entity.check()
+        entity.exposures.ref_year = 2018
+        cost_ben = CostBenefit()
+        cost_ben.calc(hazard, entity, future_year=2040, risk_func=risk_aai_agg,
+                      imp_time_depen=None, save_imp=True)
+
+        to_remove = 'Mangroves'
+        self.assertTrue(to_remove in cost_ben.benefit.keys())
+        cost_ben.remove_measure(to_remove)
+        self.assertTrue(to_remove not in cost_ben.color_rgb.keys())
+        self.assertTrue(to_remove not in cost_ben.benefit.keys())
+        self.assertTrue(to_remove not in cost_ben.cost_ben_ratio.keys())
+        self.assertTrue(to_remove not in cost_ben.imp_meas_future.keys())
+        self.assertTrue(to_remove not in cost_ben.imp_meas_present.keys())
+        self.assertEqual(len(cost_ben.imp_meas_present), 0)
+        self.assertEqual(len(cost_ben.imp_meas_future), 4)
+        self.assertEqual(len(cost_ben.color_rgb), 4)
+        self.assertEqual(len(cost_ben.cost_ben_ratio), 3)
+        self.assertEqual(len(cost_ben.benefit), 3)
+
 class TestCalc(unittest.TestCase):
     '''Test calc'''
 
@@ -620,9 +646,8 @@ class TestRiskFuncs(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSteps)
-#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs)
-#    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
-#    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
-#    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSteps))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
