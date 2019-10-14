@@ -413,7 +413,8 @@ class Exposures(GeoDataFrame):
         """ Scatter points over satellite image using contextily
 
          Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
+            mask (np.array, optional): mask to apply to eai_exp plotted. Same
+                size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
