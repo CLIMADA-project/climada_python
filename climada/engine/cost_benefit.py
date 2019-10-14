@@ -512,7 +512,7 @@ class CostBenefit():
                 risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', \
                 alpha=0.4))
 
-        axis.xticks(np.arange(4)+1)
+        axis.set_xticks(np.arange(4)+1)
         axis.set_xticklabels(['Risk ' + str(self.present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
