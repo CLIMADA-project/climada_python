@@ -340,22 +340,31 @@ class Measure():
                                         in self.exp_region_id])
         no_chg_reg = np.argwhere(np.logical_not(chg_reg)).reshape(-1)
         chg_reg = np.argwhere(chg_reg).reshape(-1)
+        LOGGER.debug('Number of changed exposures: %s', chg_reg.size)
 
-        # provide new impact functions ids to changed impact functions
-        fun_ids = list(new_ifs.get_func()[self.haz_type].keys())
-        for key in fun_ids:
-            new_ifs.get_func()[self.haz_type][key].id = key + IF_ID_FACT
-            new_ifs.get_func()[self.haz_type][key + IF_ID_FACT] = \
-                new_ifs.get_func()[self.haz_type][key]
-        try:
-            new_exp[INDICATOR_IF+self.haz_type] += IF_ID_FACT
-        except KeyError:
-            new_exp[INDICATOR_IF] += IF_ID_FACT
-        # collect old impact functions as well (used by exposures)
-        new_ifs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
+        if imp_set is not new_ifs:
+            # provide new impact functions ids to changed impact functions
+            fun_ids = list(new_ifs.get_func()[self.haz_type].keys())
+            for key in fun_ids:
+                new_ifs.get_func()[self.haz_type][key].id = key + IF_ID_FACT
+                new_ifs.get_func()[self.haz_type][key + IF_ID_FACT] = \
+                    new_ifs.get_func()[self.haz_type][key]
+            try:
+                new_exp[INDICATOR_IF+self.haz_type] += IF_ID_FACT
+            except KeyError:
+                new_exp[INDICATOR_IF] += IF_ID_FACT
+            # collect old impact functions as well (used by exposures)
+            new_ifs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
 
         # concatenate previous and new exposures
         new_exp = pd.concat([exposures.iloc[no_chg_reg], new_exp.iloc[chg_reg]])
+        # set missing values of centr_
+        if INDICATOR_CENTR+self.haz_type in new_exp.columns and \
+        np.isnan(new_exp[INDICATOR_CENTR+self.haz_type].values).any():
+            new_exp.drop(columns=INDICATOR_CENTR+self.haz_type, inplace=True)
+        elif INDICATOR_CENTR in new_exp.columns and \
+        np.isnan(new_exp[INDICATOR_CENTR].values).any():
+            new_exp.drop(columns=INDICATOR_CENTR, inplace=True)
 
         # put hazard intensities outside region to previous intensities
         if hazard is not new_haz:
