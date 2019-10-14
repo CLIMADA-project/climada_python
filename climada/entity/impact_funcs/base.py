@@ -94,6 +94,7 @@ class ImpactFunc():
         axis.plot(self.intensity, self.mdd * self.paa * 100, 'k--', label='MDR', **kwargs)
 
         axis.set_xlim((self.intensity.min(), self.intensity.max()))
+        axis.legend()
         return axis
 
     def check(self):
