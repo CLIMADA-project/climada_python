@@ -486,10 +486,10 @@ class TestSteps(unittest.TestCase):
         new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
             entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
         new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
-            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            entity.disc_rates, cost_fix=0, cost_factor=risk_transf[2], imp_time_depen=1,
             risk_func=risk_aai_agg)
 
-        tr_name = 'risk_transfer (' + new_name + ')'
+        tr_name = 'risk transfer (' + new_name + ')'
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
         new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
@@ -529,10 +529,10 @@ class TestSteps(unittest.TestCase):
         new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
             entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
         new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
-            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            entity.disc_rates, cost_fix=0, cost_factor=risk_transf[2], imp_time_depen=1,
             risk_func=risk_aai_agg)
 
-        tr_name = 'risk_transfer (' + new_name + ')'
+        tr_name = 'risk transfer (' + new_name + ')'
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
         new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
@@ -576,10 +576,10 @@ class TestSteps(unittest.TestCase):
         new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
             entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
         new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
-            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            entity.disc_rates, cost_fix=0, cost_factor=risk_transf[2], imp_time_depen=1,
             risk_func=risk_aai_agg)
 
-        tr_name = 'risk_transfer (' + new_name + ')'
+        tr_name = 'risk transfer (' + new_name + ')'
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
         new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
