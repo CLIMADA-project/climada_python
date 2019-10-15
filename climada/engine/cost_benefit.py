@@ -279,12 +279,12 @@ class CostBenefit():
                 an Impact. Default: average annual impact (aggregated).
         """
         m_transf_name = 'risk transfer (' + meas_name + ')'
-        self.color_rgb[m_transf_name] = np.minimum(self.color_rgb[meas_name] -
+        self.color_rgb[m_transf_name] = np.minimum(self.color_rgb[meas_name] - \
                       np.ones(3)*0.2, 1)
 
-        _, fut_layer_no = self.imp_meas_future['no measure']['impact']. \
+        _, layer_no = self.imp_meas_future['no measure']['impact']. \
             calc_risk_transfer(attachment, cover)
-        fut_layer_no = risk_func(fut_layer_no)
+        layer_no = risk_func(layer_no)
 
         imp, layer = self.imp_meas_future[meas_name]['impact']. \
             calc_risk_transfer(attachment, cover)
@@ -300,7 +300,7 @@ class CostBenefit():
             _, pres_layer_no = self.imp_meas_present['no measure']['impact']. \
                 calc_risk_transfer(attachment, cover)
             pres_layer_no = risk_func(pres_layer_no)
-            layer_no = pres_layer_no + (fut_layer_no-pres_layer_no) * time_dep
+            layer_no = pres_layer_no + (layer_no-pres_layer_no) * time_dep
 
             imp, layer = self.imp_meas_present[meas_name]['impact']. \
                 calc_risk_transfer(attachment, cover)
@@ -311,7 +311,7 @@ class CostBenefit():
             self.imp_meas_present[m_transf_name]['cost'] = (cost_fix, cost_factor)
             self.imp_meas_present[m_transf_name]['efc'] = imp.calc_freq_curve()
         else:
-            layer_no = time_dep*fut_layer_no
+            layer_no = time_dep*layer_no
 
         self._cost_ben_one(m_transf_name, self.imp_meas_future[m_transf_name],
                            disc_rates, time_dep, ini_state=meas_name)
@@ -320,15 +320,18 @@ class CostBenefit():
         # compare layer no measure
         layer_no = disc_rates.net_present_value(self.present_year,
                                                 self.future_year, layer_no)
-        npv_layer = (self.cost_ben_ratio[meas_name]*self.benefit[meas_name] -
+        layer = (self.cost_ben_ratio[m_transf_name]*self.benefit[m_transf_name] - \
             cost_fix)/cost_factor
 
         norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
-        table = [['Insurance layer without measure:', layer_no/norm_fact, norm_name],
-                 ['Insurance layer with measure: ', npv_layer/norm_fact, norm_name]]
+        headers = ['Risk transfer', 'layer ' + norm_name, 'price ' + norm_name]
+        table = [['without measure:', layer_no/norm_fact,
+                  (cost_fix+layer_no*cost_factor)/norm_fact],
+                 ['with measure: ', layer/norm_fact,
+                  (cost_fix+layer*cost_factor)/norm_fact]]
         print()
-        print(tabulate(table, tablefmt="simple"))
+        print(tabulate(table, headers, tablefmt="simple"))
         print()
 
     def remove_measure(self, meas_name):
