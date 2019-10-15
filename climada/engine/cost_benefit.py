@@ -59,8 +59,10 @@ def risk_rp_100(impact):
     Returns:
         float
     """
-    efc = impact.calc_freq_curve([100])
-    return efc.impact[0]
+    if impact.at_event.size > 0:
+        efc = impact.calc_freq_curve([100])
+        return efc.impact[0]
+    return 0
 
 def risk_rp_250(impact):
     """Risk measurement as exceedance impact at 250 years return period.
@@ -71,8 +73,10 @@ def risk_rp_250(impact):
     Returns:
         float
     """
-    efc = impact.calc_freq_curve([250])
-    return efc.impact[0]
+    if impact.at_event.size > 0:
+        efc = impact.calc_freq_curve([250])
+        return efc.impact[0]
+    return 0
 
 class CostBenefit():
     """Impact definition. Compute from an entity (exposures and impact
@@ -97,7 +101,7 @@ class CostBenefit():
         imp_meas_future (dict): impact of each measure at future or default.
             Key: measure name ('no measure' used for case without measure),
             Value: dict with:
-                             'cost' (float): cost measure,
+                             'cost' (tuple): (cost measure, cost factor insurance),
                              'risk' (float): risk measurement,
                              'risk_transf' (float): annual expected risk transfer,
                              'efc'  (ImpactFreqCurve): impact exceedance freq
@@ -105,7 +109,7 @@ class CostBenefit():
         imp_meas_present (dict): impact of each measure at present.
             Key: measure name ('no measure' used for case without measure),
             Value: dict with:
-                             'cost' (float): cost measure,
+                             'cost' (tuple): (cost measure, cost factor insurance),
                              'risk' (float): risk measurement,
                              'risk_transf' (float): annual expected risk transfer,
                              'efc'  (ImpactFreqCurve): impact exceedance freq
@@ -207,11 +211,10 @@ class CostBenefit():
         self._print_results()
 
     def combine_measures(self, in_meas_names, new_name, new_color, disc_rates,
-                         risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg):
+                         imp_time_depen=None, risk_func=risk_aai_agg):
         """ Compute cost-benefit of the combination of (independent) measures
         previously computed by calc with save_imp=True. Appended to dictionaries of
-        measures. The benefits of the measures per event are added and risk transfer
-        can be additionally implemented.
+        measures. The benefits of the measures per event are added.
 
         Parameters:
             in_meas_names (list(str)): list with names of measures to combine
@@ -219,10 +222,54 @@ class CostBenefit():
             new_color (np.array): color code RGB for new measure, e.g.
                 np.array([0.1, 0.1, 0.1])
             disc_rates (DiscRates): discount rates instance
-            risk_transf (tuple): Risk transfer values (attachment, cover, cost)
-                to use to resulting combined impact. Cost: nly structuring and
-                transaction costs, expected loss will be added to come to total
-                cost of risk transfer.
+            imp_time_depen (float, optional): parameter which represents time
+                evolution of impact (super- or sublinear). If None: all years
+                count the same when there is no future hazard nor entity and 1
+                (linear annual change) when there is future hazard or entity.
+                Default: None.
+            risk_func (func, optional): function describing risk measure given
+                an Impact. Default: average annual impact (aggregated).
+
+        Returns:
+            CostBenefit
+        """
+        new_cb = CostBenefit()
+        new_cb.present_year = self.present_year
+        new_cb.future_year = self.future_year
+        new_cb.tot_climate_risk = self.tot_climate_risk
+        new_cb.unit = self.unit
+        new_cb.color_rgb['no measure'] = self.color_rgb['no measure']
+        new_cb.color_rgb[new_name] = new_color
+        new_cb.imp_meas_future['no measure'] = self.imp_meas_future['no measure']
+
+        # compute impacts for imp_meas_future and imp_meas_present
+        self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='future')
+        if self.imp_meas_present:
+            new_cb.imp_meas_present['no measure'] = self.imp_meas_present['no measure']
+            if imp_time_depen is None:
+                imp_time_depen = 1
+            self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='present')
+
+        # cost-benefit computation: fill measure's benefit and cost_ben_ratio
+        time_dep = new_cb._time_dependency_array(imp_time_depen)
+        new_cb._cost_ben_one(new_name, new_cb.imp_meas_future[new_name], disc_rates,
+                             time_dep)
+        new_cb._print_results()
+        return new_cb
+
+    def apply_risk_transfer(self, meas_name, attachment, cover, disc_rates,
+                            cost_ini=0, cost_factor=1, imp_time_depen=None,
+                            risk_func=risk_aai_agg):
+        """ Applies risk transfer to given measure computed before with saved
+        impact and compares it to when no measure is applied. Appended to
+        dictionaries of measures.
+
+        Paramters:
+            meas_name (str): name of measure where to apply risk transfer
+            attachment (float): risk transfer values attachment (deductible)
+            cover (float): risk transfer cover
+            cost_factor (float): factor to which to multiply the insurance layer
+                to compute its cost. Default: 1
             imp_time_depen (float, optional): parameter which represents time
                 evolution of impact (super- or sublinear). If None: all years
                 count the same when there is no future hazard nor entity and 1
@@ -231,21 +278,56 @@ class CostBenefit():
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
         """
-        self.color_rgb[new_name] = new_color
+        m_transf_name = 'risk_transfer (' + meas_name + ')'
 
-        # compute impacts for imp_meas_future and imp_meas_present
-        self._combine_imp_meas(in_meas_names, new_name, risk_transf, risk_func,
-                               when='future')
-        if self.imp_meas_present:
-            if imp_time_depen is None:
-                imp_time_depen = 1
-            self._combine_imp_meas(in_meas_names, new_name, risk_transf, risk_func,
-                                   when='present')
+        _, fut_layer_no = self.imp_meas_future['no measure']['impact']. \
+            calc_risk_transfer(attachment, cover)
+        fut_layer_no = risk_func(fut_layer_no)
 
-        # cost-benefit computation: fill measure's benefit and cost_ben_ratio
+        imp, layer = self.imp_meas_future[meas_name]['impact']. \
+            calc_risk_transfer(attachment, cover)
+        self.imp_meas_future[m_transf_name] = dict()
+        self.imp_meas_future[m_transf_name]['risk_transf'] = risk_func(layer)
+        self.imp_meas_future[m_transf_name]['impact'] = imp
+        self.imp_meas_future[m_transf_name]['risk'] = risk_func(imp)
+        self.imp_meas_future[m_transf_name]['cost'] = (cost_ini, cost_factor)
+        self.imp_meas_future[m_transf_name]['efc'] = imp.calc_freq_curve()
+
         time_dep = self._time_dependency_array(imp_time_depen)
-        self._cost_ben_one(new_name, self.imp_meas_future[new_name], disc_rates, time_dep)
+        if self.imp_meas_present:
+            _, pres_layer_no = self.imp_meas_present['no measure']['impact']. \
+                calc_risk_transfer(attachment, cover)
+            pres_layer_no = risk_func(pres_layer_no)
+            layer_no = pres_layer_no + (fut_layer_no-pres_layer_no) * time_dep
+
+            imp, layer = self.imp_meas_present[meas_name]['impact']. \
+                calc_risk_transfer(attachment, cover)
+            self.imp_meas_present[m_transf_name] = dict()
+            self.imp_meas_present[m_transf_name]['risk_transf'] = risk_func(layer)
+            self.imp_meas_present[m_transf_name]['impact'] = imp
+            self.imp_meas_present[m_transf_name]['risk'] = risk_func(imp)
+            self.imp_meas_present[m_transf_name]['cost'] = (cost_ini, cost_factor)
+            self.imp_meas_present[m_transf_name]['efc'] = imp.calc_freq_curve()
+        else:
+            layer_no = time_dep*fut_layer_no
+
+        self._cost_ben_one(m_transf_name, self.imp_meas_future[m_transf_name],
+                           disc_rates, time_dep, ini_state=meas_name)
         self._print_results()
+
+        # compare layer no measure
+        layer_no = disc_rates.net_present_value(self.present_year,
+                                                self.future_year, layer_no)
+        npv_layer = (self.cost_ben_ratio[meas_name]*self.benefit[meas_name] -
+            cost_ini)/cost_factor
+
+        norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
+        norm_name = '(' + self.unit + ' ' + norm_name + ')'
+        table = [['Insurance layer without measure:', layer_no/norm_fact, norm_name],
+                 ['Insurance layer with measure: ', npv_layer/norm_fact, norm_name]]
+        print()
+        print(tabulate(table, tablefmt="simple"))
+        print()
 
     def remove_measure(self, meas_name):
         """ Remove computed values of given measure
@@ -520,8 +602,8 @@ class CostBenefit():
                        self.present_year, self.future_year))
         return axis
 
-    def _calc_impact_measures(self, hazard, exposures, meas_set, imp_fun_set, \
-        when='future', risk_func=risk_aai_agg, save_imp=False):
+    def _calc_impact_measures(self, hazard, exposures, meas_set, imp_fun_set,
+                              when='future', risk_func=risk_aai_agg, save_imp=False):
         """Compute impact of each measure and transform it to input risk
         measurement. Set reference year from exposures value.
 
@@ -544,7 +626,7 @@ class CostBenefit():
         imp_tmp = Impact()
         imp_tmp.calc(exposures, imp_fun_set, hazard)
         impact_meas['no measure'] = dict()
-        impact_meas['no measure']['cost'] = 0.0
+        impact_meas['no measure']['cost'] = (0, 0)
         impact_meas['no measure']['risk'] = risk_func(imp_tmp)
         impact_meas['no measure']['risk_transf'] = 0.0
         impact_meas['no measure']['efc'] = imp_tmp.calc_freq_curve()
@@ -556,9 +638,9 @@ class CostBenefit():
             LOGGER.debug('%s impact of measure %s.', when, measure.name)
             imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
             impact_meas[measure.name] = dict()
-            impact_meas[measure.name]['cost'] = measure.cost
+            impact_meas[measure.name]['cost'] = (measure.cost, measure.risk_transf_cost_factor)
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)
-            impact_meas[measure.name]['risk_transf'] = risk_transf
+            impact_meas[measure.name]['risk_transf'] = risk_func(risk_transf)
             impact_meas[measure.name]['efc'] = imp_tmp.calc_freq_curve()
             if save_imp:
                 impact_meas[measure.name]['impact'] = imp_tmp
@@ -607,7 +689,8 @@ class CostBenefit():
 
             self._cost_ben_one(meas_name, meas_val, disc_rates, time_dep)
 
-    def _cost_ben_one(self, meas_name, meas_val, disc_rates, time_dep):
+    def _cost_ben_one(self, meas_name, meas_val, disc_rates, time_dep,
+                      ini_state='no measure'):
         """ Compute cost and benefit for given measure with time dependency
 
         Parameters:
@@ -616,11 +699,13 @@ class CostBenefit():
                 optionally impact at future
             disc_rates (DiscRates): discount rates instance
             time_dep (np.array): time dependency array
+            ini_state (str): name of the measure to which to compute benefit.
+                Default: 'no measure'
         """
-        fut_benefit = self.imp_meas_future['no measure']['risk'] - meas_val['risk']
+        fut_benefit = self.imp_meas_future[ini_state]['risk'] - meas_val['risk']
         fut_risk_tr = meas_val['risk_transf']
         if self.imp_meas_present:
-            pres_benefit = self.imp_meas_present['no measure']['risk'] - \
+            pres_benefit = self.imp_meas_present[ini_state]['risk'] - \
                 self.imp_meas_present[meas_name]['risk']
             meas_ben = pres_benefit + (fut_benefit-pres_benefit) * time_dep
 
@@ -636,7 +721,8 @@ class CostBenefit():
         risk_tr = disc_rates.net_present_value(self.present_year,
                                                self.future_year, risk_tr)
         self.benefit[meas_name] = meas_ben
-        self.cost_ben_ratio[meas_name] = (meas_val['cost']+risk_tr)/meas_ben
+        self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
+            meas_val['cost'][1]*risk_tr)/meas_ben
 
     def _time_dependency_array(self, imp_time_depen=None):
         """ Construct time dependency array. Each year contains a value in [0,1]
@@ -681,8 +767,7 @@ class CostBenefit():
                 self.future_year, time_dep * risk_future)
         return tot_climate_risk
 
-    def _combine_imp_meas(self, in_meas_names, new_name, risk_transf, risk_func,
-                          when='future'):
+    def _combine_imp_meas(self, new_cb, in_meas_names, new_name, risk_func, when='future'):
         """ Compute impacts combined measures assuming they are independent, i.e.
         their benefit can be added. Costs are also added. For the new measure
         the dictionary imp_meas_future if when='future' and imp_meas_present
@@ -691,10 +776,6 @@ class CostBenefit():
         Parameters:
             in_meas_names (list(str)): list with names of measures to combine
             new_name (str): name to give to the new resulting measure
-            risk_transf (tuple): Risk transfer values (attachment, cover, cost)
-                to use to resulting combined impact. Cost: nly structuring and
-                transaction costs, expected loss will be added to come to total
-                cost of risk transfer.
             risk_func (func, optional): function describing risk measure given
                 an Impact. Default: average annual impact (aggregated).
             when (str): 'present' or 'future' making reference to which dictionary
@@ -702,32 +783,27 @@ class CostBenefit():
         """
         if when == 'future':
             imp_dict = self.imp_meas_future
+            new_imp_dict = new_cb.imp_meas_future
         else:
             imp_dict = self.imp_meas_present
+            new_imp_dict = new_cb.imp_meas_present
 
         sum_ben = np.sum([imp_dict['no measure']['impact'].at_event - \
             imp_dict[name]['impact'].at_event for name in in_meas_names], axis=0)
         new_imp = copy.deepcopy(imp_dict[in_meas_names[0]]['impact'])
         new_imp.at_event = np.maximum(imp_dict['no measure']['impact'].at_event
                                       - sum_ben, 0)
-        risk_transfer = 0
-        risk_cost = 0
-        if risk_transf != (0, 0, 0):
-            imp_layer = np.minimum(np.maximum(new_imp.at_event - risk_transf[0], 0),
-                                   risk_transf[1])
-            risk_transfer = np.sum(imp_layer * new_imp.frequency)
-            new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
-            risk_cost = risk_transf[2]
+
         new_imp.eai_exp = np.array([])
         new_imp.aai_agg = sum(new_imp.at_event * new_imp.frequency)
 
-        imp_dict[new_name] = dict()
-        imp_dict[new_name]['impact'] = new_imp
-        imp_dict[new_name]['efc'] = new_imp.calc_freq_curve()
-        imp_dict[new_name]['risk'] = risk_func(new_imp)
-        imp_dict[new_name]['cost'] = np.array([imp_dict[name]['cost'] \
-            for name in in_meas_names]).sum() + risk_cost
-        imp_dict[new_name]['risk_transf'] = risk_transfer
+        new_imp_dict[new_name] = dict()
+        new_imp_dict[new_name]['impact'] = new_imp
+        new_imp_dict[new_name]['efc'] = new_imp.calc_freq_curve()
+        new_imp_dict[new_name]['risk'] = risk_func(new_imp)
+        new_imp_dict[new_name]['cost'] = (np.array([imp_dict[name]['cost'][0] \
+            for name in in_meas_names]).sum(), 1)
+        new_imp_dict[new_name]['risk_transf'] = 0
 
     def _print_results(self):
         """ Print table with main results """

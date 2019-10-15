@@ -64,7 +64,7 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.present_year, 2016)
         self.assertEqual(cost_ben.future_year, 2030)
 
-        self.assertEqual(cost_ben.imp_meas_future['no measure']['cost'], 0)
+        self.assertEqual(cost_ben.imp_meas_future['no measure']['cost'], (0, 0))
         self.assertEqual(cost_ben.imp_meas_future['no measure']['risk'], 6.51220115756442e+09)
         new_efc = cost_ben.imp_meas_future['no measure']['impact'].calc_freq_curve()
         self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['no measure']['efc'].return_per))
@@ -74,7 +74,8 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['no measure']['impact'].tot_value, 6.570532945599105e+11)
         self.assertEqual(cost_ben.imp_meas_future['no measure']['impact'].aai_agg, 6.51220115756442e+09)
 
-        self.assertEqual(cost_ben.imp_meas_future['Mangroves']['cost'], 1.3117683608515418e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Mangroves']['cost'][0], 1.3117683608515418e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Mangroves']['cost'][1], 1)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['risk'], 4.850407096284983e+09)
         new_efc = cost_ben.imp_meas_future['Mangroves']['impact'].calc_freq_curve()
         self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Mangroves']['efc'].return_per))
@@ -84,7 +85,8 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['impact'].tot_value, 6.570532945599105e+11)
         self.assertEqual(cost_ben.imp_meas_future['Mangroves']['impact'].aai_agg, 4.850407096284983e+09)
 
-        self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['cost'], 1.728000000000000e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['cost'][0], 1.728000000000000e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['cost'][1], 1)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['risk'], 5.188921355413834e+09)
         new_efc = cost_ben.imp_meas_future['Beach nourishment']['impact'].calc_freq_curve()
         self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Beach nourishment']['efc'].return_per))
@@ -95,7 +97,8 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].tot_value, 6.570532945599105e+11)
         self.assertEqual(cost_ben.imp_meas_future['Beach nourishment']['impact'].aai_agg, 5.188921355413834e+09)
 
-        self.assertEqual(cost_ben.imp_meas_future['Seawall']['cost'], 8.878779433630093e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['cost'][0], 8.878779433630093e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Seawall']['cost'][1], 1)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['risk'], 4.736400526119911e+09)
         new_efc = cost_ben.imp_meas_future['Seawall']['impact'].calc_freq_curve()
         self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Seawall']['efc'].return_per))
@@ -105,7 +108,8 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].tot_value, 6.570532945599105e+11)
         self.assertEqual(cost_ben.imp_meas_future['Seawall']['impact'].aai_agg, 4.736400526119911e+09)
 
-        self.assertEqual(cost_ben.imp_meas_future['Building code']['cost'], 9.200000000000000e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Building code']['cost'][0], 9.200000000000000e+09)
+        self.assertEqual(cost_ben.imp_meas_future['Building code']['cost'][1], 1)
         self.assertEqual(cost_ben.imp_meas_future['Building code']['risk'], 4.884150868173321e+09)
         new_efc = cost_ben.imp_meas_future['Building code']['impact'].calc_freq_curve()
         self.assertTrue(np.allclose(new_efc.return_per, cost_ben.imp_meas_future['Building code']['efc'].return_per))
@@ -120,7 +124,7 @@ class TestSteps(unittest.TestCase):
         """ Test _cost_ben_one with different future """
         meas_name = 'Mangroves'
         meas_val = dict()
-        meas_val['cost'] = 1.3117683608515418e+09
+        meas_val['cost'] = (1.3117683608515418e+09, 1)
         meas_val['risk'] = 4.826231151473135e+10
         meas_val['efc'] = None
         meas_val['risk_transf'] = 0
@@ -151,7 +155,7 @@ class TestSteps(unittest.TestCase):
         """ Test _cost_ben_one with same future """
         meas_name = 'Mangroves'
         meas_val = dict()
-        meas_val['cost'] = 1.3117683608515418e+09
+        meas_val['cost'] = (1.3117683608515418e+09, 1)
         meas_val['risk'] = 4.850407096284983e+09
         meas_val['efc'] = None
         meas_val['risk_transf'] = 0
@@ -393,10 +397,10 @@ class TestSteps(unittest.TestCase):
 
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
-        cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
-            entity.disc_rates, risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
+        new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
+            entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
 
-        self.assertTrue(np.allclose(cost_ben.color_rgb[new_name], new_color))
+        self.assertTrue(np.allclose(new_cb.color_rgb[new_name], new_color))
 
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
@@ -404,26 +408,29 @@ class TestSteps(unittest.TestCase):
             cost_ben.imp_meas_future['Seawall']['impact'].at_event
         new_imp = np.maximum(cost_ben.imp_meas_future['no measure']['impact'].at_event - new_imp, 0)
 
-        self.assertTrue(np.allclose(cost_ben.imp_meas_present[new_name]['impact'].at_event, new_imp))
-        self.assertAlmostEqual(cost_ben.imp_meas_present[new_name]['risk'],
+        self.assertTrue(np.allclose(new_cb.imp_meas_present[new_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_present[new_name]['risk'],
                                np.sum(new_imp*cost_ben.imp_meas_present['no measure']['impact'].frequency), 5)
-        self.assertAlmostEqual(cost_ben.imp_meas_present[new_name]['cost'],
-                               cost_ben.imp_meas_present['Mangroves']['cost']+cost_ben.imp_meas_present['Seawall']['cost'])
-        self.assertTrue(np.allclose(cost_ben.imp_meas_present[new_name]['efc'].impact,
-                                    cost_ben.imp_meas_present[new_name]['impact'].calc_freq_curve().impact))
-        self.assertAlmostEqual(cost_ben.imp_meas_present[new_name]['risk_transf'], 0)
+        self.assertAlmostEqual(new_cb.imp_meas_present[new_name]['cost'][0],
+                               cost_ben.imp_meas_present['Mangroves']['cost'][0] +
+                               cost_ben.imp_meas_present['Seawall']['cost'][0])
+        self.assertAlmostEqual(new_cb.imp_meas_present[new_name]['cost'][1], 1)
+        self.assertTrue(np.allclose(new_cb.imp_meas_present[new_name]['efc'].impact,
+                                    new_cb.imp_meas_present[new_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_present[new_name]['risk_transf'], 0)
 
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['impact'].at_event, new_imp))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk'],
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[new_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['risk'],
                                np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['cost'],
-                               cost_ben.imp_meas_future['Mangroves']['cost']+cost_ben.imp_meas_future['Seawall']['cost'])
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['efc'].impact,
-                                    cost_ben.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk_transf'], 0)
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['cost'][0],
+                               cost_ben.imp_meas_future['Mangroves']['cost'][0]+cost_ben.imp_meas_future['Seawall']['cost'][0])
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['cost'][1], 1)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[new_name]['efc'].impact,
+                                    new_cb.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['risk_transf'], 0)
 
-        self.assertAlmostEqual(cost_ben.benefit[new_name], 51781337529.07264)
-        self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.19679962474434248)
+        self.assertAlmostEqual(new_cb.benefit[new_name], 51781337529.07264)
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[new_name], 0.19679962474434248)
 
     def test_combine_current_pass(self):
         """ Test combine_measures with only future"""
@@ -439,29 +446,30 @@ class TestSteps(unittest.TestCase):
 
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
-        cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
-            entity.disc_rates, risk_transf=(0, 0, 0), imp_time_depen=None, risk_func=risk_aai_agg)
+        new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
+            entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
 
-        self.assertTrue(np.allclose(cost_ben.color_rgb[new_name], new_color))
-        self.assertEqual(len(cost_ben.imp_meas_present), 0)
+        self.assertTrue(np.allclose(new_cb.color_rgb[new_name], new_color))
+        self.assertEqual(len(new_cb.imp_meas_present), 0)
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
         new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Seawall']['impact'].at_event
         new_imp = np.maximum(cost_ben.imp_meas_future['no measure']['impact'].at_event - new_imp, 0)
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['impact'].at_event, new_imp))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk'],
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[new_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['risk'],
                                np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['cost'],
-                               cost_ben.imp_meas_future['Mangroves']['cost']+cost_ben.imp_meas_future['Seawall']['cost'])
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['efc'].impact,
-                                    cost_ben.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk_transf'], 0)
-        self.assertAlmostEqual(cost_ben.benefit[new_name], 51781337529.07264)
-        self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.19679962474434248)
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['cost'][0],
+                               cost_ben.imp_meas_future['Mangroves']['cost'][0]+cost_ben.imp_meas_future['Seawall']['cost'][0])
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['cost'][1], 1)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[new_name]['efc'].impact,
+                                    new_cb.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_future[new_name]['risk_transf'], 0)
+        self.assertAlmostEqual(new_cb.benefit[new_name], 51781337529.07264)
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[new_name], 0.19679962474434248)
 
-    def test_combine_current_ins_pass(self):
-        """ Test combine_measures with only future and insurance """
+    def test_apply_transf_current_pass(self):
+        """ Test apply_risk_transfer with only future """
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -474,12 +482,14 @@ class TestSteps(unittest.TestCase):
 
         new_name = 'combine'
         new_color = np.array([0.1, 0.1, 0.1])
-        risk_transf=(1.0e7, 15.0e11, 1.0e5)
-        cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
-            entity.disc_rates, risk_transf=risk_transf, imp_time_depen=None, risk_func=risk_aai_agg)
+        risk_transf=(1.0e7, 15.0e11, 1)
+        new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
+            entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
+        new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
+            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            risk_func=risk_aai_agg)
 
-        self.assertTrue(np.allclose(cost_ben.color_rgb[new_name], new_color))
-        self.assertEqual(len(cost_ben.imp_meas_present), 0)
+        tr_name = 'risk_transfer (' + new_name + ')'
         new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
             cost_ben.imp_meas_future['Mangroves']['impact'].at_event
         new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
@@ -488,16 +498,111 @@ class TestSteps(unittest.TestCase):
         imp_layer = np.minimum(np.maximum(new_imp - risk_transf[0], 0), risk_transf[1])
         risk_transfer = np.sum(imp_layer * cost_ben.imp_meas_future['no measure']['impact'].frequency)
         new_imp = np.maximum(new_imp - imp_layer, 0)
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['impact'].at_event, new_imp))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk'],
+
+        self.assertTrue(np.allclose(new_cb.color_rgb[new_name], new_color))
+        self.assertEqual(len(new_cb.imp_meas_present), 0)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk'],
                                np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['cost'],
-            cost_ben.imp_meas_future['Mangroves']['cost']+cost_ben.imp_meas_future['Seawall']['cost']+risk_transf[2])
-        self.assertTrue(np.allclose(cost_ben.imp_meas_future[new_name]['efc'].impact,
-                                    cost_ben.imp_meas_future[new_name]['impact'].calc_freq_curve().impact))
-        self.assertAlmostEqual(cost_ben.imp_meas_future[new_name]['risk_transf'], risk_transfer)
-        self.assertAlmostEqual(cost_ben.benefit[new_name], 121496503208.77686)
-        self.assertAlmostEqual(cost_ben.cost_ben_ratio[new_name], 0.6576799443921235)
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name]*new_cb.benefit[tr_name], 32106013195.316242)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
+                                    new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk_transf'], risk_transfer)
+        self.assertAlmostEqual(new_cb.benefit[tr_name], 32106013195.316242, 4) # benefit = impact layer
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], 1)
+
+    def test_apply_transf_cost_fact_pass(self):
+        """ Test apply_risk_transfer with only future annd cost factor """
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        entity = Entity()
+        entity.read_excel(ENT_DEMO_TODAY)
+        entity.check()
+        entity.exposures.ref_year = 2018
+        cost_ben = CostBenefit()
+        cost_ben.calc(hazard, entity, future_year=2040, risk_func=risk_aai_agg,
+                      imp_time_depen=None, save_imp=True)
+
+        new_name = 'combine'
+        new_color = np.array([0.1, 0.1, 0.1])
+        risk_transf=(1.0e7, 15.0e11, 2)
+        new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
+            entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
+        new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
+            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            risk_func=risk_aai_agg)
+
+        tr_name = 'risk_transfer (' + new_name + ')'
+        new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
+            cost_ben.imp_meas_future['Mangroves']['impact'].at_event
+        new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
+            cost_ben.imp_meas_future['Seawall']['impact'].at_event
+        new_imp = np.maximum(cost_ben.imp_meas_future['no measure']['impact'].at_event - new_imp, 0)
+        imp_layer = np.minimum(np.maximum(new_imp - risk_transf[0], 0), risk_transf[1])
+        risk_transfer = np.sum(imp_layer * cost_ben.imp_meas_future['no measure']['impact'].frequency)
+        new_imp = np.maximum(new_imp - imp_layer, 0)
+
+        self.assertTrue(np.allclose(new_cb.color_rgb[new_name], new_color))
+        self.assertEqual(len(new_cb.imp_meas_present), 0)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk'],
+                               np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name]*new_cb.benefit[tr_name], risk_transf[2]*32106013195.316242)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
+                                    new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk_transf'], risk_transfer)
+        self.assertAlmostEqual(new_cb.benefit[tr_name], 32106013195.316242, 4) # benefit = impact layer
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], risk_transf[2])
+
+    def test_apply_transf_future_pass(self):
+        """ Test apply_risk_transfer with present and future """
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+        entity = Entity()
+        entity.read_excel(ENT_DEMO_TODAY)
+        entity.check()
+        entity.exposures.ref_year = 2018
+
+        fut_ent = copy.deepcopy(entity)
+        fut_ent.exposures.ref_year = 2040
+
+        cost_ben = CostBenefit()
+        cost_ben.calc(hazard, entity, ent_future=fut_ent, risk_func=risk_aai_agg,
+                      imp_time_depen=None, save_imp=True)
+
+        new_name = 'combine'
+        new_color = np.array([0.1, 0.1, 0.1])
+        risk_transf=(1.0e7, 15.0e11, 1)
+        new_cb = cost_ben.combine_measures(['Mangroves', 'Seawall'], new_name, new_color,
+            entity.disc_rates, imp_time_depen=None, risk_func=risk_aai_agg)
+        new_cb.apply_risk_transfer(new_name, risk_transf[0], risk_transf[1],
+            entity.disc_rates, cost_ini=0, cost_factor=risk_transf[2], imp_time_depen=1,
+            risk_func=risk_aai_agg)
+
+        tr_name = 'risk_transfer (' + new_name + ')'
+        new_imp = cost_ben.imp_meas_future['no measure']['impact'].at_event - \
+            cost_ben.imp_meas_future['Mangroves']['impact'].at_event
+        new_imp += cost_ben.imp_meas_future['no measure']['impact'].at_event - \
+            cost_ben.imp_meas_future['Seawall']['impact'].at_event
+        new_imp = np.maximum(cost_ben.imp_meas_future['no measure']['impact'].at_event - new_imp, 0)
+        imp_layer = np.minimum(np.maximum(new_imp - risk_transf[0], 0), risk_transf[1])
+        risk_transfer = np.sum(imp_layer * cost_ben.imp_meas_future['no measure']['impact'].frequency)
+        new_imp = np.maximum(new_imp - imp_layer, 0)
+
+        self.assertTrue(np.allclose(new_cb.color_rgb[new_name], new_color))
+        self.assertEqual(len(new_cb.imp_meas_present), 3)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['impact'].at_event, new_imp))
+        self.assertTrue(np.allclose(new_cb.imp_meas_present[tr_name]['impact'].at_event, new_imp))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk'],
+                               np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
+        self.assertAlmostEqual(new_cb.imp_meas_present[tr_name]['risk'],
+                               np.sum(new_imp*cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name]*new_cb.benefit[tr_name], 69715165679.7042)
+        self.assertTrue(np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
+                                    new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
+        self.assertAlmostEqual(new_cb.imp_meas_future[tr_name]['risk_transf'], risk_transfer)
+        self.assertAlmostEqual(new_cb.benefit[tr_name], 69715165679.7042, 4) # benefit = impact layer
+        self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], 1)
 
     def test_remove_measure(self):
         """ Test remove_measure method """
