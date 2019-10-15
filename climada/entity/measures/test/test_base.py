@@ -413,7 +413,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
         self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
-        self.assertEqual(risk_transf, 0)
+        self.assertEqual(risk_transf.aai_agg, 0)
 
 
     def test_calc_impact_transf_pass(self):
@@ -445,8 +445,7 @@ class TestApply(unittest.TestCase):
         self.assertAlmostEqual(imp.at_event[12], 8.648764833437817e+07)
         self.assertAlmostEqual(imp.at_event[41], 500000000)
         self.assertAlmostEqual(imp.at_event[11890], 6.498096646836635e+07)
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], entity.exposures.latitude))
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], entity.exposures.longitude))
+        self.assertTrue(np.array_equal(imp.coord_exp, np.array([])))
         self.assertTrue(np.array_equal(imp.eai_exp, np.array([])))
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e+11)
         self.assertEqual(imp.unit, 'USD')
@@ -457,7 +456,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
         self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
-        self.assertEqual(risk_transf, 2.3139691495470852e+08)
+        self.assertEqual(risk_transf.aai_agg, 2.3139691495470852e+08)
 
 # Execute Tests
 if __name__ == "__main__":

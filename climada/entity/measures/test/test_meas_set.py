@@ -406,6 +406,7 @@ class TestReaderExcel(unittest.TestCase):
 
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 1)
 
         name = 'vegetation management'
         act_buil = meas.get_measure(name=name)[0]
@@ -427,8 +428,31 @@ class TestReaderExcel(unittest.TestCase):
 
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 1)
 
         self.assertEqual(meas.get_measure(name='enforce building code')[0].imp_fun_map, '1to3')
+
+        name = 'risk transfer'
+        act_buil = meas.get_measure(name=name)[0]
+        self.assertEqual(act_buil.name, name)
+        self.assertEqual(act_buil.haz_type, 'TC')
+        self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.90, 0.72, 0.72])))
+        self.assertEqual(act_buil.cost,  21000000)
+
+        self.assertEqual(act_buil.hazard_set, 'nil')
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
+
+        self.assertEqual(act_buil.exposures_set, 'nil')
+        self.assertEqual(act_buil.exp_region_id, 0)
+
+        self.assertEqual(act_buil.paa_impact, (1, 0))
+        self.assertEqual(act_buil.mdd_impact, (1, 0))
+        self.assertEqual(act_buil.imp_fun_map, 'nil')
+
+        self.assertEqual(act_buil.risk_transf_attach, 500000000)
+        self.assertEqual(act_buil.risk_transf_cover, 1000000000)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 2)
 
         self.assertEqual(meas.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(meas.tag.description, '')
