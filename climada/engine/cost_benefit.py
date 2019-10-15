@@ -279,6 +279,8 @@ class CostBenefit():
                 an Impact. Default: average annual impact (aggregated).
         """
         m_transf_name = 'risk_transfer (' + meas_name + ')'
+        self.color_rgb[m_transf_name] = np.minimum(self.color_rgb[meas_name] -
+                      np.ones(3)*0.2, 1)
 
         _, fut_layer_no = self.imp_meas_future['no measure']['impact']. \
             calc_risk_transfer(attachment, cover)
