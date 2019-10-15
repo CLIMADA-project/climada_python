@@ -325,7 +325,7 @@ class CostBenefit():
 
         norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
-        headers = ['Risk transfer', 'layer ' + norm_name, 'price ' + norm_name]
+        headers = ['Risk transfer', 'Layer ' + norm_name, 'Price ' + norm_name]
         table = [['without measure:', layer_no/norm_fact,
                   (cost_fix+layer_no*cost_factor)/norm_fact],
                  ['with measure: ', layer/norm_fact,
