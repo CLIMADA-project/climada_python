@@ -28,7 +28,7 @@ from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
-from climada.util.constants import ENT_DEMO_TODAY
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
@@ -248,7 +248,7 @@ class TestCalc(unittest.TestCase):
         ent.read_excel(ENT_DEMO_TODAY)
         ent.exposures.rename(columns={'if_TC':'if_'}, inplace=True)
         ent.check()
-        
+
         # Read default hazard file
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
@@ -302,7 +302,7 @@ class TestImpactYearSet(unittest.TestCase):
         imp.at_event[7] = 0.381063674256423e9
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
-        imp.unit = 'USD'   
+        imp.unit = 'USD'
         imp.date = np.array([732801, 716160, 718313, 712468, 732802, \
                              729285, 732931, 715419, 722404, 718351])
 
@@ -331,7 +331,7 @@ class TestImpactYearSet(unittest.TestCase):
         self.assertFalse(2007 in iys_yr)
         self.assertFalse(1959 in iys_yr)
         self.assertEqual(len(iys_all_yr_1940), 61)
-        
+
     def test_impact_year_set_empty(self):
         """Test result for empty impact """
         imp = Impact()
@@ -496,6 +496,50 @@ class TestRPmatrix(unittest.TestCase):
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.13149405)
 
+class TestRiskTrans(unittest.TestCase):
+    """ Test risk transfer methods """
+    def test_risk_trans_pass(self):
+        """ Test calc_risk_transfer """
+        # Create impact object
+        imp = Impact()
+        imp.event_id = np.arange(10)
+        imp.event_name = [0, 1, 2, 3, 4, 5, 6, 7, 8, 15]
+        imp.date = np.arange(10)
+        imp.coord_exp = np.array([[1, 2], [2, 3]])
+        imp.crs = DEF_CRS
+        imp.eai_exp = np.array([1, 2])
+        imp.at_event = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 15])
+        imp.frequency = np.ones(10)/5
+        imp.tot_value = 10
+        imp.aai_agg = 100
+        imp.unit = 'USD'
+        imp.imp_mat = []
+
+        new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
+        self.assertEqual(new_imp.unit, imp.unit)
+        self.assertEqual(new_imp.tot_value, imp.tot_value)
+        self.assertEqual(new_imp.imp_mat, imp.imp_mat)
+        self.assertEqual(new_imp.event_name, imp.event_name)
+        self.assertTrue(np.allclose(new_imp.event_id, imp.event_id))
+        self.assertTrue(np.allclose(new_imp.date, imp.date))
+        self.assertTrue(np.allclose(new_imp.frequency, imp.frequency))
+        self.assertTrue(np.allclose(new_imp.coord_exp, np.array([])))
+        self.assertTrue(np.allclose(new_imp.eai_exp, np.array([])))
+        self.assertTrue(np.allclose(new_imp.at_event, np.array([0, 1, 2, 2, 2, 2, 2, 2, 2, 5])))
+        self.assertAlmostEqual(new_imp.aai_agg, 4.0)
+
+        self.assertEqual(imp_rt.unit, imp.unit)
+        self.assertEqual(imp_rt.tot_value, imp.tot_value)
+        self.assertEqual(imp_rt.imp_mat, imp.imp_mat)
+        self.assertEqual(imp_rt.event_name, imp.event_name)
+        self.assertTrue(np.allclose(imp_rt.event_id, imp.event_id))
+        self.assertTrue(np.allclose(imp_rt.date, imp.date))
+        self.assertTrue(np.allclose(imp_rt.frequency, imp.frequency))
+        self.assertTrue(np.allclose(imp_rt.coord_exp, np.array([])))
+        self.assertTrue(np.allclose(imp_rt.eai_exp, np.array([])))
+        self.assertTrue(np.allclose(imp_rt.at_event, np.array([0, 0, 0, 1, 2, 3, 4, 5, 6, 10])))
+        self.assertAlmostEqual(imp_rt.aai_agg, 6.2)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOneExposure)
@@ -504,4 +548,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRPmatrix))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskTrans))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

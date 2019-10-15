@@ -23,6 +23,7 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 
 import ast
 import logging
+import copy
 import csv
 import warnings
 import datetime as dt
@@ -225,6 +226,34 @@ class Impact():
 
         if save_mat:
             self.imp_mat = self.imp_mat.tocsr()
+
+    def calc_risk_transfer(self, attachment, cover):
+        """ Compute traaditional risk transfer over impact. Returns new impact
+        with risk transfer applied and the insurance layer resulting Impact metrics.
+
+        Parameters:
+            attachment (float): attachment (deductible)
+            cover (float): cover
+
+        Returns:
+            Impact, Impact
+        """
+        new_imp = copy.deepcopy(self)
+        if attachment or cover:
+            imp_layer = np.minimum(np.maximum(new_imp.at_event - attachment, 0), cover)
+            new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
+            new_imp.aai_agg = np.sum(new_imp.at_event * new_imp.frequency)
+            # next values are no longer valid
+            new_imp.eai_exp = np.array([])
+            new_imp.coord_exp = np.array([])
+            new_imp.imp_mat = []
+            # innsurance layer metrics
+            risk_transfer = copy.deepcopy(new_imp)
+            risk_transfer.at_event = imp_layer
+            risk_transfer.aai_agg = np.sum(imp_layer * new_imp.frequency)
+            return new_imp, risk_transfer
+
+        return new_imp, Impact()
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
@@ -433,9 +462,9 @@ class Impact():
         if not len(year_range)==0:
             years = years[years>=min(year_range)]
             years = years[years<=max(year_range)]
-            
+
         year_set = dict()
-        
+
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
