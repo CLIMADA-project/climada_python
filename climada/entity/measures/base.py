@@ -60,6 +60,8 @@ class Measure():
             the previous parameters
         risk_transf_attach (float): risk transfer attachment
         risk_transf_cover (float): risk transfer cover
+        risk_transf_cost_factor (float): factor to multiply to resulting 
+            insurance layer to get the total cost of risk transfer
     """
 
     def __init__(self):
@@ -88,6 +90,7 @@ class Measure():
         # risk transfer
         self.risk_transf_attach = 0
         self.risk_transf_cover = 0
+        self.risk_transf_cost_factor = 1
 
     def check(self):
         """ Check consistent instance data.
@@ -113,7 +116,7 @@ class Measure():
             hazard (Hazard): hazard instance
 
         Returns:
-            Impact, float
+            Impact (resulting impact), Impact (insurance layer)
         """
         new_exp, new_ifs, new_haz = self.apply(exposures, imp_fun_set, hazard)
         return self._calc_impact(new_exp, new_ifs, new_haz)
@@ -153,23 +156,12 @@ class Measure():
             new_haz (Hazard): hazard once measure applied
 
         Returns:
-            Impact, float
+            Impact, Impact
         """
         from climada.engine.impact import Impact
         imp = Impact()
         imp.calc(new_exp, new_ifs, new_haz)
-
-        risk_transfer = 0
-        if self.risk_transf_attach + self.risk_transf_cover > 0:
-            imp_layer = np.minimum(np.maximum(imp.at_event - self.risk_transf_attach, 0),
-                                   self.risk_transf_cover)
-            risk_transfer = np.sum(imp_layer * imp.frequency)
-            imp.at_event = np.maximum(imp.at_event - imp_layer, 0)
-            imp.aai_agg = np.sum(imp.at_event * imp.frequency)
-            # expected annual impact per exposure no longer valid
-            imp.eai_exp = np.array([])
-
-        return imp, risk_transfer
+        return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
         """Change hazard to provided hazard_set.

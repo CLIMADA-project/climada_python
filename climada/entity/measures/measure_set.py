@@ -75,6 +75,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'measures',
                               'exp_reg' : 'Region_ID',
                               'risk_att' : 'risk transfer attachement',
                               'risk_cov' : 'risk transfer cover',
+                              'risk_fact' : 'risk transfer cost factor',
                               'haz' : 'peril_ID'
                              }
                 }
@@ -424,6 +425,10 @@ class MeasureSet():
                 meas.imp_fun_map = dfr[var_names['col_name']['fun_map']][idx]
                 meas.risk_transf_attach = dfr[var_names['col_name']['risk_att']][idx]
                 meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
+                try:
+                    meas.risk_transf_cost_factor = dfr[var_names['col_name']['risk_fact']][idx]
+                except KeyError:
+                    pass
 
                 measures.append(meas)
 
