@@ -258,7 +258,7 @@ class CostBenefit():
         return new_cb
 
     def apply_risk_transfer(self, meas_name, attachment, cover, disc_rates,
-                            cost_ini=0, cost_factor=1, imp_time_depen=None,
+                            cost_fix=0, cost_factor=1, imp_time_depen=None,
                             risk_func=risk_aai_agg):
         """ Applies risk transfer to given measure computed before with saved
         impact and compares it to when no measure is applied. Appended to
@@ -292,7 +292,7 @@ class CostBenefit():
         self.imp_meas_future[m_transf_name]['risk_transf'] = risk_func(layer)
         self.imp_meas_future[m_transf_name]['impact'] = imp
         self.imp_meas_future[m_transf_name]['risk'] = risk_func(imp)
-        self.imp_meas_future[m_transf_name]['cost'] = (cost_ini, cost_factor)
+        self.imp_meas_future[m_transf_name]['cost'] = (cost_fix, cost_factor)
         self.imp_meas_future[m_transf_name]['efc'] = imp.calc_freq_curve()
 
         time_dep = self._time_dependency_array(imp_time_depen)
@@ -308,7 +308,7 @@ class CostBenefit():
             self.imp_meas_present[m_transf_name]['risk_transf'] = risk_func(layer)
             self.imp_meas_present[m_transf_name]['impact'] = imp
             self.imp_meas_present[m_transf_name]['risk'] = risk_func(imp)
-            self.imp_meas_present[m_transf_name]['cost'] = (cost_ini, cost_factor)
+            self.imp_meas_present[m_transf_name]['cost'] = (cost_fix, cost_factor)
             self.imp_meas_present[m_transf_name]['efc'] = imp.calc_freq_curve()
         else:
             layer_no = time_dep*fut_layer_no
@@ -321,7 +321,7 @@ class CostBenefit():
         layer_no = disc_rates.net_present_value(self.present_year,
                                                 self.future_year, layer_no)
         npv_layer = (self.cost_ben_ratio[meas_name]*self.benefit[meas_name] -
-            cost_ini)/cost_factor
+            cost_fix)/cost_factor
 
         norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
