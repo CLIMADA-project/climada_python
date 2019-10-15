@@ -268,6 +268,8 @@ class CostBenefit():
             meas_name (str): name of measure where to apply risk transfer
             attachment (float): risk transfer values attachment (deductible)
             cover (float): risk transfer cover
+            cost_fix (float): fixed cost of implemented innsurance, e.g.
+                transaction costs
             cost_factor (float): factor to which to multiply the insurance layer
                 to compute its cost. Default: 1
             imp_time_depen (float, optional): parameter which represents time
@@ -295,8 +297,10 @@ class CostBenefit():
         self.imp_meas_future[m_transf_name]['cost'] = (cost_fix, cost_factor)
         self.imp_meas_future[m_transf_name]['efc'] = imp.calc_freq_curve()
 
-        time_dep = self._time_dependency_array(imp_time_depen)
         if self.imp_meas_present:
+            if imp_time_depen is None:
+                imp_time_depen = 1
+            time_dep = self._time_dependency_array(imp_time_depen)
             _, pres_layer_no = self.imp_meas_present['no measure']['impact']. \
                 calc_risk_transfer(attachment, cover)
             pres_layer_no = risk_func(pres_layer_no)
@@ -311,28 +315,19 @@ class CostBenefit():
             self.imp_meas_present[m_transf_name]['cost'] = (cost_fix, cost_factor)
             self.imp_meas_present[m_transf_name]['efc'] = imp.calc_freq_curve()
         else:
+            time_dep = self._time_dependency_array(imp_time_depen)
             layer_no = time_dep*layer_no
 
         self._cost_ben_one(m_transf_name, self.imp_meas_future[m_transf_name],
                            disc_rates, time_dep, ini_state=meas_name)
-        self._print_results()
 
         # compare layer no measure
         layer_no = disc_rates.net_present_value(self.present_year,
                                                 self.future_year, layer_no)
         layer = (self.cost_ben_ratio[m_transf_name]*self.benefit[m_transf_name] - \
             cost_fix)/cost_factor
-
-        norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
-        norm_name = '(' + self.unit + ' ' + norm_name + ')'
-        headers = ['Risk transfer', 'Layer ' + norm_name, 'Price ' + norm_name]
-        table = [['without measure:', layer_no/norm_fact,
-                  (cost_fix+layer_no*cost_factor)/norm_fact],
-                 ['with measure: ', layer/norm_fact,
-                  (cost_fix+layer*cost_factor)/norm_fact]]
-        print()
-        print(tabulate(table, headers, tablefmt="simple"))
-        print()
+        self._print_results()
+        self._print_risk_transfer(layer, layer_no, cost_fix, cost_factor)
 
     def remove_measure(self, meas_name):
         """ Remove computed values of given measure
@@ -884,6 +879,24 @@ class CostBenefit():
                         ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
         axis.set_ylabel('Benefit/Cost ratio')
         return axis
+
+    def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):
+        """ Print comparative of risk transfer with and without measure
+
+        Parameters:
+            layer (float): expected insurance layer with measure
+            layer_on (float): expected insurance layer without measure
+        """
+        norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
+        norm_name = '(' + self.unit + ' ' + norm_name + ')'
+        headers = ['Risk transfer', 'Expected layer ' + norm_name, 'Price ' + norm_name]
+        table = [['without measure', layer_no/norm_fact,
+                  (cost_fix+layer_no*cost_factor)/norm_fact],
+                 ['with measure', layer/norm_fact,
+                  (cost_fix+layer*cost_factor)/norm_fact]]
+        print()
+        print(tabulate(table, headers, tablefmt="simple"))
+        print()
 
 def _norm_values(value):
     """ Compute normalization value and name
