@@ -522,7 +522,7 @@ class Centroids():
             ras_trans = self.meta['transform']
 
             if resampling is None:
-                    resampling = Resampling.average
+                resampling = Resampling.average
 
             bounds += np.array([-.05, -.05, .05, .05])
             elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
