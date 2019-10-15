@@ -48,20 +48,20 @@ sys.dont_write_bytecode = True
 
 #RF_MODEL = numpy.arange(1980,2017)
 
-RF_MODEL = [#'ORCHIDEE',
-#            'DBH',
-#            'H08',
-#            'LPJmL',
-#            'MPI-HM',
-#            'CLM',
-#            'PCR-GLOBWB',
-#            'WaterGAP',
-#            'JULES-TUC',
-#            'JULES-UoE',
-#            'MATSIRO',
-#            'VIC',
-#            'VEGAS'
-            'lpjml'
+RF_MODEL = ['ORCHIDEE',
+            'DBH',
+            'H08',
+            'LPJmL',
+            'MPI-HM',
+            'CLM',
+            'PCR-GLOBWB',
+            'WaterGAP',
+            'JULES-TUC',
+            'JULES-UoE',
+            'MATSIRO',
+            'VIC',
+            'VEGAS'
+            #'lpjml'
             ]
 CL_MODEL = [#'gfdl-esm2m',
             #'hadgem2-es',
