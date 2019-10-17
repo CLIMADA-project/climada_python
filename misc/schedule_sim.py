@@ -114,7 +114,7 @@ for cnt_ind in range(len(isos)):
         line_counter = save_lc
         dph_path = flood_dir + 'flddph_{}_{}_{}_gev_0.1.nc'\
             .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-        frc_path= flood_dir + 'fldfrc_{}_{}_{}_gev_0.1.nc'\S
+        frc_path= flood_dir + 'fldfrc_{}_{}_{}_gev_0.1.nc'\
             .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
