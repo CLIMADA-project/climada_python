@@ -209,6 +209,7 @@ class CostBenefit():
 
         self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
         self._print_results()
+        self._print_npv()
 
     def combine_measures(self, in_meas_names, new_name, new_color, disc_rates,
                          imp_time_depen=None, risk_func=risk_aai_agg):
@@ -255,6 +256,7 @@ class CostBenefit():
         new_cb._cost_ben_one(new_name, new_cb.imp_meas_future[new_name], disc_rates,
                              time_dep)
         new_cb._print_results()
+        new_cb._print_npv()
         return new_cb
 
     def apply_risk_transfer(self, meas_name, attachment, cover, disc_rates,
@@ -328,6 +330,7 @@ class CostBenefit():
             cost_fix)/cost_factor
         self._print_results()
         self._print_risk_transfer(layer, layer_no, cost_fix, cost_factor)
+        self._print_npv()
 
     def remove_measure(self, meas_name):
         """ Remove computed values of given measure
@@ -378,9 +381,10 @@ class CostBenefit():
                 horizontalalignment='center', verticalalignment='bottom', rotation=90, \
                 fontsize=12, color='r')
 
-        axis.set_xlim(0, max(int(self.tot_climate_risk/norm_fact),
+        axis.set_xlim(0, max(self.tot_climate_risk/norm_fact,
                              np.array(list(self.benefit.values())).sum()/norm_fact))
         axis.set_ylim(0, int(1/np.array(list(self.cost_ben_ratio.values())).min()) + 1)
+
         x_label = 'NPV averted damage over ' + str(self.future_year - \
             self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
         axis.set_xlabel(x_label)
@@ -898,6 +902,9 @@ class CostBenefit():
         print()
         print(tabulate(table, headers, tablefmt="simple"))
         print()
+
+    def _print_npv(self):
+        print('Net Present Values')
 
 def _norm_values(value):
     """ Compute normalization value and name
