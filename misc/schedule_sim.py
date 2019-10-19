@@ -102,7 +102,7 @@ excl_list = ['AIA','ANT', 'COK', 'FLK','GIB','GLP', 'GGY','GUF','JEY','MAC',
 for cnt_ind in range(len(isos)):
     
     country = [isos[cnt_ind]]
-    if country in excl_list: 
+    if country[0] in excl_list: 
         continue
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
