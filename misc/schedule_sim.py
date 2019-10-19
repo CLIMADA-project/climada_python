@@ -139,7 +139,7 @@ for cnt_ind in range(len(isos)):
             imp_fix=Impact()
             imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
             gdpa = GDP2Asset()
-            gdpa.read_hdf5(exp_path + country[0] + '/Litpop_{}_{}.h5'.format(country[0], str(year)))
+            gdpa.read_hdf5(exp_path + country[0] + '/Litpop_{}_{}.h5'.format(country[0], str(years[year])))
             gdpa['centr_RF']= gdpaFix['centr_RF']
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
