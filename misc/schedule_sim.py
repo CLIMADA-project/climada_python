@@ -108,7 +108,7 @@ for cnt_ind in range(len(isos)):
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts[cnt_ind]-1)]
     gdpaFix = GDP2Asset()
-    gdpaFix.read_hdf5(exp_path + country + '/Litpop_{}_2005.h5'.format(country))
+    gdpaFix.read_hdf5(exp_path + country + '/Litpop_{}_2005.h5'.format(country[0]))
     save_lc = line_counter
     for pro_std in range(len(PROT_STD)):
         line_counter = save_lc
@@ -139,7 +139,7 @@ for cnt_ind in range(len(isos)):
             imp_fix=Impact()
             imp_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
             gdpa = GDP2Asset()
-            gdpa.read_hdf5(exp_path + country + '/Litpop_{}_{}.h5'.format(country, str(year)))
+            gdpa.read_hdf5(exp_path + country + '/Litpop_{}_{}.h5'.format(country[0], str(year)))
             gdpa['centr_RF']= gdpaFix['centr_RF']
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
