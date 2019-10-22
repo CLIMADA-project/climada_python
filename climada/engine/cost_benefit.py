@@ -39,6 +39,9 @@ DEF_PRESENT_YEAR = 2016
 DEF_FUTURE_YEAR = 2030
 """ Default future reference year """
 
+NO_MEASURE = 'no measure'
+""" Name of risk metrics when no measure is applied """
+
 def risk_aai_agg(impact):
     """Risk measurement as average annual impact aggregated.
 
@@ -175,7 +178,7 @@ class CostBenefit():
         # save measure colors
         for meas in entity.measures.get_measure(hazard.tag.haz_type):
             self.color_rgb[meas.name] = meas.color_rgb
-        self.color_rgb['no measure'] = colors.to_rgb('deepskyblue')
+        self.color_rgb[NO_MEASURE] = colors.to_rgb('deepskyblue')
 
         if future_year is None and ent_future is None:
             future_year = entity.exposures.ref_year
@@ -239,14 +242,14 @@ class CostBenefit():
         new_cb.future_year = self.future_year
         new_cb.tot_climate_risk = self.tot_climate_risk
         new_cb.unit = self.unit
-        new_cb.color_rgb['no measure'] = self.color_rgb['no measure']
+        new_cb.color_rgb[NO_MEASURE] = self.color_rgb[NO_MEASURE]
         new_cb.color_rgb[new_name] = new_color
-        new_cb.imp_meas_future['no measure'] = self.imp_meas_future['no measure']
+        new_cb.imp_meas_future[NO_MEASURE] = self.imp_meas_future[NO_MEASURE]
 
         # compute impacts for imp_meas_future and imp_meas_present
         self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='future')
         if self.imp_meas_present:
-            new_cb.imp_meas_present['no measure'] = self.imp_meas_present['no measure']
+            new_cb.imp_meas_present[NO_MEASURE] = self.imp_meas_present[NO_MEASURE]
             if imp_time_depen is None:
                 imp_time_depen = 1
             self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='present')
@@ -286,7 +289,7 @@ class CostBenefit():
         self.color_rgb[m_transf_name] = np.maximum(np.minimum(self.color_rgb[meas_name] - \
             np.ones(3)*0.2, 1), 0)
 
-        _, layer_no = self.imp_meas_future['no measure']['impact']. \
+        _, layer_no = self.imp_meas_future[NO_MEASURE]['impact']. \
             calc_risk_transfer(attachment, cover)
         layer_no = risk_func(layer_no)
 
@@ -303,7 +306,7 @@ class CostBenefit():
             if imp_time_depen is None:
                 imp_time_depen = 1
             time_dep = self._time_dependency_array(imp_time_depen)
-            _, pres_layer_no = self.imp_meas_present['no measure']['impact']. \
+            _, pres_layer_no = self.imp_meas_present[NO_MEASURE]['impact']. \
                 calc_risk_transfer(attachment, cover)
             pres_layer_no = risk_func(pres_layer_no)
             layer_no = pres_layer_no + (layer_no-pres_layer_no) * time_dep
@@ -371,7 +374,7 @@ class CostBenefit():
         axis = self._plot_list_cost_ben([self], axis, **kwargs)
         norm_fact, norm_name = _norm_values(self.tot_climate_risk+0.01)
 
-        text_pos = self.imp_meas_future['no measure']['risk']/norm_fact
+        text_pos = self.imp_meas_future[NO_MEASURE]['risk']/norm_fact
         axis.scatter(text_pos, 0, c='r', zorder=200, clip_on=False)
         axis.text(text_pos, 0, '  AAI', horizontalalignment='center',
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
@@ -409,26 +412,34 @@ class CostBenefit():
         if not axis:
             _, axis = plt.subplots(1, 1)
         avert_rp = dict()
-        ref_imp = np.interp(return_per,
-                            self.imp_meas_future['no measure']['efc'].return_per,
-                            self.imp_meas_future['no measure']['efc'].impact)
         for meas_name, meas_val in self.imp_meas_future.items():
-            if meas_name == 'no measure':
+            if meas_name == NO_MEASURE:
                 continue
             interp_imp = np.interp(return_per, meas_val['efc'].return_per,
                                    meas_val['efc'].impact)
+            # check if measure over no measure or combined with another measure
+            try:
+                ref_meas = meas_name[meas_name.index('(')+1:meas_name.index(')')]
+            except ValueError:
+                ref_meas = NO_MEASURE
+            ref_imp = np.interp(return_per,
+                                self.imp_meas_future[ref_meas]['efc'].return_per,
+                                self.imp_meas_future[ref_meas]['efc'].impact)
             avert_rp[meas_name] = ref_imp - interp_imp
 
         m_names = list(self.cost_ben_ratio.keys())
         sort_cb = np.argsort(np.array([self.cost_ben_ratio[name] for name in m_names]))
         names_sort = [m_names[i] for i in sort_cb]
         color_sort = [self.color_rgb[name] for name in names_sort]
+        ref_imp = np.interp(return_per,
+                    self.imp_meas_future[NO_MEASURE]['efc'].return_per,
+                    self.imp_meas_future[NO_MEASURE]['efc'].impact)
         for rp_i, _ in enumerate(return_per):
             val_i = [avert_rp[name][rp_i] for name in names_sort]
             cum_effect = np.cumsum(np.array([0] + val_i))
             for (eff, color) in zip(cum_effect[::-1][:-1], color_sort[::-1]):
                 axis.bar(rp_i+1, eff, color=color, **kwargs)
-            axis.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0))
+            axis.bar(rp_i+1, ref_imp[rp_i], edgecolor='k', fc=(1, 0, 0, 0), zorder=100)
         axis.set_xlabel('Return Period (%s)' % str(self.future_year))
         axis.set_ylabel('Impact ('+ self.unit + ')')
         axis.set_xticks(np.arange(len(return_per))+1)
@@ -543,7 +554,7 @@ class CostBenefit():
         self.future_year = ent_future.exposures.ref_year
 
         # current situation
-        curr_risk = self.imp_meas_present['no measure']['risk']
+        curr_risk = self.imp_meas_present[NO_MEASURE]['risk']
         time_dep = self._time_dependency_array()
         risk_curr = self._npv_unaverted_impact(curr_risk, entity.disc_rates,
                                                time_dep)
@@ -561,7 +572,7 @@ class CostBenefit():
             self.future_year, risk_dev))
 
         # socioecon + cc
-        risk_tot = self._npv_unaverted_impact(self.imp_meas_future['no measure']['risk'], \
+        risk_tot = self._npv_unaverted_impact(self.imp_meas_future[NO_MEASURE]['risk'], \
             entity.disc_rates, time_dep, curr_risk)
         LOGGER.info('Total risk with development and climate change at {:d}: {:.3e}'.\
             format(self.future_year, risk_tot))
@@ -629,13 +640,13 @@ class CostBenefit():
         LOGGER.debug('%s impact with no measure.', when)
         imp_tmp = Impact()
         imp_tmp.calc(exposures, imp_fun_set, hazard)
-        impact_meas['no measure'] = dict()
-        impact_meas['no measure']['cost'] = (0, 0)
-        impact_meas['no measure']['risk'] = risk_func(imp_tmp)
-        impact_meas['no measure']['risk_transf'] = 0.0
-        impact_meas['no measure']['efc'] = imp_tmp.calc_freq_curve()
+        impact_meas[NO_MEASURE] = dict()
+        impact_meas[NO_MEASURE]['cost'] = (0, 0)
+        impact_meas[NO_MEASURE]['risk'] = risk_func(imp_tmp)
+        impact_meas[NO_MEASURE]['risk_transf'] = 0.0
+        impact_meas[NO_MEASURE]['efc'] = imp_tmp.calc_freq_curve()
         if save_imp:
-            impact_meas['no measure']['impact'] = imp_tmp
+            impact_meas[NO_MEASURE]['impact'] = imp_tmp
 
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.tag.haz_type):
@@ -679,22 +690,22 @@ class CostBenefit():
 
         # discounted cost benefit for each measure and total climate risk
         for meas_name, meas_val in self.imp_meas_future.items():
-            if meas_name == 'no measure':
+            if meas_name == NO_MEASURE:
                 # npv of the full unaverted damages
                 if self.imp_meas_present:
                     self.tot_climate_risk = self._npv_unaverted_impact(
-                        self.imp_meas_future['no measure']['risk'], \
-                        disc_rates, time_dep, self.imp_meas_present['no measure']['risk'])
+                        self.imp_meas_future[NO_MEASURE]['risk'], \
+                        disc_rates, time_dep, self.imp_meas_present[NO_MEASURE]['risk'])
                 else:
                     self.tot_climate_risk = self._npv_unaverted_impact(
-                        self.imp_meas_future['no measure']['risk'], \
+                        self.imp_meas_future[NO_MEASURE]['risk'], \
                         disc_rates, time_dep)
                 continue
 
             self._cost_ben_one(meas_name, meas_val, disc_rates, time_dep)
 
     def _cost_ben_one(self, meas_name, meas_val, disc_rates, time_dep,
-                      ini_state='no measure'):
+                      ini_state=NO_MEASURE):
         """ Compute cost and benefit for given measure with time dependency
 
         Parameters:
@@ -793,10 +804,10 @@ class CostBenefit():
             imp_dict = self.imp_meas_present
             new_imp_dict = new_cb.imp_meas_present
 
-        sum_ben = np.sum([imp_dict['no measure']['impact'].at_event - \
+        sum_ben = np.sum([imp_dict[NO_MEASURE]['impact'].at_event - \
             imp_dict[name]['impact'].at_event for name in in_meas_names], axis=0)
         new_imp = copy.deepcopy(imp_dict[in_meas_names[0]]['impact'])
-        new_imp.at_event = np.maximum(imp_dict['no measure']['impact'].at_event
+        new_imp.at_event = np.maximum(imp_dict[NO_MEASURE]['impact'].at_event
                                       - sum_ben, 0)
 
         new_imp.eai_exp = np.array([])
@@ -832,7 +843,7 @@ class CostBenefit():
         table.append(['Total climate risk:',
                       self.tot_climate_risk/norm_fact, norm_name])
         table.append(['Average annual risk:',
-                      self.imp_meas_future['no measure']['risk']/norm_fact, norm_name])
+                      self.imp_meas_future[NO_MEASURE]['risk']/norm_fact, norm_name])
         table.append(['Residual risk:',
                       (self.tot_climate_risk -
                        np.array(list(self.benefit.values())).sum())/norm_fact, norm_name])
