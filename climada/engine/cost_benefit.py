@@ -725,8 +725,9 @@ class CostBenefit():
         risk_tr = disc_rates.net_present_value(self.present_year,
                                                self.future_year, risk_tr)
         self.benefit[meas_name] = meas_ben
-        self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
-            meas_val['cost'][1]*risk_tr)/meas_ben
+        with np.errstate(divide='ignore'):
+            self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
+                meas_val['cost'][1]*risk_tr)/meas_ben
 
     def _time_dependency_array(self, imp_time_depen=None):
         """ Construct time dependency array. Each year contains a value in [0,1]
@@ -817,9 +818,13 @@ class CostBenefit():
         table = []
         headers = ['Measure', 'Cost ' + norm_name, 'Benefit ' + norm_name, 'Benefit/Cost']
         for meas_name in self.benefit:
-            table.append([meas_name, \
-            self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact, \
-            self.benefit[meas_name]/norm_fact, 1/self.cost_ben_ratio[meas_name]])
+            if not np.isnan(self.cost_ben_ratio[meas_name]) and \
+            not np.isinf(self.cost_ben_ratio[meas_name]):
+                cost = self.cost_ben_ratio[meas_name]*self.benefit[meas_name]/norm_fact
+            else:
+                cost = self.imp_meas_future[meas_name]['cost'][0]/norm_fact
+            table.append([meas_name, cost, self.benefit[meas_name]/norm_fact,
+                          1/self.cost_ben_ratio[meas_name]])
         print()
         print(tabulate(table, headers, tablefmt="simple"))
 
@@ -828,7 +833,7 @@ class CostBenefit():
                       self.tot_climate_risk/norm_fact, norm_name])
         table.append(['Average annual risk:',
                       self.imp_meas_future['no measure']['risk']/norm_fact, norm_name])
-        table.append(['Residual damage:',
+        table.append(['Residual risk:',
                       (self.tot_climate_risk -
                        np.array(list(self.benefit.values())).sum())/norm_fact, norm_name])
         print()
@@ -903,7 +908,8 @@ class CostBenefit():
         print(tabulate(table, headers, tablefmt="simple"))
         print()
 
-    def _print_npv(self):
+    @staticmethod
+    def _print_npv():
         print('Net Present Values')
 
 def _norm_values(value):
