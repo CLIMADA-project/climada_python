@@ -526,7 +526,7 @@ class CostBenefit():
                                    risk_func=risk_aai_agg, imp_time_depen=1,
                                    plot_arrow=True, axis=None, **kwargs):
         """ Plot waterfall graph with accumulated values from present to future
-        year. Call after calc(). Provide same inputs as in calc.
+        year. Call after calc() with save_imp=True. Provide same inputs as in calc.
 
         Parameters:
             hazard (Hazard): hazard
@@ -599,10 +599,13 @@ class CostBenefit():
                   fontsize=12, color='k')
 
         if plot_arrow:
+            LOGGER.info('Combining all measures ...')
+            all_meas = self.combine_measures(list(self.cost_ben_ratio.keys()), 'combine all', \
+                colors.to_rgba('black'), entity.disc_rates, imp_time_depen, risk_func)
             bar_bottom, bar_top = bar_4[0].get_bbox().get_points()
             axis.text(bar_top[0] - (bar_top[0]-bar_bottom[0])/2, bar_top[1],
                       "Averted", ha="center", va="top", rotation=270, size=15)
-            arrow_len = min(np.array(list(self.benefit.values())).sum()/norm_fact,
+            arrow_len = min(np.array(list(all_meas.benefit.values())).sum()/norm_fact,
                             risk_tot/norm_fact)
             axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0]-bar_bottom[0])/2, \
                 bar_top[1]), (bar_top[0]- (bar_top[0]-bar_bottom[0])/2, \
