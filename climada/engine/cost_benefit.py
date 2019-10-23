@@ -431,9 +431,8 @@ class CostBenefit():
         sort_cb = np.argsort(np.array([self.cost_ben_ratio[name] for name in m_names]))
         names_sort = [m_names[i] for i in sort_cb]
         color_sort = [self.color_rgb[name] for name in names_sort]
-        ref_imp = np.interp(return_per,
-                    self.imp_meas_future[NO_MEASURE]['efc'].return_per,
-                    self.imp_meas_future[NO_MEASURE]['efc'].impact)
+        ref_imp = np.interp(return_per, self.imp_meas_future[NO_MEASURE]['efc'].return_per,
+                            self.imp_meas_future[NO_MEASURE]['efc'].impact)
         for rp_i, _ in enumerate(return_per):
             val_i = [avert_rp[name][rp_i] for name in names_sort]
             cum_effect = np.cumsum(np.array([0] + val_i))
@@ -599,18 +598,8 @@ class CostBenefit():
                   fontsize=12, color='k')
 
         if plot_arrow:
-            LOGGER.info('Combining all measures ...')
-            all_meas = self.combine_measures(list(self.cost_ben_ratio.keys()), 'combine all', \
-                colors.to_rgba('black'), entity.disc_rates, imp_time_depen, risk_func)
-            bar_bottom, bar_top = bar_4[0].get_bbox().get_points()
-            axis.text(bar_top[0] - (bar_top[0]-bar_bottom[0])/2, bar_top[1],
-                      "Averted", ha="center", va="top", rotation=270, size=15)
-            arrow_len = min(np.array(list(all_meas.benefit.values())).sum()/norm_fact,
-                            risk_tot/norm_fact)
-            axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0]-bar_bottom[0])/2, \
-                bar_top[1]), (bar_top[0]- (bar_top[0]-bar_bottom[0])/2, \
-                risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', \
-                alpha=0.4))
+            self._plot_averted_arrow(axis, bar_4, risk_tot, norm_fact,
+                                     entity.disc_rates, imp_time_depen, risk_func)
 
         axis.set_xticks(np.arange(4)+1)
         axis.set_xticklabels(['Risk ' + str(self.present_year), \
@@ -902,6 +891,40 @@ class CostBenefit():
                         ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
         axis.set_ylabel('Benefit/Cost ratio')
         return axis
+
+    def _plot_averted_arrow(self, axis, bar_4, risk_tot, norm_fact, disc_rates,
+                            imp_time_depen, risk_func):
+        """ Plot arrow inn fourth bar of total averted damage by implementing
+        all the measures.
+
+        Parameters:
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            bar_4 (matplotlib.container.BarContainer): bar where arrow is plotted
+            risk_tot (float): total risk
+            norm_fact (float): normalization factor
+            disc_rates (DiscRates): discounting rates
+            imp_time_depen (float, optional): parameter which represent time
+                evolution of impact. Default: 1 (linear).
+            risk_func (func, optional): function describing risk measure given
+                an Impact. Default: average annual impact (aggregated).
+        """
+        LOGGER.info('Combining all measures ...')
+        tot_benefit = np.array(list(self.benefit.values())).sum()
+        try:
+            all_meas = self.combine_measures(list(self.cost_ben_ratio.keys()), \
+                'combine all', colors.to_rgba('black'), disc_rates, \
+                imp_time_depen, risk_func)
+            tot_benefit = np.array(list(all_meas.benefit.values())).sum()
+        except KeyError:
+            LOGGER.warning('Use calc() with save_imp=True to get a more accurate ' \
+                           'approximation of total averted damage,')
+        bar_bottom, bar_top = bar_4[0].get_bbox().get_points()
+        axis.text(bar_top[0] - (bar_top[0]-bar_bottom[0])/2, bar_top[1],
+                  "Averted", ha="center", va="top", rotation=270, size=15)
+        arrow_len = min(tot_benefit/norm_fact, risk_tot/norm_fact)
+        axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0]-bar_bottom[0])/2, \
+            bar_top[1]), (bar_top[0]- (bar_top[0]-bar_bottom[0])/2, \
+            risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', alpha=0.4))
 
     def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):
         """ Print comparative of risk transfer with and without measure
