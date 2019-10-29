@@ -386,7 +386,7 @@ class CostBenefit():
 
         axis.set_xlim(0, max(self.tot_climate_risk/norm_fact,
                              np.array(list(self.benefit.values())).sum()/norm_fact))
-        axis.set_ylim(0, int(1/np.array(list(self.cost_ben_ratio.values())).min()) + 1)
+        axis.set_ylim(0, int(1/np.nanmin(np.array(list(self.cost_ben_ratio.values())))) + 1)
 
         x_label = 'NPV averted damage over ' + str(self.future_year - \
             self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
