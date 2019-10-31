@@ -730,7 +730,6 @@ class CostBenefit():
                                                self.future_year, risk_tr)
         self.benefit[meas_name] = meas_ben
         with np.errstate(divide='ignore'):
-            print('aquiiiiii', meas_name, meas_val['cost'][0], meas_val['cost'][1]*risk_tr, meas_ben)
             self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
                 meas_val['cost'][1]*risk_tr)/meas_ben
 
