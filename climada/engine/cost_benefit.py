@@ -386,7 +386,8 @@ class CostBenefit():
 
         axis.set_xlim(0, max(self.tot_climate_risk/norm_fact,
                              np.array(list(self.benefit.values())).sum()/norm_fact))
-        axis.set_ylim(0, int(1/np.nanmin(np.array(list(self.cost_ben_ratio.values())))) + 1)
+        axis.set_ylim(0, int(1/np.nanmin(np.ma.masked_equal(np.array(list( \
+                      self.cost_ben_ratio.values())), 0))) + 1)
 
         x_label = 'NPV averted damage over ' + str(self.future_year - \
             self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
@@ -729,6 +730,7 @@ class CostBenefit():
                                                self.future_year, risk_tr)
         self.benefit[meas_name] = meas_ben
         with np.errstate(divide='ignore'):
+            print('aquiiiiii', meas_name, meas_val['cost'][0], meas_val['cost'][1]*risk_tr, meas_ben)
             self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
                 meas_val['cost'][1]*risk_tr)/meas_ben
 
@@ -882,7 +884,13 @@ class CostBenefit():
 
             xy_lim[0] = max(xy_lim[0], max(int(cb_res.tot_climate_risk/norm_fact), \
                 np.array(list(cb_res.benefit.values())).sum()/norm_fact))
-            xy_lim[1] = max(xy_lim[1], int(1/cb_res.cost_ben_ratio[m_names[sort_cb[0]]]) + 1)
+            try:
+                with np.errstate(divide='ignore'):
+                    xy_lim[1] = max(xy_lim[1], int(1/cb_res.cost_ben_ratio[ \
+                          m_names[sort_cb[0]]]) + 1)
+            except (ValueError, OverflowError):
+                xy_lim[1] = max(xy_lim[1], int(1/np.array(list(cb_res.cost_ben_ratio.values())).\
+                      max()) + 1)
 
         axis.set_xlim(0, xy_lim[0])
         axis.set_ylim(0, xy_lim[1])
