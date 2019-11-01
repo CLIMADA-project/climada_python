@@ -148,10 +148,12 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     as err:
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
-#        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
-#                                               'GDP_YEAR', shp_file)
-        close_year, close_val = wb_file_read(cntry_iso, ref_year)
-        LOGGER.warning('retrieving GDPs._using file')
+        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
+                                               'GDP_YEAR', shp_file)
+        
+        # use this for offline version of WB
+#        close_year, close_val = wb_file_read(cntry_iso, ref_year)
+#        LOGGER.warning('retrieving GDPs._using file')
            
     finally:
         LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
