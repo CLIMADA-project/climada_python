@@ -406,6 +406,7 @@ class TestReaderExcel(unittest.TestCase):
 
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 1)
 
         name = 'vegetation management'
         act_buil = meas.get_measure(name=name)[0]
@@ -427,8 +428,31 @@ class TestReaderExcel(unittest.TestCase):
 
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 1)
 
         self.assertEqual(meas.get_measure(name='enforce building code')[0].imp_fun_map, '1to3')
+
+        name = 'risk transfer'
+        act_buil = meas.get_measure(name=name)[0]
+        self.assertEqual(act_buil.name, name)
+        self.assertEqual(act_buil.haz_type, 'TC')
+        self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.90, 0.72, 0.72])))
+        self.assertEqual(act_buil.cost,  21000000)
+
+        self.assertEqual(act_buil.hazard_set, 'nil')
+        self.assertEqual(act_buil.hazard_freq_cutoff, 0)
+        self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
+
+        self.assertEqual(act_buil.exposures_set, 'nil')
+        self.assertEqual(act_buil.exp_region_id, 0)
+
+        self.assertEqual(act_buil.paa_impact, (1, 0))
+        self.assertEqual(act_buil.mdd_impact, (1, 0))
+        self.assertEqual(act_buil.imp_fun_map, 'nil')
+
+        self.assertEqual(act_buil.risk_transf_attach, 500000000)
+        self.assertEqual(act_buil.risk_transf_cover, 1000000000)
+        self.assertEqual(act_buil.risk_transf_cost_factor, 2)
 
         self.assertEqual(meas.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(meas.tag.description, '')
@@ -462,7 +486,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_man.hazard_inten_imp, (1, -4))
 
         self.assertEqual(act_man.exposures_set, 'nil')
-        self.assertEqual(act_man.exp_region_id, 0)
+        self.assertEqual(act_man.exp_region_id, [])
 
         self.assertEqual(act_man.mdd_impact, (1, 0))
         self.assertEqual(act_man.paa_impact, (1, 0))
@@ -487,7 +511,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_buil.hazard_inten_imp, (1, 0))
 
         self.assertEqual(act_buil.exposures_set, 'nil')
-        self.assertEqual(act_buil.exp_region_id, 0)
+        self.assertEqual(act_buil.exp_region_id, [])
 
         self.assertEqual(act_buil.mdd_impact, (0.75, 0))
         self.assertEqual(act_buil.paa_impact, (1, 0))
@@ -522,7 +546,7 @@ class TestWriter(unittest.TestCase):
         act_11.mdd_impact = (1, 2)
         act_11.paa_impact = (1, 3)
         act_11.hazard_inten_imp = (1, 2)
-        act_11.exp_region_id = 2
+        act_11.exp_region_id = [2]
 
         act_2 = Measure()
         act_2.name = 'Anything'

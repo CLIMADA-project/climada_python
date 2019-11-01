@@ -21,7 +21,6 @@ Define Hazard.
 
 __all__ = ['Hazard']
 
-import ast
 import copy
 import itertools
 import logging
@@ -45,7 +44,6 @@ import climada.util.dates_times as u_dt
 from climada.util.config import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
-from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -345,7 +343,7 @@ class Hazard():
             self.unit = attrs['unit']
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
-                         resampling=Resampling.nearest):
+                         resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
         """ Change current raster data to other CRS and/or transformation
 
         Parameters:
@@ -353,8 +351,10 @@ class Hazard():
             transform (rasterio.Affine): affine transformation to apply
             wdith (float): number of lons for transform
             height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+            resampl_inten (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for intensity
+            resampl_fract (rasterio.warp,.Resampling optional): resampling
+                function used for reprojection to dst_crs for fraction
         """
         if not self.centroids.meta:
             LOGGER.error('Raster not set')
@@ -382,11 +382,12 @@ class Hazard():
         kwargs = {'src_transform': self.centroids.meta['transform'],
                   'src_crs': self.centroids.meta['crs'],
                   'dst_transform': transform, 'dst_crs': dst_crs,
-                  'resampling': resampling}
+                  'resampling': resampl_inten}
         for idx_ev, inten in enumerate(self.intensity.todense()):
             reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
                 self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
                 **kwargs)
+        kwargs.update(resampling=resampl_fract)
         for idx_ev, fract in enumerate(self.fraction.todense()):
             reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
                       self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
@@ -500,7 +501,7 @@ class Hazard():
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-    def select(self, date=None, orig=None, reg_id=None):
+    def select(self, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events within provided date and/or (historical or synthetical)
         and/or region. Frequency of the events may need to be recomputed!
 
@@ -511,6 +512,9 @@ class Hazard():
                 synthetic (False)
             reg_id (int, optional): region identifier of the centroids's
                 region_id attibute
+            reset_frequency (boolean): change frequency of events proportional to
+                difference between first and last year (old and new)
+                default = False
 
         Returns:
             Hazard or children
@@ -528,7 +532,6 @@ class Hazard():
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
-
             sel_ev = np.logical_and(date_ini <= self.date,
                                     self.date <= date_end)
             if not np.any(sel_ev):
@@ -565,6 +568,13 @@ class Hazard():
                     setattr(haz, var_name, var_val)
             else:
                 setattr(haz, var_name, var_val)
+        # reset frequency if date span has changed (optional):
+        if reset_frequency:
+            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year - \
+                                    dt.datetime.fromordinal(self.date.min()).year)+1
+            year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year - \
+                                    dt.datetime.fromordinal(haz.date.min()).year)+1
+            haz.frequency = haz.frequency*year_span_old/year_span_new
 
         return haz
 
@@ -915,17 +925,11 @@ class Hazard():
             file_name (str): file name to write, with h5 format
         """
         LOGGER.info('Writting %s', file_name)
-        self._set_coords_centroids()
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
-                hf_centr = hf_data.create_group(var_name)
-                for centr_name, centr_val in var_val.__dict__.items():
-                    if isinstance(centr_val, np.ndarray):
-                        hf_centr.create_dataset(centr_name, data=centr_val)
-                hf_str = hf_centr.create_dataset('crs', (1,), dtype=str_dt)
-                hf_str[0] = str(dict(var_val.crs))
+                self.centroids.write_hdf5(hf_data.create_group(var_name))
             elif var_name == 'tag':
                 hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
                 hf_str[0] = var_val.haz_type
@@ -961,19 +965,7 @@ class Hazard():
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
             if var_name == 'centroids':
-                hf_centr = hf_data.get(var_name)
-                crs = DEF_CRS
-                if hf_centr.get('crs'):
-                    crs = ast.literal_eval(hf_centr.get('crs')[0])
-                if hf_centr.get('lat'):
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('lat')), \
-                        np.array(hf_centr.get('lon')), crs)
-                else:
-                    self.centroids.set_lat_lon(np.array(hf_centr.get('latitude')), \
-                        np.array(hf_centr.get('longitude')), crs)
-                for centr_name in hf_centr.keys():
-                    if centr_name not in ('crs', 'lat', 'lon'):
-                        setattr(self.centroids, centr_name, np.array(hf_centr.get(centr_name)))
+                self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
                 self.tag.haz_type = hf_data.get('haz_type')[0]
                 self.tag.file_name = hf_data.get('file_name')[0]

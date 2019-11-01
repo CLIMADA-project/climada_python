@@ -88,7 +88,7 @@ class Exposures(GeoDataFrame):
         meta (dict): dictionary containing corresponding raster properties (if any):
             width, height, crs and transform must be present at least (transform needs
             to contain upper left corner!). Exposures might not contain all the points
-            of the corresponding raster.
+            of the corresponding raster. Not used in internal computations.
         deductible (pd.Series, optional): deductible value for each exposure
         cover (pd.Series, optional): cover value for each exposure
         category_id (pd.Series, optional): category id for each exposure
@@ -413,7 +413,8 @@ class Exposures(GeoDataFrame):
         """ Scatter points over satellite image using contextily
 
          Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
+            mask (np.array, optional): mask to apply to eai_exp plotted. Same
+                size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places

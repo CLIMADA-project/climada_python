@@ -99,6 +99,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
+        self.assertEqual(tc_haz.category, tc_track.data[0].category)
+        self.assertTrue(np.isnan(tc_haz.basin[0]))
+        self.assertIsInstance(tc_haz.basin, list)
+        self.assertIsInstance(tc_haz.category, np.ndarray)
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
@@ -144,7 +148,7 @@ class TestModel(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
-        rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values, 
+        rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values,
             tc_track.data[0].radius_max_wind.values, ureg)
 
         self.assertEqual(rad_max_wind[0], 75.536713749999905)
@@ -238,7 +242,7 @@ class TestModel(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].central_pressure.values,
             tc_track.data[0].radius_max_wind.values, ureg))
         coast_centr = tc.coastal_centr_idx(CENT_CLB)
         new_centr = CENT_CLB.coord[coast_centr]
@@ -249,13 +253,13 @@ class TestModel(unittest.TestCase):
                                 1019665]) - 1
 
         v_trans_corr = tc._vtrans_correct(
-            tc_track.data[0].lat.values[i_node:i_node+2], 
+            tc_track.data[0].lat.values[i_node:i_node+2],
             tc_track.data[0].lon.values[i_node:i_node+2],
             tc_track.data[0].radius_max_wind.values[i_node],
             new_centr[close_centr, :], r_arr)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
-        
+
         v_trans = 10.191466256012880 / to_kn
         v_trans_corr *= v_trans
         self.assertEqual(v_trans_corr.size, 6)
@@ -274,11 +278,11 @@ class TestModel(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
-        v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values, 
+        v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values,
                 tc_track.data[0].time_step.values, ureg)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
-        
+
         self.assertEqual(v_trans.size, tc_track.data[0].time.size-1)
         self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466256012880)
 
@@ -290,17 +294,17 @@ class TestModel(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].central_pressure.values,
             tc_track.data[0].radius_max_wind.values, ureg))
         r_arr = np.array([286.4938638337190, 290.5930935802884,
                           295.0271327746536, 299.7811253637995,
                           296.8484825705515, 274.9892882245964])
         v_trans = 5.2429431910897559
-        v_ang = tc._vang_sym(tc_track.data[0].environmental_pressure.values[i_node], 
-            tc_track.data[0].central_pressure.values[i_node-1:i_node+1], 
-            tc_track.data[0].lat.values[i_node], 
-            tc_track.data[0].time_step.values[i_node], 
-            tc_track.data[0].radius_max_wind.values[i_node], 
+        v_ang = tc._vang_sym(tc_track.data[0].environmental_pressure.values[i_node],
+            tc_track.data[0].central_pressure.values[i_node-1:i_node+1],
+            tc_track.data[0].lat.values[i_node],
+            tc_track.data[0].time_step.values[i_node],
+            tc_track.data[0].radius_max_wind.values[i_node],
             r_arr, v_trans, model=0)
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
@@ -319,7 +323,7 @@ class TestModel(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values, 
+            tc_track.data[0].central_pressure.values,
             tc_track.data[0].radius_max_wind.values, ureg))
         int_track = tc_track.data[0].sel(time=slice('1951-08-27', '1951-08-28'))
         coast_centr = tc.coastal_centr_idx(CENT_CLB)
@@ -328,7 +332,7 @@ class TestModel(unittest.TestCase):
 
         to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
         self.assertEqual(wind.shape, (CENT_CLB.size,))
-        
+
         wind = wind[coast_centr]
         self.assertEqual(np.nonzero(wind)[0].size, 5)
         self.assertTrue(np.array_equal(wind.nonzero()[0],
@@ -386,7 +390,77 @@ class TestModel(unittest.TestCase):
         self.assertTrue(np.isclose(17.525880201507256,
                                    intensity[0, 1630877]))
 
+class TestClimateSce(unittest.TestCase):
+
+    def test_apply_criterion_track(self):
+        """ Test _apply_criterion function. """
+        criterion = list()
+        tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
+                   'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        scale = 0.75
+
+        tc = TropCyclone()
+        tc.intensity = sparse.lil_matrix(np.zeros((4, 10)))
+        tc.intensity[0, :] = np.arange(10)
+        tc.intensity[1, 5] = 10
+        tc.intensity[2, :] = np.arange(10, 20)
+        tc.intensity[3, 3] = 3
+        tc.intensity = tc.intensity.tocsr()
+        tc.basin = ['NA'] * 4
+        tc.basin[3] = 'WP'
+        tc.category = np.array([2, 0, 4, 1])
+        tc.event_id = np.arange(4)
+
+        tc_cc = tc._apply_criterion(criterion, scale)
+        self.assertTrue(np.allclose(tc.intensity[1, :].todense(), tc_cc.intensity[1, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[3, :].todense(), tc_cc.intensity[3, :].todense()))
+        self.assertFalse(np.allclose(tc.intensity[0, :].todense(), tc_cc.intensity[0, :].todense()))
+        self.assertFalse(np.allclose(tc.intensity[2, :].todense(), tc_cc.intensity[2, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[0, :].todense()*1.03375, tc_cc.intensity[0, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[2, :].todense()*1.03375, tc_cc.intensity[2, :].todense()))
+
+    def test_two_criterion_track(self):
+        """ Test _apply_criterion function with two criteria """
+        criterion = list()
+        tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
+                   'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        tmp_chg = {'criteria': {'basin': ['WP'], 'category':[1, 2, 3, 4, 5]},
+                   'year': 2100, 'change': 1.025, 'variable': 'intensity', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        tmp_chg = {'criteria': {'basin': ['WP'], 'category':[1, 2, 3, 4, 5]},
+                   'year': 2100, 'change': 1.025, 'variable': 'frequency', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        scale = 0.75
+
+        tc = TropCyclone()
+        tc.intensity = sparse.lil_matrix(np.zeros((4, 10)))
+        tc.intensity[0, :] = np.arange(10)
+        tc.intensity[1, 5] = 10
+        tc.intensity[2, :] = np.arange(10, 20)
+        tc.intensity[3, 3] = 3
+        tc.intensity = tc.intensity.tocsr()
+        tc.frequency = np.ones(4)*0.5
+        tc.basin = ['NA'] * 4
+        tc.basin[3] = 'WP'
+        tc.category = np.array([2, 0, 4, 1])
+        tc.event_id = np.arange(4)
+
+        tc_cc = tc._apply_criterion(criterion, scale)
+        self.assertTrue(np.allclose(tc.intensity[1, :].todense(), tc_cc.intensity[1, :].todense()))
+        self.assertFalse(np.allclose(tc.intensity[3, :].todense(), tc_cc.intensity[3, :].todense()))
+        self.assertFalse(np.allclose(tc.intensity[0, :].todense(), tc_cc.intensity[0, :].todense()))
+        self.assertFalse(np.allclose(tc.intensity[2, :].todense(), tc_cc.intensity[2, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[0, :].todense()*1.03375, tc_cc.intensity[0, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[2, :].todense()*1.03375, tc_cc.intensity[2, :].todense()))
+        self.assertTrue(np.allclose(tc.intensity[3, :].todense()*1.01875, tc_cc.intensity[3, :].todense()))
+        res_frequency = np.ones(4)*0.5
+        res_frequency[3] = 0.5*1.01875
+        self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -1407,7 +1407,7 @@ def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
             country_adm0 (string): three letter country code.
 
         Returns:
-            cut_bbox (4x1 array): the bounding box, corrected if neccessary.
+            cut_bbox (4x1 array): the bounding box, corrected if necessary.
     """
     if (not country_adm0 is None) & (country_cut_mode == 1)\
                                                     & (not cut_bbox is None):
@@ -1749,7 +1749,7 @@ def _get_box_blackmarble(cut_bbox, **args):
                      Operation aborted.')
             raise
     # Read corresponding files
-    # LOGGER.debug('Reading and cropping neccessary BM files.')
+    # LOGGER.debug('Reading and cropping necessary BM files.')
     nightlight_intensity = get_bm(req_sat_files, resolution=resolution,\
                                   return_coords=0, cut_bbox=cut_bbox,\
                                   bm_path=bm_path, reference_year=reference_year)[0]

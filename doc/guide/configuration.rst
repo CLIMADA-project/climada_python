@@ -10,6 +10,7 @@ and used as fallback. The local configuration file needs to be called
 
 The climada configuration file is a JSON file and consists of the following values:
 
+- ``config``
 - ``local_data``
 - ``global``
 - ``trop_cyclone``
@@ -17,6 +18,11 @@ The climada configuration file is a JSON file and consists of the following valu
 A minimal configuration file looks something like this::
 
   {
+      "config":
+      {
+          "env_name": "climada_env"
+      },
+
       "local_data":
       {
           "save_dir": "./results/"
@@ -34,6 +40,15 @@ A minimal configuration file looks something like this::
       }
   }
 
+config
+----------
+Configuration parameters related with configuration settings such as paths.
+
++---------------+--------------------------------------------------------------------------------------------------+--------------+
+|     Option    |                                Description                                                       |   Default    |
++===============+==================================================================================================+==============+
+| ``env_name``  | Name given to CLIMADA's virtual environement. Used for checks of paths of libraries.             | "climada_env"|
++---------------+--------------------------------------------------------------------------------------------------+--------------+
 
 local_data
 ----------
@@ -47,7 +62,7 @@ Configuration parameters related to local data location.
 
 global
 ------
-Configuration parameters with global scope.
+Configuration parameters with global scope within climada's code.
 
 +---------------------+--------------------------------------------------------------------------------------------------+-------------+
 |     Option          |                                Description                                                       |   Default   |

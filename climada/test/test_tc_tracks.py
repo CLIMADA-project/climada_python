@@ -27,6 +27,8 @@ from netCDF4 import Dataset
 from climada.hazard.tc_tracks import TCTracks, _calc_land_geom, _apply_decay_coeffs
 from climada.util.constants import SYSTEM_DIR
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
 class TestDownload(unittest.TestCase):
     """Test reading TC from IBTrACS files"""
 
@@ -35,6 +37,20 @@ class TestDownload(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
         self.assertEqual(tc_track.get_track(), [])
+
+class TestWriteRead(unittest.TestCase):
+    """Test writting and reading netcdf4 TCTracks instances """
+
+    def test_write_read_pass(self):
+        """ read_ibtracs_netcdf"""
+        tc_track = TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=True)
+        tc_track.write_netcdf(DATA_DIR)
+
+        tc_read = TCTracks()
+        tc_read.read_netcdf(DATA_DIR)
+
+        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
 
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
@@ -201,4 +217,5 @@ class TestIBTracs(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDownload)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriteRead))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

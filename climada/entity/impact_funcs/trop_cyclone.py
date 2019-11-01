@@ -57,7 +57,7 @@ class IFTropCyclone(ImpactFunc):
         if v_half <= v_thresh:
             LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
             raise ValueError
-        elif  v_thresh < 0 or v_half < 0:
+        if  v_thresh < 0 or v_half < 0:
             LOGGER.error('Negative shape parameter.')
             raise ValueError
         if scale > 1 or scale <= 0:

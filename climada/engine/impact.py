@@ -23,6 +23,7 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 
 import ast
 import logging
+import copy
 import csv
 import warnings
 import datetime as dt
@@ -227,6 +228,34 @@ class Impact():
         if save_mat:
             self.imp_mat = self.imp_mat.tocsr()
 
+    def calc_risk_transfer(self, attachment, cover):
+        """ Compute traaditional risk transfer over impact. Returns new impact
+        with risk transfer applied and the insurance layer resulting Impact metrics.
+
+        Parameters:
+            attachment (float): attachment (deductible)
+            cover (float): cover
+
+        Returns:
+            Impact, Impact
+        """
+        new_imp = copy.deepcopy(self)
+        if attachment or cover:
+            imp_layer = np.minimum(np.maximum(new_imp.at_event - attachment, 0), cover)
+            new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
+            new_imp.aai_agg = np.sum(new_imp.at_event * new_imp.frequency)
+            # next values are no longer valid
+            new_imp.eai_exp = np.array([])
+            new_imp.coord_exp = np.array([])
+            new_imp.imp_mat = []
+            # innsurance layer metrics
+            risk_transfer = copy.deepcopy(new_imp)
+            risk_transfer.at_event = imp_layer
+            risk_transfer.aai_agg = np.sum(imp_layer * new_imp.frequency)
+            return new_imp, risk_transfer
+
+        return new_imp, Impact()
+
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
                                  axis=None, **kwargs):
@@ -410,23 +439,33 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def calc_impact_year_set(self, all_years=True):
+    def calc_impact_year_set(self, all_years=True, year_range=[]):
         """ Calculate yearly impact from impact data.
 
         Parameters:
             all_years (boolean): return values for all years between first and
             last year with event, including years without any events.
+            year_range (tuple or list with integers): start and end year
 
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
-        if all_years:
+        if orig_year.size==0 and len(year_range)==0:
+            return dict()
+        if orig_year.size==0 or (len(year_range)>0 and all_years):
+            years = np.arange(min(year_range), max(year_range)+1)
+        elif all_years:
             years = np.arange(min(orig_year), max(orig_year)+1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
+        if not len(year_range)==0:
+            years = years[years>=min(year_range)]
+            years = years[years<=max(year_range)]
+
         year_set = dict()
+
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
@@ -537,13 +576,13 @@ class Impact():
         self.unit = imp_df.unit[0]
         self.tot_value = imp_df.tot_value[0]
         self.aai_agg = imp_df.aai_agg[0]
-        self.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)]
+        self.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
         num_ev = self.event_id.size
-        self.event_name = imp_df.event_name[:num_ev]
-        self.date = imp_df.event_date[:num_ev]
-        self.at_event = imp_df.at_event[:num_ev]
-        self.frequency = imp_df.event_frequency[:num_ev]
-        self.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)]
+        self.event_name = imp_df.event_name[:num_ev].values.tolist()
+        self.date = imp_df.event_date[:num_ev].values
+        self.at_event = imp_df.at_event[:num_ev].values
+        self.frequency = imp_df.event_frequency[:num_ev].values
+        self.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
         num_exp = self.eai_exp.size
         self.coord_exp = np.zeros((num_exp, 2))
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
@@ -828,11 +867,12 @@ class ImpactFreqCurve():
         self.unit = ''
         self.label = ''
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, log_frequency=False, **kwargs):
         """Plot impact frequency curve.
 
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            log_frequency (boolean): plot logarithmioc exceedance frequency on x-axis
             kwargs (optional): arguments for plot matplotlib function, e.g. color='b'
 
         Returns:
@@ -841,7 +881,12 @@ class ImpactFreqCurve():
         if not axis:
             _, axis = plt.subplots(1, 1)
         axis.set_title(self.label)
-        axis.set_xlabel('Return period (year)')
         axis.set_ylabel('Impact (' + self.unit + ')')
-        axis.plot(self.return_per, self.impact, **kwargs)
+        if log_frequency:
+            axis.set_xlabel('Exceedance frequency (1/year)')
+            axis.set_xscale('log')
+            axis.plot(self.return_per**-1, self.impact, **kwargs)
+        else:
+            axis.set_xlabel('Return period (year)')
+            axis.plot(self.return_per, self.impact, **kwargs)
         return axis

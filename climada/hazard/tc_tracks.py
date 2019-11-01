@@ -406,6 +406,34 @@ class TCTracks():
         axis.legend(leg_lines, leg_names, loc=0)
         return axis
 
+    def write_netcdf(self, folder_name):
+        """ Write a netcdf file per track with track.sid name in given folder.
+
+        Parameter:
+            folder_name (str): folder name where to write files
+        """
+        list_path = [os.path.join(folder_name, track.sid+'.nc') for track in self.data]
+        LOGGER.info('Writting %s files.', self.size)
+        for track in self.data:
+            track.attrs['orig_event_flag'] = int(track.orig_event_flag)
+        xr.save_mfdataset(self.data, list_path)
+
+    def read_netcdf(self, folder_name):
+        """ Read all netcdf files contained in folder and fill a track per file.
+
+        Parameters:
+            folder_name (str): folder name where to write files
+        """
+        file_tr = get_file_names(folder_name)
+        LOGGER.info('Reading %s files.', len(file_tr))
+        self.data = list()
+        for file in file_tr:
+            if not os.path.splitext(file)[1] == '.nc':
+                continue
+            track = xr.open_dataset(file)
+            track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
+            self.data.append(track)
+
     @staticmethod
     @jit(parallel=True)
     def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
@@ -786,14 +814,19 @@ class TCTracks():
         # remove repeated dates
         tr_ds.drop_duplicates('time', inplace=True)
         # fill nans of environmental_pressure and radius_max_wind
-        tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
-            nc_data.variables[provider + '_poci']._FillValue] = np.nan
-        tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
-            bfill(limit=4).fillna(self._set_penv(basin))
-        tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
-            nc_data.variables[provider + '_rmw']._FillValue] = np.nan
-        tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
-
+        try:
+            tr_ds.environmental_pressure.values[tr_ds.environmental_pressure == \
+                nc_data.variables[provider + '_poci']._FillValue] = np.nan
+            tr_ds.environmental_pressure = tr_ds.environmental_pressure.ffill(limit=4). \
+                bfill(limit=4).fillna(self._set_penv(basin))
+        except KeyError:
+            pass
+        try:
+            tr_ds.radius_max_wind.values[tr_ds.radius_max_wind == \
+                nc_data.variables[provider + '_rmw']._FillValue] = np.nan
+            tr_ds['radius_max_wind'] = tr_ds.radius_max_wind.ffill(limit=1).bfill(limit=1).fillna(0)
+        except KeyError:
+            pass
         # set time steps
         tr_ds['time_step'] = np.zeros(tr_ds.shape[0])
         for i_time, time in enumerate(tr_ds.time[1:], 1):
