@@ -216,9 +216,10 @@ class CostBenefit():
 
     def combine_measures(self, in_meas_names, new_name, new_color, disc_rates,
                          imp_time_depen=None, risk_func=risk_aai_agg):
-        """ Compute cost-benefit of the combination of (independent) measures
-        previously computed by calc with save_imp=True. Appended to dictionaries of
-        measures. The benefits of the measures per event are added.
+        """ Compute cost-benefit of the combination of measures previously
+        computed by calc with save_imp=True. The benefits of the
+        measures per event are added. To combine with risk transfer options use
+        apply_risk_transfer.
 
         Parameters:
             in_meas_names (list(str)): list with names of measures to combine
@@ -449,8 +450,8 @@ class CostBenefit():
     @staticmethod
     def plot_waterfall(hazard, entity, haz_future, ent_future,
                        risk_func=risk_aai_agg, axis=None, **kwargs):
-        """ Plot waterfall graph with given risk metric. Can be called before
-        and after calc().
+        """ Plot waterfall graph at future with given risk metric. Can be called
+        before and after calc().
 
         Parameters:
             hazard (Hazard): hazard
@@ -492,8 +493,7 @@ class CostBenefit():
         imp = Impact()
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
         risk_dev = risk_func(imp)
-        LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year,
-                                                                   risk_dev))
+        LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year, risk_dev))
 
         # socioecon + cc
         LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.\
@@ -515,6 +515,7 @@ class CostBenefit():
         axis.text(4, fut_risk/norm_fact, str(int(round(fut_risk/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
+
         axis.set_xticks(np.arange(4)+1)
         axis.set_xticklabels(['Risk ' + str(present_year), \
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(future_year)])
@@ -522,9 +523,58 @@ class CostBenefit():
         axis.set_title('Risk at {:d} and {:d}'.format(present_year, future_year))
         return axis
 
+    def plot_arrow_averted(self, axis, in_meas_names=None, accumulate=False, combine=False,
+                           risk_func=risk_aai_agg, disc_rates=None, imp_time_depen=1, **kwargs):
+        """ Plot waterfall graph with accumulated values from present to future
+        year. Call after calc() with save_imp=True.
+
+        Parameters:
+            axis (matplotlib.axes._subplots.AxesSubplot): axis from plot_waterfall
+                or plot_waterfall_accumulated where arrow will be added to last bar
+            in_meas_names (list(str), optional): list with names of measures to
+                represented total averted damage. Default: all measures
+            accumulate (bool, optional): accumulated averted damage (True) or averted
+                damage in future (False). Default: False
+            combine (bool, optional): use combine_measures to compute total averted
+                damage (True) or just add benefits (False). Default: False
+            risk_func (func, optional): function describing risk measure given
+                an Impact used in combine_measures. Default: average annual impact (aggregated).
+            disc_rates (DiscRates, optional): discount rates used in combine_measures
+            imp_time_depen (float, optional): parameter which represent time
+                evolution of impact used in combine_measures. Default: 1 (linear).
+            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+        """
+        if not in_meas_names:
+            in_meas_names = list(self.benefit.keys())
+        bars = [rect for rect in axis.get_children() if isinstance(rect, Rectangle)]
+
+        if accumulate:
+            tot_benefit = np.array([self.benefit[meas] for meas in in_meas_names]).sum()
+            norm_fact = self.tot_climate_risk/bars[3].get_height()
+        else:
+            tot_benefit = np.array([risk_func(self.imp_meas_future[NO_MEASURE]['impact']) - \
+                risk_func(self.imp_meas_future[meas]['impact']) for meas in in_meas_names]).sum()
+            norm_fact = risk_func(self.imp_meas_future['no measure']['impact'])/bars[3].get_height()
+        if combine:
+            try:
+                LOGGER.info('Combining measures ' + str(in_meas_names))
+                all_meas = self.combine_measures(in_meas_names, 'combine', \
+                    colors.to_rgba('black'), disc_rates, imp_time_depen, risk_func)
+            except KeyError:
+                LOGGER.warning('Use calc() with save_imp=True to get a more accurate ' \
+                               'approximation of total averted damage,')
+            if accumulate:
+                tot_benefit = all_meas.benefit['combine']
+            else:
+                tot_benefit = risk_func(all_meas.imp_meas_future[NO_MEASURE]['impact']) - \
+                    risk_func(all_meas.imp_meas_future['combine']['impact'])
+
+        self._plot_averted_arrow(axis, bars[3], tot_benefit, bars[3].get_height()*norm_fact,
+                                 norm_fact, **kwargs)
+
     def plot_waterfall_accumulated(self, hazard, entity, ent_future,
                                    risk_func=risk_aai_agg, imp_time_depen=1,
-                                   plot_arrow=True, axis=None, **kwargs):
+                                   axis=None, **kwargs):
         """ Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True. Provide same inputs as in calc.
 
@@ -536,7 +586,6 @@ class CostBenefit():
                 an Impact. Default: average annual impact (aggregated).
             imp_time_depen (float, optional): parameter which represent time
                 evolution of impact. Default: 1 (linear).
-            plot_arrow (bool, optional): plot adaptation arrow
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
 
@@ -593,14 +642,10 @@ class CostBenefit():
         axis.text(3, risk_dev/norm_fact + (risk_tot-risk_dev)/norm_fact/2, \
             str(int(round((risk_tot-risk_dev)/norm_fact))), \
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
-        bar_4 = axis.bar(4, height=risk_tot/norm_fact, **kwargs)
+        axis.bar(4, height=risk_tot/norm_fact, **kwargs)
         axis.text(4, risk_tot/norm_fact, str(int(round(risk_tot/norm_fact))), \
                   horizontalalignment='center', verticalalignment='bottom', \
                   fontsize=12, color='k')
-
-        if plot_arrow:
-            self._plot_averted_arrow(axis, bar_4, risk_tot, norm_fact,
-                                     entity.disc_rates, imp_time_depen, risk_func)
 
         axis.set_xticks(np.arange(4)+1)
         axis.set_xticklabels(['Risk ' + str(self.present_year), \
@@ -899,39 +944,33 @@ class CostBenefit():
         axis.set_ylabel('Benefit/Cost ratio')
         return axis
 
-    def _plot_averted_arrow(self, axis, bar_4, risk_tot, norm_fact, disc_rates,
-                            imp_time_depen, risk_func):
+    @staticmethod
+    def _plot_averted_arrow(axis, bar_4, tot_benefit, risk_tot, norm_fact, **kwargs):
         """ Plot arrow inn fourth bar of total averted damage by implementing
         all the measures.
 
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             bar_4 (matplotlib.container.BarContainer): bar where arrow is plotted
+            tot_benefit (float): arrow length
             risk_tot (float): total risk
             norm_fact (float): normalization factor
-            disc_rates (DiscRates): discounting rates
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Default: 1 (linear).
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
+            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
         """
-        LOGGER.info('Combining all measures ...')
-        tot_benefit = np.array(list(self.benefit.values())).sum()
-        try:
-            all_meas = self.combine_measures(list(self.cost_ben_ratio.keys()), \
-                'combine all', colors.to_rgba('black'), disc_rates, \
-                imp_time_depen, risk_func)
-            tot_benefit = np.array(list(all_meas.benefit.values())).sum()
-        except KeyError:
-            LOGGER.warning('Use calc() with save_imp=True to get a more accurate ' \
-                           'approximation of total averted damage,')
-        bar_bottom, bar_top = bar_4[0].get_bbox().get_points()
+        bar_bottom, bar_top = bar_4.get_bbox().get_points()
         axis.text(bar_top[0] - (bar_top[0]-bar_bottom[0])/2, bar_top[1],
                   "Averted", ha="center", va="top", rotation=270, size=15)
         arrow_len = min(tot_benefit/norm_fact, risk_tot/norm_fact)
+
+        if 'color' not in kwargs:
+            kwargs['color'] = 'k'
+        if 'alpha' not in kwargs:
+            kwargs['alpha'] = 0.4
+        if 'mutation_scale' not in kwargs:
+            kwargs['mutation_scale'] = 100
         axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0]-bar_bottom[0])/2, \
             bar_top[1]), (bar_top[0]- (bar_top[0]-bar_bottom[0])/2, \
-            risk_tot/norm_fact-arrow_len), mutation_scale=100, color='k', alpha=0.4))
+            risk_tot/norm_fact-arrow_len), **kwargs))
 
     def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):
         """ Print comparative of risk transfer with and without measure
