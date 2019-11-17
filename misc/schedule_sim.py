@@ -57,7 +57,7 @@ else:
     if args.CL_model == 'watch':
         years = np.arange(1971, 2002)
     else:
-        years = np.arange(1971, 2010)
+        years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
