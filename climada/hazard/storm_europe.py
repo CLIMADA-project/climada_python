@@ -324,7 +324,10 @@ class StormEurope(Hazard):
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
         ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
-        ssi_hist = ssi_freq.loc[ssi_freq.orig]
+        
+        ssi_hist = ssi_freq.loc[ssi_freq.orig].copy()
+        ssi_hist.freq = ssi_hist.freq * self.orig.size / self.orig.sum()
+        ssi_hist['freq_cum'] = np.cumsum(ssi_hist.freq)
 
         # plotting
         fig, axs = plt.subplots()
