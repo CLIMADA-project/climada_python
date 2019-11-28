@@ -38,7 +38,7 @@ from rasterio.warp import reproject, Resampling, calculate_default_transform
 from rasterio.features import rasterize
 import dask.dataframe as dd
 import pandas as pd
-import elevation
+
 
 from climada.util.constants import DEF_CRS, SYSTEM_DIR
 
@@ -195,6 +195,8 @@ def elevation_dem(lon, lat, crs=DEF_CRS, product='SRTM1',
         min_resol (float, optional): if centroids are points, minimum
             resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
     """
+    import elevation
+    
     bounds = lon.min(), lat.min(), lon.max(), lat.max()
     LOGGER.debug('Setting elevation of points with bounds %s.', str(bounds))
     rows, cols, ras_trans = pts_to_raster_meta(bounds, min(get_resolution(lat, lon, min_resol)))
