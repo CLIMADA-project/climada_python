@@ -32,7 +32,6 @@ from rasterio.warp import Resampling, reproject
 import rasterio
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
-import elevation
 
 import climada.util.plot as u_plot
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
@@ -515,6 +514,7 @@ class Centroids():
             min_resol (float, optional): if centroids are points, minimum
                 resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
         """
+        import elevation
         bounds = np.array(self.total_bounds)
         if self.meta:
             LOGGER.debug('Setting elevation of raster with bounds %s.', str(self.total_bounds))

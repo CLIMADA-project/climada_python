@@ -26,7 +26,6 @@ import numpy as np
 from scipy.sparse import csr_matrix
 import rasterio
 from rasterio.warp import Resampling, reproject
-import elevation
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import TMP_ELEVATION_FILE, DEM_NODATA, \
@@ -154,6 +153,8 @@ def _surge_decay(inten_surge, centroids, dem_product, set_fraction, min_resol, \
     Returns:
         inten_surge (sparse.csr_matrix), fract_surge (sparse.csr_matrix)
     """
+    import elevation
+    
     inland_decay = _calc_inland_decay(centroids)
 
     # substract event by event to avoid to densificate all the matrix
