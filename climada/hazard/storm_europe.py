@@ -471,7 +471,7 @@ class StormEurope(Hazard):
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
-        intensity2d_sqrt = intensity2d.sqrt().todense()
+        intensity2d_sqrt = intensity2d.power(1.0/power).todense()
         intensity2d_pwr = intensity2d.power(power).todense()
         intensity2d = intensity2d.todense()
 
