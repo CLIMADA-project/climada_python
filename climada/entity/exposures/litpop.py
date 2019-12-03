@@ -268,11 +268,14 @@ class LitPop(Exposures):
         self.ref_year = reference_year
         self.tag = tag
         self.value_unit = 'USD'
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
-            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
-            min(get_resolution(self.latitude, self.longitude)))
-        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
-
+        try:
+            rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
+                self.latitude.min(), self.longitude.max(), self.latitude.max()), \
+                min(get_resolution(self.latitude, self.longitude)))
+            self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
+        except  ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure has only 1 data point')
+            self.meta = {}
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
         LOGGER.info("Creating the LitPop exposure took %i s", \
