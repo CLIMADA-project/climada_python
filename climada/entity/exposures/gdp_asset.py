@@ -124,7 +124,10 @@ class GDP2Asset(Exposures):
         coord = np.zeros((len(lon_coordinates), 2))
         coord[:, 1] = lon_coordinates
         coord[:, 0] = lat_coordinates
-        assets = _read_GDP(coord, ref_year, path)
+
+        #assets = _read_GDP(coord, ref_year, path)
+
+        assets = _read_only_GDP(coord, ref_year, path)
         reg_id_info = np.zeros((len(assets)))
         nat_id_info = np.zeros((len(assets)))
         reg_id_info[:] = reg_id
@@ -139,6 +142,17 @@ class GDP2Asset(Exposures):
         exp_gdpasset['country_id'] = nat_id_info
         return exp_gdpasset
 
+    def correct_for_SSP(self, path, iso):
+        conv_facs = pd.read_csv(path)
+        
+        self.loc[:, 'value'] *=  conv_facs.loc[conv_facs['ISO'] == iso,
+                                               str(self.ref_year)].sum()
+
+    def correct_for_gdp2asset(self, path, iso):
+
+        conv_facs = pd.read_csv(path)
+        self['value'] = self['value'] * conv_facs.loc[conv_facs['ISO'] == iso,
+                                                      str(self.ref_year)]
 
 def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
     """ Read GDP-values for the selected area and convert it to asset.
@@ -211,3 +225,48 @@ def _fast_if_mapping(countryID, natID_info):
         LOGGER.error('Country ISO unknown')
         raise KeyError
     return reg_id, if_rf
+
+def _read_only_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
+    """ Read GDP-values for the selected area and convert it to asset.
+        Parameters:
+            shp_exposure(2d-array float): coordinates of area
+            ref_year(int): year under consideration
+            path(str): path for gdp-files
+        Raises:
+            KeyError, OSError
+        Returns:
+            np.array
+        """
+    try:
+        gdp_file = xr.open_dataset(path)
+        asset_converter = xr.open_dataset(CONVERTER)
+        gdp_lon = gdp_file.lon.data
+        gdp_lat = gdp_file.lat.data
+        time = gdp_file.time.dt.year
+    except OSError:
+        LOGGER.error('Problems while reading ,' + path +
+                     ' check exposure_file specifications')
+        raise OSError
+    try:
+        year_index = np.where(time == ref_year)[0][0]
+    except IndexError:
+        LOGGER.error('No data available for year ' + str(ref_year))
+        raise KeyError
+    conv_lon = asset_converter.lon.data
+    conv_lat = asset_converter.lat.data
+    gridX, gridY = np.meshgrid(conv_lon, conv_lat)
+    coordinates = np.zeros((gridX.size, 2))
+    coordinates[:, 0] = gridY.flatten()
+    coordinates[:, 1] = gridX.flatten()
+    gdp = gdp_file.gdp_grid[year_index, :, :].data
+    asset = gdp 
+    asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
+                                   np.nan_to_num(asset),
+                                   (shp_exposures[:, 0],
+                                   shp_exposures[:, 1]),
+                                   method='nearest',
+                                   bounds_error=False,
+                                   fill_value=None)
+    return asset
+
+
