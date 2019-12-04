@@ -382,7 +382,7 @@ def check_assigned_track(lookup, checkset):
           %(correct/check_size*100, wrong/check_size*100, not_assigned/check_size*100))
 
 def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, \
-                              verbose=True):
+                              verbose=True, year_range=None):
     """return list of all countries exposed to a chosen hazard type
     from EMDAT data as CSV.
 
@@ -397,13 +397,13 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
             emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
         ignore_missing (boolean): Ignore countries that that exist in EMDAT but
             are missing in iso_cntry(). Default: True.
+        verbose (boolean): silent mode
+        year_range (tuple of integers or None): range of years to consider, i.e. (1950, 2000)
+            default is None, i.e. consider all years
     Returns:
         exp_iso: List of ISO3-codes of countries impacted by the disaster type
         exp_name: List of names of countries impacted by the disaster type
             """
-
-
-
     if hazard_name in PERIL_SUBTYPE_MATCH_DICT.keys():
         hazard_name = PERIL_SUBTYPE_MATCH_DICT[hazard_name]
     elif hazard_name in PERIL_TYPE_MATCH_DICT.keys():
@@ -415,6 +415,17 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
     if not 'Disaster type' in out.columns:
         out = pd.read_csv(emdat_file_csv, encoding="ISO-8859-1", header=0)
 
+    if not not year_range: # if year range is given, extract years in range
+        year_boolean = []
+        all_years = np.arange(min(year_range), max(year_range)+1, 1)
+        for _, disaster_no in enumerate(out['Disaster No.']):
+            if isinstance(disaster_no, str) and int(disaster_no[0:4]) in all_years:
+                year_boolean.append(True)
+            else:
+                year_boolean.append(False)
+        out = out[year_boolean]
+    
+    
     # List of countries that exist in EMDAT but are missing in iso_cntry():
     #(these countries are ignored)
     list_miss = ['Netherlands Antilles', 'Guadeloupe', 'Martinique', \
