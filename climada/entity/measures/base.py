@@ -49,7 +49,8 @@ class Measure():
         cost (float): discounted cost (in same units as assets)
         hazard_set (str): file name of hazard to use (in h5 format)
         hazard_freq_cutoff (float): hazard frequency cutoff
-        exposure_set (str): file name of exposure to use (in h5 format)
+        exposures_set (str): file name of exposure to use (in h5 format) or
+            Exposure instance
         imp_fun_map (str): change of impact function id of exposures, e.g. '1to3'
         hazard_inten_imp (tuple): parameter a and b of hazard intensity change
         mdd_impact (tuple): parameter a and b of the impact over the mean
@@ -60,7 +61,7 @@ class Measure():
             the previous parameters
         risk_transf_attach (float): risk transfer attachment
         risk_transf_cover (float): risk transfer cover
-        risk_transf_cost_factor (float): factor to multiply to resulting 
+        risk_transf_cost_factor (float): factor to multiply to resulting
             insurance layer to get the total cost of risk transfer
     """
 
@@ -276,7 +277,7 @@ class Measure():
             hazard (Hazard): hazard instance
 
         Returns:
-            ImpactFuncSet
+            Hazard
         """
         if self.hazard_freq_cutoff == 0:
             return hazard
