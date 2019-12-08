@@ -177,9 +177,9 @@ def dist_to_coast(coord_lat, lon=None):
                                 crs=NE_CRS)
 
     to_crs = from_epsg(convert_wgs_to_utm(geom.geometry.iloc[0].x, geom.geometry.iloc[0].y))
-    coast = get_coastlines(geom.total_bounds, 10)
-    coast = coast.to_crs(to_crs).unary_union
-    return geom.to_crs(to_crs).distance(coast).values
+    coast = get_coastlines(geom.total_bounds, 10).unary_union
+    coast = gpd.GeoDataFrame(geometry=[coast], crs=NE_CRS).to_crs(to_crs)
+    return geom.to_crs(to_crs).distance(coast.geometry[0]).values
 
 def elevation_dem(lon, lat, crs=DEF_CRS, product='SRTM1',
                   resampling=Resampling.nearest, nodata=DEM_NODATA, min_resol=1.0e-8):
@@ -196,7 +196,7 @@ def elevation_dem(lon, lat, crs=DEF_CRS, product='SRTM1',
             resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
     """
     import elevation
-    
+
     bounds = lon.min(), lat.min(), lon.max(), lat.max()
     LOGGER.debug('Setting elevation of points with bounds %s.', str(bounds))
     rows, cols, ras_trans = pts_to_raster_meta(bounds, min(get_resolution(lat, lon, min_resol)))
