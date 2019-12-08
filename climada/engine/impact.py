@@ -247,7 +247,7 @@ class Impact():
             new_imp.eai_exp = np.array([])
             new_imp.coord_exp = np.array([])
             new_imp.imp_mat = []
-            # innsurance layer metrics
+            # insurance layer metrics
             risk_transfer = copy.deepcopy(new_imp)
             risk_transfer.at_event = imp_layer
             risk_transfer.aai_agg = np.sum(imp_layer * new_imp.frequency)
