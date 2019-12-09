@@ -125,9 +125,9 @@ class GDP2Asset(Exposures):
         coord[:, 1] = lon_coordinates
         coord[:, 0] = lat_coordinates
 
-        #assets = _read_GDP(coord, ref_year, path)
+        assets = _read_GDP(coord, ref_year, path)
 
-        assets = _read_only_GDP(coord, ref_year, path)
+        #assets = _read_only_GDP(coord, ref_year, path)
         reg_id_info = np.zeros((len(assets)))
         nat_id_info = np.zeros((len(assets)))
         reg_id_info[:] = reg_id
@@ -151,8 +151,8 @@ class GDP2Asset(Exposures):
     def correct_for_gdp2asset(self, path, iso):
 
         conv_facs = pd.read_csv(path)
-        self['value'] = self['value'] * conv_facs.loc[conv_facs['ISO'] == iso,
-                                                      str(self.ref_year)]
+        self.loc[:, 'value'] *=  conv_facs.loc[conv_facs['ISO'] == iso,
+                                               str(self.ref_year)].sum()
 
 def _read_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
     """ Read GDP-values for the selected area and convert it to asset.
