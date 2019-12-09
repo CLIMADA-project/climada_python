@@ -44,18 +44,18 @@ gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downs
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
 output = currentdir
 #For lpj longrun
-if args.RF_model == 'lpjml':
-    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
-    if args.CL_model == 'watch':
-        years = np.arange(1901, 2002)
-    else:
-        years = np.arange(1901, 2011)
+#if args.RF_model == 'lpjml':
+#    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
+#    if args.CL_model == 'watch':
+#        years = np.arange(1901, 2002)
+#    else:
+#        years = np.arange(1901, 2011)
+#else:
+flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a/'
+if args.CL_model == 'watch':
+    years = np.arange(1971, 2002)
 else:
-    flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
-    if args.CL_model == 'watch':
-        years = np.arange(1971, 2002)
-    else:
-        years = np.arange(1971, 2011)
+    years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -100,15 +100,15 @@ for cnt_ind in range(len(isos)):
     cont = continent_names[int(conts[cnt_ind]-1)]
     gdpaFix = GDP2Asset()
     gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
-    gdpaFix.correct_for_SSP(ssp_corr, country[0])
+    #gdpaFix.correct_for_SSP(ssp_corr, country[0])
 
     save_lc = line_counter
     for pro_std in range(len(PROT_STD)):
         line_counter = save_lc
-        dph_path = flood_dir + 'flddph_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
-        frc_path= flood_dir + 'fldfrc_{}_{}_{}_gev_0.1.nc'\
-            .format(args.RF_model, args.CL_model, PROT_STD[pro_std])
+        dph_path = flood_dir + '{}/{}/depth-150arcsec/flddph_annual_max_gev_0.1mmpd_protection-{}.nc'\
+            .format(args.CL_model, args.RF_model, PROT_STD[pro_std])
+        frc_path= flood_dir + '{}/{}/area-150arcsec/fldfrc_annual_max_gev_0.1mmpd_protection-{}.nc'\
+            .format(args.CL_model, args.RF_model, PROT_STD[pro_std])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
             break
@@ -130,7 +130,7 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 3] = cont
             gdpa = GDP2Asset()
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
-            gdpa.correct_for_SSP(ssp_corr, country[0])
+            #gdpa.correct_for_SSP(ssp_corr, country[0])
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
             imp_fix=Impact()
@@ -149,9 +149,9 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 9 + pro_std] = imp_fix.at_event[0]
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl.at_event[0]
             line_counter+=1
-    if args.RF_model == 'lpjml':
-        dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
-    else:
-        dataDF.to_csv('output_{}_{}_fullProt_corr_obsGDP.csv'.format(args.RF_model, args.CL_model))
+    #if args.RF_model == 'lpjml':
+        #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
+    #else:
+    dataDF.to_csv('output_{}_{}_fullProt_newFLD.csv'.format(args.RF_model, args.CL_model))
 
 
