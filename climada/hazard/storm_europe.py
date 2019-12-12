@@ -429,10 +429,10 @@ class StormEurope(Hazard):
         # frequency still based on the historic number of years
         new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
                                       N_PROB_EVENTS)
-
-        self.tag = TagHazard(
+        
+        new_haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
-            description='WISC probabilistic hazard set using Schwierz et al.'
+            description='WISC probabilistic hazard set according to Schwierz et al.'
         )
 
         new_haz.fraction = new_haz.intensity.copy().tocsr()
