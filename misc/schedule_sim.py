@@ -9,6 +9,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import argparse
 from climada.entity.exposures.gdp_asset import GDP2Asset
+from climada.entity.exposures.exp_people import ExpPop
 from climada.entity.impact_funcs.flood import IFRiverFlood,flood_imp_func_set, assign_if_simple
 from climada.hazard.flood import RiverFlood
 from climada.hazard.centroids import Centroids
@@ -40,22 +41,17 @@ PROT_STD = ['0', 'flopros']
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
-gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
+#gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
+pop_path = '/home/insauer/Tobias/hyde_ssp2_1860-2015_0150as_yearly_zip.nc4'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
 output = currentdir
 #For lpj longrun
-#if args.RF_model == 'lpjml':
-#    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
-#    if args.CL_model == 'watch':
-#        years = np.arange(1901, 2002)
-#    else:
-#        years = np.arange(1901, 2011)
-#else:
+
 flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a/'
 if args.CL_model == 'watch':
     years = np.arange(1971, 2002)
 else:
-    years = np.arange(1980, 2011)
+    years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 country_info = pd.read_csv(NAT_REG_ID)
@@ -65,19 +61,20 @@ conts = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
-ssp_corr = '/home/insauer/data/Asset_Correction/RescalingFactors_GDPobs_GDPjpnClean.csv'
-
 dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
                             'Region': np.full(l, "", dtype=str),
                             'Continent': np.full(l, "", dtype=str),
-                            'TotalAssetValue': np.full(l, np.nan, dtype=float),
-                            'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
+                            'TotalPopulation': np.full(l, np.nan, dtype=float),
+                            'TotalPopulation2005': np.full(l, np.nan, dtype=float),
                             'FloodedArea0': np.full(l, np.nan, dtype=float),
+                            #'FloodedArea100': np.full(l, np.nan, dtype=float),
                             'FloodedAreaFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixExp0': np.full(l, np.nan, dtype=float),
+                            'FixExp0': np.full(l, np.nan, dtype=float),
+                            #'ImpFixExp100': np.full(l, np.nan, dtype=float),
                             'ImpFixExpFlopros': np.full(l, np.nan, dtype=float),
                             'Impact_0': np.full(l, np.nan, dtype=float),
+                            #'Impact_100': np.full(l, np.nan, dtype=float),
                             'Impact_Flopros': np.full(l, np.nan, dtype=float),
                             'Impact_2y_0': np.full(l, np.nan, dtype=float),
                             'Impact_2y_Flopros': np.full(l, np.nan, dtype=float),
@@ -95,9 +92,8 @@ for cnt_ind in range(len(isos)):
     reg = regs[cnt_ind]
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts[cnt_ind]-1)]
-    gdpaFix = GDP2Asset()
-    gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
-    #gdpaFix.correct_for_SSP(ssp_corr, country[0])
+    gdpaFix = ExpPop()
+    gdpaFix.set_countries(countries=country, ref_year=2005, path=pop_path)
 
     save_lc = line_counter
     for pro_std in range(len(PROT_STD)):
@@ -125,9 +121,8 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
-            gdpa = GDP2Asset()
-            gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
-            #gdpa.correct_for_SSP(ssp_corr, country[0])
+            gdpa = ExpPop()
+            gdpa.set_countries(countries=country, ref_year=years[year], path = pop_path)
             imp_fl=Impact()
             imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
             imp_fix=Impact()
@@ -146,9 +141,7 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 8 + pro_std] = imp_fix.at_event[0]
             dataDF.iloc[line_counter, 10 + pro_std] = imp_fl.at_event[0]
             line_counter+=1
-    #if args.RF_model == 'lpjml':
-        #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
-    #else:
-    dataDF.to_csv('output_{}_{}_fullProt_newFLD.csv'.format(args.RF_model, args.CL_model))
+
+    dataDF.to_csv('outputExpPop_{}_{}_0_100.csv'.format(args.RF_model, args.CL_model))
 
 
