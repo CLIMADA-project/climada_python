@@ -355,6 +355,11 @@ class TCTracks():
         Returns:
             matplotlib.axes._subplots.AxesSubplot
         """
+        if 'lw' not in kwargs:
+            kwargs['lw'] = 2
+        if 'transform' not in kwargs:
+            kwargs['transform'] = ccrs.PlateCarree()
+
         if not self.size:
             LOGGER.info('No tracks to plot')
             return None
@@ -373,7 +378,7 @@ class TCTracks():
         min_lat, max_lat = min_lat-deg_border, max_lat+deg_border
         if abs(min_lon - max_lon) > 360:
             min_lon, max_lon = -180, 180
-        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]))
+        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]), crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
         synth_flag = False
@@ -383,13 +388,18 @@ class TCTracks():
             points = np.array([track.lon.values,
                                track.lat.values]).T.reshape(-1, 1, 2)
             segments = np.concatenate([points[:-1], points[1:]], axis=1)
+            try:
+                segments = np.delete(segments, np.argwhere(segments[:, 0, 0] * \
+                                     segments[:, 1, 0] < 0).reshape(-1), 0)
+            except IndexError:
+                pass
             if track.orig_event_flag:
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
-                    linestyle='solid', transform=ccrs.PlateCarree(), lw=2, **kwargs)
+                    linestyle='solid', **kwargs)
             else:
                 synth_flag = True
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
-                    linestyle=':', transform=ccrs.PlateCarree(), lw=2, **kwargs)
+                    linestyle=':', **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
