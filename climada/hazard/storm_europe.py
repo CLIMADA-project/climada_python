@@ -494,7 +494,7 @@ class StormEurope(Hazard):
         return new_haz
 
     def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
-                   power=1.1, scale=0.1):
+                   power=1.15, scale=0.0225):
         """ Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
         it then moves around by spatial_shift gridpoints to the east, west, and
