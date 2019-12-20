@@ -21,15 +21,15 @@ Install environment with Anaconda
 
 2. **Install dependencies**: In the *Environments* section, use the *Import* box to create a new virtual environment from a yml file. A dialogue box will ask you for the location of the file. Provide first the path of climada's ``climada_python-x.y.z/requirements/env_climada.yml``. The default name of the environment, *climada_env*, appears. Click the *Import* button to start the installation. 
 
-The installation of the packages will take some minutes. No dialogue box should appear in the meantime. If an error happens, try to solve it looking into the details description. 
+   The installation of the packages will take some minutes. No dialogue box should appear in the meantime. If an error happens, try to solve it looking into the details description. 
 
-Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
+   Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
    source activate climada_env
    conda develop /your/path/to/climada_python-x.y.z/
    conda deactivate
 
-You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the 'climada_env' environment, select 'Open Terminal' and execute the following line::
+   You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the 'climada_env' environment, select 'Open Terminal' and execute the following line::
 
    conda develop /your/path/to/climada_python-x.y.z/
 
@@ -49,7 +49,7 @@ Install environment with Miniconda
     cd climada_python-x.y.z
     conda env create -f requirements/env_climada.yml --name climada_env
 
-Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
+   Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
    source activate climada_env
    conda develop /your/path/to/climada_python-x.y.z/
@@ -61,7 +61,7 @@ Finally, set the ``climada_python-x.y.z`` folder path into the environment using
     python3 tests_install.py
     source deactivate
 
-If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
+   If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
 4. **Run tutorials**: Install and launch *jupyter notebook* in the same environment::
 
