@@ -10,8 +10,8 @@ Download
 
 Download the last CLIMADA release available in `climada releases <https://github.com/CLIMADA-project/climada_python/releases>`_ as a zip or tar.gz file. Uncompress it to your local computer. Hereinafter ``climada_python-x.y.z`` refers to the downloaded folder of CLIMADA version x.y.z.
 
-Unix Operating System
-=====================
+Unix, Mac and Windows Operating Systems
+=======================================
 
 .. _Install environment with Anaconda:
 
@@ -29,9 +29,15 @@ Install environment with Anaconda
    conda develop /your/path/to/climada_python-x.y.z/
    conda deactivate
 
+  You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the ''climada_env'' environment, select ''Open Terminal'' and execute the following line:
+   conda develop /your/path/to/climada_python-x.y.z/
+
 3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
 4. **Run tutorials**: In the *Home* section of Anaconda, with *climada_env* selected, install and launch *jupyter notebook*. A browser window will show up. Navigate to your ``climada_python-x.y.z`` repository and open ``doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
+
+Unix and Mac Operating Systems
+==============================
 
 Install environment with Miniconda
 ----------------------------------
@@ -63,14 +69,6 @@ Install environment with Miniconda
     jupyter notebook --notebook-dir /path/to/climada_python-x.y.z
 
  A browser window will show up. Open ``climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
-
-Windows Operating System
-========================
-
-Install environment with Anaconda
----------------------------------
-
-See `Install environment with Anaconda`_.
 
 FAQs
 ====
