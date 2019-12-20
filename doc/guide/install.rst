@@ -29,7 +29,7 @@ Finally, set the ``climada_python-x.y.z`` folder path into the environment using
    conda develop /your/path/to/climada_python-x.y.z/
    conda deactivate
 
-You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the ''climada_env'' environment, select ''Open Terminal'' and execute the following line::
+You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the 'climada_env' environment, select 'Open Terminal' and execute the following line::
 
    conda develop /your/path/to/climada_python-x.y.z/
 
