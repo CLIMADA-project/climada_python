@@ -49,7 +49,7 @@ Install environment with Miniconda
     cd climada_python-x.y.z
     conda env create -f requirements/env_climada.yml --name climada_env
 
-  Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
+Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
    source activate climada_env
    conda develop /your/path/to/climada_python-x.y.z/
@@ -61,7 +61,7 @@ Install environment with Miniconda
     python3 tests_install.py
     source deactivate
 
- If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
+If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
 4. **Run tutorials**: Install and launch *jupyter notebook* in the same environment::
 
@@ -69,7 +69,7 @@ Install environment with Miniconda
     conda install jupyter
     jupyter notebook --notebook-dir /path/to/climada_python-x.y.z
 
- A browser window will show up. Open ``climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
+A browser window will show up. Open ``climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
 
 FAQs
 ====
