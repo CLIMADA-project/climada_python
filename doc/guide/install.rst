@@ -25,13 +25,13 @@ Install environment with Anaconda
 
    Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
-   source activate climada_env
-   conda develop /your/path/to/climada_python-x.y.z/
-   conda deactivate
+      source activate climada_env
+      conda develop /your/path/to/climada_python-x.y.z/
+      conda deactivate
 
    You can also do so by clicking on the green right arrow in the Anaconda GUI in the *Environments* section right to the 'climada_env' environment, select 'Open Terminal' and execute the following line::
 
-   conda develop /your/path/to/climada_python-x.y.z/
+      conda develop /your/path/to/climada_python-x.y.z/
 
 3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
 
@@ -51,9 +51,9 @@ Install environment with Miniconda
 
    Finally, set the ``climada_python-x.y.z`` folder path into the environment using the following command::
    
-   source activate climada_env
-   conda develop /your/path/to/climada_python-x.y.z/
-   conda deactivate
+      source activate climada_env
+      conda develop /your/path/to/climada_python-x.y.z/
+      conda deactivate
  
 3. **Test installation**: Activate the environment, execute the installation tests and deactivate the environment when finished using climada::
 
