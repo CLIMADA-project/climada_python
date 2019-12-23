@@ -101,7 +101,7 @@ for cnt_ind in range(len(isos)):
         dph_path = flood_dir + '{}/{}/{}/depth-150arcsec/flddph_annual_max_gev_0.1mmpd_protection-{}.nc'\
             .format(args.CL_model, args.RF_model, args.scenario, PROT_STD[prot_std])
         frc_path= flood_dir + '{}/{}/{}/area-150arcsec/fldfrc_annual_max_gev_0.1mmpd_protection-{}.nc'\
-            .format(args.CL_model, args.RF_model, args.RF_model, args.scenario, PROT_STD[prot_std])
+            .format(args.CL_model, args.RF_model, args.scenario, PROT_STD[prot_std])
         if not os.path.exists(dph_path):
             print('{} path not found'.format(dph_path))
             break
