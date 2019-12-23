@@ -47,7 +47,7 @@ SCENARIO = ['rcp26',
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 #gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
-pop_path = 'hyde_ssp2_1860-2100_0150as_yearly_zip.nc4'
+pop_path = '/p/projects/ebm/data/exposure/population/hyde_ssp2_1860-2100_0150as_yearly_zip.nc4'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
 output = currentdir
 #For lpj longrun
