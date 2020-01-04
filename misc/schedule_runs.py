@@ -51,21 +51,26 @@ sys.dont_write_bytecode = True
 SCENARIO = ['rcp26',
             'rcp60']
 
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5'
-            #'princeton',
-            #'gswp3',
-            #'watch',
-            #'wfdei'
+CL_MODEL = [#'gfdl-esm2m',
+            #'hadgem2-es',
+            #'ipsl-cm5a-lr',
+            #'miroc5'
+            'princeton',
+            'gswp3',
+            'watch',
+            'wfdei'
             ]
 
-RF_MODEL = ['clm45',
-            'clm50',
-            'cwatm',
+RF_MODEL = [#'clm45',
+            #'clm50',
+            'clm40',
+            #'cwatm',
             'matsiro',
             'jules-w1',
+            'jules-b1',
+            'orchidee',
+            'vic',
+            'dbh',
             'h08',
             'lpjml',
             'mpi-hm',
@@ -73,7 +78,7 @@ RF_MODEL = ['clm45',
             'watergap2'
             ]
 
-def schedule_run(run_nb,flag,RF_model,CL_model, scenario):
+def schedule_run(run_nb,flag,RF_model,CL_model):
     if not flag:
         run_label = "run%s" % run_nb
         if os.path.exists(run_label):
@@ -114,7 +119,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model, scenario):
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
             "executable": 'schedule_sim.py',
-            "options": "--RF_model %s --CL_model %s --scenario %s"%(RF_model, CL_model, scenario),
+            "options": "--RF_model %s --CL_model %s"%(RF_model, CL_model),
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
             "other": "#SBATCH --partition=ram_gpu" if args.largemem else ""
@@ -153,7 +158,7 @@ ulimit -c unlimited
 num = 1
 num *= len(RF_MODEL)
 num *= len(CL_MODEL)
-num *= len(SCENARIO)
+#num *= len(SCENARIO)
 
 single = True if num == 1 else False
 if num > 1:
@@ -169,9 +174,8 @@ if num > 1:
 enum = 1
 for rf_model in RF_MODEL:
     for cl_model in CL_MODEL:
-        for scen in SCENARIO:
-            schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model,scenario=scen)
-            enum += 1
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model)
+        enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)
 
