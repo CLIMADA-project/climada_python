@@ -284,6 +284,7 @@ class FloodTrend(Hazard):
         
         new_trends = dis_map.astype(int)
         self.intensity = sparse.csr_matrix(new_trends)
+        self.fraction = sparse.csr_matrix(new_trends)
 
     
     
