@@ -258,7 +258,14 @@ class RiverFlood(Hazard):
         new_intensity[mask] = 0
         
         self.intensity = sparse.csr_matrix(new_intensity)
+    
+    def exclude_trends(self, flood_trend):
         
+        new_trends = np.multiply(self.intensity.todense(), flood_trend.intensity.todense())
+        new_fraction = np.multiply(self.fraction.todense(), flood_trend.fraction.todense())
+        
+        self.intensity = sparse.csr_matrix(new_trends)
+        self.fraction = sparse.csr_matrix(new_fraction)
         
 
     def _select_model_run(self, flood_dir, rf_model, cl_model, scenario,
