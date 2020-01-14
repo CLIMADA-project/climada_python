@@ -257,8 +257,8 @@ class TestEconIndices(unittest.TestCase):
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
         fill_econ_indicators(ref_year, country_isos, SHP_FILE)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832291693.257, 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21154394545.895, 2]
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832391757.542, 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243350632.5008, 2]
                            }
         self.assertEqual(country_isos, country_isos_ref)
 
@@ -288,7 +288,7 @@ class TestEconIndices(unittest.TestCase):
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
         country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21154394545.895, inc_grp['ZMB']]
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243350632.5008, inc_grp['ZMB']]
                            }
         self.assertEqual(country_isos, country_isos_ref)
 
