@@ -71,7 +71,7 @@ isos = country_info['ISO'].tolist()
 isos_ic = income_groups['ISO'].tolist()
 isos = list(set(isos) & set(isos_ic))
 
-conts = country_info['if_RF'].tolist()
+cont_list = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
@@ -123,7 +123,7 @@ for cnt_ind in range(len(isos)):
     
     inc_group = income_groups.loc[income_groups['ISO']==country[0], 'IncomeGroup'].values[0]
     #print(conts[cnt_ind]-1)
-    cont = continent_names[int(conts[cnt_ind]-1)]
+    cont = continent_names[int(conts-1)]
     gdpaFix = GDP2Asset()
     gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
     #gdpaFix.correct_for_SSP(ssp_corr, country[0])
