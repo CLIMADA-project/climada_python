@@ -56,26 +56,26 @@ CL_MODEL = [#'gfdl-esm2m',
             #'ipsl-cm5a-lr',
             #'miroc5'
             'princeton',
-            'gswp3',
-            'watch',
-            'wfdei'
+            #'gswp3',
+            'watch'
+            #'wfdei'
             ]
 
 RF_MODEL = [#'clm45',
             #'clm50',
             'clm40',
             #'cwatm',
-            'matsiro',
-            'jules-w1',
-            'jules-b1',
-            'orchidee',
-            'vic',
-            'dbh',
-            'h08',
-            'lpjml',
-            'mpi-hm',
-            'pcr-globwb',
-            'watergap2'
+            #'matsiro',
+            #'jules-w1',
+            #'jules-b1',
+            #'orchidee',
+            #'vic',
+            #'dbh',
+            #'h08',
+            #'lpjml',
+            #'mpi-hm',
+            #'pcr-globwb',
+            #'watergap2'
             ]
 
 def schedule_run(run_nb,flag,RF_model,CL_model):
