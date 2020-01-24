@@ -117,7 +117,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model,scenario):
             "notification": "END,FAIL,TIME_LIMIT" if args.notify else "FAIL,TIME_LIMIT",
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
-            "executable": 'schedule_sim_2b.py',
+            "executable": 'schedule_sim.py',
             "options": "--RF_model %s --CL_model %s --scenario %s"%(RF_model, CL_model, scenario),
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
