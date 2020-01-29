@@ -157,7 +157,6 @@ ulimit -c unlimited
 num = 1
 num *= len(RF_MODEL)
 num *= len(CL_MODEL)
-num *= len(SCENARIO)
 
 single = True if num == 1 else False
 if num > 1:
