@@ -23,10 +23,13 @@ __all__ = ['RiverFlood']
 
 import logging
 import os
+import fiona
 import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
+import geopandas as gpd
+from geopandas.io.file import read_file
 import datetime as dt
 from datetime import date
 from rasterio.warp import Resampling
@@ -68,7 +71,7 @@ class RiverFlood(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
-                    centroids=None, countries=[], reg=None, ISINatIDGrid=False,
+                    centroids=None, countries=[], reg=None, shape=None,ISINatIDGrid=False,
                     years=[2000]):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
@@ -112,7 +115,7 @@ class RiverFlood(Hazard):
                 dest_centroids, isos, natID = RiverFlood._select_exact_area(
                     countries, reg)
                 meta_centroids = copy.copy(dest_centroids)
-                #meta_centroids.set_lat_lon_to_meta()
+                meta_centroids.set_lat_lon_to_meta()
 
                 self.set_raster(files_intensity=[dph_path],
                                 files_fraction=[frc_path], band=bands.tolist(),
@@ -148,14 +151,31 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
+                    print('stop')
                     #self.centroids.set_meta_to_lat_lon()
 
+        elif shape:
+            shapes =gpd.read_file(shape)
+            
+            rand_geom = shapes.geometry[0]
+            
+            self.set_raster(files_intensity=[dph_path],
+                                    files_fraction=[frc_path],
+                                    band=bands.tolist(),
+                                    geometry=rand_geom)
+            
+            print('bbb')
+
+          
+            return
+        
         elif not centroids:
             # centroids as raster
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path],
                             band=bands.tolist())
             #self.centroids.set_meta_to_lat_lon()
+        
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
             """TODO: implement case when meta or regulargrid is defined
@@ -301,5 +321,5 @@ class RiverFlood(Hazard):
         lat_coordinates = gridY[natID_pos]
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
         centroids.set_region_id()
-        centroids.set_lat_lon_to_meta()
+        #centroids.set_lat_lon_to_meta()
         return centroids, iso_codes, natID
