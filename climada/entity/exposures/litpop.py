@@ -602,7 +602,7 @@ def _shape_cutter(shape, **opt_args):
                 plotted. Takes any colour format which is recognised by
                 matplotlib.
             return_mask (boolean): If activated, the mask is also returned
-            points2check (list): a list of points in tuple formaat (lon, lat)
+            points2check (list): a list of points in tuple format (lon, lat)
                 for which should be checked whether they are inside the shape.
                 if no points are delivered, the points are created for the
                 bounding box of the shape.
