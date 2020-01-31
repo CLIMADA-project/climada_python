@@ -68,8 +68,6 @@ else:
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
 country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
-isos_ic = income_groups['ISO'].tolist()
-isos = list(set(isos) & set(isos_ic))
 
 cont_list = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
@@ -80,7 +78,6 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Country': np.full(l, "", dtype=str),
                             'Region': np.full(l, "", dtype=str),
                             'Continent': np.full(l, "", dtype=str),
-                            'IncomeGroup': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
                             'FloodedAreaPos0': np.full(l, np.nan, dtype=float),
@@ -89,6 +86,12 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'FloodedAreaNeg0': np.full(l, np.nan, dtype=float),
                             'FloodedAreaNegFlopros': np.full(l, np.nan, dtype=float),
                             'FloodedAreaNeg100': np.full(l, np.nan, dtype=float),
+                            'FloodVolumePos0': np.full(l, np.nan, dtype=float),
+                            'FloodVolumePosFlopros': np.full(l, np.nan, dtype=float),
+                            'FloodVolumePos100': np.full(l, np.nan, dtype=float),
+                            'FloodVolumeNeg0': np.full(l, np.nan, dtype=float),
+                            'FloodVolumeNegFlopros': np.full(l, np.nan, dtype=float),
+                            'FloodVolumeNeg100': np.full(l, np.nan, dtype=float),
                             'ImpFixPos0': np.full(l, np.nan, dtype=float),
                             'ImpFixPosFlopros': np.full(l, np.nan, dtype=float),
                             'ImpFixPos100': np.full(l, np.nan, dtype=float),
@@ -162,6 +165,8 @@ for cnt_ind in range(len(isos)):
         rf2y_neg.exclude_trends(dis_neg)
         rf_pos.set_flooded_area()
         rf_neg.set_flooded_area()
+        rf_pos.set_flood_volume()
+        rf_neg.set_flood_volume()
         for year in range(len(years)):
             print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
             ini_date = str(years[year]) + '-01-01'
@@ -170,7 +175,6 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
-            dataDF.iloc[line_counter, 4] = inc_group
             gdpa = GDP2Asset()
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
             #gdpa.correct_for_SSP(ssp_corr, country[0])
@@ -192,28 +196,29 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl_fix_neg=Impact()
                 imp2y_fl_fix_neg.calc(gdpaFix, if_set, rf2y_neg.select(date=(ini_date,fin_date)))
                 
-                dataDF.iloc[line_counter, 25 + pro_std] = imp2y_fl_pos.at_event[0]
-                dataDF.iloc[line_counter, 27 + pro_std] = imp2y_fl_neg.at_event[0]
+                dataDF.iloc[line_counter, 30 + pro_std] = imp2y_fl_pos.at_event[0]
+                dataDF.iloc[line_counter, 32 + pro_std] = imp2y_fl_neg.at_event[0]
                 
-                dataDF.iloc[line_counter, 29 + pro_std] = imp2y_fl_fix_pos.at_event[0]
-                dataDF.iloc[line_counter, 31 + pro_std] = imp2y_fl_fix_neg.at_event[0]
+                dataDF.iloc[line_counter, 34 + pro_std] = imp2y_fl_fix_pos.at_event[0]
+                dataDF.iloc[line_counter, 36 + pro_std] = imp2y_fl_fix_neg.at_event[0]
 
-            dataDF.iloc[line_counter, 5] = imp_fl_pos.tot_value
-            dataDF.iloc[line_counter, 6] = imp_fl_fix_pos.tot_value
+            dataDF.iloc[line_counter, 4] = imp_fl_pos.tot_value
+            dataDF.iloc[line_counter, 5] = imp_fl_fix_pos.tot_value
             
-            dataDF.iloc[line_counter, 7 + pro_std] = rf_pos.fla_annual[year]
-            dataDF.iloc[line_counter, 10 + pro_std] = rf_neg.fla_annual[year]
+            dataDF.iloc[line_counter, 6 + pro_std] = rf_pos.fla_annual[year]
+            dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fla_annual[year]
             
-            dataDF.iloc[line_counter, 13 + pro_std] = imp_fl_fix_pos.at_event[0]
-            dataDF.iloc[line_counter, 16 + pro_std] = imp_fl_fix_neg.at_event[0]
+            dataDF.iloc[line_counter, 12 + pro_std] = rf_pos.fv_annual[year]
+            dataDF.iloc[line_counter, 15 + pro_std] = rf_neg.fv_annual[year]
             
-            dataDF.iloc[line_counter, 19 + pro_std] = imp_fl_pos.at_event[0]
-            dataDF.iloc[line_counter, 22 + pro_std] = imp_fl_neg.at_event[0]
+            dataDF.iloc[line_counter, 18 + pro_std] = imp_fl_fix_pos.at_event[0]
+            dataDF.iloc[line_counter, 21 + pro_std] = imp_fl_fix_neg.at_event[0]
+            
+            dataDF.iloc[line_counter, 24 + pro_std] = imp_fl_pos.at_event[0]
+            dataDF.iloc[line_counter, 27 + pro_std] = imp_fl_neg.at_event[0]
             
             line_counter+=1
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_fullProt_newFLD_29_01.csv'.format(args.RF_model, args.CL_model))
-
-
+    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_fullProt_newFLD_31_01.csv'.format(args.RF_model, args.CL_model))
