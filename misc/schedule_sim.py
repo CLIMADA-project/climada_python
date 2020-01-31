@@ -187,8 +187,8 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 6 + pro_std] = rf_pos.fla_annual[year]
             dataDF.iloc[line_counter, 7 + pro_std] = rf_neg.fla_annual[year]
             
-            dataDF.iloc[line_counter, 8 + pro_std] = rf_pos.fv_annual[year]
-            dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fv_annual[year]
+            dataDF.iloc[line_counter, 8 + pro_std] = rf_pos.fv_annual[year,0]
+            dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fv_annual[year,0]
             
             dataDF.iloc[line_counter, 10 + pro_std] = imp_fl_fix_pos.at_event[0]
             dataDF.iloc[line_counter, 11 + pro_std] = imp_fl_fix_neg.at_event[0]
