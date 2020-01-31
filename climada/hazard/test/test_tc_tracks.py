@@ -110,7 +110,7 @@ class TestFuncs(unittest.TestCase):
 
         self.assertEqual(tc_track.data[0].time.size, 223)
         self.assertAlmostEqual(tc_track.data[0].lon.values[11], -27.426151640151684)
-        self.assertAlmostEqual(tc_track.data[0].lat[23], 12.300006169591480)
+        self.assertAlmostEqual(float(tc_track.data[0].lat[23]), 12.300006169591480)
         self.assertEqual(tc_track.data[0].time_step[7], 1)
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)

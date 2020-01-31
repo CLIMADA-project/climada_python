@@ -167,7 +167,7 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.TOW.TO'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
                                         variable_name=var_name)
-        ref_val = 5415188681948.6
+        ref_val = 5415188681942.5
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
     def test_pca_CUB_2015_pass(self):
