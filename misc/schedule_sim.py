@@ -37,7 +37,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['0','flopros', '100']
+PROT_STD = ['flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -80,37 +80,17 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Continent': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
                             'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaPos0': np.full(l, np.nan, dtype=float),
                             'FloodedAreaPosFlopros': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaPos100': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaNeg0': np.full(l, np.nan, dtype=float),
                             'FloodedAreaNegFlopros': np.full(l, np.nan, dtype=float),
-                            'FloodedAreaNeg100': np.full(l, np.nan, dtype=float),
-                            'FloodVolumePos0': np.full(l, np.nan, dtype=float),
                             'FloodVolumePosFlopros': np.full(l, np.nan, dtype=float),
-                            'FloodVolumePos100': np.full(l, np.nan, dtype=float),
-                            'FloodVolumeNeg0': np.full(l, np.nan, dtype=float),
                             'FloodVolumeNegFlopros': np.full(l, np.nan, dtype=float),
-                            'FloodVolumeNeg100': np.full(l, np.nan, dtype=float),
-                            'ImpFixPos0': np.full(l, np.nan, dtype=float),
                             'ImpFixPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixPos100': np.full(l, np.nan, dtype=float),
-                            'ImpFixNeg0': np.full(l, np.nan, dtype=float),
                             'ImpFixNegFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixNeg100': np.full(l, np.nan, dtype=float),
-                            'ImpactPos0': np.full(l, np.nan, dtype=float),
                             'ImpactPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpactPos100': np.full(l, np.nan, dtype=float),
-                            'ImpactNeg0': np.full(l, np.nan, dtype=float),
                             'ImpactNegFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpactNeg100': np.full(l, np.nan, dtype=float),
-                            'Impact_2yPos0': np.full(l, np.nan, dtype=float),
                             'Impact_2yPosFlopros': np.full(l, np.nan, dtype=float),
-                            'Impact_2yNeg0': np.full(l, np.nan, dtype=float),
                             'Impact_2yNegFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2yPos0': np.full(l, np.nan, dtype=float),
                             'ImpFix_2yPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2yNeg0': np.full(l, np.nan, dtype=float),
                             'ImpFix_2yNegFlopros': np.full(l, np.nan, dtype=float)
                             })
 
@@ -196,29 +176,29 @@ for cnt_ind in range(len(isos)):
                 imp2y_fl_fix_neg=Impact()
                 imp2y_fl_fix_neg.calc(gdpaFix, if_set, rf2y_neg.select(date=(ini_date,fin_date)))
                 
-                dataDF.iloc[line_counter, 30 + pro_std] = imp2y_fl_pos.at_event[0]
-                dataDF.iloc[line_counter, 32 + pro_std] = imp2y_fl_neg.at_event[0]
+                dataDF.iloc[line_counter, 14 + pro_std] = imp2y_fl_pos.at_event[0]
+                dataDF.iloc[line_counter, 15 + pro_std] = imp2y_fl_neg.at_event[0]
                 
-                dataDF.iloc[line_counter, 34 + pro_std] = imp2y_fl_fix_pos.at_event[0]
-                dataDF.iloc[line_counter, 36 + pro_std] = imp2y_fl_fix_neg.at_event[0]
+                dataDF.iloc[line_counter, 16 + pro_std] = imp2y_fl_fix_pos.at_event[0]
+                dataDF.iloc[line_counter, 17 + pro_std] = imp2y_fl_fix_neg.at_event[0]
 
             dataDF.iloc[line_counter, 4] = imp_fl_pos.tot_value
             dataDF.iloc[line_counter, 5] = imp_fl_fix_pos.tot_value
             
             dataDF.iloc[line_counter, 6 + pro_std] = rf_pos.fla_annual[year]
-            dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fla_annual[year]
+            dataDF.iloc[line_counter, 7 + pro_std] = rf_neg.fla_annual[year]
             
-            dataDF.iloc[line_counter, 12 + pro_std] = rf_pos.fv_annual[year]
-            dataDF.iloc[line_counter, 15 + pro_std] = rf_neg.fv_annual[year]
+            dataDF.iloc[line_counter, 8 + pro_std] = rf_pos.fv_annual[year]
+            dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fv_annual[year]
             
-            dataDF.iloc[line_counter, 18 + pro_std] = imp_fl_fix_pos.at_event[0]
-            dataDF.iloc[line_counter, 21 + pro_std] = imp_fl_fix_neg.at_event[0]
+            dataDF.iloc[line_counter, 10 + pro_std] = imp_fl_fix_pos.at_event[0]
+            dataDF.iloc[line_counter, 11 + pro_std] = imp_fl_fix_neg.at_event[0]
             
-            dataDF.iloc[line_counter, 24 + pro_std] = imp_fl_pos.at_event[0]
-            dataDF.iloc[line_counter, 27 + pro_std] = imp_fl_neg.at_event[0]
+            dataDF.iloc[line_counter, 12 + pro_std] = imp_fl_pos.at_event[0]
+            dataDF.iloc[line_counter, 13 + pro_std] = imp_fl_neg.at_event[0]
             
             line_counter+=1
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_fullProt_newFLD_31_01.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_flopros_newFLD_31_01.csv'.format(args.RF_model, args.CL_model))
