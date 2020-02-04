@@ -49,8 +49,8 @@ class AgriculturalDrought(Hazard):
     """Contains agricultural drought events.
 
     Attributes:
-        crop = crop type (e.g. wheat)
-        intensity_def = intensity defined as the Yearly Yield / Relative Yield / Percentile
+        crop (str): crop type (e.g. wheat)
+        intensity_def (str): intensity defined as the Yearly Yield / Relative Yield / Percentile
     """
 
     def __init__(self, pool=None):
@@ -80,7 +80,7 @@ class AgriculturalDrought(Hazard):
         """ Reads netcdf file and initializes a hazard
 
         Parameters:
-            file_path (string): path to netcdf file
+            file_path (str): path to netcdf file
             lonmin, latin, lonmax, latmax (int, optional) : bounding box to extract
             years_user (array, optional) : start and end year specified by the user
 
@@ -121,9 +121,10 @@ class AgriculturalDrought(Hazard):
         self.crop = data.crop
         self.event_name = event_list
         self.frequency = np.ones(len(self.event_name))*(1/len(self.event_name))
-        self.fraction = np.ones(len(self.event_name))
+        self.fraction = self.intensity.copy()
+        self.fraction.data.fill(1.0)
         self.units = 't / y'
-        self.date = dt.str_to_date(date)
+        self.date = np.array(dt.str_to_date(date))
 
         return self
 
@@ -134,6 +135,7 @@ class AgriculturalDrought(Hazard):
                 mean(array): contains mean value over the given time period for every centroid
         """
         hist_mean = np.mean(self.intensity, 0)
+        #hist_mean[hist_mean == 0] = np.nan
 
         return hist_mean
 
@@ -147,14 +149,17 @@ class AgriculturalDrought(Hazard):
             Returns:
                 hazard with modified intensity
         """
-        hazard_matrix = np.zeros(self.intensity.shape)
+
+        hazard_matrix = np.empty(self.intensity.shape)
+        hazard_matrix[:, :] = np.nan
+        idx = np.where(hist_mean != 0)[1]
 
         for event in range(len(self.event_id)):
-            hazard_matrix[event, :] = self.intensity[event]/hist_mean[0, :]
+            hazard_matrix[event, idx] = self.intensity[event, idx]/hist_mean[0, idx]
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
-        self.units = '%'
+        self.units = ''
 
         return self
 
@@ -182,23 +187,44 @@ class AgriculturalDrought(Hazard):
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Percentile'
-        self.units = '%'
+        self.units = ''
 
         return self
 
-    def plot_intensity_agd(self, event, axis=None, **kwargs):
+    def plot_intensity_agd(self, event, dif=0, axis=None, **kwargs):
         """ Plots intensity with predefined settings depending on the intensity definition
+
+        Parameters:
+            event (int or str): event_id or event_name
+            dif (int): variable signilizing whether absolute values or the difference between
+                future and historic are plotted (dif=0: his/fut values; dif=1: difference = fut-his)
+            axis (geoaxes): axes to plot on
         """
-        if self.intensity_def == 'Yearly Yield':
-            self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10, **kwargs)
-        elif self.intensity_def == 'Relative Yield':
-            self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=2, **kwargs)
-        elif self.intensity_def == 'Percentile':
-            self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1, **kwargs)
+        if dif == 0:
+            if self.intensity_def == 'Yearly Yield':
+                axes = self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10, \
+                                           **kwargs)
+            elif self.intensity_def == 'Relative Yield':
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=2, \
+                                           **kwargs)
+            elif self.intensity_def == 'Percentile':
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1, \
+                                           **kwargs)
+        elif dif == 1:
+            if self.intensity_def == 'Yearly Yield':
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-2, vmax=2, \
+                                           **kwargs)
+            elif self.intensity_def == 'Relative Yield':
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-0.5, \
+                                           vmax=0.5, **kwargs)
+
+        return axes
 
     def plot_time_series(self, years=None):
         """ Plots a time series of intensities (a series of sub plots)
 
+        Returns:
+            figure
         """
 
         if years is None:
@@ -244,3 +270,52 @@ class AgriculturalDrought(Hazard):
                 row = row + 1
 
         return fig
+
+    def plot_comparing_maps(self, his, fut, axes, nr_cli_models=1, model=1):
+        """ Plots comparison maps of historic and future data and their difference fut-his
+
+        Parameters:
+            his (sparse matrix): historic mean annual yield or mean relative yield
+            fut (sparse matrix): future mean annual yield or mean relative yield
+            axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
+            nr_cli_models (int): number of climate models and respectively nr of rows within
+                                    the subplot
+            model (int): current model/row to plot
+
+        Returns:
+            geoaxes
+        """
+        dif = fut - his
+        self.event_id = 0
+
+        for subplot in range(3):
+
+            if self.intensity_def == 'Yearly Yield':
+                self.units = 't / y'
+            elif self.intensity_def == 'Relative Yield':
+                self.units = ''
+
+            if subplot == 0:
+                self.intensity = sparse.csr_matrix(his)
+                dif_def = 0
+            elif subplot == 1:
+                self.intensity = sparse.csr_matrix(fut)
+                dif_def = 0
+            elif subplot == 2:
+                self.intensity = sparse.csr_matrix(dif)
+                dif_def = 1
+
+
+            if nr_cli_models == 1:
+                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[subplot])
+            else:
+                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[model, subplot])
+
+            ax1.set_title('')
+
+        if nr_cli_models == 1:
+            cols = ['Historical', 'Future', 'Difference = Future - Historical']
+            for ax0, col in zip(axes, cols):
+                ax0.set_title(col, size='large')
+
+        return axes
