@@ -30,6 +30,10 @@ parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
 args = parser.parse_args()
+parser.add_argument(
+    '--dis_name', type=str, default='Daily',
+    help='discharge path')
+args = parser.parse_args()
 
 #Todo for cluster application
 # set cluster true
@@ -45,7 +49,7 @@ PROT_STD = ['flopros']
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
-dis_path = '/home/insauer/data/DischargeTrends/SmoothDailyTrends.nc'
+dis_path = '/home/insauer/data/DischargeTrends/Smooth{}Trends.nc'.format(args.dis_name)
 pop_path = '/home/insauer/Tobias/hyde_ssp2_1860-2015_0150as_yearly_zip.nc4'
 
 
@@ -223,4 +227,4 @@ for cnt_ind in range(len(isos)):
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DailyDisRiskSmoothOutput_{}_{}_flopros_newFLD_08_02.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('{}DisRiskSmoothOutput_{}_{}_flopros_newFLD_08_02.csv'.format(args.dis_name,args.RF_model, args.CL_model))
