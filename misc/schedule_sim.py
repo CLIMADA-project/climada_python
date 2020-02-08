@@ -8,7 +8,8 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 import argparse
-from climada.entity.exposures.gdp_asset import GDP2Asset
+from climada.entity.exposures.gdp_asset import GDP2Asset, get_group_GDP
+from climada.entity.exposures.exp_people import ExpPop, read_group_people
 from climada.entity.impact_funcs.flood import IFRiverFlood,flood_imp_func_set, assign_if_simple
 from climada.hazard.flood import RiverFlood
 from climada.hazard.centroids import Centroids
@@ -44,8 +45,8 @@ PROT_STD = ['flopros']
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
-dis_path = '/home/insauer/data/DischargeTrends/SmoothTest.nc'
-
+dis_path = '/home/insauer/data/DischargeTrends/SmoothDailyTrends.nc'
+pop_path = '/home/insauer/Tobias/hyde_ssp2_1860-2015_0150as_yearly_zip.nc4'
 
 
 
@@ -91,7 +92,11 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Impact_2yPosFlopros': np.full(l, np.nan, dtype=float),
                             'Impact_2yNegFlopros': np.full(l, np.nan, dtype=float),
                             'ImpFix_2yPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2yNegFlopros': np.full(l, np.nan, dtype=float)
+                            'ImpFix_2yNegFlopros': np.full(l, np.nan, dtype=float),
+                            'GDP_Pos': np.full(l, np.nan, dtype=float),
+                            'GDP_Neg': np.full(l, np.nan, dtype=float),
+                            'Pop_Pos': np.full(l, np.nan, dtype=float),
+                            'Pop_Neg': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
@@ -116,6 +121,10 @@ for cnt_ind in range(len(isos)):
     dis_neg = copy.copy(dis_pos)
     dis_pos.get_dis_mask(dis = 'pos')
     dis_neg.get_dis_mask(dis = 'neg')
+    
+    shp_exposures = np.zeros((dis_pos.centroids.lat.size,2))
+    shp_exposures[:,0]= dis_pos.centroids.lat
+    shp_exposures[:,1]= dis_pos.centroids.lon
     
     for pro_std in range(len(PROT_STD)):
         line_counter = save_lc
@@ -148,6 +157,15 @@ for cnt_ind in range(len(isos)):
         rf_neg.set_flood_volume()
         for year in range(len(years)):
             print('country_{}_year{}_protStd_{}'.format(country[0], str(years[year]), PROT_STD[pro_std]))
+            
+            
+
+            gdp_pos = get_group_GDP(shp_exposures, ref_year=2000, path = gdp_path, dis_mask = dis_pos)
+            gdp_neg = get_group_GDP(shp_exposures, ref_year=2000, path = gdp_path, dis_mask = dis_neg)
+
+            pop_pos = read_group_people(shp_exposures, ref_year=2000, path=pop_path, dis_mask= dis_pos)
+            pop_neg = read_group_people(shp_exposures, ref_year=2000, path= pop_path, dis_mask = dis_neg)
+
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
             dataDF.iloc[line_counter, 0] = years[year]
@@ -196,8 +214,13 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl_pos.at_event[0]
             dataDF.iloc[line_counter, 13 + pro_std] = imp_fl_neg.at_event[0]
             
+            dataDF.iloc[line_counter, 14] = gdp_pos
+            dataDF.iloc[line_counter, 15] = gdp_neg
+            dataDF.iloc[line_counter, 16] = pop_pos
+            dataDF.iloc[line_counter, 17] = pop_neg
+            
             line_counter+=1
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_flopros_newFLD_31_01.csv'.format(args.RF_model, args.CL_model))
+    dataDF.to_csv('DailyDisRiskSmoothOutput_{}_{}_flopros_newFLD_08_02.csv'.format(args.RF_model, args.CL_model))

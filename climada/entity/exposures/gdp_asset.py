@@ -226,7 +226,7 @@ def _fast_if_mapping(countryID, natID_info):
         raise KeyError
     return reg_id, if_rf
 
-def _read_only_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
+def _read_only_GDP(shp_exposures, ref_year, path, dis_mask):
     """ Read GDP-values for the selected area and convert it to asset.
         Parameters:
             shp_exposure(2d-array float): coordinates of area
@@ -268,5 +268,43 @@ def _read_only_GDP(shp_exposures, ref_year, path=DEMO_GDP2ASSET):
                                    bounds_error=False,
                                    fill_value=None)
     return asset
+
+def get_group_GDP(shp_exposures, ref_year, path, dis_mask):
+    """ Read GDP-values for the selected area and convert it to asset.
+        Parameters:
+            shp_exposure(2d-array float): coordinates of area
+            ref_year(int): year under consideration
+            path(str): path for gdp-files
+        Raises:
+            KeyError, OSError
+        Returns:
+            np.array
+        """
+    try:
+        gdp_file = xr.open_dataset(path)
+        gdp_lon = gdp_file.lon.data
+        gdp_lat = gdp_file.lat.data
+        time = gdp_file.time.dt.year
+    except OSError:
+        LOGGER.error('Problems while reading ,' + path +
+                     ' check exposure_file specifications')
+        raise OSError
+    try:
+        year_index = np.where(time == ref_year)[0][0]
+    except IndexError:
+        LOGGER.error('No data available for year ' + str(ref_year))
+        raise KeyError
+    
+    gdp = gdp_file.gdp_grid[year_index, :, :].data
+    asset = gdp 
+    asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
+                                   np.nan_to_num(asset),
+                                   (shp_exposures[:, 0],
+                                   shp_exposures[:, 1]),
+                                   method='nearest',
+                                   bounds_error=False,
+                                   fill_value=None)
+    gdp_sum = np.multiply(asset,dis_mask.intensity.todense()[0,:]).sum()
+    return gdp_sum
 
 

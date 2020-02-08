@@ -176,3 +176,41 @@ def _read_people(shp_exposures, ref_year, path=PEOPLE_DATASET):
                                         bounds_error=False,
                                         fill_value=None)
     return population
+
+def read_group_people(shp_exposures, ref_year, path, dis_mask):
+    """ Read GDP-values for the selected area and convert it to asset.
+        Parameters:
+            shp_exposure(2d-array float): coordinates of area
+            ref_year(int): year under consideration
+            path(str): path for gdp-files
+        Raises:
+            KeyError, OSError
+        Returns:
+            np.array
+        """
+    ref_year = ref_year-1860
+    try:
+        pop_file = xr.open_dataset(filename_or_obj=path, decode_times=False)
+        pop_lon = pop_file.lon.data
+        pop_lat = pop_file.lat.data
+        time = pop_file.time
+    except OSError:
+        LOGGER.error('Problems while reading ,' + path +
+                     ' check exposure_file specifications')
+        raise OSError
+    try:
+        year_index = np.where(time == ref_year)[0][0]
+    except IndexError:
+        LOGGER.error('No data available for year ' + str(1860 + ref_year))
+        raise KeyError
+
+    pop = pop_file.var1[year_index, :, :].data
+    population = sp.interpolate.interpn((pop_lat, pop_lon),
+                                        np.nan_to_num(pop),
+                                        (shp_exposures[:, 0],
+                                         shp_exposures[:, 1]),
+                                        method='nearest',
+                                        bounds_error=False,
+                                        fill_value=None)
+    pop_sum = np.multiply(population,dis_mask.intensity.todense()[0,:]).sum()
+    return pop_sum
