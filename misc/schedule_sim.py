@@ -29,7 +29,6 @@ parser.add_argument(
 parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
-args = parser.parse_args()
 parser.add_argument(
     '--dis_name', type=str, default='Daily',
     help='discharge path')
