@@ -29,9 +29,6 @@ parser.add_argument(
 parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
-parser.add_argument(
-    '--dis_name', type=str, default='Daily',
-    help='discharge path')
 args = parser.parse_args()
 
 #Todo for cluster application
@@ -48,7 +45,7 @@ PROT_STD = ['flopros']
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
-dis_path = '/home/insauer/data/DischargeTrends/Smooth{}Trends.nc'.format(args.dis_name)
+dis_path = '/home/insauer/data/DischargeTrends/Regression_CDO_trends.nc'
 pop_path = '/home/insauer/Tobias/hyde_ssp2_1860-2015_0150as_yearly_zip.nc4'
 
 
@@ -163,11 +160,11 @@ for cnt_ind in range(len(isos)):
             
             
 
-            gdp_pos = get_group_GDP(shp_exposures, ref_year=2000, path = gdp_path, dis_mask = dis_pos)
-            gdp_neg = get_group_GDP(shp_exposures, ref_year=2000, path = gdp_path, dis_mask = dis_neg)
+            gdp_pos = get_group_GDP(shp_exposures, ref_year=year, path = gdp_path, dis_mask = dis_pos)
+            gdp_neg = get_group_GDP(shp_exposures, ref_year=year, path = gdp_path, dis_mask = dis_neg)
 
-            pop_pos = read_group_people(shp_exposures, ref_year=2000, path=pop_path, dis_mask= dis_pos)
-            pop_neg = read_group_people(shp_exposures, ref_year=2000, path= pop_path, dis_mask = dis_neg)
+            pop_pos = read_group_people(shp_exposures, ref_year=year, path=pop_path, dis_mask= dis_pos)
+            pop_neg = read_group_people(shp_exposures, ref_year=year, path= pop_path, dis_mask = dis_neg)
 
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
@@ -217,13 +214,13 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 12 + pro_std] = imp_fl_pos.at_event[0]
             dataDF.iloc[line_counter, 13 + pro_std] = imp_fl_neg.at_event[0]
             
-            dataDF.iloc[line_counter, 14] = gdp_pos
-            dataDF.iloc[line_counter, 15] = gdp_neg
-            dataDF.iloc[line_counter, 16] = pop_pos
-            dataDF.iloc[line_counter, 17] = pop_neg
+            dataDF.iloc[line_counter, 18] = gdp_pos
+            dataDF.iloc[line_counter, 19] = gdp_neg
+            dataDF.iloc[line_counter, 20] = pop_pos
+            dataDF.iloc[line_counter, 21] = pop_neg
             
             line_counter+=1
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('{}DisRiskSmoothOutput_{}_{}_flopros_newFLD_08_02.csv'.format(args.dis_name,args.RF_model, args.CL_model))
+    dataDF.to_csv('DisRiskOutput_{}_{}_flopros_newFLD_10_02.csv'.format(args.RF_model, args.CL_model))
