@@ -29,6 +29,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from geopandas import GeoDataFrame
 import rasterio
 from rasterio.warp import Resampling
+import contextily as ctx
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
@@ -436,7 +437,7 @@ class Exposures(GeoDataFrame):
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                  extend, shapes=False, axis=axis, **kwargs)
-        u_plot.add_basemap(axis, zoom, url, flip=True)
+        ctx.add_basemap(axis, zoom, url)
         axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
         return axis
