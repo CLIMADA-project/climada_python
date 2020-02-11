@@ -493,8 +493,8 @@ class TestRPmatrix(unittest.TestCase):
 
         self.assertTrue(isinstance(impact_rp, np.ndarray))
         self.assertEqual(impact_rp.size, 2*ent.exposures.value.size)
-        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219)
-        self.assertAlmostEqual(np.min(impact_rp), 444457580.13149405)
+        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
+        self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
 class TestRiskTrans(unittest.TestCase):
     """ Test risk transfer methods """

@@ -53,27 +53,52 @@ setup(
 
     packages=find_packages(where='.'),
 
-    install_requires=['cartopy==0.16.0',
-                      'shapely==1.6.2',
-                      'cython',
-                      'xarray',
-                      'matplotlib',
-                      'pandas',
-                      'h5py',
-                      'scipy==1.1.0',
-                      'scikit-learn',
-                      'xlrd',
-                      'pint',
-                      'numpy',
-                      'numba',
-                      'pathos',
-                      'tqdm',
-                      'pandas-datareader',
-                      'pillow',
-                      'netcdf4',
-                      'iso3166',
-                      'geopandas'
-                     ],
+    install_requires=[
+        'cartopy==0.17.0', # conda!
+        'cloudpickle', # install_test
+        'contextily==0.99.0',
+        'dask==1.2.2',
+        'descartes',
+        #'earthengine_api==0.1.210', # ee, conda!
+        'elevation==1.0.6',
+        'fiona',
+        'fsspec>=0.3.6', # < dask
+        'gdal==2.3.3', # conda!
+        'geopandas==0.4.1',
+        'h5py==2.9.0',
+        'haversine==2.1.1',
+        'iso3166==1.0',
+        'matplotlib==3.1.1', #
+        'mercantile',
+        #'mpl_toolkits', matplotlib
+        'netCDF4==1.4.2', # conda!
+        'numba==0.43.1', # conda!
+        'numpy==1.16.3', # conda+
+        'overpy==0.4',
+        'pandas==0.24.2',
+        'pandas_datareader==0.7.0',
+        'pathos==0.2.3',
+        'Pillow', # PIL
+        'pint==0.9',
+        #'pylab', matplotlib
+        'pyproj==1.9.6', #
+        'rasterio==1.0.21',
+        'requests==2.21.0', #
+        'scipy==1.2.1', # conda+
+        'pyshp', # shapefile
+        'rtree==0.8.3', # < geopandas.overlay
+        'shapely==1.6.4', #
+        'six==1.13.0', #
+        'scikit-learn==0.20.3', # sklearn
+        'tables', # < pandas (climada.entity.measures.test.test_base.TestApply)
+        'tabulate==0.8.3',
+        'toolz', # < dask
+        'tqdm==4.31.1',
+        'xarray==0.12.1',
+        'xmlrunner==1.7.7', # ci tests
+        'xlrd', # < pandas
+        'xlsxwriter==1.1.7',
+    ],
 
     package_data={'': extra_files },
 
