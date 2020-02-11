@@ -160,11 +160,11 @@ for cnt_ind in range(len(isos)):
             
             
 
-            gdp_pos = get_group_GDP(shp_exposures, ref_year=year, path = gdp_path, dis_mask = dis_pos)
-            gdp_neg = get_group_GDP(shp_exposures, ref_year=year, path = gdp_path, dis_mask = dis_neg)
+            gdp_pos = get_group_GDP(shp_exposures, ref_year=years[year], path = gdp_path, dis_mask = dis_pos)
+            gdp_neg = get_group_GDP(shp_exposures, ref_year=years[year], path = gdp_path, dis_mask = dis_neg)
 
-            pop_pos = read_group_people(shp_exposures, ref_year=year, path=pop_path, dis_mask= dis_pos)
-            pop_neg = read_group_people(shp_exposures, ref_year=year, path= pop_path, dis_mask = dis_neg)
+            pop_pos = read_group_people(shp_exposures, ref_year=years[year], path=pop_path, dis_mask= dis_pos)
+            pop_neg = read_group_people(shp_exposures, ref_year=years[year], path= pop_path, dis_mask = dis_neg)
 
             ini_date = str(years[year]) + '-01-01'
             fin_date = str(years[year]) + '-12-31'
