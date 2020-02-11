@@ -2,7 +2,10 @@ name: climada_env
 channels:
   - defaults
 dependencies:
+  - blas=1.0
   - cartopy=0.17.0
+  - curl=7.65.3
+  - cython=0.29.7
   - dask=1.2.2
   - dill=0.2.9
   - gdal=2.3.3
@@ -22,6 +25,7 @@ dependencies:
   - pip=19.1
   - proj4=5.2.0
   - pysocks=1.6.8
+  - pyshp=2.1.0
   - pytables=3.5.1
   - python=3.7.3
   - rasterio=1.0.21
