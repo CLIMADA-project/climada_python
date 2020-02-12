@@ -28,7 +28,7 @@ extra_files.append(here + '/climada/conf/defaults.conf')
 setup(
     name='climada',
 
-    version='0.1.1',
+    version='1.4.0',
 
     description='CLIMADA in Python',
 
