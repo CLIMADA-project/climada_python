@@ -44,7 +44,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Topic :: Climate Adaptation',
         'Programming Language :: Python :: 3.6',
     ],
@@ -56,7 +56,7 @@ setup(
     install_requires=[
         'cartopy==0.17.0', # conda!
         'cloudpickle', # install_test
-        'contextily==0.99.0',
+        'contextily==1.0rc2',
         'dask==1.2.2',
         'descartes',
         #'earthengine_api==0.1.210', # ee, conda!
@@ -78,26 +78,26 @@ setup(
         'pandas==0.24.2',
         'pandas_datareader==0.7.0',
         'pathos==0.2.3',
-        'Pillow', # PIL
+        'pillow', # PIL
         'pint==0.9',
         #'pylab', matplotlib
         'pyproj==1.9.6', #
+        'pyshp', # shapefile
         'rasterio==1.0.21',
         'requests==2.21.0', #
-        'scipy==1.2.1', # conda+
-        'pyshp', # shapefile
         'rtree==0.8.3', # < geopandas.overlay
+        'scikit-learn==0.20.3', # sklearn
+        'scipy==1.2.1', # conda+
         'shapely==1.6.4', #
         'six==1.13.0', #
-        'scikit-learn==0.20.3', # sklearn
         'tables', # < pandas (climada.entity.measures.test.test_base.TestApply)
         'tabulate==0.8.3',
         'toolz', # < dask
         'tqdm==4.31.1',
         'xarray==0.12.1',
-        'xmlrunner==1.7.7', # ci tests
         'xlrd', # < pandas
         'xlsxwriter==1.1.7',
+        'xmlrunner==1.7.7', # ci tests
     ],
 
     package_data={'': extra_files },

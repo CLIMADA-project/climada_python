@@ -19,7 +19,6 @@ dependencies:
   - netcdf4=1.4.2
   - numba=0.43.1
   - numpy=1.16.3
-  - nbconvert=5.5.0
   - pandas=0.24.2
   - pandas-datareader=0.7.0
   - pip=19.1
@@ -45,6 +44,8 @@ dependencies:
     - haversine==2.1.1
     - iso3166==1.0
     - multiprocess==0.70.7
+    - nbconvert==5.5.0
+    - nbformat==4.4
     - nbimporter==0.3.1
     - overpy==0.4
     - pathos==0.2.3
