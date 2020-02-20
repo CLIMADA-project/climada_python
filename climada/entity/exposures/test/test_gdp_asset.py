@@ -30,12 +30,18 @@ class TestGDP2AssetClass(unittest.TestCase):
         """Wrong ISO3 code"""
         testGDP2A = ga.GDP2Asset()
 
+        with self.assertRaises(NameError):
+            testGDP2A.set_countries(countries=['CHE'], ref_year=2000)
+        with self.assertRaises(NameError):
+            testGDP2A.set_countries(countries=['CHE'], ref_year=2000,
+                                    path='non/existent/test')
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['OYY'])
+            testGDP2A.set_countries(countries=['OYY'], path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['DEU'], ref_year=2600)
+            testGDP2A.set_countries(countries=['DEU'], ref_year=2600,
+                                    path=DEMO_GDP2ASSET)
         with self.assertRaises(ValueError):
-            testGDP2A.set_countries()
+            testGDP2A.set_countries(path=DEMO_GDP2ASSET)
 
 
 class TestGDP2AssetFunctions(unittest.TestCase):
@@ -96,11 +102,11 @@ class TestGDP2AssetFunctions(unittest.TestCase):
     def test_fast_if_mapping(self):
 
         testIDs = pd.read_csv(NAT_REG_ID)
-        self.assertAlmostEqual(ga._fast_if_mapping(1, testIDs)[0], 2.0)
-        self.assertAlmostEqual(ga._fast_if_mapping(1, testIDs)[1], 6.0)
+        self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[0], 11.0)
+        self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[1], 3.0)
 
-        self.assertAlmostEqual(ga._fast_if_mapping(45, testIDs)[0], 5.0)
-        self.assertAlmostEqual(ga._fast_if_mapping(45, testIDs)[1], 1.0)
+        self.assertAlmostEqual(ga._fast_if_mapping(118, testIDs)[0], 11.0)
+        self.assertAlmostEqual(ga._fast_if_mapping(118, testIDs)[1], 3.0)
 
         self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[0], 0.0)
         self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[1], 2.0)
@@ -113,9 +119,10 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         coordinates[:, 1] = np.array(exp_test['longitude'])
 
         with self.assertRaises(KeyError):
-            ga._read_GDP(coordinates, ref_year=2600)
+            ga._read_GDP(coordinates, ref_year=2600, path=DEMO_GDP2ASSET)
 
-        testAssets = ga._read_GDP(coordinates, ref_year=2000)
+        testAssets = ga._read_GDP(coordinates, ref_year=2000,
+                                  path=DEMO_GDP2ASSET)
 
         self.assertAlmostEqual(testAssets[0], 174032107.65846416)
         self.assertAlmostEqual(testAssets[1], 20386409.991937194)
