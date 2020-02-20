@@ -77,7 +77,7 @@ RF_MODEL = [#'clm45',
             'pcr-globwb',
             'watergap2']
 
-def schedule_run(run_nb,flag,RF_model,CL_model):
+def schedule_run(run_nb,flag,RF_model,CL_model, Socmode):
     if not flag:
         run_label = "run%s" % run_nb
         if os.path.exists(run_label):
@@ -118,7 +118,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model):
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
             "executable": 'schedule_sim.py',
-            "options": "--RF_model %s --CL_model %s"%(RF_model, CL_model),
+            "options": "--RF_model %s --CL_model %s --Socmode %s"%(RF_model, CL_model,Socmode),
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
             "other": "#SBATCH --partition=ram_gpu" if args.largemem else ""
@@ -172,7 +172,7 @@ if num > 1:
 enum = 1
 for rf_model in RF_MODEL:
     for cl_model in CL_MODEL:
-        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model)
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model,Socmode = 'pressoc')
         enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)
