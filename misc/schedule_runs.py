@@ -172,7 +172,7 @@ if num > 1:
 enum = 1
 for rf_model in RF_MODEL:
     for cl_model in CL_MODEL:
-        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model,Socmode = 'varsoc')
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model,Socmode = '-varsoc')
         enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)

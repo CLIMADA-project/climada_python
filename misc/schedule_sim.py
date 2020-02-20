@@ -61,7 +61,7 @@ output = currentdir
 #    else:
 #        years = np.arange(1901, 2011)
 #else:
-flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
+flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a{}/'.format(args.Socmode)
 if args.CL_model == 'watch':
     years = np.arange(1971, 2002)
 else:
@@ -132,8 +132,6 @@ for cnt_ind in range(len(isos)):
     country = [isos[cnt_ind]]
     reg = country_info.loc[country_info['ISO']== country[0], 'Reg_name'].values[0]
     conts = country_info.loc[country_info['ISO']== country[0], 'if_RF'].values[0]
-    
-    inc_group = income_groups.loc[income_groups['ISO']==country[0], 'IncomeGroup'].values[0]
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts-1)]
     gdpaFix = GDP2Asset()
@@ -190,7 +188,7 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 1] = country[0]
             dataDF.iloc[line_counter, 2] = reg
             dataDF.iloc[line_counter, 3] = cont
-            dataDF.iloc[line_counter, 4] = inc_group
+            dataDF.iloc[line_counter, 4] = 0
             gdpa = GDP2Asset()
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
             #gdpa.correct_for_SSP(ssp_corr, country[0])
