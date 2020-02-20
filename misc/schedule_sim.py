@@ -29,7 +29,7 @@ parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
 parser.add_argument(
-    '--Socmode', type=str, default='-pressoc',
+    '--Socmode', type=str, default='pressoc',
     help='social interaction in ghms')
 args = parser.parse_args()
 
@@ -61,7 +61,7 @@ output = currentdir
 #    else:
 #        years = np.arange(1901, 2011)
 #else:
-flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a{}/'.format(args.Socmode)
+flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
 if args.CL_model == 'watch':
     years = np.arange(1971, 2002)
 else:
