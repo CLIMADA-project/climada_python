@@ -29,7 +29,7 @@ parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
 parser.add_argument(
-    '--Socmode', type=str, default='pressoc',
+    '--Socmode', type=str, default='-pressoc',
     help='social interaction in ghms')
 args = parser.parse_args()
 
