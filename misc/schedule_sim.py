@@ -71,8 +71,7 @@ else:
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
 country_info = pd.read_csv(NAT_REG_ID)
 isos = country_info['ISO'].tolist()
-isos_ic = income_groups['ISO'].tolist()
-isos = list(set(isos) & set(isos_ic))
+
 
 cont_list = country_info['if_RF'].tolist()
 l = len(years) * len(isos)
