@@ -61,7 +61,13 @@ output = currentdir
 #    else:
 #        years = np.arange(1901, 2011)
 #else:
-flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
+
+
+if args.CL_model == 'nosoc':
+    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a/'.format(args.Socmode)
+else:
+    flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
+
 if args.CL_model == 'watch':
     years = np.arange(1971, 2002)
 else:
