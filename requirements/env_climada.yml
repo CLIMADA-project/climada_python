@@ -8,10 +8,12 @@ dependencies:
   - cython=0.29.7
   - dask=1.2.2
   - dill=0.2.9
+  - fiona=1.8.4
   - gdal=2.3.3
   - geos=3.7.1
   - geopandas=0.4.1
   - h5py=2.9.0
+  - kealib=1.4.7
   - matplotlib=3.1.0
   - mkl=2019.3
   - mkl_fft=1.0.12
