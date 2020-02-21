@@ -13,6 +13,7 @@ dependencies:
   - geos=3.7.1
   - geopandas=0.4.1
   - h5py=2.9.0
+  - kealib=1.4.7
   - matplotlib=3.1.0
   - mkl=2019.3
   - mkl_fft=1.0.12

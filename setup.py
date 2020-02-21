@@ -68,6 +68,7 @@ setup(
         'h5py==2.9.0',
         'haversine==2.1.1',
         'iso3166==1.0',
+        'kealib==1.4.7', # < fiona
         'matplotlib==3.1.1', #
         'mercantile',
         #'mpl_toolkits', matplotlib
