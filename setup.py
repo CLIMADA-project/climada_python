@@ -61,7 +61,7 @@ setup(
         'descartes',
         #'earthengine_api==0.1.210', # ee, conda!
         'elevation==1.0.6',
-        'fiona',
+        'fiona=1.8.4',
         'fsspec>=0.3.6', # < dask
         'gdal==2.3.3', # conda!
         'geopandas==0.4.1',
