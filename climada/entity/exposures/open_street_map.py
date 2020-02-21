@@ -11,11 +11,14 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
+import time
+from functools import partial
+
 import matplotlib
 #matplotlib.use('Qt5Agg', force=True)
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
 import fiona
 from fiona.crs import from_epsg
 import geopandas
@@ -24,11 +27,43 @@ from shapely.geometry import Polygon, MultiPolygon, mapping, shape
 from shapely import geometry
 from shapely.ops import unary_union, transform, nearest_points
 import pyproj
-from functools import partial
 import overpy
 
 from climada.entity import Exposures
 from climada.entity.exposures.litpop import LitPop
+
+
+def _insistent_osm_api_query(query_clause, read_chunk_size=100000, end_of_patience=127):
+    """Runs a single Overpass API query through overpy.Overpass.query. 
+    In case of failure it tries again after an ever increasing waiting period.
+    If the waiting period surpasses a given limit an exception is raised.
+    
+    Parameters:
+        query_clause (str): the query
+        read_chunk_size (int): paramter passed over to overpy.Overpass.query
+        end_of_patience (int): upper limit for the next waiting period to proceed.
+
+    Returns:
+        result as returned by overpy.Overpass.query
+    """
+    api = overpy.Overpass(read_chunk_size=read_chunk_size)
+    waiting_period = 1
+    while True:
+        try:
+            return api.query(query_clause)
+        except overpy.exception.OverpassTooManyRequests:
+            if waiting_period < end_of_patience:
+                print(' WARNING: too many Overpass API requests - try again in {} seconds'.format(
+                    waiting_period))
+            else:
+                raise Exception("Overpass API is consistently unavailable")
+        except Exception as exc:
+            if waiting_period < end_of_patience:
+                print(' WARNING: !!!!\n {}\n try again in {} seconds'.format(exc, waiting_period))
+            else:
+                raise Exception("The Overpass API is consistently unavailable")
+        time.sleep(waiting_period)
+        waiting_period *= 2
 
 
 def _osm_api_query(item, bbox):
@@ -44,25 +79,16 @@ def _osm_api_query(item, bbox):
         """
     query_clause_NodesFromWays = "way[%s](%f6, %f6, %f6, %f6);(._;>;);out geom;" \
     % (item, bbox[0], bbox[1], bbox[2], bbox[3])
+    result_NodesFromWays = _insistent_osm_api_query(query_clause_NodesFromWays)
+    print('Nodes from Ways query for %s: done.' %item)
 
-    query_clause_NodesWaysFromRels = "rel[%s][type=multipolygon](%f6, %f6, %f6, %f6);(._;>;);out;"\
+    query_clause_NodesWaysFromRels = "rel[%s][type=multipolygon](%f6, %f6, %f6, %f6);(._;>;);out;" \
     % (item, bbox[0], bbox[1], bbox[2], bbox[3])
-
-    api = overpy.Overpass(read_chunk_size=100000)
-    try:
-        result_NodesFromWays = api.query(query_clause_NodesFromWays)
-        print('Nodes from Ways query for %s: done.' %item)
-    except Exception as e:
-        print(' WARNING: !!!! \n %s - try again in a few moments \n !!!!' %e)
-
-    api = overpy.Overpass(read_chunk_size=100000)
-    try:
-        result_NodesWaysFromRels = api.query(query_clause_NodesWaysFromRels)
-        print('Nodes and Ways from Relations query for %s: done.' %item)
-    except Exception as e:
-        print(' WARNING: !!!! \n %s - try again in a few moments \n !!!!' %e)
+    result_NodesWaysFromRels = _insistent_osm_api_query(query_clause_NodesWaysFromRels)
+    print('Nodes and Ways from Relations query for %s: done.' %item)
 
     return result_NodesFromWays, result_NodesWaysFromRels
+
 
 def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path):
     """ format edges, nodes and relations from overpy result objects into shapes
@@ -120,9 +146,8 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
     for ending in ['.shp',".cpg",".dbf",".prj",'.shx']:
         os.remove(save_path + '/' + str(item)+'_line_'+ str(int(bbox[0]))+\
                   '_'+str(int(bbox[1]))+ending)
-   
-    
-            # add buffer to the lines (0.000045° are ~5m)
+
+    # add buffer to the lines (0.000045° are ~5m)
     for geom in gdf_line.geometry:
         geom = geom.buffer(0.000045)
 
@@ -210,6 +235,7 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
     print('Combined all results for %s to one GeoDataFrame: done' %item)
 
     return gdf_all
+
 
 def _combine_dfs_osm(types, save_path, bbox):
     """Combine all dataframes from individual features into one GeoDataFrame
