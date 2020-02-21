@@ -63,7 +63,7 @@ output = currentdir
 #else:
 
 
-if args.CL_model == 'nosoc':
+if args.Socmode == 'nosoc':
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a/'.format(args.Socmode)
 else:
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
