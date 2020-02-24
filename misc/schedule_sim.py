@@ -31,6 +31,9 @@ parser.add_argument(
 parser.add_argument(
     '--Socmode', type=str, default='pressoc',
     help='social interaction in ghms')
+parser.add_argument(
+    '--SM_mode', type=str, default='smooth',
+    help='social interaction in ghms')
 args = parser.parse_args()
 
 #Todo for cluster application
@@ -47,9 +50,6 @@ PROT_STD = ['0','flopros']
 #flood_dir = '/p/projects/ebm/data/hazard/floods/benoit_input_data/'
 gdp_path = '/p/projects/ebm/data/exposure/gdp/processed_data/gdp_1850-2100_downscaled-by-nightlight_2.5arcmin_remapcon_new_yearly_shifted.nc'
 RF_PATH_FRC = '/p/projects/ebm/tobias_backup/floods/climada/isimip2a/flood_maps/fldfrc24_2.nc'
-dis_path = '/home/insauer/data/DischargeTrends/SmoothTest.nc'
-
-
 
 
 output = currentdir
@@ -61,6 +61,10 @@ output = currentdir
 #    else:
 #        years = np.arange(1901, 2011)
 #else:
+if args.SM_mode == 'smooth':
+    dis_path = '/home/insauer/data/DischargeTrends/SmoothTrends_24_2.nc'
+else:
+    dis_path = '/home/insauer/data/DischargeTrends/Regression_CDO_trends_24_2.nc'
 
 
 if args.Socmode == 'nosoc':
@@ -259,6 +263,6 @@ for cnt_ind in range(len(isos)):
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRiskSmoothOutput_{}_{}_0floprost_{}_22_01.csv'.format(args.RF_model, args.CL_model, args.Socmode))
+    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0floprost_{}_24_02.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
 
 
