@@ -62,9 +62,9 @@ output = currentdir
 #        years = np.arange(1901, 2011)
 #else:
 if args.SM_mode == 'smooth':
-    dis_path = '/home/insauer/data/DischargeTrends/SmoothTrends_24_2.nc'
+    dis_path = '/home/insauer/projects/RiverDischarge/SmoothTrends_24_2.nc'
 else:
-    dis_path = '/home/insauer/data/DischargeTrends/Regression_CDO_trends_24_2.nc'
+    dis_path = '/home/insauer/projects/RiverDischarge/Regression_CDO_trends_24_2.nc'
 
 
 if args.Socmode == 'nosoc':
