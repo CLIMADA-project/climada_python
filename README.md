@@ -6,20 +6,20 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB).
+This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/guide/install.html).
+CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/latest/guide/install.html).
 
-Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/guide/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
+Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/guide/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
 
 Documentation is available on Read the Docs:
 
-* [online (recommended)](https://climada-python.readthedocs.io/en/stable/)
-* [PDF file](https://buildmedia.readthedocs.org/media/pdf/climada-python/stable/climada-python.pdf)
+* [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
+* [PDF file](https://buildmedia.readthedocs.org/media/pdf/climada-python/latest/climada-python.pdf)
 
 ## Citing CLIMADA
 
@@ -42,7 +42,7 @@ To contribute follow these steps:
 7. Push the branch to GitHub (`git push origin my-new-feature`).
 8. On GitHub, create a new pull request from the feature branch.
 
-See our [contribution guidelines](https://climada-python.readthedocs.io/en/stable/guide/developer.html) for more information.
+See our [contribution guidelines](https://climada-python.readthedocs.io/en/latest/guide/developer.html) for more information.
 
 ## Versioning
 
