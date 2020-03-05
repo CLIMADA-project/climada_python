@@ -66,7 +66,7 @@ class IFStormEurope(ImpactFunc):
         
         scaling_factor = {'paa_scale': 1.332518, 'mdd_scale': 1.332518}
         temp_if,df = init_if(temp_if, scaling_factor)
-        self.name = 'Welker 2020+'
+        self.name = 'Welker 2020'
         self.id = if_id
         self.intensity_unit = 'm/s'
         self.intensity = temp_if.intensity
