@@ -63,9 +63,8 @@ class IFStormEurope(ImpactFunc):
         
         temp_if = IFStormEurope()
         temp_if.set_schwierz()
-        
         scaling_factor = {'paa_scale': 1.332518, 'mdd_scale': 1.332518}
-        temp_if,df = init_if(temp_if, scaling_factor)
+        temp_if = init_if(temp_if, scaling_factor)[0]
         self.name = 'Welker 2020'
         self.id = if_id
         self.intensity_unit = 'm/s'
