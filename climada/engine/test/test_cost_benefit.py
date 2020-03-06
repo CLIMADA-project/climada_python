@@ -36,15 +36,15 @@ HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
 ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
                             '../../entity/exposures/test/data/demo_today.mat')
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-
 class TestSteps(unittest.TestCase):
     '''Test intermediate steps'''
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
-
+        self.assertTrue(os.path.isfile(HAZ_TEST_MAT), "{} is not a file".format(HAZ_TEST_MAT))
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
+
+        self.assertTrue(os.path.isfile(ENT_TEST_MAT), "{} is not a file".format(ENT_TEST_MAT))
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
         entity.check()

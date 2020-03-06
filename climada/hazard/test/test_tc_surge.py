@@ -185,7 +185,7 @@ class TestModel(unittest.TestCase):
         to_zero = np.logical_or(self.CENTR_BANG.elevation > DECAY_MAX_ELEVATION,
                                 np.logical_and(self.CENTR_BANG.elevation > 0,
                                                self.CENTR_BANG.dist_coast > DECAY_INLAND_DIST_KM*1000))
-        self.assertFalse(inten[0, to_zero].data.size)
+        self.assertEqual(inten[0, to_zero].data.size, 0)
         # not modified
         self.assertAlmostEqual(inten[0, 13261], inten_surge[0, 13261])
         self.assertAlmostEqual(inten[1, 13261], inten_surge[1, 13261])
@@ -211,7 +211,7 @@ class TestModel(unittest.TestCase):
         to_zero = np.logical_or(self.CENTR_BANG.elevation > DECAY_MAX_ELEVATION,
                                 np.logical_and(self.CENTR_BANG.elevation > 0,
                                                self.CENTR_BANG.dist_coast > DECAY_INLAND_DIST_KM*1000))
-        self.assertFalse(inten[0, to_zero].data.size)
+        self.assertEqual(inten[0, to_zero].data.size, 0)
         # not modified
         self.assertAlmostEqual(inten[0, 13261], inten_surge[0, 13261])
         self.assertAlmostEqual(inten[1, 13261], inten_surge[1, 13261])
