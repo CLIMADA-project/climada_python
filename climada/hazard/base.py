@@ -924,7 +924,7 @@ class Hazard():
                         all_touched=True, dtype=profile['dtype'],)
                     dst.write(raster.astype(profile['dtype']), i_ev+1)
 
-    def write_hdf5(self, file_name):
+    def write_hdf5(self, file_name,todense=False):
         """ Write hazard in hdf5 format.
 
         Parameters:
@@ -944,11 +944,14 @@ class Hazard():
                 hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
                 hf_str[0] = str(var_val.description)
             elif isinstance(var_val, sparse.csr_matrix):
-                hf_csr = hf_data.create_group(var_name)
-                hf_csr.create_dataset('data', data=var_val.data)
-                hf_csr.create_dataset('indices', data=var_val.indices)
-                hf_csr.create_dataset('indptr', data=var_val.indptr)
-                hf_csr.attrs['shape'] = var_val.shape
+                if todense:
+                    hf_data.create_dataset(var_name, data=var_val.todense())
+                else:
+                    hf_csr = hf_data.create_group(var_name)
+                    hf_csr.create_dataset('data', data=var_val.data)
+                    hf_csr.create_dataset('indices', data=var_val.indices)
+                    hf_csr.create_dataset('indptr', data=var_val.indptr)
+                    hf_csr.attrs['shape'] = var_val.shape
             elif isinstance(var_val, str):
                 hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
                 hf_str[0] = var_val
@@ -980,8 +983,11 @@ class Hazard():
                 setattr(self, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
                 hf_csr = hf_data.get(var_name)
-                setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
-                    hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
+                if isinstance(hf_csr,h5py.Dataset):
+                    setattr(self, var_name, sparse.csr_matrix(hf_csr))
+                else:
+                    setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
+                        hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
                 setattr(self, var_name, hf_data.get(var_name)[0])
             elif isinstance(var_val, list):
