@@ -587,6 +587,10 @@ class Hazard():
         Returns:
             np.array
         """
+        # warn if return period is above return period of rarest event:
+        for rp in return_periods:
+            if rp > 1/self.frequency.min():
+                LOGGER.warning('Return period %1.1f exceeds max. event return period.')
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
@@ -605,7 +609,9 @@ class Hazard():
         self._loc_return_inten(np.array(return_periods), \
             self.intensity[:, (chk+1)*cen_step:].todense(), \
             inten_stats[:, (chk+1)*cen_step:])
-
+        # set values below 0 to zero if minimum of hazard.intensity >= 0:
+        if self.intensity.min()>=0:
+            inten_stats[inten_stats<0] = 0
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
