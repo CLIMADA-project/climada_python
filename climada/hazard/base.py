@@ -590,7 +590,7 @@ class Hazard():
         # warn if return period is above return period of rarest event:
         for rp in return_periods:
             if rp > 1/self.frequency.min():
-                LOGGER.warning('Return period %1.1f exceeds max. event return period.')
+                LOGGER.warning('Return period %1.1f exceeds max. event return period.' %(rp))
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
