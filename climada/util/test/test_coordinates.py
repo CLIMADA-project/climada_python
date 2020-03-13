@@ -36,7 +36,7 @@ from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
 read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
-get_country_code, convert_wgs_to_utm, elevation_dem, DEM_NODATA
+get_country_code, convert_wgs_to_utm, DEM_NODATA
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -420,18 +420,6 @@ class TestFunc(unittest.TestCase):
         epsg = convert_wgs_to_utm(lon, lat)
         self.assertEqual(epsg, 32631)
 
-    def test_elevation_pass(self):
-        lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667, \
-            -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
-        lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
-        elevation = elevation_dem(lon, lat, DEF_CRS, product='SRTM3', resampling=Resampling.nearest)
-        self.assertEqual(elevation[0], 23)
-        self.assertEqual(elevation[1], 92)
-        self.assertEqual(elevation[2], 69)
-        self.assertEqual(elevation[3], 77)
-        self.assertEqual(elevation[4], 133)
-        self.assertEqual(elevation[5], 41)
-        self.assertEqual(elevation.min(), DEM_NODATA)
 
 # Execute Tests
 if __name__ == "__main__":
