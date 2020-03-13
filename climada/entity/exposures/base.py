@@ -437,7 +437,7 @@ class Exposures(GeoDataFrame):
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                  extend, shapes=False, axis=axis, **kwargs)
-        ctx.add_basemap(axis, zoom, url)
+        ctx.add_basemap(axis, zoom, url, origin='upper')
         axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
         return axis
