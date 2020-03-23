@@ -31,6 +31,7 @@ from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
+from rasterio import MemoryFile
 from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from rasterio.mask import mask
@@ -479,22 +480,40 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 if src.meta['nodata']:
                     kwargs['src_nodata'] = src.meta['nodata']
                     kwargs['dst_nodata'] = src.meta['nodata']
-                intensity = np.zeros((len(band), height, width))
-                for idx_band, i_band in enumerate(band):
-                    reproject(source=src.read(i_band),
-                              destination=intensity[idx_band, :],
-                              src_transform=src.transform,
-                              src_crs=src_meta,
-                              dst_transform=transform,
-                              dst_crs=dst_crs,
-                              resampling=resampling,
-                              **kwargs)
-                    if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
-                        intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
-                    else:
-                        intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
-                meta = dst_meta
-                return meta, intensity.reshape((len(band), meta['height']*meta['width']))
+                
+                profile = src.profile
+                profile.update(transform=transform, driver='GTiff', height=height, width=width)
+
+                dst_arr = src.read(out_shape=(src.count, height, width),
+                        resampling=resampling)
+
+                with MemoryFile() as memfile:
+                    with memfile.open(**profile) as dst_inten: 
+                        dst_inten.write(dst_arr)
+                        del dst_arr
+
+                    with memfile.open() as dst_inten:    
+
+                        meta = dst_meta
+                        if geometry:
+                            inten, mask_trans = mask(dst_inten, geometry, crop=True, indexes=band)
+                            if meta['nodata'] and np.isnan(meta['nodata']):
+                                inten[np.isnan(inten)] = 0
+                            else:
+                                inten[inten == meta['nodata']] = 0
+                            meta.update({"height": inten.shape[1],
+                                         "width": inten.shape[2],
+                                         "transform": mask_trans})
+                        else:
+                            masked_array = dst_inten.read(band, masked=True)
+                            inten = masked_array.data
+                            inten[masked_array.mask] = 0
+                        
+                        print(inten.shape)
+                        print(src.read(1).shape)
+                        
+                        intensity = inten[range(len(band)), :]
+                        return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
             meta = src.meta.copy()
             if geometry:
