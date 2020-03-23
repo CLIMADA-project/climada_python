@@ -125,7 +125,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
     return close_year, close_val
 
 def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
-    """ Get country's GDP from World Bank's data at a given year, or
+    """ Get country's (current value) GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -139,6 +139,11 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     Returns:
         float
     """
+    if cntry_iso == 'TWN':
+        LOGGER.warning('GDP data for TWN is not provided by World Bank. \
+                       Instead, IMF data is returned here.')
+        close_year, close_val = _gdp_twn(ref_year, per_capita=per_capita)
+        return close_year, close_val
     try:
         if per_capita:
             close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.PCAP.CD')
@@ -368,3 +373,42 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
     if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
         result = result/1.24
     return ref_year, np.around(result, 1), 1
+
+def _gdp_twn(ref_year, per_capita=False):
+    """returns GDP for TWN (Republic of China / Taiwan Province of China) based 
+    on a CSV sheet downloaded from the
+    International Monetary Fund (IMF). 
+    The reason for this special treatment is the
+    lack of GDP data for TWN in the World Bank data
+    
+    Data Source:
+        https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/index.aspx
+        https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/weorept.aspx?sy=1980&ey=2024&scsm=1&ssd=1&sic=1&sort=country&ds=.&br=1&pr1.x=42&pr1.y=10&c=528&s=NGDPD%2CNGDP_D%2CNGDPDPC&grp=0&a=
+        (saved as CSV with name GDP_TWN_IMF_WEO_data in SYSTEM_DIR)
+    Input:
+        ref_year (int): reference year, i.e. the year for which a GDP value is required
+        per_capita (boolean): return GDP per capita? Default False.
+    Returns:
+        float
+    """
+    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), \
+                                   'GDP_TWN_IMF_WEO_data.csv')):
+        LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
+        return 0
+    if per_capita:
+        var_name = 'Gross domestic product per capita, current prices'
+    else:
+        var_name = 'Gross domestic product, current prices'
+    if ref_year<1980:
+        close_year = 1980
+    elif ref_year>2024:
+        close_year = 2024
+    else:
+        close_year = ref_year
+    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), \
+                                   'GDP_TWN_IMF_WEO_data.csv'), \
+                                   index_col=None, header=0)
+    close_val = data.loc[data['Subject Descriptor']==var_name, str(close_year)].values[0]
+    close_val = float(close_val.replace(',', ''))
+    if not per_capita: close_val = close_val*1e9
+    return close_year, close_val
