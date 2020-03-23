@@ -179,7 +179,7 @@ class RiverFlood(Hazard):
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
             """TODO: implement case when meta or regulargrid is defined
-                     centroids.meta or grid_is_regular(centroids)[0]:
+                     centroids.meta or grid_is_regular(centroidsxarray)[0]:
                      centroids>flood --> error
                      reprojection, resampling.average (centroids< flood)
                      (transform)
