@@ -85,4 +85,7 @@ FAQs
 
   where ``library_name`` is the missing library.
 
+  Another reason may be a recent update of the operating system (macOS).
+  In this case removing and reinstalling Anaconda will be required.
+
 * Conda right problems in macOS Mojave: try the solutions suggested here `https://github.com/conda/conda/issues/8440 <https://github.com/conda/conda/issues/8440>`_. 
