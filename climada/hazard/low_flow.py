@@ -24,27 +24,23 @@ __all__ = ['LowFlow']
 
 import logging
 import os
-import numpy as np
 import xarray as xr
-# import pandas as pd
+import datetime as dt
 import copy
 import numba
-import datetime as dt
 import cftime
 import itertools
-# from datetime import date
 import geopandas as gpd
+import numpy as np
+
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import BallTree
-
-# from climada.util.constants import NAT_REG_ID, GLB_CENTROIDS_NC
-# from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
-# from climada.util.interpolation import interpol_index
+from shapely.geometry import Point
 from scipy import sparse
+
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids import Centroids
-from shapely.geometry import Point
 from climada.util.coordinates import get_resolution
 
 LOGGER = logging.getLogger(__name__)
@@ -52,8 +48,8 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'LF'
 """ Hazard type acronym for Low Flow / Water Scarcity """
 
-
-FILENAME_NC = '%s_%s_ewembi_%s_%s_%s_%s.nc' # %(gh_model, cl_model, scenario, soc, fn_str_var, yearrange)
+FILENAME_NC = '%s_%s_ewembi_%s_%s_%s_%s.nc' # 
+# %(gh_model, cl_model, scenario, soc, fn_str_var, yearrange)
 
 GH_MODEL = ['H08',
             'CLM45',
@@ -88,7 +84,7 @@ YEARCHUNKS = dict()
 YEARCHUNKS[SCENARIO[0]] = list()
 for i in np.arange(1860, 2000, 10):
     YEARCHUNKS[SCENARIO[0]].append('%i_%i' %(i+1, i+10))
-YEARCHUNKS[SCENARIO[0]].append('2001_2005')                                
+YEARCHUNKS[SCENARIO[0]].append('2001_2005')
 
 # rcp26:
 YEARCHUNKS[SCENARIO[1]] = ['2006_2010']
@@ -203,10 +199,12 @@ class LowFlow(Hazard):
             centroids = centroids_import
         self.identify_clusters()
         
-        # sum "dis" (days per month below threshold) per pixel and cluster_id and write to hazard.intensiy
+        # sum "dis" (days per month below threshold) per pixel and cluster_id 
+        # and write to hazard.intensiy
         self.events_from_clusters(centroids)
         if min_intensity>1 or min_number_cells>1:
-            haz_tmp = self.filter_events(min_intensity=min_intensity, min_number_cells=min_number_cells)
+            haz_tmp = self.filter_events(min_intensity=min_intensity, \
+                                         min_number_cells=min_number_cells)
             LOGGER.info('Filtering events: %i events remaining' %(haz_tmp.size))
             self.event_id = haz_tmp.event_id
             self.event_name = list(map(str, self.event_id))
@@ -244,8 +242,8 @@ class LowFlow(Hazard):
         else:
             intensity_list = []
             for cl_id in uni_ev:
-                intensity_list.append(self._intensity_one_cluster(self.data, tree_centr, \
-                cl_id, res_centr, num_centr))
+                intensity_list.append(self._intensity_one_cluster(self.data, \
+                                      tree_centr, cl_id, res_centr, num_centr))
 
         self.tag = TagHazard(HAZ_TYPE)
         self.units = 'days' # days below threshold
@@ -346,7 +344,8 @@ class LowFlow(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size    
     
     @staticmethod
-    def _df_clustering(data, cluster_vars, res_data, clus_thres_xy, clus_thres_t, min_samples):
+    def _df_clustering(data, cluster_vars, res_data, clus_thres_xy, \
+                       clus_thres_t, min_samples):
         """Compute 2D clusters and sort data with ascending clus_id
         for each combination of the 3 dimensions (lat, lon, dt_month).
 
@@ -574,16 +573,20 @@ def _read_single_nc(filename, yearrange, bbox):
     data = xr.open_dataset(filename)
     try:
         if not bbox:
-            return data.sel(time=slice(dt.datetime(yearrange[0], 1, 1), dt.datetime(yearrange[-1], 12, 31)))
+            return data.sel(time=slice(dt.datetime(yearrange[0], 1, 1), \
+                                       dt.datetime(yearrange[-1], 12, 31)))
         return data.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]), \
-                        time=slice(dt.datetime(yearrange[0], 1, 1), dt.datetime(yearrange[-1], 12, 31)))
+                        time=slice(dt.datetime(yearrange[0], 1, 1), \
+                                   dt.datetime(yearrange[-1], 12, 31)))
     except TypeError:
         # fix date format if not datetime
         if not bbox:
-            data = data.sel(time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1), cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
+            data = data.sel(time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1),\
+                                       cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
         else:
             data = data.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]), \
-                        time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1), cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
+                        time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1), \
+                                   cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
         datetimeindex = data.indexes['time'].to_datetimeindex()
         data['time'] = datetimeindex
     return data
@@ -598,8 +601,8 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
                          scenario, soc, fn_str_var, bbox)
     return data.reduce(np.nanpercentile, dim='time', q=percentile)
 
-def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir, gh_model, cl_model, \
-                         scenario, soc, fn_str_var, bbox):
+def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir, \
+                        gh_model, cl_model, scenario, soc, fn_str_var, bbox):
     """returns the x-th percentile for every pixel over a given
     time horizon per month (based on daily data)
     OUTDATED"""
@@ -639,5 +642,5 @@ def _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy, intensity_raw):
     for idx in range(index_uni.size):
         if ind[idx] != -1:
             intensity_cl[0, ind[idx]] = \
-                         np.sum(intensity_raw[lat_lon_cpy == index_uni[idx]]) # TEST!
+                         np.sum(intensity_raw[lat_lon_cpy == index_uni[idx]]) # ToDo: TEST!
     return intensity_cl
