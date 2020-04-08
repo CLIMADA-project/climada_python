@@ -500,6 +500,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
              
                 if geometry:
                     intensity = intensity.astype('float32') 
+                    meta.update(driver='GTiff')   # update driver from netcdf to Gtiff as netcdf does not work reliably
                     with MemoryFile() as memfile:
                         with memfile.open(**meta) as dst_inten: # Open as DatasetWriter
                             dst_inten.write(intensity)
@@ -509,7 +510,12 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                                          "width": inten.shape[2],
                                          "transform": mask_trans})
                     intensity = inten[range(len(band)), :]
-                    intensity = intensity.astype('float64') 
+                    intensity = intensity.astype('float64')
+                    # reset nodata values again as driver Gtiff resets them again
+                    if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
+                        intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
+                    else:
+                        intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
                         
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
