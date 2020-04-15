@@ -118,7 +118,7 @@ def schedule_run(run_nb,flag,RF_model,CL_model, Fixyear, Socmode, SM_mode):
             "comment": "%s/%s" % (os.getcwd(), run_label),
             "environment": "ALL",
             "executable": 'schedule_sim.py',
-            "options": "--RF_model %s --CL_model %s --Fixyear%i --Socmode %s --SM_mode %s"%(RF_model, CL_model,Fixyear, Socmode, SM_mode),
+            "options": "--RF_model %s --CL_model %s --Socmode %s --SM_mode %s"%(RF_model, CL_model, Socmode, SM_mode),
             "num_threads": args.threads,
             "mem_per_cpu": args.mem_per_cpu if not args.largemem else 15360,   # if mem_per_cpu is larger than MaxMemPerCPU then num_threads is reduced
             "other": "#SBATCH --partition=ram_gpu" if args.largemem else ""
@@ -172,7 +172,7 @@ if num > 1:
 enum = 1
 for rf_model in RF_MODEL:
     for cl_model in CL_MODEL:
-        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model,Fixyear = 1980, Socmode = 'nosoc', SM_mode ='exact')
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model, Socmode = 'nosoc', SM_mode ='exact')
         enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)

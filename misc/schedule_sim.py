@@ -29,9 +29,6 @@ parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
 parser.add_argument(
-    '--Fixyear', type=int, default=1980,
-    help='year for fixed exposure')
-parser.add_argument(
     '--Socmode', type=str, default='pressoc',
     help='social interaction in ghms')
 parser.add_argument(
@@ -46,7 +43,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['flopros']
+PROT_STD = ['0','flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -97,7 +94,7 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'Continent': np.full(l, "", dtype=str),
                             'IncomeGroup': np.full(l, "", dtype=str),
                             'TotalAssetValue': np.full(l, np.nan, dtype=float),
-                            'TotalAssetValue2005': np.full(l, np.nan, dtype=float),
+                            'TotalAssetValue1980': np.full(l, np.nan, dtype=float),
                             'FloodedAreaPos0': np.full(l, np.nan, dtype=float),
                             'FloodedAreaPosFlopros': np.full(l, np.nan, dtype=float),
                             'FloodedAreaNeg0': np.full(l, np.nan, dtype=float),
@@ -110,18 +107,6 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'FloodVolumeNegFlopros': np.full(l, np.nan, dtype=float),
                             'FloodVolume0': np.full(l, np.nan, dtype=float),
                             'FloodVolumeFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixPos0': np.full(l, np.nan, dtype=float),
-                            'ImpFixPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFixNeg0': np.full(l, np.nan, dtype=float),
-                            'ImpFixNegFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpFix0': np.full(l, np.nan, dtype=float),
-                            'ImpFixFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpactPos0': np.full(l, np.nan, dtype=float),
-                            'ImpactPosFlopros': np.full(l, np.nan, dtype=float),
-                            'ImpactNeg0': np.full(l, np.nan, dtype=float),
-                            'ImpactNegFlopros': np.full(l, np.nan, dtype=float),
-                            'Impact0': np.full(l, np.nan, dtype=float),
-                            'ImpactFlopros': np.full(l, np.nan, dtype=float),
                             'Impact_2yPos0': np.full(l, np.nan, dtype=float),
                             'Impact_2yPosFlopros': np.full(l, np.nan, dtype=float),
                             'Impact_2yNeg0': np.full(l, np.nan, dtype=float),
@@ -133,7 +118,13 @@ dataDF = pd.DataFrame(data={'Year': np.full(l, np.nan, dtype=int),
                             'ImpFix_2yNeg0': np.full(l, np.nan, dtype=float),
                             'ImpFix_2yNegFlopros': np.full(l, np.nan, dtype=float),
                             'ImpFix_2y0': np.full(l, np.nan, dtype=float),
-                            'ImpFix_2yFlopros': np.full(l, np.nan, dtype=float)
+                            'ImpFix_2yFlopros': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2yPos0': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2yPosFlopros': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2yNeg0': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2yNegFlopros': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2y0': np.full(l, np.nan, dtype=float),
+                            'Imp2010_2yFlopros': np.full(l, np.nan, dtype=float)
                             })
 
 if_set = flood_imp_func_set()
@@ -147,8 +138,10 @@ for cnt_ind in range(len(isos)):
     conts = country_info.loc[country_info['ISO']== country[0], 'if_RF'].values[0]
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts-1)]
-    gdpaFix = GDP2Asset()
-    gdpaFix.set_countries(countries=country, ref_year=args.Fixyear, path=gdp_path)
+    gdpa1980 = GDP2Asset()
+    gdpa1980.set_countries(countries=country, ref_year=1980, path=gdp_path)
+    gdpa2010 = GDP2Asset()
+    gdpa2010.set_countries(countries=country, ref_year=2010, path=gdp_path)
     #gdpaFix.correct_for_SSP(ssp_corr, country[0])
     save_lc = line_counter
     
@@ -205,20 +198,6 @@ for cnt_ind in range(len(isos)):
             gdpa = GDP2Asset()
             gdpa.set_countries(countries=country, ref_year=years[year], path = gdp_path)
             #gdpa.correct_for_SSP(ssp_corr, country[0])
-            imp_fl_pos=Impact()
-            imp_fl_pos.calc(gdpa, if_set, rf_pos.select(date=(ini_date, fin_date)))
-            imp_fl_neg=Impact()
-            imp_fl_neg.calc(gdpa, if_set, rf_neg.select(date=(ini_date, fin_date)))
-            imp_fl=Impact()
-            imp_fl.calc(gdpa, if_set, rf.select(date=(ini_date, fin_date)))
-            
-            
-            imp_fl_fix_pos=Impact()
-            imp_fl_fix_pos.calc(gdpaFix, if_set, rf_pos.select(date=(ini_date, fin_date)))
-            imp_fl_fix_neg=Impact()
-            imp_fl_fix_neg.calc(gdpaFix, if_set, rf_neg.select(date=(ini_date, fin_date)))
-            imp_fl_fix=Impact()
-            imp_fl_fix.calc(gdpaFix, if_set, rf.select(date=(ini_date, fin_date)))
             
             imp2y_fl_pos=Impact()
             imp2y_fl_pos.calc(gdpa, if_set, rf2y_pos.select(date=(ini_date,fin_date)))
@@ -227,15 +206,22 @@ for cnt_ind in range(len(isos)):
             imp2y_fl=Impact()
             imp2y_fl.calc(gdpa, if_set, rf2y.select(date=(ini_date,fin_date)))
             
-            imp2y_fl_fix_pos=Impact()
-            imp2y_fl_fix_pos.calc(gdpaFix, if_set, rf2y_pos.select(date=(ini_date,fin_date)))
-            imp2y_fl_fix_neg=Impact()
-            imp2y_fl_fix_neg.calc(gdpaFix, if_set, rf2y_neg.select(date=(ini_date,fin_date)))
-            imp2y_fl_fix=Impact()
-            imp2y_fl_fix.calc(gdpaFix, if_set, rf2y.select(date=(ini_date,fin_date)))
+            imp2y_fl_1980_pos=Impact()
+            imp2y_fl_1980_pos.calc(gdpa1980, if_set, rf2y_pos.select(date=(ini_date,fin_date)))
+            imp2y_fl_1980_neg=Impact()
+            imp2y_fl_1980_neg.calc(gdpa1980, if_set, rf2y_neg.select(date=(ini_date,fin_date)))
+            imp2y_fl_1980=Impact()
+            imp2y_fl_1980.calc(gdpa1980, if_set, rf2y.select(date=(ini_date,fin_date)))
+            
+            imp2y_fl_2010_pos=Impact()
+            imp2y_fl_2010_pos.calc(gdpa2010, if_set, rf2y_pos.select(date=(ini_date,fin_date)))
+            imp2y_fl_2010_neg=Impact()
+            imp2y_fl_2010_neg.calc(gdpa2010, if_set, rf2y_neg.select(date=(ini_date,fin_date)))
+            imp2y_fl_2010=Impact()
+            imp2y_fl_2010.calc(gdpa2010, if_set, rf2y.select(date=(ini_date,fin_date)))
 
-            dataDF.iloc[line_counter, 5] = imp_fl_pos.tot_value
-            dataDF.iloc[line_counter, 6] = imp_fl_fix_pos.tot_value
+            dataDF.iloc[line_counter, 5] = imp2y_fl.tot_value
+            dataDF.iloc[line_counter, 6] = imp2y_fl_1980.tot_value
             
             dataDF.iloc[line_counter, 7 + pro_std] = rf_pos.fla_annual[year]
             dataDF.iloc[line_counter, 9 + pro_std] = rf_neg.fla_annual[year]
@@ -245,27 +231,23 @@ for cnt_ind in range(len(isos)):
             dataDF.iloc[line_counter, 15 + pro_std] = rf_neg.fv_annual[year,0]
             dataDF.iloc[line_counter, 17 + pro_std] = rf.fv_annual[year,0]
             
-            dataDF.iloc[line_counter, 19 + pro_std] = imp_fl_fix_pos.at_event[0]
-            dataDF.iloc[line_counter, 21 + pro_std] = imp_fl_fix_neg.at_event[0]
-            dataDF.iloc[line_counter, 23 + pro_std] = imp_fl_fix.at_event[0]
             
+            dataDF.iloc[line_counter, 19 + pro_std] = imp2y_fl_pos.at_event[0]
+            dataDF.iloc[line_counter, 21 + pro_std] = imp2y_fl_neg.at_event[0]
+            dataDF.iloc[line_counter, 23 + pro_std] = imp2y_fl.at_event[0]
             
-            dataDF.iloc[line_counter, 25 + pro_std] = imp_fl_pos.at_event[0]
-            dataDF.iloc[line_counter, 27 + pro_std] = imp_fl_neg.at_event[0]
-            dataDF.iloc[line_counter, 29 + pro_std] = imp_fl.at_event[0]
+            dataDF.iloc[line_counter, 25 + pro_std] = imp2y_fl_1980_pos.at_event[0]
+            dataDF.iloc[line_counter, 27 + pro_std] = imp2y_fl_1980_neg.at_event[0]
+            dataDF.iloc[line_counter, 29 + pro_std] = imp2y_fl_1980.at_event[0]
             
-            dataDF.iloc[line_counter, 31 + pro_std] = imp2y_fl_pos.at_event[0]
-            dataDF.iloc[line_counter, 33 + pro_std] = imp2y_fl_neg.at_event[0]
-            dataDF.iloc[line_counter, 35 + pro_std] = imp2y_fl.at_event[0]
-            
-            dataDF.iloc[line_counter, 37 + pro_std] = imp2y_fl_fix_pos.at_event[0]
-            dataDF.iloc[line_counter, 39 + pro_std] = imp2y_fl_fix_neg.at_event[0]
-            dataDF.iloc[line_counter, 41 + pro_std] = imp2y_fl_fix.at_event[0]
+            dataDF.iloc[line_counter, 31 + pro_std] = imp2y_fl_2010_pos.at_event[0]
+            dataDF.iloc[line_counter, 33 + pro_std] = imp2y_fl_2010_neg.at_event[0]
+            dataDF.iloc[line_counter, 35 + pro_std] = imp2y_fl_2010.at_event[0]
             
             line_counter+=1
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0flopros{}_{}_15_04.csv'.format(args.SM_mode, args.RF_model, args.CL_model,str(args.Fixyear), args.Socmode))
+    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0flopros_8010_{}_15_04.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
 
 
