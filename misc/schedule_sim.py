@@ -29,6 +29,9 @@ parser.add_argument(
     '--CL_model', type=str, default='princeton',
     help='Climate model')
 parser.add_argument(
+    '--Fixyear', type=int, default=1980,
+    help='year for fixed exposure')
+parser.add_argument(
     '--Socmode', type=str, default='pressoc',
     help='social interaction in ghms')
 parser.add_argument(
@@ -43,7 +46,7 @@ args = parser.parse_args()
 # set output dir
 
 
-PROT_STD = ['0','flopros']
+PROT_STD = ['flopros']
 #for LPJ longrun
 
 #flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-advanced/'
@@ -145,7 +148,7 @@ for cnt_ind in range(len(isos)):
     #print(conts[cnt_ind]-1)
     cont = continent_names[int(conts-1)]
     gdpaFix = GDP2Asset()
-    gdpaFix.set_countries(countries=country, ref_year=2005, path=gdp_path)
+    gdpaFix.set_countries(countries=country, ref_year=args.Fixyear, path=gdp_path)
     #gdpaFix.correct_for_SSP(ssp_corr, country[0])
     save_lc = line_counter
     
@@ -263,6 +266,6 @@ for cnt_ind in range(len(isos)):
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0floprost_{}_24_02.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
+    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0flopros{}_{}_15_04.csv'.format(args.SM_mode, args.RF_model, args.CL_model,str(args.Fixyear), args.Socmode))
 
 
