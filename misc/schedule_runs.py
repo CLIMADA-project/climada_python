@@ -77,7 +77,7 @@ RF_MODEL = [#'clm45',
             'pcr-globwb',
             'watergap2']
 
-def schedule_run(run_nb,flag,RF_model,CL_model, Fixyear, Socmode, SM_mode):
+def schedule_run(run_nb,flag,RF_model,CL_model, Socmode, SM_mode):
     if not flag:
         run_label = "run%s" % run_nb
         if os.path.exists(run_label):
