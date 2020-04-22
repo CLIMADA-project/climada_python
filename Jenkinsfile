@@ -9,7 +9,7 @@ pipeline {
             sh '''#!/bin/bash
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
-            pylint -ry climada > pylint.log'''
+            pylint -ry climada | tee pylint.log'''
           }
         }
 
