@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('conda activate') {
       steps {
-        sh 'conda activate climada_env'
+        sh '$CONDAPATH/conda activate climada_env'
       }
     }
 
@@ -24,7 +24,7 @@ pipeline {
       }
     }
 
-    stage('') {
+    stage('error') {
       steps {
         sh 'conda deactivate'
       }
