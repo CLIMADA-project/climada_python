@@ -10,6 +10,16 @@ pipeline {
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
             pylint -ry climada | tee pylint.log'''
+
+            step([
+                $class: 'WarningsPublisher',
+                parserConfigurations: [[
+                    parserName: 'PyLint',
+                    pattern   : 'pylint.log'
+                ]],
+                unstableTotalAll: '0',
+                usePreviousBuildAsReference: true
+            ])
           }
         }
 
