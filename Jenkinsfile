@@ -1,17 +1,32 @@
 pipeline {
   agent any
   stages {
-    stage('s1') {
+    stage('conda activate') {
       steps {
-        sh 'echo s1'
-        sh '''
+        sh 'conda activate climada_env'
+      }
+    }
 
+    stage('lint') {
+      parallel {
+        stage('lint') {
+          steps {
+            sh 'make lint'
+          }
+        }
 
+        stage('unit_test') {
+          steps {
+            sh 'make unit_test'
+          }
+        }
 
+      }
+    }
 
-export PATH=$PATH:/home/IEDAdmin/miniconda3/bin;
-
-./.jenkins_ci.sh'''
+    stage('') {
+      steps {
+        sh 'conda deactivate'
       }
     }
 
