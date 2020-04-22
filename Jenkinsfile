@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('conda activate') {
       steps {
-        sh 'export PATH=$PATH:$CONDAPATH; source activate climada_env'
+        sh 'export PATH=$PATH:$CONDAPATH; conda activate climada_env'
       }
     }
 
