@@ -24,7 +24,7 @@ pipeline {
       }
     }
 
-    stage('error') {
+    stage('conda deactivate') {
       steps {
         sh 'conda deactivate'
       }
