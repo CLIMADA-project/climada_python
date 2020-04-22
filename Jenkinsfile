@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('conda activate') {
       steps {
-        sh '$CONDAPATH/conda activate climada_env'
+        sh '. ~/.bashrc; conda activate climada_env'
       }
     }
 
