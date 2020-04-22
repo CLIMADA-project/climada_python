@@ -1,34 +1,26 @@
 pipeline {
   agent any
   stages {
-    stage('conda activate') {
-      steps {
-        sh '''#!/bin/bash
-           export PATH=$PATH:$CONDAPATH
-           source activate climada_env'''
-      }
-    }
-
     stage('lint') {
       parallel {
         stage('lint') {
           steps {
-            sh 'make lint'
+            sh '''\'\'\'#!/bin/bash
+        export PATH=$PATH:$CONDAPATH
+        source activate climada_env
+        make lint\'\'\''''
           }
         }
 
         stage('unit_test') {
           steps {
-            sh 'make unit_test'
+            sh '''#!/bin/bash
+        export PATH=$PATH:$CONDAPATH
+        source activate climada_env
+        make unit_test'''
           }
         }
 
-      }
-    }
-
-    stage('conda deactivate') {
-      steps {
-        sh 'conda deactivate'
       }
     }
 
