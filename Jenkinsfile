@@ -5,7 +5,7 @@ pipeline {
       steps {
         sh '''#!/bin/bash
            export PATH=$PATH:$CONDAPATH
-           conda activate climada_env'''
+           source activate climada_env'''
       }
     }
 
