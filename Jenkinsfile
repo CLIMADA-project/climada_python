@@ -1,5 +1,6 @@
 pipeline {
   agent any
+
   stages {
     stage('ci') {
       parallel {
@@ -35,6 +36,12 @@ pipeline {
         }
 
       }
+    }
+  }
+
+  post {
+    always {
+      junit 'tests_xml/*.xml'
     }
   }
 }
