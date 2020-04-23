@@ -18,7 +18,7 @@ pipeline {
                     parserName: 'PyLint',
                     pattern   : 'pylint.log'
                 ]],
-                unstableTotalAll: '0',
+                unstableTotalHigh: '25',
                 usePreviousBuildAsReference: true
             ])
           }
@@ -42,6 +42,7 @@ pipeline {
   post {
     always {
       junit 'tests_xml/*.xml'
+      cobertura coberturaReportFile: 'coverage.xml'
     }
   }
 }
