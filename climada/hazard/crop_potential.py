@@ -155,16 +155,16 @@ class CropPotential(Hazard):
 
         if input_dir is not None:
             if not os.path.exists(input_dir):
-                LOGGER.warning('Input directory %s does not exist' %(input_dir))
+                LOGGER.warning('Input directory %s does not exist', input_dir)
                 raise NameError
         else:
-            LOGGER.warning('Input directory %s not set' %(input_dir))
+            LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
 
         yearchunk = YEARCHUNKS[scenario]
-        fn = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc'
-        filename = os.path.join(input_dir, fn % (ag_model, cl_model, scenario, soc, co2, crop, \
+        string = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc'
+        filename = os.path.join(input_dir, string % (ag_model, cl_model, scenario, soc, co2, crop, \
                                                  irr, fn_str_var, str(yearchunk['startyear']), \
                                                  str(yearchunk['endyear'])))
 
@@ -191,6 +191,7 @@ class CropPotential(Hazard):
         self.fraction.data.fill(1.0)
         self.units = 't / y'
         self.date = np.array(dt.str_to_date(date))
+        self.centroids.set_meta_to_lat_lon()
 
         return self
 
@@ -257,7 +258,7 @@ class CropPotential(Hazard):
 
         return self
 
-    def plot_intensity_agd(self, event, dif=0, axis=None, **kwargs):
+    def plot_intensity_cp(self, event, dif=0, axis=None, **kwargs):
         """ Plots intensity with predefined settings depending on the intensity definition
 
         Parameters:
@@ -323,11 +324,11 @@ class CropPotential(Hazard):
                       np.min(self.centroids.lat), np.max(self.centroids.lat)])
 
             if rows == 1:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[colum])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[colum])
             elif colums == 1:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[row])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[row])
             else:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[row, colum])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[row, colum])
 
             if colum <= colums-2:
                 colum = colum + 1
@@ -373,9 +374,9 @@ class CropPotential(Hazard):
 
 
             if nr_cli_models == 1:
-                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[subplot])
+                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[subplot])
             else:
-                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[model, subplot])
+                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[model, subplot])
 
             ax1.set_title('')
 

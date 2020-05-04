@@ -30,7 +30,7 @@ from climada.util.constants import SYSTEM_DIR
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
-DEF_HAZ_TYPE = 'DR'
+DEF_HAZ_TYPE = 'CP'
 """ Default hazard type used in impact functions id."""
 
 FILENAME_SPAM = 'spam2005V3r2_global'
