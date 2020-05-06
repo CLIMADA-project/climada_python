@@ -366,7 +366,7 @@ class Exposures(GeoDataFrame):
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
-         Returns:
+        Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta['height']*self.meta['width'] == len(self):
