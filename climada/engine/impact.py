@@ -272,7 +272,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -298,7 +298,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -324,7 +324,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -353,7 +353,7 @@ class Impact():
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -382,7 +382,7 @@ class Impact():
             kwargs (optional): arguments for hexbin matplotlib function
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
 
-         Returns:
+        Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
         try:
@@ -421,7 +421,7 @@ class Impact():
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         try:
