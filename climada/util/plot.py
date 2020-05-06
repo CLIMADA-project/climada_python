@@ -229,9 +229,9 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
 
     if 'vmin' not in kwargs:
-        kwargs['vmin'] = np.min(array_sub)
+        kwargs['vmin'] = np.nanmin(array_sub)
     if 'vmax' not in kwargs:
-        kwargs['vmax'] = np.max(array_sub)
+        kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
         _, axes = make_map(num_im, proj=proj)
     axes_iter = axes
