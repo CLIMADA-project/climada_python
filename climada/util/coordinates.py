@@ -182,6 +182,41 @@ def dist_to_coast(coord_lat, lon=None):
     coast = gpd.GeoDataFrame(geometry=[coast], crs=NE_CRS).to_crs(to_crs)
     return geom.to_crs(to_crs).distance(coast.geometry[0]).values
 
+def elevation_dem(lon, lat, crs=DEF_CRS, product='SRTM1',
+                  resampling=Resampling.nearest, nodata=DEM_NODATA, min_resol=1.0e-8):
+    """ Set elevation in meters for every point.
+
+    Parameter:
+        product (str, optional): Digital Elevation Model to use with elevation
+            package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
+        resampling (rasterio.warp.Resampling, optional): resampling
+            function used for reprojection from DEM to centroids' CRS. Default:
+            nearest.
+        nodata (int, optional): value to use in DEM no data points.
+        min_resol (float, optional): if centroids are points, minimum
+            resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
+    """
+    import elevation
+
+    bounds = lon.min(), lat.min(), lon.max(), lat.max()
+    LOGGER.debug('Setting elevation of points with bounds %s.', str(bounds))
+    rows, cols, ras_trans = pts_to_raster_meta(bounds, min(get_resolution(lat, lon, min_resol)))
+
+    bounds += np.array([-.05, -.05, .05, .05])
+    elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
+                   max_download_tiles=MAX_DEM_TILES_DOWN)
+    dem_mat = np.zeros((rows, cols))
+    with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
+        reproject(source=src.read(1), destination=dem_mat,
+                  src_transform=src.transform, src_crs=src.crs,
+                  dst_transform=ras_trans, dst_crs=crs,
+                  resampling=resampling,
+                  src_nodata=src.nodata, dst_nodata=nodata)
+
+    # search nearest neighbor of each point
+    x_i = ((lon - ras_trans[2]) / ras_trans[0]).astype(int)
+    y_i = ((lat - ras_trans[5]) / ras_trans[4]).astype(int)
+    return dem_mat[y_i, x_i]
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
@@ -499,13 +534,13 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 inten = masked_array.data
                 inten[masked_array.mask] = 0
                 if window:
-                    meta.update({"height": inten.shape[1], \
-                        "width": inten.shape[2], \
+                    meta.update({"height": window.height, \
+                        "width": window.width, \
                         "transform": rasterio.windows.transform(window, src.transform)})
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)
             intensity = inten[range(len(band)), :]
-            return meta, intensity.reshape((len(band), -1))
+            return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
 def read_vector(file_name, field_name, dst_crs=None):
     """ Read vector file format supported by fiona. Each field_name name is

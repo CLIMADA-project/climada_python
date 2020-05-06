@@ -37,7 +37,8 @@ import climada.util.plot as u_plot
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
-pts_to_raster_meta, read_raster, read_vector, equal_crs, get_country_code
+pts_to_raster_meta, read_raster, read_vector, equal_crs, get_country_code, \
+elevation_dem
 from climada.util.coordinates import NE_CRS, TMP_ELEVATION_FILE, DEM_NODATA, \
 MAX_DEM_TILES_DOWN
 
@@ -498,6 +499,45 @@ class Centroids():
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.on_land = coord_on_land(ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
+
+    def set_elevation(self, product='SRTM1', resampling=None, nodata=DEM_NODATA,
+                      min_resol=1.0e-8):
+        """ Set elevation in meters for every pixel or point.
+
+        Parameter:
+            product (str, optional): Digital Elevation Model to use with elevation
+                package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
+            resampling (rasterio.warp.Resampling, optional): resampling
+                function used for reprojection from DEM to centroids' CRS. Default:
+                average if raster and nearest if points.
+            nodata (int, optional): value to use in DEM no data points.
+            min_resol (float, optional): if centroids are points, minimum
+                resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
+        """
+        import elevation
+        bounds = np.array(self.total_bounds)
+        if self.meta:
+            LOGGER.debug('Setting elevation of raster with bounds %s.', str(self.total_bounds))
+            rows, cols = self.shape
+            ras_trans = self.meta['transform']
+
+            if resampling is None:
+                resampling = Resampling.average
+
+            bounds += np.array([-.05, -.05, .05, .05])
+            elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
+                           max_download_tiles=MAX_DEM_TILES_DOWN)
+            dem_mat = np.zeros((rows, cols))
+            with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
+                reproject(source=src.read(1), destination=dem_mat,
+                          src_transform=src.transform, src_crs=src.crs,
+                          dst_transform=ras_trans, dst_crs=self.crs,
+                          resampling=resampling,
+                          src_nodata=src.nodata, dst_nodata=nodata)
+            self.elevation = dem_mat.flatten()
+        else:
+            self.elevation = elevation_dem(self.lon, self.lat, self.crs, product,
+                                           resampling, nodata, min_resol)
 
     def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
