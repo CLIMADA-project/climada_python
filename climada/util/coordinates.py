@@ -534,13 +534,13 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 inten = masked_array.data
                 inten[masked_array.mask] = 0
                 if window:
-                    meta.update({"height": window.height, \
-                        "width": window.width, \
+                    meta.update({"height": inten.shape[1], \
+                        "width": inten.shape[2], \
                         "transform": rasterio.windows.transform(window, src.transform)})
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)
             intensity = inten[range(len(band)), :]
-            return meta, intensity.reshape((len(band), meta['height']*meta['width']))
+            return meta, intensity.reshape((len(band), -1))
 
 def read_vector(file_name, field_name, dst_crs=None):
     """ Read vector file format supported by fiona. Each field_name name is

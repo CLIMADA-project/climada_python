@@ -298,7 +298,7 @@ class TestFunc(unittest.TestCase):
 
     def test_window_raster_pass(self):
         """ Test window """
-        meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50.1, 60))
         self.assertAlmostEqual(meta['crs'], DEF_CRS)
         self.assertAlmostEqual(meta['transform'].c, -69.2471495969998)
         self.assertAlmostEqual(meta['transform'].a, 0.009000000000000341)
