@@ -34,9 +34,8 @@ class TestCropPotential(unittest.TestCase):
         """Test defining crop potential hazard from complete demo file (Central Europe)"""
         haz = CropPotential()
         haz.set_from_single_run(input_dir=INPUT_DIR,yearrange=(2001, 2005), \
-                        ag_model='lpjml', \
-                        cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc', \
-                        co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
+                        ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical', \
+                        soc='2005soc', co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
 
         self.assertEqual(haz.centroids.lon.min(), -4.75)
         self.assertEqual(haz.centroids.lon.max(), 15.75)
@@ -55,7 +54,10 @@ class TestCropPotential(unittest.TestCase):
         hist_mean = haz.calc_mean()
         haz.set_rel_yield_to_int(hist_mean)
         self.assertAlmostEqual(np.max(hist_mean), 8.394599)
+        self.assertEqual(haz.intensity.shape, (5, 1092))
         self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 2.6180155277252197)
+        self.assertAlmostEqual(haz.intensity.max, 2.6180155277252197)
+        self.assertAlmostEqual(haz.intensity.min, 0.0)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropPotential)

@@ -227,6 +227,8 @@ class CropPotential(Hazard):
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
         self.units = ''
+        self.intensity.max = np.nanmax(self.intensity.toarray())
+        self.intensity.min = np.nanmin(self.intensity.toarray())
 
         return self
 
