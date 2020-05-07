@@ -33,14 +33,15 @@ Please see all CLIMADA's related scientific publications in our [repository of s
 
 To contribute follow these steps:
 
-1. Fork the project on GitHub (`git clone https://github.com/CLIMADA-project/climada_python.git`).
-2. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
-3. Make well commented and clean commits to the repository. You can make a new branch here if you are modifying more than one part or feature.
-4. Make unit and integration tests on your code, preferably during development.
-5. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
-6. Add your name to the AUTHORS file.
-7. Push the branch to GitHub (`git push origin my-new-feature`).
-8. On GitHub, create a new pull request from the feature branch.
+1. Fork the project on GitHub.
+2. Create a local clone of the develop branch (`git clone https://github.com/YOUR-USERNAME/climada_python.git -b develop`)
+3. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
+4. Make well commented and clean commits to your repository.
+5. Make unit and integration tests on your code, preferably during development.
+6. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
+7. Add your name to the AUTHORS file.
+8. Push the changes to GitHub (`git push origin develop`).
+9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
 
 See our [contribution guidelines](https://climada-python.readthedocs.io/en/latest/guide/developer.html) for more information.
 
@@ -56,4 +57,4 @@ CLIMADA is free software: you can redistribute it and/or modify it under the ter
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details:
 
-<https://www.gnu.org/licenses/lgpl.html>
+https://github.com/CLIMADA-project/climada_python/blob/master/LICENSE
