@@ -61,21 +61,19 @@ CL_MODEL = [#'gfdl-esm2m',
             'wfdei'
             ]
 
-RF_MODEL = [#'clm45',
-            #'clm50',
-            'clm40',
-            #'cwatm',
-            'matsiro',
-            'jules-w1',
-            'jules-b1',
-            'orchidee',
-            'vic',
-            'dbh',
-            'h08',
-            'lpjml',
-            'mpi-hm',
-            'pcr-globwb',
-            'watergap2']
+RF_MODEL = [
+            #'clm40',
+            #'matsiro',
+            #'jules-w1',
+            #'jules-b1',
+            #'orchidee',
+            #'vic',
+            #'dbh',
+            #'h08',
+            'lpjml']
+            #'mpi-hm',
+            #'pcr-globwb',
+            #'watergap2']
 
 def schedule_run(run_nb,flag,RF_model,CL_model, Socmode, SM_mode):
     if not flag:
@@ -172,7 +170,7 @@ if num > 1:
 enum = 1
 for rf_model in RF_MODEL:
     for cl_model in CL_MODEL:
-        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model, Socmode = 'nosoc', SM_mode ='exact')
+        schedule_run(run_nb=enum,flag=single,RF_model=rf_model,CL_model=cl_model, Socmode = 'advanced', SM_mode ='exact')
         enum += 1
 if num > 1:
     print("Scheduled %s runs" % num)

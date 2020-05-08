@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri May  8 20:29:10 2020
+
+@author: insauer
+"""
+
 #!/usr/bin/env python
 import numpy as np
 import pandas as pd
@@ -73,9 +81,9 @@ else:
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
 
 if args.CL_model == 'watch':
-    years = np.arange(1971, 2002)
+    years = np.arange(1920, 2002)
 else:
-    years = np.arange(1971, 2011)
+    years = np.arange(1920, 2011)
 
 #years = np.arange(1971, 2011)
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
@@ -248,6 +256,6 @@ for cnt_ind in range(len(isos)):
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRisk_{}_Output_{}_{}_0flopros_8010_{}_15_04.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
+    dataDF.to_csv('DisRisk_lpjml_{}_Output_{}_{}_0flopros_8010_{}_08_05.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
 
 
