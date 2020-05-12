@@ -540,7 +540,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)
             intensity = inten[range(len(band)), :]
-            return meta, intensity.reshape((len(band), -1))
+            return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
 def read_vector(file_name, field_name, dst_crs=None):
     """ Read vector file format supported by fiona. Each field_name name is
