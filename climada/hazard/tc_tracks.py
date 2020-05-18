@@ -472,6 +472,8 @@ class TCTracks():
 
             d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
                 np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
+            # change sign of latitude change for southern hemishpere:
+            d_xy = np.sign(track.lat.values[0]) * d_xy 
 
             d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
 
