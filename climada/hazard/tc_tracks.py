@@ -306,6 +306,9 @@ class TCTracks():
         """
         LOGGER.info('Computing %s synthetic tracks.', ens_size*self.size)
 
+        if max_angle==0:
+            LOGGER.warning('max_angle=0 is not recommended. It results in non-random \
+                         synthetic tracks with a constant shift to higher latitudes.')
         if seed >= 0:
             np.random.seed(seed)
 
