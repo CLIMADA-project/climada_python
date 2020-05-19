@@ -29,7 +29,6 @@ INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'co2_dis_global_daily_DEMO_FR'
 
 
-
 def init_test_data_unqiue_clusters():
     """creates sandbox test data for 2D cluster IDs for test of identification of
     unique 3D clusters"""
@@ -59,7 +58,6 @@ def init_test_data_clustering():
     df['iter_ev'] = np.ones(len(df), bool)
     df['cons_id'] = np.zeros(len(df), int)-1
     return df
-
 
 class TestLowFlow(unittest.TestCase):
     """Test for defining low flow event from discharge data file"""

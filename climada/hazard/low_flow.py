@@ -24,12 +24,12 @@ __all__ = ['LowFlow']
 
 import logging
 import os
-import xarray as xr
-import datetime as dt
 import copy
 import numba
 import cftime
 import itertools
+import datetime as dt
+import xarray as xr
 import geopandas as gpd
 import numpy as np
 
@@ -164,10 +164,10 @@ class LowFlow(Hazard):
             soc (str): socio-economic trajectory (only when input_dir is selected)
                 f.i. 'histsoc', '2005soc', 'rcp26soc', or 'rcp60soc'
             soc_ref (str): csocio-economic trajectory for reference
-                (only when input_dir is selected)            
-            fn_str_var (str): FileName STRing depending on VARiable and 
+                (only when input_dir is selected)
+            fn_str_var (str): FileName STRing depending on VARiable and
                 ISIMIP simuation round
-            keep_dis_data (boolean): keep monthly data (variable ndays = days below threshold) 
+            keep_dis_data (boolean): keep monthly data (variable ndays = days below threshold)
                 as dataframe (attribute "data") and save additional field 'relative_dis'?
         raises:
             NameError
@@ -175,10 +175,10 @@ class LowFlow(Hazard):
         print('GETTING STARTED!')
         if input_dir is not None:
             if not os.path.exists(input_dir):
-                LOGGER.warning('Input directory %s does not exist' % (input_dir))
+                LOGGER.warning('Input directory %s does not exist', input_dir)
                 raise NameError
         else:
-            LOGGER.warning('Input directory %s not set' % (input_dir))
+            LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
         if centroids is not None:
@@ -191,23 +191,23 @@ class LowFlow(Hazard):
 
         # read data and call preprocessing routine:
         self.data, centroids_import = _data_preprocessing_percentile(percentile, \
-                                                                     yearrange, yearrange_ref, \
-                                                                     input_dir, gh_model, cl_model, scenario,
-                                                                     scenario_ref, \
-                                                                     soc, soc_ref, fn_str_var, bbox, min_days_per_month,
-                                                                     keep_dis_data)
+                                      yearrange, yearrange_ref, \
+                                      input_dir, gh_model, cl_model, scenario, \
+                                      scenario_ref, \
+                                      soc, soc_ref, fn_str_var, bbox, min_days_per_month, \
+                                      keep_dis_data)
 
         if centr_handling == 'full_hazard':
             centroids = centroids_import
         self.identify_clusters()
 
-        # sum "dis" (days per month below threshold) per pixel and cluster_id 
+        # sum "dis" (days per month below threshold) per pixel and cluster_id
         # and write to hazard.intensiy
         self.events_from_clusters(centroids)
         if min_intensity > 1 or min_number_cells > 1:
             haz_tmp = self.filter_events(min_intensity=min_intensity, \
                                          min_number_cells=min_number_cells)
-            LOGGER.info('Filtering events: %i events remaining' % (haz_tmp.size))
+            LOGGER.info('Filtering events: %i events remaining', haz_tmp.size)
             self.event_id = haz_tmp.event_id
             self.event_name = list(map(str, self.event_id))
             self.date = haz_tmp.date
@@ -245,7 +245,7 @@ class LowFlow(Hazard):
             intensity_list = []
             for cl_id in uni_ev:
                 intensity_list.append(self._intensity_one_cluster(self.data, \
-                                                                  tree_centr, cl_id, res_centr, num_centr))
+                                      tree_centr, cl_id, res_centr, num_centr))
 
         self.tag = TagHazard(HAZ_TYPE)
         self.units = 'days'  # days below threshold
@@ -354,20 +354,20 @@ class LowFlow(Hazard):
     def filter_events(self, min_intensity=1, min_number_cells=1):
         """remove events with max intensity below min_intensity or spatial extend
         below min_number_cells
-        
+
         Parameters:
-            min_intensity (int or float): Minimum criterion for intensity 
-            min_number_cells (int or float): Minimum crietrion for number of grid cell 
-        
+            min_intensity (int or float): Minimum criterion for intensity
+            min_number_cells (int or float): Minimum crietrion for number of grid cell
+
         Returns:
             Hazard
         """
         haz_tmp = copy.deepcopy(self)
         haz_tmp.date_tmp = haz_tmp.date
-        for i, _ in enumerate(haz_tmp.event_id):
-            if np.sum(haz_tmp.intensity[i] > 0) < min_number_cells or \
-                    np.max(haz_tmp.intensity[i]) < min_intensity:
-                haz_tmp.date[i] = 2100001
+        for i_event, _ in enumerate(haz_tmp.event_id):
+            if np.sum(haz_tmp.intensity[i_event] > 0) < min_number_cells or \
+                    np.max(haz_tmp.intensity[i_event]) < min_intensity:
+                haz_tmp.date[i_event] = 2100001
         haz_tmp = haz_tmp.select(date=(1, 2000000))
         haz_tmp.date = haz_tmp.date_tmp
         del haz_tmp.date_tmp
@@ -411,7 +411,8 @@ class LowFlow(Hazard):
 
         """
         LOGGER.debug('Number of days below threshold corresponding to event %s.', str(cluster_id))
-        temp_data = data.reindex(index=(np.argwhere(data['cluster_id'] == cluster_id).reshape(-1, )),
+        temp_data = data.reindex(index=(np.argwhere(data['cluster_id'] == \
+                                 cluster_id).reshape(-1, )),
                                  columns=['lat', 'lon', 'ndays'])
 
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni
@@ -453,6 +454,8 @@ def _init_centroids(data_x, centr_res_factor=1):
 
 
 def unique_clusters(data):
+    """identify unqiue clustes based on clusters in 3 dimensions and set unique
+    cluster_id"""
     data.cluster_id = np.zeros(len(data.c_lat_lon)) - 1
 
     data.loc[data.c_lat_lon == -1, 'c_lat_lon'] = np.nan
@@ -466,7 +469,7 @@ def unique_clusters(data):
             data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'] = -1
         else:
             if len(data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique()) == 1 and -1 in data.loc[
-                data.c_lat_lon == c_lat_lon, 'cluster_id'].unique():
+                    data.c_lat_lon == c_lat_lon, 'cluster_id'].unique():
                 cc += 1
                 current = cc
             else:
@@ -493,7 +496,7 @@ def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref, \
     """load data and reference data and calculate monthly percentiles
     then extract intensity based on days below threshold
     returns geopandas dataframe
-    
+
     returns:
         df (DataFrame): preprocessed data with days below threshold per grid cell and month
         centroids (Centroids instance): regular grid centroid with same resolution as input data
@@ -515,13 +518,14 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, \
     """import and combine data from nc files, return as xarray"""
 
     first_file = True
-    for idy, yearchunk in enumerate(YEARCHUNKS[scenario]):
+    for _, yearchunk in enumerate(YEARCHUNKS[scenario]):
         # skip if file is not required, i.e. not in yearrange:
         if int(yearchunk[0:4]) > yearrange[1] or int(yearchunk[-4:]) < yearrange[0]:
             continue
-        filename = os.path.join(input_dir, fn % (gh_model, cl_model, scenario, soc, fn_str_var, yearchunk))
+        filename = os.path.join(input_dir, fn % (gh_model, cl_model, scenario, \
+                                                 soc, fn_str_var, yearchunk))
         if not os.path.isfile(filename):
-            LOGGER.warning('Netcdf file not found: %s' % (filename))
+            LOGGER.error('Netcdf file not found: %s', filename)
             FileNotFoundError
         if first_file:
             data = _read_single_nc(filename, yearrange, bbox)
@@ -562,8 +566,8 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
                             scenario, soc, fn_str_var, bbox):
     """returns the x-th percentile for every pixel over a given
     time horizon (based on daily data) [all-year round percentiles!]"""
-    LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i' \
-                % (percentile, yearrange_ref[0], yearrange_ref[1]))
+    LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i', \
+                percentile, yearrange_ref[0], yearrange_ref[1])
     data = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model, \
                                 scenario, soc, fn_str_var, bbox)
     return data.reduce(np.nanpercentile, dim='time', q=percentile)
@@ -574,8 +578,8 @@ def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir, \
     """returns the x-th percentile for every pixel over a given
     time horizon per month (based on daily data)
     OUTDATED"""
-    LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i' \
-                % (percentile, yearrange_ref[0], yearrange_ref[1]))
+    LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i', \
+                 percentile, yearrange_ref[0], yearrange_ref[1])
     data = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model, \
                                 scenario, soc, fn_str_var, bbox)
     return data.groupby('time.month').reduce(np.nanpercentile, dim='time', q=percentile)
@@ -583,15 +587,15 @@ def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir, \
 
 def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, keep_dis_data):
     """returns sum of days below threshold per month (as xarray with monthly data)
-    
+
     if keep_dis_data is True, a DataFrame called 'data' with additional data is saved within
     the hazard object. It provides data per event, grid cell, and month
-    It comes with the following columns: ['lat', 'lon', 'time', 'ndays', 
+    It comes with the following columns: ['lat', 'lon', 'time', 'ndays',
        'relative_dis', 'iter_ev', 'cons_id',
        'dtime', 'dt_month', 'geometry', 'cluster_id', 'c_lat_lon',
        'c_lat_dt_month', 'c_lon_dt_month']
     warning: cluster_id does not correspond 1:1 with associated event_id. (TODO)
-    
+
     """
     # data = data.groupby('time.month')-threshold_grid # outdated
     data_threshold = data - threshold_grid
@@ -619,9 +623,7 @@ def _xarray_to_geopandas(data):
     # df['clus_id'] = np.zeros(len(df), int) - 1
     df['dtime'] = df['time'].apply(lambda x: x.toordinal())
     df['dt_month'] = df['time'].apply(lambda x: x.year * 12 + x.month)
-
-    return (gpd.GeoDataFrame(df, geometry=[Point(x, y) for x, y in zip(df['lon'], df['lat'])]))
-
+    return gpd.GeoDataFrame(df, geometry=[Point(x, y) for x, y in zip(df['lon'], df['lat'])])
 
 @numba.njit
 def _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy, intensity_raw):
