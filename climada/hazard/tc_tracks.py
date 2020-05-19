@@ -52,7 +52,7 @@ import climada.util.plot as u_plot
 LOGGER = logging.getLogger(__name__)
 
 SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 137, 1000]
-""" Saffir-Simpson Hurricane Wind Scale in kn"""
+""" Saffir-Simpson Hurricane Wind Scale in kn based on NOAA"""
 
 CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',

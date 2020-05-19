@@ -252,10 +252,12 @@ class LowFlow(Hazard):
         self.centroids = centroids
 
         # Following values are defined for each event
-        self.event_id = np.arange(1, num_ev + 1).astype(int)
+        self.event_id = np.sort(self.data.cluster_id.unique())
+        self.event_id = self.event_id[self.event_id>0]
         self.event_name = list(map(str, self.event_id))
         self.date = np.zeros(num_ev, int)
         self.date_end = np.zeros(num_ev, int)
+
         for ev_idx, ev_id in enumerate(uni_ev):
             self.date[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
             self.date_end[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.max()
@@ -590,11 +592,11 @@ def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, ke
 
     if keep_dis_data is True, a DataFrame called 'data' with additional data is saved within
     the hazard object. It provides data per event, grid cell, and month
-    It comes with the following columns: ['lat', 'lon', 'time', 'ndays',
+    data comes with the following columns: ['lat', 'lon', 'time', 'ndays',
        'relative_dis', 'iter_ev', 'cons_id',
        'dtime', 'dt_month', 'geometry', 'cluster_id', 'c_lat_lon',
        'c_lat_dt_month', 'c_lon_dt_month']
-    warning: cluster_id does not correspond 1:1 with associated event_id. (TODO)
+    Note: cluster_id corresponds 1:1 with associated event_id.
 
     """
     # data = data.groupby('time.month')-threshold_grid # outdated
