@@ -167,8 +167,8 @@ class LowFlow(Hazard):
                 (only when input_dir is selected)            
             fn_str_var (str): FileName STRing depending on VARiable and 
                 ISIMIP simuation round
-            keep_dis_data (boolean): keep monthly data (days bewlo threshold) 
-                as dataframe (attribute "data")?
+            keep_dis_data (boolean): keep monthly data (variable ndays = days below threshold) 
+                as dataframe (attribute "data") and save additional field 'relative_dis'?
         raises:
             NameError
         """
@@ -290,48 +290,6 @@ class LowFlow(Hazard):
         self.data = unique_clusters(self.data)
         return self.data
 
-    # def _df_cons_months(self, data):
-    #     """ Compute clusters of consecutive months (temporal clusters).
-    #         An interruption of clus_thresh_t is necessary to be set in two
-    #         different temporal clusters.
-
-    #     Parameters:
-    #         data (dataframe): dataset obtained from preprocessed ISIMIP data
-
-    #     Returns:
-    #         data
-    #     """
-    #     LOGGER.debug('Computing clusters of consecutive months.')
-    #     data_iter = data[data['iter_ev']][['dt_month', 'cons_id', 'cluster_id']]
-    #     max_cons_id = data.cons_id.max() + 1
-    #     for cluster_id in np.unique(data_iter.cluster_id.values):
-
-    #         data_cons = data_iter[data_iter.cluster_id == cluster_id].reset_index()
-
-    #         # Order data dataframe per ascending acq_date order
-    #         data_cons = data_cons.sort_values('dt_month')
-    #         sort_idx = data_cons.index
-    #         data_cons = data_cons.reset_index()
-    #         data_cons = data_cons.drop(columns=['index'])
-
-    #         # Check if there is more than N months interruption between data
-    #         data_cons.at[0, 'cons_id'] = max_cons_id
-    #         max_cons_id += 1
-    #         for index in range(1, len(data_cons)):
-    #             if abs((data_cons.at[index, 'dt_month'] - data_cons.at[index-1, 'dt_month'])) \
-    #             >= self.clus_thresh_t:
-    #                 data_cons.at[index, 'cons_id'] = max_cons_id
-    #                 max_cons_id += 1
-    #             else:
-    #                 data_cons.at[index, 'cons_id'] = data_cons.at[(index-1), 'cons_id']
-
-    #         re_order = np.zeros(len(data_cons), int)
-    #         for data_i, order in zip(data_cons.cons_id.values, sort_idx):
-    #             re_order[order] = data_i
-    #         data_iter.cons_id.values[data_iter.cluster_id == cluster_id] = re_order
-
-    #     data.cons_id.values[data['iter_ev'].values] = data_iter.cons_id.values
-    #     return data
 
     def _set_frequency(self):
         """Set hazard frequency from intensity matrix. """
@@ -624,10 +582,20 @@ def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir, \
 
 
 def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, keep_dis_data):
-    """returns sum of days below threshold per month (as xarray with monthly data)"""
+    """returns sum of days below threshold per month (as xarray with monthly data)
+    
+    if keep_dis_data is True, a DataFrame called 'data' with additional data is saved within
+    the hazard object. It provides data per event, grid cell, and month
+    It comes with the following columns: ['lat', 'lon', 'time', 'ndays', 
+       'relative_dis', 'iter_ev', 'cons_id',
+       'dtime', 'dt_month', 'geometry', 'cluster_id', 'c_lat_lon',
+       'c_lat_dt_month', 'c_lon_dt_month']
+    warning: cluster_id does not correspond 1:1 with associated event_id. (TODO)
+    
+    """
     # data = data.groupby('time.month')-threshold_grid # outdated
     data_threshold = data - threshold_grid
-    if keep_dis_data is True:
+    if keep_dis_data:
         data_low = data.where(data_threshold < 0) / data.mean(dim='time')
         data_low = data_low.resample(time='1M').mean()
     data_threshold.dis.values[data_threshold.dis.values >= 0] = 0
@@ -635,7 +603,7 @@ def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, ke
     data_threshold = data_threshold.resample(time='1M').sum()
     data_threshold.dis.values[data_threshold.dis.values < min_days_per_month] = 0
     data_threshold = data_threshold.rename({'dis': 'ndays'})
-    if keep_dis_data is True:
+    if keep_dis_data:
         data_threshold['relative_dis'] = data_low['dis']
     return data_threshold.where(data_threshold['ndays'] > 0)
 
