@@ -254,7 +254,98 @@ class TCTracks():
                 if os.path.basename(file) in corr_files:
                     tr_ds['radius_max_wind'] *= 2
                 self.data.append(tr_ds)
+            
+        
+    def read_one_gettelman(self, nc_data, i_track):
+        """Fill from Andrew Gettelman tracks.
 
+        Parameters:
+        nc_data (str): netCDF4.Dataset Objekt
+        i_tracks (int): track number 
+        """
+        basin_dict = {0 : 'NA - North Atlantic',
+                      1 : 'SA - South Atlantic',
+                      2 : 'WP - West Pacific',
+                      3 : 'EP - East Pacific',
+                      4 : 'SP - South Pacific',
+                      5 : 'NI - North Indian',
+                      6 : 'SI - South Indian',
+                      7 : 'AS - Arabian Sea',
+                      8 : 'BB - Bay of Bengal',
+                      9 : 'EA - Eastern Australia',
+                      10 : 'WA - Western Australia',
+                      11 : 'CP - Central Pacific',
+                      12 : 'CS - Carribbean Sea',
+                      13 : 'GM - Gulf of Mexico',
+                      14 : 'MM - Missing'}
+
+        val_len = nc_data.variables['numObs'][i_track]
+        sid = str(i_track)
+        times = nc_data.variables['source_time'][i_track, :][:val_len]
+    
+        datetimes = list()
+        for t in times:
+            try:
+                datetimes.append(dt.datetime.strptime(str(nc.num2date(t, 
+                                'days since {}'.format('1858-11-17'), 
+                                calendar='standard')), '%Y-%m-%d %H:%M:%S'))
+            except ValueError:
+                ## If wrong t, set t to previous t plus 3 hours
+                if datetimes:
+                    datetimes.append(datetimes[-1] + dt.timedelta(hours=3))
+                else:
+                    pos = list(times).index(t)
+                    t = times[pos+1] - 1/24*3
+                    datetimes.append(dt.datetime.strptime(str(nc.num2date(t, 
+                                'days since {}'.format('1858-11-17'), 
+                                calendar='standard')), '%Y-%m-%d %H:%M:%S'))
+                    
+        time_step=[]
+        for i_time, time in enumerate(datetimes[1:], 1):
+            time_step.append((time - datetimes[i_time-1]).total_seconds()/3600)
+        
+        time_step.append(time_step[-1])
+    
+        basin = list()
+        for bs in nc_data.variables['basin'][i_track, :][:val_len]:
+            try:
+                basin.extend([basin_dict[bs]])
+            except KeyError:
+                basin.extend([np.nan])
+    
+        lon = nc_data.variables['lon'][i_track, :][:val_len]
+        lat = nc_data.variables['lat'][i_track, :][:val_len]
+        cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
+
+        av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
+        max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
+    
+        wind = nc_data.variables['wind'][i_track, :][:val_len]*1.94384 #from m/s to kn
+        if not all(wind.data): # if wind is empty
+            wind = np.ones(wind.size)*-999.9
+
+        tr_df = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon':lon, 
+                'max_sustained_wind': wind, 'central_pressure': cen_pres, 
+                'environmental_pressure': np.ones(lat.size)*1015., 
+                'radius_max_wind': np.ones(lat.size)*65.,
+                'maximum_precipitation': max_prec,
+                'average_precipitation': av_prec,
+                'basins': basin,
+                'time_step': time_step})
+    
+        # construct xarray
+        tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
+        tr_ds.coords['lat'] = ('time', tr_ds.lat)
+        tr_ds.coords['lon'] = ('time', tr_ds.lon)
+        tr_ds.attrs = {'max_sustained_wind_unit': 'kn', 
+                        'central_pressure_unit': 'mb', 
+                        'sid':sid,
+                        'name': sid, 'orig_event_flag': False,
+                        'basin': basin[0],
+                        'category': set_category(wind, 'kn')}
+
+        self.data.append(tr_ds)    
+        
     def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
 
