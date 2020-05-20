@@ -31,6 +31,7 @@ from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
+import shapefile
 from rasterio import MemoryFile
 from rasterio.transform import from_origin
 from rasterio.crs import CRS
@@ -374,6 +375,35 @@ def get_country_code(lat, lon):
         select = shapely.vectorized.contains(geom[0], lon, lat)
         region_id[select] = int(geom[1])
     return region_id
+
+def get_admin1_info(country_names):
+    """ Provide registry info and shape files for admin1 regions
+
+    Parameters:
+        country_names (list): list with ISO3 names of countries, e.g.
+                ['ZWE', 'GBR', 'VNM', 'UZB']
+
+    Returns:
+        admin1_info (dict)
+        admin1_shapes (dict)
+    """
+
+    if isinstance(country_names, str):
+            country_names = [country_names]
+    admin1_file = shapereader.natural_earth(resolution='10m',
+                                            category='cultural',
+                                            name='admin_1_states_provinces')
+    admin1_recs = shapefile.Reader(admin1_file)
+    admin1_info = dict()
+    admin1_shapes = dict()
+    for iso3 in country_names:
+        admin1_info[iso3] = list()
+        admin1_shapes[iso3] = list()
+        for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
+            if rec['adm0_a3'] == iso3:
+                admin1_info[iso3].append(rec)
+                admin1_shapes[iso3].append(rec_shp)
+    return admin1_info, admin1_shapes
 
 def get_resolution(lat, lon, min_resol=1.0e-8):
     """ Compute resolution of points in lat and lon

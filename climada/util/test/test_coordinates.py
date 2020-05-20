@@ -36,7 +36,7 @@ from climada.util.coordinates import grid_is_regular, get_coastlines, \
 get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
 get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
 read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
-get_country_code, convert_wgs_to_utm, elevation_dem, DEM_NODATA
+get_country_code, convert_wgs_to_utm, elevation_dem, DEM_NODATA, get_admin1_info
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
@@ -433,6 +433,7 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(epsg, 32631)
 
     def test_elevation_pass(self):
+        """test elevation_dem"""
         lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667, \
             -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
         lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
@@ -444,6 +445,17 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(elevation[4], 133)
         self.assertEqual(elevation[5], 41)
         self.assertEqual(elevation.min(), DEM_NODATA)
+
+    def test_get_admin1_info_pass(self):
+        """test get_admin1_info()"""
+        country_names = ['CHE', 'IDN', 'USA']
+        admin1_info, admin1_shapes = get_admin1_info(country_names)
+        self.assertEqual(len(admin1_info), 3)
+        self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
+        self.assertEqual(len(admin1_info['CHE']), 26)
+        self.assertEqual(len(admin1_shapes['IDN']), 33)
+        self.assertEqual(len(admin1_info['USA']), 51)
+        self.assertEqual(admin1_info['USA'][1][4], 'US-WA')
 
 # Execute Tests
 if __name__ == "__main__":
