@@ -24,6 +24,7 @@ import unittest
 import array
 import xarray as xr
 import numpy as np
+import netCDF4 as nc
 
 from climada.hazard.tc_tracks import TCTracks
 import climada.hazard.tc_tracks as tc
@@ -34,6 +35,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
 TEST_RAW_TRACK = os.path.join(DATA_DIR, 'Storm.2016075S11087.ibtracs_all.v03r10.csv')
+TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
 
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
@@ -69,6 +71,38 @@ class TestIBTracs(unittest.TestCase):
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
+    def test_read_one_gettelman(self):
+        """Test reading and model of TC from Gettelman track files"""
+        tc_track_G = TCTracks()
+        # populate tracks by loading data from NetCDF:
+        nc_data = nc.Dataset(TEST_TRACK_GETTELMAN)
+        nstorms = nc_data.dimensions['storm'].size
+        for i in range(nstorms):
+            tc_track_G.read_one_gettelman(nc_data, i)
+        return tc_track_G
+
+        self.assertEqual(tc_track_G.data[0].time.size, 169)
+        self.assertEqual(tc_track_G.data[0].lon[11], 67.66)
+        self.assertEqual(tc_track_G.data[0].lat[23], 8.554)
+        self.assertEqual(tc_track_G.data[0].time_step[7], 0.5)
+        self.assertEqual(np.max(tc_track_G.data[0].radius_max_wind), 65)
+        self.assertEqual(np.min(tc_track_G.data[0].radius_max_wind), 65)
+        self.assertEqual(tc_track_G.data[0].max_sustained_wind[21], 45.922632)
+        self.assertEqual(tc_track_G.data[0].central_pressure[29], 999.78417)
+        self.assertEqual(np.max(tc_track_G.data[0].environmental_pressure), 1015)
+        self.assertEqual(np.min(tc_track_G.data[0].environmental_pressure), 1015)
+        self.assertEqual(tc_track_G.data[0].maximum_precipitation, 1106.0)
+        self.assertEqual(tc_track_G.data[0].average_precipitation, 272.5)
+        self.assertEqual(tc_track_G.data[0].time.dt.year[13], 1979)
+        self.assertEqual(tc_track_G.data[0].time.dt.month[26], 1)
+        self.assertEqual(tc_track_G.data[0].time.dt.day[7], 1)
+        self.assertEqual(tc_track_G.data[0].max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track_G.data[0].central_pressure_unit, 'mb')
+        self.assertEqual(tc_track_G.data[0].sid, '0')
+        self.assertEqual(tc_track_G.data[0].name, '0')
+        self.assertTrue(np.isnan(tc_track_G.data[0].basin))
+        self.assertEqual(tc_track_G.data[0].category, 0)
+        
     def test_penv_pass(self):
         """ Test _set_penv method."""
         tc_track = TCTracks()
