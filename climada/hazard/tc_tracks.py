@@ -51,8 +51,8 @@ import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
-SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 135, 1000]
-""" Saffir-Simpson Hurricane Wind Scale in kn"""
+SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 137, 1000]
+""" Saffir-Simpson Hurricane Wind Scale in kn based on NOAA"""
 
 CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',
@@ -306,6 +306,9 @@ class TCTracks():
         """
         LOGGER.info('Computing %s synthetic tracks.', ens_size*self.size)
 
+        if max_angle==0:
+            LOGGER.warning('max_angle=0 is not recommended. It results in non-random \
+                         synthetic tracks with a constant shift to higher latitudes.')
         if seed >= 0:
             np.random.seed(seed)
 
@@ -472,6 +475,8 @@ class TCTracks():
 
             d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
                 np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
+            # change sign of latitude change for southern hemishpere:
+            d_xy = np.sign(track.lat.values[0]) * d_xy 
 
             d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
 
