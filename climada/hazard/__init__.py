@@ -24,4 +24,5 @@ from .tag import *
 from .trop_cyclone import *
 from .tc_tracks import *
 from .storm_europe import *
+from .bush_fire import *
 from .tc_surge import *
