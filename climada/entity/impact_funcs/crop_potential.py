@@ -14,7 +14,7 @@ Define impact functions for AgriculturalDroughts.
 """
 
 
-__all__ = ['IFAgriculturalDrought']
+__all__ = ['IFCropPotential']
 
 import logging
 import numpy as np
@@ -22,20 +22,20 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFAgriculturalDrought(ImpactFunc):
+class IFCropPotential(ImpactFunc):
     """Impact functions for agricultural droughts."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'AD'
+        self.haz_type = 'CP'
         self.intensity_unit = ''
         #self.continent = ''
 
     def set_relativeyield(self):
         """Impact functions defining the impact as (intensity-1)"""
-        self.haz_type = 'AD'
+        self.haz_type = 'CP'
         self.id = 1
-        self.name = 'Agricultural Drought ISIMIP'
+        self.name = 'Crop Potential ISIMIP'
         self.intensity_unit = ''
         self.intensity = np.arange(0, 11)
         self.mdr = (self.intensity - 1)

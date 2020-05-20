@@ -14,6 +14,7 @@ dependencies:
   - geopandas=0.4.1
   - h5py=2.9.0
   - kealib=1.4.7
+  - libtiff=4.0
   - matplotlib=3.1.0
   - mkl=2019.3
   - mkl_fft=1.0.12
@@ -48,9 +49,9 @@ dependencies:
     - multiprocess==0.70.7
     - nbconvert==5.5.0
     - nbformat==4.4
-    - nbimporter==0.3.1
     - overpy==0.4
     - pathos==0.2.3
+    - pillow==6.2.2
     - pint==0.9
     - ppft==1.6.4.9
     - xmlrunner==1.7.7

@@ -298,7 +298,7 @@ class TestFunc(unittest.TestCase):
 
     def test_window_raster_pass(self):
         """ Test window """
-        meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50.1, 60))
         self.assertAlmostEqual(meta['crs'], DEF_CRS)
         self.assertAlmostEqual(meta['transform'].c, -69.2471495969998)
         self.assertAlmostEqual(meta['transform'].a, 0.009000000000000341)
@@ -342,6 +342,18 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(inten_ras.shape, (1, 1081*968))
         # TODO: NOT RESAMPLING WELL in this case!?
         self.assertAlmostEqual(inten_ras.reshape((1081, 968))[45, 22], 0)
+        
+    def test_crs_and_geometry_raster_pass(self):
+        """ Test change projection and crop to geometry """
+        ply = shapely.geometry.Polygon(((478080.8562247154, 1105419.13439131), (478087.5912452241, 1116475.583523723), (500000, 1116468.876713805), (500000, 1105412.49126517), (478080.8562247154, 1105419.13439131)))
+        meta, inten_ras = read_raster(HAZ_DEMO_FL, dst_crs={'init':'epsg:2202'},
+                                      geometry=[ply],resampling=Resampling.nearest)
+        self.assertAlmostEqual(meta['crs'], {'init':'epsg:2202'})
+        self.assertEqual(meta['height'], 12)
+        self.assertEqual(meta['width'], 23)
+        self.assertEqual(inten_ras.shape, (1, 12*23))
+        # TODO: NOT RESAMPLING WELL in this case!?
+        self.assertAlmostEqual(inten_ras.reshape((12, 23))[11, 12], 0.10063865780830383)
 
     def test_transform_raster_pass(self):
         meta, inten_ras = read_raster(HAZ_DEMO_FL,

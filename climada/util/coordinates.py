@@ -31,6 +31,7 @@ from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
+from rasterio import MemoryFile
 from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from rasterio.mask import mask
@@ -479,6 +480,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 if src.meta['nodata']:
                     kwargs['src_nodata'] = src.meta['nodata']
                     kwargs['dst_nodata'] = src.meta['nodata']
+                
                 intensity = np.zeros((len(band), height, width))
                 for idx_band, i_band in enumerate(band):
                     reproject(source=src.read(i_band),
@@ -489,11 +491,32 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                               dst_crs=dst_crs,
                               resampling=resampling,
                               **kwargs)
+                        
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
                     else:
                         intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
                 meta = dst_meta
+             
+                if geometry:
+                    intensity = intensity.astype('float32') 
+                    meta.update(driver='GTiff')   # update driver from netcdf to Gtiff as netcdf does not work reliably
+                    with MemoryFile() as memfile:
+                        with memfile.open(**meta) as dst_inten: # Open as DatasetWriter
+                            dst_inten.write(intensity)
+                        with memfile.open() as dst_inten:  # Reopen as DatasetReader  
+                            inten, mask_trans = mask(dst_inten, geometry, crop=True, indexes=band)
+                            meta.update({"height": inten.shape[1],
+                                         "width": inten.shape[2],
+                                         "transform": mask_trans})
+                    intensity = inten[range(len(band)), :]
+                    intensity = intensity.astype('float64')
+                    # reset nodata values again as driver Gtiff resets them again
+                    if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
+                        intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
+                    else:
+                        intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
+                        
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
             meta = src.meta.copy()
@@ -511,8 +534,8 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 inten = masked_array.data
                 inten[masked_array.mask] = 0
                 if window:
-                    meta.update({"height": window.height, \
-                        "width": window.width, \
+                    meta.update({"height": inten.shape[1], \
+                        "width": inten.shape[2], \
                         "transform": rasterio.windows.transform(window, src.transform)})
             if not meta['crs']:
                 meta['crs'] = CRS.from_dict(DEF_CRS)

@@ -97,7 +97,7 @@ class TropCyclone(Hazard):
             self.pool = None
 
     def set_from_tracks(self, tracks, centroids=None, description='',
-                        model='H08'):
+                        model='H08', ignore_distance_to_coast=False):
         """Clear and model tropical cyclone from input IBTrACS tracks.
         Parallel process.
         Parameters:
@@ -106,6 +106,8 @@ class TropCyclone(Hazard):
                 Default: global centroids.
             description (str, optional): description of the events
             model (str, optional): model to compute gust. Default Holland2008.
+            ignore_distance_to_coast (boolean, optional): if True, centroids
+                far from coast are not ignored. Default False
         Raises:
             ValueError
         """
@@ -113,8 +115,10 @@ class TropCyclone(Hazard):
         if centroids is None:
             centroids = Centroids()
             centroids.read_mat(GLB_CENTROIDS_MAT)
-        # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-        coastal_idx = coastal_centr_idx(centroids)
+        if ignore_distance_to_coast: # Select centroids with lat < 61
+            coastal_idx = np.logical_and(centroids.lat < 61, True).nonzero()[0]
+        else:  # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
+            coastal_idx = coastal_centr_idx(centroids)
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 

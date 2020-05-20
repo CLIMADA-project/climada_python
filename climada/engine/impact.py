@@ -272,7 +272,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -298,7 +298,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -324,7 +324,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -353,13 +353,88 @@ class Impact():
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
         axis.set_title('Expected annual impact')
+        return axis
+
+    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+                                    pop_name=True, buffer=0.0, extend='neither',
+                                    axis=None, **kwargs):
+        """Plot hexbin impact of an event at each exposure.
+        Requires attribute imp_mat.
+
+        Parameters:
+            event_id (int, optional): id of the event for which to plot the impact.
+                Default: 1.
+            mask (np.array, optional): mask to apply to impact plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates.
+                Default: 1.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            kwargs (optional): arguments for hexbin matplotlib function
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+
+        Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            """
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+                         'instance with parameter save_mat=True')
+            return []
+
+        impact_at_events_exp = self._build_exp_event(event_id)
+        axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
+                                                buffer, extend, axis=axis, **kwargs)
+
+        return axis
+
+    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+                                     pop_name=True, buffer=0.0, extend='neither', zoom=10,
+                                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                     axis=None, **kwargs):
+        """Plot basemap impact of an event at each exposure.
+        Requires attribute imp_mat.
+
+        Parameters:
+            event_id (int, optional): id of the event for which to plot the impact.
+                Default: 1.
+            mask (np.array, optional): mask to apply to impact plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            zoom (int, optional): zoom coefficient used in the satellite image
+            url (str, optional): image source, e.g. ctx.sources.OSM_C
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+
+        Returns:
+            cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+                         'instance with parameter save_mat=True')
+            return []
+
+        impact_at_events_exp = self._build_exp_event(event_id)
+        axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
+                                                 buffer, extend, zoom, url, axis=axis, **kwargs)
+
         return axis
 
     def write_csv(self, file_name):
@@ -451,7 +526,7 @@ class Impact():
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
-        if orig_year.size==0 and len(year_range)==0:
+        if orig_year.size == 0 and len(year_range) == 0:
             return dict()
         if orig_year.size==0 or (len(year_range)>0 and all_years):
             years = np.arange(min(year_range), max(year_range)+1)
@@ -815,6 +890,23 @@ class Impact():
         eai_exp.tag = Tag()
         eai_exp.meta = None
         return eai_exp
+
+    def _build_exp_event(self, event_id):
+        """Write impact of an event as Exposures
+
+        Parameters:
+            event_id(int): id of the event
+        """
+        impact_csr_exp = Exposures()
+        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id-1, :]
+        impact_csr_exp['latitude'] = self.coord_exp[:, 0]
+        impact_csr_exp['longitude'] = self.coord_exp[:, 1]
+        impact_csr_exp.crs = self.crs
+        impact_csr_exp.value_unit = self.unit
+        impact_csr_exp.ref_year = 0
+        impact_csr_exp.tag = Tag()
+        impact_csr_exp.meta = None
+        return impact_csr_exp
 
     @staticmethod
     def _cen_return_imp(imp, freq, imp_th, return_periods):

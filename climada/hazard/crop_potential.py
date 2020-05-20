@@ -20,10 +20,10 @@ Define AgriculturalDrought (AD) class.
 WORK IN PROGRESS
 """
 
-__all__ = ['AgriculturalDrought']
+__all__ = ['CropPotential']
 
 import logging
-import re
+import os
 import xarray as xr
 import numpy as np
 from matplotlib import pyplot as plt
@@ -36,20 +36,67 @@ import scipy.stats
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
 
-DFL_CROP = ''
-INT_DEF = 'Yearly Yield'
+
 
 LOGGER = logging.getLogger(__name__)
 
-HAZ_TYPE = 'AD'
-""" Hazard type acronym for Agricultural Drought """
+HAZ_TYPE = 'CP'
+""" Hazard type acronym for Crop Potential """
 
 
-class AgriculturalDrought(Hazard):
-    """Contains agricultural drought events.
+AG_MODEL = ['gepic',
+            'lpjml',
+            'pepic'
+            ]
+
+CL_MODEL = ['gfdl-esm2m',
+            'hadgem2-es',
+            'ipsl-cm5a-lr',
+            'miroc5'
+            ]
+
+SCENARIO = ['historical',
+            'rcp60'
+            ]
+
+SOC = ['2005soc',
+       'histsoc'
+       ]
+
+CO2 = ['co2',
+       '2005co2'
+       ]
+
+CROP = ['whe',
+        'mai',
+        'soy',
+        'ric'
+       ]
+
+IRR = ['noirr',
+       'irr']
+
+TARGET_YEARRANGE = np.array([2001, 2005])
+
+FN_STR_VAR = 'global_annual'
+
+YEARCHUNKS = dict()
+YEARCHUNKS[SCENARIO[0]] = dict()
+YEARCHUNKS[SCENARIO[0]] = {'startyear' : 1861, 'endyear': 2005, 'duration': 145}
+YEARCHUNKS[SCENARIO[1]] = dict()
+YEARCHUNKS[SCENARIO[1]] = {'startyear' : 2006, 'endyear': 2099, 'duration': 94}
+
+
+BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
+
+INT_DEF = 'Yearly Yield'
+
+
+class CropPotential(Hazard):
+    """Contains events impacting the crop potential.
 
     Attributes:
-        crop (str): crop type (e.g. wheat)
+        crop_type (str): crop type (e.g. whe for wheat)
         intensity_def (str): intensity defined as the Yearly Yield / Relative Yield / Percentile
     """
 
@@ -62,7 +109,7 @@ class AgriculturalDrought(Hazard):
         else:
             self.pool = None
 
-        self.crop = DFL_CROP
+        self.crop = CROP[0]
         self.intensity_def = INT_DEF
 
 #    def set_hist_events(self, centroids=None):
@@ -75,48 +122,67 @@ class AgriculturalDrought(Hazard):
 #        self.clear()
 
 
-    def set_from_single_run(self, file_path=None, lonmin=-85, latmin=-180, lonmax=85, \
-                            latmax=180, years_user=None):
-        """ Reads netcdf file and initializes a hazard
+    def set_from_single_run(self, input_dir=None, bbox=BBOX, yearrange=TARGET_YEARRANGE, \
+                            ag_model=AG_MODEL[0], cl_model=CL_MODEL[0], scenario=SCENARIO[0], \
+                            soc=SOC[0], co2=CO2[0], crop=CROP[0], irr=IRR[0], \
+                            fn_str_var=FN_STR_VAR):
 
+        """Wrapper to fill hazard from nc_dis file from ISIMIP
         Parameters:
-            file_path (str): path to netcdf file
-            lonmin, latin, lonmax, latmax (int, optional) : bounding box to extract
-            years_user (array, optional) : start and end year specified by the user
-
-        Returns:
-            hazard
+            input_dir (string): path to input data directory
+            bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+            yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
+            ag_model (str): abbrev. agricultural model (only when input_dir is selected)
+                f.i. 'gepic' etc.
+            cl_model (str): abbrev. climate model (only when input_dir is selected)
+                f.i. 'gfdl-esm2m' etc.
+            scenario (str): climate change scenario (only when input_dir is selected)
+                f.i. 'historical' or 'rcp60'
+            soc (str): socio-economic trajectory (only when input_dir is selected)
+                f.i. '2005soc' or 'histsoc'
+            co2 (str): CO2 forcing scenario (only when input_dir is selected)
+                f.i. 'co2' or '2005co2'
+            crop (str): crop type (only when input_dir is selected)
+                f.i. 'whe', 'mai', 'soy' or 'ric'
+            irr (str): irrigation type (only when input_dir is selected)
+                f.i 'noirr' or 'irr'
+            fn_str_var (str): FileName STRing depending on VARiable and
+                ISIMIP simuation round
+        raises:
+            NameError
         """
 
-        if file_path is None:
-            LOGGER.error('No drough-file-path set')
+        if input_dir is not None:
+            if not os.path.exists(input_dir):
+                LOGGER.warning('Input directory %s does not exist', input_dir)
+                raise NameError
+        else:
+            LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
-        #determine time period that is covered by the input data
-        years_file = np.zeros(2)
-        string = re.search('annual_(.+?)_', file_path)
-        if string:
-            years_file[0] = int(string.group(1))
 
-        string = re.search(str(int(years_file[0]))+'_(.+?).nc', file_path)
-        if string:
-            years_file[1] = int(string.group(1))
+        yearchunk = YEARCHUNKS[scenario]
+        string = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc'
+        filename = os.path.join(input_dir, string % (ag_model, cl_model, scenario, soc, co2, crop, \
+                                                 irr, fn_str_var, str(yearchunk['startyear']), \
+                                                 str(yearchunk['endyear'])))
 
-        if years_user is None:
-            id_bands = np.arange(1, years_file[1] - years_file[0]+2).tolist()
-            event_list = [str(n) for n in range(int(years_file[0]), int(years_file[1]+1))]
+        if yearrange is None:
+            id_bands = np.arange(1, yearchunk['duration']+1).tolist()
+            event_list = [str(n) for n in range(yearchunk['startyear'], yearchunk['endyear']+1)]
         else:
-            id_bands = np.arange(years_user[0]-years_file[0]-1, \
-                                 years_user[1] - years_file[0]).tolist()
-            event_list = [str(n) for n in range(int(years_user[0]), int(years_user[1]+1))]
+            id_bands = np.arange(yearrange[0]-yearchunk['startyear']-1, \
+                                 yearrange[1] - yearchunk['startyear']).tolist()
+            event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1]+1))]
 
         date = [event_list[n]+'-01-01' for n in range(len(event_list))]
 
         #extract additional information of original file
-        data = xr.open_dataset(file_path, decode_times=False)
+        data = xr.open_dataset(filename, decode_times=False)
 
-        self.set_raster([file_path], band=id_bands, \
-                        geometry=list([shapely.geometry.box(lonmin, latmin, lonmax, latmax)]))
+        self.set_raster([filename], band=id_bands, \
+                        geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
         self.check()
         self.crop = data.crop
         self.event_name = event_list
@@ -125,6 +191,7 @@ class AgriculturalDrought(Hazard):
         self.fraction.data.fill(1.0)
         self.units = 't / y'
         self.date = np.array(dt.str_to_date(date))
+        self.centroids.set_meta_to_lat_lon()
 
         return self
 
@@ -160,6 +227,8 @@ class AgriculturalDrought(Hazard):
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
         self.units = ''
+        self.intensity.max = np.nanmax(self.intensity.toarray())
+        self.intensity.min = np.nanmin(self.intensity.toarray())
 
         return self
 
@@ -191,7 +260,7 @@ class AgriculturalDrought(Hazard):
 
         return self
 
-    def plot_intensity_agd(self, event, dif=0, axis=None, **kwargs):
+    def plot_intensity_cp(self, event, dif=0, axis=None, **kwargs):
         """ Plots intensity with predefined settings depending on the intensity definition
 
         Parameters:
@@ -257,11 +326,11 @@ class AgriculturalDrought(Hazard):
                       np.min(self.centroids.lat), np.max(self.centroids.lat)])
 
             if rows == 1:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[colum])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[colum])
             elif colums == 1:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[row])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[row])
             else:
-                self.plot_intensity_agd(event=event_list[year], axis=axes[row, colum])
+                self.plot_intensity_cp(event=event_list[year], axis=axes[row, colum])
 
             if colum <= colums-2:
                 colum = colum + 1
@@ -307,9 +376,9 @@ class AgriculturalDrought(Hazard):
 
 
             if nr_cli_models == 1:
-                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[subplot])
+                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[subplot])
             else:
-                ax1 = self.plot_intensity_agd(event=0, dif=dif_def, axis=axes[model, subplot])
+                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[model, subplot])
 
             ax1.set_title('')
 

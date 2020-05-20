@@ -28,7 +28,7 @@ Contributions are very welcome! Please follow these steps:
 
 5. Make unit and integration **tests** on your code, preferably during development:
 
-   * Unit tests are located in the ``test`` folder located in same folder as the corresponding module. Unit tests should test all methods and functions using fake data if necessary. The whole test suit should run in less than 20 sec. They are all executed after each push in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci/>`_.
+   * Unit tests are located in the ``test`` folder located in same folder as the corresponding module. Unit tests should test all methods and functions using fake data if necessary. The whole test suit should run in less than 20 sec. They are all executed after each push in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_branches/>`_.
 
    * Integration tests are located in ``climada/test/``. They test end-to-end methods and functions. Their execution time can be of minutes. They are executed once a day in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci_night/>`_.
 

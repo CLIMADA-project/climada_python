@@ -587,6 +587,10 @@ class Hazard():
         Returns:
             np.array
         """
+        # warn if return period is above return period of rarest event:
+        for rp in return_periods:
+            if rp > 1/self.frequency.min():
+                LOGGER.warning('Return period %1.1f exceeds max. event return period.' %(rp))
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
@@ -605,7 +609,11 @@ class Hazard():
         self._loc_return_inten(np.array(return_periods), \
             self.intensity[:, (chk+1)*cen_step:].todense(), \
             inten_stats[:, (chk+1)*cen_step:])
-
+        # set values below 0 to zero if minimum of hazard.intensity >= 0:
+        if self.intensity.min()>=0 and np.min(inten_stats)<0:
+            LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
+Reason: no negative intensity values were found in hazard.')
+            inten_stats[inten_stats<0] = 0
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
@@ -918,7 +926,7 @@ class Hazard():
                         all_touched=True, dtype=profile['dtype'],)
                     dst.write(raster.astype(profile['dtype']), i_ev+1)
 
-    def write_hdf5(self, file_name):
+    def write_hdf5(self, file_name,todense=False):
         """ Write hazard in hdf5 format.
 
         Parameters:
@@ -938,11 +946,14 @@ class Hazard():
                 hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
                 hf_str[0] = str(var_val.description)
             elif isinstance(var_val, sparse.csr_matrix):
-                hf_csr = hf_data.create_group(var_name)
-                hf_csr.create_dataset('data', data=var_val.data)
-                hf_csr.create_dataset('indices', data=var_val.indices)
-                hf_csr.create_dataset('indptr', data=var_val.indptr)
-                hf_csr.attrs['shape'] = var_val.shape
+                if todense:
+                    hf_data.create_dataset(var_name, data=var_val.todense())
+                else:
+                    hf_csr = hf_data.create_group(var_name)
+                    hf_csr.create_dataset('data', data=var_val.data)
+                    hf_csr.create_dataset('indices', data=var_val.indices)
+                    hf_csr.create_dataset('indptr', data=var_val.indptr)
+                    hf_csr.attrs['shape'] = var_val.shape
             elif isinstance(var_val, str):
                 hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
                 hf_str[0] = var_val
@@ -974,8 +985,11 @@ class Hazard():
                 setattr(self, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
                 hf_csr = hf_data.get(var_name)
-                setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
-                    hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
+                if isinstance(hf_csr,h5py.Dataset):
+                    setattr(self, var_name, sparse.csr_matrix(hf_csr))
+                else:
+                    setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
+                        hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
                 setattr(self, var_name, hf_data.get(var_name)[0])
             elif isinstance(var_val, list):

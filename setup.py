@@ -61,15 +61,15 @@ setup(
         'descartes',
         #'earthengine_api==0.1.210', # ee, conda!
         'elevation==1.0.6',
-        'fiona=1.8.4',
+        'fiona==1.8.4',
         'fsspec>=0.3.6', # < dask
         'gdal==2.3.3', # conda!
         'geopandas==0.4.1',
         'h5py==2.9.0',
         'haversine==2.1.1',
         'iso3166==1.0',
-        'kealib==1.4.7', # < fiona
-        'matplotlib==3.1.1', #
+        #'kealib==1.4.7', < fiona
+        'matplotlib==3.1', #
         'mercantile',
         #'mpl_toolkits', matplotlib
         'netCDF4==1.4.2', # conda!
@@ -79,7 +79,7 @@ setup(
         'pandas==0.24.2',
         'pandas_datareader==0.7.0',
         'pathos==0.2.3',
-        'pillow', # PIL
+        'pillow==6.2.2', # PIL 7.0 has a conflict with libtiff 4.0 which is necessary for - at least - Windows
         'pint==0.9',
         #'pylab', matplotlib
         'pyproj==1.9.6', #
@@ -101,7 +101,7 @@ setup(
         'xmlrunner==1.7.7', # ci tests
     ],
 
-    package_data={'': extra_files },
+    package_data={'': extra_files},
 
     include_package_data=True
 )
