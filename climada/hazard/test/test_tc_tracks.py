@@ -73,13 +73,12 @@ class TestFuncs(unittest.TestCase):
 
     def test_read_one_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""
-        tc_track_G = TCTracks() 
-    
-        # populate tracks by loading data from NetCDF:       
+        tc_track_G = TCTracks()
+        # populate tracks by loading data from NetCDF:
         nc_data = nc.Dataset(TEST_TRACK_GETTELMAN)
         nstorms = nc_data.dimensions['storm'].size
         for i in range(nstorms):
-            tc_track_G.read_one_gettelman(nc_data, i)    
+            tc_track_G.read_one_gettelman(nc_data, i)
         return tc_track_G
 
         self.assertEqual(tc_track_G.data[0].time.size, 169)
