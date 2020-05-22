@@ -43,6 +43,7 @@ dependencies:
   - xlsxwriter=1.1.7
   - pip:
     - contextily==1.0rc2
+    - elevation==1.0.6
     - haversine==2.1.1
     - iso3166==1.0
     - multiprocess==0.70.7
