@@ -179,7 +179,7 @@ class FloodTrend(Hazard):
         win = self._cut_window(lon, lat)
         lon_coord = lon[win[0, 0]:win[1, 0] + 1]
         lat_coord = lat[win[0, 1]:win[1, 1] + 1]
-        dph_window = flood_dph.discharge[event_index, win[0, 1]:win[1, 1] + 1,
+        dph_window = flood_dph.Discharge[event_index, win[0, 1]:win[1, 1] + 1,
                                       win[0, 0]:win[1, 0] + 1].data
 
         self.window = win
