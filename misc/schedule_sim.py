@@ -81,9 +81,9 @@ else:
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
 
 if args.CL_model == 'watch':
-    years = np.arange(1920, 2002)
+    years = np.arange(1971, 2002)
 else:
-    years = np.arange(1920, 2011)
+    years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
