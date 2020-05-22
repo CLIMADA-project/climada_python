@@ -72,7 +72,7 @@ output = currentdir
 if args.SM_mode == 'smooth':
     dis_path = '/home/insauer/projects/RiverDischarge/SmoothTrends_24_2.nc'
 else:
-    dis_path = '/home/insauer/projects/RiverDischarge/Regression_CDO_trends_24_2.nc'
+    dis_path = '/home/insauer/projects/RiverDischarge/TrendsMedianDischarge_MK.nc'
 
 
 if args.Socmode == 'nosoc':
@@ -257,6 +257,6 @@ for cnt_ind in range(len(isos)):
     #if args.RF_model == 'lpjml':
         #dataDF.to_csv('output_{}_{}_fullProt_lpjml_long_2y.csv'.format(args.RF_model, args.CL_model))
     #else:
-    dataDF.to_csv('DisRisk_lpjml_{}_Output_{}_{}_0flopros_8010_{}_08_05.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
+    dataDF.to_csv('DisRisk_lpjml_{}_Output_{}_{}_0flopros_8010_{}_22_05.csv'.format(args.SM_mode, args.RF_model, args.CL_model, args.Socmode))
 
 
