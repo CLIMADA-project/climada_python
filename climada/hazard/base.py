@@ -501,11 +501,12 @@ class Hazard():
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-    def select(self, date=None, orig=None, reg_id=None, reset_frequency=False):
+    def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events within provided date and/or (historical or synthetical)
         and/or region. Frequency of the events may need to be recomputed!
 
         Parameters:
+            event_names (list(str), optional): names of event
             date (tuple(str or int), optional): (initial date, final date) in
                 string ISO format ('2011-01-02') or datetime ordinal integer
             orig (bool, optional): select only historical (True) or only
@@ -526,14 +527,21 @@ class Hazard():
         sel_ev = np.ones(self.event_id.size, bool)
         sel_cen = np.ones(self.centroids.size, bool)
 
+        # filter events based on name
+        if isinstance(event_names, list):
+            sel_ev[[i for i in range(len(self.event_name)) if \
+                    self.event_name[i] in event_names]] = 0.
+            sel_ev = np.invert(sel_ev)
+
         # filter events with date
         if isinstance(date, tuple):
             date_ini, date_end = date[0], date[1]
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
-            sel_ev = np.logical_and(date_ini <= self.date,
-                                    self.date <= date_end)
+            sel_ev = np.logical_and(sel_ev,
+                                    np.logical_and(date_ini <= self.date,
+                                                   self.date <= date_end))
             if not np.any(sel_ev):
                 LOGGER.info('No hazard in date range %s.', date)
                 return None
@@ -610,10 +618,10 @@ class Hazard():
             self.intensity[:, (chk+1)*cen_step:].todense(), \
             inten_stats[:, (chk+1)*cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if self.intensity.min()>=0 and np.min(inten_stats)<0:
+        if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
 Reason: no negative intensity values were found in hazard.')
-            inten_stats[inten_stats<0] = 0
+            inten_stats[inten_stats < 0] = 0
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
@@ -917,7 +925,7 @@ Reason: no negative intensity values were found in hazard.')
             profile = self.centroids.meta
             profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
             with rasterio.open(file_name, 'w', **profile) as dst:
-                LOGGER.info('Writting %s', file_name)
+                LOGGER.info('Writing %s', file_name)
                 for i_ev in range(variable.shape[0]):
                     raster = rasterize([(x, val) for (x, val) in \
                         zip(pixel_geom, np.array(variable[i_ev, :].todense()).reshape(-1))], \
@@ -926,13 +934,13 @@ Reason: no negative intensity values were found in hazard.')
                         all_touched=True, dtype=profile['dtype'],)
                     dst.write(raster.astype(profile['dtype']), i_ev+1)
 
-    def write_hdf5(self, file_name,todense=False):
+    def write_hdf5(self, file_name, todense=False):
         """ Write hazard in hdf5 format.
 
         Parameters:
             file_name (str): file name to write, with h5 format
         """
-        LOGGER.info('Writting %s', file_name)
+        LOGGER.info('Writing %s', file_name)
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
         for (var_name, var_val) in self.__dict__.items():
@@ -985,7 +993,7 @@ Reason: no negative intensity values were found in hazard.')
                 setattr(self, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
                 hf_csr = hf_data.get(var_name)
-                if isinstance(hf_csr,h5py.Dataset):
+                if isinstance(hf_csr, h5py.Dataset):
                     setattr(self, var_name, sparse.csr_matrix(hf_csr))
                 else:
                     setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
