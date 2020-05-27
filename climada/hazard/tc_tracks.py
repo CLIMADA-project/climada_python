@@ -223,6 +223,7 @@ class TCTracks():
             data_v, data_p = data['longstore'], data['latstore'], data['yearstore'], \
             data['monthstore'], data['daystore'], data['hourstore'], data['rmstore'], \
             data['vstore'], data['pstore']
+            data_lon[data_lon>180]=data_lon[data_lon>180]-360 # change lon format to -180 to 180
             LOGGER.info('Loading %s tracks (each %s nodes), representing %s years.', \
                         data_lat.shape[0], data_lat.shape[1], data_lat.shape[0]//600)
             for i_track in range(data_lat.shape[0]):
@@ -311,6 +312,7 @@ class TCTracks():
                 basin.extend([np.nan])
     
         lon = nc_data.variables['lon'][i_track, :][:val_len]
+        lon[lon>180]=lon[lon>180]-360 # change lon format to -180 to 180
         lat = nc_data.variables['lat'][i_track, :][:val_len]
         cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
         av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
