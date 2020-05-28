@@ -31,6 +31,7 @@ from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
 import geopandas as gpd
 import rasterio
+import shapefile
 from rasterio import MemoryFile
 from rasterio.transform import from_origin
 from rasterio.crs import CRS
@@ -182,41 +183,6 @@ def dist_to_coast(coord_lat, lon=None):
     coast = gpd.GeoDataFrame(geometry=[coast], crs=NE_CRS).to_crs(to_crs)
     return geom.to_crs(to_crs).distance(coast.geometry[0]).values
 
-def elevation_dem(lon, lat, crs=DEF_CRS, product='SRTM1',
-                  resampling=Resampling.nearest, nodata=DEM_NODATA, min_resol=1.0e-8):
-    """ Set elevation in meters for every point.
-
-    Parameter:
-        product (str, optional): Digital Elevation Model to use with elevation
-            package. Options: 'SRTM1' (30m), 'SRTM3' (90m). Default: 'SRTM1'
-        resampling (rasterio.warp.Resampling, optional): resampling
-            function used for reprojection from DEM to centroids' CRS. Default:
-            nearest.
-        nodata (int, optional): value to use in DEM no data points.
-        min_resol (float, optional): if centroids are points, minimum
-            resolution in lat and lon to use to interpolate DEM data. Default: 1.0e-8
-    """
-    import elevation
-
-    bounds = lon.min(), lat.min(), lon.max(), lat.max()
-    LOGGER.debug('Setting elevation of points with bounds %s.', str(bounds))
-    rows, cols, ras_trans = pts_to_raster_meta(bounds, min(get_resolution(lat, lon, min_resol)))
-
-    bounds += np.array([-.05, -.05, .05, .05])
-    elevation.clip(bounds, output=TMP_ELEVATION_FILE, product=product,
-                   max_download_tiles=MAX_DEM_TILES_DOWN)
-    dem_mat = np.zeros((rows, cols))
-    with rasterio.open(TMP_ELEVATION_FILE, 'r') as src:
-        reproject(source=src.read(1), destination=dem_mat,
-                  src_transform=src.transform, src_crs=src.crs,
-                  dst_transform=ras_trans, dst_crs=crs,
-                  resampling=resampling,
-                  src_nodata=src.nodata, dst_nodata=nodata)
-
-    # search nearest neighbor of each point
-    x_i = ((lon - ras_trans[2]) / ras_trans[0]).astype(int)
-    y_i = ((lat - ras_trans[5]) / ras_trans[4]).astype(int)
-    return dem_mat[y_i, x_i]
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
@@ -374,6 +340,35 @@ def get_country_code(lat, lon):
         select = shapely.vectorized.contains(geom[0], lon, lat)
         region_id[select] = int(geom[1])
     return region_id
+
+def get_admin1_info(country_names):
+    """ Provide registry info and shape files for admin1 regions
+
+    Parameters:
+        country_names (list): list with ISO3 names of countries, e.g.
+                ['ZWE', 'GBR', 'VNM', 'UZB']
+
+    Returns:
+        admin1_info (dict)
+        admin1_shapes (dict)
+    """
+
+    if isinstance(country_names, str):
+            country_names = [country_names]
+    admin1_file = shapereader.natural_earth(resolution='10m',
+                                            category='cultural',
+                                            name='admin_1_states_provinces')
+    admin1_recs = shapefile.Reader(admin1_file)
+    admin1_info = dict()
+    admin1_shapes = dict()
+    for iso3 in country_names:
+        admin1_info[iso3] = list()
+        admin1_shapes[iso3] = list()
+        for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
+            if rec['adm0_a3'] == iso3:
+                admin1_info[iso3].append(rec)
+                admin1_shapes[iso3].append(rec_shp)
+    return admin1_info, admin1_shapes
 
 def get_resolution(lat, lon, min_resol=1.0e-8):
     """ Compute resolution of points in lat and lon

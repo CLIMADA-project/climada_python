@@ -29,7 +29,6 @@ INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'co2_dis_global_daily_DEMO_FR'
 
 
-
 def init_test_data_unqiue_clusters():
     """creates sandbox test data for 2D cluster IDs for test of identification of
     unique 3D clusters"""
@@ -60,7 +59,6 @@ def init_test_data_clustering():
     df['cons_id'] = np.zeros(len(df), int)-1
     return df
 
-
 class TestLowFlow(unittest.TestCase):
     """Test for defining low flow event from discharge data file"""
     def test_load_FR_all(self):
@@ -73,9 +71,10 @@ class TestLowFlow(unittest.TestCase):
                     scenario='historical', scenario_ref='historical', soc='histsoc', \
                     soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True)
         self.assertEqual(haz.data.shape[0], 1653)
-        self.assertEqual(haz.data.shape[1], 13)
-        self.assertEqual(haz.data.dis.max(), 31.0)
-        self.assertAlmostEqual(haz.data.dis.mean(), 10.588021778584393)
+        self.assertEqual(haz.data.shape[1], 14)
+        self.assertEqual(haz.data.ndays.max(), 31.0)
+        self.assertAlmostEqual(haz.data.ndays.mean(), 10.588021778584393)
+        self.assertAlmostEqual(haz.data.relative_dis.max(), 0.41278067)
         self.assertEqual(haz.centroids.lon.min(), -4.75)
         self.assertEqual(haz.centroids.lon.max(), 8.25)
         self.assertEqual(haz.centroids.lat.min(), 42.25)
