@@ -294,6 +294,27 @@ class TestRemoveDupl(unittest.TestCase):
 class TestSelect(unittest.TestCase):
     """Test select method."""
 
+    def test_select_event_name(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(event_names=['ev1', 'ev4'])
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([1, 4])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([1, 4])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.1, 0.2])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.todense(), np.array([[0.02, 0.03, 0.04], \
+                                          [0.3, 0.2, 0.0]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.todense(), np.array([[0.2, 0.3, 0.4], \
+                                          [5.3, 0.2, 1.3]])))
+        self.assertEqual(sel_haz.event_name, ['ev1', 'ev4'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
     def test_select_orig_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()
