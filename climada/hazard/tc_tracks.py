@@ -223,6 +223,7 @@ class TCTracks():
             data_v, data_p = data['longstore'], data['latstore'], data['yearstore'], \
             data['monthstore'], data['daystore'], data['hourstore'], data['rmstore'], \
             data['vstore'], data['pstore']
+            data_lon[data_lon>180]=data_lon[data_lon>180]-360 # change lon format to -180 to 180
             LOGGER.info('Loading %s tracks (each %s nodes), representing %s years.', \
                         data_lat.shape[0], data_lat.shape[1], data_lat.shape[0]//600)
             for i_track in range(data_lat.shape[0]):
@@ -262,6 +263,8 @@ class TCTracks():
         nc_data (str): netCDF4.Dataset Objekt
         i_tracks (int): track number
         """
+        scale_to_10m = (10./60.)**.11
+        mps2kts = 1.94384 
         basin_dict = {0: 'NA - North Atlantic',
                       1: 'SA - South Atlantic',
                       2: 'WP - West Pacific',
@@ -311,12 +314,13 @@ class TCTracks():
                 basin.extend([np.nan])
     
         lon = nc_data.variables['lon'][i_track, :][:val_len]
+        lon[lon>180]=lon[lon>180]-360 # change lon format to -180 to 180
         lat = nc_data.variables['lat'][i_track, :][:val_len]
         cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
         av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
         max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
     
-        wind = nc_data.variables['wind'][i_track, :][:val_len]*1.94384  # m/s to kn
+        wind = nc_data.variables['wind'][i_track, :][:val_len]*mps2kts*scale_to_10m  # m/s to kn
         if not all(wind.data):  # if wind is empty
             wind = np.ones(wind.size)*-999.9
     
@@ -344,7 +348,6 @@ class TCTracks():
         
     def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
-
         Parameters:
             time_step_h (float, optional): time step in hours to which to
                 interpolate. Default: 1.
