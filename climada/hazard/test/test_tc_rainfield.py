@@ -22,17 +22,15 @@ Test TCRain class
 import os
 import unittest
 import numpy as np
-from pint import UnitRegistry
 from scipy import sparse
 import datetime as dt
 
-import climada.hazard.trop_cyclone as tc
 from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.tc_rainfield import TCRain
+from climada.hazard.tc_rainfield import TCRain, rainfield_from_track
 from climada.hazard.centroids.centr import Centroids
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
+HAZ_TEST_MAT = os.path.join(DATA_DIR, 'TCrain_brb_test.mat')
 TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
 
@@ -69,9 +67,8 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
 
-        self.assertAlmostEqual(tc_haz.intensity[0, 100],
-                               112.34415598857767, 6)
-        self.assertEqual(tc_haz.intensity[0, 260], 39.40196905960053)
+        self.assertAlmostEqual(tc_haz.intensity[0, 100], 99.7160586771286, 6)
+        self.assertEqual(tc_haz.intensity[0, 260], 33.2087621869295)
         self.assertEqual(tc_haz.fraction[0, 100], 1)
         self.assertEqual(tc_haz.fraction[0, 260], 1)
 
@@ -134,7 +131,24 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
         
+class TestModel(unittest.TestCase):
+    """Test modelling of rainfall"""
+
+    def test_rainfield_from_track_pass(self):
+        """ Test _rainfield_from_track function. Compare to MATLAB reference."""
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        rainfall = rainfield_from_track(tc_track.data[0],
+                                        CENTR_TEST_BRB)
         
+        rainfall = np.round(rainfall, decimals=9)
+        
+        self.assertEqual(rainfall[0,0], 66.801702386)
+        self.assertAlmostEqual(rainfall[0,130], 43.290917792)
+        self.assertAlmostEqual(rainfall[0,200], 76.315923838)
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
