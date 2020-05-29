@@ -152,3 +152,4 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
+
