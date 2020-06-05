@@ -189,7 +189,7 @@ class CropPotential(Hazard):
         self.frequency = np.ones(len(self.event_name))*(1/len(self.event_name))
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
-        self.units = 't / y'
+        self.units = 't / y / ha'
         self.date = np.array(dt.str_to_date(date))
         self.centroids.set_meta_to_lat_lon()
 
@@ -201,8 +201,8 @@ class CropPotential(Hazard):
             Returns:
                 mean(array): contains mean value over the given time period for every centroid
         """
-        hist_mean = np.mean(self.intensity, 0)
-        #hist_mean[hist_mean == 0] = np.nan
+
+        hist_mean = np.nan_to_num(np.squeeze(np.asarray(np.mean(self.intensity, 0))))
 
         return hist_mean
 
@@ -219,10 +219,10 @@ class CropPotential(Hazard):
 
         hazard_matrix = np.empty(self.intensity.shape)
         hazard_matrix[:, :] = np.nan
-        idx = np.where(hist_mean != 0)[1]
+        idx = np.where(hist_mean != 0)[0]
 
         for event in range(len(self.event_id)):
-            hazard_matrix[event, idx] = self.intensity[event, idx]/hist_mean[0, idx]
+            hazard_matrix[event, idx] = self.intensity[event, idx]/hist_mean[idx]
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
