@@ -285,22 +285,40 @@ class TCTracks():
                                                       land_geom))
             self.data = new_data
 
-    def calc_random_walk(self, ens_size=9, ens_amp0=1.5, max_angle=np.pi/10, \
-        ens_amp=0.1, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
-        """ Generate synthetic tracks. An ensamble of tracks is computed for
-        every track contained.
+    def calc_random_walk(self, ens_size=9, ens_amp0=1.5, ens_amp=0.1, \
+        max_angle=np.pi/10, seed=CONFIG['trop_cyclone']['random_seed'], decay=True):
+        """
+        Generate synthetic tracks based on directed random walk. An ensemble of
+        tracks is computed for every track contained.
+        Please note that there is a bias towards higher latitudes in the random
+        wiggle. The wiggles are applied for each timestep. Please consider using
+        equal_timestep() for unification before generating synthetic tracks.
+        Be careful when changing ens_amp and max_angle and test changes of the
+        parameter values before application.
 
         Parameters:
-            ens_size (int, optional): number of ensamble per original track.
+            ens_size (int, optional): number of ensemble members per track.
                 Default 9.
             ens_amp0 (float, optional): amplitude of max random starting point
-                shift degree longitude. Default: 1.5
-            max_angle (float, optional): maximum angle of variation, =pi is
-                like undirected, pi/4 means one quadrant. Default: pi/10
+                shift in decimal degree (longitude and latitude). Default: 1.5
             ens_amp (float, optional): amplitude of random walk wiggles in
-                degree longitude for 'directed'. Default: 0.1
-            seed (int, optional): random number generator seed. Put negative
-                value if you don't want to use it. Default: configuration file
+                decimal degree (longitude and latitude). Default: 0.1
+            max_angle (float, optional): maximum angle of variation. Default: pi/10.
+                - max_angle=pi results in undirected random change with
+                    no change in direction;
+                - max_angle=0 (or very close to 0) is not recommended. It results
+                    in non-random synthetic tracks with constant shift to higher latitudes;
+                - for 0<max_angle<pi/2, the change in latitude is always toward
+                    higher latitudes, i.e. poleward,
+                - max_angle=pi/4 results in random angles within one quadrant,
+                    also with a poleward bias;
+                - decreasing max_angle starting from pi will gradually increase
+                    the spread of the synthetic tracks until they start converging
+                    towards the result of max_angle=0 at a certain value (depending
+                    on length of timesteps and ens_amp).
+            seed (int, optional): random number generator seed for replicability
+                of random walk. Put negative value if you don't want to use it.
+                Default: configuration file
             decay (bool, optional): compute land decay in probabilistic tracks.
                 Default: True
         """
