@@ -76,7 +76,7 @@ CROP = ['whe',
 IRR = ['noirr',
        'irr']
 
-TARGET_YEARRANGE = np.array([2001, 2005])
+TARGET_YEARRANGE = np.array([1975, 2005])
 
 FN_STR_VAR = 'global_annual'
 
@@ -195,14 +195,22 @@ class CropPotential(Hazard):
 
         return self
 
-    def calc_mean(self):
-        """ Calculates mean of the given hazard
+    def calc_mean(self, reference_period=TARGET_YEARRANGE):
+        """ Calculates mean of the hazard for a given reference time period
+            Parameter:
+                reference_period (array): time period used to calculate the mean intensity
+                default: 1975-2005
 
             Returns:
-                mean(array): contains mean value over the given time period for every centroid
+                hist_mean(array): contains mean value over the given reference 
+                time period for every centroid
         """
-
-        hist_mean = np.nan_to_num(np.squeeze(np.asarray(np.mean(self.intensity, 0))))
+        time_array = np.array(self.event_name, dtype=int)
+        idx_time = np.zeros(2, dtype=int)
+        idx_time[0] = np.where(time_array == reference_period[0])[0]
+        idx_time[1] = np.where(time_array == reference_period[1])[0]
+        mean = np.mean(self.intensity[idx_time[0]:idx_time[1]], 0)
+        hist_mean = np.nan_to_num(np.squeeze(np.asarray(mean)))
 
         return hist_mean
 
