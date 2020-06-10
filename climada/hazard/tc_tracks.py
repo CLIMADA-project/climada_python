@@ -71,6 +71,18 @@ IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
 DEF_ENV_PRESSURE = 1010
 """ Default environmental pressure """
 
+EMANUEL_RMW_CORR_FILES = [
+    'temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat',
+    'temp_gfdl520thcal.mat', 'temp_gfdl5rcp85cal_full.mat',
+    'temp_hadgem20thcal.mat', 'temp_hadgemrcp85cal_full.mat',
+    'temp_miroc20thcal.mat', 'temp_mirocrcp85cal_full.mat',
+    'temp_mpi20thcal.mat', 'temp_mpircp85cal_full.mat',
+    'temp_mri20thcal.mat', 'temp_mrircp85cal_full.mat',
+]
+EMANUEL_RMW_CORR_FACTOR = 2.0
+""" Kerry Emanuel track files in this list require a correction: The radius of
+    maximum wind (rmstore) needs to be multiplied by factor 2. """
+
 class TCTracks():
     """Contains tropical cyclone tracks.
 
@@ -200,13 +212,22 @@ class TCTracks():
                 folder name containing the files to read.
             hemisphere (str, optional): 'S', 'N' or 'both'. Default: 'S'
         """
-        corr_files = ['temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat', \
-                      'temp_gfdl520thcal.mat', 'temp_gfdl5rcp85cal_full.mat', \
-                      'temp_hadgem20thcal.mat', 'temp_hadgemrcp85cal_full.mat', \
-                      'temp_miroc20thcal.mat', 'temp_mirocrcp85cal_full.mat', \
-                      'temp_mpi20thcal.mat', 'temp_mpircp85cal_full.mat', \
-                      'temp_mri20thcal.mat', 'temp_mrircp85cal_full.mat']
-        all_file = get_file_names(file_names)
+        self.data = []
+        for path in get_file_names(file_names):
+            rmw_corr = os.path.basename(path) in EMANUEL_RMW_CORR_FILES
+            self._read_file_emanuel(path, hemisphere=hemisphere,
+                                          rmw_corr=rmw_corr)
+
+    def _read_file_emanuel(self, path, hemisphere='S', rmw_corr=False):
+        """Append tracks from file containing Kerry Emanuel simulations.
+
+        Parameters:
+            path (str): absolute path of file to read.
+            hemisphere (str, optional): 'S', 'N' or 'both'. Default: 'S'
+            rmw_corr (str, optional): If True, multiply the radius of
+                maximum wind by factor 2. Default: False.
+        """
+        ureg = UnitRegistry()
 
         if hemisphere == 'S':
             hem_min, hem_max = -90, 0
@@ -215,56 +236,113 @@ class TCTracks():
         else:
             hem_min, hem_max = -90, 90
 
-        self.data = list()
-        for file in all_file:
-            LOGGER.info('Reading %s.', file)
-            data = matlab.loadmat(file)
-            data_lon, data_lat, data_y, data_m, data_d, data_h, data_r, \
-            data_v, data_p = data['longstore'], data['latstore'], data['yearstore'], \
-            data['monthstore'], data['daystore'], data['hourstore'], data['rmstore'], \
-            data['vstore'], data['pstore']
-            data_lon[data_lon>180]=data_lon[data_lon>180]-360 # change lon format to -180 to 180
-            LOGGER.info('Loading %s tracks (each %s nodes), representing %s years.', \
-                        data_lat.shape[0], data_lat.shape[1], data_lat.shape[0]//600)
-            for i_track in range(data_lat.shape[0]):
-                pos = np.argwhere(np.logical_and(np.abs(data_lat[i_track, :]) > 0, \
-                    np.abs(data_lon[i_track, :]) > 0)).reshape(-1)
-                if hem_min > data_lat[i_track, pos].min() or \
-                hem_max < data_lat[i_track, pos].max():
-                    continue
-                datetimes = []
-                for month, day, hour in  zip(data_m[i_track, pos], \
-                data_d[i_track, pos], data_h[i_track, pos]):
-                    datetimes.append(dt.datetime(data_y[0, i_track], month, day, hour))
-                datetimes = np.array(datetimes)
-                tr_ds = xr.Dataset({ \
-                    'time_step': ('time', np.diff(data_h[i_track, pos]).min() * \
-                                  np.ones(datetimes.size)), \
-                    'radius_max_wind': ('time', data_r[i_track, pos]/1.852), \
-                    'max_sustained_wind': ('time', data_v[i_track, pos]), \
-                    'central_pressure': ('time', data_p[i_track, pos]), \
-                    'environmental_pressure': ('time', np.ones(datetimes.size)*DEF_ENV_PRESSURE)}, \
-                    coords={'time': datetimes, 'lat': ('time', data_lat[i_track, pos]), \
-                    'lon': ('time', data_lon[i_track, pos])}, \
-                    attrs={'max_sustained_wind_unit':'kn', \
-                    'central_pressure_unit':'mb', 'name':str(i_track), 'sid':str(i_track), \
-                    'orig_event_flag':True, 'data_provider':'Emanuel', 'basin':hemisphere, \
-                    'id_no':i_track})
-                tr_ds.attrs['category'] = set_category(tr_ds.max_sustained_wind.values, \
-                    tr_ds.max_sustained_wind_unit, SAFFIR_SIM_CAT)
-                if os.path.basename(file) in corr_files:
-                    tr_ds['radius_max_wind'] *= 2
-                self.data.append(tr_ds)
-        
+        LOGGER.info('Reading %s.', path)
+        data_mat = matlab.loadmat(path)
+        lat = data_mat['latstore']
+        ntracks, nnodes = lat.shape
+        years_uniq = np.unique(data_mat['yearstore'])
+        LOGGER.info(f"File contains {ntracks} tracks "
+                    f"(at most {nnodes} nodes each), "
+                    f"representing {years_uniq.size} years "
+                    f"({years_uniq[0]}-{years_uniq[-1]}).")
+
+        # filter according to chosen hemisphere
+        hem_mask = (lat >= hem_min) & (lat <= hem_max) | (lat == 0)
+        hem_idx = np.all(hem_mask, axis=1).nonzero()[0]
+        data_hem = lambda keys: [data_mat[f'{k}store'][hem_idx] for k in keys]
+
+        lat, lon = data_hem(['lat', 'long'])
+        months, days, hours = data_hem(['month', 'day', 'hour'])
+        months, days, hours = [np.int8(ar) for ar in [months, days, hours]]
+        tc_rmw, tc_maxwind, tc_pressure = data_hem(['rm', 'v', 'p'])
+        years = data_mat['yearstore'][0,hem_idx]
+
+        ntracks, nnodes = lat.shape
+        LOGGER.info(f"Loading {ntracks} tracks on {hemisphere} hemisphere.")
+
+        # change lon format to -180 to 180
+        lon[lon > 180] = lon[lon > 180] - 360
+
+        # change units from kilometers to nautical miles
+        tc_rmw = (tc_rmw * ureg.kilometer).to(ureg.nautical_mile).magnitude
+        if rmw_corr:
+            LOGGER.info("Applying RMW correction.")
+            tc_rmw *= EMANUEL_RMW_CORR_FACTOR
+
+        for i_track in range(lat.shape[0]):
+            valid_idx = (lat[i_track,:] != 0).nonzero()[0]
+            nnodes = valid_idx.size
+            time_step = np.abs(np.diff(hours[i_track,valid_idx])).min()
+
+            # deal with change of year
+            year = np.full(valid_idx.size, years[i_track])
+            year_change = (np.diff(months[i_track,valid_idx]) < 0)
+            year_change = year_change.nonzero()[0]
+            if year_change.size > 0:
+                year[year_change[0] + 1:] += 1
+
+            try:
+                datetimes = map(dt.datetime, year,
+                                months[i_track, valid_idx],
+                                days[i_track, valid_idx],
+                                hours[i_track, valid_idx])
+                datetimes = list(datetimes)
+            except ValueError as e:
+                # dates are known to contain invalid February 30
+                date_feb = (months[i_track, valid_idx] == 2) \
+                         & (days[i_track, valid_idx] > 28)
+                if np.count_nonzero(date_feb) == 0:
+                    # unknown invalid date issue
+                    raise e
+                step = time_step if not date_feb[0] else -time_step
+                reference_idx = 0 if not date_feb[0] else -1
+                reference_date = dt.datetime(
+                    year[reference_idx],
+                    months[i_track,valid_idx[reference_idx]],
+                    days[i_track,valid_idx[reference_idx]],
+                    hours[i_track,valid_idx[reference_idx]],)
+                datetimes = [reference_date + dt.timedelta(hours=int(step*i))
+                             for i in range(nnodes)]
+            datetimes = np.array(datetimes)
+
+            max_sustained_wind = tc_maxwind[i_track,valid_idx]
+            max_sustained_wind_unit = 'kn'
+            env_pressure = np.full(nnodes, DEF_ENV_PRESSURE)
+            category = set_category(max_sustained_wind,
+                                    max_sustained_wind_unit,
+                                    SAFFIR_SIM_CAT)
+            tr_ds = xr.Dataset({
+                'time_step': ('time', np.full(nnodes, time_step)),
+                'radius_max_wind': ('time', tc_rmw[i_track,valid_idx]),
+                'max_sustained_wind': ('time', max_sustained_wind),
+                'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
+                'environmental_pressure': ('time', env_pressure),
+            }, coords={
+                'time': datetimes,
+                'lat': ('time', lat[i_track, valid_idx]),
+                'lon': ('time', lon[i_track, valid_idx]),
+            }, attrs={
+                'max_sustained_wind_unit': max_sustained_wind_unit,
+                'central_pressure_unit': 'mb',
+                'name': str(hem_idx[i_track]),
+                'sid': str(hem_idx[i_track]),
+                'orig_event_flag': True,
+                'data_provider': 'Emanuel',
+                'basin': hemisphere,
+                'id_no': hem_idx[i_track],
+                'category': category,
+            })
+            self.data.append(tr_ds)
+
     def read_one_gettelman(self, nc_data, i_track):
         """Fill from Andrew Gettelman tracks.
-    
+
         Parameters:
         nc_data (str): netCDF4.Dataset Objekt
         i_tracks (int): track number
         """
         scale_to_10m = (10./60.)**.11
-        mps2kts = 1.94384 
+        mps2kts = 1.94384
         basin_dict = {0: 'NA - North Atlantic',
                       1: 'SA - South Atlantic',
                       2: 'WP - West Pacific',
@@ -280,11 +358,11 @@ class TCTracks():
                       12: 'CS - Carribbean Sea',
                       13: 'GM - Gulf of Mexico',
                       14: 'MM - Missing'}
-    
+
         val_len = nc_data.variables['numObs'][i_track]
         sid = str(i_track)
         times = nc_data.variables['source_time'][i_track, :][:val_len]
-    
+
         datetimes = list()
         for t in times:
             try:
@@ -305,25 +383,25 @@ class TCTracks():
         for i_time, time in enumerate(datetimes[1:], 1):
             time_step.append((time - datetimes[i_time-1]).total_seconds()/3600)
         time_step.append(time_step[-1])
-    
+
         basin = list()
         for bs in nc_data.variables['basin'][i_track, :][:val_len]:
             try:
                 basin.extend([basin_dict[bs]])
             except KeyError:
                 basin.extend([np.nan])
-    
+
         lon = nc_data.variables['lon'][i_track, :][:val_len]
         lon[lon>180]=lon[lon>180]-360 # change lon format to -180 to 180
         lat = nc_data.variables['lat'][i_track, :][:val_len]
         cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
         av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
         max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
-    
+
         wind = nc_data.variables['wind'][i_track, :][:val_len]*mps2kts*scale_to_10m  # m/s to kn
         if not all(wind.data):  # if wind is empty
             wind = np.ones(wind.size)*-999.9
-    
+
         tr_df = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon': lon,
                               'max_sustained_wind': wind,
                               'central_pressure': cen_pres,
@@ -333,7 +411,7 @@ class TCTracks():
                               'average_precipitation': av_prec,
                               'basins': basin,
                               'time_step': time_step})
-    
+
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
         tr_ds.coords['lat'] = ('time', tr_ds.lat)
@@ -345,7 +423,7 @@ class TCTracks():
                        'basin': basin[0],
                        'category': set_category(wind, 'kn')}
         self.data.append(tr_ds)
-        
+
     def equal_timestep(self, time_step_h=1, land_params=False):
         """ Generate interpolated track values to time steps of min_time_step.
         Parameters:
@@ -584,7 +662,7 @@ class TCTracks():
             d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
                 np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
             # change sign of latitude change for southern hemishpere:
-            d_xy = np.sign(track.lat.values[0]) * d_xy 
+            d_xy = np.sign(track.lat.values[0]) * d_xy
 
             d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
 
