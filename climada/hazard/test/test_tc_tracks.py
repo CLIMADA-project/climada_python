@@ -36,11 +36,13 @@ TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
 TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
 TEST_RAW_TRACK = os.path.join(DATA_DIR, 'Storm.2016075S11087.ibtracs_all.v03r10.csv')
 TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
+TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
+TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
 
-class TestIBTracs(unittest.TestCase):
-    """Test reading and model of TC from IBTrACS files"""
-    def test_read_pass(self):
-        """Read a tropical cyclone."""
+class TestIO(unittest.TestCase):
+    """Test reading of tracks from files of different formats"""
+
+    def test_read_processed_ibtracs_csv(self):
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
@@ -67,9 +69,42 @@ class TestIBTracs(unittest.TestCase):
         self.assertTrue(np.isnan(tc_track.data[0].basin))
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
-        
-class TestFuncs(unittest.TestCase):
-    """Test functions over TC tracks"""
+
+    def test_read_simulations_emanuel(self):
+        tc_track = TCTracks()
+
+        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL, hemisphere='N')
+        self.assertEqual(len(tc_track.data), 4)
+        self.assertEqual(tc_track.data[0].time.size, 93)
+        self.assertEqual(tc_track.data[0].lon[11], -115.57)
+        self.assertEqual(tc_track.data[0].lat[23], 10.758)
+        self.assertEqual(tc_track.data[0].time_step[7], 2)
+        self.assertAlmostEqual(tc_track.data[0].radius_max_wind[15], 44.27645788336934)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[21], 27.1)
+        self.assertEqual(tc_track.data[0].central_pressure[29], 995.31)
+        self.assertTrue(np.all(tc_track.data[0].environmental_pressure == 1010))
+        self.assertTrue(np.all(tc_track.data[0].time.dt.year == 1950))
+        self.assertEqual(tc_track.data[0].time.dt.month[26], 10)
+        self.assertEqual(tc_track.data[0].time.dt.day[7], 26)
+        self.assertEqual(tc_track.data[0].max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
+        self.assertEqual(tc_track.data[0].sid, '1')
+        self.assertEqual(tc_track.data[0].name, '1')
+        self.assertTrue(np.all([d.basin == 'N' for d in tc_track.data]))
+        self.assertEqual(tc_track.data[0].category, 3)
+
+        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
+        self.assertEqual(len(tc_track.data), 2)
+        self.assertTrue(np.all([d.basin == 'S' for d in tc_track.data]))
+        self.assertEqual(tc_track.data[0].radius_max_wind[15], 102.49460043196545)
+        self.assertEqual(tc_track.data[0].time.dt.month[343], 2)
+        self.assertEqual(tc_track.data[0].time.dt.day[343], 28)
+        self.assertEqual(tc_track.data[0].time.dt.month[344], 3)
+        self.assertEqual(tc_track.data[0].time.dt.day[344], 1)
+        self.assertEqual(tc_track.data[1].time.dt.year[0], 2009)
+        self.assertEqual(tc_track.data[1].time.dt.year[256], 2009)
+        self.assertEqual(tc_track.data[1].time.dt.year[257], 2010)
+        self.assertEqual(tc_track.data[1].time.dt.year[-1], 2010)
 
     def test_read_one_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""
@@ -79,30 +114,33 @@ class TestFuncs(unittest.TestCase):
         nstorms = nc_data.dimensions['storm'].size
         for i in range(nstorms):
             tc_track_G.read_one_gettelman(nc_data, i)
-        return tc_track_G
 
-        self.assertEqual(tc_track_G.data[0].time.size, 169)
-        self.assertEqual(tc_track_G.data[0].lon[11], 67.66)
-        self.assertEqual(tc_track_G.data[0].lat[23], 8.554)
-        self.assertEqual(tc_track_G.data[0].time_step[7], 0.5)
+        self.assertEqual(tc_track_G.data[0].time.size, 29)
+        self.assertEqual(tc_track_G.data[0].lon[11], 60.0)
+        self.assertEqual(tc_track_G.data[0].lat[23], 10.20860481262207)
+        self.assertEqual(tc_track_G.data[0].time_step[7], 3.)
         self.assertEqual(np.max(tc_track_G.data[0].radius_max_wind), 65)
         self.assertEqual(np.min(tc_track_G.data[0].radius_max_wind), 65)
-        self.assertEqual(tc_track_G.data[0].max_sustained_wind[21], 45.922632)
-        self.assertEqual(tc_track_G.data[0].central_pressure[29], 999.78417)
+        self.assertEqual(tc_track_G.data[0].max_sustained_wind[21], 39.91877223718089)
+        self.assertEqual(tc_track_G.data[0].central_pressure[27], 1005.969482421875)
         self.assertEqual(np.max(tc_track_G.data[0].environmental_pressure), 1015)
         self.assertEqual(np.min(tc_track_G.data[0].environmental_pressure), 1015)
-        self.assertEqual(tc_track_G.data[0].maximum_precipitation, 1106.0)
-        self.assertEqual(tc_track_G.data[0].average_precipitation, 272.5)
+        self.assertEqual(tc_track_G.data[0].maximum_precipitation[14], 219.10108947753906)
+        self.assertEqual(tc_track_G.data[0].average_precipitation[12], 101.43893432617188)
         self.assertEqual(tc_track_G.data[0].time.dt.year[13], 1979)
         self.assertEqual(tc_track_G.data[0].time.dt.month[26], 1)
-        self.assertEqual(tc_track_G.data[0].time.dt.day[7], 1)
+        self.assertEqual(tc_track_G.data[0].time.dt.day[7], 2)
         self.assertEqual(tc_track_G.data[0].max_sustained_wind_unit, 'kn')
         self.assertEqual(tc_track_G.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track_G.data[0].sid, '0')
         self.assertEqual(tc_track_G.data[0].name, '0')
-        self.assertTrue(np.isnan(tc_track_G.data[0].basin))
+        self.assertEqual(tc_track_G.data[0].basin, 'NI - North Indian')
         self.assertEqual(tc_track_G.data[0].category, 0)
-        
+
+
+class TestFuncs(unittest.TestCase):
+    """Test functions over TC tracks"""
+
     def test_penv_pass(self):
         """ Test _set_penv method."""
         tc_track = TCTracks()
@@ -617,5 +655,5 @@ class TestFuncs(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
