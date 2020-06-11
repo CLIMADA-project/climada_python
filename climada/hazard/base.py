@@ -524,46 +524,50 @@ class Hazard():
             haz = self.__class__()
         except TypeError:
             haz = Hazard(self.tag.haz_type)
-        sel_ev = np.ones(self.event_id.size, bool)
-        sel_cen = np.ones(self.centroids.size, bool)
+        sel_ev = np.ones(self.event_id.size, dtype=bool)
+        sel_cen = np.ones(self.centroids.size, dtype=bool)
 
-        # filter events based on name
-        if isinstance(event_names, list):
-            sel_ev[[i for i in range(len(self.event_name)) if \
-                    self.event_name[i] in event_names]] = 0.
-            sel_ev = np.invert(sel_ev)
-
-        # filter events with date
+        # filter events by date
         if isinstance(date, tuple):
             date_ini, date_end = date[0], date[1]
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
-            sel_ev = np.logical_and(sel_ev,
-                                    np.logical_and(date_ini <= self.date,
-                                                   self.date <= date_end))
+            sel_ev &= (date_ini <= self.date) & (self.date <= date_end)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard in date range %s.', date)
                 return None
 
         # filter events hist/synthetic
         if isinstance(orig, bool):
-            sel_ev = np.logical_and(sel_ev, self.orig.astype(bool) == orig)
+            sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s tracks.', str(orig))
                 return None
 
         # filter centroids
         if reg_id is not None:
-            sel_cen = np.argwhere(self.centroids.region_id == reg_id).reshape(-1)
-            if not sel_cen.size:
+            sel_cen &= (self.centroids.region_id == reg_id)
+            if not np.any(sel_cen):
                 LOGGER.info('No hazard centroids with region %s.', str(reg_id))
                 return None
 
+        # filter events based on name
         sel_ev = np.argwhere(sel_ev).reshape(-1)
+        if isinstance(event_names, list):
+            filtered_events = [self.event_name[i] for i in sel_ev]
+            try:
+                new_sel = [filtered_events.index(n) for n in event_names]
+            except ValueError as e:
+                name = str(e).replace(" is not in list", "")
+                LOGGER.info('No hazard with name %s', name)
+                return None
+            sel_ev = sel_ev[new_sel]
+
+        sel_cen = sel_cen.nonzero()[0]
         for (var_name, var_val) in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
-            var_val.size:
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
+                                               and var_val.size > 0:
                 setattr(haz, var_name, var_val[sel_ev])
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(haz, var_name, var_val[sel_ev, :][:, sel_cen])
@@ -576,6 +580,7 @@ class Hazard():
                     setattr(haz, var_name, var_val)
             else:
                 setattr(haz, var_name, var_val)
+
         # reset frequency if date span has changed (optional):
         if reset_frequency:
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year - \
