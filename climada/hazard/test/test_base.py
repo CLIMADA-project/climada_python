@@ -689,8 +689,8 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.tag.description, \
                          [haz1_ori.tag.description, haz2.tag.description])
 
-    def test_append_all_pass(self):
-        """Test _append_all function."""
+    def test_concatenate_pass(self):
+        """Test concatenate function."""
         haz_1 = Hazard('TC')
         haz_1.tag.file_name = 'file1.mat'
         haz_1.tag.description = 'Description 1'
@@ -720,14 +720,13 @@ class TestAppend(unittest.TestCase):
         haz_2.units = 'm/s'
 
         haz = Hazard('TC')
-        haz._append_all([haz_1, haz_2])
+        haz.concatenate([haz_1, haz_2])
 
 
         hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04], \
-                                        [1.02, 1.03, 1.04]])
+                                       [1.02, 1.03, 1.04]])
         hres_inten = sparse.csr_matrix([[0.2, 0.3, 0.4], \
-                                       [1.2, 1.3, 1.4]])
-
+                                        [1.2, 1.3, 1.4]])
 
         self.assertTrue(sparse.isspmatrix_csr(haz.intensity))
         self.assertTrue(np.array_equal(haz.intensity.todense(), hres_inten.todense()))
@@ -738,11 +737,11 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz.orig, np.array([True, False])))
         self.assertTrue(np.array_equal(haz.date, np.array([1, 2])))
         self.assertTrue(np.array_equal(haz.event_id, np.array([1, 2])))
-        self.assertTrue(haz.event_name, ['ev1', 'ev2'])
+        self.assertEqual(haz.event_name, ['ev1', 'ev2'])
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_1.centroids.coord))
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
-        self.assertTrue(haz.tag, 'file_1.mat + file_2.mat')
-        self.assertTrue(haz.tag, 'Description 1 + Description 2')
+        self.assertEqual(haz.tag.file_name, ['file1.mat', 'file2.mat'])
+        self.assertEqual(haz.tag.description, ['Description 1', 'Description 2'])
 
     def test_append_new_var_pass(self):
         """ New variable appears if hazard to append is empty. """
@@ -753,13 +752,13 @@ class TestAppend(unittest.TestCase):
         app_haz.append(haz)
         self.assertIn('new_var', app_haz.__dict__)
 
-    def test_append_all_new_var_pass(self):
+    def test_concatenate_new_var_pass(self):
         """ New variable appears. """
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
 
         app_haz = dummy_hazard()
-        app_haz._append_all([haz])
+        app_haz.concatenate([haz])
         self.assertIn('new_var', app_haz.__dict__)
 
 class TestStats(unittest.TestCase):
@@ -954,7 +953,7 @@ class TestHDF5(unittest.TestCase):
 
             haz_read = Hazard('TC')
             haz_read.read_hdf5(file_name)
-    
+
             self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
             self.assertIsInstance(haz_read.tag.file_name, str)
             self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
@@ -985,7 +984,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl = Hazard('FL')
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
-        
+
         haz_fl.reproject_raster(dst_crs={'init':'epsg:2202'})
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
@@ -1010,7 +1009,7 @@ class TestCentroids(unittest.TestCase):
         fract_orig = haz_fl.fraction
 
         haz_fl.raster_to_vector()
-        
+
         self.assertEqual(haz_fl.centroids.meta, dict())
         self.assertAlmostEqual(haz_fl.centroids.lat.min(), meta_orig['transform'][5]+meta_orig['height']*meta_orig['transform'][4]-meta_orig['transform'][4]/2)
         self.assertAlmostEqual(haz_fl.centroids.lat.max(), meta_orig['transform'][5]+meta_orig['transform'][4]/2)
@@ -1032,7 +1031,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
-        
+
         haz_fl.reproject_vector(dst_crs={'init':'epsg:2202'})
         self.assertTrue(np.allclose(haz_fl.centroids.lat, np.array([331585.4099637291, 696803.88, 1098649.44])))
         self.assertTrue(np.allclose(haz_fl.centroids.lon, np.array([11625664.37925186, 11939560.43, 12244857.13])))
@@ -1052,7 +1051,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
-        
+
         haz_fl.vector_to_raster()
         self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init':'epsg:4326'}))
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)

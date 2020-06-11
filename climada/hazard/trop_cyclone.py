@@ -137,7 +137,7 @@ class TropCyclone(Hazard):
                 tc_haz.append(self._tc_from_track(track, centroids, coastal_idx,
                                                   model))
         LOGGER.debug('Append events.')
-        self._append_all(tc_haz)
+        self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
