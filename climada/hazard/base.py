@@ -589,6 +589,7 @@ class Hazard():
                                     dt.datetime.fromordinal(haz.date.min()).year)+1
             haz.frequency = haz.frequency*year_span_old/year_span_new
 
+        haz.sanitize_event_ids()
         return haz
 
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
@@ -737,6 +738,12 @@ Reason: no negative intensity values were found in hazard.')
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
 
+    def sanitize_event_ids(self):
+        """Make sure that event ids are unique """
+        if np.unique(self.event_id).size != self.event_id.size:
+            LOGGER.debug('Resetting event_id.')
+            self.event_id = np.arange(1, self.event_id.size + 1)
+
     def get_event_id(self, event_name):
         """"Get an event id from its name. Several events might have the same
         name.
@@ -859,10 +866,7 @@ Reason: no negative intensity values were found in hazard.')
             elif isinstance(var_new, TagHazard):
                 var_old.append(var_new)
 
-        # Make event id unique
-        if np.unique(self.event_id).size != self.event_id.size:
-            LOGGER.debug('Resetting event_id.')
-            self.event_id = np.arange(self.event_id.size) + 1
+        self.sanitize_event_ids()
 
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
@@ -1021,10 +1025,7 @@ Reason: no negative intensity values were found in hazard.')
         self.centroids = copy.deepcopy(haz_src[0].centroids)
         self.units = haz_src[0].units
 
-        # Make event id unique
-        if np.unique(self.event_id).size != self.event_id.size:
-            LOGGER.debug('Resetting event_id.')
-            self.event_id = np.arange(1, self.event_id.size + 1)
+        self.sanitize_event_ids()
 
     def _set_coords_centroids(self):
         """ If centroids are raster, set lat and lon coordinates """
