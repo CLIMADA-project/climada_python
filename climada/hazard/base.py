@@ -832,46 +832,27 @@ Reason: no negative intensity values were found in hazard.')
                          "%s != %s.", self.units, hazard.units)
             raise ValueError
 
-        self.tag.append(hazard.tag)
-        n_ini_ev = self.event_id.size
-        # append all 1-dim variables
-        for (var_name, var_val), haz_val in zip(self.__dict__.items(),
-                                                hazard.__dict__.values()):
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
-            var_val.size:
-                setattr(self, var_name, np.append(var_val, haz_val). \
-                        astype(var_val.dtype, copy=False))
-            elif isinstance(var_val, list) and var_val:
-                setattr(self, var_name, var_val + haz_val)
-
-        # append intensity and fraction:
-        # if same centroids, just append events
-        if self.centroids.equal(hazard.centroids):
-            self.intensity = sparse.vstack([self.intensity, hazard.intensity],
-                                           format='csr')
-            self.fraction = sparse.vstack([self.fraction, hazard.fraction],
-                                          format='csr')
-        elif hazard.intensity.size:
-            n_ini_cen = self.centroids.size
+        centroids_equal = self.centroids.equal(hazard.centroids)
+        if not centroids_equal:
             self.centroids.append(hazard.centroids)
 
-            self.intensity = sparse.hstack([self.intensity, \
-                sparse.lil_matrix((self.intensity.shape[0], \
-                self.centroids.size - n_ini_cen))], format='lil')
-            self.fraction = sparse.hstack([self.fraction, \
-                sparse.lil_matrix((self.fraction.shape[0], \
-                self.centroids.size - n_ini_cen))], format='lil')
-            self.intensity = sparse.vstack([self.intensity, \
-                sparse.lil_matrix((hazard.intensity.shape[0],
-                                   self.intensity.shape[1]))], format='lil')
-            self.fraction = sparse.vstack([self.fraction, \
-                sparse.lil_matrix((hazard.intensity.shape[0],
-                                   self.intensity.shape[1]))], format='lil')
-
-            self.intensity[n_ini_ev:, -hazard.intensity.shape[1]:] = hazard.intensity
-            self.fraction[n_ini_ev:, -hazard.intensity.shape[1]:] = hazard.fraction
-            self.intensity = self.intensity.tocsr()
-            self.fraction = self.fraction.tocsr()
+        n_ini_ev = self.event_id.size
+        for var_name in vars(self).keys():
+            var_old = getattr(self, var_name)
+            var_new = getattr(hazard, var_name)
+            var_combined = [var_old, var_new]
+            if isinstance(var_new, sparse.csr.csr_matrix):
+                if centroids_equal:
+                    var_combined = sparse.vstack(var_combined, format='csr')
+                else:
+                    var_combined = sparse.block_diag(var_combined, format='csr')
+                setattr(self, var_name, var_combined)
+            elif isinstance(var_new, np.ndarray) and var_new.ndim == 1:
+                setattr(self, var_name, np.hstack(var_combined))
+            elif isinstance(var_new, list):
+                setattr(self, var_name, sum(var_combined, []))
+            elif isinstance(var_new, TagHazard):
+                var_old.append(var_new)
 
         # Make event id unique
         if np.unique(self.event_id).size != self.event_id.size:
@@ -1006,47 +987,39 @@ Reason: no negative intensity values were found in hazard.')
                 setattr(self, var_name, hf_data.get(var_name))
         hf_data.close()
 
-    def _append_all(self, list_haz_ev):
-        """Append event by event with same centroids. Takes centroids and units
-        of first event.
+    def concatenate(self, haz_src):
+        """Concatenate events of several hazards
 
         Parameters:
-            list_haz_ev (list): Hazard instances with one event and same
-                centroids
+            haz_src (list): Hazard instances with same centroids and units
         """
         self.clear()
 
-        num_ev = len(list_haz_ev)
-        num_cen = list_haz_ev[0].centroids.size
-
         # check for new variables
-        for key_new in list_haz_ev[0].__dict__.keys():
-            if key_new not in self.__dict__:
-                self.__dict__[key_new] = list_haz_ev[0].__dict__[key_new]
+        for key_new in vars(haz_src[0]).keys():
+            if not hasattr(self, key_new):
+                setattr(self, key_new, getattr(haz_src[0], key_new))
 
-        for var_name, var_val in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name, np.zeros((num_ev,), dtype=var_val.dtype))
-            elif isinstance(var_val, sparse.csr.csr_matrix):
-                setattr(self, var_name, sparse.lil_matrix((num_ev, num_cen)))
+        for var_name in vars(self).keys():
+            var_src = [getattr(haz, var_name) for haz in haz_src]
+            if isinstance(var_src[0], sparse.csr.csr_matrix):
+                setattr(self, var_name, sparse.vstack(var_src, format='csr'))
+            elif isinstance(var_src[0], np.ndarray) and var_src[0].ndim == 1:
+                setattr(self, var_name, np.hstack(var_src))
+            elif isinstance(var_src[0], list):
+                setattr(self, var_name, sum(var_src, []))
+            elif isinstance(var_src[0], TagHazard):
+                tag_dst = getattr(self, var_name)
+                for tag in var_src:
+                    tag_dst.append(tag)
 
-        for i_ev, haz_ev in enumerate(list_haz_ev):
-            for (var_name, var_val), ev_val in zip(self.__dict__.items(),
-                                                   haz_ev.__dict__.values()):
-                if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                    var_val[i_ev] = ev_val[0]
-                elif isinstance(var_val, list):
-                    var_val.extend(ev_val)
-                elif isinstance(var_val, sparse.lil_matrix):
-                    var_val[i_ev, :] = ev_val[0, :]
-                elif isinstance(var_val, TagHazard):
-                    var_val.append(ev_val)
+        self.centroids = copy.deepcopy(haz_src[0].centroids)
+        self.units = haz_src[0].units
 
-        self.centroids = copy.deepcopy(list_haz_ev[0].centroids)
-        self.units = list_haz_ev[0].units
-        self.intensity = self.intensity.tocsr()
-        self.fraction = self.fraction.tocsr()
-        self.event_id = np.arange(1, num_ev+1)
+        # Make event id unique
+        if np.unique(self.event_id).size != self.event_id.size:
+            LOGGER.debug('Resetting event_id.')
+            self.event_id = np.arange(1, self.event_id.size + 1)
 
     def _set_coords_centroids(self):
         """ If centroids are raster, set lat and lon coordinates """
