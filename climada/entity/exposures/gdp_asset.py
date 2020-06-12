@@ -29,7 +29,7 @@ import logging
 import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.util.constants import GLB_CENTROIDS_NC
+from climada.util.coordinates import isimip_iso2natid, get_isimip_gridpoints
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
 from climada.util.constants import DEF_CRS
 LOGGER = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class GDP2Asset(Exposures):
         self.crs = DEF_CRS
 
     @staticmethod
-    def _set_one_country(countryISO, ref_year, path=None):
+    def _set_one_country(countryISO, ref_year, path):
         """ Extract coordinates of selected countries or region
         from NatID grid.
         Parameters:
@@ -108,34 +108,16 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        exp_gdpasset = GDP2Asset()
+        natID = isimip_iso2natid(countryISO)
         natID_info = pd.read_csv(NAT_REG_ID)
-        try:
-            isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-            isimip_lon = isimip_grid.lon.data
-            isimip_lat = isimip_grid.lat.data
-            gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-            if not any(np.isin(natID_info['ISO'], countryISO)):
-                LOGGER.error('Wrong country ISO ' + str(countryISO))
-                raise KeyError
-            natID = natID_info['ID'][np.isin(natID_info['ISO'], countryISO)]
-            reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-            isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        except OSError:
-            LOGGER.error('Problems while reading ,' + path +
-                         ' check exposure_file specifications')
-            raise OSError
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        coord = np.zeros((len(lon_coordinates), 2))
-        coord[:, 1] = lon_coordinates
-        coord[:, 0] = lat_coordinates
+        reg_id, if_rf = _fast_if_mapping(natID, natID_info)
+        lat, lon = get_isimip_gridpoints(countries=[natID], iso=False)
+        coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
-        reg_id_info = np.zeros((len(assets)))
-        reg_id_info[:] = reg_id
-        if_rf_info = np.zeros((len(assets)))
-        if_rf_info[:] = if_rf
+        reg_id_info = np.full((len(assets),), reg_id)
+        if_rf_info = np.full((len(assets),), if_rf)
+
+        exp_gdpasset = GDP2Asset()
         exp_gdpasset['value'] = assets
         exp_gdpasset['latitude'] = coord[:, 0]
         exp_gdpasset['longitude'] = coord[:, 1]
