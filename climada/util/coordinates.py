@@ -40,9 +40,9 @@ from rasterio.warp import reproject, Resampling, calculate_default_transform
 from rasterio.features import rasterize
 import dask.dataframe as dd
 import pandas as pd
+import xarray as xr
 
-
-from climada.util.constants import DEF_CRS, SYSTEM_DIR
+from climada.util.constants import DEF_CRS, SYSTEM_DIR, NAT_REG_ID, GLB_CENTROIDS_NC
 
 pd.options.mode.chained_assignment = None
 
@@ -322,6 +322,105 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
 
     return out
 
+def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
+    """ Get coordinates of gridpoints in specified countries or regions
+
+    Parameters:
+        countries (list, optional): ISO 3166-1 alpha-3 codes of countries, or
+            ISIMIP NatID if iso is set to False.
+        regions (list, optional): Region IDs.
+        iso (bool, optional): If True, assume that countries are given by their
+            ISO 3166-1 alpha-3 codes (instead of the ISIMIP NatID).
+            Default: True.
+        box (bool, optional): If True, a rectangular box around the specified
+            countries/regions is selected. Default: False.
+
+    Returns:
+        lat (np.array): latitude of points in epsg:4326
+        lon (np.array): longitude of points in epsg:4326
+    """
+    if countries is None: countries = []
+    if regions is None: regions = []
+
+    LOGGER.info("select area for countries: %s", str(countries))
+
+    isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+    isimip_lon = isimip_grid.lon.data
+    isimip_lat = isimip_grid.lat.data
+    gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
+
+    if iso:
+        countries = isimip_iso2natid(countries)
+    countries += isimip_region2natids(regions)
+    countries = np.unique(countries)
+
+    if len(countries) > 0:
+        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
+        natID_pos = np.isin(isimip_NatIdGrid, countries)
+    else:
+        natID_pos = np.ones_like(gridX, dtype=bool)
+
+    lat, lon = gridY[natID_pos], gridX[natID_pos]
+
+    if not box:
+        return lat, lon
+
+    lon_min, lat_min = [np.floor(ar.min()) for ar in [lon, lat]]
+    lon_idx_min = np.fmax(0, isimip_lon.searchsorted(lon_min, side='left') - 1)
+    lon_idx_max = isimip_lon.searchsorted(np.ceil(lon.max()), side='right')
+    lat_idx_min = np.fmax(0, isimip_lat.searchsorted(lat_min, side='left') - 1)
+    lat_idx_max = isimip_lat.searchsorted(np.ceil(lat.max()), side='right')
+
+    lon = isimip_lon[lon_idx_min:lon_idx_max]
+    lat = isimip_lat[lat_idx_min:lat_idx_max]
+    gridX, gridY = np.meshgrid(lon, lat)
+    return gridY.flatten(), gridX.flatten()
+
+def isimip_region2natids(regions):
+    """ Convert region names to ISIMIP NatIDs of countries
+
+    Parameters:
+        regions (str or list of str): Region name(s).
+
+    Returns:
+        natids (list of str): Sorted list of NatIDs of all countries in
+            specified region(s).
+    """
+    regions = [regions] if isinstance(regions, str) else regions
+
+    natID_info = pd.read_csv(NAT_REG_ID)
+    natids = []
+    for region in regions:
+        region_msk = (natID_info['Reg_name'] == region)
+        if not any(region_msk):
+            LOGGER.error('Unknown region name: %s', region)
+            raise KeyError
+        natids += natID_info['ID'][region_msk].values
+    return list(set(natids))
+
+def isimip_iso2natid(isos):
+    """ Convert ISO 3166-1 alpha-3 codes to ISIMIP NatIDs
+
+    Parameters:
+        isos (str or list of str): ISO codes of countries (or single code).
+
+    Returns:
+        natids (str or list of str): NatIDs.
+    """
+    return_str = isinstance(isos, str)
+    isos = [isos] if return_str else isos
+
+    natID_info = pd.read_csv(NAT_REG_ID)
+    natids = []
+    for iso in isos:
+        country_msk = (natID_info['ISO'] == iso)
+        if not any(country_msk):
+            LOGGER.error('Unknown country ISO: %s', iso)
+            raise KeyError
+        natids.append(int(natID_info['ID'][country_msk].values[0]))
+
+    return natids[0] if return_str else natids
+
 def get_country_code(lat, lon):
     """ Provide numeric country iso code for every point.
 
@@ -475,7 +574,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                 if src.meta['nodata']:
                     kwargs['src_nodata'] = src.meta['nodata']
                     kwargs['dst_nodata'] = src.meta['nodata']
-                
+
                 intensity = np.zeros((len(band), height, width))
                 for idx_band, i_band in enumerate(band):
                     reproject(source=src.read(i_band),
@@ -486,20 +585,20 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                               dst_crs=dst_crs,
                               resampling=resampling,
                               **kwargs)
-                        
+
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
                     else:
                         intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
                 meta = dst_meta
-             
+
                 if geometry:
-                    intensity = intensity.astype('float32') 
+                    intensity = intensity.astype('float32')
                     meta.update(driver='GTiff')   # update driver from netcdf to Gtiff as netcdf does not work reliably
                     with MemoryFile() as memfile:
                         with memfile.open(**meta) as dst_inten: # Open as DatasetWriter
                             dst_inten.write(intensity)
-                        with memfile.open() as dst_inten:  # Reopen as DatasetReader  
+                        with memfile.open() as dst_inten:  # Reopen as DatasetReader
                             inten, mask_trans = mask(dst_inten, geometry, crop=True, indexes=band)
                             meta.update({"height": inten.shape[1],
                                          "width": inten.shape[2],
@@ -511,7 +610,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                         intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
                     else:
                         intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
-                        
+
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
             meta = src.meta.copy()

@@ -30,16 +30,13 @@ import pandas as pd
 import math
 import datetime as dt
 from datetime import date
-import geopandas as gpd
-from climada.util.constants import NAT_REG_ID, GLB_CENTROIDS_NC
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.util.interpolation import interpol_index
 from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
-from shapely.geometry import Point
 
-from climada.util.alpha_shape import alpha_shape
+from climada.util.coordinates import get_isimip_gridpoints
 
 LOGGER = logging.getLogger(__name__)
 
@@ -404,66 +401,11 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
+        lat, lon = get_isimip_gridpoints(countries, regions=reg, box=True)
         centroids = Centroids()
-        natID_info = pd.read_csv(NAT_REG_ID)
-        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-        isimip_lon = isimip_grid.lon.data
-        isimip_lat = isimip_grid.lat.data
-        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        if countries:
-            if not any(np.isin(natID_info['ISO'], countries)):
-                LOGGER.error('Country ISO3s ' + str(countries) + ' unknown')
-                raise KeyError
-            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
-        elif reg:
-            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
-            if not any(np.isin(natID_info["Reg_name"], reg)):
-                LOGGER.error('Shortcuts ' + str(reg) + ' unknown')
-                raise KeyError
-        else:
-            centroids.lat = np.zeros((gridX.size))
-            centroids.lon = np.zeros((gridX.size))
-            centroids.lon = gridX.flatten()
-            centroids.lat = gridY.flatten()
-            centroids.id = np.arange(centroids.lon.shape[0])
-            centroids.id = np.arange(centroids.lon.shape[0])
-            return centroids
-        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        lon_min = math.floor(min(lon_coordinates))
-        if lon_min <= -179:
-            lon_inmin = 0
-        else:
-            lon_inmin = min(np.where((isimip_lon >= lon_min))[0]) - 1
-        lon_max = math.ceil(max(lon_coordinates))
-        if lon_max >= 179:
-            lon_inmax = len(isimip_lon) - 1
-        else:
-            lon_inmax = max(np.where((isimip_lon <= lon_max))[0]) + 1
-        lat_min = math.floor(min(lat_coordinates))
-        if lat_min <= -89:
-            lat_inmin = 0
-        else:
-            lat_inmin = min(np.where((isimip_lat >= lat_min))[0]) - 1
-        lat_max = math.ceil(max(lat_coordinates))
-        if lat_max >= 89:
-            lat_max = len(isimip_lat) - 1
-        else:
-            lat_inmax = max(np.where((isimip_lat <= lat_max))[0]) + 1
-        lon = isimip_lon[lon_inmin: lon_inmax]
-        lat = isimip_lat[lat_inmin: lat_inmax]
-
-        gridX, gridY = np.meshgrid(lon, lat)
-        lat = np.zeros((gridX.size))
-        lon = np.zeros((gridX.size))
-        lon = gridX.flatten()
-        lat = gridY.flatten()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.coord.shape[0])
         centroids.set_region_id()
-
         return centroids
 
     def select_exact_area(countries=[], reg=[]):
@@ -478,90 +420,12 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
+        lat, lon = get_isimip_gridpoints(countries=countries, regions=reg)
         centroids = Centroids()
-        natID_info = pd.read_csv(NAT_REG_ID)
-        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-        isimip_lon = isimip_grid.lon.data
-        isimip_lat = isimip_grid.lat.data
-        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        try:
-            if countries:
-                if not any(np.isin(natID_info['ISO'], countries)):
-                    LOGGER.error('Country ISO3s ' + str(countries) +
-                                 ' unknown')
-                    raise KeyError
-                natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
-            elif reg:
-                if not any(np.isin(natID_info["Reg_name"], reg)):
-                    LOGGER.error('Shortcuts ' + str(reg) + ' unknown')
-                    raise KeyError
-                natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
-            else:
-                centroids.lon = np.zeros((gridX.size))
-                centroids.lat = np.zeros((gridX.size))
-                centroids.lon = gridX.flatten()
-                centroids.lat = gridY.flatten()
-                centroids.id = np.arange(centroids.lon.shape[0])
-                return centroids
-        except KeyError:
-            LOGGER.error('Selected country or region do ' +
-                         'not match reference file')
-            raise KeyError
-        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        centroids.set_lat_lon(lat_coordinates, lon_coordinates)
+        centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])
         centroids.set_region_id()
         return centroids
-
-    def select_exact_area_polygon(countries=[], reg=[]):
-        """ Extract coordinates of selected countries or region
-        from NatID grid. If countries are given countries are cut,
-        if only reg is given, the whole region is cut.
-        Parameters:
-            countries: List of countries
-            reg: List of regions
-        Raises:
-            AttributeError
-        Returns:
-            np.array
-        """
-        centroids = Centroids()
-        natID_info = pd.read_csv(NAT_REG_ID)
-        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-        isimip_lon = isimip_grid.lon.data
-        isimip_lat = isimip_grid.lat.data
-        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        if countries:
-            natID = natID_info["ID"][np.isin(natID_info["ISO"], countries)]
-        elif reg:
-            natID = natID_info["ID"][np.isin(natID_info["Reg_name"], reg)]
-        else:
-            centroids.coord = np.zeros((gridX.size, 2))
-            centroids.coord[:, 1] = gridX.flatten()
-            centroids.coord[:, 0] = gridY.flatten()
-            centroids.id = np.arange(centroids.coord.shape[0])
-            return centroids
-        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        centroids.coord = np.zeros((len(lon_coordinates), 2))
-        centroids.coord[:, 1] = lon_coordinates
-        centroids.coord[:, 0] = lat_coordinates
-        centroids.id = np.arange(centroids.coord.shape[0])
-        orig_proj = 'epsg:4326'
-        country = gpd.GeoDataFrame()
-        country['geometry'] = list(zip(centroids.coord[:, 1],
-                                       centroids.coord[:, 0]))
-        country['geometry'] = country['geometry'].apply(Point)
-        country.crs = {'init': orig_proj}
-        points = country.geometry.values
-        concave_hull, _ = alpha_shape(points, alpha=1)
-
-        return concave_hull
 
 
 def _interpolate(lat, lon, dph_window, frc_window, centr_lon, centr_lat,
