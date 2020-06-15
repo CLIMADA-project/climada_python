@@ -68,7 +68,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
 
         self.assertAlmostEqual(tc_haz.intensity[0, 100], 99.7160586771286, 6)
-        self.assertEqual(tc_haz.intensity[0, 260], 33.2087621869295)
+        self.assertAlmostEqual(tc_haz.intensity[0, 260], 33.2087621869295)
         self.assertEqual(tc_haz.fraction[0, 100], 1)
         self.assertEqual(tc_haz.fraction[0, 260], 1)
 
@@ -144,7 +144,7 @@ class TestModel(unittest.TestCase):
         
         rainfall = np.round(rainfall, decimals=9)
         
-        self.assertEqual(rainfall[0,0], 66.801702386)
+        self.assertAlmostEqual(rainfall[0,0], 66.801702386)
         self.assertAlmostEqual(rainfall[0,130], 43.290917792)
         self.assertAlmostEqual(rainfall[0,200], 76.315923838)
 
