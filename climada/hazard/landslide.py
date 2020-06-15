@@ -307,7 +307,7 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
+        return plt.imshow(self.intensity_prob[event_pos, :].toarray(). \
                               reshape(self.centroids.shape), **kwargs)
 
     def plot_events(self, ev_id=1, **kwargs):
@@ -330,7 +330,7 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity[event_pos, :].todense(). \
+        return plt.imshow(self.intensity[event_pos, :].toarray(). \
                               reshape(self.centroids.shape), **kwargs)
 
     def _get_hist_events(self, bbox, coolr_path):
@@ -375,7 +375,7 @@ class Landslide(Hazard):
             self.centroids.plot()
         return self
 
-    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", 
+    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI",
                           path_sourcefile = [], n_years=500,\
                      incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
@@ -392,7 +392,7 @@ class Landslide(Hazard):
             path_sourcefile (str): if ls_model is UNEP_NGI, use  path to NGI/UNEP file,
                 retrieved previously as descriped in tutorial and stored in climada/data.
                 if ls_model is NASA  provide path to combined daily or
-                monthly rasterfile, retrieved and aggregated           
+                monthly rasterfile, retrieved and aggregated
                 previously with landslide.get_nowcast_tiff() and
                 landslide.combine_nowcast_tiff().
         Returns:
@@ -401,7 +401,7 @@ class Landslide(Hazard):
 
         if ls_model == "UNEP_NGI":
             path_sourcefile = os.path.join(LS_FILE_DIR, 'ls_pr_NGI_UNEP/ls_pr.tif')
-            
+
             if not bbox:
                 LOGGER.error('Empty bounding box, please set bounds.')
                 raise ValueError()
@@ -427,7 +427,7 @@ class Landslide(Hazard):
 
             if check_plots == 1:
                 fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-                self.plot_raw() 
+                self.plot_raw()
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)

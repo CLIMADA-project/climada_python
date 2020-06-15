@@ -46,8 +46,8 @@ class TestCentroids(unittest.TestCase):
 
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
-        self.assertTrue(np.allclose(haz_fl.intensity.todense(), haz_read.intensity.todense()))
-        self.assertEqual(np.unique(np.array(haz_fl.fraction.todense())).size, 2)
+        self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
+        self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
     def test_read_raster_pool_pass(self):
         """ Test set_raster with pool """
@@ -81,7 +81,7 @@ class TestCentroids(unittest.TestCase):
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.todense())), np.array([0.0, 0.1, 0.2, 0.5])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.1, 0.2, 0.5])))
 
     def test_write_fraction_pass(self):
         """ Test write_raster with fraction """
@@ -103,8 +103,8 @@ class TestCentroids(unittest.TestCase):
                              files_fraction=[os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertEqual(haz_read.fraction.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.todense())), np.array([0.0, 0.05, 0.1, 0.25])))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.todense())), np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
 
 # Execute Tests
 if __name__ == "__main__":

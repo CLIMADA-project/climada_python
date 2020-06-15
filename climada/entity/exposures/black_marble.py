@@ -397,8 +397,8 @@ def _cut_country(geom, nightlight, coord_nl):
     in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
              math.ceil((geom.bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
 
-    nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1].\
-        todense()
+    nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1] \
+        .toarray()
     lat_reg, lon_reg = np.mgrid[coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
                                 coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
                                 complex(0, nightlight_reg.shape[0]),

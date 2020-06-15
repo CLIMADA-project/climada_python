@@ -98,9 +98,9 @@ class StormEurope(Hazard):
                 defaults to one duplicate storm present in the WISC set as
                 of 2018-09-10.
             combine_threshold (int, optional): threshold for combining events
-                in number of days. if the difference of the dates (self.date) 
+                in number of days. if the difference of the dates (self.date)
                 of two events is smaller or equal to this threshold, the two
-                events are combined into one. 
+                events are combined into one.
                 Default is None, Advised for WISC is 2
         """
 
@@ -143,7 +143,7 @@ class StormEurope(Hazard):
         )
         if description is not None:
             self.tag.description = description
-        
+
         if combine_threshold is not None:
             LOGGER.info('Combining events with small difference in date.')
             difference_date = np.diff(self.date)
@@ -228,7 +228,7 @@ class StormEurope(Hazard):
         cent.set_on_land()
 
         return cent
-    
+
     def _combine_events(self,event_ids):
         """ combine the intensities of two events using max and adjust event_id, event_name, date etc of the hazard
         the event_ids must be consecutive for the event_name field to behave correctly
@@ -250,7 +250,7 @@ class StormEurope(Hazard):
         fraction_tmp = self.fraction[select_event_ids,:].max(axis=0)
         self.fraction = self.fraction[select_other_events,:]
         self.fraction = sparse.vstack([self.fraction,sparse.csr_matrix(fraction_tmp)])
-    
+
         self.frequency = np.append(self.frequency[select_other_events],
                                                 self.frequency[select_event_ids].mean())
         self.orig = np.append(self.orig[select_other_events],
@@ -374,7 +374,7 @@ class StormEurope(Hazard):
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
         ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
-        
+
         ssi_hist = ssi_freq.loc[ssi_freq.orig].copy()
         ssi_hist.freq = ssi_hist.freq * self.orig.size / self.orig.sum()
         ssi_hist['freq_cum'] = np.cumsum(ssi_hist.freq)
@@ -479,7 +479,7 @@ class StormEurope(Hazard):
         # frequency still based on the historic number of years
         new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
                                       N_PROB_EVENTS)
-        
+
         new_haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC probabilistic hazard set according to Schwierz et al.'

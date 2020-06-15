@@ -197,7 +197,7 @@ class TestCalc(unittest.TestCase):
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[int(num_events/2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertEqual(7.076504723057619e+10, impact.at_event[12147])
+        self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
         self.assertEqual(0, impact.at_event[num_events-1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
@@ -239,7 +239,7 @@ class TestCalc(unittest.TestCase):
             ent.exposures.value.size))
         self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
             impact.at_event))
-        self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.todense(),
+        self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.toarray(),
             impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
 
     def test_calc_if_pass(self):
@@ -265,7 +265,7 @@ class TestCalc(unittest.TestCase):
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[int(num_events/2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertEqual(7.076504723057619e+10, impact.at_event[12147])
+        self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
         self.assertEqual(0, impact.at_event[num_events-1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
@@ -455,20 +455,20 @@ class TestIO(unittest.TestCase):
     def test_write_imp_mat(self):
         """ Test write_excel_imp_mat function """
         impact = Impact()
-        impact.imp_mat = sparse.lil_matrix(np.zeros((5, 4)))
+        impact.imp_mat = np.zeros((5, 4))
         impact.imp_mat[0, :] = np.arange(4)
         impact.imp_mat[1, :] = np.arange(4)*2
         impact.imp_mat[2, :] = np.arange(4)*3
         impact.imp_mat[3, :] = np.arange(4)*4
         impact.imp_mat[4, :] = np.arange(4)*5
-        impact.imp_mat = impact.imp_mat.tocsr()
+        impact.imp_mat = sparse.csr_matrix(impact.imp_mat)
 
         file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
         impact.write_sparse_csr(file_name)
         read_imp_mat = Impact().read_sparse_csr(file_name+'.npz')
         for irow in range(5):
-            self.assertTrue(np.array_equal(np.array(read_imp_mat[irow, :].todense()).reshape(-1),
-                np.array(impact.imp_mat[irow, :].todense()).reshape(-1)))
+            self.assertTrue(np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
+                np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
 
 class TestRPmatrix(unittest.TestCase):
     ''' Test computation of impact per return period for whole exposure'''

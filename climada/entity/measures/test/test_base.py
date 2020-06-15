@@ -328,16 +328,16 @@ class TestApply(unittest.TestCase):
                         ref_ifs.get_func()[meas.haz_type][3].mdd))
 
         # unchanged hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].todense(),
-                        haz.intensity[:, :36].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].todense(),
-                        haz.intensity[:, 37:46].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].todense(),
-                        haz.intensity[:, 47:].todense()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].toarray(),
+                        haz.intensity[:, :36].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].toarray(),
+                        haz.intensity[:, 37:46].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].toarray(),
+                        haz.intensity[:, 47:].toarray()))
 
         # changed hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].todense(),
-                        new_haz.intensity[[36, 46]].todense()))
+        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].toarray(),
+                        new_haz.intensity[[36, 46]].toarray()))
 
     def test_apply_ref_pass(self):
         """ Test apply method: apply all measures but insurance """
