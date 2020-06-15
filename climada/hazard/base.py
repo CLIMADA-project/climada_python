@@ -383,12 +383,12 @@ class Hazard():
                   'src_crs': self.centroids.meta['crs'],
                   'dst_transform': transform, 'dst_crs': dst_crs,
                   'resampling': resampl_inten}
-        for idx_ev, inten in enumerate(self.intensity.todense()):
+        for idx_ev, inten in enumerate(self.intensity.toarray()):
             reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
                 self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
                 **kwargs)
         kwargs.update(resampling=resampl_fract)
-        for idx_ev, fract in enumerate(self.fraction.todense()):
+        for idx_ev, fract in enumerate(self.fraction.toarray()):
             reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
                       self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
                       **kwargs)
@@ -432,9 +432,9 @@ class Hazard():
         val_names = ['val'+str(i_ev) for i_ev in range(2*self.size)]
         for i_ev, inten_name in enumerate(val_names):
             if i_ev < self.size:
-                points_df[inten_name] = np.asarray(self.intensity[i_ev, :].todense()).reshape(-1)
+                points_df[inten_name] = np.asarray(self.intensity[i_ev, :].toarray()).reshape(-1)
             else:
-                points_df[inten_name] = np.asarray(self.fraction[i_ev-self.size, :].todense()).\
+                points_df[inten_name] = np.asarray(self.fraction[i_ev-self.size, :].toarray()).\
                 reshape(-1)
         raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
@@ -618,10 +618,10 @@ class Hazard():
         chk = -1
         for chk in range(int(num_cen/cen_step)):
             self._loc_return_inten(np.array(return_periods), \
-                self.intensity[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                self.intensity[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
                 inten_stats[:, chk*cen_step:(chk+1)*cen_step])
         self._loc_return_inten(np.array(return_periods), \
-            self.intensity[:, (chk+1)*cen_step:].todense(), \
+            self.intensity[:, (chk+1)*cen_step:].toarray(), \
             inten_stats[:, (chk+1)*cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
         if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
@@ -909,7 +909,7 @@ Reason: no negative intensity values were found in hazard.')
         if not intensity:
             variable = self.fraction
         if self.centroids.meta:
-            co.write_raster(file_name, variable.todense(), self.centroids.meta)
+            co.write_raster(file_name, variable.toarray(), self.centroids.meta)
         else:
             pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
@@ -918,7 +918,7 @@ Reason: no negative intensity values were found in hazard.')
                 LOGGER.info('Writing %s', file_name)
                 for i_ev in range(variable.shape[0]):
                     raster = rasterize([(x, val) for (x, val) in \
-                        zip(pixel_geom, np.array(variable[i_ev, :].todense()).reshape(-1))], \
+                        zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))], \
                         out_shape=(profile['height'], profile['width']),\
                         transform=profile['transform'], fill=0, \
                         all_touched=True, dtype=profile['dtype'],)
@@ -945,7 +945,7 @@ Reason: no negative intensity values were found in hazard.')
                 hf_str[0] = str(var_val.description)
             elif isinstance(var_val, sparse.csr_matrix):
                 if todense:
-                    hf_data.create_dataset(var_name, data=var_val.todense())
+                    hf_data.create_dataset(var_name, data=var_val.toarray())
                 else:
                     hf_csr = hf_data.create_group(var_name)
                     hf_csr.create_dataset('data', data=var_val.data)
@@ -1067,18 +1067,18 @@ Reason: no negative intensity values were found in hazard.')
                 except IndexError:
                     LOGGER.error('Wrong event id: %s.', ev_id)
                     raise ValueError from IndexError
-                im_val = mat_var[event_pos, :].todense().transpose()
+                im_val = mat_var[event_pos, :].toarray().transpose()
                 title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
                                           self.event_name[event_pos])
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
-                im_val = mat_var[event_pos, :].todense().transpose()
+                im_val = mat_var[event_pos, :].toarray().transpose()
                 title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id), \
                     str(self.event_id[event_pos]), self.event_name[event_pos])
             else:
-                im_val = np.max(mat_var, axis=0).todense().transpose()
+                im_val = np.max(mat_var, axis=0).toarray().transpose()
                 title = '%s max intensity at each point' % self.tag.haz_type
 
             array_val.append(im_val)
@@ -1112,20 +1112,20 @@ Reason: no negative intensity values were found in hazard.')
             except IndexError:
                 LOGGER.error('Wrong centroid id: %s.', centr_idx)
                 raise ValueError from IndexError
-            array_val = mat_var[:, centr_pos].todense()
+            array_val = mat_var[:, centr_pos].toarray()
             title = 'Centroid %s: (%s, %s)' % (str(centr_idx), \
                     coord[centr_pos, 0], coord[centr_pos, 1])
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
-            array_val = mat_var[:, centr_pos].todense()
+            array_val = mat_var[:, centr_pos].toarray()
 
             title = '%s-largest Centroid. %s: (%s, %s)' % \
                 (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0], \
                  coord[centr_pos, 1])
         else:
-            array_val = np.max(mat_var, axis=1).todense()
+            array_val = np.max(mat_var, axis=1).toarray()
             title = '%s max intensity at each event' % self.tag.haz_type
 
         if not axis:

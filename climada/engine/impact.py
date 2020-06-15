@@ -198,7 +198,8 @@ class Impact():
             insure_flag = True
 
         if save_mat:
-            self.imp_mat = sparse.lil_matrix((self.date.size, exposures.value.size))
+            # (data, (row_ind, col_ind))
+            self.imp_mat = ([], ([], []))
 
         # 3. Loop over exposures according to their impact function
         tot_exp = 0
@@ -225,7 +226,8 @@ class Impact():
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
         if save_mat:
-            self.imp_mat = self.imp_mat.tocsr()
+            shape = (self.date.size, exposures.value.size)
+            self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
 
     def calc_risk_transfer(self, attachment, cover):
         """ Compute traaditional risk transfer over impact. Returns new impact
@@ -573,10 +575,10 @@ class Impact():
         chk = -1
         for chk in range(int(num_cen/cen_step)):
             self._loc_return_imp(np.array(return_periods), \
-                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
                 imp_stats[:, chk*cen_step:(chk+1)*cen_step])
         self._loc_return_imp(np.array(return_periods), \
-            self.imp_mat[:, (chk+1)*cen_step:].todense(), \
+            self.imp_mat[:, (chk+1)*cen_step:].toarray(), \
             imp_stats[:, (chk+1)*cen_step:])
 
         return imp_stats
@@ -863,13 +865,13 @@ class Impact():
         impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
-            inten_val = hazard.intensity[:, icens].todense()
+            inten_val = hazard.intensity[:, icens].toarray()
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
-            impact = np.minimum(np.maximum(impact - \
-                exposures.deductible.values[exp_iimp] * paa, 0), \
-                exposures.cover.values[exp_iimp])
-            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
-                hazard.frequency.reshape(-1, 1), axis=0)
+            impact = impact.toarray()
+            impact -= exposures.deductible.values[exp_iimp] * paa
+            impact = np.clip(impact, 0, exposures.cover.values[exp_iimp])
+            self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
+            impact = sparse.coo_matrix(impact)
         else:
             self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
@@ -877,7 +879,10 @@ class Impact():
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value.values[exp_iimp])
         if not isinstance(self.imp_mat, list):
-            self.imp_mat[:, exp_iimp] = impact
+            row_ind, col_ind = impact.nonzero()
+            self.imp_mat[0].extend(list(impact.data))
+            self.imp_mat[1][0].extend(list(row_ind))
+            self.imp_mat[1][1].extend(list(exp_iimp[col_ind]))
 
     def _build_exp(self):
         eai_exp = Exposures()
