@@ -221,7 +221,6 @@ class RiverFlood(Hazard):
                                           win[0, 0]:win[1, 0] + 1].data
             frc_window = flood_frc.fldfrc[event_index, win[0, 1]:win[1, 1] + 1,
                                           win[0, 0]:win[1, 0] + 1].data
-            self. window = win
             try:
                 intensity, fraction = _interpolate(lat_coord, lon_coord,
                                                    dph_window, frc_window,
