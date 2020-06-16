@@ -256,7 +256,7 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
     @staticmethod
-    @jit
+    @jit(forceobj=True)
     def _tc_from_track(track, centroids, coastal_centr, model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
@@ -355,7 +355,7 @@ def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
     intensity = _windfield(track, centroids.coord, coastal_idx, mod_id)
     return sparse.csr_matrix(intensity)
 
-@jit
+@jit(forceobj=True)
 def _windfield(track, centroids, coastal_idx, model):
     """ Compute windfields (in m/s) in centroids using Holland model 08.
 
@@ -368,7 +368,6 @@ def _windfield(track, centroids, coastal_idx, model):
     Returns:
         np.array
     """
-    np.warnings.filterwarnings('ignore')
     # Make sure that CentralPressure never exceeds EnvironmentalPressure
     up_pr = np.argwhere(track.central_pressure.values >
                         track.environmental_pressure.values)
@@ -423,24 +422,24 @@ def _extra_rad_max_wind(t_cen, t_rad):
     Returns:
         np.array
     """
-    # TODO: always extrapolate???!!!
-    # rmax thresholds in nm
+    nan_mask = np.isnan(t_rad) | (t_rad <= 0.0)
+
+    # rmax thresholds in nm and pressure in mb
     rmax_1, rmax_2, rmax_3 = 15, 25, 50
-    # pressure in mb
     pres_1, pres_2, pres_3 = 950, 980, 1020
-    t_rad[t_cen <= pres_1] = rmax_1
+    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
+    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
 
-    to_change = np.logical_and(t_cen > pres_1, t_cen <= pres_2).nonzero()[0]
-    t_rad[to_change] = (t_cen[to_change] - pres_1) * \
-        (rmax_2 - rmax_1)/(pres_2 - pres_1) + rmax_1
-
-    to_change = np.argwhere(t_cen > pres_2).squeeze()
-    t_rad[to_change] = (t_cen[to_change] - pres_2) * \
-        (rmax_3 - rmax_2)/(pres_3 - pres_2) + rmax_2
+    to_change = nan_mask & (t_cen <= pres_1)
+    t_rad[to_change] = rmax_1
+    to_change = nan_mask & (t_cen > pres_1) & (t_cen <= pres_2)
+    t_rad[to_change] = rmax_1 + slope_1 * (t_cen[to_change] - pres_1)
+    to_change = nan_mask & (t_cen > pres_2)
+    t_rad[to_change] = rmax_2 + slope_2 * (t_cen[to_change] - pres_2)
 
     return t_rad * NM_TO_KM
 
-@jit(parallel=True)
+@jit(parallel=True, forceobj=True)
 def _wind_per_node(coastal_centr, track, v_trans, model):
     """ Compute sustained winds at each centroid.
 
@@ -496,7 +495,7 @@ def _wind_per_node(coastal_centr, track, v_trans, model):
 
     return intensity
 
-@jit
+@jit(forceobj=True)
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     """ Compute Hollands translational wind corrections. Returns factor.
 

@@ -676,7 +676,7 @@ class TCTracks():
         return ens_track
 
     @staticmethod
-    @jit(parallel=True)
+    @jit(parallel=True, forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """ Interpolate values of one track.
 
@@ -687,7 +687,7 @@ class TCTracks():
             xr.Dataset
         """
         if track.time.size > 3:
-            time_step = str(time_step_h) + 'H'
+            time_step = '{}H'.format(time_step_h)
             track_int = track.resample(time=time_step).interpolate('linear')
             track_int['time_step'] = ('time', track_int.time.size * [time_step_h])
             # handle change of sign in longitude
