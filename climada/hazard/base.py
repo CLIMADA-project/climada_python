@@ -986,34 +986,38 @@ Reason: no negative intensity values were found in hazard.')
                 setattr(self, var_name, hf_data.get(var_name))
         hf_data.close()
 
-    def concatenate(self, haz_src):
+    def concatenate(self, haz_src, append=False):
         """Concatenate events of several hazards
 
         Parameters:
             haz_src (list): Hazard instances with same centroids and units
+            append (bool): If True, append the concatenated hazards to this
+                instance, otherwise replace all data in this instance by the
+                concatenated data. Default: False.
         """
-        self.clear()
+        if append:
+            haz_src = [self] + haz_src
+        else:
+            self.clear()
+            self.centroids = copy.deepcopy(haz_src[-1].centroids)
+            self.units = haz_src[-1].units
 
         # check for new variables
-        for key_new in vars(haz_src[0]).keys():
+        for key_new in vars(haz_src[-1]).keys():
             if not hasattr(self, key_new):
-                setattr(self, key_new, getattr(haz_src[0], key_new))
+                setattr(self, key_new, getattr(haz_src[-1], key_new))
 
         for var_name in vars(self).keys():
             var_src = [getattr(haz, var_name) for haz in haz_src]
-            if isinstance(var_src[0], sparse.csr.csr_matrix):
+            if isinstance(var_src[-1], sparse.csr.csr_matrix):
                 setattr(self, var_name, sparse.vstack(var_src, format='csr'))
-            elif isinstance(var_src[0], np.ndarray) and var_src[0].ndim == 1:
+            elif isinstance(var_src[-1], np.ndarray) and var_src[-1].ndim == 1:
                 setattr(self, var_name, np.hstack(var_src))
-            elif isinstance(var_src[0], list):
+            elif isinstance(var_src[-1], list):
                 setattr(self, var_name, sum(var_src, []))
-            elif isinstance(var_src[0], TagHazard):
+            elif isinstance(var_src[-1], TagHazard):
                 tag_dst = getattr(self, var_name)
-                for tag in var_src:
-                    tag_dst.append(tag)
-
-        self.centroids = copy.deepcopy(haz_src[0].centroids)
-        self.units = haz_src[0].units
+                [tag_dst.append(tag) for tag in var_src if tag is not tag_dst]
 
         self.sanitize_event_ids()
 
