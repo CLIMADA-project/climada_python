@@ -434,7 +434,7 @@ class TestFunc(unittest.TestCase):
         region_id_OSLO = get_country_code([59.91],[10.75])
         self.assertEqual(np.count_nonzero(region_id), 6)
         self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
-        self.assertEqual(region_id_OSLO, np.array(578))
+        self.assertEqual(region_id_OSLO, np.array(578)) # 578 for Norway
 
     def test_convert_wgs_to_utm_pass(self):
         """ Test convert_wgs_to_utm """
