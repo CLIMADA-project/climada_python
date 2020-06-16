@@ -52,6 +52,9 @@ NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
                        magnitude
 """ NASA nightlights coordinates resolution in degrees. """
 
+NASA_TILE_SIZE = (21600, 21600)
+""" NASA nightlights tile resolution. """
+
 NOAA_BORDER = (-180, -65, 180, 75)
 """ NOAA nightlights border (min_lon, min_lat, max_lon, max_lat) """
 
@@ -247,106 +250,40 @@ def load_nightlight_nasa(bounds, req_files, year):
     Returns:
         nightlight (sparse.csr_matrix), coord_nl (np.array)
     """
-    coord_nl = np.empty((2, 2))
-    coord_nl[0, :] = [-90+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
-    coord_nl[1, :] = [-180+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
+    coord_min = np.array([-90, -180]) + NASA_RESOLUTION_DEG / 2
+    coord_h = np.full((2,), NASA_RESOLUTION_DEG)
 
-    in_lat = math.floor((bounds[1] - coord_nl[0, 0])/coord_nl[0, 1]), \
-             math.ceil((bounds[3] - coord_nl[0, 0])/coord_nl[0, 1])
-    # Upper (0) or lower (1) latitude range for min and max latitude
-    in_lat_nb = (math.floor(in_lat[0]/21600)+1)%2, \
-                (math.floor(in_lat[1]/21600)+1)%2
+    min_lon, min_lat, max_lon, max_lat = bounds
+    bounds_mat = np.array([[min_lat, min_lon], [max_lat, max_lon]])
+    global_idx = (bounds_mat - coord_min[None]) / coord_h[None]
+    global_idx[0,:] = np.floor(global_idx[0,:])
+    global_idx[1,:] = np.ceil(global_idx[1,:])
+    tile_size = np.array(NASA_TILE_SIZE)
 
-    in_lon = math.floor((bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
-             math.ceil((bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
-    # 0, 1, 2, 3 longitude range for min and max longitude
-    in_lon_nb = math.floor(in_lon[0]/21600), math.floor(in_lon[1]/21600)
-
-    nightlight = sparse.lil.lil_matrix([])
-    idx_info = [0, -1, False] # idx, prev_idx and row added flag
-    for idx, file in enumerate(BM_FILENAMES):
-        idx_info[0] = idx
-        if not req_files[idx]:
+    nightlight = []
+    for idx, fname in enumerate(BM_FILENAMES):
+        tile_coord = np.array([1 - idx % 2, idx // 2])
+        extent = global_idx - (tile_coord * tile_size)[None]
+        if np.any(extent[1,:] < 0) or np.any(extent[0,:] >= NASA_TILE_SIZE):
+            # this tile does not intersect the specified bounds
             continue
+        extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
 
-        with Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year)))) \
-        as im_nl:
-            cut_nl_nasa(im_nl.getchannel(0), idx_info, nightlight, in_lat, in_lon,
-                        in_lat_nb, in_lon_nb)
+        fname = path.join(SYSTEM_DIR, fname.replace('*', str(year)))
+        with Image.open(fname, "r") as im_nl:
+            im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
+            im_nl = sparse.csc.csc_matrix(im_nl)
+            im_nl = im_nl[extent[0,0]:extent[1,0]+1,extent[0,1]:extent[1,1]+1]
+            nightlight.append((tile_coord, im_nl))
+    tile_coords = np.array([n[0] for n in nightlight])
+    shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
+    nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
+    nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
 
-        idx_info[1] = idx
+    coord_nl = np.vstack([coord_min, coord_h]).T
+    coord_nl[:, 0] += global_idx[0,:] * coord_h[:]
 
-    coord_nl[0, 0] = coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]
-    coord_nl[1, 0] = coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]
-
-    return nightlight.tocsr(), coord_nl
-
-def cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon, in_lat_nb,
-                in_lon_nb):
-    """Cut nasa's nightlight image piece (1-8) to bounds and append to final
-    matrix.
-
-    Parameters:
-        aux_nl (PIL.Image): nasa's nightlight part (1-8)
-        idx_info (list): idx (0-7), prev_idx (0-7) and row_added flag (bool).
-        nightlight (sprse.lil_matrix): matrix with nightlight that is expanded
-        in_lat (tuple): min and max latitude indexes in the whole nasa's image
-        in_lon (tuple): min and max longitude indexes in the whole nasa's image
-        in_lat_nb (tuple): for min and max latitude, range where they belong
-            to: upper (0) or lower (1) row of nasa's images.
-        on_lon_nb (tuple): for min and max longitude, range where they belong
-            to: 0, 1, 2 or 3 column of nasa's images.
-    """
-    idx, prev_idx, row_added = idx_info
-
-    aux_nl = sparse.csc.csc_matrix(aux_nl)
-    # flip X axis
-    aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
-
-    aux_bnd = []
-    # in min lon
-    if int(idx/2) % 4 == in_lon_nb[0]:
-        aux_bnd.append(int(in_lon[0] - (int(idx/2)%4)*21600))
-    else:
-        aux_bnd.append(0)
-
-    # in min lat
-    if idx % 2 == in_lat_nb[0]:
-        aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
-    else:
-        aux_bnd.append(0)
-
-    # in max lon
-    if int(idx/2) % 4 == in_lon_nb[1]:
-        aux_bnd.append(int(in_lon[1] - (int(idx/2)%4)*21600) + 1)
-    else:
-        aux_bnd.append(21600)
-
-    # in max lat
-    if idx % 2 == in_lat_nb[1]:
-        aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
-    else:
-        aux_bnd.append(21600)
-
-    if prev_idx == -1:
-        nightlight.resize((aux_bnd[3]-aux_bnd[1], aux_bnd[2]-aux_bnd[0]))
-        nightlight[:, :] = aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
-    elif idx%2 == prev_idx%2 or prev_idx%2 == 1:
-        # append horizontally in first rows e.g 0->2 or 1->2
-        nightlight.resize((nightlight.shape[0],
-                           nightlight.shape[1] + aux_bnd[2]-aux_bnd[0]))
-        nightlight[-aux_bnd[3]+aux_bnd[1]:, -aux_bnd[2]+aux_bnd[0]:] = \
-            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
-    else:
-        # append vertically in firsts rows and columns e.g 0->1 or 2->3
-        if not row_added:
-            old_shape = nightlight.shape
-            nightlight.resize((old_shape[0] + aux_bnd[3] - aux_bnd[1],
-                               old_shape[1]))
-            nightlight[-old_shape[0]:, :] = nightlight[:old_shape[0], :]
-            idx_info[2] = True
-        nightlight[:aux_bnd[3]-aux_bnd[1], -aux_bnd[2]+aux_bnd[0]:] = \
-            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
+    return nightlight, coord_nl
 
 def unzip_tif_to_py(file_gz):
     """ Unzip image file, read it, flip the x axis, save values as pickle

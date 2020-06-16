@@ -85,8 +85,8 @@ DEF_HAZ_TYPE = ''
 
 class LitPop(Exposures):
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
-        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank) 
-        or non-financial wealth (Global Wealth Databook by the Credit Suisse 
+        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank)
+        or non-financial wealth (Global Wealth Databook by the Credit Suisse
         Research Institute.)
 
         Calling sequence example:
@@ -712,12 +712,8 @@ def _shape_cutter(shape, **opt_args):
         all_coords = points2check
         del points2check
     incl_coords = set(incl_coords)
-    mask = sparse.lil.lil_matrix(np.zeros((len(all_coords),)))
-    for idx, val in enumerate(all_coords):
-        if val in incl_coords:
-            mask[0, idx] = 1
-    mask = pd.SparseArray(mask.toarray().reshape((-1,), order='F'),\
-                          fill_value=0)
+    mask = np.array([(coord in incl_coords) for coord in all_coords])
+    mask = pd.SparseArray(mask, fill_value=0)
     lon, lat = zip(*[all_coords[val] for idx, val\
                      in enumerate(mask.sp_index.indices)])
     if check_plot == 1:
@@ -892,12 +888,8 @@ def _mask_from_shape(check_shape, **opt_args):
         all_coords = points2check
         del points2check
     incl_coords = set(incl_coords)
-    mask = sparse.lil.lil_matrix(np.zeros((len(all_coords),)))
-    for idx, val in enumerate(all_coords):
-        if val in incl_coords:
-            mask[0, idx] = 1
-    mask = pd.SparseArray(mask.toarray().reshape((-1,), order='F'),\
-                          fill_value=0, dtype='bool_')
+    mask = np.array([(coord in incl_coords) for coord in all_coords])
+    mask = pd.SparseArray(mask, fill_value=0, dtype='bool_')
 #    plt.figure()
 #    l1, l2 = zip(*[x for n, x in enumerate(all_coords) if mask.values[n]==1])
 #    plt.scatter(l1, l2)
