@@ -46,7 +46,7 @@ def init_test_data_unqiue_clusters():
 def init_test_data_clustering():
     """creates sandbox test data for monthly days below threshold data
     for testing clustering"""
-    
+
     df = pd.DataFrame(columns=['lat', 'lon', 'dis', \
                               'dt_month', 'target_cluster'])
 
