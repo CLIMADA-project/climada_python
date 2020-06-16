@@ -40,9 +40,9 @@ import xarray as xr
 from sklearn.neighbors import DistanceMetric
 import netCDF4 as nc
 from numba import jit
-from pint import UnitRegistry
 import scipy.io.matlab as matlab
 
+from climada.util import ureg
 from climada.util.config import CONFIG
 import climada.util.coordinates as coord_util
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
@@ -227,8 +227,6 @@ class TCTracks():
             rmw_corr (str, optional): If True, multiply the radius of
                 maximum wind by factor 2. Default: False.
         """
-        ureg = UnitRegistry()
-
         if hemisphere == 'S':
             hem_min, hem_max = -90, 0
         elif hemisphere == 'N':
@@ -1566,7 +1564,6 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
     Returns:
         double
     """
-    ureg = UnitRegistry()
     if unit_orig in ('kn', 'kt'):
         ur_orig = ureg.knot
     elif unit_orig == 'mph':
