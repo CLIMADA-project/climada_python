@@ -30,13 +30,13 @@ import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 import gdal
-from pint import UnitRegistry
 from cartopy.io import shapereader
 
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
+from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
@@ -61,8 +61,7 @@ BM_YEARS = [2016, 2012] # latest first
 # Years with GPW population data available:
 GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
-NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
+NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
 WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"

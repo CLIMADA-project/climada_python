@@ -31,8 +31,8 @@ import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
 from PIL import Image
-from pint import UnitRegistry
 
+from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
@@ -44,12 +44,10 @@ LOGGER = logging.getLogger(__name__)
 NOAA_SITE = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/"
 """ NOAA's URL used to retrieve nightlight satellite images. """
 
-NOAA_RESOLUTION_DEG = (30*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
+NOAA_RESOLUTION_DEG = (30 * ureg.arc_second).to(ureg.deg).magnitude
 """ NOAA nightlights coordinates resolution in degrees. """
 
-NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
+NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 """ NASA nightlights coordinates resolution in degrees. """
 
 NASA_TILE_SIZE = (21600, 21600)

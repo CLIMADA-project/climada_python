@@ -22,10 +22,10 @@ Test TropCyclone class
 import os
 import unittest
 import numpy as np
-from pint import UnitRegistry
 from scipy import sparse
 import datetime as dt
 
+from climada.util import ureg
 import climada.hazard.trop_cyclone as tc
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import TropCyclone
@@ -140,12 +140,11 @@ class TestModel(unittest.TestCase):
 
     def test_extra_rad_max_wind_pass(self):
         """ Test _extra_rad_max_wind function. Compare to MATLAB reference."""
-        ureg = UnitRegistry()
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values, ureg)
+            tc_track.data[0].radius_max_wind.values)
 
         self.assertEqual(rad_max_wind[0], 75.536713749999905)
         self.assertAlmostEqual(rad_max_wind[10], 75.592659583328057)
@@ -219,14 +218,13 @@ class TestModel(unittest.TestCase):
 
     def test_vtrans_correct(self):
         """ Test _vtrans_correct function. Compare to MATLAB reference."""
-        ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values, ureg))
+            tc_track.data[0].radius_max_wind.values))
         r_arr = np.array([286.4938638337190, 290.5930935802884,
                           295.0271327746536, 299.7811253637995,
                           296.8484825705515, 274.9892882245964])
@@ -237,7 +235,7 @@ class TestModel(unittest.TestCase):
             tc_track.data[0].radius_max_wind.values[i_node],
             CENTR_TEST_BRB.coord[:6, :], r_arr)
 
-        to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
+        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
         v_trans = 10.191466256012880 / to_kn
         v_trans_corr *= v_trans
@@ -251,30 +249,28 @@ class TestModel(unittest.TestCase):
 
     def test_vtrans_pass(self):
         """ Test _vtrans function. Compare to MATLAB reference."""
-        ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
         v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values,
-                tc_track.data[0].time_step.values, ureg)
+                tc_track.data[0].time_step.values)
 
-        to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
+        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
         self.assertEqual(v_trans.size, tc_track.data[0].time.size-1)
         self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466256012880)
 
     def test_vang_sym(self):
         """ Test _vang_sym function. Compare to MATLAB reference. """
-        ureg = UnitRegistry()
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values, ureg))
+            tc_track.data[0].radius_max_wind.values))
         r_arr = np.array([286.4938638337190, 290.5930935802884,
                           295.0271327746536, 299.7811253637995,
                           296.8484825705515, 274.9892882245964])
@@ -286,7 +282,7 @@ class TestModel(unittest.TestCase):
             tc_track.data[0].radius_max_wind.values[i_node],
             r_arr, v_trans, model=0)
 
-        to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
+        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
         self.assertEqual(v_ang.size, 6)
         self.assertAlmostEqual(v_ang[0] * to_kn, 10.774196807905097)
         self.assertAlmostEqual(v_ang[1] * to_kn, 10.591725180482094)
@@ -297,18 +293,17 @@ class TestModel(unittest.TestCase):
 
     def test_windfield(self):
         """ Test _windfield function. Compare to MATLAB reference. """
-        ureg = UnitRegistry()
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
             tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values, ureg))
+            tc_track.data[0].radius_max_wind.values))
         coast_centr = tc.coastal_centr_idx(CENTR_TEST_BRB)
 
         wind = tc._windfield(tc_track.data[0], CENTR_TEST_BRB.coord, coast_centr, model=0)
 
-        to_kn = (1* ureg.meter / ureg.second).to(ureg.knot).magnitude
+        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
         self.assertEqual(wind.shape, (CENTR_TEST_BRB.size,))
 
         wind = wind[coast_centr]
