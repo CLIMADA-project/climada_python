@@ -870,28 +870,18 @@ Reason: no negative intensity values were found in hazard.')
 
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
-        dup_pos = list()
-        set_ev = set()
-        for ev_pos, (ev_name, ev_date) in enumerate(zip(self.event_name,
-                                                        self.date)):
-            if (ev_name, ev_date) in set_ev:
-                dup_pos.append(ev_pos)
-            set_ev.add((ev_name, ev_date))
+        events = list(zip(self.event_name, self.date))
+        set_ev = set(events)
         if len(set_ev) == self.event_id.size:
             return
-
-        for var_name, var_val in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name, np.delete(var_val, dup_pos))
+        unique_pos = sorted([events.index(e) for e in set_ev])
+        for var_name, var_val in vars(self).items():
+            if isinstance(var_val, sparse.csr.csr_matrix):
+                setattr(self, var_name, var_val[unique_pos,:])
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(self, var_name, var_val[unique_pos])
             elif isinstance(var_val, list):
-                setattr(self, var_name, np.delete(var_val, dup_pos).tolist())
-
-        mask = np.ones(self.intensity.shape, dtype=bool)
-        mask[dup_pos, :] = False
-        self.intensity = sparse.csr_matrix(self.intensity[mask].\
-        reshape(self.event_id.size, self.intensity.shape[1]))
-        self.fraction = sparse.csr_matrix(self.fraction[mask].\
-        reshape(self.event_id.size, self.intensity.shape[1]))
+                setattr(self, var_name, [var_val[p] for p in unique_pos])
 
     @property
     def size(self):

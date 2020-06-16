@@ -149,9 +149,9 @@ class TestModel(unittest.TestCase):
         self.assertEqual(rad_max_wind[0], 75.536713749999905)
         self.assertAlmostEqual(rad_max_wind[10], 75.592659583328057)
         self.assertAlmostEqual(rad_max_wind[128], 46.686527832605236)
-        self.assertEqual(rad_max_wind[129], 46.089211533333405)
+        self.assertAlmostEqual(rad_max_wind[129], 46.089211533333333)
         self.assertAlmostEqual(rad_max_wind[130], 45.672274889277276)
-        self.assertEqual(rad_max_wind[189], 45.132715266666672)
+        self.assertAlmostEqual(rad_max_wind[189], 45.132715266666666)
         self.assertAlmostEqual(rad_max_wind[190], 45.979603999211285)
         self.assertAlmostEqual(rad_max_wind[191], 47.287173876478825)
         self.assertEqual(rad_max_wind[192], 48.875090249999985)
@@ -296,9 +296,6 @@ class TestModel(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
-        tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values))
         coast_centr = tc.coastal_centr_idx(CENTR_TEST_BRB)
 
         wind = tc._windfield(tc_track.data[0], CENTR_TEST_BRB.coord, coast_centr, model=0)
