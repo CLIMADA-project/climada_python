@@ -406,7 +406,7 @@ def isimip_region2natids(regions):
         if not any(region_msk):
             LOGGER.error('Unknown region name: %s', region)
             raise KeyError
-        natids += natID_info['ID'][region_msk].values
+        natids += list(natID_info['ID'][region_msk].values)
     return list(set(natids))
 
 def isimip_iso2natid(isos):
