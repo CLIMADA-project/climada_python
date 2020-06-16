@@ -84,15 +84,14 @@ class TestRiverFlood(unittest.TestCase):
                               frc_path=frc_path)
         years = [2000, 2001, 2002]
         manipulated_dates = [730303, 730669, 731034]
+        testRFaddset = []
         for i in range(len(years)):
-            testRFaddset = RiverFlood()
-            testRFaddset.set_from_nc(countries=['AFG'])
-            testRFaddset.date = [manipulated_dates[i]]
-            if i == 0:
-                testRFaddset.event_name = ['2000_2']
-            else:
-                testRFaddset.event_name = [str(years[i])]
-            testRFset.append(testRFaddset)
+            haz = RiverFlood()
+            haz.set_from_nc(countries=['AFG'])
+            haz.date = np.array([manipulated_dates[i]])
+            haz.event_name = ['2000_2' if i == 0 else str(years[i])]
+            testRFaddset.append(haz)
+        testRFset.concatenate(testRFaddset, append=True)
 
         testRFset.set_flooded_area()
         self.assertEqual(testRFset.units, 'm')
@@ -183,8 +182,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
                                        test_window))
 
-
-#
-# Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    # Execute Tests
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
