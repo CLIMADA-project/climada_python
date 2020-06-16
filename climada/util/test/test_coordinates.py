@@ -197,6 +197,19 @@ class TestFunc(unittest.TestCase):
         self.assertIsInstance(res,
                               geopandas.geodataframe.GeoDataFrame)
 
+    def test_get_country_geometries_country_norway_pass(self):
+        """ test correct numeric ISO3 for country Norway """
+        iso_countries = ['NOR']
+        extent = [10, 11, 55, 60]
+        res1 = get_country_geometries(iso_countries)
+        res2 = get_country_geometries(extent=extent)
+        self.assertEqual(res1.ISO_N3.values[0], '578')
+        self.assertIn('578', res2.ISO_N3.values)
+        self.assertIn('NOR', res2.ISO_A3.values)
+        self.assertIn('Denmark', res2.NAME.values)
+        self.assertIn('Norway', res2.NAME.values)
+        self.assertNotIn('Sweden', res2.NAME.values)
+
     def test_get_country_geometries_extent_pass(self):
         """get_country_geometries by selecting by extent"""
         lat = np.array([28.203216, 28.555994, 28.860875])
@@ -418,9 +431,10 @@ class TestFunc(unittest.TestCase):
                         -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
         lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
         region_id = get_country_code(lat, lon)
-
+        region_id_OSLO = get_country_code([59.91],[10.75])
         self.assertEqual(np.count_nonzero(region_id), 6)
         self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
+        self.assertEqual(region_id_OSLO, np.array(578))
 
     def test_convert_wgs_to_utm_pass(self):
         """ Test convert_wgs_to_utm """
