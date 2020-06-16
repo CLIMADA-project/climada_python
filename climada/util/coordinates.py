@@ -306,16 +306,13 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         if nat_earth.loc[idx].ISO_A3=='-99':
             nat_earth.loc[idx, 'ISO_A3'] = nat_earth.loc[idx].ADM0_A3
         if nat_earth.loc[idx].ISO_N3=='-99':
-            try:
-                nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].ISO_A3).numeric
-            except KeyError:
+            for col in ['ISO_A3', 'ADM0_A3', 'NAME']:
                 try:
-                    nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].ADM0_A3).numeric
+                    nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx, col]).numeric
                 except KeyError:
-                    try:
-                        nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].NAME).numeric
-                    except KeyError:
-                        nat_earth.loc[idx, 'ISO_N3'] = '-99'
+                    nat_earth.loc[idx, 'ISO_N3'] = '-99'
+                else:
+                    break
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
