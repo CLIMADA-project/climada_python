@@ -308,26 +308,19 @@ class RiverFlood(Hazard):
         """
         self.centroids.set_area_pixel()
         area_centr = self.centroids.area_pixel
-        event_years = np.array([date.fromordinal(self.date[i]).year
-                                for i in range(len(self.date))])
+        event_years = np.array([date.fromordinal(d).year for d in self.date])
         years = np.unique(event_years)
-        year_ev_mk = self._annual_event_mask(event_years, years)
+        year_ev_mk = np.vstack([(event_years == y) for y in years])
 
         try:
-            self.fla_ev_centr = np.zeros((self._n_events,
-                                          len(self.centroids.lon)))
-            self.fla_ann_centr = np.zeros((len(years),
-                                           len(self.centroids.lon)))
-            self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
-                                                     area_centr))
+            self.fla_ev_centr = self.fraction.toarray() * area_centr
             self.fla_event = np.sum(self.fla_ev_centr, axis=1)
-            for year_ind in range(len(years)):
-                self.fla_ann_centr[year_ind, :] =\
-                    np.sum(self.fla_ev_centr[year_ev_mk[year_ind, :], :],
-                           axis=0)
-            self.fla_annual = np.sum(self.fla_ann_centr, axis=1)
-            self.fla_ann_av = np.mean(self.fla_annual)
-            self.fla_ev_av = np.mean(self.fla_event)
+            self.fla_ann_centr = [self.fla_ev_centr[mask,:].sum(axis=0) \
+                                  for mask in year_ev_mk]
+            self.fla_ann_centr = np.vstack(self.fla_ann_centr)
+            self.fla_annual = self.fla_ann_centr.sum(axis=1)
+            self.fla_ann_av = self.fla_annual.mean()
+            self.fla_ev_av = self.fla_event.mean()
         except MemoryError:
             self.fla_ev_centr = None
             self.tot_fld_area = None
@@ -356,7 +349,7 @@ class RiverFlood(Hazard):
         event_years = np.array([date.fromordinal(self.date[i]).year
                                 for i in range(len(self.date))])
         years = np.unique(event_years)
-        year_ev_mk = self._annual_event_mask(event_years, years)
+        year_ev_mk = np.vstack([(event_years == y) for y in years])
         try:
             self.fla_ev_centr = np.zeros((self._n_events, len(centr_indices)))
             self.fla_ann_centr = np.zeros((len(years), len(centr_indices)))
@@ -381,13 +374,6 @@ class RiverFlood(Hazard):
             LOGGER.warning('Number of events and slected area exceed ' +
                            'memory capacities, area has not been calculated,' +
                            ' attributes set to None')
-
-    def _annual_event_mask(self, event_years, years):
-        event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
-        for year_ind in range(len(years)):
-            events = np.where(event_years == years[year_ind])[0]
-            event_mask[year_ind, events] = True
-        return event_mask
 
     def select_window_area(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region

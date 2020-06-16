@@ -87,7 +87,7 @@ class TestRiverFlood(unittest.TestCase):
         for i in range(len(years)):
             testRFaddset = RiverFlood()
             testRFaddset.set_from_nc(countries=['AFG'])
-            testRFaddset.date = [manipulated_dates[i]]
+            testRFaddset.date = np.array([manipulated_dates[i]])
             if i == 0:
                 testRFaddset.event_name = ['2000_2']
             else:
@@ -183,8 +183,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
                                        test_window))
 
-
-#
-# Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    # Execute Tests
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
