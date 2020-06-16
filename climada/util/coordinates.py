@@ -310,9 +310,10 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
                 try:
                     nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx, col]).numeric
                 except KeyError:
-                    nat_earth.loc[idx, 'ISO_N3'] = '-99'
+                    continue
                 else:
                     break
+
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
