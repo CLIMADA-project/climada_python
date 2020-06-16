@@ -30,7 +30,6 @@ import numpy as np
 from numpy import linalg as LA
 from scipy import sparse
 import matplotlib.animation as animation
-from pint import UnitRegistry
 from numba import jit
 from tqdm import tqdm
 
@@ -39,6 +38,7 @@ from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
+from climada.util import ureg
 from climada.util.constants import GLB_CENTROIDS_MAT
 from climada.util.interpolation import dist_approx
 import climada.util.plot as u_plot
@@ -57,6 +57,11 @@ CENTR_NODE_MAX_DIST_KM = 300
 MODEL_VANG = {'H08': 0
              }
 """ Enumerate different symmetric wind field calculation."""
+
+KMH_TO_MS = (1.0 * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
+KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter/ureg.second).magnitude
+NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
+""" Unit conversion factors for JIT functions that can't use ureg """
 
 class TropCyclone(Hazard):
     """Contains tropical cyclone events.
@@ -251,7 +256,7 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
     @staticmethod
-    @jit
+    @jit(forceobj=True)
     def _tc_from_track(track, centroids, coastal_centr, model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
@@ -350,7 +355,7 @@ def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
     intensity = _windfield(track, centroids.coord, coastal_idx, mod_id)
     return sparse.csr_matrix(intensity)
 
-@jit
+@jit(forceobj=True)
 def _windfield(track, centroids, coastal_idx, model):
     """ Compute windfields (in m/s) in centroids using Holland model 08.
 
@@ -363,7 +368,6 @@ def _windfield(track, centroids, coastal_idx, model):
     Returns:
         np.array
     """
-    np.warnings.filterwarnings('ignore')
     # Make sure that CentralPressure never exceeds EnvironmentalPressure
     up_pr = np.argwhere(track.central_pressure.values >
                         track.environmental_pressure.values)
@@ -371,13 +375,12 @@ def _windfield(track, centroids, coastal_idx, model):
         track.environmental_pressure.values[up_pr]
 
     # Extrapolate RadiusMaxWind from pressure if not given
-    ureg = UnitRegistry()
     track['radius_max_wind'] = ('time', _extra_rad_max_wind( \
-        track.central_pressure.values, track.radius_max_wind.values, ureg))
+        track.central_pressure.values, track.radius_max_wind.values))
 
     # Track translational speed at every node
     v_trans = _vtrans(track.lat.values, track.lon.values,
-                      track.time_step.values, ureg)
+                      track.time_step.values)
 
     # Compute windfield
     intensity = np.zeros((centroids.shape[0], ))
@@ -387,14 +390,13 @@ def _windfield(track, centroids, coastal_idx, model):
     return intensity
 
 @jit
-def _vtrans(t_lat, t_lon, t_tstep, ureg):
+def _vtrans(t_lat, t_lon, t_tstep):
     """ Translational spped at every track node.
 
     Parameters:
         t_lat (np.array): track latitudes
         t_lon (np.array): track longitudes
         t_tstep (np.array): track time steps
-        ureg (UnitRegistry): units handler
 
     Returns:
         np.array
@@ -402,43 +404,42 @@ def _vtrans(t_lat, t_lon, t_tstep, ureg):
     v_trans = dist_approx(t_lat[:-1], t_lon[:-1],
                           np.cos(np.radians(t_lat[:-1])), t_lat[1:],
                           t_lon[1:]) / t_tstep[1:]
-    v_trans = (v_trans * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
+    v_trans *= KMH_TO_MS
 
     # nautical miles/hour, limit to 30 nmph
-    v_max = (30*ureg.knot).to(ureg.meter/ureg.second).magnitude
+    v_max = 30 * KN_TO_MS
     v_trans[v_trans > v_max] = v_max
     return v_trans
 
 @jit
-def _extra_rad_max_wind(t_cen, t_rad, ureg):
+def _extra_rad_max_wind(t_cen, t_rad):
     """ Extrapolate RadiusMaxWind from pressure and change to km.
 
     Parameters:
         t_cen (np.array): track central pressures
         t_rad (np.array): track radius of maximum wind
-        ureg (UnitRegistry): units handler
 
     Returns:
         np.array
     """
-    # TODO: always extrapolate???!!!
-    # rmax thresholds in nm
+    nan_mask = np.isnan(t_rad) | (t_rad <= 0.0)
+
+    # rmax thresholds in nm and pressure in mb
     rmax_1, rmax_2, rmax_3 = 15, 25, 50
-    # pressure in mb
     pres_1, pres_2, pres_3 = 950, 980, 1020
-    t_rad[t_cen <= pres_1] = rmax_1
+    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
+    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
 
-    to_change = np.logical_and(t_cen > pres_1, t_cen <= pres_2).nonzero()[0]
-    t_rad[to_change] = (t_cen[to_change] - pres_1) * \
-        (rmax_2 - rmax_1)/(pres_2 - pres_1) + rmax_1
+    to_change = nan_mask & (t_cen <= pres_1)
+    t_rad[to_change] = rmax_1
+    to_change = nan_mask & (t_cen > pres_1) & (t_cen <= pres_2)
+    t_rad[to_change] = rmax_1 + slope_1 * (t_cen[to_change] - pres_1)
+    to_change = nan_mask & (t_cen > pres_2)
+    t_rad[to_change] = rmax_2 + slope_2 * (t_cen[to_change] - pres_2)
 
-    to_change = np.argwhere(t_cen > pres_2).squeeze()
-    t_rad[to_change] = (t_cen[to_change] - pres_2) * \
-        (rmax_3 - rmax_2)/(pres_3 - pres_2) + rmax_2
+    return t_rad * NM_TO_KM
 
-    return (t_rad * ureg.nautical_mile).to(ureg.kilometer).magnitude
-
-@jit(parallel=True)
+@jit(parallel=True, forceobj=True)
 def _wind_per_node(coastal_centr, track, v_trans, model):
     """ Compute sustained winds at each centroid.
 
@@ -494,7 +495,7 @@ def _wind_per_node(coastal_centr, track, v_trans, model):
 
     return intensity
 
-@jit
+@jit(forceobj=True)
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     """ Compute Hollands translational wind corrections. Returns factor.
 
