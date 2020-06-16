@@ -28,14 +28,13 @@ from climada.util.constants import DATA_DIR
 INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'co2_dis_global_daily_DEMO_FR'
 
-
 def init_test_data_unqiue_clusters():
     """creates sandbox test data for 2D cluster IDs for test of identification of
     unique 3D clusters"""
 
     df = pd.DataFrame(columns=['target_cluster', 'cluster_id', 'c_lat_lon', \
                                'c_lat_dt_month', 'c_lon_dt_month'])
-    
+
     df.c_lon_dt_month = np.array([1, 1, 1, 1, 2, 2, 3, 4, 5, 4, 4, 5, 6, -1, -1])
     df.c_lat_dt_month = np.array([1, -1, 2, 2, 2, 3, 5, 3, 4, 6, 6, 5, 7, -1, 1])
     df.c_lat_lon = np.array([1, 3, 1, 3, 3, 3, 5, 3, 5, 3, 4, 5, 2, -1, -1])
@@ -91,7 +90,7 @@ class TestLowFlow(unittest.TestCase):
         self.assertEqual(data.size, 75)
         self.assertListEqual(list(data.cluster_id), list(data.target_cluster))
 
-    def test_identify_clusters_default(self):   
+    def test_identify_clusters_default(self):
         """test clustering event from monthly days below threshold data"""
         haz = LowFlow()
         # 1) direct neighbors only (allowing over cross in space):
@@ -103,13 +102,13 @@ class TestLowFlow(unittest.TestCase):
         # as (1), but allowing 1 month break in between:
         haz.data = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=2, min_samples=1)
-        target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]        
+        target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
         # as (1), but allowing 1 gridcell break in between:
         haz.data = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=2., clus_thresh_t=1, min_samples=1)
-        target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]        
+        target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
 # Execute Tests

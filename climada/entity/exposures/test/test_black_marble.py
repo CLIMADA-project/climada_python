@@ -167,10 +167,10 @@ class TestNightLight(unittest.TestCase):
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
                 geom = cntry.geometry
-        nightlight = sparse.lil.lil_matrix(np.ones((500, 1000)))
+        nightlight = np.ones((500, 1000))
         nightlight[275:281, 333:334] = 0.4
         nightlight[275:281, 334:336] = 0.5
-        nightlight = nightlight.tocsr()
+        nightlight = sparse.csr_matrix(nightlight)
 
         coord_nl = np.empty((2, 2))
         coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
@@ -192,7 +192,7 @@ class TestNightLight(unittest.TestCase):
 
         in_lat = (278, 280)
         in_lon = (333, 335)
-        nightlight_ref = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1].todense()
+        nightlight_ref = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1].toarray()
         nightlight_ref[np.logical_not(on_ref)] = 0.0
 
         self.assertTrue(np.allclose(lat_ref, lat_reg))
@@ -206,10 +206,10 @@ class TestNightLight(unittest.TestCase):
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
                 geom = cntry.geometry
-        nightlight = sparse.lil.lil_matrix(np.ones((500, 1000)))
+        nightlight = np.ones((500, 1000))
         nightlight[275:281, 333:334] = 0.4
         nightlight[275:281, 334:336] = 0.5
-        nightlight = nightlight.tocsr()
+        nightlight = sparse.csr_matrix(nightlight)
 
         coord_nl = np.empty((2, 2))
         coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
