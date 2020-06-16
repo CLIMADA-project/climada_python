@@ -29,6 +29,7 @@ import shapely.vectorized
 import shapely.ops
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 from fiona.crs import from_epsg
+from iso3166 import countries as iso_cntry
 import geopandas as gpd
 import rasterio
 import shapefile
@@ -301,11 +302,24 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     if not nat_earth.crs:
         nat_earth.crs = NE_CRS
 
+    for idx in nat_earth.index: # fill gaps in nat_earth
+        if nat_earth.loc[idx].ISO_A3=='-99':
+            nat_earth.loc[idx, 'ISO_A3'] = nat_earth.loc[idx].ADM0_A3
+        if nat_earth.loc[idx].ISO_N3=='-99':
+            try:
+                nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].ISO_A3).numeric
+            except KeyError:
+                try:
+                    nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].ADM0_A3).numeric
+                except KeyError:
+                    try:
+                        nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx].NAME).numeric
+                    except KeyError:
+                        nat_earth.loc[idx, 'ISO_N3'] = '-99'
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
         out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
-
     elif extent:
         bbox = Polygon([
             (extent[0], extent[2]),
@@ -319,7 +333,6 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
 
     else:
         out = nat_earth
-
     return out
 
 def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
@@ -431,6 +444,8 @@ def get_country_code(lat, lon):
     Returns:
         np.array(int)
     """
+    lat = np.array(lat)
+    lon = np.array(lon)
     LOGGER.debug('Setting region_id %s points.', str(lat.size))
     countries = get_country_geometries(extent=(lon.min()-0.001, lon.max()+0.001,
                                                lat.min()-0.001, lat.max()+0.001))
