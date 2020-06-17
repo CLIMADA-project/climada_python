@@ -151,7 +151,6 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
-                    print('stop')
                     #self.centroids.set_meta_to_lat_lon()
 
         elif shape:
@@ -163,9 +162,6 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=rand_geom)
-            
-            print('bbb')
-
           
             return
         
