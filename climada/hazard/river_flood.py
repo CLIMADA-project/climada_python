@@ -286,14 +286,55 @@ class RiverFlood(Hazard):
         for year_ind in range(len(years)):
             fla_ann_centr[year_ind, :] =\
                 np.sum(fla_ev_centr[year_ev_mk[year_ind, :], :],
-                       axis=0)
+                        axis=0)
         self.fla_annual = np.sum(fla_ann_centr, axis=1)
         self.fla_ann_av = np.mean(self.fla_annual)
         self.fla_ev_av = np.mean(self.fla_event)
         if save_centr:
             self.fla_ann_centr = sp.sparse.csr_matrix(fla_ann_centr)
             self.fla_ev_centr = sp.sparse.csr_matrix(fla_ev_centr)
+            
+            
+    # def set_flooded_area(self, save_centr=False):
+    #     """ Calculates flooded area for hazard. sets yearly flooded area and
+    #         flooded area per event
+    #     Raises:
+    #         MemoryError
+    #     """
+    #     self.centroids.set_area_pixel()
+    #     area_centr = self.centroids.area_pixel
+    #     self.total_area = np.sum(area_centr)
+    #     event_years = np.array([date.fromordinal(self.date[i]).year
+    #                             for i in range(len(self.date))])
+    #     years = np.unique(event_years)
+    #     year_ev_mk = self._annual_event_mask(event_years, years)
 
+    #     try:
+    #         self.fla_ev_centr = np.zeros((self._n_events,
+    #                                       len(self.centroids.lon)))
+    #         self.fla_ann_centr = np.zeros((len(years),
+    #                                        len(self.centroids.lon)))
+    #         self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
+    #                                                  area_centr))
+    #         self.fla_event = np.sum(self.fla_ev_centr, axis=1)
+    #         for year_ind in range(len(years)):
+    #             self.fla_ann_centr[year_ind, :] =\
+    #                 np.sum(self.fla_ev_centr[year_ev_mk[year_ind, :], :],
+    #                        axis=0)
+    #         self.fla_annual = np.sum(self.fla_ann_centr, axis=1)
+    #         self.fla_ann_av = np.mean(self.fla_annual)
+    #         self.fla_ev_av = np.mean(self.fla_event)
+    #     except MemoryError:
+    #         self.fla_ev_centr = None
+    #         self.tot_fld_area = None
+    #         self.fla_ann_centr = None
+    #         self.fla_annual = None
+    #         self.fla_ann_av = None
+    #         self.fla_ev_av = None
+    #         LOGGER.warning('Number of events and slected area exceed ' +
+    #                        'memory capacities, area has not been calculated,' +
+    #                        ' attributes set to None')
+            
     def _annual_event_mask(self, event_years, years):
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
         for year_ind in range(len(years)):
@@ -308,7 +349,7 @@ class RiverFlood(Hazard):
             MemoryError
         """
         
-        fv_ann_centr = np.multiply(self.fla_ann_centr,self.intensity.todense())
+        fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
         if save_centr:
             self.fv_ann_centr= fv_ann_centr
         self.fv_annual = np.sum(fv_ann_centr, axis=1)

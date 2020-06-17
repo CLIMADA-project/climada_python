@@ -211,7 +211,7 @@ class TestRiverFlood(unittest.TestCase):
         
         rf_pos = RiverFlood()
         rf_pos.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                       countries=['BTN'], ISINatIDGrid=True)
+                       countries=['UGA'], ISINatIDGrid=True)
         
         rf_pos.exclude_trends(dis_trends, 'pos')
         
