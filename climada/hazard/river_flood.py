@@ -219,6 +219,35 @@ class RiverFlood(Hazard):
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
+    
+    
+    def exclude_trends(self, fld_trend_path, dis):
+        
+        if not os.path.exists(fld_trend_path):
+            LOGGER.error('Invalid ReturnLevel-file path ' + fld_trend_path)
+            raise NameError
+        else:
+            metafrc, trend_data = read_raster(fld_trend_path, band=[1])
+            x_i = ((self.centroids.lon - metafrc['transform'][2]) /
+                   metafrc['transform'][0]).astype(int)
+            y_i = ((self.centroids.lat - metafrc['transform'][5]) /
+                   metafrc['transform'][4]).astype(int)
+            
+        trend = trend_data[:, y_i*metafrc['width'] + x_i]    
+        
+
+        if dis == 'pos':
+            dis_map = np.greater(trend, 0)
+        else:
+            dis_map = np.less(trend, 0)
+        
+        new_trends = dis_map.astype(int)
+            
+        new_intensity = np.multiply(self.intensity.todense(), new_trends)
+        new_fraction = np.multiply(self.fraction.todense(), new_trends)
+        
+        self.intensity = sp.sparse.csr_matrix(new_intensity)
+        self.fraction = sp.sparse.csr_matrix(new_fraction)
 
     def exclude_returnlevel(self, frc_path):
         if not os.path.exists(frc_path):
@@ -271,6 +300,15 @@ class RiverFlood(Hazard):
             events = np.where(event_years == years[year_ind])[0]
             event_mask[year_ind, events] = True
         return event_mask
+    
+    def set_flood_volume(self):
+        """ Calculates flooded area for hazard. sets yearly flooded area and
+            flooded area per event
+        Raises:
+            MemoryError
+        """
+        self.fv_ann_centr = np.multiply(self.fla_ann_centr,self.intensity.todense())
+        self.fv_annual = np.sum(self.fv_ann_centr, axis=1)
 
     def _select_exact_area(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region
@@ -318,4 +356,5 @@ class RiverFlood(Hazard):
         centroids.set_lat_lon(lat_coordinates, lon_coordinates)
         centroids.set_region_id()
         #centroids.set_lat_lon_to_meta()
+        
         return centroids, iso_codes, natID
