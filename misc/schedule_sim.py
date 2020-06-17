@@ -177,10 +177,10 @@ for cnt_ind in range(len(isos)):
         rf_neg = copy.copy(rf)
         rf_neg.exclude_trends(dis_path, 'neg')
         
-        rf.set_flooded_area()
+        rf.set_flooded_area(save_centr=True)
         rf.set_flood_volume()
-        rf_pos.set_flooded_area()
-        rf_neg.set_flooded_area()
+        rf_pos.set_flooded_area(save_centr=True)
+        rf_neg.set_flooded_area(save_centr=True)
         rf_pos.set_flood_volume()
         rf_neg.set_flood_volume()
         

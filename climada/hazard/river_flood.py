@@ -301,14 +301,17 @@ class RiverFlood(Hazard):
             event_mask[year_ind, events] = True
         return event_mask
     
-    def set_flood_volume(self):
+    def set_flood_volume(self, save_centr=False):
         """ Calculates flooded area for hazard. sets yearly flooded area and
             flooded area per event
         Raises:
             MemoryError
         """
-        self.fv_ann_centr = np.multiply(self.fla_ann_centr,self.intensity.todense())
-        self.fv_annual = np.sum(self.fv_ann_centr, axis=1)
+        
+        fv_ann_centr = np.multiply(self.fla_ann_centr,self.intensity.todense())
+        if save_centr:
+            self.fv_ann_centr= fv_ann_centr
+        self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
     def _select_exact_area(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region
