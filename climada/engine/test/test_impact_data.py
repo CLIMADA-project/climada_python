@@ -30,10 +30,11 @@ EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.c
 
 class TestEmdatImport(unittest.TestCase):
     '''Test import of EM-DAT data (as CSV) for impact data analysis'''
-    def test_emdat_df_load(self):
+    def test_emdat_df_2018_load(self):
         """load selected sub sample from CSV, return DataFrame"""
         df, years, iso3 = im_d.emdat_df_load('Bangladesh', 'TC', \
-                                             EMDAT_TEST_CSV, [2000, 2017])
+                                             EMDAT_TEST_CSV, [2000, 2017], \
+                                             target_version=2018)
 
         self.assertEqual('BGD', iso3)
         self.assertEqual(18, len(years))
@@ -45,11 +46,27 @@ class TestEmdatImport(unittest.TestCase):
         self.assertFalse(False in list(df['Disaster subtype']=='Tropical cyclone'))
         self.assertFalse('Flood' in list(df['Disaster subtype']))
 
-    def test_emdat_impact_event(self):
+    def test_emdat_df_2020_load(self):
+        """load selected sub sample from CSV, return DataFrame"""
+        df, years, iso3 = im_d.emdat_df_load('Bangladesh', 'TC', \
+                                             EMDAT_TEST_CSV, [2000, 2017], \
+                                             target_version=2020)
+
+        self.assertEqual('BGD', iso3)
+        self.assertEqual(18, len(years))
+        self.assertEqual(2017, years[-1])
+        self.assertEqual(2010, years[10])
+        self.assertEqual(1075, df.size)
+        self.assertEqual(8978541, df['Total Affected'].max())
+        self.assertIn('Tropical cyclone', list(df['Disaster Subtype']))
+        self.assertFalse(False in list(df['Disaster Subtype']=='Tropical cyclone'))
+        self.assertFalse('Flood' in list(df['Disaster Subtype']))
+
+    def test_emdat_impact_event_2018(self):
         """test emdat_impact_event event impact data extraction"""
         df = im_d.emdat_impact_event(['Bangladesh', 'USA'], 'Drought', \
                                              EMDAT_TEST_CSV, [2015, 2017], \
-                                             reference_year = 2017)
+                                             reference_year = 2017, target_version=2018)
 
         self.assertEqual(92, df.size)
         self.assertEqual('2017-9550', df['Disaster No.'][3])
@@ -63,11 +80,29 @@ class TestEmdatImport(unittest.TestCase):
         self.assertIn('Drought', list(df['Disaster type']))
         self.assertEqual(2017, df['reference_year'].min())
 
+    def test_emdat_impact_event(self):
+        """test emdat_impact_event event impact data extraction"""
+        df = im_d.emdat_impact_event(['Bangladesh', 'USA'], 'Drought', \
+                                             EMDAT_TEST_CSV, [2015, 2017], \
+                                             reference_year = 2017)
+
+        self.assertEqual(184, df.size)
+        self.assertEqual('2017-9550', df['Dis No'][3])
+        self.assertEqual(df["Total Damages ('000 US$)"][1], \
+                            df["Total Damages ('000 US$) scaled"][1])
+        self.assertEqual(df["Total Damages ('000 US$)"][1], 2500000000.0)
+        self.assertEqual(df["Total Damages ('000 US$)"][0], 1800000000.0)
+        self.assertAlmostEqual(df["Total Damages ('000 US$) scaled"][0], \
+                                  1925085683.1166406)
+        self.assertIn('USA', list(df['ISO']))
+        self.assertIn('Drought', list(df['Disaster Type']))
+        self.assertEqual(2017, df['reference_year'].min())
+
     def test_emdat_impact_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction"""
         df = im_d.emdat_impact_yearlysum(['Bangladesh', 'USA'], 'Flood', \
                                              EMDAT_TEST_CSV, [2015, 2017], \
-                                             imp_str = 'Total affected')
+                                             imp_str = 'Total Affected')
         self.assertEqual(36, df.size)
         self.assertEqual(df["impact"][1], 1900000)
         self.assertEqual(df.impact.sum(), 11517946)
