@@ -702,7 +702,7 @@ def emdat_impact_yearlysum(countries, hazard_name, emdat_file_csv, year_range=No
             data_out.loc[cnt, 'ISO3'] = country
             data_out.loc[cnt, 'region_id'] = int(iso_cntry.get(country).numeric)
             data_out.loc[cnt, 'impact'] = \
-                sum(data.loc[data[VARNAMES[target_version]['Dis No']].str.contains(str(year))]\
+                np.nansum(data.loc[data[VARNAMES[target_version]['Dis No']].str.contains(str(year))]\
                              [imp_str])
             if '000 US' in imp_str: # EM-DAT damages provided in '000 USD
                 data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact']*1000
@@ -886,11 +886,12 @@ def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
         impact_instance.at_event = np.array(em_data[imp_str])
     else:
         impact_instance.at_event = np.array(em_data[imp_str + " scaled"])
+    impact_instance.at_event[np.isnan(impact_instance.at_event)]=0
     if not year_range:
         year_range = [em_data['Year'].min(), em_data['Year'].max()]
     impact_instance.frequency = np.ones(em_data.shape[0])/(1+np.diff(year_range))
     impact_instance.tot_value = 0
-    impact_instance.aai_agg = sum(impact_instance.at_event * impact_instance.frequency)
+    impact_instance.aai_agg = np.nansum(impact_instance.at_event * impact_instance.frequency)
     impact_instance.unit = 'USD'
     impact_instance.imp_mat = []
 
