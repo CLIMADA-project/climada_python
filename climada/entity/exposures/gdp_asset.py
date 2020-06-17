@@ -87,7 +87,7 @@ class GDP2Asset(Exposures):
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)
         self.crs = DEF_CRS
         # set meta
-        res = np.diff(self.longitude)[0]
+        res = 0.0416666
         rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
                                                     self.latitude.min(),
                                                     self.longitude.max(),
