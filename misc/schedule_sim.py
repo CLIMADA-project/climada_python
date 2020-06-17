@@ -80,7 +80,7 @@ else:
 if args.CL_model == 'watch':
     years = np.arange(1971, 2002)
 else:
-    years = np.arange(2000, 2001)
+    years = np.arange(1971, 2011)
 
 #years = np.arange(1971, 2011)
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
