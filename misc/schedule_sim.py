@@ -190,10 +190,11 @@ for cnt_ind in range(len(isos)):
         
         rf2y.exclude_returnlevel(RF_PATH_FRC)
 
-        rf2y_pos = copy.copy(rf)
+        rf2y_pos = copy.copy(rf2y)
+        
         rf2y_pos.exclude_trends(dis_path, 'pos')
         
-        rf2y_neg = copy.copy(rf)
+        rf2y_neg = copy.copy(rf2y)
         rf2y_neg.exclude_trends(dis_path, 'neg')
     
         for year in range(len(years)):
