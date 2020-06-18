@@ -182,11 +182,23 @@ class TestFunc(unittest.TestCase):
 
     def test_dist_to_coast(self):
         """ Test point in coast and point not in coast """
-        res = dist_to_coast(13.208333333333329, -59.625000000000014)
-        self.assertAlmostEqual(2594.2071059573445, res[0])
+        points = np.array([
+            # Caribbean Sea:
+            [13.208333333333329, -59.625000000000014],
+            # South America:
+            [-12.497529, -58.849505],
+            # Very close to coast of Somalia:
+            [1.96768, 45.23219],
+        ])
+        dists = [2594.2071059573445, 1382985.2459744606, 0.088222234]
+        for d, p in zip(dists, points):
+            res = dist_to_coast(*p)
+            self.assertAlmostEqual(d, res[0])
 
-        res = dist_to_coast(-12.497529, -58.849505)
-        self.assertAlmostEqual(1382985.2459744606, res[0])
+        # All at once requires more than one UTM
+        res = dist_to_coast(points)
+        for d, r in zip(dists, res):
+            self.assertAlmostEqual(d, r)
 
     def test_get_country_geometries_country_pass(self):
         """ get_country_geometries with selected countries. issues with the
@@ -355,7 +367,7 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(inten_ras.shape, (1, 1081*968))
         # TODO: NOT RESAMPLING WELL in this case!?
         self.assertAlmostEqual(inten_ras.reshape((1081, 968))[45, 22], 0)
-        
+
     def test_crs_and_geometry_raster_pass(self):
         """ Test change projection and crop to geometry """
         ply = shapely.geometry.Polygon(((478080.8562247154, 1105419.13439131), (478087.5912452241, 1116475.583523723), (500000, 1116468.876713805), (500000, 1105412.49126517), (478080.8562247154, 1105419.13439131)))
