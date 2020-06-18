@@ -21,12 +21,14 @@ Test Impact class.
 import os
 import unittest
 import numpy as np
+from climada.util.constants import DATA_DIR
 
 import climada.engine.impact_data as im_d
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
 EMDAT_TEST_CSV = os.path.join(DATA_FOLDER, 'emdat_testdata_BGD_USA_1970-2017.csv')
 EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.csv')
+EMDAT_2020_CSV_DEMO = os.path.join(DATA_DIR, 'demo', 'demo_emdat_impact_data_2020.csv')
 
 class TestEmdatImport(unittest.TestCase):
     '''Test import of EM-DAT data (as CSV) for impact data analysis'''
@@ -111,6 +113,16 @@ class TestEmdatImport(unittest.TestCase):
         self.assertIn('USA', list(df['ISO3']))
         self.assertIn('BGD', list(df['ISO3']))
         self.assertEqual(0, df['reference_year'].max())
+    
+    def test_emdat_countries_by_hazard_2020_pass(self):
+        """test to get list of countries impacted by tropical cyclones from 2000 to 2019"""
+        iso3_codes, country_names = im_d.emdat_countries_by_hazard('TC', \
+                                    EMDAT_2020_CSV_DEMO, year_range=(2000, 2019))
+        self.assertIn('Réunion', country_names)
+        self.assertEqual('Bahamas', country_names[4])
+        self.assertEqual('AUS', iso3_codes[3])
+        self.assertEqual(len(country_names), len(iso3_codes))
+        self.assertEqual(96, len(iso3_codes))
 
 class TestEmdatToImpact(unittest.TestCase):
     """Test import of EM-DAT data (as CSV) to Impact-instance (CLIMADA)"""
@@ -129,9 +141,9 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertEqual(impact_emdat.date.size, impact_emdat.frequency.size)
         self.assertAlmostEqual(555861710000, np.sum(impact_emdat.at_event))
         self.assertAlmostEqual(0.0208333333333, np.unique(impact_emdat.frequency)[0])
-        self.assertAlmostEqual(11580452291.666666, impact_emdat.aai_agg)
-        self.assertAlmostEqual(109456249.99999999, impact_emdat.eai_exp[0])
-        self.assertAlmostEqual(11470996041.666666, impact_emdat.eai_exp[1])
+        self.assertAlmostEqual(11580452291.666666, impact_emdat.aai_agg, places=3)
+        self.assertAlmostEqual(109456249.99999999, impact_emdat.eai_exp[0], places=3)
+        self.assertAlmostEqual(11470996041.666666, impact_emdat.eai_exp[1], places=3)
 
     def test_emdat_to_impact_scale(self):
         """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""    
@@ -166,6 +178,20 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertAlmostEqual(2200000.0, impact_emdat.aai_agg)
         self.assertAlmostEqual(200000.0, impact_emdat.eai_exp[0]) # DEU
         self.assertAlmostEqual(2000000.0, impact_emdat.eai_exp[1]) # CHE
+
+    def test_emdat_to_impact_2020format(self):
+        """test import TC EM-DAT to Impact() from new 2020 EMDAT format CSV"""
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 
+                                    countries='PHL', \
+                                    hazard_type_climada='TC', \
+                                    year_range=(2013,2013), imp_str="Total Affected")
+            
+        #TC events in EM-DAT in the Philipppines, 2013:
+        self.assertEqual(8, impact_emdat.event_id.size)
+        #People affected by TC events in the Philippines in 2013 (AAI):
+        self.assertAlmostEqual(17944571., impact_emdat.aai_agg, places=0)
+        # People affected by Typhoon Hayian in the Philippines:
+        self.assertAlmostEqual(1.610687e+07, impact_emdat.at_event[4], places=0)
 
 # Execute Tests
 if __name__ == "__main__":
