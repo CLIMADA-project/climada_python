@@ -192,19 +192,22 @@ def dist_to_coast(coord_lat, lon=None):
     zones = utm_zones(geom.geometry.total_bounds)
     for izone, (epsg, bounds) in enumerate(zones):
         to_crs = from_epsg(epsg)
-        lon_min, lat_min, lon_max, lat_max = bounds
-        zone_mask = (lat_min <= geom.geometry.y) & (geom.geometry.y <= lat_max) \
-                  & (lon_min <= geom.geometry.x) & (geom.geometry.x <= lon_max)
-        if np.count_nonzero(zone_mask) == 0: continue
-        LOGGER.info(f"dist_to_coast: UTM {epsg} ({izone + 1}/{len(zones)})")
-        geom_bounds = geom[zone_mask].total_bounds
-        geom_bounds = (geom_bounds[0] - pad, geom_bounds[1] - pad,
-                       geom_bounds[2] + pad, geom_bounds[3] + pad)
-        coast_mask = coast.envelope.intersects(box(*geom_bounds))
+        zone_mask = (bounds[1] <= geom.geometry.y) \
+                  & (geom.geometry.y <= bounds[3]) \
+                  & (bounds[0] <= geom.geometry.x) \
+                  & (geom.geometry.x <= bounds[2])
+        if np.count_nonzero(zone_mask) == 0:
+            continue
+        LOGGER.info("dist_to_coast: UTM %d (%d/%d)",
+                    epsg, izone + 1, len(zones))
+        bounds = geom[zone_mask].total_bounds
+        bounds = (bounds[0] - pad, bounds[1] - pad,
+                  bounds[2] + pad, bounds[3] + pad)
+        coast_mask = coast.envelope.intersects(box(*bounds))
         utm_coast = coast[coast_mask].geometry.unary_union
-        utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS).to_crs(to_crs)
-        utm_geom = geom[zone_mask].to_crs(to_crs)
-        dist[zone_mask] = utm_geom.distance(utm_coast.geometry[0])
+        utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS)
+        utm_coast = utm_coast.to_crs(to_crs).geometry[0]
+        dist[zone_mask] = geom[zone_mask].to_crs(to_crs).distance(utm_coast)
     return dist
 
 
@@ -229,7 +232,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     reader = shapereader.Reader(shp_file)
     if (country_names is None) and (extent is None):
         LOGGER.info("Computing earth's land geometry ...")
-        geom = [cntry_geom for cntry_geom in reader.geometries()]
+        geom = list(reader.geometries())
         geom = shapely.ops.cascaded_union(geom)
 
     elif country_names:
@@ -325,35 +328,38 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     if not nat_earth.crs:
         nat_earth.crs = NE_CRS
 
-    for idx in nat_earth.index: # fill gaps in nat_earth
-        if nat_earth.loc[idx].ISO_A3=='-99':
-            nat_earth.loc[idx, 'ISO_A3'] = nat_earth.loc[idx].ADM0_A3
-        if nat_earth.loc[idx].ISO_N3=='-99':
-            for col in ['ISO_A3', 'ADM0_A3', 'NAME']:
-                try:
-                    nat_earth.loc[idx, 'ISO_N3']  = iso_cntry.get(nat_earth.loc[idx, col]).numeric
-                except KeyError:
-                    continue
-                else:
-                    break
+    # fill gaps in nat_earth
+    gap_mask = (nat_earth['ISO_A3'] == '-99')
+    nat_earth.loc[gap_mask, 'ISO_A3'] = nat_earth.loc[gap_mask, 'ADM0_A3']
 
+    gap_mask = (nat_earth['ISO_N3'] == '-99')
+    for idx in nat_earth[gap_mask].index:
+        for col in ['ISO_A3', 'ADM0_A3', 'NAME']:
+            try:
+                num = iso_cntry.get(nat_earth.loc[idx, col]).numeric
+            except KeyError:
+                continue
+            else:
+                nat_earth.loc[idx, 'ISO_N3'] = num
+                break
+
+    out = nat_earth
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
-        out = nat_earth[nat_earth.ISO_A3.isin(country_names)]
-    elif extent:
+        out = out[out.ISO_A3.isin(country_names)]
+
+    if extent:
         bbox = Polygon([
             (extent[0], extent[2]),
             (extent[0], extent[3]),
             (extent[1], extent[3]),
             (extent[1], extent[2])
         ])
-        bbox = gpd.GeoSeries(bbox, crs=nat_earth.crs)
-        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=nat_earth.crs)
-        out = gpd.overlay(nat_earth, bbox, how="intersection")
+        bbox = gpd.GeoSeries(bbox, crs=out.crs)
+        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=out.crs)
+        out = gpd.overlay(out, bbox, how="intersection")
 
-    else:
-        out = nat_earth
     return out
 
 def get_isimip_natids(lat, lon):
@@ -378,7 +384,7 @@ def get_isimip_natids(lat, lon):
                                        bounds_error=False, fill_value=0)
     return natids
 
-def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
+def get_isimip_gridpoints(countries=None, regions=None, iso=True, rect=False):
     """ Get coordinates of gridpoints in specified countries or regions
 
     Parameters:
@@ -395,15 +401,17 @@ def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
         lat (np.array): latitude of points in epsg:4326
         lon (np.array): longitude of points in epsg:4326
     """
-    if countries is None: countries = []
-    if regions is None: regions = []
+    if countries is None:
+        countries = []
+    if regions is None:
+        regions = []
 
     LOGGER.info("select area for countries: %s", str(countries))
 
     isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
     isimip_lon = isimip_grid.lon.data
     isimip_lat = isimip_grid.lat.data
-    gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
+    lon, lat = np.meshgrid(isimip_lon, isimip_lat)
 
     if iso:
         countries = isimip_iso2natid(countries)
@@ -411,26 +419,17 @@ def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
     countries = np.unique(countries)
 
     if len(countries) > 0:
-        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        natID_pos = np.isin(isimip_NatIdGrid, countries)
+        msk = np.isin(isimip_grid.NatIdGrid.data, countries)
+        if rect:
+            msk = msk.any(axis=0)[None] * msk.any(axis=1)[:, None]
+            msk |= (lat >= np.floor(lat[msk].min())) \
+                 & (lon >= np.floor(lon[msk].min())) \
+                 & (lat <= np.ceil(lat[msk].max())) \
+                 & (lon <= np.ceil(lon[msk].max()))
+        lat, lon = lat[msk], lon[msk]
     else:
-        natID_pos = np.ones_like(gridX, dtype=bool)
-
-    lat, lon = gridY[natID_pos], gridX[natID_pos]
-
-    if not box:
-        return lat, lon
-
-    lon_min, lat_min = [np.floor(ar.min()) for ar in [lon, lat]]
-    lon_idx_min = np.fmax(0, isimip_lon.searchsorted(lon_min, side='left') - 1)
-    lon_idx_max = isimip_lon.searchsorted(np.ceil(lon.max()), side='right')
-    lat_idx_min = np.fmax(0, isimip_lat.searchsorted(lat_min, side='left') - 1)
-    lat_idx_max = isimip_lat.searchsorted(np.ceil(lat.max()), side='right')
-
-    lon = isimip_lon[lon_idx_min:lon_idx_max]
-    lat = isimip_lat[lat_idx_min:lat_idx_max]
-    gridX, gridY = np.meshgrid(lon, lat)
-    return gridY.flatten(), gridX.flatten()
+        lat, lon = [ar.ravel() for ar in [lat, lon]]
+    return lat, lon
 
 def isimip_region2natids(regions):
     """ Convert region names to ISIMIP NatIDs of countries
@@ -444,14 +443,14 @@ def isimip_region2natids(regions):
     """
     regions = [regions] if isinstance(regions, str) else regions
 
-    natID_info = pd.read_csv(NAT_REG_ID)
+    natid_info = pd.read_csv(NAT_REG_ID)
     natids = []
     for region in regions:
-        region_msk = (natID_info['Reg_name'] == region)
+        region_msk = (natid_info['Reg_name'] == region)
         if not any(region_msk):
             LOGGER.error('Unknown region name: %s', region)
             raise KeyError
-        natids += list(natID_info['ID'][region_msk].values)
+        natids += list(natid_info['ID'][region_msk].values)
     return list(set(natids))
 
 def isimip_iso2natid(isos):
@@ -466,14 +465,14 @@ def isimip_iso2natid(isos):
     return_str = isinstance(isos, str)
     isos = [isos] if return_str else isos
 
-    natID_info = pd.read_csv(NAT_REG_ID)
+    natid_info = pd.read_csv(NAT_REG_ID)
     natids = []
     for iso in isos:
-        country_msk = (natID_info['ISO'] == iso)
+        country_msk = (natid_info['ISO'] == iso)
         if not any(country_msk):
             LOGGER.error('Unknown country ISO: %s', iso)
             raise KeyError
-        natids.append(int(natID_info['ID'][country_msk].values[0]))
+        natids.append(int(natid_info['ID'][country_msk].values[0]))
 
     return natids[0] if return_str else natids
 
@@ -511,7 +510,7 @@ def get_admin1_info(country_names):
     """
 
     if isinstance(country_names, str):
-            country_names = [country_names]
+        country_names = [country_names]
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
@@ -652,12 +651,16 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
 
                 if geometry:
                     intensity = intensity.astype('float32')
-                    meta.update(driver='GTiff')   # update driver from netcdf to Gtiff as netcdf does not work reliably
+                    # update driver to GTiff as netcdf does not work reliably
+                    meta.update(driver='GTiff')
                     with MemoryFile() as memfile:
-                        with memfile.open(**meta) as dst_inten: # Open as DatasetWriter
+                        # Open as DatasetWriter
+                        with memfile.open(**meta) as dst_inten:
                             dst_inten.write(intensity)
-                        with memfile.open() as dst_inten:  # Reopen as DatasetReader
-                            inten, mask_trans = mask(dst_inten, geometry, crop=True, indexes=band)
+                        # Reopen as DatasetReader
+                        with memfile.open() as dst_inten:
+                            inten, mask_trans = mask(dst_inten, geometry,
+                                                     crop=True, indexes=band)
                             meta.update({"height": inten.shape[1],
                                          "width": inten.shape[2],
                                          "transform": mask_trans})
@@ -665,9 +668,9 @@ def read_raster(file_name, band=[1], src_crs=None, window=False, geometry=False,
                     intensity = intensity.astype('float64')
                     # reset nodata values again as driver Gtiff resets them again
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
-                        intensity[idx_band, :][np.isnan(intensity[idx_band, :])] = 0
+                        intensity[np.isnan(intensity)] = 0
                     else:
-                        intensity[idx_band, :][intensity[idx_band, :] == dst_meta['nodata']] = 0
+                        intensity[intensity == dst_meta['nodata']] = 0
 
                 return meta, intensity.reshape((len(band), meta['height']*meta['width']))
 
