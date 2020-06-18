@@ -42,6 +42,7 @@ from rasterio.features import rasterize
 import dask.dataframe as dd
 import pandas as pd
 import xarray as xr
+import scipy.interpolate
 
 from climada.util.constants import DEF_CRS, SYSTEM_DIR, NAT_REG_ID, GLB_CENTROIDS_NC
 
@@ -102,17 +103,12 @@ def get_coastlines(bounds=None, resolution=110):
     coast_df.crs = NE_CRS
     if bounds is None:
         return coast_df[['geometry']]
-    ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
-    tot_coast = list()
-    for row, line in coast_df.iterrows():
-        if line.geometry.envelope.intersects(ex_box):
-            tot_coast.append(row)
-    if not tot_coast:
-        ex_box = box(bounds[0]-20, bounds[1]-20, bounds[2]+20, bounds[3]+20)
-        for row, line in coast_df.iterrows():
-            if line.geometry.envelope.intersects(ex_box):
-                tot_coast.append(row)
-    return coast_df.iloc[tot_coast][['geometry']]
+    tot_coast = np.zeros(1)
+    while not np.any(tot_coast):
+        tot_coast = coast_df.envelope.intersects(box(*bounds))
+        bounds = (bounds[0] - 20, bounds[1] - 20,
+                  bounds[2] + 20, bounds[3] + 20)
+    return coast_df[tot_coast][['geometry']]
 
 def convert_wgs_to_utm(lon, lat):
     """ Get EPSG code of UTM projection for input point in EPSG 4326
@@ -124,14 +120,31 @@ def convert_wgs_to_utm(lon, lat):
     Return:
         int
     """
-    utm_band = str((math.floor((lon + 180) / 6) % 60) + 1)
-    if len(utm_band) == 1:
-        utm_band = '0'+utm_band
-    if lat >= 0:
-        epsg_code = '326' + utm_band
-    else:
-        epsg_code = '327' + utm_band
-    return int(epsg_code)
+    epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
+    return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
+
+def utm_zones(wgs_bounds):
+    """ Get EPSG code and bounds of UTM zones covering specified region
+
+    Parameter:
+        wgs_bounds (tuple): lon_min, lat_min, lon_max, lat_max
+
+    Returns:
+        list of pairs (zone_epsg, zone_wgs_bounds)
+    """
+    lon_min, lat_min, lon_max, lat_max = wgs_bounds
+    lon_min, lon_max = max(-179.99, lon_min), min(179.99, lon_max)
+    utm_min, utm_max = [math.floor((l + 180) / 6) for l in [lon_min, lon_max]]
+    zones = []
+    for utm in range(utm_min, utm_max + 1):
+        epsg = 32601 + utm
+        bounds = (-180 + 6 * utm, 0, -180 + 6 * (utm + 1), 90)
+        if lat_max >= 0:
+            zones.append((epsg, bounds))
+        if lat_min < 0:
+            bounds = (bounds[0], -90, bounds[2], 0)
+            zones.append((epsg + 100, bounds))
+    return zones
 
 def dist_to_coast(coord_lat, lon=None):
     """ Comput distance to coast from input points in meters.
@@ -150,39 +163,49 @@ def dist_to_coast(coord_lat, lon=None):
     Returns:
         np.array
     """
-    if lon is None:
-        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
-            if not equal_crs(coord_lat.crs, NE_CRS):
-                LOGGER.error('Input CRS is not %s', str(NE_CRS))
-                raise ValueError
-            geom = coord_lat
-        elif isinstance(coord_lat, np.ndarray):
-            if coord_lat.shape[1] != 2:
+    if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
+        if not equal_crs(coord_lat.crs, NE_CRS):
+            LOGGER.error('Input CRS is not %s', str(NE_CRS))
+            raise ValueError
+        geom = coord_lat
+    else:
+        if lon is None:
+            if isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
+                lat, lon = coord_lat[:, 0], coord_lat[:, 1]
+            else:
                 LOGGER.error('Missing longitude values.')
                 raise ValueError
-            geom = gpd.GeoDataFrame(geometry=list(map(Point, coord_lat[:, 1], coord_lat[:, 0])),
-                                    crs=NE_CRS)
         else:
-            LOGGER.error('Missing longitude values.')
-            raise ValueError
-    elif isinstance(lon, np.ndarray):
-        if coord_lat.size != lon.size:
-            LOGGER.error('Wrong input coordinates size: %s != %s',
-                         coord_lat.size, lon.size)
-            raise ValueError
-        geom = gpd.GeoDataFrame(geometry=list(map(Point, lon, coord_lat)),
-                                crs=NE_CRS)
-    elif isinstance(lon, float):
-        if not isinstance(coord_lat, float):
-            LOGGER.error('Wrong input coordinates values.')
-            raise ValueError
-        geom = gpd.GeoDataFrame(geometry=list(map(Point, [lon], [coord_lat])),
-                                crs=NE_CRS)
+            lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
+            if lat.size != lon.size:
+                LOGGER.error('Mismatching input coordinates size: %s != %s',
+                             lat.size, lon.size)
+                raise ValueError
+        geom = gpd.GeoDataFrame(geometry=list(map(Point, lon, lat)), crs=NE_CRS)
 
-    to_crs = from_epsg(convert_wgs_to_utm(geom.geometry.iloc[0].x, geom.geometry.iloc[0].y))
-    coast = get_coastlines(geom.total_bounds, 10).unary_union
-    coast = gpd.GeoDataFrame(geometry=[coast], crs=NE_CRS).to_crs(to_crs)
-    return geom.to_crs(to_crs).distance(coast.geometry[0]).values
+    pad = 20
+    bounds = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
+              geom.total_bounds[2] + pad, geom.total_bounds[3] + pad)
+    coast = get_coastlines(bounds, 10).geometry
+    coast = gpd.GeoDataFrame(geometry=coast, crs=NE_CRS)
+    dist = np.empty(geom.shape[0])
+    zones = utm_zones(geom.geometry.total_bounds)
+    for izone, (epsg, bounds) in enumerate(zones):
+        to_crs = from_epsg(epsg)
+        lon_min, lat_min, lon_max, lat_max = bounds
+        zone_mask = (lat_min <= geom.geometry.y) & (geom.geometry.y <= lat_max) \
+                  & (lon_min <= geom.geometry.x) & (geom.geometry.x <= lon_max)
+        if np.count_nonzero(zone_mask) == 0: continue
+        LOGGER.info(f"dist_to_coast: UTM {epsg} ({izone + 1}/{len(zones)})")
+        geom_bounds = geom[zone_mask].total_bounds
+        geom_bounds = (geom_bounds[0] - pad, geom_bounds[1] - pad,
+                       geom_bounds[2] + pad, geom_bounds[3] + pad)
+        coast_mask = coast.envelope.intersects(box(*geom_bounds))
+        utm_coast = coast[coast_mask].geometry.unary_union
+        utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS).to_crs(to_crs)
+        utm_geom = geom[zone_mask].to_crs(to_crs)
+        dist[zone_mask] = utm_geom.distance(utm_coast.geometry[0])
+    return dist
 
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
@@ -332,6 +355,28 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     else:
         out = nat_earth
     return out
+
+def get_isimip_natids(lat, lon):
+    """ Get ISIMIP NatIDs of given coordinates
+
+    Parameters:
+        lat (np.array): latitude of points in epsg:4326
+        lon (np.array): longitude of points in epsg:4326
+
+    Returns:
+        natids (np.array): NatIDs between 1 and 230. The value is 0 in oceans.
+    """
+    lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
+    latlon = np.vstack([lat, lon]).T
+    isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
+    isimip_lon = isimip_grid.lon.data
+    isimip_lat = isimip_grid.lat.data
+    natids = isimip_grid.NatIdGrid.data
+    natids[np.isnan(natids)] = 0
+    natids = scipy.interpolate.interpn((isimip_lat, isimip_lon), natids,
+                                       latlon, method='nearest',
+                                       bounds_error=False, fill_value=0)
+    return natids
 
 def get_isimip_gridpoints(countries=[], regions=[], iso=True, box=False):
     """ Get coordinates of gridpoints in specified countries or regions
