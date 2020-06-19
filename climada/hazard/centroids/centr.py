@@ -171,7 +171,7 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, (res, -res))
         self.set_raster_from_pix_bounds(ras_trans[5], ras_trans[2], ras_trans[4],
                                         ras_trans[0], rows, cols, crs)
 
@@ -426,7 +426,7 @@ class Centroids():
                 raise ValueError
             res = self.meta['transform'].a
         else:
-            res = min(get_resolution(self.lat, self.lon, min_resol))
+            res = np.abs(get_resolution(self.lat, self.lon, min_resol)).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
@@ -457,7 +457,8 @@ class Centroids():
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
         else:
-            res_lat, res_lon = get_resolution(self.lat, self.lon, min_resol)
+            res_lat, res_lon = np.abs(get_resolution(self.lat, self.lon,
+                                                     min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
             if ('units' in self.geometry.crs and \
@@ -543,18 +544,21 @@ class Centroids():
         return centr
 
     def set_lat_lon_to_meta(self, min_resol=1.0e-8):
-        """ Compute meta from lat and lon values. To match the existing lat
-        and lon, lat and lon need to start from the upper left corner!!
+        """ Compute meta from lat and lon values.
 
         Parameter:
             min_resol (float, optional): minimum centroids resolution to use
                 in the raster. Default: 1.0e-8.
         """
-        self.meta = dict()
-        res = min(get_resolution(self.lat, self.lon, min_resol))
+        res = get_resolution(self.lon, self.lat, min_resol=min_resol)
         rows, cols, ras_trans = pts_to_raster_meta(self.total_bounds, res)
         LOGGER.debug('Resolution points: %s', str(res))
-        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
+        self.meta = {
+            'width': cols,
+            'height': rows,
+            'crs': self.crs,
+            'transform': ras_trans,
+        }
 
     def set_meta_to_lat_lon(self):
         """ Compute lat and lon of every pixel center from meta raster """
@@ -624,7 +628,7 @@ class Centroids():
         str_dt = h5py.special_dtype(vlen=str)
         for centr_name, centr_val in self.__dict__.items():
             if isinstance(centr_val, np.ndarray):
-                data.create_dataset(centr_name, data=centr_val)
+                data.create_dataset(centr_name, data=centr_val, compression="gzip")
             if centr_name == 'meta' and centr_val:
                 centr_meta = data.create_group(centr_name)
                 for key, value in centr_val.items():

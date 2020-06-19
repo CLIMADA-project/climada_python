@@ -265,14 +265,15 @@ class TestFunc(unittest.TestCase):
                         -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333,
                         -60.2083333333333,-60.2083333333333,-60.2083333333333,-60.2083333333333])
         res_lat, res_lon = get_resolution(lat, lon)
-        self.assertAlmostEqual(min(res_lat, res_lon), 0.0833333333333)
+        self.assertAlmostEqual(res_lat, 0.0833333333333)
+        self.assertAlmostEqual(res_lon, 0.0833333333333)
 
     def test_vector_to_raster_pass(self):
         """ Test vector_to_raster """
         xmin, ymin, xmax, ymax = -60, -5, -50, 10 # bounds of points == centers pixels
         points_bounds = (xmin, ymin, xmax, ymax)
         res = 0.5
-        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, (res, -res))
         self.assertEqual(xmin - res/2 + res * cols, xmax + res/2)
         self.assertEqual(ymax + res/2 - res * rows, ymin - res/2)
         self.assertEqual(ras_trans[0], res)
@@ -286,10 +287,11 @@ class TestFunc(unittest.TestCase):
 
     def test_pts_to_raster_irreg_pass(self):
         """ Test pts_to_raster_meta with irregular points """
-        xmin, ymin, xmax, ymax = -124.19473, 32.81908, -114.4632, 42.020759999999996 # bounds of points == centers pixels
-        points_bounds = (xmin, ymin, xmax, ymax)
+        # bounds of points == centers of pixels
+        points_bounds = (-124.19473, 32.81908, -114.4632, 42.020759999999996)
+        xmin, ymin, xmax, ymax = points_bounds
         res = 0.013498920086393088
-        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, (res, -res))
         self.assertEqual(ras_trans[0], res)
         self.assertEqual(ras_trans[4], -res)
         self.assertEqual(ras_trans[1], 0.0)
