@@ -475,8 +475,37 @@ def isimip_iso2natid(isos):
 
     return natids[0] if return_str else natids
 
+NATEARTH_AREA_NONISO_NUMERIC = {
+    "Akrotiri": 901,
+    "Baikonur": 902,
+    "Bajo Nuevo Bank": 903,
+    "Clipperton I.": 904,
+    "Coral Sea Is.": 905,
+    "Cyprus U.N. Buffer Zone": 906,
+    "Dhekelia": 907,
+    "Indian Ocean Ter.": 908,
+    "Kosovo": 983,  # Same as iso3166 package
+    "N. Cyprus": 910,
+    "Norway": 578,  # Bug in Natural Earth
+    "Scarborough Reef": 912,
+    "Serranilla Bank": 913,
+    "Siachen Glacier": 914,
+    "Somaliland": 915,
+    "Spratly Is.": 916,
+    "USNB Guantanamo Bay": 917,
+}
+
+def natearth_country_to_int(country):
+    if country.ISO_N3 != '-99':
+        return int(country.ISO_N3)
+    else:
+        return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
+
 def get_country_code(lat, lon):
-    """ Provide numeric country iso code for every point.
+    """ Provide numeric ISO 3166 code for every point.
+
+    Oceans get the value zero. Areas that are not in ISO 3166 are given values
+    in the range above 900 according to NATEARTH_AREA_NONISO_NUMERIC.
 
     Parameters:
         lat (np.array): latitude of points in epsg:4326
@@ -487,13 +516,21 @@ def get_country_code(lat, lon):
     """
     lat = np.array(lat)
     lon = np.array(lon)
-    LOGGER.debug('Setting region_id %s points.', str(lat.size))
+    LOGGER.info('Setting region_id %s points.', str(lat.size))
     countries = get_country_geometries(extent=(lon.min()-0.001, lon.max()+0.001,
                                                lat.min()-0.001, lat.max()+0.001))
-    region_id = np.zeros(lon.size, dtype=int)
-    for geom in zip(countries.geometry, countries.ISO_N3):
-        select = shapely.vectorized.contains(geom[0], lon, lat)
-        region_id[select] = int(geom[1])
+    countries['area'] = countries.geometry.area
+    countries = countries.sort_values(by=['area'], ascending=False)
+    region_id = np.full((lon.size,), -1, dtype=int)
+    total_land = countries.geometry.unary_union
+    ocean_mask = ~shapely.vectorized.contains(total_land, lon, lat)
+    region_id[ocean_mask] = 0
+    for i, country in enumerate(countries.itertuples()):
+        unset = (region_id == -1).nonzero()[0]
+        select = shapely.vectorized.contains(country.geometry,
+                                             lon[unset], lat[unset])
+        region_id[unset[select]] = natearth_country_to_int(country)
+    region_id[region_id == -1] = 0
     return region_id
 
 def get_admin1_info(country_names):
