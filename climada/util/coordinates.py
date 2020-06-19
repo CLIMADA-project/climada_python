@@ -34,7 +34,6 @@ import geopandas as gpd
 import rasterio
 import shapefile
 from rasterio import MemoryFile
-from rasterio.transform import from_origin
 from rasterio.crs import CRS
 from rasterio.mask import mask
 from rasterio.warp import reproject, Resampling, calculate_default_transform
@@ -526,49 +525,64 @@ def get_admin1_info(country_names):
                 admin1_shapes[iso3].append(rec_shp)
     return admin1_info, admin1_shapes
 
-def get_resolution(lat, lon, min_resol=1.0e-8):
-    """ Compute resolution of points in lat and lon
+def get_resolution_1d(coords, min_resol=1.0e-8):
+    """ Compute resolution of scalar grid
 
     Parameters:
-        lat (np.array): latitude of points
-        lon (np.array): longitude of points
-        min_resol (float, optional): minimum resolution to consider. Default: 1.0e-8.
+        coords (np.array): scalar coordinates
+        min_resol (float, optional): minimum resolution to consider.
+            Default: 1.0e-8.
 
     Returns:
         float
     """
-    # ascending lat and lon
-    res_lat, res_lon = np.diff(np.sort(lat)), np.diff(np.sort(lon))
-    try:
-        res_lat = res_lat[res_lat > min_resol].min()
-    except ValueError:
-        res_lat = 0
-    try:
-        res_lon = res_lon[res_lon > min_resol].min()
-    except ValueError:
-        res_lon = 0
-    return res_lat, res_lon
+    res = np.diff(np.unique(coords))
+    diff = np.diff(coords)
+    mask = (res > min_resol) & np.isin(res, np.abs(diff))
+    return diff[np.abs(diff) == res[mask].min()][0]
+
+
+def get_resolution(X, Y, min_resol=1.0e-8):
+    """ Compute resolution of 2-d grid points
+
+    Parameters:
+        X (np.array): scalar coordinates in first axis
+        Y (np.array): scalar coordinates in second axis
+        min_resol (float, optional): minimum resolution to consider.
+            Default: 1.0e-8.
+
+    Returns:
+        pair of floats
+    """
+    return tuple([get_resolution_1d(c, min_resol=min_resol) for c in [X, Y]])
+
 
 def pts_to_raster_meta(points_bounds, res):
     """" Transform vector data coordinates to raster. Returns number of rows,
     columns and affine transformation
 
+    If a raster of the given resolution doesn't exactly fit the given bounds,
+    the raster might have slightly larger (but never smaller) bounds.
+
     Parameters:
         points_bounds (tuple): points total bounds (xmin, ymin, xmax, ymax)
-        res (float): resolution of output raster
+        res (tuple): resolution of output raster (xres, yres)
 
     Returns:
         int, int, affine.Affine
     """
-    xmin, ymin, xmax, ymax = points_bounds
-    rows = int(np.floor((ymax-ymin) /  res) + 1)
-    cols = int(np.floor((xmax-xmin) / res) + 1)
-    ras_trans = from_origin(xmin - res / 2, ymax + res / 2, res, res)
-    if xmax > xmin - res / 2 + cols * res:
-        cols += 1
-    if ymin < ymax + res / 2 - rows * res:
-        rows += 1
-    return rows, cols, ras_trans
+    Affine = rasterio.transform.Affine
+    bounds = np.asarray(points_bounds).reshape(2,2)
+    res = np.asarray(res).ravel()
+    if res.size == 1:
+        res = np.array([res[0], res[0]])
+    sizes = bounds[1,:] - bounds[0,:]
+    nsteps = np.floor(sizes / np.abs(res)) + 1
+    nsteps[np.abs(nsteps * res) < sizes + np.abs(res) / 2] += 1
+    bounds[:,res < 0] = bounds[::-1,res < 0]
+    origin = bounds[0,:] - res[:] / 2
+    ras_trans = Affine.translation(*origin) * Affine.scale(*res)
+    return int(nsteps[1]), int(nsteps[0]), ras_trans
 
 def equal_crs(crs_one, crs_two):
     """ Compare two crs
@@ -770,7 +784,8 @@ def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
     """
 
     if not res:
-        res = min(get_resolution(points_df.latitude.values, points_df.longitude.values))
+        res = np.abs(get_resolution(points_df.latitude.values,
+                                    points_df.longitude.values)).min()
     if not raster_res:
         raster_res = res
 
@@ -787,9 +802,12 @@ def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon).\
         compute(scheduler=scheduler)
     # construct raster
-    xmin, ymin, xmax, ymax = points_df.longitude.min(), points_df.latitude.min(), \
-    points_df.longitude.max(), points_df.latitude.max()
-    rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax), raster_res)
+    xmin, ymin, xmax, ymax = points_df.longitude.min(), \
+                             points_df.latitude.min(), \
+                             points_df.longitude.max(), \
+                             points_df.latitude.max()
+    rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
+                                               (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))
     # TODO: parallel rasterize
     for i_val, val_name in enumerate(val_names):
