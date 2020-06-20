@@ -218,7 +218,7 @@ class TestRiverFlood(unittest.TestCase):
         
         rf_pos.exclude_trends(dis_trends, 'pos')
         gdpa1980 = GDP2Asset()
-        gdpa1980.set_countries(countries=['BGD'], ref_year=1980, path=gdp_path)
+        gdpa1980.set_countries(countries=['GIB'], ref_year=1980, path=gdp_path)
         print('test')
     
     # def test_rand_polygon(self):
