@@ -52,10 +52,18 @@ SYSTEM_DIR = os.path.abspath(os.path.join(DATA_DIR, 'system'))
 
 
 GLB_CENTROIDS_NC = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
-""" Global centroids nc."""
+""" Global centroids nc """
 
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
-""" Global centroids."""
+""" Global centroids """
+
+NATEARTH_CENTROIDS_150AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_150as.hdf5')
+""" Global centroids at 150 arc-seconds resolution,
+    including region ids from Natural Earth."""
+
+NATEARTH_CENTROIDS_360AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_360as.hdf5')
+""" Global centroids at 360 arc-seconds resolution,
+    including region ids from Natural Earth and distance to coast from NASA."""
 
 ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
 """ Entity template in xls format."""

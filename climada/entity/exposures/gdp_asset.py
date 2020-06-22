@@ -29,7 +29,7 @@ import logging
 import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.util.coordinates import isimip_iso2natid, get_isimip_gridpoints
+from climada.util.coordinates import country_iso2natid, get_region_gridpoints
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
 from climada.util.constants import DEF_CRS
 LOGGER = logging.getLogger(__name__)
@@ -108,10 +108,10 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        natID = isimip_iso2natid(countryISO)
+        natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(NAT_REG_ID)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-        lat, lon = get_isimip_gridpoints(countries=[natID], iso=False)
+        lat, lon = get_region_gridpoints(countries=[natID], iso=False)
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)
