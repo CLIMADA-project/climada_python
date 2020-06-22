@@ -27,7 +27,6 @@ import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
-import math
 import datetime as dt
 from datetime import date
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
@@ -36,7 +35,7 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 
-from climada.util.coordinates import get_isimip_gridpoints
+from climada.util.coordinates import get_region_gridpoints
 
 LOGGER = logging.getLogger(__name__)
 
@@ -378,7 +377,7 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
-        lat, lon = get_isimip_gridpoints(countries, regions=reg, rect=True)
+        lat, lon = get_region_gridpoints(countries, regions=reg, rect=True)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.coord.shape[0])
@@ -397,7 +396,7 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
-        lat, lon = get_isimip_gridpoints(countries=countries, regions=reg)
+        lat, lon = get_region_gridpoints(countries=countries, regions=reg)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])

@@ -39,7 +39,6 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
-from climada.util.constants import GLB_CENTROIDS_MAT
 from climada.util.interpolation import dist_approx
 import climada.util.plot as u_plot
 
@@ -118,8 +117,7 @@ class TropCyclone(Hazard):
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids()
-            centroids.read_mat(GLB_CENTROIDS_MAT)
+            centroids = Centroids.from_base_grid(res_as=360, land=True)
         if ignore_distance_to_coast: # Select centroids with lat < 61
             coastal_idx = np.logical_and(centroids.lat < 61, True).nonzero()[0]
         else:  # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61

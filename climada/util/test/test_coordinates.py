@@ -32,67 +32,80 @@ from rasterio.warp import Resampling
 from rasterio import Affine
 
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
-from climada.util.coordinates import grid_is_regular, get_coastlines, \
-get_land_geometry, nat_earth_resolution, coord_on_land, dist_to_coast, \
-get_country_geometries, get_resolution, pts_to_raster_meta, read_vector, \
-read_raster, NE_EPSG, equal_crs, set_df_geometry_points, points_to_raster, \
-get_country_code, convert_wgs_to_utm, DEM_NODATA, get_admin1_info
+from climada.util.coordinates import convert_wgs_to_utm, \
+                                     coord_on_land, \
+                                     dist_to_coast, \
+                                     dist_to_coast_nasa, \
+                                     equal_crs, \
+                                     get_admin1_info, \
+                                     get_coastlines, \
+                                     get_country_code, \
+                                     get_country_geometries, \
+                                     get_land_geometry, \
+                                     get_resolution, \
+                                     grid_is_regular, \
+                                     nat_earth_resolution, \
+                                     points_to_raster, \
+                                     pts_to_raster_meta, \
+                                     read_raster, \
+                                     read_raster_sample, \
+                                     read_vector, \
+                                     refine_raster_data, \
+                                     set_df_geometry_points, \
+                                     NE_EPSG
 
 class TestFunc(unittest.TestCase):
     '''Test the auxiliary used with plot functions'''
 
-    def test_is_regular_pass(self):
-        """ Test is_regular function. """
-        coord = np.array([[1, 2], [4.4, 5.4], [4, 5]])
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertFalse(reg)
-        self.assertEqual(hei, 1)
-        self.assertEqual(wid, 1)
+    def test_read_vector_pass(self):
+        """ Test one columns data """
+        shp_file = shapereader.natural_earth(resolution='110m', \
+            category='cultural', name='populated_places_simple')
+        lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
 
-        coord = np.array([[1, 2], [4.4, 5], [4, 5]])
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertFalse(reg)
-        self.assertEqual(hei, 1)
-        self.assertEqual(wid, 1)
+        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(geometry.size, lat.size)
+        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
+        self.assertAlmostEqual(lon[0], 12.453386544971766)
+        self.assertAlmostEqual(lon[-1], 114.18306345846304)
+        self.assertAlmostEqual(lat[0], 41.903282179960115)
+        self.assertAlmostEqual(lat[-1], 22.30692675357551)
 
-        coord = np.array([[1, 2], [4, 5]])
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertFalse(reg)
-        self.assertEqual(hei, 1)
-        self.assertEqual(wid, 1)
+        self.assertEqual(intensity.shape, (2, 243))
+        # population min
+        self.assertEqual(intensity[0, 0], 832)
+        self.assertEqual(intensity[0, -1], 4551579)
+        # population max
+        self.assertEqual(intensity[1, 0], 832)
+        self.assertEqual(intensity[1, -1], 7206000)
 
-        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 3]])
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertFalse(reg)
-        self.assertEqual(hei, 2)
-        self.assertEqual(wid, 1)
+    def test_compare_crs(self):
+        """ Compare two crs """
+        crs_one = {'init':'epsg:4326'}
+        crs_two = {'init':'epsg:4326', 'no_defs': True}
+        self.assertTrue(equal_crs(crs_one, crs_two))
 
-        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 2]])
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertTrue(reg)
-        self.assertEqual(hei, 2)
-        self.assertEqual(wid, 2)
+    def test_set_df_geometry_points_pass(self):
+        """ Test set_df_geometry_points """
+        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
+        df_val['latitude'] = np.ones(10)*40.0
+        df_val['longitude'] = np.ones(10)*0.50
 
-        grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 5),
-                                  0 : 10 : complex(0, 5)]
-        grid_x = grid_x.reshape(-1,)
-        grid_y = grid_y.reshape(-1,)
-        coord = np.array([grid_x, grid_y]).transpose()
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertTrue(reg)
-        self.assertEqual(hei, 5)
-        self.assertEqual(wid, 5)
+        set_df_geometry_points(df_val)
+        self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10)*0.5))
+        self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10)*40.))
 
-        grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 4),
-                                  0 : 10 : complex(0, 5)]
-        grid_x = grid_x.reshape(-1,)
-        grid_y = grid_y.reshape(-1,)
-        coord = np.array([grid_x, grid_y]).transpose()
-        reg, hei, wid = grid_is_regular(coord)
-        self.assertTrue(reg)
-        self.assertEqual(hei, 5)
-        self.assertEqual(wid, 4)
+    def test_convert_wgs_to_utm_pass(self):
+        """ Test convert_wgs_to_utm """
+        lat, lon = 17.346597, -62.768669
+        epsg = convert_wgs_to_utm(lon, lat)
+        self.assertEqual(epsg, 32620)
 
+        lat, lon = 41.522410, 1.891026
+        epsg = convert_wgs_to_utm(lon, lat)
+        self.assertEqual(epsg, 32631)
+
+class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""
         self.assertEqual(nat_earth_resolution(10), '10m')
@@ -200,14 +213,29 @@ class TestFunc(unittest.TestCase):
         for d, r in zip(dists, res):
             self.assertAlmostEqual(d, r)
 
+    def test_dist_to_coast_nasa(self):
+        """ Test point in coast and point not in coast """
+        points = np.array([
+            # Caribbean Sea:
+            [13.208333333333329, -59.625000000000014],
+            # South America:
+            [-12.497529, -58.849505],
+            # Very close to coast of Somalia:
+            [1.96768, 45.23219],
+        ])
+        dists = [3583.33333333, 1394306.570185499, 630.91307999]
+        # Warning: This will download more than 300 MB of data!
+        res = dist_to_coast_nasa(points[:,0], points[:,1])
+        for d, r in zip(dists, res):
+            self.assertAlmostEqual(d, r)
+
     def test_get_country_geometries_country_pass(self):
         """ get_country_geometries with selected countries. issues with the
         natural earth data should be caught by test_get_land_geometry_* since
         it's very similar """
         iso_countries = ['NLD', 'VNM']
         res = get_country_geometries(iso_countries, resolution=110)
-        self.assertIsInstance(res,
-                              geopandas.geodataframe.GeoDataFrame)
+        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
 
     def test_get_country_geometries_country_norway_pass(self):
         """ test correct numeric ISO3 for country Norway """
@@ -256,6 +284,87 @@ class TestFunc(unittest.TestCase):
         self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
 
+    def test_country_code_pass(self):
+        """ Test set_region_id """
+
+        lon = np.array([-59.6250000000000, -59.6250000000000, -59.6250000000000,
+                        -59.5416666666667, -59.5416666666667, -59.4583333333333,
+                        -60.2083333333333, -60.2083333333333])
+        lat = np.array([13.125,13.20833333, 13.29166667, 13.125, 13.20833333,
+                        13.125, 12.625, 12.70833333])
+        for gridded in [True, False]:
+            region_id = get_country_code(lat, lon, gridded=gridded)
+            region_id_OSLO = get_country_code(59.91, 10.75, gridded=gridded)
+            self.assertEqual(np.count_nonzero(region_id), 6)
+            # 052 for barbados
+            self.assertTrue(np.all(region_id[:6] == 52))
+            # 578 for Norway
+            self.assertEqual(region_id_OSLO, np.array([578]))
+
+    def test_get_admin1_info_pass(self):
+        """test get_admin1_info()"""
+        country_names = ['CHE', 'IDN', 'USA']
+        admin1_info, admin1_shapes = get_admin1_info(country_names)
+        self.assertEqual(len(admin1_info), 3)
+        self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
+        self.assertEqual(len(admin1_info['CHE']), 26)
+        self.assertEqual(len(admin1_shapes['IDN']), 33)
+        self.assertEqual(len(admin1_info['USA']), 51)
+        self.assertEqual(admin1_info['USA'][1][4], 'US-WA')
+
+class TestRasterMeta(unittest.TestCase):
+    def test_is_regular_pass(self):
+        """ Test is_regular function. """
+        coord = np.array([[1, 2], [4.4, 5.4], [4, 5]])
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
+
+        coord = np.array([[1, 2], [4.4, 5], [4, 5]])
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
+
+        coord = np.array([[1, 2], [4, 5]])
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 1)
+        self.assertEqual(wid, 1)
+
+        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 3]])
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertFalse(reg)
+        self.assertEqual(hei, 2)
+        self.assertEqual(wid, 1)
+
+        coord = np.array([[1, 2], [4, 5], [1, 5], [4, 2]])
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 2)
+        self.assertEqual(wid, 2)
+
+        grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 5),
+                                  0 : 10 : complex(0, 5)]
+        grid_x = grid_x.reshape(-1,)
+        grid_y = grid_y.reshape(-1,)
+        coord = np.array([grid_x, grid_y]).transpose()
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 5)
+        self.assertEqual(wid, 5)
+
+        grid_x, grid_y = np.mgrid[10 : 100 : complex(0, 4),
+                                  0 : 10 : complex(0, 5)]
+        grid_x = grid_x.reshape(-1,)
+        grid_y = grid_y.reshape(-1,)
+        coord = np.array([grid_x, grid_y]).transpose()
+        reg, hei, wid = grid_is_regular(coord)
+        self.assertTrue(reg)
+        self.assertEqual(hei, 5)
+        self.assertEqual(wid, 4)
+
     def test_get_resolution_pass(self):
         """ Test _get_resolution method """
         lat = np.array([13.125, 13.20833333, 13.29166667, 13.125,
@@ -301,28 +410,25 @@ class TestFunc(unittest.TestCase):
         self.assertTrue(ymin >= ymax + res/2 - rows*res)
         self.assertTrue(xmax <= xmin - res/2 + cols*res)
 
-    def test_read_vector_pass(self):
-        """ Test one columns data """
-        shp_file = shapereader.natural_earth(resolution='110m', \
-            category='cultural', name='populated_places_simple')
-        lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
+    def test_points_to_raster_pass(self):
+        """ Test points_to_raster """
+        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
+        x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
+        df_val['latitude'] = y.flatten()
+        df_val['longitude'] = x.flatten()
+        df_val['value'] = np.ones(len(df_val))*10
+        raster, meta = points_to_raster(df_val, val_names=['value'])
+        self.assertTrue(equal_crs(meta['crs'], df_val.crs))
+        self.assertAlmostEqual(meta['transform'][0], 0.5)
+        self.assertAlmostEqual(meta['transform'][1], 0)
+        self.assertAlmostEqual(meta['transform'][2], -0.25)
+        self.assertAlmostEqual(meta['transform'][3], 0)
+        self.assertAlmostEqual(meta['transform'][4], -0.5)
+        self.assertAlmostEqual(meta['transform'][5], 50.25)
+        self.assertEqual(meta['height'], 21)
+        self.assertEqual(meta['width'], 5)
 
-        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
-        self.assertEqual(geometry.size, lat.size)
-        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
-        self.assertAlmostEqual(lon[0], 12.453386544971766)
-        self.assertAlmostEqual(lon[-1], 114.18306345846304)
-        self.assertAlmostEqual(lat[0], 41.903282179960115)
-        self.assertAlmostEqual(lat[-1], 22.30692675357551)
-
-        self.assertEqual(intensity.shape, (2, 243))
-        # population min
-        self.assertEqual(intensity[0, 0], 832)
-        self.assertEqual(intensity[0, -1], 4551579)
-        # population max
-        self.assertEqual(intensity[1, 0], 832)
-        self.assertEqual(intensity[1, -1], 7206000)
-
+class TestRasterIO(unittest.TestCase):
     def test_window_raster_pass(self):
         """ Test window """
         meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50.1, 60))
@@ -372,9 +478,15 @@ class TestFunc(unittest.TestCase):
 
     def test_crs_and_geometry_raster_pass(self):
         """ Test change projection and crop to geometry """
-        ply = shapely.geometry.Polygon(((478080.8562247154, 1105419.13439131), (478087.5912452241, 1116475.583523723), (500000, 1116468.876713805), (500000, 1105412.49126517), (478080.8562247154, 1105419.13439131)))
+        ply = shapely.geometry.Polygon([
+            (478080.8562247154, 1105419.13439131),
+            (478087.5912452241, 1116475.583523723),
+            (500000, 1116468.876713805),
+            (500000, 1105412.49126517),
+            (478080.8562247154, 1105419.13439131)
+        ])
         meta, inten_ras = read_raster(HAZ_DEMO_FL, dst_crs={'init':'epsg:2202'},
-                                      geometry=[ply],resampling=Resampling.nearest)
+                                      geometry=[ply], resampling=Resampling.nearest)
         self.assertAlmostEqual(meta['crs'], {'init':'epsg:2202'})
         self.assertEqual(meta['height'], 12)
         self.assertEqual(meta['width'], 23)
@@ -383,14 +495,15 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(inten_ras.reshape((12, 23))[11, 12], 0.10063865780830383)
 
     def test_transform_raster_pass(self):
+        transform = Affine(0.009000000000000341, 0.0, -69.33714959699981,
+                           0.0, -0.009000000000000341, 10.42822096697894)
         meta, inten_ras = read_raster(HAZ_DEMO_FL,
-            transform=Affine(0.009000000000000341, 0.0, -69.33714959699981,
-            0.0, -0.009000000000000341, 10.42822096697894), height=500, width=501)
+            transform=transform, height=500, width=501)
 
         left = meta['transform'].xoff
         top = meta['transform'].yoff
-        bottom = top + meta['transform'][4]*meta['height']
-        right = left + meta['transform'][0]*meta['width']
+        bottom = top + meta['transform'][4] * meta['height']
+        right = left + meta['transform'][0] * meta['width']
 
         self.assertAlmostEqual(left, -69.33714959699981)
         self.assertAlmostEqual(bottom, 5.928220966978939)
@@ -404,75 +517,55 @@ class TestFunc(unittest.TestCase):
         meta, inten_all = read_raster(HAZ_DEMO_FL, window=Window(0, 0, 501, 500))
         self.assertTrue(np.array_equal(inten_all, inten_ras))
 
-    def test_compare_crs(self):
-        """ Compare two crs """
-        crs_one = {'init':'epsg:4326'}
-        crs_two = {'init':'epsg:4326', 'no_defs': True}
-        self.assertTrue(equal_crs(crs_one, crs_two))
+    def test_sample_raster(self):
+        """ Test sampling points from raster file """
+        val_1, val_2, fill_value = 0.056825936, 0.10389626, -999
+        i_j_vals = np.array([
+            [44, 21, 0],
+            [44, 22, 0],
+            [44, 23, 0],
+            [45, 21, 0],
+            [45, 22, val_1],
+            [45, 23, val_2],
+            [46, 21, 0],
+            [46, 22, 0],
+            [46, 23, 0],
+            [45, 22.2, 0.8 * val_1 + 0.2 * val_2],
+            [45.3, 21.4, 0.7 * 0.4 * val_1],
+            [-20, 0, fill_value],
+        ])
+        res = 0.009
+        lat = 10.42822096697894 - res / 2 - i_j_vals[:,0] * res
+        lon = -69.33714959699981 + res / 2 + i_j_vals[:,1] * res
+        values = read_raster_sample(HAZ_DEMO_FL, lat, lon,
+                                    fill_value=fill_value)
+        self.assertEqual(values.size, lat.size)
+        for i, val in enumerate(i_j_vals[:,2]):
+            self.assertAlmostEqual(values[i], val)
 
-    def test_set_df_geometry_points_pass(self):
-        """ Test set_df_geometry_points """
-        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
-        df_val['latitude'] = np.ones(10)*40.0
-        df_val['longitude'] = np.ones(10)*0.50
+    def test_refine_raster(self):
+        """ Test refinement of given raster data """
+        data = np.array([
+            [0.25, 0.75],
+            [0.5, 1],
+        ])
+        transform = Affine(0.5, 0, 0, 0, 0.5, 0)
+        new_res = 0.1
+        new_data, new_transform = refine_raster_data(data, transform, new_res)
 
-        set_df_geometry_points(df_val)
-        self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10)*0.5))
-        self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10)*40.))
-
-    def test_points_to_raster_pass(self):
-        """ Test points_to_raster """
-        df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
-        x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
-        df_val['latitude'] = y.flatten()
-        df_val['longitude'] = x.flatten()
-        df_val['value'] = np.ones(len(df_val))*10
-        raster, meta = points_to_raster(df_val, val_names=['value'])
-        self.assertTrue(equal_crs(meta['crs'], df_val.crs))
-        self.assertAlmostEqual(meta['transform'][0], 0.5)
-        self.assertAlmostEqual(meta['transform'][1], 0)
-        self.assertAlmostEqual(meta['transform'][2], -0.25)
-        self.assertAlmostEqual(meta['transform'][3], 0)
-        self.assertAlmostEqual(meta['transform'][4], -0.5)
-        self.assertAlmostEqual(meta['transform'][5], 50.25)
-        self.assertEqual(meta['height'], 21)
-        self.assertEqual(meta['width'], 5)
-
-    def test_country_code_pass(self):
-        """ Test set_region_id """
-
-        lon = np.array([-59.6250000000000,-59.6250000000000,-59.6250000000000,-59.5416666666667,
-                        -59.5416666666667,-59.4583333333333,-60.2083333333333,-60.2083333333333])
-        lat = np.array([13.125,13.20833333,13.29166667,13.125,13.20833333,13.125,12.625,12.70833333])
-        region_id = get_country_code(lat, lon)
-        region_id_OSLO = get_country_code([59.91],[10.75])
-        self.assertEqual(np.count_nonzero(region_id), 6)
-        self.assertTrue(np.allclose(region_id[:6], np.ones(6)*52)) # 052 for barbados
-        self.assertEqual(region_id_OSLO, np.array(578)) # 578 for Norway
-
-    def test_convert_wgs_to_utm_pass(self):
-        """ Test convert_wgs_to_utm """
-        lat, lon = 17.346597, -62.768669
-        epsg = convert_wgs_to_utm(lon, lat)
-        self.assertEqual(epsg, 32620)
-
-        lat, lon = 41.522410, 1.891026
-        epsg = convert_wgs_to_utm(lon, lat)
-        self.assertEqual(epsg, 32631)
-
-    def test_get_admin1_info_pass(self):
-        """test get_admin1_info()"""
-        country_names = ['CHE', 'IDN', 'USA']
-        admin1_info, admin1_shapes = get_admin1_info(country_names)
-        self.assertEqual(len(admin1_info), 3)
-        self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
-        self.assertEqual(len(admin1_info['CHE']), 26)
-        self.assertEqual(len(admin1_shapes['IDN']), 33)
-        self.assertEqual(len(admin1_info['USA']), 51)
-        self.assertEqual(admin1_info['USA'][1][4], 'US-WA')
-
+        self.assertEqual(new_transform[0], new_res)
+        self.assertEqual(new_transform[4], new_res)
+        self.assertAlmostEqual(new_data[2,2], data[0,0])
+        self.assertAlmostEqual(new_data[2,7], data[0,1])
+        self.assertAlmostEqual(new_data[7,2], data[1,0])
+        self.assertAlmostEqual(new_data[7,7], data[1,1])
+        self.assertAlmostEqual(new_data[1,2], data[0,0])
+        self.assertAlmostEqual(new_data[3,3], 0.4)
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetGeodata))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -147,3 +147,6 @@ data/system/cell5m_allockey_xy.csv
 data/system/LicenseV*.pdf
 data/system/readme_global_v3r2.txt
 data/system/spam*csv
+
+# climada system data files: NASA distance to coast
+data/system/GMT_intermediate_coast*

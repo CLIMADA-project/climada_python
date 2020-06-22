@@ -155,7 +155,7 @@ class CropyieldIsimip(Exposures):
                 scenario = items[1]
             yearchunk = YEARCHUNKS[scenario]
             filename = input_dir+filename
-            
+
         data_set = xr.open_dataset(filename, decode_times=False)
         data = data_set.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]))
 

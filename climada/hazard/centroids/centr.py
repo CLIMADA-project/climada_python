@@ -34,12 +34,17 @@ from geopandas import GeoSeries
 from shapely.geometry.point import Point
 
 import climada.util.plot as u_plot
-from climada.util.constants import DEF_CRS, ONE_LAT_KM
+from climada.util.constants import DEF_CRS, ONE_LAT_KM, \
+                                   NATEARTH_CENTROIDS_150AS, \
+                                   NATEARTH_CENTROIDS_360AS
 import climada.util.hdf5_handler as hdf5
-from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
-pts_to_raster_meta, read_raster, read_vector, equal_crs, get_country_code
+from climada.util.coordinates import dist_to_coast, get_resolution, \
+                                     coord_on_land, pts_to_raster_meta, \
+                                     read_raster, read_vector, equal_crs, \
+                                     get_country_code, dist_to_coast_nasa, \
+                                     raster_to_meshgrid
 from climada.util.coordinates import NE_CRS, TMP_ELEVATION_FILE, DEM_NODATA, \
-MAX_DEM_TILES_DOWN
+                                     MAX_DEM_TILES_DOWN
 
 __all__ = ['Centroids']
 
@@ -135,13 +140,39 @@ class Centroids():
             bool
         """
         if self.meta and centr.meta:
-            return equal_crs(self.meta['crs'], centr.meta['crs']) and \
-            self.meta['height'] == centr.meta['height'] and \
-            self.meta['width'] == centr.meta['width'] and \
-            self.meta['transform'] == centr.meta['transform']
-        return equal_crs(self.geometry.crs, centr.geometry.crs) and \
-        self.lat.shape == centr.lat.shape and self.lon.shape == centr.lon.shape and \
-        np.allclose(self.lat, centr.lat) and np.allclose(self.lon, centr.lon)
+            return equal_crs(self.meta['crs'], centr.meta['crs']) \
+                and self.meta['height'] == centr.meta['height'] \
+                and self.meta['width'] == centr.meta['width'] \
+                and self.meta['transform'] == centr.meta['transform']
+        return equal_crs(self.geometry.crs, centr.geometry.crs) \
+            and self.lat.shape == centr.lat.shape \
+            and self.lon.shape == centr.lon.shape \
+            and np.allclose(self.lat, centr.lat) \
+            and np.allclose(self.lon, centr.lon)
+
+    @staticmethod
+    def from_base_grid(land=False, res_as=360):
+        """ Initialize from base grid data provided with CLIMADA
+
+        Parameters:
+            land (bool, optional): If True, restrict to grid points on land.
+                Default: False.
+            res_as (int, optional): Base grid resolution in arc-seconds (one of
+                150, 360). Default: 360.
+        """
+        centroids = Centroids()
+        base_file = NATEARTH_CENTROIDS_360AS
+        if res_as == 150:
+            base_file = NATEARTH_CENTROIDS_150AS
+        elif res_as != 360:
+            raise ValueError("No base grid for resolution %s", str(res_as))
+        centroids.read_hdf5(base_file)
+        if land:
+            land_reg_ids = list(range(1,1000))
+            land_reg_ids.remove(10)  # Antarctica
+            centroids = centroids.select(reg_id=land_reg_ids)
+        return centroids
+
 
     def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
                                    n_lon, crs=DEF_CRS):
@@ -157,9 +188,14 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        self.meta = {'dtype':'float32', 'width':n_lon, 'height':n_lat,
-                     'crs':crs, 'transform':Affine(d_lon, 0.0, xo_lon,
-                                                   0.0, d_lat, xf_lat)}
+        self.meta = {
+            'dtype': 'float32',
+            'width': n_lon,
+            'height': n_lat,
+            'crs': crs,
+            'transform': Affine(d_lon, 0.0, xo_lon,
+                                0.0, d_lat, xf_lat),
+        }
 
     def set_raster_from_pnt_bounds(self, points_bounds, res, crs=DEF_CRS):
         """ Set raster metadata (meta attribute) from points border data.
@@ -172,8 +208,12 @@ class Centroids():
         """
         self.__init__()
         rows, cols, ras_trans = pts_to_raster_meta(points_bounds, (res, -res))
-        self.set_raster_from_pix_bounds(ras_trans[5], ras_trans[2], ras_trans[4],
-                                        ras_trans[0], rows, cols, crs)
+        self.meta = {
+            'width': cols,
+            'height': rows,
+            'crs': crs,
+            'transform': ras_trans,
+        }
 
     def set_lat_lon(self, lat, lon, crs=DEF_CRS):
         """ Set Centroids points from given latitude, longitude and CRS.
@@ -220,11 +260,11 @@ class Centroids():
 
         tmp_meta, inten = read_raster(file_name, band, src_crs, window, geometry,
                                       dst_crs, transform, width, height, resampling)
-        if (tmp_meta['crs'] != self.meta['crs']) or \
-        (tmp_meta['transform'] != self.meta['transform']) or \
-        (tmp_meta['height'] != self.meta['height']) or \
-        (tmp_meta['width'] != self.meta['width']):
-            LOGGER.error('Raster data inconsistent with contained raster.')
+        if (tmp_meta['crs'] != self.meta['crs']) \
+           or (tmp_meta['transform'] != self.meta['transform']) \
+           or (tmp_meta['height'] != self.meta['height']) \
+           or (tmp_meta['width'] != self.meta['width']):
+            LOGGER.error('Raster data is inconsistent with contained raster.')
             raise ValueError
         return sparse.csr_matrix(inten)
 
@@ -337,8 +377,8 @@ class Centroids():
             if centr.meta['crs'] != self.meta['crs']:
                 LOGGER.error('Different CRS not accepted.')
                 raise ValueError
-            if self.meta['transform'][0] != centr.meta['transform'][0] or \
-            self.meta['transform'][4] != centr.meta['transform'][4]:
+            if self.meta['transform'][0] != centr.meta['transform'][0] \
+               or self.meta['transform'][4] != centr.meta['transform'][4]:
                 LOGGER.error('Different raster resolutions.')
                 raise ValueError
             left = min(self.total_bounds[0], centr.total_bounds[0])
@@ -346,11 +386,16 @@ class Centroids():
             right = max(self.total_bounds[2], centr.total_bounds[2])
             top = max(self.total_bounds[3], centr.total_bounds[3])
             crs = self.meta['crs']
-            width = (right - left)/self.meta['transform'][0]
-            height = (bottom - top)/self.meta['transform'][4]
-            self.meta = {'dtype':'float32', 'width':width, 'height':height,
-                         'crs':crs, 'transform':Affine(self.meta['transform'][0], \
-                         0.0, left, 0.0, self.meta['transform'][4], top)}
+            width = (right - left) / self.meta['transform'][0]
+            height = (bottom - top) / self.meta['transform'][4]
+            self.meta = {
+                'dtype': 'float32',
+                'width': width,
+                'height': height,
+                'crs': crs,
+                'transform': Affine(self.meta['transform'][0], 0.0, left,
+                                    0.0, self.meta['transform'][4], top),
+            }
             self.lat, self.lon = np.array([]), np.array([])
         else:
             LOGGER.debug('Appending points')
@@ -426,7 +471,8 @@ class Centroids():
                 raise ValueError
             res = self.meta['transform'].a
         else:
-            res = np.abs(get_resolution(self.lat, self.lon, min_resol)).min()
+            res = get_resolution(self.lat, self.lon, min_resol=min_resol)
+            res = np.abs(res).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
@@ -461,9 +507,9 @@ class Centroids():
                                                      min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
-            if ('units' in self.geometry.crs and \
-            self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-            equal_crs(self.geometry.crs, {'proj':'cea'}):
+            if ('units' in self.geometry.crs \
+                and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
+               or equal_crs(self.geometry.crs, {'proj': 'cea'}):
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
                 return
 
@@ -562,13 +608,11 @@ class Centroids():
 
     def set_meta_to_lat_lon(self):
         """ Compute lat and lon of every pixel center from meta raster """
-        ulx, xres, _, uly, _, yres = self.meta['transform'].to_gdal()
-        lrx = ulx + (self.meta['width'] * xres)
-        lry = uly + (self.meta['height'] * yres)
-        x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
-                                     np.arange(uly+yres/2, lry, yres))
-        self.lon = x_grid.flatten()
-        self.lat = y_grid.flatten()
+        xgrid, ygrid = raster_to_meshgrid(self.meta['transform'],
+                                          self.meta['width'],
+                                          self.meta['height'])
+        self.lon = xgrid.flatten()
+        self.lat = ygrid.flatten()
         self.geometry = GeoSeries(crs=self.meta['crs'])
 
     def plot(self, axis=None, **kwargs):
@@ -676,8 +720,7 @@ class Centroids():
                 if key != 'transform':
                     self.meta[key] = value[0]
                 else:
-                    self.meta[key] = Affine(value[0], value[1], value[2],
-                                            value[3], value[4], value[5])
+                    self.meta[key] = Affine(*value)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(self, centr_name, np.array(data.get(centr_name)))
@@ -777,3 +820,35 @@ class Centroids():
             else:
                 setattr(result, key, copy.deepcopy(value, memo))
         return result
+
+
+def generate_nat_earth_centroids(res_as=360):
+    """ For reproducibility, this is the function that generates the centroids
+        files `NATEARTH_CENTROIDS_*AS`. These files are provided with CLIMADA
+        so that this function should never be called!
+
+    Parameter:
+        res_as (int): Resolution of file in arc-seconds. Default: 360.
+    """
+    if res_as not in [150, 360]:
+        raise ValueError("Only 150 and 360 arc-seconds are supported!")
+
+    res_deg = res_as / 3600
+    lat_dim = np.arange(-90 + res_deg, 90, res_deg)
+    lon_dim = np.arange(-180 + res_deg, 180 + res_deg, res_deg)
+    grid_shape = (lat_dim.size, lon_dim.size)
+    lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
+    natids = np.uint16(get_country_code(lat, lon, gridded=False, natid=False))
+
+    cen = Centroids()
+    cen.set_lat_lon(lat, lon)
+    cen.region_id = natids
+    cen.set_lat_lon_to_meta()
+    cen.lat = np.array([])
+    cen.lon = np.array([])
+
+    path = NATEARTH_CENTROIDS_150AS
+    if res_as == 360:
+        path = NATEARTH_CENTROIDS_360AS
+        cen.dist_coast = np.float16(dist_to_coast_nasa(lat, lon))
+    cen.write_hdf5(path)
