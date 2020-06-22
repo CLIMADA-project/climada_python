@@ -88,6 +88,8 @@ class GDP2Asset(Exposures):
         self.crs = DEF_CRS
         # set meta
         res = 0.0416666
+        
+    
         rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
                                                     self.latitude.min(),
                                                     self.longitude.max(),
