@@ -23,6 +23,7 @@ __all__ = ['ImpactFreqCurve', 'Impact']
 
 import ast
 import logging
+import copy
 import csv
 import warnings
 import datetime as dt
@@ -197,7 +198,8 @@ class Impact():
             insure_flag = True
 
         if save_mat:
-            self.imp_mat = sparse.lil_matrix((self.date.size, exposures.value.size))
+            # (data, (row_ind, col_ind))
+            self.imp_mat = ([], ([], []))
 
         # 3. Loop over exposures according to their impact function
         tot_exp = 0
@@ -224,7 +226,36 @@ class Impact():
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
         if save_mat:
-            self.imp_mat = self.imp_mat.tocsr()
+            shape = (self.date.size, exposures.value.size)
+            self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
+
+    def calc_risk_transfer(self, attachment, cover):
+        """ Compute traaditional risk transfer over impact. Returns new impact
+        with risk transfer applied and the insurance layer resulting Impact metrics.
+
+        Parameters:
+            attachment (float): attachment (deductible)
+            cover (float): cover
+
+        Returns:
+            Impact, Impact
+        """
+        new_imp = copy.deepcopy(self)
+        if attachment or cover:
+            imp_layer = np.minimum(np.maximum(new_imp.at_event - attachment, 0), cover)
+            new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
+            new_imp.aai_agg = np.sum(new_imp.at_event * new_imp.frequency)
+            # next values are no longer valid
+            new_imp.eai_exp = np.array([])
+            new_imp.coord_exp = np.array([])
+            new_imp.imp_mat = []
+            # insurance layer metrics
+            risk_transfer = copy.deepcopy(new_imp)
+            risk_transfer.at_event = imp_layer
+            risk_transfer.aai_agg = np.sum(imp_layer * new_imp.frequency)
+            return new_imp, risk_transfer
+
+        return new_imp, Impact()
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
@@ -243,7 +274,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -269,7 +300,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for hexbin matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -295,7 +326,7 @@ class Impact():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -324,13 +355,88 @@ class Impact():
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
 
-         Returns:
+        Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
         axis.set_title('Expected annual impact')
+        return axis
+
+    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+                                    pop_name=True, buffer=0.0, extend='neither',
+                                    axis=None, **kwargs):
+        """Plot hexbin impact of an event at each exposure.
+        Requires attribute imp_mat.
+
+        Parameters:
+            event_id (int, optional): id of the event for which to plot the impact.
+                Default: 1.
+            mask (np.array, optional): mask to apply to impact plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates.
+                Default: 1.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            kwargs (optional): arguments for hexbin matplotlib function
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+
+        Returns:
+            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+            """
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+                         'instance with parameter save_mat=True')
+            return []
+
+        impact_at_events_exp = self._build_exp_event(event_id)
+        axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
+                                                buffer, extend, axis=axis, **kwargs)
+
+        return axis
+
+    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+                                     pop_name=True, buffer=0.0, extend='neither', zoom=10,
+                                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                     axis=None, **kwargs):
+        """Plot basemap impact of an event at each exposure.
+        Requires attribute imp_mat.
+
+        Parameters:
+            event_id (int, optional): id of the event for which to plot the impact.
+                Default: 1.
+            mask (np.array, optional): mask to apply to impact plotted.
+            ignore_zero (bool, optional): flag to indicate if zero and negative
+                values are ignored in plot. Default: False
+            pop_name (bool, optional): add names of the populated places
+            buffer (float, optional): border to add to coordinates. Default: 0.0.
+            extend (str, optional): extend border colorbar with arrows.
+                [ 'neither' | 'both' | 'min' | 'max' ]
+            zoom (int, optional): zoom coefficient used in the satellite image
+            url (str, optional): image source, e.g. ctx.sources.OSM_C
+            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            kwargs (optional): arguments for scatter matplotlib function, e.g.
+                cmap='Greys'. Default: 'Wistia'
+
+        Returns:
+            cartopy.mpl.geoaxes.GeoAxesSubplot
+        """
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+                         'instance with parameter save_mat=True')
+            return []
+
+        impact_at_events_exp = self._build_exp_event(event_id)
+        axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
+                                                 buffer, extend, zoom, url, axis=axis, **kwargs)
+
         return axis
 
     def write_csv(self, file_name):
@@ -409,23 +515,33 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def calc_impact_year_set(self, all_years=True):
+    def calc_impact_year_set(self, all_years=True, year_range=[]):
         """ Calculate yearly impact from impact data.
 
         Parameters:
             all_years (boolean): return values for all years between first and
             last year with event, including years without any events.
+            year_range (tuple or list with integers): start and end year
 
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
-        if all_years:
+        if orig_year.size == 0 and len(year_range) == 0:
+            return dict()
+        if orig_year.size==0 or (len(year_range)>0 and all_years):
+            years = np.arange(min(year_range), max(year_range)+1)
+        elif all_years:
             years = np.arange(min(orig_year), max(orig_year)+1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
+        if not len(year_range)==0:
+            years = years[years>=min(year_range)]
+            years = years[years<=max(year_range)]
+
         year_set = dict()
+
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
@@ -459,10 +575,10 @@ class Impact():
         chk = -1
         for chk in range(int(num_cen/cen_step)):
             self._loc_return_imp(np.array(return_periods), \
-                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].todense(), \
+                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
                 imp_stats[:, chk*cen_step:(chk+1)*cen_step])
         self._loc_return_imp(np.array(return_periods), \
-            self.imp_mat[:, (chk+1)*cen_step:].todense(), \
+            self.imp_mat[:, (chk+1)*cen_step:].toarray(), \
             imp_stats[:, (chk+1)*cen_step:])
 
         return imp_stats
@@ -749,13 +865,13 @@ class Impact():
         impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
-            inten_val = hazard.intensity[:, icens].todense()
+            inten_val = hazard.intensity[:, icens].toarray()
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
-            impact = np.minimum(np.maximum(impact - \
-                exposures.deductible.values[exp_iimp] * paa, 0), \
-                exposures.cover.values[exp_iimp])
-            self.eai_exp[exp_iimp] += np.sum(np.asarray(impact) * \
-                hazard.frequency.reshape(-1, 1), axis=0)
+            impact = impact.toarray()
+            impact -= exposures.deductible.values[exp_iimp] * paa
+            impact = np.clip(impact, 0, exposures.cover.values[exp_iimp])
+            self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
+            impact = sparse.coo_matrix(impact)
         else:
             self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
@@ -763,7 +879,10 @@ class Impact():
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value.values[exp_iimp])
         if not isinstance(self.imp_mat, list):
-            self.imp_mat[:, exp_iimp] = impact
+            row_ind, col_ind = impact.nonzero()
+            self.imp_mat[0].extend(list(impact.data))
+            self.imp_mat[1][0].extend(list(row_ind))
+            self.imp_mat[1][1].extend(list(exp_iimp[col_ind]))
 
     def _build_exp(self):
         eai_exp = Exposures()
@@ -776,6 +895,23 @@ class Impact():
         eai_exp.tag = Tag()
         eai_exp.meta = None
         return eai_exp
+
+    def _build_exp_event(self, event_id):
+        """Write impact of an event as Exposures
+
+        Parameters:
+            event_id(int): id of the event
+        """
+        impact_csr_exp = Exposures()
+        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id-1, :]
+        impact_csr_exp['latitude'] = self.coord_exp[:, 0]
+        impact_csr_exp['longitude'] = self.coord_exp[:, 1]
+        impact_csr_exp.crs = self.crs
+        impact_csr_exp.value_unit = self.unit
+        impact_csr_exp.ref_year = 0
+        impact_csr_exp.tag = Tag()
+        impact_csr_exp.meta = None
+        return impact_csr_exp
 
     @staticmethod
     def _cen_return_imp(imp, freq, imp_th, return_periods):

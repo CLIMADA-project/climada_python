@@ -114,7 +114,7 @@ class TestApply(unittest.TestCase):
         meas = MeasureSet()
         meas.read_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure(name='Seawall')[0]
-        act_1.exp_region_id = 1
+        act_1.exp_region_id = [1]
 
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
@@ -212,6 +212,8 @@ class TestApply(unittest.TestCase):
         ref_exp.read_hdf5(EXP_DEMO_H5)
 
         exposures = Exposures()
+        exposures['latitude'] = np.ones(10)
+        exposures['longitude'] = np.ones(10)
         new_exp = meas._change_all_exposures(exposures)
 
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
@@ -223,9 +225,9 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp.longitude.values, ref_exp.longitude.values))
 
     def test_not_filter_exposures_pass(self):
-        """Test _filter_exposures method with -1"""
+        """Test _filter_exposures method with []"""
         meas = Measure()
-        meas.exp_region_id = 0
+        meas.exp_region_id = []
 
         exp = Exposures()
         imp_set = ImpactFuncSet()
@@ -247,9 +249,9 @@ class TestApply(unittest.TestCase):
         self.assertTrue(res_haz is not haz)
 
     def test_filter_exposures_pass(self):
-        """Test _filter_exposures method with -1"""
+        """Test _filter_exposures method with two values"""
         meas = Measure()
-        meas.exp_region_id = 3
+        meas.exp_region_id = [3, 4]
         meas.haz_type = 'TC'
 
         exp = Exposures()
@@ -257,6 +259,7 @@ class TestApply(unittest.TestCase):
         exp.rename(columns={'if_':'if_TC', 'centr_':'centr_TC'}, inplace=True)
         exp['region_id'] = np.ones(exp.shape[0])
         exp.region_id.values[:exp.shape[0]//2] = 3
+        exp.region_id[0] = 4
         exp.check()
 
         imp_set = ImpactFuncSet()
@@ -264,6 +267,7 @@ class TestApply(unittest.TestCase):
 
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
+        exp.assign_centroids(haz)
 
         new_exp = copy.deepcopy(exp)
         new_exp['value'] *= 3
@@ -287,7 +291,8 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
         self.assertEqual(res_exp.tag.description, exp.tag.description)
         self.assertTrue(np.array_equal(res_exp.value.values[exp.shape[0]//2:], new_exp.value.values[:exp.shape[0]//2]))
-        self.assertTrue(np.array_equal(res_exp.region_id.values[exp.shape[0]//2:], np.ones(exp.shape[0]//2)*3))
+        self.assertEqual(res_exp.region_id.values[exp.shape[0]//2], 4)
+        self.assertTrue(np.array_equal(res_exp.region_id.values[exp.shape[0]//2+1:], np.ones(exp.shape[0]//2-1)*3))
         self.assertTrue(np.array_equal(res_exp.if_TC.values[exp.shape[0]//2:], new_exp.if_TC.values[:exp.shape[0]//2]))
         self.assertTrue(np.array_equal(res_exp.latitude.values[exp.shape[0]//2:], new_exp.latitude.values[:exp.shape[0]//2]))
         self.assertTrue(np.array_equal(res_exp.longitude.values[exp.shape[0]//2:], new_exp.longitude.values[:exp.shape[0]//2]))
@@ -323,16 +328,16 @@ class TestApply(unittest.TestCase):
                         ref_ifs.get_func()[meas.haz_type][3].mdd))
 
         # unchanged hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].todense(), 
-                        haz.intensity[:, :36].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].todense(), 
-                        haz.intensity[:, 37:46].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].todense(), 
-                        haz.intensity[:, 47:].todense()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].toarray(),
+                        haz.intensity[:, :36].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].toarray(),
+                        haz.intensity[:, 37:46].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].toarray(),
+                        haz.intensity[:, 47:].toarray()))
 
         # changed hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].todense(), 
-                        new_haz.intensity[[36, 46]].todense()))        
+        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].toarray(),
+                        new_haz.intensity[[36, 46]].toarray()))
 
     def test_apply_ref_pass(self):
         """ Test apply method: apply all measures but insurance """
@@ -346,7 +351,7 @@ class TestApply(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
-        
+
         new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures, \
             entity.impact_funcs, hazard)
 
@@ -356,7 +361,7 @@ class TestApply(unittest.TestCase):
 
         new_imp = new_ifs.get_func('TC')[0]
         self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
-            54., 64., 74., 84., 104.])))    
+            54., 64., 74., 84., 104.])))
         self.assertTrue(np.allclose(new_imp.mdd, np.array([0, 0, 0.021857142857143, 0.035887500000000,
             0.053977415307403, 0.103534246575342, 0.180414000000000, 0.410796000000000, 0.410796000000000])))
         self.assertTrue(np.allclose(new_imp.paa, np.array([0, 0.005000000000000, 0.042000000000000,
@@ -365,7 +370,7 @@ class TestApply(unittest.TestCase):
 
         new_imp = new_ifs.get_func('TC')[1]
         self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
-            54., 64., 74., 84., 104.])))    
+            54., 64., 74., 84., 104.])))
         self.assertTrue(np.allclose(new_imp.mdd, np.array([0, 0, 0, 0.025000000000000,
             0.054054054054054, 0.104615384615385, 0.211764705882353, 0.400000000000000, 0.400000000000000])))
         self.assertTrue(np.allclose(new_imp.paa, np.array([0, 0.004000000000000, 0, 0.160000000000000,
@@ -408,7 +413,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
         self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
-        self.assertEqual(risk_transf, 0)
+        self.assertEqual(risk_transf.aai_agg, 0)
 
 
     def test_calc_impact_transf_pass(self):
@@ -440,8 +445,7 @@ class TestApply(unittest.TestCase):
         self.assertAlmostEqual(imp.at_event[12], 8.648764833437817e+07)
         self.assertAlmostEqual(imp.at_event[41], 500000000)
         self.assertAlmostEqual(imp.at_event[11890], 6.498096646836635e+07)
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], entity.exposures.latitude))
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], entity.exposures.longitude))
+        self.assertTrue(np.array_equal(imp.coord_exp, np.array([])))
         self.assertTrue(np.array_equal(imp.eai_exp, np.array([])))
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e+11)
         self.assertEqual(imp.unit, 'USD')
@@ -452,7 +456,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
         self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
-        self.assertEqual(risk_transf, 2.3139691495470852e+08)
+        self.assertEqual(risk_transf.aai_agg, 2.3139691495470852e+08)
 
 # Execute Tests
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ from climada.util.constants import SYSTEM_DIR
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
-DEF_HAZ_TYPE = 'DR'
+DEF_HAZ_TYPE = 'CP'
 """ Default hazard type used in impact functions id."""
 
 FILENAME_SPAM = 'spam2005V3r2_global'
@@ -99,6 +99,10 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             save_name_adm1 (Boolean): Determines how many aditional data are saved:
                 False: only basics (lat, lon, total value), region_id per country
                 True: like 1 + name of admin1
+                
+            haz_type (str): hazard type abbreviation, e.g.
+                'DR' for Drought or
+                'CP' for CropPotential
 
 
         Returns:
@@ -110,6 +114,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
         save_adm1 = parameters.get('save_name_adm1', False)
+        haz_type = parameters.get('haz_type', DEF_HAZ_TYPE)
 
         # Test if parameters make sense:
         if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
@@ -164,7 +169,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
-        self._set_if(spam_t)
+        self._set_if(spam_t, haz_type)
 
         self.tag.file_name = (FILENAME_SPAM + '_' + spam_v + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
@@ -182,36 +187,36 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                     spam_v, spam_t, region, self.value.sum(), self.value_unit))
         self.check()
 
-    def _set_if(self, spam_t):
+    def _set_if(self, spam_t, haz_type):
         """ Set impact function id depending on technology."""
         # hazard type drought is default.
         iiv = 0
         if spam_t == 'TA':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+1*iiv
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+1*iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+2*iiv
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+2*iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+3*iiv
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+3*iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+4*iiv
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+4*iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)+5*iiv
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+5*iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self[INDICATOR_IF+DEF_HAZ_TYPE] = np.ones(self.value.size, int)
+            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):

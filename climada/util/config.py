@@ -35,7 +35,7 @@ from pkg_resources import Requirement, resource_filename
 from climada.util.constants import SOURCE_DIR
 
 WORKING_DIR = os.getcwd()
-WINDOWS_END = 'C:\\'
+WINDOWS_END = WORKING_DIR[0:3]
 UNIX_END = '/'
 
 def remove_handlers(logger):

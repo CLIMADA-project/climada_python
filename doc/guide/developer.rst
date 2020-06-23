@@ -16,10 +16,14 @@ Contributions are very welcome! Please follow these steps:
 3. You might make a new **branch** if you are modifying more than one part or feature::
 
     git checkout -b feature_branch_name
+    
+ Otherwise check out the develop branch::
+
+    git checkout -b develop
 
  `About branches <https://help.github.com/en/articles/about-branches>`_.
 
-4. Write small readable methods, classes and functions. Make well commented and clean **commits** to the repository::
+4. Follow the :doc:`coding_conventions`. Write small readable methods, classes and functions. Make well commented and clean **commits** to the repository::
 
     git pull
     git stats         # use it to see your locally modified files
@@ -28,23 +32,35 @@ Contributions are very welcome! Please follow these steps:
 
 5. Make unit and integration **tests** on your code, preferably during development:
 
-   * Unit tests are located in the ``test`` folder located in same folder as the corresponding module. Unit tests should test all methods and functions using fake data if necessary. The whole test suit should run in less than 20 sec. They are all executed after each push in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci/>`_.
+   * Unit tests are located in the ``test`` folder located in same folder as the corresponding module. Unit tests should test all methods and functions using fake data if necessary. The whole test suit should run in less than 20 sec. They are all executed after each push in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_branches/>`_.
 
    * Integration tests are located in ``climada/test/``. They test end-to-end methods and functions. Their execution time can be of minutes. They are executed once a day in `Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci_night/>`_.
 
-6. Perform a **static code analysis** of your code using ``pylint`` with CLIMADA's configuration ``.pylintrc``. `Jenkins <http://ied-wcr-jenkins.ethz.ch>`_ executes it after every push. To do it locally, you might use the Interface provided by `Spyder`. To do so, search first for `static code analysis` in `View` and then `Panes`.
+6. Make sure your changes are not introducing new test failures.
 
-7. Add new **data dependencies** used in :doc:`data_dependencies` and write a **tutorial** if a new class has been introduced (see :doc:`tutorial`).
+ Run unit and integration tests::
+   
+    make unit_test
+    make integ_test
 
-8. Add your name to the **AUTHORS** file.
+ Compare the result to the results before the change. Current test failures are visible on `Jenkins <http://ied-wcr-jenkins.ethz.ch/>`_.
+ Fix new test failures before you create a pull request or push to the develop branch of CLIMADA-project/climada_python.
 
-9. **Push** the code or branch to GitHub. To push without a branch (to master) do so::
+7. Perform a **static code analysis** of your code using ``pylint`` with CLIMADA's configuration ``.pylintrc``. `Jenkins <http://ied-wcr-jenkins.ethz.ch>`_ executes it after every push. To do it locally, you might use the Interface provided by `Spyder`. To do so, search first for `static code analysis` in `View` and then `Panes`.
 
-    git push
+8. Add new **data dependencies** used in :doc:`data_dependencies` and write a **tutorial** if a new class has been introduced (see :doc:`tutorial`).
+
+9. Add your name to the **AUTHORS** file.
+
+10. **Push** the code or branch to GitHub. To push to the develop do so::
+
+    git push origin develop
 
  To push to your branch ``feature_branch_name`` do::
 
     git push origin feature_branch_name
+
+11. Create a pull request.
 
  When the branch is ready, create a new **pull request** from the feature branch. `About pull requests <https://help.github.com/en/articles/about-pull-requests>`_.
 

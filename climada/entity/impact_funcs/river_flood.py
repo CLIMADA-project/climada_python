@@ -134,26 +134,6 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def _fill_if(self, dfr, var_names):
-        """Fills impact function attributes with information from file
-        Parameters:
-           dfr (xls file): File that contains IF
-        raises:
-            KeyError
-        """
-        self.id = dfr[var_names['col_name']['func_id']].values[0]
-        self.name = dfr[var_names['col_name']['name']].values[0]
-        self.intensity_unit = dfr[var_names['col_name']['unit']].values[0]
-        # Followng values defined for each intensity value
-        self.intensity = dfr[var_names['col_name']['inten']].values
-        self.mdd = dfr[var_names['col_name']['mdd']].values
-        self.paa = dfr[var_names['col_name']['paa']].values
-
-    def set_id(self, new_id):
-        """Assigns new if id"""
-        self.id = new_id
-
-
 def flood_imp_func_set():
     """Builds impact function set for river flood, using standard files"""
 
