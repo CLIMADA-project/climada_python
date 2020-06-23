@@ -30,8 +30,7 @@ import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints
-from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, RIVER_GEO_REGIONS, \
-                                   DEF_CRS, SYSTEM_DIR
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEF_CRS, SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -70,7 +69,9 @@ class GDP2Asset(Exposures):
 
             if not countries:
                 if reg:
-                    countries = np.array(RIVER_GEO_REGIONS[reg])
+                    reg_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
+                    natISO = reg_info["ISO"][np.isin(reg_info["Reg_name"], reg)]
+                    countries = np.array(natISO)
                 else:
                     LOGGER.error('set_countries requires countries or reg')
                     raise ValueError
