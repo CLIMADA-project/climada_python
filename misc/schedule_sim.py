@@ -89,7 +89,7 @@ isos = country_info['ISO'].tolist()
 
 
 cont_list = country_info['if_RF'].tolist()
-l = (len(years) * len(isos))-1
+l = (len(years) * (len(isos)-2))
 continent_names = ['Africa', 'Asia', 'Europe', 'NorthAmerica', 'Oceania', 'SouthAmerica']
 
 
@@ -139,6 +139,9 @@ line_counter = 0
 
 for cnt_ind in range(len(isos)):
     country = [isos[cnt_ind]]
+    
+    if country[0] in ['GIB','MCO']:
+        continue
     reg = country_info.loc[country_info['ISO']== country[0], 'Reg_name'].values[0]
     conts = country_info.loc[country_info['ISO']== country[0], 'if_RF'].values[0]
     #print(conts[cnt_ind]-1)
