@@ -131,6 +131,118 @@ TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
 """ Tropical cyclone Andrew in Florida """
 
 
+ISIMIP_NATID_TO_ISO = [
+       '', 'ABW', 'AFG', 'AGO', 'AIA', 'ALB', 'AND', 'ANT', 'ARE', 'ARG', 'ARM',
+    'ASM', 'ATG', 'AUS', 'AUT', 'AZE', 'BDI', 'BEL', 'BEN', 'BFA', 'BGD', 'BGR',
+    'BHR', 'BHS', 'BIH', 'BLR', 'BLZ', 'BMU', 'BOL', 'BRA', 'BRB', 'BRN', 'BTN',
+    'BWA', 'CAF', 'CAN', 'CHE', 'CHL', 'CHN', 'CIV', 'CMR', 'COD', 'COG', 'COK',
+    'COL', 'COM', 'CPV', 'CRI', 'CUB', 'CYM', 'CYP', 'CZE', 'DEU', 'DJI', 'DMA',
+    'DNK', 'DOM', 'DZA', 'ECU', 'EGY', 'ERI', 'ESP', 'EST', 'ETH', 'FIN', 'FJI',
+    'FLK', 'FRA', 'FRO', 'FSM', 'GAB', 'GBR', 'GEO', 'GGY', 'GHA', 'GIB', 'GIN',
+    'GLP', 'GMB', 'GNB', 'GNQ', 'GRC', 'GRD', 'GTM', 'GUF', 'GUM', 'GUY', 'HKG',
+    'HND', 'HRV', 'HTI', 'HUN', 'IDN', 'IMN', 'IND', 'IRL', 'IRN', 'IRQ', 'ISL',
+    'ISR', 'ITA', 'JAM', 'JEY', 'JOR', 'JPN', 'KAZ', 'KEN', 'KGZ', 'KHM', 'KIR',
+    'KNA', 'KOR', 'KWT', 'LAO', 'LBN', 'LBR', 'LBY', 'LCA', 'LIE', 'LKA', 'LSO',
+    'LTU', 'LUX', 'LVA', 'MAC', 'MAR', 'MCO', 'MDA', 'MDG', 'MDV', 'MEX', 'MHL',
+    'MKD', 'MLI', 'MLT', 'MMR', 'MNG', 'MNP', 'MOZ', 'MRT', 'MSR', 'MTQ', 'MUS',
+    'MWI', 'MYS', 'MYT', 'NAM', 'NCL', 'NER', 'NFK', 'NGA', 'NIC', 'NIU', 'NLD',
+    'NOR', 'NPL', 'NRU', 'NZL', 'OMN', 'PAK', 'PAN', 'PCN', 'PER', 'PHL', 'PLW',
+    'PNG', 'POL', 'PRI', 'PRK', 'PRT', 'PRY', 'PSE', 'PYF', 'QAT', 'REU', 'ROU',
+    'RUS', 'RWA', 'SAU', 'SCG', 'SDN', 'SEN', 'SGP', 'SHN', 'SJM', 'SLB', 'SLE',
+    'SLV', 'SMR', 'SOM', 'SPM', 'STP', 'SUR', 'SVK', 'SVN', 'SWE', 'SWZ', 'SYC',
+    'SYR', 'TCA', 'TCD', 'TGO', 'THA', 'TJK', 'TKL', 'TKM', 'TLS', 'TON', 'TTO',
+    'TUN', 'TUR', 'TUV', 'TWN', 'TZA', 'UGA', 'UKR', 'URY', 'USA', 'UZB', 'VCT',
+    'VEN', 'VGB', 'VIR', 'VNM', 'VUT', 'WLF', 'WSM', 'YEM', 'ZAF', 'ZMB', 'ZWE',
+]
+""" ISO3166 alpha-3 codes of countries used in ISIMIP_GPWV3_NATID_150AS """
+
+
+RIVER_GEO_REGIONS = {
+    # Southern Africa
+    'SAF': [
+        'AGO', 'BWA', 'LSO', 'NAM', 'SHN', 'SWZ', 'ZAF'
+    ],
+    # Central Africa (including West and East)
+    'SSA': [
+        'BDI', 'BEN', 'BFA', 'CAF', 'CIV', 'CMR', 'COD', 'COG', 'COM', 'CPV',
+        'ERI', 'ETH', 'GAB', 'GHA', 'GIN', 'GMB', 'GNB', 'GNQ', 'KEN', 'LBR',
+        'MDG', 'MLI', 'MOZ', 'MRT', 'MWI', 'MYT', 'NER', 'NGA', 'RWA', 'SDN',
+        'SEN', 'SLE', 'SOM', 'STP', 'TCD', 'TGO', 'TZA', 'UGA', 'ZMB', 'ZWE'
+    ],
+    # Northern Africa
+    'NAF': [
+        'DZA', 'EGY', 'LBY', 'MAR', 'TUN'
+    ],
+    # Central and Northern Europe
+    'EUR': [
+        'ALB', 'AND', 'AUT', 'BEL', 'BIH', 'CHE', 'CZE', 'DEU', 'DNK', 'ESP',
+        'FIN', 'FRA', 'FRO', 'GBR', 'GGY', 'GIB', 'GRC', 'HRV', 'HUN', 'IMN',
+        'IRL', 'ISL', 'ITA', 'JEY', 'LIE', 'LUX', 'MLT', 'NLD', 'NOR', 'POL',
+        'PRT', 'SCG', 'SJM', 'SVK', 'SVN', 'SWE'
+    ],
+    # Eastern Europe
+    'EUA': [
+        'ARM', 'AZE', 'BGR', 'BLR', 'EST', 'GEO', 'LTU', 'LVA', 'MDA', 'MKD',
+        'ROU', 'RUS', 'UKR'
+    ],
+    # Arab states in Western Asia
+    'ARA': [
+        'ARE', 'BHR', 'DJI', 'IRN', 'IRQ', 'ISR', 'JOR', 'KWT', 'LBN', 'OMN',
+        'PSE', 'QAT', 'SAU', 'SYR', 'TKM', 'TUR', 'YEM'
+    ],
+    # Southwest Asia
+    'SWA': [
+        'AFG', 'BGD', 'BTN', 'IND', 'LKA', 'MDV', 'MMR', 'NPL', 'PAK'
+    ],
+    # Central Asia
+    'CAS': [
+        'KAZ', 'KGZ', 'MNG', 'TJK', 'UZB'
+    ],
+    # Eastern Asia
+    'CHN': [
+        'CHN', 'HKG', 'JPN', 'KOR', 'PRK', 'TWN'
+    ],
+    # Southeast Asia
+    'SEA': [
+        'BRN', 'IDN', 'KHM', 'LAO', 'MYS', 'PHL', 'PNG', 'SGP', 'THA', 'TLS',
+        'VNM',
+    ],
+    # Australia and New Zealand
+    'AUS': [
+        'AUS', 'NZL'
+    ],
+    # Pacific Island States, 1
+    'PIS1': [
+        'FJI', 'FSM', 'GUM', 'KIR', 'MHL', 'MNP', 'NCL', 'NFK', 'NRU', 'SLB',
+        'TUV', 'VUT'
+    ],
+    # Pacific Island States, 2
+    'PIS2': [
+        'ASM', 'COK', 'NIU', 'PCN', 'PYF', 'TKL', 'TON', 'WLF', 'WSM'
+    ],
+    # Latin America, South
+    'LAS': [
+        'ARG', 'CHL', 'FLK', 'PRY', 'URY'
+    ],
+    # Latin America, North
+    'LAN': [
+        'BOL', 'BRA', 'COL', 'ECU', 'GUF', 'GUY', 'PER', 'SUR', 'TTO', 'VEN'
+    ],
+    # Carribbean and Central America
+    'CAR': [
+        'ABW', 'AIA', 'ANT', 'ATG', 'BHS', 'BLZ', 'BMU', 'BRB', 'CRI', 'CUB',
+        'CYM', 'DMA', 'DOM', 'GLP', 'GRD', 'GTM', 'HND', 'HTI', 'JAM', 'KNA',
+        'LCA', 'MEX', 'MSR', 'MTQ', 'NIC', 'PAN', 'PRI', 'SLV', 'TCA', 'VCT',
+        'VGB', 'VIR'
+    ],
+    # North America, Mainland
+    'NAM': [
+        'CAN', 'USA'
+    ],
+}
+""" Geographical groups of countries, used for river flood modeling """
+
+
 ONE_LAT_KM = 111.12
 """ Mean one latitude (in degrees) to km """
 

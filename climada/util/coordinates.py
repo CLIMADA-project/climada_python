@@ -42,10 +42,12 @@ import pandas as pd
 import scipy.interpolate
 import zipfile
 
-from climada.util.constants import DEF_CRS, SYSTEM_DIR, NAT_REG_ID, \
+from climada.util.constants import DEF_CRS, SYSTEM_DIR, \
                                    NATEARTH_CENTROIDS_150AS, \
                                    NATEARTH_CENTROIDS_360AS, \
-                                   ISIMIP_GPWV3_NATID_150AS
+                                   ISIMIP_GPWV3_NATID_150AS, \
+                                   ISIMIP_NATID_TO_ISO, \
+                                   RIVER_GEO_REGIONS
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
 
@@ -489,15 +491,12 @@ def region2isos(regions):
             specified region(s).
     """
     regions = [regions] if isinstance(regions, str) else regions
-
-    natid_info = pd.read_csv(NAT_REG_ID)
     isos = []
     for region in regions:
-        region_msk = (natid_info['Reg_name'] == region)
-        if not any(region_msk):
+        if region not in RIVER_GEO_REGIONS:
             LOGGER.error('Unknown region name: %s', region)
             raise KeyError
-        isos += list(natid_info['ISO'][region_msk].values)
+        isos += RIVER_GEO_REGIONS[region]
     return list(set(isos))
 
 def country_iso_alpha2numeric(isos):
@@ -535,16 +534,12 @@ def country_natid2iso(natids):
     """
     return_str = isinstance(natids, int)
     natids = [natids] if return_str else natids
-
-    natid_info = pd.read_csv(NAT_REG_ID)
     isos = []
     for natid in natids:
-        country_msk = (natid_info['ID'] == natid)
-        if not any(country_msk):
+        if natid < 0 or natid >= len(ISIMIP_NATID_TO_ISO):
             LOGGER.error('Unknown country NatID: %s', natid)
             raise KeyError
-        isos.append(natid_info['ISO'][country_msk].values[0])
-
+        isos.append(ISIMIP_NATID_TO_ISO[natid])
     return isos[0] if return_str else isos
 
 def country_iso2natid(isos):
@@ -558,16 +553,13 @@ def country_iso2natid(isos):
     """
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
-
-    natid_info = pd.read_csv(NAT_REG_ID)
     natids = []
     for iso in isos:
-        country_msk = (natid_info['ISO'] == iso)
-        if not any(country_msk):
+        try:
+            natids.append(ISIMIP_NATID_TO_ISO.index(iso))
+        except ValueError:
             LOGGER.error('Unknown country ISO: %s', iso)
             raise KeyError
-        natids.append(int(natid_info['ID'][country_msk].values[0]))
-
     return natids[0] if return_int else natids
 
 NATEARTH_AREA_NONISO_NUMERIC = {
