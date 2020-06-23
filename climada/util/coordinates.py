@@ -47,7 +47,7 @@ from climada.util.constants import DEF_CRS, SYSTEM_DIR, \
                                    NATEARTH_CENTROIDS_360AS, \
                                    ISIMIP_GPWV3_NATID_150AS, \
                                    ISIMIP_NATID_TO_ISO, \
-                                   RIVER_GEO_REGIONS
+                                   RIVER_FLOOD_REGIONS_CSV
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
 
@@ -491,12 +491,14 @@ def region2isos(regions):
             specified region(s).
     """
     regions = [regions] if isinstance(regions, str) else regions
+    reg_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
     isos = []
     for region in regions:
-        if region not in RIVER_GEO_REGIONS:
+        region_msk = (reg_info['Reg_name'] == region)
+        if not any(region_msk):
             LOGGER.error('Unknown region name: %s', region)
             raise KeyError
-        isos += RIVER_GEO_REGIONS[region]
+        isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
 def country_iso_alpha2numeric(isos):
