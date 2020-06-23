@@ -31,8 +31,7 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
-from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
-from climada.util.constants import DEF_CRS
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEF_CRS, SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -119,7 +118,7 @@ class GDP2Asset(Exposures):
             np.array
         """
         natID = country_iso2natid(countryISO)
-        natID_info = pd.read_csv(NAT_REG_ID)
+        natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
         lat, lon = get_region_gridpoints(countries=[natID], iso=False,
             basemap="isimip")

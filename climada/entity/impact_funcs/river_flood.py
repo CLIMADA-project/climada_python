@@ -25,7 +25,7 @@ import logging
 import pandas as pd
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity import ImpactFuncSet
-from climada.util.constants import NAT_REG_ID
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
 LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
@@ -167,6 +167,6 @@ def flood_imp_func_set():
 
 
 def assign_if_simple(exposure, country):
-    info = pd.read_csv(NAT_REG_ID)
+    info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
     if_id = info.loc[info['ISO'] == country, 'if_RF'].values[0]
     exposure['if_RF'] = if_id

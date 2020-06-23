@@ -21,7 +21,7 @@ import numpy as np
 import unittest
 import pandas as pd
 from climada.entity.exposures import gdp_asset as ga
-from climada.util.constants import NAT_REG_ID, DEMO_GDP2ASSET
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEMO_GDP2ASSET
 
 
 class TestGDP2AssetClass(unittest.TestCase):
@@ -101,7 +101,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
 
     def test_fast_if_mapping(self):
 
-        testIDs = pd.read_csv(NAT_REG_ID)
+        testIDs = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[0], 11.0)
         self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[1], 3.0)
 
