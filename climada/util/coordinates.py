@@ -44,7 +44,8 @@ import zipfile
 
 from climada.util.constants import DEF_CRS, SYSTEM_DIR, NAT_REG_ID, \
                                    NATEARTH_CENTROIDS_150AS, \
-                                   NATEARTH_CENTROIDS_360AS
+                                   NATEARTH_CENTROIDS_360AS, \
+                                   ISIMIP_GPWV3_NATID_150AS
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
 
@@ -399,7 +400,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     return out
 
 def get_region_gridpoints(countries=None, regions=None, resolution=150,
-                          iso=True, rect=False):
+                          iso=True, rect=False, basemap="natearth"):
     """ Get coordinates of gridpoints in specified countries or regions
 
     Parameters:
@@ -412,6 +413,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
             Default: True.
         rect (bool, optional): If True, a rectangular box around the specified
             countries/regions is selected. Default: False.
+        basemap (str, optional): Choose between different data sources.
+            Currently available: "isimip" and "natearth". Default: "natearth".
 
     Returns:
         lat (np.array): latitude of points in epsg:4326
@@ -422,26 +425,40 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if regions is None:
         regions = []
 
-    base_file = NATEARTH_CENTROIDS_150AS
-    if resolution >= 360:
-        base_file = NATEARTH_CENTROIDS_360AS
-    f = hdf5.read(base_file)
-    meta = f['meta']
-    transform = rasterio.Affine(*meta['transform'])
-    region_id = f['region_id'].reshape(meta['height'][0], meta['width'][0])
-
-    if resolution not in [150, 360]:
-        resolution /= 3600
-        region_id, transform = refine_raster_data(region_id, transform,
-            resolution, method='nearest', fill_value=0)
-    grid_shape = region_id.shape
-    lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
+    if basemap == "natearth":
+        base_file = NATEARTH_CENTROIDS_150AS
+        if resolution >= 360:
+            base_file = NATEARTH_CENTROIDS_360AS
+        f = hdf5.read(base_file)
+        meta = f['meta']
+        transform = rasterio.Affine(*meta['transform'])
+        region_id = f['region_id'].reshape(meta['height'][0], meta['width'][0])
+        if resolution not in [150, 360]:
+            resolution /= 3600
+            region_id, transform = refine_raster_data(region_id, transform,
+                resolution, method='nearest', fill_value=0)
+        grid_shape = region_id.shape
+        lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
+    elif basemap == "isimip":
+        if resolution != 150:
+            raise ValueError("Currently, only native resolution is supported " \
+                             "for ISIMIP basemap.")
+        f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
+        lon, lat = f['lon'], f['lat']
+        region_id = f['NatIdGrid'].reshape(lat.size, lon.size).astype(int)
+        region_id[region_id < 0] = 0
+        natid2iso_alpha = country_natid2iso(list(range(1, 231)))
+        natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
+        natid2iso = np.array(natid2iso, dtype=int)
+        region_id = natid2iso[region_id - 1]
+        lon, lat = np.meshgrid(lon, lat)
+    else:
+        raise ValueError(f"Unknown basemap: {basemap}")
 
     if not iso:
         countries = country_natid2iso(countries)
     countries += region2isos(regions)
-    countries = [iso_cntry.get(c).numeric for c in countries]
-    countries = np.unique(countries)
+    countries = np.unique(country_iso_alpha2numeric(countries))
 
     if len(countries) > 0:
         msk = np.isin(region_id, countries)
@@ -478,6 +495,30 @@ def region2isos(regions):
         isos += list(natid_info['ISO'][region_msk].values)
     return list(set(isos))
 
+def country_iso_alpha2numeric(isos):
+    """ Convert ISO 3166-1 alpha-3 to numeric-3 codes
+
+    Parameters:
+        isos (str or list of str): ISO codes of countries (or single code).
+
+    Returns:
+        int or list of int
+    """
+    return_int = isinstance(isos, str)
+    isos = [isos] if return_int else isos
+    OLD_ISO = {
+        "ANT": 530,  # Netherlands Antilles: split up since 2010
+        "SCG": 891,  # Serbia and Montenegro: split up since 2006
+    }
+    nums = []
+    for iso in isos:
+        if iso in OLD_ISO:
+            num = OLD_ISO[iso]
+        else:
+            num = int(iso_cntry.get(iso).numeric)
+        nums.append(num)
+    return nums[0] if return_int else nums
+
 def country_natid2iso(natids):
     """ Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
@@ -497,7 +538,7 @@ def country_natid2iso(natids):
         if not any(country_msk):
             LOGGER.error('Unknown country NatID: %s', natid)
             raise KeyError
-        isos.append(int(natid_info['ISO'][country_msk].values[0]))
+        isos.append(natid_info['ISO'][country_msk].values[0])
 
     return isos[0] if return_str else isos
 

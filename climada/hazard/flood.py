@@ -377,7 +377,8 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
-        lat, lon = get_region_gridpoints(countries, regions=reg, rect=True)
+        lat, lon = get_region_gridpoints(countries, regions=reg, rect=True,
+            iso=True, basemap="isimip", resolution=150)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.coord.shape[0])
@@ -396,7 +397,8 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
-        lat, lon = get_region_gridpoints(countries=countries, regions=reg)
+        lat, lon = get_region_gridpoints(countries=countries, regions=reg,
+            basemap="isimip", resolution=150)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])

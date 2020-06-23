@@ -29,7 +29,9 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
-           'GLB_CENTROIDS_NC',
+           'ISIMIP_GPWV3_NATID_150AS',
+           'NATEARTH_CENTROIDS_150AS',
+           'NATEARTH_CENTROIDS_360AS',
            'DEMO_GDP2ASSET',
            'NAT_REG_ID',
            'TC_ANDREW_FL',
@@ -51,8 +53,17 @@ SYSTEM_DIR = os.path.abspath(os.path.join(DATA_DIR, 'system'))
 """ Folder containing the data used internally """
 
 
-GLB_CENTROIDS_NC = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
-""" Global centroids nc """
+ISIMIP_GPWV3_NATID_150AS = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
+""" Compressed version of National Identifier Grid in 150 arc-seconds from
+    ISIMIP project, based on GPWv3:
+
+        ISIMIP2a/InputData/landuse_humaninfluences/population/ID_GRID/Nat_id_grid_ISIMIP.nc
+
+    More references:
+
+    * https://www.isimip.org/gettingstarted/input-data-bias-correction/details/13/
+    * https://sedac.ciesin.columbia.edu/data/set/gpw-v3-national-identifier-grid
+"""
 
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """ Global centroids """
