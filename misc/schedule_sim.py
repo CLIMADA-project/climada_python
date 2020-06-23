@@ -78,9 +78,9 @@ else:
     flood_dir = '/p/projects/ebm/data/hazard/floods/isimip2a-{}/'.format(args.Socmode)
 
 if args.CL_model == 'watch':
-    years = np.arange(1971, 2002)
+    years = np.arange(1971, 1972)
 else:
-    years = np.arange(1971, 2011)
+    years = np.arange(1971, 1972)
 
 #years = np.arange(1971, 2011)
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
@@ -139,8 +139,6 @@ line_counter = 0
 
 for cnt_ind in range(len(isos)):
     country = [isos[cnt_ind]]
-    if country[0] == 'GIB':
-        continue
     reg = country_info.loc[country_info['ISO']== country[0], 'Reg_name'].values[0]
     conts = country_info.loc[country_info['ISO']== country[0], 'if_RF'].values[0]
     #print(conts[cnt_ind]-1)

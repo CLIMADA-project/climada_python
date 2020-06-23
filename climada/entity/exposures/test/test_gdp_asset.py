@@ -137,6 +137,8 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(testAssets[10], 4125847.312198318)
         self.assertAlmostEqual(testAssets[11], 88557558.43543366)
         self.assertAlmostEqual(testAssets[12], 191881403.05181965)
+        
+
 
 
 if __name__ == "__main__":
