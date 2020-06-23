@@ -30,7 +30,7 @@ import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
-from climada.util.coordinates import country_iso2natid, get_region_gridpoints
+from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
 from climada.util.constants import DEF_CRS
 LOGGER = logging.getLogger(__name__)
@@ -71,9 +71,7 @@ class GDP2Asset(Exposures):
 
             if not countries:
                 if reg:
-                    natID_info = pd.read_csv(NAT_REG_ID)
-                    natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
-                                                       reg)]
+                    natISO = region2isos(reg)
                     countries = np.array(natISO)
                 else:
                     LOGGER.error('set_countries requires countries or reg')
@@ -91,6 +89,7 @@ class GDP2Asset(Exposures):
                          str(reg) + ' could not be set, check ISO3 or' +
                          ' reference year ' + str(ref_year))
             raise KeyError
+        self.tag = tag
         self.ref_year = ref_year
         self.value_unit = 'USD'
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)

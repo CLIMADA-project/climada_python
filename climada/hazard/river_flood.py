@@ -23,18 +23,18 @@ __all__ = ['RiverFlood']
 
 import logging
 import os
-import fiona
 import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
-from geopandas.io.file import read_file
 import datetime as dt
 from datetime import date
 from rasterio.warp import Resampling
 import copy
-from climada.util.constants import NAT_REG_ID, GLB_CENTROIDS_NC
+from climada.util.constants import NAT_REG_ID, ISIMIP_GPWV3_NATID_150AS
+from climada.util.coordinates import get_region_gridpoints,\
+                                     region2isos,country_iso2natid
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.util.coordinates import get_land_geometry, read_raster
@@ -136,8 +136,7 @@ class RiverFlood(Hazard):
                 self.fraction = sp.sparse.csr_matrix(fraction)
             else:
                 if reg:
-                    iso_codes = NATID_INFO['ISO']\
-                                [np.isin(NATID_INFO["Reg_name"], reg)].tolist()
+                    iso_codes = region2isos(reg)
                     # envelope containing counties
                     cntry_geom = get_land_geometry(iso_codes)
                     self.set_raster(files_intensity=[dph_path],
@@ -294,47 +293,6 @@ class RiverFlood(Hazard):
             self.fla_ann_centr = sp.sparse.csr_matrix(fla_ann_centr)
             self.fla_ev_centr = sp.sparse.csr_matrix(fla_ev_centr)
             
-            
-    # def set_flooded_area(self, save_centr=False):
-    #     """ Calculates flooded area for hazard. sets yearly flooded area and
-    #         flooded area per event
-    #     Raises:
-    #         MemoryError
-    #     """
-    #     self.centroids.set_area_pixel()
-    #     area_centr = self.centroids.area_pixel
-    #     self.total_area = np.sum(area_centr)
-    #     event_years = np.array([date.fromordinal(self.date[i]).year
-    #                             for i in range(len(self.date))])
-    #     years = np.unique(event_years)
-    #     year_ev_mk = self._annual_event_mask(event_years, years)
-
-    #     try:
-    #         self.fla_ev_centr = np.zeros((self._n_events,
-    #                                       len(self.centroids.lon)))
-    #         self.fla_ann_centr = np.zeros((len(years),
-    #                                        len(self.centroids.lon)))
-    #         self.fla_ev_centr = np.array(np.multiply(self.fraction.todense(),
-    #                                                  area_centr))
-    #         self.fla_event = np.sum(self.fla_ev_centr, axis=1)
-    #         for year_ind in range(len(years)):
-    #             self.fla_ann_centr[year_ind, :] =\
-    #                 np.sum(self.fla_ev_centr[year_ev_mk[year_ind, :], :],
-    #                        axis=0)
-    #         self.fla_annual = np.sum(self.fla_ann_centr, axis=1)
-    #         self.fla_ann_av = np.mean(self.fla_annual)
-    #         self.fla_ev_av = np.mean(self.fla_event)
-    #     except MemoryError:
-    #         self.fla_ev_centr = None
-    #         self.tot_fld_area = None
-    #         self.fla_ann_centr = None
-    #         self.fla_annual = None
-    #         self.fla_ann_av = None
-    #         self.fla_ev_av = None
-    #         LOGGER.warning('Number of events and slected area exceed ' +
-    #                        'memory capacities, area has not been calculated,' +
-    #                        ' attributes set to None')
-            
     def _annual_event_mask(self, event_years, years):
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
         for year_ind in range(len(years)):
@@ -354,6 +312,8 @@ class RiverFlood(Hazard):
             self.fv_ann_centr= fv_ann_centr
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
+
+    
     def _select_exact_area(countries=[], reg=[]):
         """ Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
@@ -366,39 +326,18 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
-        centroids = Centroids()
-        isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-        isimip_lon = isimip_grid.lon.data
-        isimip_lat = isimip_grid.lat.data
-        gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-        try:
-            if countries:
-                if not any(np.isin(NATID_INFO['ISO'], countries)):
-                    LOGGER.error('Country ISO3s ' + str(countries) +
-                                 ' unknown')
-                    raise KeyError
-                natID = NATID_INFO["ID"][np.isin(NATID_INFO["ISO"], countries)]
-                iso_codes = countries
-            elif reg:
-                if not any(np.isin(NATID_INFO["Reg_name"], reg)):
-                    LOGGER.error('Shortcuts ' + str(reg) + ' unknown')
-                    raise KeyError
-                natID = NATID_INFO["ID"][np.isin(NATID_INFO["Reg_name"], reg)]
-                iso_codes = NATID_INFO["ISO"][np.isin(NATID_INFO["Reg_name"],
-                                              reg)].tolist()
-            else:
-                centroids.set_lat_lon(gridY.flatten(), gridX.flatten())
-                return centroids
-        except KeyError:
-            LOGGER.error('Selected country or region do ' +
-                         'not match reference file')
-            raise KeyError
-        isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        centroids.set_lat_lon(lat_coordinates, lon_coordinates)
-        centroids.set_region_id()
-        #centroids.set_lat_lon_to_meta()
+        lat, lon = get_region_gridpoints(countries=countries, regions=reg,
+            basemap="isimip", resolution=150)
         
-        return centroids, iso_codes, natID
+        if reg:
+             country_isos = region2isos(reg)
+        else:
+             country_isos = countries
+             
+        natIDs = country_iso2natid(country_isos)
+        
+        centroids = Centroids()
+        centroids.set_lat_lon(lat, lon)
+        centroids.id = np.arange(centroids.lon.shape[0])
+        centroids.set_region_id()
+        return centroids, country_isos, natIDs
