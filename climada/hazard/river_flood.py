@@ -71,7 +71,7 @@ class RiverFlood(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
-                    centroids=None, countries=[], reg=None, shape=None,ISINatIDGrid=False,
+                    centroids=None, countries=None, reg=None, shape=None,ISINatIDGrid=False,
                     years=[2000]):
         """Wrapper to fill hazard from nc_flood file
         Parameters:

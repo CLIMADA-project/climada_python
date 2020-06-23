@@ -111,7 +111,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[0], 0.0)
         self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[1], 2.0)
 
-    def test_read_GDP(self):that 
+    def test_read_GDP(self):
 
         exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, DEMO_GDP2ASSET)
         coordinates = np.zeros((exp_test.shape[0], 2))
