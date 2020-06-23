@@ -29,6 +29,7 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
+           'GLB_CENTROIDS_NC',
            'ISIMIP_GPWV3_NATID_150AS',
            'NATEARTH_CENTROIDS_150AS',
            'NATEARTH_CENTROIDS_360AS',
@@ -64,6 +65,9 @@ ISIMIP_GPWV3_NATID_150AS = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
     * https://www.isimip.org/gettingstarted/input-data-bias-correction/details/13/
     * https://sedac.ciesin.columbia.edu/data/set/gpw-v3-national-identifier-grid
 """
+
+GLB_CENTROIDS_NC = ISIMIP_GPWV3_NATID_150AS
+""" For backwards compatibility, it remains available under its old name. """
 
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """ Global centroids """

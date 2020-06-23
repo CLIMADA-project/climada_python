@@ -431,29 +431,34 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
             base_file = NATEARTH_CENTROIDS_360AS
         f = hdf5.read(base_file)
         meta = f['meta']
+        grid_shape = (meta['height'][0], meta['width'][0])
         transform = rasterio.Affine(*meta['transform'])
-        region_id = f['region_id'].reshape(meta['height'][0], meta['width'][0])
-        if resolution not in [150, 360]:
-            resolution /= 3600
-            region_id, transform = refine_raster_data(region_id, transform,
-                resolution, method='nearest', fill_value=0)
-        grid_shape = region_id.shape
+        region_id = f['region_id'].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
-        if resolution != 150:
-            raise ValueError("Currently, only native resolution is supported " \
-                             "for ISIMIP basemap.")
         f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
-        lon, lat = f['lon'], f['lat']
-        region_id = f['NatIdGrid'].reshape(lat.size, lon.size).astype(int)
+        dim_lon, dim_lat = f['lon'], f['lat']
+        bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
+        orig_res = get_resolution(dim_lon, dim_lat)
+        _, _, transform = pts_to_raster_meta(bounds, orig_res)
+        grid_shape = (dim_lat.size, dim_lon.size)
+        region_id = f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
         natid2iso_alpha = country_natid2iso(list(range(1, 231)))
         natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
         natid2iso = np.array(natid2iso, dtype=int)
         region_id = natid2iso[region_id - 1]
-        lon, lat = np.meshgrid(lon, lat)
+        lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
+
+    if basemap == "natearth" and resolution not in [150, 360] \
+       or basemap == "isimip" and resolution != 150:
+        resolution /= 3600
+        region_id, transform = refine_raster_data(region_id, transform,
+            resolution, method='nearest', fill_value=0)
+        grid_shape = region_id.shape
+        lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
 
     if not iso:
         countries = country_natid2iso(countries)
