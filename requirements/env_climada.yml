@@ -8,10 +8,13 @@ dependencies:
   - cython=0.29.7
   - dask=1.2.2
   - dill=0.2.9
+  - fiona=1.8.4
   - gdal=2.3.3
   - geos=3.7.1
   - geopandas=0.4.1
   - h5py=2.9.0
+  - kealib=1.4.7
+  - libtiff=4.0
   - matplotlib=3.1.0
   - mkl=2019.3
   - mkl_fft=1.0.12
@@ -19,7 +22,6 @@ dependencies:
   - netcdf4=1.4.2
   - numba=0.43.1
   - numpy=1.16.3
-  - nbconvert=5.5.0
   - pandas=0.24.2
   - pandas-datareader=0.7.0
   - pip=19.1
@@ -40,14 +42,15 @@ dependencies:
   - xlrd=1.2.0
   - xlsxwriter=1.1.7
   - pip:
-    - contextily==0.99.0
-    - elevation==1.0.6
+    - contextily==1.0rc2
     - haversine==2.1.1
     - iso3166==1.0
     - multiprocess==0.70.7
-    - nbimporter==0.3.1
+    - nbconvert==5.5.0
+    - nbformat==4.4
     - overpy==0.4
     - pathos==0.2.3
+    - pillow==6.2.2
     - pint==0.9
     - ppft==1.6.4.9
     - xmlrunner==1.7.7

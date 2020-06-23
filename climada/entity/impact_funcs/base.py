@@ -94,6 +94,7 @@ class ImpactFunc():
         axis.plot(self.intensity, self.mdd * self.paa * 100, 'k--', label='MDR', **kwargs)
 
         axis.set_xlim((self.intensity.min(), self.intensity.max()))
+        axis.legend()
         return axis
 
     def check(self):
@@ -105,3 +106,21 @@ class ImpactFunc():
         num_exp = len(self.intensity)
         check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
         check.size(num_exp, self.paa, 'ImpactFunc.paa')
+        
+        #Warning for non-vanishing impact at intensity 0. If positive
+        #and negative intensity warning for interpolation at intensity 0.
+        zero_idx = np.where(self.intensity == 0)[0]
+        if zero_idx.size != 0:
+            if self.mdd[zero_idx[0]] != 0 or self.paa[zero_idx[0]] != 0:
+                LOGGER.warning('For intensity = 0, mdd != 0 or paa != 0. '\
+                               'Consider shifting the origin of the intensity '\
+                               'scale. In impact.calc the impact is always '\
+                               'null at intensity = 0.')
+        elif self.intensity[0] < 0 and self.intensity[-1] > 0:  
+            LOGGER.warning('Impact function might be interpolated to non-zero'\
+                           ' value at intensity = 0. Consider shifting the '\
+                           'origin of the intensity scale. In impact.calc '\
+                           'the impact is always null at intensity = 0.')
+                    
+
+            

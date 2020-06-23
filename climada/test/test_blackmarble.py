@@ -26,7 +26,8 @@ from scipy import sparse
 
 from climada.entity.exposures.black_marble import BlackMarble
 from climada.entity.exposures.nightlight import load_nightlight_nasa, \
-load_nightlight_noaa, NOAA_BORDER, cut_nl_nasa
+                                                load_nightlight_noaa, \
+                                                NOAA_BORDER
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.coordinates import equal_crs
 
@@ -38,7 +39,7 @@ class Test2013(unittest.TestCase):
         ent = BlackMarble()
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=1)
-        self.assertIn('GDP ESP 2013: 1.362e+12.', cm.output[0])
+        self.assertIn('GDP ESP 2013: 1.355e+12.', cm.output[0])
         self.assertIn('Income group ESP 2013: 4.', cm.output[1])
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
@@ -104,18 +105,18 @@ class Test1968(unittest.TestCase):
 
 class Test2012(unittest.TestCase):
     """Test year 2012 flags."""
-    
+
     def test_from_hr_flag_pass(self):
         """Check from_hr flag in set_countries method."""
         country_name = ['Turkey']
-        
+
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0)
         self.assertTrue('NOAA' in cm.output[-3])
         size1 = ent.value.size
         self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
-    
+
         try:
             ent = BlackMarble()
             with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
@@ -127,8 +128,8 @@ class Test2012(unittest.TestCase):
         except TypeError:
             print('MemoryError caught')
             pass
-        
-    
+
+
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0, from_hr=False)
@@ -143,24 +144,24 @@ class BMFuncs(unittest.TestCase):
     def test_cut_nasa_esp_pass(self):
         """Test load_nightlight_nasa function."""
         shp_fn = shapereader.natural_earth(resolution='10m',
-                                           category='cultural', 
+                                           category='cultural',
                                            name='admin_0_countries')
         shp_file = shapereader.Reader(shp_fn)
         list_records = list(shp_file.records())
         for info_idx, info in enumerate(list_records):
             if info.attributes['ADM0_A3'] == 'AIA':
                 bounds = info.bounds
-        
+
         req_files = nl_utils.check_required_nl_files(bounds)
         files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
         nl_utils.download_nl_files(req_files, files_exist)
-        
+
         try:
             nightlight, coord_nl = load_nightlight_nasa(bounds, req_files, 2016)
         except TypeError:
             print('MemoryError caught')
             return
-    
+
         self.assertTrue(coord_nl[0, 0] < bounds[1])
         self.assertTrue(coord_nl[1, 0] < bounds[0])
         self.assertTrue(coord_nl[0, 0]+(nightlight.shape[0]-1)*coord_nl[0,1] > bounds[3])
@@ -169,7 +170,7 @@ class BMFuncs(unittest.TestCase):
     def test_load_noaa_pass(self):
         """Test load_nightlight_noaa function."""
         nightlight, coord_nl, fn_nl = load_nightlight_noaa(2013)
-           
+
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])
         self.assertEqual(coord_nl[0, 0]+(nightlight.shape[0]-1)*coord_nl[0,1], NOAA_BORDER[3])
@@ -181,7 +182,7 @@ class BMFuncs(unittest.TestCase):
         ent = BlackMarble()
         ent.set_countries(country_name, 2013, res_km=5.0)
         ent.check()
-                
+
         self.assertEqual(np.unique(ent.region_id).size, 2)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn('Switzerland 2013 GDP: ', ent.tag.description)
@@ -190,134 +191,6 @@ class BMFuncs(unittest.TestCase):
         self.assertIn('income group: 4', ent.tag.description)
         self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
         self.assertIn('F182013.v4c_web.stable_lights.avg_vis.p', ent.tag.file_name)
-        
-    def test_cut_nl_nasa_1_pass(self):
-        """Test cut_nl_nasa situation 2->3->4->5."""
-        nl_mat = sparse.lil.lil_matrix([])
-        in_lat = (21599, 21600)
-        in_lon = (43199, 43200)
-        # 0 2 4 6    (lat: Upper=0)   (lon: 0, 1, 2, 3)
-        # 1 3 5 7    (lat: Lower=1)   (lon: 0, 1, 2, 3)
-        in_lat_nb = (1, 0)
-        in_lon_nb = (1, 2)
-        
-        idx_info = [2, -1, False]
-        try:
-            aux_nl = np.zeros((21600, 21600))
-            aux_nl[21599, 21599] = 100
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                                            in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (1, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            
-            idx_info[0] = 3
-            idx_info[1] = 2
-            aux_nl[21599, 21599] = 0
-            aux_nl[0, 21599] = 101
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (2, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
-            
-            idx_info[0] = 4
-            idx_info[1] = 3
-            aux_nl[0, 21599] = 0
-            aux_nl[21599, 0] = 102
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 0.0)
-            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
-    
-            idx_info[0] = 5
-            idx_info[1] = 4
-            aux_nl[21599, 0] = 0
-            aux_nl[0, 0] = 103
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (2, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 101.0)
-            self.assertEqual(nl_mat.tocsr()[1, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 103.0)
-            self.assertEqual(nl_mat.tocsr()[1, 1], 102.0)
-        except MemoryError:
-            print('MemoryError caught')
-            pass
-        
-    def test_cut_nl_nasa_2_pass(self):
-        """Test cut_nl_nasa situation 3->5."""
-        nl_mat = sparse.lil.lil_matrix([])
-        in_lat = (21599, 21599)
-        in_lon = (43199, 43200)
-        # 0 2 4 6    (lat: Upper=0)   (lon: 0, 1, 2, 3)
-        # 1 3 5 7    (lat: Lower=1)   (lon: 0, 1, 2, 3)
-        in_lat_nb = (1, 1)
-        in_lon_nb = (1, 2)
-        
-        idx_info = [3, -1, False]
-        try:
-            aux_nl = np.zeros((21600, 21600))
-            aux_nl[0, 21599] = 100
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (1, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            
-            idx_info[0] = 5
-            idx_info[1] = 3
-            aux_nl[0, 21599] = 0
-            aux_nl[0, 0] = 101
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (1, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 101.0)
-        except MemoryError:
-            print('MemoryError caught')
-            pass
-
-    def test_cut_nl_nasa_3_pass(self):
-        """Test cut_nl_nasa situation 2->4."""
-        nl_mat = sparse.lil.lil_matrix([])
-        in_lat = (21600, 21600)
-        in_lon = (43199, 43200)
-        # 0 2 4 6    (lat: Upper=0)   (lon: 0, 1, 2, 3)
-        # 1 3 5 7    (lat: Lower=1)   (lon: 0, 1, 2, 3)
-        in_lat_nb = (0, 0)
-        in_lon_nb = (1, 2)
-    
-        idx_info = [2, -1, False]
-        try:
-            aux_nl = np.zeros((21600, 21600))
-            aux_nl[21599, 21599] = 100
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (1, 1))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            
-            idx_info[0] = 4
-            idx_info[1] = 2
-            aux_nl[21599, 21599] = 0
-            aux_nl[21599, 0] = 101
-            cut_nl_nasa(aux_nl, idx_info, nl_mat, in_lat, 
-                        in_lon, in_lat_nb, in_lon_nb)
-            
-            self.assertEqual(nl_mat.shape, (1, 2))
-            self.assertEqual(nl_mat.tocsr()[0, 0], 100.0)
-            self.assertEqual(nl_mat.tocsr()[0, 1], 101.0)
-        except MemoryError:
-            print('MemoryError caught')
-            pass
 
 # Execute Tests
 if __name__ == "__main__":

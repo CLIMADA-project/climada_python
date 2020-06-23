@@ -23,7 +23,7 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.util.finance import net_present_value, gdp, income_group, \
-nat_earth_adm0, world_bank, wealth2gdp, world_bank_wealth_account
+nat_earth_adm0, world_bank, wealth2gdp, world_bank_wealth_account, _gdp_twn
 
 SHP_FN = shapereader.natural_earth(resolution='10m', \
     category='cultural', name='admin_0_countries')
@@ -98,6 +98,18 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
 
+    def test_gdp_twn_2012_pass(self):
+        """ Test gdp function TWN."""
+        ref_year = 2014
+        res_year, res_val = gdp('TWN', ref_year)
+        _, res_val_direct = _gdp_twn(ref_year)
+        ref_val = 530515000000.0
+        ref_year = 2014
+        self.assertEqual(res_year, ref_year)
+        self.assertEqual(res_val, ref_val)
+        self.assertEqual(res_val_direct, ref_val)
+        
+
     def test_wb_esp_1950_pass(self):
         """ Test world_bank function Sint Maarten."""
         ref_year = 1950
@@ -167,7 +179,7 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.TOW.TO'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
                                         variable_name=var_name)
-        ref_val = 5415188681948.6
+        ref_val = 5415188681942.5
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
     def test_pca_CUB_2015_pass(self):

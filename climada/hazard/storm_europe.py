@@ -76,7 +76,8 @@ class StormEurope(Hazard):
 
     def read_footprints(self, path, description=None,
                         ref_raster=None, centroids=None,
-                        files_omit='fp_era20c_1990012515_701_0.nc'):
+                        files_omit='fp_era20c_1990012515_701_0.nc',
+                        combine_threshold=None):
         """ Clear instance and read WISC footprints into it. Read Assumes that
         all footprints have the same coordinates as the first file listed/first
         file in dir.
@@ -96,6 +97,11 @@ class StormEurope(Hazard):
             files_omit (str, list(str), optional): List of files to omit;
                 defaults to one duplicate storm present in the WISC set as
                 of 2018-09-10.
+            combine_threshold (int, optional): threshold for combining events
+                in number of days. if the difference of the dates (self.date)
+                of two events is smaller or equal to this threshold, the two
+                events are combined into one.
+                Default is None, Advised for WISC is 2
         """
 
         self.clear()
@@ -137,6 +143,13 @@ class StormEurope(Hazard):
         )
         if description is not None:
             self.tag.description = description
+
+        if combine_threshold is not None:
+            LOGGER.info('Combining events with small difference in date.')
+            difference_date = np.diff(self.date)
+            for event_id_i in self.event_id[np.append(difference_date<=combine_threshold,False)]:
+                event_ids = [event_id_i, event_id_i+1]
+                self._combine_events(event_ids)
 
     def _read_one_nc(self, file_name, centroids):
         """ Read a single WISC footprint. Assumes a time dimension of length 1.
@@ -215,6 +228,43 @@ class StormEurope(Hazard):
         cent.set_on_land()
 
         return cent
+
+    def _combine_events(self,event_ids):
+        """ combine the intensities of two events using max and adjust event_id, event_name, date etc of the hazard
+        the event_ids must be consecutive for the event_name field to behave correctly
+        Parameters:
+            event_ids (array): two consecutive event ids
+        """
+        select_event_ids = np.isin(self.event_id,event_ids)
+        select_other_events = np.invert(select_event_ids)
+        intensity_tmp = self.intensity[select_event_ids,:].max(axis=0)
+        self.intensity = self.intensity[select_other_events,:]
+        self.intensity = sparse.vstack([self.intensity,sparse.csr_matrix(intensity_tmp)])
+        self.event_id = np.append(self.event_id[select_other_events],
+                                                        self.event_id.max()+1)
+        self.date = np.append(self.date[select_other_events],
+                                                np.round(self.date[select_event_ids].mean()))
+        name_2 = self.event_name.pop(np.where(select_event_ids)[0][1])
+        name_1 = self.event_name.pop(np.where(select_event_ids)[0][0])
+        self.event_name.append(name_1 + '_' + name_2)
+        fraction_tmp = self.fraction[select_event_ids,:].max(axis=0)
+        self.fraction = self.fraction[select_other_events,:]
+        self.fraction = sparse.vstack([self.fraction,sparse.csr_matrix(fraction_tmp)])
+
+        self.frequency = np.append(self.frequency[select_other_events],
+                                                self.frequency[select_event_ids].mean())
+        self.orig = np.append(self.orig[select_other_events],
+                                                        self.orig[select_event_ids].max())
+        if self.ssi_wisc.size>0:
+            self.ssi_wisc = np.append(self.ssi_wisc[select_other_events],
+                                      np.nan)
+        if self.ssi.size>0:
+            self.ssi = np.append(self.ssi[select_other_events],
+                                 np.nan)
+        if self.ssi_full_area.size>0:
+            self.ssi_full_area = np.append(self.ssi_full_area[select_other_events],
+                                 np.nan)
+        self.check()
 
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
                  threshold=None, sel_cen=None):
@@ -324,7 +374,10 @@ class StormEurope(Hazard):
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
         ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
-        ssi_hist = ssi_freq.loc[ssi_freq.orig]
+
+        ssi_hist = ssi_freq.loc[ssi_freq.orig].copy()
+        ssi_hist.freq = ssi_hist.freq * self.orig.size / self.orig.sum()
+        ssi_hist['freq_cum'] = np.cumsum(ssi_hist.freq)
 
         # plotting
         fig, axs = plt.subplots()
@@ -427,9 +480,9 @@ class StormEurope(Hazard):
         new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
                                       N_PROB_EVENTS)
 
-        self.tag = TagHazard(
+        new_haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
-            description='WISC probabilistic hazard set using Schwierz et al.'
+            description='WISC probabilistic hazard set according to Schwierz et al.'
         )
 
         new_haz.fraction = new_haz.intensity.copy().tocsr()
@@ -441,7 +494,7 @@ class StormEurope(Hazard):
         return new_haz
 
     def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
-                   power=1.1, scale=0.1):
+                   power=1.15, scale=0.0225):
         """ Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
         it then moves around by spatial_shift gridpoints to the east, west, and
@@ -468,7 +521,7 @@ class StormEurope(Hazard):
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
-        intensity2d_sqrt = intensity2d.sqrt().todense()
+        intensity2d_sqrt = intensity2d.power(1.0/power).todense()
         intensity2d_pwr = intensity2d.power(power).todense()
         intensity2d = intensity2d.todense()
 

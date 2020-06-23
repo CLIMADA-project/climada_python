@@ -167,11 +167,8 @@ class TestRiverFlood(unittest.TestCase):
         manipulated_dates = [730303, 730669, 731034]
         for i in range(len(years)):
             testRFaddset = RiverFlood()
-            testRFaddset.set_from_nc(countries=['AFG'],
-                                     dph_path=HAZ_DEMO_FLDDPH,
-                                     frc_path=HAZ_DEMO_FLDFRC,
-                                     ISINatIDGrid=True)
-            testRFaddset.date = [manipulated_dates[i]]
+            testRFaddset.set_from_nc(countries=['AFG'])
+            testRFaddset.date = np.array([manipulated_dates[i]])
             if i == 0:
                 testRFaddset.event_name = ['2000_2']
             else:

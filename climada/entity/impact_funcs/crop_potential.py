@@ -10,30 +10,34 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
-Define impact functions for BushFires.
+Define impact functions for AgriculturalDroughts.
 """
 
-__all__ = ['IFBushfire']
+
+__all__ = ['IFCropPotential']
 
 import logging
 import numpy as np
-
 from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFBushfire(ImpactFunc):
-    """Impact function for bushfire."""
+class IFCropPotential(ImpactFunc):
+    """Impact functions for agricultural droughts."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'BF'
-        
-    def set_default(self, threshold):
-        self.haz_type = "BF"
+        self.haz_type = 'CP'
+        self.intensity_unit = ''
+        #self.continent = ''
+
+    def set_relativeyield(self):
+        """Impact functions defining the impact as (intensity-1)"""
+        self.haz_type = 'CP'
         self.id = 1
-        self.name = "bushfire default"
-        self.intensity_unit = "K"
-        self.intensity = np.array([295, threshold, threshold, 367])
-        self.mdd = np.array([0, 0, 1, 1])
-        self.paa = np.array([1, 1, 1, 1])
+        self.name = 'Crop Potential ISIMIP'
+        self.intensity_unit = ''
+        self.intensity = np.arange(0, 11)
+        self.mdr = (self.intensity - 1)
+        self.mdd = (self.intensity - 1)
+        self.paa = np.ones(len(self.intensity))

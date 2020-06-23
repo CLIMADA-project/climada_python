@@ -29,7 +29,9 @@ __all__ = ['SOURCE_DIR',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
-           'GLB_CENTROIDS_NC',
+           'ISIMIP_GPWV3_NATID_150AS',
+           'NATEARTH_CENTROIDS_150AS',
+           'NATEARTH_CENTROIDS_360AS',
            'DEMO_GDP2ASSET',
            'NAT_REG_ID',
            'TC_ANDREW_FL',
@@ -51,11 +53,28 @@ SYSTEM_DIR = os.path.abspath(os.path.join(DATA_DIR, 'system'))
 """ Folder containing the data used internally """
 
 
-GLB_CENTROIDS_NC = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
-""" Global centroids nc."""
+ISIMIP_GPWV3_NATID_150AS = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
+""" Compressed version of National Identifier Grid in 150 arc-seconds from
+    ISIMIP project, based on GPWv3:
+
+        ISIMIP2a/InputData/landuse_humaninfluences/population/ID_GRID/Nat_id_grid_ISIMIP.nc
+
+    More references:
+
+    * https://www.isimip.org/gettingstarted/input-data-bias-correction/details/13/
+    * https://sedac.ciesin.columbia.edu/data/set/gpw-v3-national-identifier-grid
+"""
 
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
-""" Global centroids."""
+""" Global centroids """
+
+NATEARTH_CENTROIDS_150AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_150as.hdf5')
+""" Global centroids at 150 arc-seconds resolution,
+    including region ids from Natural Earth."""
+
+NATEARTH_CENTROIDS_360AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_360as.hdf5')
+""" Global centroids at 360 arc-seconds resolution,
+    including region ids from Natural Earth and distance to coast from NASA."""
 
 ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
 """ Entity template in xls format."""
@@ -83,7 +102,7 @@ HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
 HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1975_2011.h5')
 """ Hazard demo in h5 format: ibtracs from 1975 to 2011 over Florida with 2500 centroids."""
 
-DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_demo_exposure.nc')
+DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_CHE_exposure.nc')
 """Exposure demo file for GDP2Asset"""
 
 WS_DEMO_NC = [os.path.join(DATA_DIR, 'demo', 'fp_lothar_crop-test.nc'),

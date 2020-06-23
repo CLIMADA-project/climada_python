@@ -29,6 +29,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from geopandas import GeoDataFrame
 import rasterio
 from rasterio.warp import Resampling
+import contextily as ctx
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
@@ -365,7 +366,7 @@ class Exposures(GeoDataFrame):
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for imshow matplotlib function
 
-         Returns:
+        Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta['height']*self.meta['width'] == len(self):
@@ -413,7 +414,8 @@ class Exposures(GeoDataFrame):
         """ Scatter points over satellite image using contextily
 
          Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
+            mask (np.array, optional): mask to apply to eai_exp plotted. Same
+                size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
             pop_name (bool, optional): add names of the populated places
@@ -435,7 +437,7 @@ class Exposures(GeoDataFrame):
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                  extend, shapes=False, axis=axis, **kwargs)
-        u_plot.add_basemap(axis, zoom, url, flip=True)
+        ctx.add_basemap(axis, zoom, url, origin='upper')
         axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
         return axis

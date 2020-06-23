@@ -27,13 +27,12 @@ import xarray as xr
 import scipy as sp
 import logging
 import geopandas as gpd
+from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
-from climada.util.constants import GLB_CENTROIDS_NC
+from climada.util.coordinates import country_iso2natid, get_region_gridpoints
 from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
-from climada.util.constants import DEMO_GDP2ASSET
 from climada.util.constants import DEF_CRS
-from climada.entity.tag import Tag
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -59,6 +58,15 @@ class GDP2Asset(Exposures):
             path (string): path to exposure dataset (ISIMIP)
         """
         gdp2a_list = []
+        tag = Tag()
+
+        if path is None:
+            LOGGER.error('No path for exposure data set')
+            raise NameError
+
+        if not os.path.exists(path):
+            LOGGER.error('Invalid path ' + path)
+            raise NameError
         try:
 
             if not countries:
@@ -74,6 +82,8 @@ class GDP2Asset(Exposures):
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
+                tag.description += ("{} GDP2Asset \n").\
+                    format(countries[cntr_ind])
             Exposures.__init__(self, gpd.GeoDataFrame(
                         pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
@@ -83,7 +93,6 @@ class GDP2Asset(Exposures):
             raise KeyError
         self.ref_year = ref_year
         self.value_unit = 'USD'
-        self.tag = Tag()
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)
         self.crs = DEF_CRS
         # set meta
@@ -110,34 +119,17 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        exp_gdpasset = GDP2Asset()
+        natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(NAT_REG_ID)
-        try:
-            isimip_grid = xr.open_dataset(GLB_CENTROIDS_NC)
-            isimip_lon = isimip_grid.lon.data
-            isimip_lat = isimip_grid.lat.data
-            gridX, gridY = np.meshgrid(isimip_lon, isimip_lat)
-            if not any(np.isin(natID_info['ISO'], countryISO)):
-                LOGGER.error('Wrong country ISO ' + str(countryISO))
-                raise KeyError
-            natID = natID_info['ID'][np.isin(natID_info['ISO'], countryISO)]
-            reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-            isimip_NatIdGrid = isimip_grid.NatIdGrid.data
-        except OSError:
-            LOGGER.error('Problems while reading ,' + path +
-                         ' check exposure_file specifications')
-            raise OSError
-        natID_pos = np.isin(isimip_NatIdGrid, natID)
-        lon_coordinates = gridX[natID_pos]
-        lat_coordinates = gridY[natID_pos]
-        coord = np.zeros((len(lon_coordinates), 2))
-        coord[:, 1] = lon_coordinates
-        coord[:, 0] = lat_coordinates
+        reg_id, if_rf = _fast_if_mapping(natID, natID_info)
+        lat, lon = get_region_gridpoints(countries=[natID], iso=False,
+            basemap="isimip")
+        coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
-        reg_id_info = np.zeros((len(assets)))
-        reg_id_info[:] = reg_id
-        if_rf_info = np.zeros((len(assets)))
-        if_rf_info[:] = if_rf
+        reg_id_info = np.full((len(assets),), reg_id)
+        if_rf_info = np.full((len(assets),), if_rf)
+
+        exp_gdpasset = GDP2Asset()
         exp_gdpasset['value'] = assets
         exp_gdpasset['latitude'] = coord[:, 0]
         exp_gdpasset['longitude'] = coord[:, 1]
@@ -179,16 +171,47 @@ def _read_GDP(shp_exposures, ref_year, path=None):
     coordinates[:, 0] = gridY.flatten()
     coordinates[:, 1] = gridX.flatten()
     gdp = gdp_file.gdp_grid[year_index, :, :].data
+    _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures)
     conv_factors = asset_converter.conversion_factor.data
-    asset = gdp * conv_factors
-    asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
-                                   np.nan_to_num(asset),
-                                   (shp_exposures[:, 0],
-                                   shp_exposures[:, 1]),
-                                   method='nearest',
-                                   bounds_error=False,
-                                   fill_value=None)
+    if gdp.shape == conv_factors.shape:
+        asset = gdp * conv_factors
+        asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
+                                       np.nan_to_num(asset),
+                                       (shp_exposures[:, 0],
+                                       shp_exposures[:, 1]),
+                                       method='nearest',
+                                       bounds_error=False,
+                                       fill_value=None)
+    else:
+        conv_factors = sp.interpolate.interpn((conv_lat, conv_lon),
+                                              np.nan_to_num(conv_factors),
+                                              (shp_exposures[:, 0],
+                                              shp_exposures[:, 1]),
+                                              method='nearest',
+                                              bounds_error=False,
+                                              fill_value=None)
+
+        gdp = sp.interpolate.interpn((gdp_lat, gdp_lon),
+                                     np.nan_to_num(gdp),
+                                     (shp_exposures[:, 0],
+                                     shp_exposures[:, 1]),
+                                     method='nearest',
+                                     bounds_error=False,
+                                     fill_value=None)
+        asset = gdp*conv_factors
+
     return asset
+
+
+def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
+
+    if (max(gdp_lat)+0.5 < max(shp_exposures[:, 0])) or\
+           (max(gdp_lon)+0.5 < max(shp_exposures[:, 1])) or\
+           (min(gdp_lat)-0.5 > min(shp_exposures[:, 0])) or\
+           (min(gdp_lon)-0.5 > min(shp_exposures[:, 1])):
+
+        LOGGER.error('Asset Data does not match selected country')
+        raise IOError
 
 
 def _fast_if_mapping(countryID, natID_info):

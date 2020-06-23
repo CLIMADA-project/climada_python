@@ -151,12 +151,12 @@ class TestVector(unittest.TestCase):
 
     @staticmethod
     def data_vector():
-        vec_data = gpd.GeoDataFrame(crs={'init':'epsg:32632'})
+        vec_data = gpd.GeoDataFrame(crs={ 'init': 'epsg:32632' })
         vec_data['geometry'] = list(zip(VEC_LON, VEC_LAT))
         vec_data['geometry'] = vec_data['geometry'].apply(Point)
         vec_data['lon'] = VEC_LON
         vec_data['lat'] = VEC_LAT
-        vec_data['value'] = np.arange(VEC_LAT.size)+100
+        vec_data['value'] = np.arange(VEC_LAT.size) + 100
         return vec_data.lat.values, vec_data.lon.values, vec_data.geometry
 
     def test_set_lat_lon_pass(self):
@@ -278,12 +278,12 @@ class TestVector(unittest.TestCase):
         self.assertEqual(centr.meta['crs'], {'init':'epsg:4326'})
         self.assertEqual(centr.meta['width'], 36)
         self.assertEqual(centr.meta['height'], 31)
-        self.assertAlmostEqual(centr.meta['transform'][0], 0.08333333)
         self.assertEqual(centr.meta['transform'][1], 0.0)
+        self.assertEqual(centr.meta['transform'][3], 0.0)
+        self.assertAlmostEqual(centr.meta['transform'][0], 0.08333333)
         self.assertAlmostEqual(centr.meta['transform'][2], -61.08333333)
-        self.assertAlmostEqual(centr.meta['transform'][3], 0.0)
-        self.assertAlmostEqual(centr.meta['transform'][4], -0.08333333)
-        self.assertAlmostEqual(centr.meta['transform'][5], 14.41666666)
+        self.assertAlmostEqual(centr.meta['transform'][4], 0.08333333)
+        self.assertAlmostEqual(centr.meta['transform'][5], 11.83333333)
 
     def test_get_pixel_polygons_pass(self):
         """ Test calc_pixels_polygons """
@@ -333,22 +333,6 @@ class TestVector(unittest.TestCase):
         self.assertTrue(centr_bis.equal(centr_bis))
         self.assertTrue(centr.equal(centr))
 
-    def test_elevation_3_pass(self):
-        """ test set_elevation """
-        centr = Centroids()
-        centr.lat, centr.lon, centr.geometry = self.data_vector()
-        centr.geometry.crs = DEF_CRS
-        centr.set_elevation(product='SRTM3', resampling=Resampling.nearest)
-        centr.set_on_land()
-        self.assertTrue(np.all(centr.elevation[centr.on_land]>0))
-        self.assertTrue(np.all(centr.elevation[np.logical_not(centr.on_land)]==DEM_NODATA))
-        self.assertEqual(centr.elevation[0], 23)
-        self.assertEqual(centr.elevation[1], 92)
-        self.assertEqual(centr.elevation[2], 69)
-        self.assertEqual(centr.elevation[3], 77)
-        self.assertEqual(centr.elevation[4], 133)
-        self.assertEqual(centr.elevation[5], 41)
-        self.assertEqual(centr.elevation.min(), DEM_NODATA)
 
 class TestRaster(unittest.TestCase):
     """ Test CentroidsRaster class """
@@ -501,12 +485,12 @@ class TestRaster(unittest.TestCase):
         meta = centr.meta
         centr.set_meta_to_lat_lon()
         self.assertEqual(centr.meta, meta)
-        self.assertAlmostEqual(lat.max(), centr.lat.max(), 7)
+        self.assertAlmostEqual(lat.max(), centr.lat.max(), 6)
         self.assertAlmostEqual(lat.min(), centr.lat.min(), 6)
         self.assertAlmostEqual(lon.max(), centr.lon.max(), 6)
         self.assertAlmostEqual(lon.min(), centr.lon.min(), 6)
         self.assertAlmostEqual(np.diff(centr.lon).max(), meta['transform'][0])
-        self.assertAlmostEqual(np.diff(centr.lat).min(), meta['transform'][4])
+        self.assertAlmostEqual(np.diff(centr.lat).max(), meta['transform'][4])
         self.assertEqual(geometry.crs, centr.geometry.crs)
 
     def test_append_equal_pass(self):
@@ -554,17 +538,6 @@ class TestRaster(unittest.TestCase):
         self.assertTrue(centr_ras.equal(centr_ras))
         self.assertTrue(centr_bis.equal(centr_bis))
 
-    def test_elevation_3_pass(self):
-        """ Test set_elevation """
-        centr_ras = Centroids()
-        centr_ras.set_raster_file(HAZ_DEMO_FL, window= Window(0, 0, 10, 20))
-        centr_ras.set_elevation(product='SRTM3', resampling=Resampling.nearest)
-        self.assertEqual(centr_ras.elevation.max(), 1052)
-        self.assertEqual(centr_ras.elevation.min(), 357)
-        self.assertEqual(centr_ras.elevation[25], 476)
-        self.assertEqual(centr_ras.elevation[32], 471)
-        self.assertEqual(centr_ras.elevation[0], 695)
-        self.assertEqual(centr_ras.elevation[-1], 661)
 
 class TestCentroids(unittest.TestCase):
     """ Test Centroids class """

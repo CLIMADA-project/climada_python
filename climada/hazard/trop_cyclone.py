@@ -23,21 +23,22 @@ __all__ = ['TropCyclone']
 
 import itertools
 import logging
+import copy
+import time
 import datetime as dt
 import numpy as np
 from numpy import linalg as LA
 from scipy import sparse
 import matplotlib.animation as animation
-from pint import UnitRegistry
 from numba import jit
 from tqdm import tqdm
-import time
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.tc_tracks import TCTracks
+from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
-from climada.util.constants import GLB_CENTROIDS_MAT
+from climada.util import ureg
 from climada.util.interpolation import dist_approx
 import climada.util.plot as u_plot
 
@@ -56,6 +57,11 @@ MODEL_VANG = {'H08': 0
              }
 """ Enumerate different symmetric wind field calculation."""
 
+KMH_TO_MS = (1.0 * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
+KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter/ureg.second).magnitude
+NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
+""" Unit conversion factors for JIT functions that can't use ureg """
+
 class TropCyclone(Hazard):
     """Contains tropical cyclone events.
     Attributes:
@@ -68,6 +74,14 @@ class TropCyclone(Hazard):
                  3 Hurrican category 3
                  4 Hurrican category 4
                  5 Hurrican category 5
+        basin (list(str)): basin where every event starts
+            'NA' North Atlantic
+            'EP' Eastern North Pacific
+            'WP' Western North Pacific
+            'NI' North Indian
+            'SI' South Indian
+            'SP' Southern Pacific
+            'SA' South Atlantic
     """
     intensity_thres = 17.5
     """ intensity threshold for storage in m/s """
@@ -79,6 +93,7 @@ class TropCyclone(Hazard):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
+        self.basin = list()
         if pool:
             self.pool = pool
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
@@ -86,7 +101,7 @@ class TropCyclone(Hazard):
             self.pool = None
 
     def set_from_tracks(self, tracks, centroids=None, description='',
-                        model='H08'):
+                        model='H08', ignore_distance_to_coast=False):
         """Clear and model tropical cyclone from input IBTrACS tracks.
         Parallel process.
         Parameters:
@@ -95,15 +110,18 @@ class TropCyclone(Hazard):
                 Default: global centroids.
             description (str, optional): description of the events
             model (str, optional): model to compute gust. Default Holland2008.
+            ignore_distance_to_coast (boolean, optional): if True, centroids
+                far from coast are not ignored. Default False
         Raises:
             ValueError
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids()
-            centroids.read_mat(GLB_CENTROIDS_MAT)
-        # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-        coastal_idx = coastal_centr_idx(centroids)
+            centroids = Centroids.from_base_grid(res_as=360, land=True)
+        if ignore_distance_to_coast: # Select centroids with lat < 61
+            coastal_idx = np.logical_and(centroids.lat < 61, True).nonzero()[0]
+        else:  # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
+            coastal_idx = coastal_centr_idx(centroids)
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 
@@ -122,10 +140,27 @@ class TropCyclone(Hazard):
                 tc_haz.append(self._tc_from_track(track, centroids, coastal_idx,
                                                   model))
         LOGGER.debug('Append events.')
-        self._append_all(tc_haz)
+        self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
+
+    def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
+        """ Compute future events for given RCP scenario and year. RCP 4.5
+        from Knutson et al 2015.
+        Parameters:
+            ref_year (int): year between 2000 ad 2100. Default: 2050
+            rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
+                60 for RCP 6.0 and 85 for RCP 8.5.
+        Returns:
+            TropCyclone
+        """
+        criterion = get_knutson_criterion()
+        scale = calc_scale_knutson(ref_year, rcp_scenario)
+        haz_cc = self._apply_criterion(criterion, scale)
+        haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
+        'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
+        return haz_cc
 
     @staticmethod
     def video_intensity(track_name, tracks, centroids, file_name=None,
@@ -219,7 +254,7 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
     @staticmethod
-    @jit
+    @jit(forceobj=True)
     def _tc_from_track(track, centroids, coastal_centr, model='H08'):
         """ Set hazard from input file. If centroids are not provided, they are
         read from the same file.
@@ -252,7 +287,36 @@ class TropCyclone(Hazard):
             track.time.dt.day[0]).toordinal()])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
+        new_haz.basin = [track.basin]
         return new_haz
+
+    def _apply_criterion(self, criterion, scale):
+        """ Apply changes defined in criterion with a given scale
+        Parameters:
+            criterion (list(dict)): list of criteria
+            scale (float): scale parameter because of chosen year and RCP
+        Returns:
+            TropCyclone
+        """
+        haz_cc = copy.deepcopy(self)
+        for chg in criterion:
+            # filter criteria
+            select = np.ones(haz_cc.size, bool)
+            for var_name, cri_val in chg['criteria'].items():
+                var_val = getattr(haz_cc, var_name)
+                if isinstance(var_val, list):
+                    var_val = np.array(var_val)
+                tmp_select = np.logical_or.reduce([var_val == val for val in cri_val])
+                select = np.logical_and(select, tmp_select)
+            if chg['function'] == np.multiply:
+                change = 1 + (chg['change'] - 1) * scale
+            elif chg['function'] == np.add:
+                change = chg['change'] * scale
+            if select.any():
+                new_val = getattr(haz_cc, chg['variable'])
+                new_val[select] *= change
+                setattr(haz_cc, chg['variable'], new_val)
+        return haz_cc
 
 def coastal_centr_idx(centroids, lat_max=61):
     """ Compute centroids indices which are inside INLAND_MAX_DIST_KM and
@@ -289,7 +353,7 @@ def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
     intensity = _windfield(track, centroids.coord, coastal_idx, mod_id)
     return sparse.csr_matrix(intensity)
 
-@jit
+@jit(forceobj=True)
 def _windfield(track, centroids, coastal_idx, model):
     """ Compute windfields (in m/s) in centroids using Holland model 08.
 
@@ -302,7 +366,6 @@ def _windfield(track, centroids, coastal_idx, model):
     Returns:
         np.array
     """
-    np.warnings.filterwarnings('ignore')
     # Make sure that CentralPressure never exceeds EnvironmentalPressure
     up_pr = np.argwhere(track.central_pressure.values >
                         track.environmental_pressure.values)
@@ -310,13 +373,12 @@ def _windfield(track, centroids, coastal_idx, model):
         track.environmental_pressure.values[up_pr]
 
     # Extrapolate RadiusMaxWind from pressure if not given
-    ureg = UnitRegistry()
     track['radius_max_wind'] = ('time', _extra_rad_max_wind( \
-        track.central_pressure.values, track.radius_max_wind.values, ureg))
+        track.central_pressure.values, track.radius_max_wind.values))
 
     # Track translational speed at every node
     v_trans = _vtrans(track.lat.values, track.lon.values,
-                      track.time_step.values, ureg)
+                      track.time_step.values)
 
     # Compute windfield
     intensity = np.zeros((centroids.shape[0], ))
@@ -326,14 +388,13 @@ def _windfield(track, centroids, coastal_idx, model):
     return intensity
 
 @jit
-def _vtrans(t_lat, t_lon, t_tstep, ureg):
+def _vtrans(t_lat, t_lon, t_tstep):
     """ Translational spped at every track node.
 
     Parameters:
         t_lat (np.array): track latitudes
         t_lon (np.array): track longitudes
         t_tstep (np.array): track time steps
-        ureg (UnitRegistry): units handler
 
     Returns:
         np.array
@@ -341,43 +402,42 @@ def _vtrans(t_lat, t_lon, t_tstep, ureg):
     v_trans = dist_approx(t_lat[:-1], t_lon[:-1],
                           np.cos(np.radians(t_lat[:-1])), t_lat[1:],
                           t_lon[1:]) / t_tstep[1:]
-    v_trans = (v_trans * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
+    v_trans *= KMH_TO_MS
 
     # nautical miles/hour, limit to 30 nmph
-    v_max = (30*ureg.knot).to(ureg.meter/ureg.second).magnitude
+    v_max = 30 * KN_TO_MS
     v_trans[v_trans > v_max] = v_max
     return v_trans
 
 @jit
-def _extra_rad_max_wind(t_cen, t_rad, ureg):
+def _extra_rad_max_wind(t_cen, t_rad):
     """ Extrapolate RadiusMaxWind from pressure and change to km.
 
     Parameters:
         t_cen (np.array): track central pressures
         t_rad (np.array): track radius of maximum wind
-        ureg (UnitRegistry): units handler
 
     Returns:
         np.array
     """
-    # TODO: always extrapolate???!!!
-    # rmax thresholds in nm
+    nan_mask = np.isnan(t_rad) | (t_rad <= 0.0)
+
+    # rmax thresholds in nm and pressure in mb
     rmax_1, rmax_2, rmax_3 = 15, 25, 50
-    # pressure in mb
     pres_1, pres_2, pres_3 = 950, 980, 1020
-    t_rad[t_cen <= pres_1] = rmax_1
+    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
+    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
 
-    to_change = np.logical_and(t_cen > pres_1, t_cen <= pres_2).nonzero()[0]
-    t_rad[to_change] = (t_cen[to_change] - pres_1) * \
-        (rmax_2 - rmax_1)/(pres_2 - pres_1) + rmax_1
+    to_change = nan_mask & (t_cen <= pres_1)
+    t_rad[to_change] = rmax_1
+    to_change = nan_mask & (t_cen > pres_1) & (t_cen <= pres_2)
+    t_rad[to_change] = rmax_1 + slope_1 * (t_cen[to_change] - pres_1)
+    to_change = nan_mask & (t_cen > pres_2)
+    t_rad[to_change] = rmax_2 + slope_2 * (t_cen[to_change] - pres_2)
 
-    to_change = np.argwhere(t_cen > pres_2).squeeze()
-    t_rad[to_change] = (t_cen[to_change] - pres_2) * \
-        (rmax_3 - rmax_2)/(pres_3 - pres_2) + rmax_2
+    return t_rad * NM_TO_KM
 
-    return (t_rad * ureg.nautical_mile).to(ureg.kilometer).magnitude
-
-@jit(parallel=True)
+@jit(parallel=True, forceobj=True)
 def _wind_per_node(coastal_centr, track, v_trans, model):
     """ Compute sustained winds at each centroid.
 
@@ -433,7 +493,7 @@ def _wind_per_node(coastal_centr, track, v_trans, model):
 
     return intensity
 
-@jit
+@jit(forceobj=True)
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     """ Compute Hollands translational wind corrections. Returns factor.
 

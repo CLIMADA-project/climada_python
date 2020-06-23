@@ -49,8 +49,6 @@ class TestCentroidsReader(unittest.TestCase):
 
         self.assertEqual(centroids.region_id[1062443], 35)
         self.assertEqual(centroids.region_id[170825], 28)
-        self.assertAlmostEqual(centroids.dist_coast[9], 21.366461094662913)
-        self.assertAlmostEqual(centroids.dist_coast[1568370], 36.76908653021)
 
     def test_centroid_pass(self):
         ''' Read a centroid excel file correctly.'''

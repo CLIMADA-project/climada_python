@@ -30,13 +30,13 @@ import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 import gdal
-from pint import UnitRegistry
 from cartopy.io import shapereader
 
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
+from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
@@ -61,8 +61,7 @@ BM_YEARS = [2016, 2012] # latest first
 # Years with GPW population data available:
 GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
-NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
+NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
 WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
@@ -85,8 +84,8 @@ DEF_HAZ_TYPE = ''
 
 class LitPop(Exposures):
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
-        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank) 
-        or non-financial wealth (Global Wealth Databook by the Credit Suisse 
+        data (SEDAC); distributing produced capital (World Bank), GDP (World Bank)
+        or non-financial wealth (Global Wealth Databook by the Credit Suisse
         Research Institute.)
 
         Calling sequence example:
@@ -268,11 +267,20 @@ class LitPop(Exposures):
         self.ref_year = reference_year
         self.tag = tag
         self.value_unit = 'USD'
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
-            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
-            min(get_resolution(self.latitude, self.longitude)))
-        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
-
+        try:
+            rows, cols, ras_trans = pts_to_raster_meta(
+                (self.longitude.min(), self.latitude.min(),
+                 self.longitude.max(), self.latitude.max()),
+                get_resolution(self.longitude, self.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except  ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure has only 1 data point')
+            self.meta = {}
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
         LOGGER.info("Creating the LitPop exposure took %i s", \
@@ -599,7 +607,7 @@ def _shape_cutter(shape, **opt_args):
                 plotted. Takes any colour format which is recognised by
                 matplotlib.
             return_mask (boolean): If activated, the mask is also returned
-            points2check (list): a list of points in tuple formaat (lon, lat)
+            points2check (list): a list of points in tuple format (lon, lat)
                 for which should be checked whether they are inside the shape.
                 if no points are delivered, the points are created for the
                 bounding box of the shape.
@@ -709,12 +717,8 @@ def _shape_cutter(shape, **opt_args):
         all_coords = points2check
         del points2check
     incl_coords = set(incl_coords)
-    mask = sparse.lil.lil_matrix(np.zeros((len(all_coords),)))
-    for idx, val in enumerate(all_coords):
-        if val in incl_coords:
-            mask[0, idx] = 1
-    mask = pd.SparseArray(mask.toarray().reshape((-1,), order='F'),\
-                          fill_value=0)
+    mask = np.array([(coord in incl_coords) for coord in all_coords])
+    mask = pd.SparseArray(mask, fill_value=0)
     lon, lat = zip(*[all_coords[val] for idx, val\
                      in enumerate(mask.sp_index.indices)])
     if check_plot == 1:
@@ -889,12 +893,8 @@ def _mask_from_shape(check_shape, **opt_args):
         all_coords = points2check
         del points2check
     incl_coords = set(incl_coords)
-    mask = sparse.lil.lil_matrix(np.zeros((len(all_coords),)))
-    for idx, val in enumerate(all_coords):
-        if val in incl_coords:
-            mask[0, idx] = 1
-    mask = pd.SparseArray(mask.toarray().reshape((-1,), order='F'),\
-                          fill_value=0, dtype='bool_')
+    mask = np.array([(coord in incl_coords) for coord in all_coords])
+    mask = pd.SparseArray(mask, fill_value=0, dtype='bool_')
 #    plt.figure()
 #    l1, l2 = zip(*[x for n, x in enumerate(all_coords) if mask.values[n]==1])
 #    plt.scatter(l1, l2)
