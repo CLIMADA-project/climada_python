@@ -143,7 +143,8 @@ class TestModel(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
-        rad_max_wind = tc._extra_rad_max_wind(tc_track.data[0].central_pressure.values,
+        rad_max_wind = tc._extra_rad_max_wind(
+            tc_track.data[0].central_pressure.values,
             tc_track.data[0].radius_max_wind.values)
 
         self.assertEqual(rad_max_wind[0], 75.536713749999905)
