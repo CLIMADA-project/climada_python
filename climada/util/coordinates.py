@@ -446,10 +446,10 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         grid_shape = (dim_lat.size, dim_lon.size)
         region_id = f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
-        natid2iso_alpha = country_natid2iso(list(range(1, 231)))
+        natid2iso_alpha = country_natid2iso(list(range(231)))
         natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
         natid2iso = np.array(natid2iso, dtype=int)
-        region_id = natid2iso[region_id - 1]
+        region_id = natid2iso[region_id]
         lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
@@ -470,11 +470,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if len(countries) > 0:
         msk = np.isin(region_id, countries)
         if rect:
+            lat_msk, lon_msk = lat[msk], lon[msk]
             msk = msk.any(axis=0)[None] * msk.any(axis=1)[:, None]
-            msk |= (lat >= np.floor(lat[msk].min())) \
-                 & (lon >= np.floor(lon[msk].min())) \
-                 & (lat <= np.ceil(lat[msk].max())) \
-                 & (lon <= np.ceil(lon[msk].max()))
+            msk |= (lat >= np.floor(lat_msk.min())) \
+                 & (lon >= np.floor(lon_msk.min())) \
+                 & (lat <= np.ceil(lat_msk.max())) \
+                 & (lon <= np.ceil(lon_msk.max()))
         lat, lon = lat[msk], lon[msk]
     else:
         lat, lon = [ar.ravel() for ar in [lat, lon]]
@@ -513,6 +514,7 @@ def country_iso_alpha2numeric(isos):
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
     OLD_ISO = {
+        '': 0,  # Ocean or fill_value
         "ANT": 530,  # Netherlands Antilles: split up since 2010
         "SCG": 891,  # Serbia and Montenegro: split up since 2006
     }
