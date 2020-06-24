@@ -28,7 +28,6 @@ from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.engine import Impact
 
-
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
 
@@ -65,7 +64,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
         self.assertEqual(iso[0], 'LIE')
 
-read_flood
+
     def test_full_impact(self):
         """ test full flood impact"""
         testRF = RiverFlood()
