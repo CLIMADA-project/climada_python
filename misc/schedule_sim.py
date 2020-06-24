@@ -19,7 +19,7 @@ import argparse
 from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.hazard.river_flood import RiverFlood
-from climada.util.constants import NAT_REG_ID
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
 import copy
 
 
@@ -84,7 +84,7 @@ else:
 
 #years = np.arange(1971, 2011)
 income_groups = pd.read_csv('/home/insauer/data/CountryInfo/IncomeGroups.csv')
-country_info = pd.read_csv(NAT_REG_ID)
+country_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
 isos = country_info['ISO'].tolist()
 
 
