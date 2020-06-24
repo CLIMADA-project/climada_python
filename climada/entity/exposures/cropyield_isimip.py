@@ -79,7 +79,7 @@ YEARCHUNKS[SCENARIO[5]] = dict()
 YEARCHUNKS[SCENARIO[5]] = {'yearrange' : np.array([2100, 2299]), \
           'startyear' : 2100, 'endyear': 2299}
 
-YEARS_FAO = np.array([1990, 2010])
+YEARS_FAO = np.array([2000, 2018])
 
 CROP = ['mai',
         'ric',
@@ -103,8 +103,8 @@ IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 
 #default: deposit the landuse files in the directory: climada_python/data/ISIMIP/Input/Exposure
 #         deposit the FAO files in the directory: climada_python/data/ISIMIP/Input/Exposure/FAO
-#The FAO files need to be downloaded and renamed           
-#   FAO_FILE: contains producer prices per crop, country and year 
+#The FAO files need to be downloaded and renamed
+#   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
 #   FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
 #               (http://www.fao.org/faostat/en/#definitions)
@@ -155,8 +155,8 @@ class CropyieldIsimip(Exposures):
             fn_str_var (string): FileName STRing depending on VARiable and
                 ISIMIP simuation round
         """
-        
-        #The filename is set or other variables (cl_model, scenario) are extracted of the 
+
+        #The filename is set or other variables (cl_model, scenario) are extracted of the
         #specified filename
         if filename is None:
             yearchunk = YEARCHUNKS[scenario]
@@ -195,12 +195,13 @@ class CropyieldIsimip(Exposures):
         time_idx = np.array([int(yearrange[0]-yearchunk['startyear']), \
                              int(yearrange[1]-yearchunk['startyear'])])
 
-        #calculate the area covered by a grid cell depending on the latitude
+        #The area covered by a grid cell is calculated depending on the latitude
         #1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
         #distance in km = 111.12*0.5*cos(lat); area = distance^2; 1km2 = 100ha
         area = (111.12*0.5*np.cos(np.deg2rad(lat)))**2*100
 
-        #calculates the area covered by a crop as product of the fraction amd the grid cell size
+        #The area covered by a crop is calculated as the product of the fraction and
+        #the grid cell size
         if irr == 'combined':
             area_crop = (getattr(data, (CROP_NAME[crop])['input']+'_'+(IRR_NAME[IRR[1]])['name'])[\
                          time_idx[0]:time_idx[1], :, :].mean(dim='time')*area).values + \
@@ -212,10 +213,10 @@ class CropyieldIsimip(Exposures):
 
         area_crop = np.nan_to_num(area_crop).flatten()
 
-        #set the historic mean
+        #The historic mean, its latitude and longitude are set
         if isdir(hist_mean):
-        #extract the adecuate file from the directory (depending on crop and irrigation)
-        #and set the variables hist_mean, lat_mean and lon_mean accordingly
+        #The adecuate file from the directory (depending on crop and irrigation) is extracted
+        #and the variables hist_mean, lat_mean and lon_mean are set accordingly
             if irr != 'combined':
                 filename = hist_mean+'hist_mean_'+crop+'-'+irr+'.nc'
                 hist_mean = (h5py.File(filename))['mean'][()]
@@ -227,17 +228,17 @@ class CropyieldIsimip(Exposures):
             lat_mean = (h5py.File(filename))['lat'][()]
             lon_mean = (h5py.File(filename))['lon'][()]
         elif isfile(hist_mean):
-        #extract hist_mean, lat_mean and lon_mean from the given file
+        #Hist_mean, lat_mean and lon_mean are extracted from the given file
             hist_mean_file = h5py.File(hist_mean)
             hist_mean = hist_mean_file['mean'][()]
             lat_mean = hist_mean_file['lat'][()]
             lon_mean = hist_mean_file['lon'][()]
         else:
-        #hist_mean as returned by the hazard crop_potential is used (array format) with same
+        #Hist_mean as returned by the hazard crop_potential is used (array format) with same
         #bbox extensions as the exposure
             lat_mean = self.latitude.values
 
-        #cut bbox out of hist_mean data file if needed
+        #The bbox is cut out of the hist_mean data file if needed
         if len(lat_mean) != len(self.latitude.values):
             idx_mean = np.zeros(len(self.latitude.values), dtype=int)
             for i in range(len(self.latitude.values)):
@@ -246,7 +247,8 @@ class CropyieldIsimip(Exposures):
         else:
             idx_mean = np.arange(0, len(lat_mean))
 
-        #compute the exposure as product of the area covered by a crop and its yield in t/ha/y
+        #The exposure [t/y] is computed per grid cell as the product of the area covered
+        #by a crop [ha] and its yield [t/ha/y]
         self['value'] = np.squeeze(area_crop*hist_mean[idx_mean])
 
         self.tag = Tag()
@@ -254,12 +256,11 @@ class CropyieldIsimip(Exposures):
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[1]))
         self.value_unit = 't / y'
 
-        #calls method set_to_usd() to compute the exposure in USD/y (per centroid)
-        #saves the exposure in t/y as 'value_tonnes'
+        #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
+        #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
-            dir_fao = input_dir+'FAO/'
             self['value_tonnes'] = self['value']
-            self.set_to_usd(dir_fao, crop=crop)
+            self.set_to_usd(dir_fao=input_dir+'FAO/', crop=crop)
 
         self.check()
 
@@ -294,6 +295,8 @@ class CropyieldIsimip(Exposures):
         filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
                      f.startswith('.')]
 
+        #If only files with a certain scenario and or cl_model shall be considered, they
+        #are extracted from the original list of files
         filenames2 = list()
         for name in filenames:
             if cl_model is not None and scenario is not None:
@@ -308,7 +311,7 @@ class CropyieldIsimip(Exposures):
             else:
                 filenames2 = filenames
 
-
+        #The first exposure is calculate to determine its size and initialize the combined exposure
         self.set_from_single_run(input_dir, filename=filenames2[0], hist_mean=hist_mean, \
                                  bbox=bbox, yearrange=yearrange, crop=crop, irr=irr, \
                                  unit=unit, fn_str_var=fn_str_var)
@@ -316,6 +319,7 @@ class CropyieldIsimip(Exposures):
         combined_exp = np.zeros([self.value.size, len(filenames2)])
         combined_exp[:, 0] = self.value
 
+        #The calculations are repeated for all exposures
         for j in range(1, len(filenames2)):
             self.set_from_single_run(input_dir, filename=filenames2[j], hist_mean=hist_mean, \
                                      bbox=bbox, yearrange=yearrange, crop=crop, irr=irr, unit=unit)
@@ -327,55 +331,65 @@ class CropyieldIsimip(Exposures):
 
         return self
 
-    def set_to_usd(self, dir_fao=None, yearrange=YEARS_FAO, crop=CROP[0]):
+    def set_to_usd(self, dir_fao=INPUT_DIR+'FAO/', yearrange=YEARS_FAO, crop=CROP[0]):
         #to do: check api availability?; default yearrange for single year (e.g. 5a)
-        #to do now: price for a specific year as input possibility; get rid of some variables?
         """ Calculates the exposure in USD using country and year specific data published
         by the FAO.
 
         Parameters:
             dir_fao (string): directory containing the FAO pricing data
-            yearrange (int tuple): year range for prices set, f.i. (1990, 2010)
+            yearrange (array): year range for prices, f.i. (2000, 2018)
+                can also be set to a single year
             crop (str): crop type
-                f.i. 'temperate_cereals', 'maize', 'oil_crops_soybean' or 'rice'
+                f.i. 'mai', 'ric', 'whe', 'soy'
         """
-        fao = pd.read_csv(dir_fao + FAO_FILE)
-        fao_countries = pd.read_csv(dir_fao + FAO_FILE2)
 
+        #account for the case of only specifying one year as yearrange
+        if len(yearrange) == 1:
+            yearrange = np.array([yearrange[0], yearrange[0]])
+
+        #open both FAO files and extract needed variables
+        #FAO_FILE: contains producer prices per crop, country and year
+        fao = pd.read_csv(dir_fao + FAO_FILE)
         fao_area = getattr(fao, 'Area Code').values
         fao_crops = fao.Item.values
         fao_year = fao.Year.values
         fao_price = fao.Value.values
 
+        #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
+        fao_countries = pd.read_csv(dir_fao + FAO_FILE2)
         fao_code = getattr(fao_countries, 'Country Code').values
         fao_iso = getattr(fao_countries, 'ISO3 Code').values
 
+        #create a list of linking the fao_area code to the iso3 code
         fao_country = list()
         for item, _ in enumerate(fao_area):
             idx = (np.where(fao_area[item] == fao_code)[0])[0]
             fao_country.append(fao_iso[idx])
 
+        #create a list of the countries contained in the exposure
         iso3alpha = list()
         for item, _ in enumerate(self.region_id):
             if self.region_id[item] == 0 or self.region_id[item] == -99:
                 iso3alpha.append('No country')
             else:
                 iso3alpha.append(iso_cntry.get(self.region_id[item]).alpha3)
-
         list_countries = np.unique(iso3alpha)
 
-        crop_name_fao = (CROP_NAME[crop])['fao']
+        #iterate over all countries that are covered in the exposure, extract the according price
+        #and calculate the produced yield in USD/y
         area_price = np.zeros(self.value.size)
-
         for item, _ in enumerate(list_countries):
             country = list_countries[item]
             if country != 'No country':
                 idx_price = np.where((np.asarray(fao_country) == country) & \
-                                     (np.asarray(fao_crops) == crop_name_fao) & \
+                                     (np.asarray(fao_crops) == (CROP_NAME[crop])['fao']) & \
                                      (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
                 price = np.mean(fao_price[idx_price])
+                #if no price can be determined for a specific yearrange and country, the world
+                #average for that crop (in the specified yearrange) is used
                 if math.isnan(price) or price == 0:
-                    idx_price = np.where((np.asarray(fao_crops) == crop_name_fao) & \
+                    idx_price = np.where((np.asarray(fao_crops) == (CROP_NAME[crop])['fao']) & \
                                      (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
                     price = np.mean(fao_price[idx_price])
                 idx_country = np.where(np.asarray(iso3alpha) == country)[0]
@@ -402,7 +416,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         output_dir (string): path to output data directory
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
-        yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
+        yearrange (array): year range for hazard set, f.i. (1976, 2005)
 
     """
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not \
@@ -412,13 +426,13 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    #create exposures for all crop-irrigation combinations
+    #create exposures for all crop-irrigation combinations and save them
     for i, _ in enumerate(filenames):
         item = filenames[i].split('_')
         cropyield = CropyieldIsimip()
         cropyield.set_from_single_run(input_dir=input_dir, filename=filename, \
                                       hist_mean=hist_mean_dir, bbox=bbox, \
-                                      crop=((item[2]).split('-'))[0], \
+                                      yearrange=yearrange, crop=((item[2]).split('-'))[0], \
                                       irr=(((item[2]).split('-'))[1]).split('.')[0], unit=unit)
         filename_saveto = 'cropyield_isimip_'+((item[2]).split('-'))[0]+'-'+( \
                                               ((item[2]).split('-'))[1]).split('.')[0]+ \
