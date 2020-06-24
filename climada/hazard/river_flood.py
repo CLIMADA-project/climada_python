@@ -308,8 +308,9 @@ class RiverFlood(Hazard):
         """
         
         fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
+
         if save_centr:
-            self.fv_ann_centr= fv_ann_centr
+            self.fv_ann_centr= sp.sparse.csr_matrix(fla_ann_centr)
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
 
