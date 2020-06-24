@@ -161,7 +161,6 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=rand_geom)
-          
             return
         
         elif not centroids:
@@ -211,6 +210,17 @@ class RiverFlood(Hazard):
                               for i in event_index])
 
     def _select_event(self, time, years):
+        """
+        Selects events only in specific years and returns corresponding event
+        indices
+        Parameters:
+            time: event time stemps (array datetime64)
+            years: years to be selcted (int array)
+        Raises:
+            KeyError
+        Returns:
+            event indices (int array)
+        """
         event_names = pd.to_datetime(time).year
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
@@ -221,7 +231,13 @@ class RiverFlood(Hazard):
     
     
     def exclude_trends(self, fld_trend_path, dis):
-        
+        """
+        Function allows to exclude flood impacts that are caused in areas
+        exposed discharge trends other than the selected one. (This function
+        is only needed for very specific applications)
+        Raises:
+            NameError
+        """
         if not os.path.exists(fld_trend_path):
             LOGGER.error('Invalid ReturnLevel-file path ' + fld_trend_path)
             raise NameError
@@ -233,7 +249,6 @@ class RiverFlood(Hazard):
                    metafrc['transform'][4]).astype(int)
             
         trend = trend_data[:, y_i*metafrc['width'] + x_i]    
-        
 
         if dis == 'pos':
             dis_map = np.greater(trend, 0)
@@ -249,6 +264,15 @@ class RiverFlood(Hazard):
         self.fraction = sp.sparse.csr_matrix(new_fraction)
 
     def exclude_returnlevel(self, frc_path):
+        """
+        Function allows to exclude flood impacts below a certain return level 
+        by manipulating flood fractions in a way that the array flooded more
+        frequently than the treshold value is excluded. (This function
+        is only needed for very specific applications)
+        Raises:
+            NameErroris function
+        """
+        
         if not os.path.exists(frc_path):
             LOGGER.error('Invalid ReturnLevel-file path ' + frc_path)
             raise NameError
@@ -294,6 +318,10 @@ class RiverFlood(Hazard):
             self.fla_ev_centr = sp.sparse.csr_matrix(fla_ev_centr)
             
     def _annual_event_mask(self, event_years, years):
+        """ Assignes events to each year
+        Returns:
+            bool array (columns contain events, rows contain years)
+        """
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
         for year_ind in range(len(years)):
             events = np.where(event_years == years[year_ind])[0]
@@ -306,7 +334,7 @@ class RiverFlood(Hazard):
         Raises:
             MemoryError
         """
-        
+    
         fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
 
         if save_centr:

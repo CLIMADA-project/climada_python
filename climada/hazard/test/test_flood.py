@@ -201,9 +201,10 @@ class TestRiverFlood(unittest.TestCase):
         
     #     rf_pos = RiverFlood()
     #     rf_pos.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-    #                     countries=['UGA'], ISINatIDGrid=True)
+    #                     countries=['CHE'], ISINatIDGrid=True)
         
     #     rf_pos.exclude_trends(dis_trends, 'pos')
+        
         
     
     # def test_rand_polygon(self):
@@ -281,7 +282,6 @@ class TestRiverFlood(unittest.TestCase):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                       centroids=rand_centroids, ISINatIDGrid=False)
-
         tag = ('/home/insauer/Climada/climada_python/data/demo/' +
               'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
               'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
@@ -367,8 +367,8 @@ class TestRiverFlood(unittest.TestCase):
                 testRFaddset.event_name = ['2000_2']
             else:
                 testRFaddset.event_name = [str(years[i])]
-            testRFset.append(testRFaddset)climada/hazard/river_flood.py
-
+            testRFset.append(testRFaddset)
+                
         testRFset.set_flooded_area(save_centr=True)
         self.assertEqual(testRFset.units, 'm')
 

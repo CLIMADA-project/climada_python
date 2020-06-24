@@ -65,9 +65,9 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
         self.assertEqual(iso[0], 'LIE')
 
-
+read_flood
     def test_full_impact(self):
-        """ read_flood"""
+        """ test full flood impact"""
         testRF = RiverFlood()
         testRF.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                            countries = ['CHE'])
@@ -80,12 +80,7 @@ class TestRiverFlood(unittest.TestCase):
         imp.calc(gdpa, if_set,testRF)
         
         self.assertAlmostEqual(imp.at_event[0], 226839.72426476143)
-        self.assertAlmostEqual(gdpa['if_RF'], 226839.72426476143)
-
-
-        
-
-    
+        self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)
 
 
 #
