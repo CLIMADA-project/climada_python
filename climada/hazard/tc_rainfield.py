@@ -89,7 +89,7 @@ class TCRain(Hazard):
         self.tag.description = description
 
     @staticmethod
-    @jit
+    @jit(forceobj=True)
     def _set_from_track(track, centroids, dist_degree=3, intensity=0.1):
         """ Set hazard from track and centroids.
         Parameters:
