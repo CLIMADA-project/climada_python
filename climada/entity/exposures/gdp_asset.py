@@ -29,9 +29,8 @@ import logging
 import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.util.coordinates import isimip_iso2natid, get_isimip_gridpoints
-from climada.util.constants import NAT_REG_ID, SYSTEM_DIR
-from climada.util.constants import DEF_CRS
+from climada.util.coordinates import country_iso2natid, get_region_gridpoints
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEF_CRS, SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -70,9 +69,8 @@ class GDP2Asset(Exposures):
 
             if not countries:
                 if reg:
-                    natID_info = pd.read_csv(NAT_REG_ID)
-                    natISO = natID_info["ISO"][np.isin(natID_info["Reg_name"],
-                                                       reg)]
+                    reg_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
+                    natISO = reg_info["ISO"][np.isin(reg_info["Reg_name"], reg)]
                     countries = np.array(natISO)
                 else:
                     LOGGER.error('set_countries requires countries or reg')
@@ -108,10 +106,11 @@ class GDP2Asset(Exposures):
         Returns:
             np.array
         """
-        natID = isimip_iso2natid(countryISO)
-        natID_info = pd.read_csv(NAT_REG_ID)
+        natID = country_iso2natid(countryISO)
+        natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-        lat, lon = get_isimip_gridpoints(countries=[natID], iso=False)
+        lat, lon = get_region_gridpoints(countries=[natID], iso=False,
+            basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)

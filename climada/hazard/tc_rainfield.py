@@ -25,7 +25,6 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
-from climada.util.constants import GLB_CENTROIDS_MAT
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,8 +62,7 @@ class TCRain(Hazard):
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids()
-            centroids.read_mat(GLB_CENTROIDS_MAT)
+            centroids = Centroids.from_base_grid(res_as=360, land=True)
 
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()

@@ -113,9 +113,10 @@ class BlackMarble(Exposures):
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
-            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
-            coord_nl[0, 1])
+        rows, cols, ras_trans = pts_to_raster_meta(
+            (self.longitude.min(), self.latitude.min(),
+             self.longitude.max(), self.latitude.max()),
+            (coord_nl[0, 1], -coord_nl[0, 1]))
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
 
     @staticmethod
