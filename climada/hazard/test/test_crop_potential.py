@@ -43,7 +43,7 @@ class TestCropPotential(unittest.TestCase):
         self.assertEqual(haz.centroids.lat.max(), 54.75)
         self.assertEqual(haz.intensity.shape, (5, 1092))
         self.assertEqual(haz.event_id.size, 5)
-        self.assertAlmostEqual(haz.intensity.max(), 9.803154)
+        self.assertAlmostEqual(haz.intensity.max(), 10.176164, places=5)
 
     def test_set_rel_yield(self):
         """Test setting intensity to relativ yield"""
@@ -53,11 +53,11 @@ class TestCropPotential(unittest.TestCase):
                         co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(np.array([2001, 2005]))
         haz.set_rel_yield_to_int(hist_mean)
-        self.assertAlmostEqual(np.max(hist_mean), 8.376255)
+        self.assertAlmostEqual(np.max(hist_mean), 8.098413, places=5)
         self.assertEqual(haz.intensity.shape, (5, 1092))
-        self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 2.0944125652313232)
-        self.assertAlmostEqual(haz.intensity.max, 2.0944125652313232)
-        self.assertAlmostEqual(haz.intensity.min, 0.0)
+        self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 4.0, places=5)
+        self.assertAlmostEqual(haz.intensity.max, 4.0, places=5)
+        self.assertAlmostEqual(haz.intensity.min, 0.0, places=5)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropPotential)
