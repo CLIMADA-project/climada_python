@@ -27,7 +27,6 @@ import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
-import math
 import datetime as dt
 from datetime import date
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
@@ -36,7 +35,7 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 
-from climada.util.coordinates import get_isimip_gridpoints
+from climada.util.coordinates import get_region_gridpoints
 
 LOGGER = logging.getLogger(__name__)
 
@@ -282,22 +281,14 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
-        lon_min = math.floor(min(self.centroids.coord[:, 1]))
-        lon_max = math.ceil(max(self.centroids.coord[:, 1]))
-        lat_min = math.floor(min(self.centroids.coord[:, 0]))
-        lat_max = math.ceil(max(self.centroids.coord[:, 0]))
-        diff_lon = np.diff(lon)[0]
-        diff_lat = np.diff(lat)[0]
-        win = np.zeros((2, 2), dtype=int)
-        win[0, 0] = min(np.where((lon >= lon_min - diff_lon) &
-                                 (lon <= lon_max + diff_lon))[0])
-        win[1, 0] = max(np.where((lon >= lon_min - diff_lon) &
-                                 (lon <= lon_max + diff_lon))[0])
-        win[0, 1] = min(np.where((lat >= lat_min - diff_lat) &
-                                 (lat <= lat_max + diff_lat))[0])
-        win[1, 1] = max(np.where((lat >= lat_min - diff_lat) &
-                                 (lat <= lat_max + diff_lat))[0])
-        return win
+        steps = np.array([lon[1] - lon[0], lat[1] - lat[0]])
+        bounds = np.asarray(self.centroids.total_bounds)
+        bounds[[0,1]] = np.floor(bounds[[0,1]]) - steps
+        bounds[[2,3]] = np.ceil(bounds[[2,3]]) + steps
+        return np.array([
+            ((lon >= bounds[0]) & (lon <= bounds[2])).nonzero()[0][[0,-1]],
+            ((lat >= bounds[1]) & (lat <= bounds[3])).nonzero()[0][[0,-1]],
+        ], dtype=np.int).T
 
     def set_flooded_area(self):
         """ Calculates flooded area for hazard. sets yearly flooded area and
@@ -386,7 +377,8 @@ class RiverFlood(Hazard):
         Returns:
             np.array
         """
-        lat, lon = get_isimip_gridpoints(countries, regions=reg, box=True)
+        lat, lon = get_region_gridpoints(countries, regions=reg, rect=True,
+            iso=True, basemap="isimip", resolution=150)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.coord.shape[0])
@@ -405,7 +397,8 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
-        lat, lon = get_isimip_gridpoints(countries=countries, regions=reg)
+        lat, lon = get_region_gridpoints(countries=countries, regions=reg,
+            basemap="isimip", resolution=150)
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])

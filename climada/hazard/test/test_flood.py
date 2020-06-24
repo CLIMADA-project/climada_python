@@ -178,9 +178,9 @@ class TestRiverFlood(unittest.TestCase):
         testRFCut.centroids.lat = centr.lat
         lon = np.arange(7, 20, 0.2)
         lat = np.arange(40, 50, 0.2)
-        test_window = [[4, 24], [55, 45]]
-        self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
-                                       test_window))
+        test_window = [[9, 29], [55, 45]]
+        cut_window = testRFCut._cut_window(lon, lat)
+        self.assertTrue(np.array_equal(cut_window, test_window))
 
 if __name__ == "__main__":
     # Execute Tests
