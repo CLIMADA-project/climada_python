@@ -367,7 +367,7 @@ class TestRiverFlood(unittest.TestCase):
                 testRFaddset.event_name = ['2000_2']
             else:
                 testRFaddset.event_name = [str(years[i])]
-            testRFset.append(testRFaddset)
+            testRFset.append(testRFaddset)climada/hazard/river_flood.py
 
         testRFset.set_flooded_area(save_centr=True)
         self.assertEqual(testRFset.units, 'm')
