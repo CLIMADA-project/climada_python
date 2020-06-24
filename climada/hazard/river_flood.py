@@ -32,14 +32,14 @@ import datetime as dt
 from datetime import date
 from rasterio.warp import Resampling
 import copy
-from climada.util.constants import NAT_REG_ID, ISIMIP_GPWV3_NATID_150AS
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV , ISIMIP_GPWV3_NATID_150AS
 from climada.util.coordinates import get_region_gridpoints,\
                                      region2isos,country_iso2natid
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.util.coordinates import get_land_geometry, read_raster
 
-NATID_INFO = pd.read_csv(NAT_REG_ID)
+NATID_INFO = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
 
 
 LOGGER = logging.getLogger(__name__)
