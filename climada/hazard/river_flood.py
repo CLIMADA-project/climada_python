@@ -196,7 +196,7 @@ class RiverFlood(Hazard):
         self.units = 'm'
         self.tag.file_name = dph_path + ';' + frc_path
         self.event_id = np.arange(self.intensity.shape[0])
-        self.event_name = list(map(str, years))
+        self.event_name = list(map(str, years))NAT_REG_ID
 
         if origin:
             self.orig = np.ones(self.size, bool)
