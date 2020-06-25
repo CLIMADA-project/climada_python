@@ -449,6 +449,7 @@ class TCTracks():
                        'sid': sid,
                        'name': sid, 'orig_event_flag': False,
                        'basin': basin[0],
+                       'id_no': i_track,
                        'category': set_category(wind, 'kn')}
         self.data.append(tr_ds)
 
