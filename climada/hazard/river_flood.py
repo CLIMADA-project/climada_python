@@ -196,7 +196,7 @@ class RiverFlood(Hazard):
         self.units = 'm'
         self.tag.file_name = dph_path + ';' + frc_path
         self.event_id = np.arange(self.intensity.shape[0])
-        self.event_name = list(map(str, years))NAT_REG_ID
+        self.event_name = list(map(str, years))
 
         if origin:
             self.orig = np.ones(self.size, bool)
@@ -338,7 +338,7 @@ class RiverFlood(Hazard):
         fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
 
         if save_centr:
-            self.fv_ann_centr= sp.sparse.csr_matrix(fla_ann_centr)
+            self.fv_ann_centr= sp.sparse.csr_matrix(fv_ann_centr)
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
 
