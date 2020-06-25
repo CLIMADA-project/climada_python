@@ -24,7 +24,6 @@ import numpy as np
 from climada.hazard.river_flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.hazard.centroids import Centroids
-from climada.entity.exposures.gdp_asset import GDP2Asset
 
 
 class TestRiverFlood(unittest.TestCase):
@@ -98,13 +97,7 @@ class TestRiverFlood(unittest.TestCase):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                         countries=['DEU'], ISINatIDGrid=True)
-        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
-                'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
-                'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
-                'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
-                'istorical_flopros_gev_picontrol_2000_0.1.nc')
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
@@ -134,13 +127,9 @@ class TestRiverFlood(unittest.TestCase):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                         reg=['SWA'], ISINatIDGrid=True)
-        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
-                'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
-                'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
-                'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
-                'istorical_flopros_gev_picontrol_2000_0.1.nc')
+
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
+
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
@@ -172,13 +161,7 @@ class TestRiverFlood(unittest.TestCase):
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                         countries=['DEU'])
 
-        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
-                'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
-                'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
-                'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
-                'istorical_flopros_gev_picontrol_2000_0.1.nc')
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
@@ -218,13 +201,7 @@ class TestRiverFlood(unittest.TestCase):
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                       reg=['SWA'])
 
-        tag = '/home/insauer/Climada/climada_python/data/demo/' +\
-              'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +\
-              'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +\
-              'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +\
-              'istorical_flopros_gev_picontrol_2000_0.1.nc'
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
@@ -247,13 +224,8 @@ class TestRiverFlood(unittest.TestCase):
     def test_global_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC)
-        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
-              'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
-              'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
-              'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
-              'istorical_flopros_gev_picontrol_2000_0.1.nc')
+
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
@@ -282,13 +254,8 @@ class TestRiverFlood(unittest.TestCase):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                       centroids=rand_centroids, ISINatIDGrid=False)
-        tag = ('/home/insauer/Climada/climada_python/data/demo/' +
-              'flddph_WaterGAP2_miroc5_historical_flopros_gev_' +
-              'picontrol_2000_0.1.nc;/home/insauer/Climada/cli' +
-              'mada_python/data/demo/fldfrc_WaterGAP2_miroc5_h' +
-              'istorical_flopros_gev_picontrol_2000_0.1.nc')
+
         self.assertEqual(rf.date[0], 730303)
-        self.assertEqual(rf.tag.file_name, tag)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
