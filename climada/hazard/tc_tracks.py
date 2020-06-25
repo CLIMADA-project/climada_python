@@ -41,6 +41,7 @@ from sklearn.neighbors import DistanceMetric
 import netCDF4 as nc
 from numba import jit
 import scipy.io.matlab as matlab
+import warnings
 
 from climada.util import ureg
 from climada.util.config import CONFIG
@@ -75,13 +76,21 @@ IBTRACS_AGENCIES = [
 """ Names/IDs of agencies in IBTrACS v4.0 """
 
 IBTRACS_USA_AGENCIES = [
-    'atcf', 'hurdat_atl', 'hurdat_epa', 'jtwc_ep', 'jtwc_io', 'jtwc_sh',
-    'jtwc_wp', 'nhc_working_bt', 'tcvightals', 'tcvitals',
+    'atcf', 'cphc', 'hurdat_atl', 'hurdat_epa', 'jtwc_cp', 'jtwc_ep', 'jtwc_io',
+    'jtwc_sh', 'jtwc_wp', 'nhc_working_bt', 'tcvightals', 'tcvitals'
 ]
 """ Names/IDs of agencies in IBTrACS that correspond to 'usa_*' variables """
 
 DEF_ENV_PRESSURE = 1010
 """ Default environmental pressure """
+
+BASIN_ENV_PRESSURE = {
+    '': DEF_ENV_PRESSURE,
+    'EP': 1010, 'NA': 1010, 'SA': 1010,
+    'NI': 1005, 'SI': 1005, 'WP': 1005,
+    'SP': 1004,
+}
+""" Basin-specific default environmental pressure """
 
 EMANUEL_RMW_CORR_FILES = [
     'temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat',
@@ -217,10 +226,117 @@ class TCTracks():
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
         ds = ds.sel(storm=match)
-        all_tracks = [self._read_ibtracs_netcdf_single(ds.sel(storm=i_track),
-                                                       provider, correct_pres)
-                      for i_track in range(ds.storm.size)]
-        self.data = [track for track in all_tracks if track is not None]
+        ds['valid_t'] = ds.time.notnull()
+        valid_st = ds.valid_t.any(dim="date_time")
+        invalid_st = np.nonzero(~valid_st.data)[0]
+        if invalid_st.size > 0:
+            st_ids = ', '.join(ds.sid.sel(storm=invalid_st).astype(str).data)
+            LOGGER.warning('No valid timestamps found for %s.', st_ids)
+            ds = ds.sel(storm=valid_st)
+
+        if not provider:
+            agency_pref = IBTRACS_AGENCIES.copy()
+            agency_map = { a.encode('utf-8'): i for i, a in enumerate(agency_pref) }
+            agency_map.update({
+                a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
+            })
+            agency_map[b''] = agency_map[b'wmo']
+            agency_fun = lambda x: agency_map[x]
+            track_agency = ds.wmo_agency.where(ds.wmo_agency != '', ds.usa_agency)
+            track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
+
+        for v in ['wind', 'pres', 'rmw', 'poci']:
+            if provider:
+                # enforce use of specified provider's data points
+                ds[v] = ds[f'{provider}_{v}']
+            else:
+                # array of values in order of preference
+                cols = [f'{a}_{v}' for a in agency_pref]
+                cols = [col for col in cols if col in ds.data_vars.keys()]
+                all_vals = ds[cols].to_array(dim='agency')
+                preferred_ix = all_vals.notnull().argmax(dim='agency')
+
+                if v in ['wind', 'pres']:
+                    # choice: wmo -> wmo_agency/usa_agency -> preferred
+                    ds[v] = ds['wmo_' + v] \
+                        .fillna(all_vals.isel(agency=track_agency_ix)) \
+                        .fillna(all_vals.isel(agency=preferred_ix))
+                else:
+                    ds[v] = all_vals.isel(agency=preferred_ix)
+        ds = ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
+                 'wind', 'pres', 'rmw', 'poci']]
+
+        if correct_pres:
+            ds['pres'][:] = _estimate_pressure(ds.pres, ds.wind, ds.lat, ds.lon)
+
+        ds['valid_t'] &= ds.wind.notnull() & ds.pres.notnull()
+        valid_st = ds.valid_t.any(dim="date_time")
+        invalid_st = np.nonzero(~valid_st.data)[0]
+        if invalid_st.size > 0:
+            st_ids = ', '.join(ds.sid.sel(storm=invalid_st).astype(str).data)
+            LOGGER.warning('No valid wind/pressure values found for %s.', st_ids)
+            ds = ds.sel(storm=valid_st)
+
+        max_wind = ds.wind.max(dim="date_time").data.ravel()
+        category_test = (max_wind[:,None] < np.array(SAFFIR_SIM_CAT)[None])
+        category = np.argmax(category_test, axis=1) - 1
+        basin_map = {b.encode("utf-8"): v for b,v in BASIN_ENV_PRESSURE.items()}
+        basin_fun = lambda b: basin_map[b]
+
+        ds['id_no'] = ds.sid.str.replace(b'N', b'0') \
+                            .str.replace(b'S', b'1') \
+                            .astype(float)
+        ds['time_step'] = xr.zeros_like(ds.time, dtype=float)
+        ds['time_step'][:,1:] = ds.time.diff(dim="date_time") / np.timedelta64(1, 's')
+        ds['time_step'][:,0] = ds.time_step[:,1]
+        provider = provider if provider else 'ibtracs'
+
+        all_tracks = []
+        for i_track, t_msk in enumerate(ds.valid_t.data):
+            st_ds = ds.sel(storm=i_track, date_time=t_msk)
+            st_penv = xr.apply_ufunc(basin_fun, st_ds.basin, vectorize=True)
+
+            with warnings.catch_warnings():
+                # See https://github.com/pydata/xarray/issues/4167
+                warnings.simplefilter(action="ignore", category=FutureWarning)
+
+                st_ds['rmw'] = st_ds.rmw \
+                    .ffill(dim='date_time', limit=1) \
+                    .bfill(dim='date_time', limit=1) \
+                    .fillna(0)
+                st_ds['poci'] = st_ds.poci \
+                    .ffill(dim='date_time', limit=4) \
+                    .bfill(dim='date_time', limit=4)
+                # this is the most time consuming line in the processing:
+                st_ds['poci'] = st_ds.poci.fillna(st_penv)
+
+            # ensure environmental pressure >= central pressure
+            # this is the second most time consuming line in the processing:
+            st_ds['poci'][:] = xr.ufuncs.fmax(st_ds.poci, st_ds.pres)
+
+            tr_ds = xr.Dataset({
+                'time_step': ('time', st_ds.time_step),
+                'radius_max_wind': ('time', st_ds.rmw.data),
+                'max_sustained_wind': ('time', st_ds.wind.data),
+                'central_pressure': ('time', st_ds.pres.data),
+                'environmental_pressure': ('time', st_ds.poci.data),
+            }, coords={
+                'time': st_ds.time.data,
+                'lat': ('time', st_ds.lat.data),
+                'lon': ('time', st_ds.lon.data),
+            }, attrs={
+                'max_sustained_wind_unit': 'kn',
+                'central_pressure_unit': 'mb',
+                'name': st_ds.name.astype(str).item(),
+                'sid': st_ds.sid.astype(str).item(),
+                'orig_event_flag': True,
+                'data_provider': provider,
+                'basin': st_ds.basin.values[0].astype(str).item(),
+                'id_no': st_ds.id_no.item(),
+                'category': category[i_track],
+            })
+            all_tracks.append(tr_ds)
+        self.data = all_tracks
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file(s).
@@ -912,136 +1028,6 @@ class TCTracks():
 
         self.data.append(tr_ds)
 
-    def _read_ibtracs_netcdf_single(self, ds, provider, correct_pres):
-        """ Read single track from ibtracs NetCDF
-
-            Parameters:
-            ds (Dataset): xarray Dataset of a single storm
-            provider (str): See `read_ibtracs_netcdf`.
-            correct_pres (bool): See `read_ibtracs_netcdf`.
-        """
-        name = ds.name.astype(str).item()
-        sid = ds.sid.astype(str).item()
-        basin = ds.basin.values[0].astype(str).item()
-        LOGGER.info('Reading %s: %s', sid, name)
-
-        # cut down dataset to only non-null times
-        valid_t = ds.time.notnull()
-        if valid_t.sum() == 0:
-            LOGGER.warning('No valid data points found for %s.', sid)
-            return None
-        ds = ds.sel(date_time=valid_t)
-
-        agency_pref = IBTRACS_AGENCIES.copy()
-        agency_map = { a.encode('utf-8'): i for i, a in enumerate(agency_pref) }
-        agency_map.update({
-            a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
-        })
-        agency_map[b''] = agency_map[b'wmo']
-        agency_fun = lambda x: agency_map[x]
-        track_agency = ds.wmo_agency.where(ds.wmo_agency != b'', ds.usa_agency)
-        track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
-
-        pref_vals = {}
-        for v in ['wind', 'pres']:
-            if provider:
-                # enforce use of specified provider's data points
-                pref_vals[v] = ds[f'{provider}_{v}']
-            else:
-                # array of values in order of preference
-                cols = [f'{a}_{v}' for a in agency_pref]
-                all_vals = ds[cols].to_array(dim='agency')
-                preferred_ix = all_vals.notnull().argmax(dim='agency')
-
-                # choice: wmo -> wmo_agency/usa_agency -> preferred
-                pref_vals[v] = ds['wmo_' + v] \
-                    .fillna(all_vals.isel(agency=track_agency_ix)) \
-                    .fillna(all_vals.isel(agency=preferred_ix))
-
-        if correct_pres:
-            pref_vals['pres'] = _estimate_pressure(pref_vals['pres'],
-                pref_vals['wind'], ds.lat, ds.lon)
-
-        valid = pref_vals['wind'].notnull() & pref_vals['pres'].notnull()
-        if not valid.any():
-            LOGGER.warning('Skipping %s. It does not contain valid values. '
-                           'Try another provider.', sid)
-            return None
-        ds = ds.sel(date_time=valid)
-        for v in pref_vals.keys():
-            pref_vals[v] = pref_vals[v].sel(date_time=valid)
-
-        for v in ['rmw', 'poci']:
-            if provider:
-                # enforce use of specified provider's data points
-                pref_vals[v] = ds[f'{provider}_{v}']
-            else:
-                cols = [f'{a}_{v}' for a in agency_pref]
-                cols = [col for col in cols if col in ds.data_vars.keys()]
-                all_vals = ds[cols].to_array(dim='agency')
-                preferred_ix = all_vals.notnull().argmax(dim='agency')
-                pref_vals[v] = all_vals.isel(agency=preferred_ix)
-
-        tr_ds = pd.DataFrame({
-            'time': ds.time,
-            'lat': ds.lat,
-            'lon': ds.lon,
-            'central_pressure': pref_vals['pres'],
-            'max_sustained_wind': pref_vals['wind'],
-            'radius_max_wind': pref_vals['rmw'],
-            'environmental_pressure': pref_vals['poci'],
-        })
-
-        assert np.count_nonzero(tr_ds.lat.isna()) == 0
-        assert np.count_nonzero(tr_ds.lon.isna()) == 0
-        assert np.count_nonzero(tr_ds.central_pressure.isna()) == 0
-        df_dup = tr_ds.drop_duplicates('time')
-        assert df_dup.shape[0] == tr_ds.shape[0]
-        tr_ds.environmental_pressure = tr_ds.environmental_pressure \
-            .ffill(limit=4) \
-            .bfill(limit=4) \
-            .fillna(_set_penv(basin))
-        tr_ds.radius_max_wind = tr_ds.radius_max_wind \
-            .ffill(limit=1) \
-            .bfill(limit=1) \
-            .fillna(0)
-        tr_ds['time_step'] = tr_ds.time.diff().dt.total_seconds() / 3600
-        if tr_ds.shape[0]:
-            tr_ds.time_step.values[0] = tr_ds.time_step.values[-1]
-        else:
-            LOGGER.warning('Skipping %s. No usable data.', sid)
-            return None
-
-        # ensure environmental pressure > central pressure
-        tr_ds.environmental_pressure = np.fmax(tr_ds.environmental_pressure,
-                                               tr_ds.central_pressure)
-
-        # construct xarray
-        tr_ds = xr.Dataset.from_dataframe(tr_ds.set_index('time'))
-        tr_ds.coords['lat'] = ('time', tr_ds.lat)
-        tr_ds.coords['lon'] = ('time', tr_ds.lon)
-        tr_ds.attrs = {
-            'name': name,
-            'sid': sid,
-            'id_no': float(sid.replace('N', '0').replace('S', '1')),
-            'basin': basin,
-            'data_provider': provider if provider else 'ibtracs',
-            'max_sustained_wind_unit': 'kn',
-            'central_pressure_unit': 'mb',
-            'orig_event_flag': True,
-            'category': set_category(tr_ds.max_sustained_wind.values, 'kn'),
-        }
-        return tr_ds
-
-def _set_penv(basin):
-    """ Set environmental pressure depending on basin """
-    penv = 1010
-    if basin in ('NI', 'SI', 'WP'):
-        penv = 1005
-    elif basin == 'SP':
-        penv = 1004
-    return penv
-
 
 def _calc_land_geom(ens_track):
     """Compute land geometry used for land distance computations.
@@ -1546,7 +1532,10 @@ def _check_apply_decay_hist_plot(hist_tracks):
 def _estimate_pressure(cen_pres, v_max, lat, lon):
     """ Replace missing pressures with statistical estimate from location
         and maximum wind speed. """
-    msk = (cen_pres <= 0)
+    cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
+    v_max = np.where(np.isnan(v_max), -1, v_max)
+    lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
+    msk = (cen_pres <= 0) & (v_max > 0) & (lat > -999) & (lon > -999)
     # ibtracs 1980 -2013 (r2=0.91):
     c_const, c_lat, c_lon, c_vmax = 1024.388, 0.047, -0.029, -0.818
     # peduzzi:
@@ -1591,7 +1580,7 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
         raise ValueError
     return (np.nanmax(wind) * ur_orig).to(ur_dest).magnitude
 
-def set_category(max_sus_wind, max_sus_wind_unit, saffir_scale=None):
+def set_category(max_sus_wind, wind_unit, saffir_scale=None):
     """Add storm category according to saffir-simpson hurricane scale
 
       - -1 tropical depression
@@ -1604,20 +1593,17 @@ def set_category(max_sus_wind, max_sus_wind_unit, saffir_scale=None):
 
     Parameters:
         max_sus_wind (np.array): max sustained wind
-        max_sus_wind_unit (str): units of max sustained wind
+        wind_unit (str): units of max sustained wind
         saffir_scale (list, optional): Saffir-Simpson scale in same units as wind
 
     Returns:
         double
     """
-    if saffir_scale:
-        max_wind = np.nanmax(max_sus_wind)
-    elif max_sus_wind_unit != 'kn':
-        max_wind = _change_max_wind_unit(max_sus_wind, max_sus_wind_unit, 'kn')
+    if saffir_scale is None:
         saffir_scale = SAFFIR_SIM_CAT
-    else:
-        saffir_scale = SAFFIR_SIM_CAT
-        max_wind = np.nanmax(max_sus_wind)
+        if wind_unit != 'kn':
+            max_sus_wind = _change_max_wind_unit(max_sus_wind, wind_unit, 'kn')
+    max_wind = np.nanmax(max_sus_wind)
     try:
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:

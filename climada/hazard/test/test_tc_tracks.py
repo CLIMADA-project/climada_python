@@ -141,25 +141,6 @@ class TestIO(unittest.TestCase):
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
-    def test_penv_pass(self):
-        """ Test _set_penv function."""
-        basin = 'US'
-        self.assertEqual(tc._set_penv(basin), 1010)
-        basin = 'NA'
-        self.assertEqual(tc._set_penv(basin), 1010)
-        basin = 'SA'
-        self.assertEqual(tc._set_penv(basin), 1010)
-        basin = 'NI'
-        self.assertEqual(tc._set_penv(basin), 1005)
-        basin = 'SI'
-        self.assertEqual(tc._set_penv(basin), 1005)
-        basin = 'SP'
-        self.assertEqual(tc._set_penv(basin), 1004)
-        basin = 'WP'
-        self.assertEqual(tc._set_penv(basin), 1005)
-        basin = 'EP'
-        self.assertEqual(tc._set_penv(basin), 1010)
-
     def test_get_track_pass(self):
         """ Test get_track."""
         tc_track = TCTracks()
