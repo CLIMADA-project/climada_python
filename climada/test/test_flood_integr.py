@@ -65,7 +65,6 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
         self.assertEqual(iso[0], 'LIE')
 
-read_flood
     def test_full_impact(self):
         """ test full flood impact"""
         testRF = RiverFlood()
