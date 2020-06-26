@@ -28,7 +28,6 @@ from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.engine import Impact
 
-
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
 
