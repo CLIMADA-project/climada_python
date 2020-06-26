@@ -34,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def obtain_image_landsat_composite(landsat_collection, time_range, area):
-    """ Selection of Landsat cloud-free composites in the Earth Engine library
+    """Selection of Landsat cloud-free composites in the Earth Engine library
     See also: https://developers.google.com/earth-engine/landsat
 
     Parameters:
@@ -54,7 +54,7 @@ def obtain_image_landsat_composite(landsat_collection, time_range, area):
     return image_composite
 
 def obtain_image_median(collection, time_range, area):
-    """ Selection of median from a collection of images in the Earth Engine library
+    """Selection of median from a collection of images in the Earth Engine library
     See also: https://developers.google.com/earth-engine/reducers_image_collection
 
     Parameters:
@@ -74,7 +74,7 @@ def obtain_image_median(collection, time_range, area):
     return image_median
 
 def obtain_image_sentinel(sentinel_collection, time_range, area):
-    """ Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
+    """Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
     See also: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2
 
     Parameters:

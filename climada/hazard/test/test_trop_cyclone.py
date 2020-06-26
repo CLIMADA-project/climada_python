@@ -80,7 +80,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 280)
 
     def test_set_one_file_pass(self):
-        """ Test set function set_from_tracks with one input."""
+        """Test set function set_from_tracks with one input."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_haz = TropCyclone()
@@ -109,7 +109,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
     def test_two_files_pass(self):
-        """ Test set function set_from_tracks with two ibtracs."""
+        """Test set function set_from_tracks with two ibtracs."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TropCyclone()
@@ -139,7 +139,7 @@ class TestModel(unittest.TestCase):
     """Test modelling of tropical cyclone"""
 
     def test_extra_rad_max_wind_pass(self):
-        """ Test _extra_rad_max_wind function. Compare to MATLAB reference."""
+        """Test _extra_rad_max_wind function. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
@@ -159,7 +159,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(rad_max_wind[200], 59.975901084074955)
 
     def test_bs_hol08_pass(self):
-        """" Test _bs_hol08 function. Compare to MATLAB reference."""
+        """Test _bs_hol08 function. Compare to MATLAB reference."""
         v_trans = 5.241999541820597
         penv = 1010
         pcen = 1005.263333333329
@@ -181,7 +181,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(_bs_res, 1.265551666104679)
 
     def test_stat_holland(self):
-        """ Test _stat_holland function. Compare to MATLAB reference."""
+        """Test _stat_holland function. Compare to MATLAB reference."""
         r_arr = np.array([293.6067129546862, 298.2652319413182])
         r_max = 75.547902916671745
         hol_b = 1.265551666104679
@@ -212,13 +212,13 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
 
     def test_coastal_centroids_pass(self):
-        """ Test selection of centroids close to coast. MATLAB reference. """
+        """Test selection of centroids close to coast. MATLAB reference."""
         coastal = tc.coastal_centr_idx(CENTR_TEST_BRB)
 
         self.assertEqual(coastal.size, CENTR_TEST_BRB.size)
 
     def test_vtrans_correct(self):
-        """ Test _vtrans_correct function. Compare to MATLAB reference."""
+        """Test _vtrans_correct function. Compare to MATLAB reference."""
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
@@ -249,7 +249,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(v_trans_corr[5] * to_kn, 0.06855335593983322)
 
     def test_vtrans_pass(self):
-        """ Test _vtrans function. Compare to MATLAB reference."""
+        """Test _vtrans function. Compare to MATLAB reference."""
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
@@ -264,7 +264,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466256012880)
 
     def test_vang_sym(self):
-        """ Test _vang_sym function. Compare to MATLAB reference. """
+        """Test _vang_sym function. Compare to MATLAB reference."""
         i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
@@ -293,7 +293,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(v_ang[5] * to_kn, 11.305188714213809)
 
     def test_windfield(self):
-        """ Test _windfield function. Compare to MATLAB reference. """
+        """Test _windfield function. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
@@ -313,7 +313,7 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(wind[220] * to_kn, 69.62477194818004)
 
     def test_gust_from_track(self):
-        """ Test gust_from_track function. Compare to MATLAB reference. """
+        """Test gust_from_track function. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
@@ -335,7 +335,7 @@ class TestModel(unittest.TestCase):
 class TestClimateSce(unittest.TestCase):
 
     def test_apply_criterion_track(self):
-        """ Test _apply_criterion function. """
+        """Test _apply_criterion function."""
         criterion = list()
         tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
@@ -363,7 +363,7 @@ class TestClimateSce(unittest.TestCase):
         self.assertTrue(np.allclose(tc.intensity[2, :].toarray()*1.03375, tc_cc.intensity[2, :].toarray()))
 
     def test_two_criterion_track(self):
-        """ Test _apply_criterion function with two criteria """
+        """Test _apply_criterion function with two criteria"""
         criterion = list()
         tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}

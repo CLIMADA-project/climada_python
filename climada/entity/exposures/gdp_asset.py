@@ -47,7 +47,7 @@ class GDP2Asset(Exposures):
 
     def set_countries(self, countries=[], reg=[], ref_year=2000,
                       path=None):
-        """ Model countries using values at reference year. If GDP or income
+        """Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
 
@@ -95,8 +95,8 @@ class GDP2Asset(Exposures):
         self.crs = DEF_CRS
         # set meta
         res = 0.0416666
-        
-    
+
+
         rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
                                                     self.latitude.min(),
                                                     self.longitude.max(),
@@ -106,7 +106,7 @@ class GDP2Asset(Exposures):
 
     @staticmethod
     def _set_one_country(countryISO, ref_year, path=None):
-        """ Extract coordinates of selected countries or region
+        """Extract coordinates of selected countries or region
         from NatID grid.
         Parameters:
             countryISO(str): ISO3 of country
@@ -137,7 +137,7 @@ class GDP2Asset(Exposures):
 
 
 def _read_GDP(shp_exposures, ref_year, path=None):
-    """ Read GDP-values for the selected area and convert it to asset.
+    """Read GDP-values for the selected area and convert it to asset.
         Parameters:
             shp_exposure(2d-array float): coordinates of area
             ref_year(int): year under consideration
@@ -213,7 +213,7 @@ def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
 
 
 def _fast_if_mapping(countryID, natID_info):
-    """ Assign region-ID and impact function id.
+    """Assign region-ID and impact function id.
         Parameters:
             countryID (int)
             natID_info: dataframe of lookuptable

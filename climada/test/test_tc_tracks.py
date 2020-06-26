@@ -33,16 +33,16 @@ class TestDownload(unittest.TestCase):
     """Test reading TC from IBTrACS files"""
 
     def test_raw_ibtracs_empty_pass(self):
-        """ read_ibtracs_netcdf"""
+        """read_ibtracs_netcdf"""
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
         self.assertEqual(tc_track.get_track(), [])
 
 class TestWriteRead(unittest.TestCase):
-    """Test writting and reading netcdf4 TCTracks instances """
+    """Test writting and reading netcdf4 TCTracks instances"""
 
     def test_write_read_pass(self):
-        """ read_ibtracs_netcdf"""
+        """read_ibtracs_netcdf"""
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=True)
         tc_track.write_netcdf(DATA_DIR)
@@ -56,7 +56,7 @@ class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
     def test_penv_rmax_penv_pass(self):
-        """ read_ibtracs_netcdf"""
+        """read_ibtracs_netcdf"""
         tc_track = TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
         penv_ref = np.ones(97)*1010
@@ -132,7 +132,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.size, 43)
 
     def test_filter_ibtracs_track_pass(self):
-        """ Test _filter_ibtracs """
+        """Test _filter_ibtracs"""
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
 
         storm_id='1988234N13299'
@@ -141,7 +141,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertTrue(sel, np.array([10000]))
 
     def test_filter_ibtracs_year_basin_pass(self):
-        """ Test _filter_ibtracs """
+        """Test _filter_ibtracs"""
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
 
         tc_track = TCTracks()
@@ -161,7 +161,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(sel.size, 48)
 
     def test_ibtracs_correct_pass(self):
-        """ Check correct_pres option """
+        """Check correct_pres option"""
         tc_try = TCTracks()
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289', correct_pres=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1011.2905126953125)
@@ -169,7 +169,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011.6555029296875)
 
     def test_wrong_decay_pass(self):
-        """ Test decay not implemented when coefficient < 1 """
+        """Test decay not implemented when coefficient < 1"""
         track = TCTracks()
         track.read_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
 

@@ -34,14 +34,14 @@ from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
 LOGGER = logging.getLogger(__name__)
 
 DIST_DEF = ['approx', 'haversine']
-""" Distances """
+"""Distances"""
 
 METHOD = ['NN']
-""" Interpolation methods """
+"""Interpolation methods"""
 
 THRESHOLD = 100
-""" Distance threshold in km. Nearest neighbors with greater distances are
-not considered. """
+"""Distance threshold in km. Nearest neighbors with greater distances are
+not considered."""
 
 @jit(nopython=True, parallel=True)
 def dist_approx(lats1, lons1, cos_lats1, lats2, lons2):
@@ -52,7 +52,7 @@ def dist_approx(lats1, lons1, cos_lats1, lats2, lons2):
 
 @jit(nopython=True, parallel=True)
 def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
-    """ Compute squared equirectangular approximation distance. Values need
+    """Compute squared equirectangular approximation distance. Values need
     to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
     d_lon = lons1 - lons2
     d_lat = lats1 - lats2
@@ -60,7 +60,7 @@ def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
 
 def interpol_index(centroids, coordinates, method=METHOD[0], \
                    distance=DIST_DEF[1], threshold=THRESHOLD):
-    """ Returns for each coordinate the centroids indexes used for
+    """Returns for each coordinate the centroids indexes used for
     interpolation.
 
     Parameters:
@@ -91,7 +91,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
     return interp
 
 def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
-    """ Compute the nearest centroid for each coordinate using the
+    """Compute the nearest centroid for each coordinate using the
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
 
@@ -137,7 +137,7 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     return assigned
 
 def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
-    """ Compute the neareast centroid for each coordinate using a Ball
+    """Compute the neareast centroid for each coordinate using a Ball
     tree with haversine distance.
 
     Parameters:

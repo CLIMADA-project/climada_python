@@ -42,16 +42,16 @@ from climada.util.coordinates import pts_to_raster_meta
 LOGGER = logging.getLogger(__name__)
 
 DEF_RES_NOAA_KM = 1
-""" Default approximate resolution for NOAA NGDC nightlights in km."""
+"""Default approximate resolution for NOAA NGDC nightlights in km."""
 
 DEF_RES_NASA_KM = 0.5
-""" Default approximate resolution for NASA's nightlights in km."""
+"""Default approximate resolution for NASA's nightlights in km."""
 
 DEF_HAZ_TYPE = 'TC'
-""" Default hazard type used in impact functions id. """
+"""Default hazard type used in impact functions id."""
 
 DEF_POLY_VAL = [0, 0, 1]
-""" Default polynomial transformation used. """
+"""Default polynomial transformation used."""
 
 class BlackMarble(Exposures):
     """Defines exposures from night light intensity, GDP and income group.
@@ -67,7 +67,7 @@ class BlackMarble(Exposures):
 
     def set_countries(self, countries, ref_year=2016, res_km=None, from_hr=None,
                       **kwargs):
-        """ Model countries using values at reference year. If GDP or income
+        """Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
 
@@ -122,7 +122,7 @@ class BlackMarble(Exposures):
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,
                          res_km, admin1_geom, **kwargs):
-        """ Model one country.
+        """Model one country.
 
         Parameters:
             cntry_info (lsit): [cntry_id, cnytry_name, cntry_geometry,
@@ -167,20 +167,24 @@ class BlackMarble(Exposures):
         return exp_bkmrb
 
 def country_iso_geom(countries, shp_file):
-    """ Get country ISO alpha_3, country id (defined as the United Nations
+    """Get country ISO alpha_3, country id (defined as the United Nations
     Statistics Division (UNSD) 3-digit equivalent numeric codes and 0 if
     country not found) and country's geometry shape.
 
-    Parameters:
-        countries (list or dict): list of country names (admin0) or dict
-            with key = admin0 name and value = [admin1 names]
-        shp_file (cartopy.io.shapereader.Reader): shape file
+    Parameters
+    ----------
+    countries : list or dict
+        list of country names (admin0) or dict with key = admin0 name
+        and value = [admin1 names]
+    shp_file : cartopy.io.shapereader.Reader
+        shape file
 
-    Returns:
-        cntry_info (dict): key = ISO alpha_3 country, value = [country id,
-            country name, country geometry],
-        cntry_admin1 (dict): key = ISO alpha_3 country, value = [admin1
-            geometries]
+    Returns
+    -------
+    cntry_info : dict
+        key = ISO alpha_3 country, value = [country id, country name, country geometry],
+    cntry_admin1 : dict
+        key = ISO alpha_3 country, value = [admin1 geometries]
     """
     countries_shp = {}
     list_records = list(shp_file.records())
@@ -221,7 +225,7 @@ def country_iso_geom(countries, shp_file):
     return cntry_info, cntry_admin1
 
 def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
-    """ Get GDP and income group per country in reference year, or it closest
+    """Get GDP and income group per country in reference year, or it closest
     one. Source: world bank. Natural earth repository used when missing data.
     Modifies country info with values [country id, country name,
     country geometry, ref_year, gdp, income_group].
@@ -248,7 +252,7 @@ def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
         cntry_val.append(inc_grp)
 
 def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
-    """ Obtain nightlight from different sources depending on reference year.
+    """Obtain nightlight from different sources depending on reference year.
     Compute resolution factor used at resampling depending on source.
 
     Parameters:

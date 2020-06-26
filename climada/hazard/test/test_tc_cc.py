@@ -38,9 +38,9 @@ class TestKnutson(unittest.TestCase):
             self.assertTrue('function' in crit_val)
         self.assertEqual(criterion[0]['change'], 1.045)
         self.assertEqual(criterion[-1]['change'], 1 - 0.583)
-    
+
     def test_scale_pass(self):
-        """ Test calc_scale_knutson function. """
+        """Test calc_scale_knutson function."""
         self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2050, rcp_scenario=45), 0.759630751756698)
         self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2070, rcp_scenario=45), 0.958978483788876)
         self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2060, rcp_scenario=60), 0.825572149523299)

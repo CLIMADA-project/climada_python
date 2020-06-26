@@ -56,19 +56,19 @@ pd.options.mode.chained_assignment = None
 LOGGER = logging.getLogger(__name__)
 
 NE_EPSG = 4326
-""" Natural Earth CRS EPSG """
+"""Natural Earth CRS EPSG"""
 
 NE_CRS = from_epsg(NE_EPSG)
-""" Natural Earth CRS """
+"""Natural Earth CRS"""
 
 TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
-""" Path of elevation file written in set_elevation """
+"""Path of elevation file written in set_elevation"""
 
 DEM_NODATA = -9999
-""" Value to use for no data values in DEM, i.e see points """
+"""Value to use for no data values in DEM, i.e see points"""
 
 MAX_DEM_TILES_DOWN = 300
-""" Maximum DEM tiles to dowload """
+"""Maximum DEM tiles to dowload"""
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -90,7 +90,7 @@ def grid_is_regular(coord):
     return regular, count_lat[0], count_lon[0]
 
 def get_coastlines(bounds=None, resolution=110):
-    """ Get Polygones of coast intersecting given bounds
+    """Get Polygones of coast intersecting given bounds
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat in EPSG:4326
@@ -116,7 +116,7 @@ def get_coastlines(bounds=None, resolution=110):
     return coast_df[tot_coast][['geometry']]
 
 def convert_wgs_to_utm(lon, lat):
-    """ Get EPSG code of UTM projection for input point in EPSG 4326
+    """Get EPSG code of UTM projection for input point in EPSG 4326
 
     Parameters:
         lon (float): longitude point in EPSG 4326
@@ -129,7 +129,7 @@ def convert_wgs_to_utm(lon, lat):
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
 def utm_zones(wgs_bounds):
-    """ Get EPSG code and bounds of UTM zones covering specified region
+    """Get EPSG code and bounds of UTM zones covering specified region
 
     Parameters:
         wgs_bounds (tuple): lon_min, lat_min, lon_max, lat_max
@@ -152,7 +152,7 @@ def utm_zones(wgs_bounds):
     return zones
 
 def dist_to_coast(coord_lat, lon=None):
-    """ Compute distance to coast from input points in meters.
+    """Compute distance to coast from input points in meters.
 
     Parameters:
         coord_lat (GeoDataFrame or np.array or float):
@@ -216,7 +216,7 @@ def dist_to_coast(coord_lat, lon=None):
     return dist
 
 def dist_to_coast_nasa(lat, lon, highres=False):
-    """ Read interpolated distance to coast (in m) from NASA data
+    """Read interpolated distance to coast (in m) from NASA data
 
     Note: The NASA raster file is 300 MB and will be downloaded on first run!
 
@@ -403,24 +403,33 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
 
 def get_region_gridpoints(countries=None, regions=None, resolution=150,
                           iso=True, rect=False, basemap="natearth"):
-    """ Get coordinates of gridpoints in specified countries or regions
+    """Get coordinates of gridpoints in specified countries or regions
 
-    Parameters:
-        countries (list, optional): ISO 3166-1 alpha-3 codes of countries, or
-            internal numeric NatID if iso is set to False.
-        regions (list, optional): Region IDs.
-        resolution (float, optional): Resolution in arc-seconds. Default: 150.
-        iso (bool, optional): If True, assume that countries are given by their
-            ISO 3166-1 alpha-3 codes (instead of the internal NatID).
-            Default: True.
-        rect (bool, optional): If True, a rectangular box around the specified
-            countries/regions is selected. Default: False.
-        basemap (str, optional): Choose between different data sources.
-            Currently available: "isimip" and "natearth". Default: "natearth".
+    Parameters
+    ----------
+    countries : list, optional
+        ISO 3166-1 alpha-3 codes of countries, or internal numeric NatID if
+        `iso` is set to False.
+    regions : list, optional
+        Region IDs.
+    resolution : float, optional
+        Resolution in arc-seconds. Default: 150.
+    iso : bool, optional
+        If True, assume that countries are given by their ISO 3166-1 alpha-3
+        codes (instead of the internal NatID). Default: True.
+    rect : bool, optional
+        If True, a rectangular box around the specified countries/regions is
+        selected. Default: False.
+    basemap : str, optional
+        Choose between different data sources.
+        Currently available: "isimip" and "natearth". Default: "natearth".
 
-    Returns:
-        lat (np.array): latitude of points in epsg:4326
-        lon (np.array): longitude of points in epsg:4326
+    Returns
+    -------
+    lat : np.array
+        Latitude of points in epsg:4326.
+    lon : np.array
+        Longitude of points in epsg:4326.
     """
     if countries is None:
         countries = []
@@ -482,14 +491,17 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     return lat, lon
 
 def region2isos(regions):
-    """ Convert region names to ISO 3166 alpha-3 codes of countries
+    """Convert region names to ISO 3166 alpha-3 codes of countries
 
-    Parameters:
-        regions (str or list of str): Region name(s).
+    Parameters
+    ----------
+    regions : str or list of str
+        Region name(s).
 
-    Returns:
-        isos (list of str): Sorted list of iso codes of all countries in
-            specified region(s).
+    Returns
+    -------
+    isos : list of str
+        Sorted list of iso codes of all countries in specified region(s).
     """
     regions = [regions] if isinstance(regions, str) else regions
     reg_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
@@ -503,7 +515,7 @@ def region2isos(regions):
     return list(set(isos))
 
 def country_iso_alpha2numeric(isos):
-    """ Convert ISO 3166-1 alpha-3 to numeric-3 codes
+    """Convert ISO 3166-1 alpha-3 to numeric-3 codes
 
     Parameters:
         isos (str or list of str): ISO codes of countries (or single code).
@@ -528,7 +540,7 @@ def country_iso_alpha2numeric(isos):
     return nums[0] if return_int else nums
 
 def country_natid2iso(natids):
-    """ Convert internal NatIDs to ISO 3166-1 alpha-3 codes
+    """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
     Parameters:
         natids (int or list of int): Internal NatIDs of countries (or single ID).
@@ -547,7 +559,7 @@ def country_natid2iso(natids):
     return isos[0] if return_str else isos
 
 def country_iso2natid(isos):
-    """ Convert ISO 3166-1 alpha-3 codes to internal NatIDs
+    """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
 
     Parameters:
         isos (str or list of str): ISO codes of countries (or single code).
@@ -593,7 +605,7 @@ def natearth_country_to_int(country):
         return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
 
 def get_country_code(lat, lon, gridded=False, natid=False):
-    """ Provide numeric (ISO 3166) code for every point.
+    """Provide numeric (ISO 3166) code for every point.
 
     Oceans get the value zero. Areas that are not in ISO 3166 are given values
     in the range above 900 according to NATEARTH_AREA_NONISO_NUMERIC.
@@ -636,7 +648,7 @@ def get_country_code(lat, lon, gridded=False, natid=False):
     return region_id
 
 def get_admin1_info(country_names):
-    """ Provide registry info and shape files for admin1 regions
+    """Provide registry info and shape files for admin1 regions
 
     Parameters:
         country_names (list): list with ISO3 names of countries, e.g.
@@ -665,7 +677,7 @@ def get_admin1_info(country_names):
     return admin1_info, admin1_shapes
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
-    """ Compute resolution of scalar grid
+    """Compute resolution of scalar grid
 
     Parameters:
         coords (np.array): scalar coordinates
@@ -682,7 +694,7 @@ def get_resolution_1d(coords, min_resol=1.0e-8):
 
 
 def get_resolution(*coords, min_resol=1.0e-8):
-    """ Compute resolution of 2-d grid points
+    """Compute resolution of 2-d grid points
 
     Parameters:
         X, Y, ... (np.array): scalar coordinates in each axis
@@ -696,7 +708,7 @@ def get_resolution(*coords, min_resol=1.0e-8):
 
 
 def pts_to_raster_meta(points_bounds, res):
-    """" Transform vector data coordinates to raster. Returns number of rows,
+    """Transform vector data coordinates to raster. Returns number of rows,
     columns and affine transformation
 
     If a raster of the given resolution doesn't exactly fit the given bounds,
@@ -723,7 +735,7 @@ def pts_to_raster_meta(points_bounds, res):
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
 def raster_to_meshgrid(transform, width, height):
-    """ Get coordinates of grid points in raster
+    """Get coordinates of grid points in raster
 
     Parameters
     ----------
@@ -748,7 +760,7 @@ def raster_to_meshgrid(transform, width, height):
                        np.arange(ymin + yres / 2, ymax, yres))
 
 def equal_crs(crs_one, crs_two):
-    """ Compare two crs
+    """Compare two crs
 
     Parameters:
         crs_one (dict or string or wkt): user crs
@@ -763,7 +775,7 @@ def equal_crs(crs_one, crs_two):
 def _read_raster_reproject(src, src_crs, dst_meta,
         band=[1], geometry=None, dst_crs=None, transform=None,
         resampling=rasterio.warp.Resampling.nearest):
-    """ Helper function for `read_raster` """
+    """Helper function for `read_raster`"""
     if not dst_crs:
         dst_crs = src_crs
     if not transform:
@@ -830,7 +842,7 @@ def _read_raster_reproject(src, src_crs, dst_meta,
 def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
                 dst_crs=None, transform=None, width=None, height=None,
                 resampling=rasterio.warp.Resampling.nearest):
-    """ Read raster of bands and set 0 values to the masked ones. Each
+    """Read raster of bands and set 0 values to the masked ones. Each
     band is an event. Select region using window or geometry. Reproject
     input by proving dst_crs and/or (transform, width, height). Returns matrix
     in 2d: band x coordinates in 1d (can be reshaped to band x height x width)
@@ -895,7 +907,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
 
 def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
                        fill_value=None):
-    """ Read point samples from raster file
+    """Read point samples from raster file
 
     Parameters:
         path (str): path of the raster file
@@ -929,7 +941,7 @@ def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
                               fill_value=fill_value)
 
 def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
-    """ Interpolate raster data, given as array and affine transform
+    """Interpolate raster data, given as array and affine transform
 
     Parameters:
         data (np.array): 2d numpy array containing the values
@@ -966,7 +978,7 @@ def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
         method=method, bounds_error=False, fill_value=fill_value)
 
 def refine_raster_data(data, transform, res, method='linear', fill_value=0):
-    """ Refine raster data, given as array and affine transform
+    """Refine raster data, given as array and affine transform
 
     Parameters:
         data (np.array): 2d numpy array containing the values
@@ -994,7 +1006,7 @@ def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     return new_data, new_transform
 
 def read_vector(file_name, field_name, dst_crs=None):
-    """ Read vector file format supported by fiona. Each field_name name is
+    """Read vector file format supported by fiona. Each field_name name is
     considered an event.
 
     Parameters:
@@ -1021,7 +1033,7 @@ def read_vector(file_name, field_name, dst_crs=None):
     return lat, lon, geometry, value
 
 def write_raster(file_name, data_matrix, meta, dtype=np.float32):
-    """ Write raster in GeoTiff format
+    """Write raster in GeoTiff format
 
     Parameters:
         fle_name (str): file name to write
@@ -1046,7 +1058,7 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
 
 def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
                      scheduler=None):
-    """ Compute raster matrix and transformation from value column
+    """Compute raster matrix and transformation from value column
 
     Parameters:
         points_df (GeoDataFrame): contains columns latitude, longitude and in
@@ -1108,7 +1120,7 @@ def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
     return raster_out, meta
 
 def set_df_geometry_points(df_val, scheduler=None):
-    """ Set given geometry to given dataframe using dask if scheduler
+    """Set given geometry to given dataframe using dask if scheduler
 
     Parameters:
         df_val (DataFrame or GeoDataFrame): contains latitude and longitude columns

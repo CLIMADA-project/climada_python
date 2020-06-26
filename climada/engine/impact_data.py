@@ -403,7 +403,7 @@ def check_assigned_track(lookup, checkset):
 def _check_emdat_df(df_emdat, target_version=2020, varnames_emdat=varnames_emdat, \
                    varnames_mapping=varnames_mapping):
     """Check EM-DAT dataframe from CSV and update variable names if required.
-    
+
     Parameters:
         Input:
             df_emdat: pandas dataframe loaded from EM-DAT CSV
@@ -479,24 +479,34 @@ def emdat_countries_by_hazard(hazard_name, emdat_file_csv, ignore_missing=True, 
     """return list of all countries exposed to a chosen hazard type
     from EMDAT data as CSV.
 
-    Parameters:
-        hazard_name (str): Disaster (sub-)type accordung EMDAT terminology, i.e.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.
-        emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
-        ignore_missing (boolean): Ignore countries that that exist in EMDAT but
-            are missing in iso_cntry(). Default: True.
-        verbose (boolean): silent mode
-        year_range (tuple of integers or None): range of years to consider, i.e. (1950, 2000)
-            default is None, i.e. consider all years
-    Returns:
-        exp_iso: List of ISO3-codes of countries impacted by the disaster type
-        exp_name: List of names of countries impacted by the disaster type
-            """
+    Parameters
+    ----------
+    hazard_name : str
+        Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.
+    emdat_file_csv : str
+        Full path to EMDAT-file (CSV), i.e.:
+        emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+    ignore_missing : boolean
+        Ignore countries that that exist in EMDAT but
+        are missing in iso_cntry(). Default: True.
+    verbose : boolean
+        silent mode
+    year_range : tuple of integers or None
+        range of years to consider, i.e. (1950, 2000)
+        default is None, i.e. consider all years
+
+    Returns
+    -------
+    exp_iso : list
+        List of ISO3-codes of countries impacted by the disaster type
+    exp_name : list
+        List of names of countries impacted by the disaster type
+    """
     if hazard_name in PERIL_SUBTYPE_MATCH_DICT.keys():
         hazard_name = PERIL_SUBTYPE_MATCH_DICT[hazard_name]
     elif hazard_name in PERIL_TYPE_MATCH_DICT.keys():
@@ -932,7 +942,7 @@ def emdat_to_impact(emdat_file_csv, year_range=None, countries=None,\
         else:
             impact_instance.eai_exp[idx] = sum(np.array(df_tmp[imp_str + " scaled"])*\
                                    impact_instance.frequency[0])
- 
+
     impact_instance.coord_exp = np.stack([countries_lat, countries_lon], axis=1)
     #impact_instance.plot_raster_eai_exposure()
 

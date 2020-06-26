@@ -120,7 +120,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(disc_rate.tag.description, 'descr1 + descr2'))
 
 class TestSelect(unittest.TestCase):
-    """Test select method """
+    """Test select method"""
     def test_select_pass(self):
         """Test select right time range."""
         disc_rate = DiscRates()
@@ -147,7 +147,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(None, disc_rate.select(year_range))
 
 class TestNetPresValue(unittest.TestCase):
-    """Test select method """
+    """Test select method"""
     def test_net_present_value_pass(self):
         """Test net_present_value right time range."""
         disc_rate = DiscRates()
@@ -173,9 +173,9 @@ class TestNetPresValue(unittest.TestCase):
 
 class TestReaderExcel(unittest.TestCase):
     """Test excel reader for discount rates"""
-                             
+
     def test_demo_file_pass(self):
-        """ Read demo excel file."""      
+        """Read demo excel file."""
         disc_rate = DiscRates()
         description = 'One single file.'
         disc_rate.read_excel(ENT_DEMO_TODAY, description)
@@ -197,7 +197,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.tag.description, description)
 
     def test_template_file_pass(self):
-        """ Read demo excel file."""
+        """Read demo excel file."""
         disc_rate = DiscRates()
         disc_rate.read_excel(ENT_TEMPLATE_XLS)
 
@@ -219,9 +219,9 @@ class TestReaderExcel(unittest.TestCase):
 
 class TestReaderMat(unittest.TestCase):
     """Test mat reader for discount rates"""
-    
+
     def test_demo_file_pass(self):
-        """ Read demo mat file"""
+        """Read demo mat file"""
         # Read demo excel file
         disc_rate = DiscRates()
         description = 'One single file.'
@@ -246,16 +246,16 @@ class TestReaderMat(unittest.TestCase):
 
 class TestWriter(unittest.TestCase):
     """Test excel reader for discount rates"""
-                             
+
     def test_write_read_pass(self):
-        """ Read demo excel file."""      
+        """Read demo excel file."""
         disc_rate = DiscRates()
         disc_rate.years = np.arange(1950, 2150)
         disc_rate.rates = np.ones(disc_rate.years.size)*0.03
 
         file_name = os.path.join(os.path.join(CURR_DIR, 'data'), 'test_disc.xlsx')
         disc_rate.write_excel(file_name)
-        
+
         disc_read = DiscRates()
         disc_read.read_excel(file_name)
 

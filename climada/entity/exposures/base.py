@@ -41,16 +41,16 @@ import climada.util.plot as u_plot
 LOGGER = logging.getLogger(__name__)
 
 INDICATOR_IF = 'if_'
-""" Name of the column containing the impact functions id of specified hazard"""
+"""Name of the column containing the impact functions id of specified hazard"""
 
 INDICATOR_CENTR = 'centr_'
-""" Name of the column containing the centroids id of specified hazard """
+"""Name of the column containing the centroids id of specified hazard"""
 
 DEF_REF_YEAR = 2018
-""" Default reference year """
+"""Default reference year"""
 
 DEF_VALUE_UNIT = 'USD'
-""" Default reference year """
+"""Default reference year"""
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
@@ -67,7 +67,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'ref' : 'reference_year'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 class Exposures(GeoDataFrame):
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
@@ -116,7 +116,7 @@ class Exposures(GeoDataFrame):
         return Exposures
 
     def __init__(self, *args, **kwargs):
-        """ Initialize. Copy attributes of input DataFrame. """
+        """Initialize. Copy attributes of input DataFrame."""
         if len(args):
             for var_meta in self._metadata:
                 try:
@@ -127,7 +127,7 @@ class Exposures(GeoDataFrame):
         super(Exposures, self).__init__(*args, **kwargs)
 
     def check(self):
-        """ Check which variables are present """
+        """Check which variables are present"""
         # check metadata
         for var in self._metadata:
             if var[0] == '_':
@@ -183,7 +183,7 @@ class Exposures(GeoDataFrame):
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
-        """ Assign for each exposure coordinate closest hazard coordinate.
+        """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
 
@@ -221,7 +221,7 @@ class Exposures(GeoDataFrame):
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
-        """ Set geometry attribute of GeoDataFrame with Points from latitude and
+        """Set geometry attribute of GeoDataFrame with Points from latitude and
         longitude attributes.
 
         Parameters:
@@ -231,7 +231,7 @@ class Exposures(GeoDataFrame):
         co.set_df_geometry_points(self, scheduler)
 
     def set_lat_lon(self):
-        """ Set latitude and longitude attributes from geometry attribute. """
+        """Set latitude and longitude attributes from geometry attribute."""
         LOGGER.info('Setting latitude and longitude attributes.')
         self['latitude'] = self.geometry[:].y
         self['longitude'] = self.geometry[:].x
@@ -239,7 +239,7 @@ class Exposures(GeoDataFrame):
     def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
-        """ Read raster data and set latitude, longitude, value and meta
+        """Read raster data and set latitude, longitude, value and meta
 
         Parameters:
             file_name (str): file name containing values
@@ -349,7 +349,7 @@ class Exposures(GeoDataFrame):
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
                     label='value (log10)', scheduler=None, axis=None, **kwargs):
-        """ Generate raster from points geometry and plot it using log10 scale:
+        """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
         Parameters:
@@ -411,7 +411,7 @@ class Exposures(GeoDataFrame):
                      buffer=0.0, extend='neither', zoom=10,
                      url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                      axis=None, **kwargs):
-        """ Scatter points over satellite image using contextily
+        """Scatter points over satellite image using contextily
 
          Parameters:
             mask (np.array, optional): mask to apply to eai_exp plotted. Same
@@ -443,7 +443,7 @@ class Exposures(GeoDataFrame):
         return axis
 
     def write_hdf5(self, file_name):
-        """ Write data frame and metadata in hdf5 format """
+        """Write data frame and metadata in hdf5 format"""
         LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
         store.put('exposures', pd.DataFrame(self))
@@ -456,7 +456,7 @@ class Exposures(GeoDataFrame):
         store.close()
 
     def read_hdf5(self, file_name):
-        """ Read data frame and metadata in hdf5 format """
+        """Read data frame and metadata in hdf5 format"""
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             self.__init__(store['exposures'])
@@ -511,7 +511,7 @@ class Exposures(GeoDataFrame):
     to_crs.__doc__ = GeoDataFrame.to_crs.__doc__
 
     def copy(self, deep=True):
-        """ Make a copy of this Exposures object.
+        """Make a copy of this Exposures object.
 
         Parameters
         ----------
@@ -528,7 +528,7 @@ class Exposures(GeoDataFrame):
         return Exposures(data).__finalize__(self)
 
     def write_raster(self, file_name, value_name='value', scheduler=None):
-        """ Write value data into raster file with GeoTiff format
+        """Write value data into raster file with GeoTiff format
 
         Parameters:
             file_name (str): name output file in tif format
@@ -548,7 +548,7 @@ class Exposures(GeoDataFrame):
             co.write_raster(file_name, raster, meta)
 
 def add_sea(exposures, sea_res):
-    """ Add sea to geometry's surroundings with given resolution. region_id
+    """Add sea to geometry's surroundings with given resolution. region_id
     set to -1 and other variables to 0.
 
     Parameters:
@@ -633,7 +633,7 @@ def _read_mat_optional(exposures, data, var_names):
         pass
 
 def _read_mat_metadata(exposures, data, file_name, var_names):
-    """ Fille metadata in DataFrame object """
+    """Fille metadata in DataFrame object"""
     try:
         exposures.ref_year = int(np.squeeze(data[var_names['var_name']['ref']]))
     except KeyError:

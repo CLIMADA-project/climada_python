@@ -34,10 +34,10 @@ class TCRain(Hazard):
     """Contains rainfall from tropical cyclone events."""
 
     intensity_thres = .1
-    """ intensity threshold for storage in mm """
+    """intensity threshold for storage in mm"""
 
     def __init__(self, pool=None):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
         self.basin = list()
@@ -91,7 +91,7 @@ class TCRain(Hazard):
     @staticmethod
     @jit(forceobj=True)
     def _set_from_track(track, centroids, dist_degree=3, intensity=0.1):
-        """ Set hazard from track and centroids.
+        """Set hazard from track and centroids.
         Parameters:
             track (xr.Dataset): tropical cyclone track.
             centroids (Centroids): Centroids instance.
@@ -141,7 +141,7 @@ class TCRain(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
 def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
-    """ Compute rainfield for track at centroids.
+    """Compute rainfield for track at centroids.
     Parameters:
         track (xr.Dataset): tropical cyclone track.
         centroids (Centroids): Centroids instance.
@@ -195,7 +195,7 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     return sparse.csr_matrix(rainsum)
 
 def _RCLIPER(fmaxwind_kn, inreach, radius_km):
-    """ Calculate rainrate in mm/h based on RCLIPER given windspeed (kn) at
+    """Calculate rainrate in mm/h based on RCLIPER given windspeed (kn) at
     a specific node
     Parameters:
         fmaxwind_kn (float): maximum sustained wind at specific node

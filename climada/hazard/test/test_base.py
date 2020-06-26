@@ -161,14 +161,14 @@ class TestLoader(unittest.TestCase):
                          cm.output[0])
 
     def test_event_name_to_id_pass(self):
-        """ Test event_name_to_id function."""
+        """Test event_name_to_id function."""
         haz = Hazard('TC')
         haz.read_excel(HAZ_TEMPLATE_XLS)
         self.assertEqual(haz.get_event_id('event001')[0], 1)
         self.assertEqual(haz.get_event_id('event084')[0], 84)
 
     def test_event_name_to_id_fail(self):
-        """ Test event_name_to_id function."""
+        """Test event_name_to_id function."""
         haz = Hazard('TC')
         haz.read_excel(HAZ_TEMPLATE_XLS)
         with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
@@ -177,14 +177,14 @@ class TestLoader(unittest.TestCase):
         self.assertIn('No event with name: 1050', cm.output[0])
 
     def test_event_id_to_name_pass(self):
-        """ Test event_id_to_name function."""
+        """Test event_id_to_name function."""
         haz = Hazard('TC')
         haz.read_excel(HAZ_TEMPLATE_XLS)
         self.assertEqual(haz.get_event_name(2), 'event002')
         self.assertEqual(haz.get_event_name(48), 'event048')
 
     def test_event_id_to_name_fail(self):
-        """ Test event_id_to_name function."""
+        """Test event_id_to_name function."""
         haz = Hazard('TC')
         haz.read_excel(HAZ_TEMPLATE_XLS)
         with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
@@ -634,7 +634,7 @@ class TestAppend(unittest.TestCase):
 
     def test_same_events_append(self):
         """Append hazard with same events (and diff centroids).
-        Events are appended with all new centroids columns. """
+        Events are appended with all new centroids columns."""
         haz1 = dummy_hazard()
         haz2 = Hazard('TC')
         haz2.tag.file_name = 'file2.mat'
@@ -746,7 +746,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz.tag.description, ['Description 1', 'Description 2'])
 
     def test_append_new_var_pass(self):
-        """ New variable appears if hazard to append is empty. """
+        """New variable appears if hazard to append is empty."""
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
 
@@ -755,7 +755,7 @@ class TestAppend(unittest.TestCase):
         self.assertIn('new_var', app_haz.__dict__)
 
     def test_concatenate_new_var_pass(self):
-        """ New variable appears. """
+        """New variable appears."""
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
 
@@ -767,7 +767,7 @@ class TestStats(unittest.TestCase):
     """Test return period statistics"""
 
     def test_degenerate_pass(self):
-        """ Test degenerate call. """
+        """Test degenerate call."""
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
@@ -795,7 +795,7 @@ class TestYearset(unittest.TestCase):
     """Test return period statistics"""
 
     def test_ref_pass(self):
-        """ Test against matlab reference. """
+        """Test against matlab reference."""
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
         orig_year_set = haz.calc_year_set()
@@ -816,10 +816,10 @@ class TestYearset(unittest.TestCase):
                                        np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
 
 class TestReaderExcel(unittest.TestCase):
-    '''Test reader functionality of the Hazard class'''
+    """Test reader functionality of the Hazard class"""
 
     def test_hazard_pass(self):
-        ''' Read an hazard excel file correctly.'''
+        """Read an hazard excel file correctly."""
 
         # Read demo excel file
         hazard = Hazard('TC')
@@ -877,10 +877,10 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.tag.haz_type, 'TC')
 
 class TestReaderMat(unittest.TestCase):
-    '''Test reader functionality of the ExposuresExcel class'''
+    """Test reader functionality of the ExposuresExcel class"""
 
     def test_hazard_pass(self):
-        ''' Read a hazard mat file correctly.'''
+        """Read a hazard mat file correctly."""
         # Read demo excel file
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
@@ -937,10 +937,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(hazard.tag.haz_type, 'TC')
 
 class TestHDF5(unittest.TestCase):
-    '''Test reader functionality of the ExposuresExcel class'''
+    """Test reader functionality of the ExposuresExcel class"""
 
     def test_write_read_pass(self):
-        ''' Read a hazard mat file correctly.'''
+        """Read a hazard mat file correctly."""
         file_name = os.path.join(DATA_DIR, 'test_haz.h5')
 
         # Read demo excel file
@@ -982,7 +982,7 @@ class TestCentroids(unittest.TestCase):
     """Test return period statistics"""
 
     def test_reproject_raster_pass(self):
-        """ Test reproject_raster reference. """
+        """Test reproject_raster reference."""
         haz_fl = Hazard('FL')
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
@@ -1002,7 +1002,7 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(haz_fl.intensity.max() < 4.7)
 
     def test_raster_to_vector_pass(self):
-        """ Test raster_to_vector method """
+        """Test raster_to_vector method"""
         haz_fl = Hazard('FL')
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
@@ -1022,7 +1022,7 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
 
     def test_reproject_vector_pass(self):
-        """ Test reproject_vector """
+        """Test reproject_vector"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])
@@ -1042,7 +1042,7 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1])/2))
 
     def test_vector_to_raster_pass(self):
-        """ Test vector_to_raster """
+        """Test vector_to_raster"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])

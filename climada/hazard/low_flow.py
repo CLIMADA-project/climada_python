@@ -46,7 +46,7 @@ from climada.util.coordinates import get_resolution
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'LF'
-""" Hazard type acronym for Low Flow / Water Scarcity """
+"""Hazard type acronym for Low Flow / Water Scarcity"""
 
 FILENAME_NC = '%s_%s_ewembi_%s_%s_%s_%s.nc'  #
 # %(gh_model, cl_model, scenario, soc, fn_str_var, yearrange)
@@ -113,7 +113,7 @@ class LowFlow(Hazard):
     resolution = .5
 
     def __init__(self, pool=None):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         if pool:
             self.pool = pool
@@ -294,7 +294,7 @@ class LowFlow(Hazard):
 
 
     def _set_frequency(self):
-        """Set hazard frequency from intensity matrix. """
+        """Set hazard frequency from intensity matrix."""
         delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                      dt.datetime.fromordinal(int(np.min(self.date))).year + 1
         num_orig = self.orig.nonzero()[0].size
@@ -378,7 +378,7 @@ class LowFlow(Hazard):
 
     @staticmethod
     def _centroids_resolution(centroids):
-        """ Return resolution of the centroids in their units
+        """Return resolution of the centroids in their units
 
         Parameters:
             centroids (Centroids): centroids instance
@@ -398,7 +398,7 @@ class LowFlow(Hazard):
 
     @staticmethod
     def _intensity_one_cluster(data, tree_centr, cluster_id, res_centr, num_centr):
-        """ For a given cluster, fill in an intensity np.array with the summed intensity
+        """For a given cluster, fill in an intensity np.array with the summed intensity
         at each centroid.
 
         Parameters:
@@ -433,7 +433,7 @@ class LowFlow(Hazard):
 
 
 def _init_centroids(data_x, centr_res_factor=1):
-    """ Get centroids from the firms dataset and refactor them.
+    """Get centroids from the firms dataset and refactor them.
 
     Parameters:
         data_x (xarray): dataset obtained from ISIMIP netcdf
@@ -499,9 +499,12 @@ def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref, \
     then extract intensity based on days below threshold
     returns geopandas dataframe
 
-    returns:
-        df (DataFrame): preprocessed data with days below threshold per grid cell and month
-        centroids (Centroids instance): regular grid centroid with same resolution as input data
+    Returns
+    -------
+    df : DataFrame
+        preprocessed data with days below threshold per grid cell and month
+    centroids : Centroids instance
+        regular grid centroid with same resolution as input data
     """
     data = _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, \
                                 scenario, soc, fn_str_var, bbox)

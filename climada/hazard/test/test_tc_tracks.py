@@ -142,7 +142,7 @@ class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
     def test_get_track_pass(self):
-        """ Test get_track."""
+        """Test get_track."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         self.assertIsInstance(tc_track.get_track(), xr.Dataset)
@@ -155,7 +155,7 @@ class TestFuncs(unittest.TestCase):
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
 
     def test_interp_track_pass(self):
-        """ Interpolate track to min_time_step. Compare to MATLAB reference."""
+        """Interpolate track to min_time_step. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=1)
@@ -184,7 +184,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].category, 1)
 
     def test_interp_origin_pass(self):
-        """ Interpolate track to min_time_step crossing lat origin """
+        """Interpolate track to min_time_step crossing lat origin"""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
@@ -229,7 +229,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].category, 1)
 
     def test_interp_origin_inv_pass(self):
-        """ Interpolate track to min_time_step crossing lat origin """
+        """Interpolate track to min_time_step crossing lat origin"""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
@@ -276,7 +276,7 @@ class TestFuncs(unittest.TestCase):
 
 
     def test_random_no_landfall_pass(self):
-        """ Test calc_random_walk with decay and no historical tracks with landfall """
+        """Test calc_random_walk with decay and no historical tracks with landfall"""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
@@ -337,7 +337,7 @@ class TestFuncs(unittest.TestCase):
         self.assertIn('No historical track of category Hurrican Cat. 5 with landfall.', cm.output[6])
 
     def test_calc_decay_no_landfall_pass(self):
-        """ Test _calc_land_decay with no historical tracks with landfall """
+        """Test _calc_land_decay with no historical tracks with landfall"""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
@@ -347,7 +347,7 @@ class TestFuncs(unittest.TestCase):
         self.assertIn('No historical track with landfall.', cm.output[0])
 
     def test_calc_land_decay_pass(self):
-        """ Test _calc_land_decay with environmental pressure function."""
+        """Test _calc_land_decay with environmental pressure function."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         land_geom = tc._calc_land_geom(tc_track.data)
@@ -366,7 +366,7 @@ class TestFuncs(unittest.TestCase):
             self.assertTrue(i+1 in p_rel.keys())
 
     def test_decay_values_andrew_pass(self):
-        """ Test _decay_values with central pressure function."""
+        """Test _decay_values with central pressure function."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
@@ -399,7 +399,7 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.allclose(x_val[ss_category], x_val_ref))
 
     def test_dist_since_lf_pass(self):
-        """ Test _dist_since_lf for andrew tropical cyclone."""
+        """Test _dist_since_lf for andrew tropical cyclone."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
@@ -419,7 +419,7 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.all(np.diff(dist_on_land)[1:] > 0))
 
     def test_calc_orig_lf(self):
-        """ Test _calc_orig_lf for andrew tropical cyclone."""
+        """Test _calc_orig_lf for andrew tropical cyclone."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
@@ -433,7 +433,7 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.array_equal(orig_lf[1], np.array([29.65, -91.5])))
 
     def test_decay_calc_coeff(self):
-        """ Test _decay_calc_coeff against MATLAB"""
+        """Test _decay_calc_coeff against MATLAB"""
         x_val = {6: np.array([53.57314960249573, 142.97903059281566,
             224.76733726289183,  312.14621544207563,  426.6757021862584,
             568.9358305779094,  748.3713215157885, 1016.9904230811956])}
@@ -459,7 +459,7 @@ class TestFuncs(unittest.TestCase):
             self.assertTrue(i+1 in v_rel.keys())
 
     def test_apply_decay_no_landfall_pass(self):
-        """ Test _apply_land_decay with no historical tracks with landfall """
+        """Test _apply_land_decay with no historical tracks with landfall"""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
@@ -474,7 +474,7 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.all(np.isnan(tc_track.data[0].dist_since_lf.values)))
 
     def test_apply_decay_pass(self):
-        """ Test _apply_land_decay against MATLAB reference. """
+        """Test _apply_land_decay against MATLAB reference."""
         v_rel = { 6: 0.0038950967656296597,
                   1: 0.0038950967656296597,
                   2: 0.0038950967656296597,
@@ -538,7 +538,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(cat_ref, tc_track.data[0].category)
 
     def test_func_decay_p_pass(self):
-        """ Test decay function for pressure with its inverse."""
+        """Test decay function for pressure with its inverse."""
         s_coef = 1.05
         b_coef = 0.04
         x_val = np.arange(0, 100, 10)
@@ -549,7 +549,7 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.isnan(b_coef_res[0]))
 
     def test_func_decay_v_pass(self):
-        """ Test decay function for wind with its inverse."""
+        """Test decay function for wind with its inverse."""
         a_coef = 0.04
         x_val = np.arange(0, 100, 10)
         res = tc._decay_v_function(a_coef, x_val)

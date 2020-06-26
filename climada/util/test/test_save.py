@@ -50,7 +50,7 @@ class TestSave(unittest.TestCase):
                         (file_name in cm.output[1]))
 
     def test_load_pass(self):
-        """ Load previously saved variable """
+        """Load previously saved variable"""
         file_name = 'save_test.pkl'
         ent = {'value': [1, 2, 3]}
         save(file_name, ent)

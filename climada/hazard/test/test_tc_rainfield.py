@@ -76,7 +76,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 296)
 
     def test_set_one_file_pass(self):
-        """ Test set function set_from_tracks with one input."""
+        """Test set function set_from_tracks with one input."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_haz = TCRain()
@@ -105,7 +105,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
     def test_two_files_pass(self):
-        """ Test set function set_from_tracks with two ibtracs."""
+        """Test set function set_from_tracks with two ibtracs."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TCRain()
@@ -130,20 +130,20 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
-        
+
 class TestModel(unittest.TestCase):
     """Test modelling of rainfall"""
 
     def test_rainfield_from_track_pass(self):
-        """ Test _rainfield_from_track function. Compare to MATLAB reference."""
+        """Test _rainfield_from_track function. Compare to MATLAB reference."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         rainfall = rainfield_from_track(tc_track.data[0],
                                         CENTR_TEST_BRB)
-        
+
         rainfall = np.round(rainfall, decimals=9)
-        
+
         self.assertAlmostEqual(rainfall[0,0], 66.801702386)
         self.assertAlmostEqual(rainfall[0,130], 43.290917792)
         self.assertAlmostEqual(rainfall[0,200], 76.315923838)

@@ -64,7 +64,7 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
                                                }
                                   }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 DEF_VAR_MAT = {'field_name': 'hazard',
                'var_name': {'per_id' : 'peril_ID',
@@ -85,7 +85,7 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                                         }
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
@@ -108,8 +108,8 @@ class Hazard():
             event at each centroid
     """
     intensity_thres = 10
-    """ Intensity threshold per hazard used to filter lower intensities. To be
-    set for every hazard type """
+    """Intensity threshold per hazard used to filter lower intensities. To be
+    set for every hazard type"""
 
     vars_oblig = {'tag',
                   'units',
@@ -197,7 +197,7 @@ class Hazard():
                    band=[1], src_crs=None, window=False, geometry=False,
                    dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
-        """ Append intensity and fraction from raster file. 0s put to the masked
+        """Append intensity and fraction from raster file. 0s put to the masked
         values. File can be partially read using window OR geometry.
         Alternatively, CRS and/or transformation can be set using dst_crs and/or
         (transform, width and height).
@@ -288,7 +288,7 @@ class Hazard():
 
     def set_vector(self, files_intensity, files_fraction=None, attrs={},
                    inten_name=['intensity'], frac_name=['fraction'], dst_crs=None):
-        """ Read vector files format supported by fiona. Each intensity name is
+        """Read vector files format supported by fiona. Each intensity name is
         considered an event.
 
         Parameters:
@@ -344,7 +344,7 @@ class Hazard():
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
-        """ Change current raster data to other CRS and/or transformation
+        """Change current raster data to other CRS and/or transformation
 
         Parameters:
             dst_crs (crs, optional): reproject to given crs
@@ -400,7 +400,7 @@ class Hazard():
         self.check()
 
     def reproject_vector(self, dst_crs, scheduler=None):
-        """ Change current point data to a a given projection
+        """Change current point data to a a given projection
 
         Parameters:
             dst_crs (crs): reproject to given crs
@@ -414,13 +414,13 @@ class Hazard():
         self.check()
 
     def raster_to_vector(self):
-        """ Change current raster to points (center of the pixels) """
+        """Change current raster to points (center of the pixels)"""
         self.centroids.set_meta_to_lat_lon()
         self.centroids.meta = dict()
         self.check()
 
     def vector_to_raster(self, scheduler=None):
-        """ Change current point data to a raster with same resolution
+        """Change current point data to a raster with same resolution
 
         Parameters:
             scheduler (str, optional): used for dask map_partitions. “threads”,
@@ -593,7 +593,7 @@ class Hazard():
         return haz
 
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
-        """ Compute exceedance intensity map for given return periods.
+        """Compute exceedance intensity map for given return periods.
 
         Parameters:
             return_periods (np.array): return periods to consider
@@ -739,13 +739,13 @@ Reason: no negative intensity values were found in hazard.')
         raise ValueError
 
     def sanitize_event_ids(self):
-        """Make sure that event ids are unique """
+        """Make sure that event ids are unique"""
         if np.unique(self.event_id).size != self.event_id.size:
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
     def get_event_id(self, event_name):
-        """"Get an event id from its name. Several events might have the same
+        """Get an event id from its name. Several events might have the same
         name.
 
         Parameters:
@@ -762,7 +762,7 @@ Reason: no negative intensity values were found in hazard.')
         return list_id
 
     def get_event_name(self, event_id):
-        """"Get the name of an event id.
+        """Get the name of an event id.
 
         Parameters:
             event_id (int): id of the event
@@ -781,7 +781,7 @@ Reason: no negative intensity values were found in hazard.')
             raise ValueError
 
     def get_event_date(self, event=None):
-        """ Return list of date strings for given event or for all events,
+        """Return list of date strings for given event or for all events,
         if no event provided.
 
         Parameters:
@@ -803,7 +803,7 @@ Reason: no negative intensity values were found in hazard.')
         return l_dates
 
     def calc_year_set(self):
-        """ From the dates of the original events, get number yearly events.
+        """From the dates of the original events, get number yearly events.
 
         Returns:
             dict: key are years, values array with event_ids of that year
@@ -885,11 +885,11 @@ Reason: no negative intensity values were found in hazard.')
 
     @property
     def size(self):
-        """ Returns number of events """
+        """Returns number of events"""
         return self.event_id.size
 
     def write_raster(self, file_name, intensity=True):
-        """ Write intensity or fraction as GeoTIFF file. Each band is an event
+        """Write intensity or fraction as GeoTIFF file. Each band is an event
 
         Parameters:
             file_name (str): file name to write in tif format
@@ -915,7 +915,7 @@ Reason: no negative intensity values were found in hazard.')
                     dst.write(raster.astype(profile['dtype']), i_ev+1)
 
     def write_hdf5(self, file_name, todense=False):
-        """ Write hazard in hdf5 format.
+        """Write hazard in hdf5 format.
 
         Parameters:
             file_name (str): file name to write, with h5 format
@@ -954,7 +954,7 @@ Reason: no negative intensity values were found in hazard.')
         hf_data.close()
 
     def read_hdf5(self, file_name):
-        """ Read hazard in hdf5 format.
+        """Read hazard in hdf5 format.
 
         Parameters:
             file_name (str): file name to read, with h5 format
@@ -1022,19 +1022,19 @@ Reason: no negative intensity values were found in hazard.')
         self.sanitize_event_ids()
 
     def _set_coords_centroids(self):
-        """ If centroids are raster, set lat and lon coordinates """
+        """If centroids are raster, set lat and lon coordinates"""
         if self.centroids.meta and not self.centroids.coord.size:
             self.centroids.set_meta_to_lat_lon()
 
     def _events_set(self):
-        """Generate set of tuples with (event_name, event_date) """
+        """Generate set of tuples with (event_name, event_date)"""
         ev_set = set()
         for ev_name, ev_date in zip(self.event_name, self.date):
             ev_set.add((ev_name, ev_date))
         return ev_set
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
-        """"Plot an event of the input matrix.
+        """Plot an event of the input matrix.
 
         Parameters:
             event_id (int or np.array(int)): If event_id > 0, plot mat_var of
@@ -1082,7 +1082,7 @@ Reason: no negative intensity values were found in hazard.')
                                         l_title, smooth=smooth, axes=axis, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
-        """"Plot a centroid of the input matrix.
+        """Plot a centroid of the input matrix.
 
         Parameters:
             centr_id (int): If centr_id > 0, plot mat_var
@@ -1134,7 +1134,7 @@ Reason: no negative intensity values were found in hazard.')
         return axis
 
     def _loc_return_inten(self, return_periods, inten, exc_inten):
-        """ Compute local exceedence intensity for given return period.
+        """Compute local exceedence intensity for given return period.
 
         Parameters:
             return_periods (np.array): return periods to consider
@@ -1158,7 +1158,7 @@ Reason: no negative intensity values were found in hazard.')
                 self.intensity_thres, return_periods)
 
     def _check_events(self):
-        """ Check that all attributes but centroids contain consistent data.
+        """Check that all attributes but centroids contain consistent data.
         Put default date, event_name and orig if not provided. Check not
         repeated events (i.e. with same date and name)
 
@@ -1217,7 +1217,7 @@ Reason: no negative intensity values were found in hazard.')
         return inten_fit
 
     def _read_att_mat(self, data, file_name, var_names):
-        """ Read MATLAB hazard's attributes. """
+        """Read MATLAB hazard's attributes."""
         self.frequency = np.squeeze(data[var_names['var_name']['freq']])
         self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
         self.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
@@ -1265,7 +1265,7 @@ Reason: no negative intensity values were found in hazard.')
             pass
 
     def _read_att_excel(self, file_name, var_names):
-        """ Read Excel hazard's attributes. """
+        """Read Excel hazard's attributes."""
         dfr = pd.read_excel(file_name, var_names['sheet_name']['freq'])
 
         num_events = dfr.shape[0]

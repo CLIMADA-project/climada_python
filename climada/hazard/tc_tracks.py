@@ -53,36 +53,36 @@ import climada.util.plot as u_plot
 LOGGER = logging.getLogger(__name__)
 
 SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 137, 1000]
-""" Saffir-Simpson Hurricane Wind Scale in kn based on NOAA"""
+"""Saffir-Simpson Hurricane Wind Scale in kn based on NOAA"""
 
 CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
              3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',
              5: 'Hurrican Cat. 3', 6: 'Hurrican Cat. 4', 7: 'Hurrican Cat. 5'}
-""" Saffir-Simpson category names. """
+"""Saffir-Simpson category names."""
 
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
-""" Color scale to plot the Saffir-Simpson scale."""
+"""Color scale to plot the Saffir-Simpson scale."""
 
 IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/'
-""" FTP of IBTrACS netcdf file containing all tracks v4.0 """
+"""FTP of IBTrACS netcdf file containing all tracks v4.0"""
 
 IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
-""" IBTrACS v4.0 file all """
+"""IBTrACS v4.0 file all"""
 
 IBTRACS_AGENCIES = [
     'wmo', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi', 'wellington',
     'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc',
 ]
-""" Names/IDs of agencies in IBTrACS v4.0 """
+"""Names/IDs of agencies in IBTrACS v4.0"""
 
 IBTRACS_USA_AGENCIES = [
     'atcf', 'cphc', 'hurdat_atl', 'hurdat_epa', 'jtwc_cp', 'jtwc_ep', 'jtwc_io',
     'jtwc_sh', 'jtwc_wp', 'nhc_working_bt', 'tcvightals', 'tcvitals'
 ]
-""" Names/IDs of agencies in IBTrACS that correspond to 'usa_*' variables """
+"""Names/IDs of agencies in IBTrACS that correspond to 'usa_*' variables"""
 
 DEF_ENV_PRESSURE = 1010
-""" Default environmental pressure """
+"""Default environmental pressure"""
 
 BASIN_ENV_PRESSURE = {
     '': DEF_ENV_PRESSURE,
@@ -90,7 +90,7 @@ BASIN_ENV_PRESSURE = {
     'NI': 1005, 'SI': 1005, 'WP': 1005,
     'SP': 1004,
 }
-""" Basin-specific default environmental pressure """
+"""Basin-specific default environmental pressure"""
 
 EMANUEL_RMW_CORR_FILES = [
     'temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat',
@@ -101,8 +101,8 @@ EMANUEL_RMW_CORR_FILES = [
     'temp_mri20thcal.mat', 'temp_mrircp85cal_full.mat',
 ]
 EMANUEL_RMW_CORR_FACTOR = 2.0
-""" Kerry Emanuel track files in this list require a correction: The radius of
-    maximum wind (rmstore) needs to be multiplied by factor 2. """
+"""Kerry Emanuel track files in this list require a correction: The radius of
+    maximum wind (rmstore) needs to be multiplied by factor 2."""
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -132,7 +132,7 @@ class TCTracks():
                 - dist_since_lf
     """
     def __init__(self, pool=None):
-        """Empty constructor. Read csv IBTrACS files if provided. """
+        """Empty constructor. Read csv IBTrACS files if provided."""
         self.data = list()
         if pool:
             self.pool = pool
@@ -570,7 +570,7 @@ class TCTracks():
         self.data.append(tr_ds)
 
     def equal_timestep(self, time_step_h=1, land_params=False):
-        """ Generate interpolated track values to time steps of min_time_step.
+        """Generate interpolated track values to time steps of min_time_step.
         Parameters:
             time_step_h (float, optional): time step in hours to which to
                 interpolate. Default: 1.
@@ -676,7 +676,7 @@ class TCTracks():
 
     @property
     def size(self):
-        """ Get longitude from coord array """
+        """Get longitude from coord array"""
         return len(self.data)
 
     def plot(self, axis=None, **kwargs):
@@ -751,7 +751,7 @@ class TCTracks():
         return axis
 
     def write_netcdf(self, folder_name):
-        """ Write a netcdf file per track with track.sid name in given folder.
+        """Write a netcdf file per track with track.sid name in given folder.
 
         Parameters:
             folder_name (str): folder name where to write files
@@ -763,7 +763,7 @@ class TCTracks():
         xr.save_mfdataset(self.data, list_path)
 
     def read_netcdf(self, folder_name):
-        """ Read all netcdf files contained in folder and fill a track per file.
+        """Read all netcdf files contained in folder and fill a track per file.
 
         Parameters:
             folder_name (str): folder name where to write files
@@ -781,7 +781,7 @@ class TCTracks():
     @staticmethod
     @jit(parallel=True)
     def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
-        """ Interpolate values of one track.
+        """Interpolate values of one track.
 
         Parameters:
             track (xr.Dataset): track data
@@ -825,7 +825,7 @@ class TCTracks():
     @staticmethod
     @jit(parallel=True, forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
-        """ Interpolate values of one track.
+        """Interpolate values of one track.
 
         Parameters:
             track (xr.Dataset): track data
@@ -1052,7 +1052,7 @@ def _calc_land_geom(ens_track):
         min_lat, max_lat), resolution=10)
 
 def _track_land_params(track, land_geom):
-    """ Compute parameters of land for one track.
+    """Compute parameters of land for one track.
 
     Parameters:
         track (xr.Dataset): track values
@@ -1063,7 +1063,7 @@ def _track_land_params(track, land_geom):
     track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
 def _dist_since_lf(track):
-    """ Compute the distance to landfall in km point for every point on land.
+    """Compute the distance to landfall in km point for every point on land.
     Points on water get nan values.
 
     Parameters:
@@ -1106,7 +1106,7 @@ def _dist_since_lf(track):
     return dist_since_lf
 
 def _calc_orig_lf(track, sea_land_idx):
-    """ Approximate coast coordinates in landfall as the middle point
+    """Approximate coast coordinates in landfall as the middle point
     before landfall and after.
 
     Parameters:
@@ -1150,23 +1150,28 @@ def _calc_decay_ps_value(track, p_landfall, pos, s_rel):
     return float(p_land_s / p_landfall)
 
 def _decay_values(track, land_geom, s_rel):
-    """ Compute wind and pressure relative to landafall values.
+    """Compute wind and pressure relative to landafall values.
 
-    Parameters:
-        track (xr.Dataset): track
-        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
-        s_rel (bool): use environmental presure for S value (true) or
-            central presure (false)
+    Parameters
+    ----------
+    track : xr.Dataset
+        track
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        land geometry
+    s_rel : bool
+        use environmental presure for S value (true) or central presure (false)
 
-    Returns:
-        v_lf (dict): key is Saffir-Simpson scale, values are arrays of
-            wind/wind at landfall
-        p_lf (dict): key is Saffir-Simpson scale, values are tuples with
-            first value array of S parameter, second value array of central
-            pressure/central pressure at landfall
-        x_val (dict): key is Saffir-Simpson scale, values are arrays with
-            the values used as "x" in the coefficient fitting, the
-            distance since landfall
+    Returns
+    -------
+    v_lf : dict
+        key is Saffir-Simpson scale, values are arrays of wind/wind at landfall
+    p_lf : dict
+        key is Saffir-Simpson scale, values are tuples with first value array
+        of S parameter, second value array of central pressure/central pressure
+        at landfall
+    x_val : dict
+        key is Saffir-Simpson scale, values are arrays with the values used as
+        "x" in the coefficient fitting, the distance since landfall
     """
     v_lf = dict()
     p_lf = dict()
@@ -1212,7 +1217,7 @@ def _decay_values(track, land_geom, s_rel):
     return v_lf, p_lf, x_val
 
 def _decay_calc_coeff(x_val, v_lf, p_lf):
-    """ From track's relative velocity and pressure, compute the decay
+    """From track's relative velocity and pressure, compute the decay
     coefficients.
     - wind decay = exp(-x*A)
     - pressure decay = S-(S-1)*exp(-x*A)
@@ -1272,7 +1277,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     return v_rel, p_rel
 
 def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
-    """ Generate one graph with wind decay and an other with central pressure
+    """Generate one graph with wind decay and an other with central pressure
     decay, true and approximated."""
     # One graph per TC category
     for track_cat, color in zip(v_lf.keys(),
@@ -1297,7 +1302,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
                      p_rel[track_cat][1], x_eval), '-', c=color)
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
-    """ Change track's max sustained wind and central pressure using the land
+    """Change track's max sustained wind and central pressure using the land
     decay coefficients.
 
     Parameters:
@@ -1370,7 +1375,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     return track
 
 def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
-    """ Plot wind and presure before and after correction for synthetic tracks.
+    """Plot wind and presure before and after correction for synthetic tracks.
     Plot wind and presure for unchanged historical tracks."""
     # Plot synthetic tracks
     sy_tracks = [track for track in all_tracks if not track.orig_event_flag]
@@ -1530,8 +1535,8 @@ def _check_apply_decay_hist_plot(hist_tracks):
     return graph_hv, graph_hp, graph_hpd_a, graph_hped_a
 
 def _estimate_pressure(cen_pres, v_max, lat, lon):
-    """ Replace missing pressures with statistical estimate from location
-        and maximum wind speed. """
+    """Replace missing pressures with statistical estimate from location
+        and maximum wind speed."""
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     v_max = np.where(np.isnan(v_max), -1, v_max)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
@@ -1546,7 +1551,7 @@ def _estimate_pressure(cen_pres, v_max, lat, lon):
     return cen_pres
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
-    """ Compute maximum wind speed in unit_dest
+    """Compute maximum wind speed in unit_dest
 
     Parameters:
         wind (np.array): wind

@@ -30,9 +30,9 @@ SHP_FN = shapereader.natural_earth(resolution='10m', \
 SHP_FILE = shapereader.Reader(SHP_FN)
 
 class TestNetpresValue(unittest.TestCase):
-    """Test date functions """
+    """Test date functions"""
     def test_net_pres_val_pass(self):
-        """ Test net_present_value against MATLAB reference"""
+        """Test net_present_value against MATLAB reference"""
         years = np.arange(2018, 2041)
         disc_rates = np.ones(years.size)*0.02
         val_years = np.ones(years.size)*6.512201157564418e9
@@ -43,7 +43,7 @@ class TestNetpresValue(unittest.TestCase):
 class TestWBData(unittest.TestCase):
     """Test World Bank data"""
     def test_ne_income_grp_aia_pass(self):
-        """ Test nat_earth_adm0 function Anguilla."""
+        """Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
         res_year, res_val = nat_earth_adm0('AIA', 'INCOME_GRP',
                                            shp_file=SHP_FILE)
@@ -54,7 +54,7 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_wb_income_grp_sxm_pass(self):
-        """ Test world_bank function Sint Maarten."""
+        """Test world_bank function Sint Maarten."""
         ref_year = 2012
         res_year, res_val = world_bank('SXM', ref_year, 'INC_GRP')
 
@@ -64,7 +64,7 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_income_grp_sxm_1999_pass(self):
-        """ Test income_group function Sint Maarten."""
+        """Test income_group function Sint Maarten."""
         ref_year = 1999
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             res_year, res_val = income_group('SXM', ref_year, SHP_FILE)
@@ -76,7 +76,7 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_ne_gdp_aia_2012_pass(self):
-        """ Test nat_earth_adm0 function Anguilla."""
+        """Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
         res_year, res_val = nat_earth_adm0('AIA', 'GDP_MD_EST',
                                            'GDP_YEAR', SHP_FILE)
@@ -87,7 +87,7 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_gdp_sxm_2012_pass(self):
-        """ Test gdp function Sint Maarten."""
+        """Test gdp function Sint Maarten."""
         ref_year = 2012
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             res_year, res_val = gdp('SXM', ref_year)
@@ -99,7 +99,7 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_gdp_twn_2012_pass(self):
-        """ Test gdp function TWN."""
+        """Test gdp function TWN."""
         ref_year = 2014
         res_year, res_val = gdp('TWN', ref_year)
         _, res_val_direct = _gdp_twn(ref_year)
@@ -108,10 +108,10 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
         self.assertEqual(res_val_direct, ref_val)
-        
+
 
     def test_wb_esp_1950_pass(self):
-        """ Test world_bank function Sint Maarten."""
+        """Test world_bank function Sint Maarten."""
         ref_year = 1950
         res_year, res_val = world_bank('ESP', ref_year, 'NY.GDP.MKTP.CD')
 
@@ -121,9 +121,9 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
 class TestWealth2GDP(unittest.TestCase):
-    """ Test Wealth to GDP factor extraction """
+    """Test Wealth to GDP factor extraction"""
     def test_nfw_SUR_pass(self):
-        """ Test non-financial wealth-to-gdp factor with Suriname."""
+        """Test non-financial wealth-to-gdp factor with Suriname."""
         res_year, res_val = wealth2gdp('SUR')
 
         ref_year = 2016
@@ -132,7 +132,7 @@ class TestWealth2GDP(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_nfw_BEL_pass(self):
-        """ Test total wealth-to-gdp factor with Belgium."""
+        """Test total wealth-to-gdp factor with Belgium."""
         res_year, res_val = wealth2gdp('BEL', False)
 
         ref_year = 2016
@@ -141,15 +141,15 @@ class TestWealth2GDP(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
     def test_nfw_LBY_pass(self):
-        """ Test missing factor with Libya."""
+        """Test missing factor with Libya."""
         _, res_val = wealth2gdp('LBY')
 
         self.assertTrue(np.isnan(res_val))
 
 class TestWBWealthAccount(unittest.TestCase):
-    """ Test Wealth Indicator extraction from World Bank provided CSV """
+    """Test Wealth Indicator extraction from World Bank provided CSV"""
     def test_pca_DEU_2010_pass(self):
-        """ Test Processed Capital value Germany 2010."""
+        """Test Processed Capital value Germany 2010."""
         ref_year = 2010
         cntry_iso = 'DEU'
         res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
@@ -163,7 +163,7 @@ class TestWBWealthAccount(unittest.TestCase):
         self.assertEqual(res_year_noland, ref_year)
         self.assertEqual(res_val_noland, ref_val_noland)
     def test_pca_CHE_2008_pass(self):
-        """ Test Prcoessed Capital per capita Switzerland 2008 (interp.)."""
+        """Test Prcoessed Capital per capita Switzerland 2008 (interp.)."""
         ref_year = 2008
         cntry_iso = 'CHE'
         var_name = 'NW.PCA.PC'
@@ -173,7 +173,7 @@ class TestWBWealthAccount(unittest.TestCase):
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
     def test_tow_IND_1985_pass(self):
-        """ Test Total Wealth value India 1985 (outside year range)."""
+        """Test Total Wealth value India 1985 (outside year range)."""
         ref_year = 1985
         cntry_iso = 'IND'
         var_name = 'NW.TOW.TO'
@@ -183,7 +183,7 @@ class TestWBWealthAccount(unittest.TestCase):
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
     def test_pca_CUB_2015_pass(self):
-        """ Test Processed Capital value Cuba 2015 (missing value)."""
+        """Test Processed Capital value Cuba 2015 (missing value)."""
         ref_year = 2015
         cntry_iso = 'CUB'
         res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)

@@ -45,7 +45,7 @@ from climada.util.constants import DATA_DIR
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'CP'
-""" Hazard type acronym for Crop Potential """
+"""Hazard type acronym for Crop Potential"""
 
 
 AG_MODEL = ['gepic',
@@ -108,7 +108,7 @@ class CropPotential(Hazard):
     """
 
     def __init__(self, pool=None):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         if pool:
             self.pool = pool
@@ -191,7 +191,7 @@ class CropPotential(Hazard):
 
     def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False, \
                   output_dir=OUTPUT_DIR):
-        """ Calculates mean of the hazard for a given reference time period
+        """Calculates mean of the hazard for a given reference time period
             Parameters:
                 yearrange (array): time period used to calculate the mean intensity
                 default: 1976-2005
@@ -226,7 +226,7 @@ class CropPotential(Hazard):
 
 
     def set_rel_yield_to_int(self, hist_mean):
-        """ Sets relative yield to intensity (yearly yield / historic mean) per centroid
+        """Sets relative yield to intensity (yearly yield / historic mean) per centroid
 
             Parameters:
                 historic mean (array): historic mean per centroid
@@ -253,7 +253,7 @@ class CropPotential(Hazard):
         return self
 
     def set_percentile_to_int(self, reference_intensity=None):
-        """ Sets percentile to intensity
+        """Sets percentile to intensity
 
             Parameters:
                 reference_intensity (AD): intensity to be used as reference (e.g. the historic
@@ -281,7 +281,7 @@ class CropPotential(Hazard):
         return self
 
     def plot_intensity_cp(self, event, dif=0, axis=None, **kwargs):
-        """ Plots intensity with predefined settings depending on the intensity definition
+        """Plots intensity with predefined settings depending on the intensity definition
 
         Parameters:
             event (int or str): event_id or event_name
@@ -310,7 +310,7 @@ class CropPotential(Hazard):
         return axes
 
     def plot_time_series(self, years=None):
-        """ Plots a time series of intensities (a series of sub plots)
+        """Plots a time series of intensities (a series of sub plots)
 
         Returns:
             figure
@@ -361,7 +361,7 @@ class CropPotential(Hazard):
         return fig
 
     def plot_comparing_maps(self, his, fut, axes, nr_cli_models=1, model=1):
-        """ Plots comparison maps of historic and future data and their difference fut-his
+        """Plots comparison maps of historic and future data and their difference fut-his
 
         Parameters:
             his (sparse matrix): historic mean annual yield or mean relative yield
@@ -412,7 +412,7 @@ class CropPotential(Hazard):
 
 def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, \
                          yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange']):
-    """ Generates hazard set for all files contained in the input directory and saves them
+    """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files in the output directory
 
         Parameters:

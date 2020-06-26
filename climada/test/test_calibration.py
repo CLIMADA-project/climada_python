@@ -35,10 +35,10 @@ DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
 
 
 class TestCalib(unittest.TestCase):
-    ''' Test engine calibration method.'''
+    """Test engine calibration method."""
 
     def test_calib_instance(self):
-        """ Test save calib instance """
+        """Test save calib instance"""
          # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
@@ -47,14 +47,14 @@ class TestCalib(unittest.TestCase):
         # Read default hazard file
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
-        
+
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.tag.haz_type,
                                              ent.exposures.if_TC.median())
-    
+
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)
-        
+
         # create input frame
         df_in = pd.DataFrame.from_dict({'v_threshold':[25.7],
                                         'other_param':[2],
@@ -65,7 +65,7 @@ class TestCalib(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         df_out = calib_instance(hazard, ent.exposures, imp_func, df_in)
-        df_out_yearly = calib_instance(hazard, ent.exposures, imp_func, 
+        df_out_yearly = calib_instance(hazard, ent.exposures, imp_func,
                                        df_in_yearly,
                                        yearly_impact= True)
         # calc Impact as comparison
@@ -90,7 +90,7 @@ class TestCalib(unittest.TestCase):
                             impact.at_event))
         self.assertTrue(all(df_out_yearly['impact_CLIMADA'].values ==
                              [*IYS.values()]))
-        
+
 
 # Execute Tests
 if __name__ == "__main__":

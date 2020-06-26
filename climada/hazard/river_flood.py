@@ -45,7 +45,7 @@ NATID_INFO = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'RF'
-""" Hazard type acronym RiverFlood"""
+"""Hazard type acronym RiverFlood"""
 
 
 class RiverFlood(Hazard):
@@ -154,22 +154,22 @@ class RiverFlood(Hazard):
 
         elif shape:
             shapes =gpd.read_file(shape)
-            
+
             rand_geom = shapes.geometry[0]
-            
+
             self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=rand_geom)
             return
-        
+
         elif not centroids:
             # centroids as raster
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path],
                             band=bands.tolist())
             #self.centroids.set_meta_to_lat_lon()
-        
+
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
             """TODO: implement case when meta or regulargrid is defined
@@ -228,8 +228,8 @@ class RiverFlood(Hazard):
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
-    
-    
+
+
     def exclude_trends(self, fld_trend_path, dis):
         """
         Function allows to exclude flood impacts that are caused in areas
@@ -247,32 +247,32 @@ class RiverFlood(Hazard):
                    metafrc['transform'][0]).astype(int)
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
-            
-        trend = trend_data[:, y_i*metafrc['width'] + x_i]    
+
+        trend = trend_data[:, y_i*metafrc['width'] + x_i]
 
         if dis == 'pos':
             dis_map = np.greater(trend, 0)
         else:
             dis_map = np.less(trend, 0)
-        
+
         new_trends = dis_map.astype(int)
-            
+
         new_intensity = np.multiply(self.intensity.todense(), new_trends)
         new_fraction = np.multiply(self.fraction.todense(), new_trends)
-        
+
         self.intensity = sp.sparse.csr_matrix(new_intensity)
         self.fraction = sp.sparse.csr_matrix(new_fraction)
 
     def exclude_returnlevel(self, frc_path):
         """
-        Function allows to exclude flood impacts below a certain return level 
+        Function allows to exclude flood impacts below a certain return level
         by manipulating flood fractions in a way that the array flooded more
         frequently than the treshold value is excluded. (This function
         is only needed for very specific applications)
         Raises:
             NameErroris function
         """
-        
+
         if not os.path.exists(frc_path):
             LOGGER.error('Invalid ReturnLevel-file path ' + frc_path)
             raise NameError
@@ -316,9 +316,9 @@ class RiverFlood(Hazard):
         if save_centr:
             self.fla_ann_centr = sp.sparse.csr_matrix(fla_ann_centr)
             self.fla_ev_centr = sp.sparse.csr_matrix(fla_ev_centr)
-            
+
     def _annual_event_mask(self, event_years, years):
-        """ Assignes events to each year
+        """Assignes events to each year
         Returns:
             bool array (columns contain events, rows contain years)
         """
@@ -327,14 +327,14 @@ class RiverFlood(Hazard):
             events = np.where(event_years == years[year_ind])[0]
             event_mask[year_ind, events] = True
         return event_mask
-    
+
     def set_flood_volume(self, save_centr=False):
-        """ Calculates flooded area for hazard. sets yearly flooded area and
+        """Calculates flooded area for hazard. sets yearly flooded area and
             flooded area per event
         Raises:
             MemoryError
         """
-    
+
         fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
 
         if save_centr:
@@ -342,9 +342,9 @@ class RiverFlood(Hazard):
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
 
-    
+
     def _select_exact_area(countries=[], reg=[]):
-        """ Extract coordinates of selected countries or region
+        """Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
         if only reg is given, the whole region is cut.
         Parameters:
@@ -357,14 +357,14 @@ class RiverFlood(Hazard):
         """
         lat, lon = get_region_gridpoints(countries=countries, regions=reg,
             basemap="isimip", resolution=150)
-        
+
         if reg:
              country_isos = region2isos(reg)
         else:
              country_isos = countries
-             
+
         natIDs = country_iso2natid(country_isos)
-        
+
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])

@@ -42,19 +42,19 @@ Image.MAX_IMAGE_PIXELS = 1e9
 LOGGER = logging.getLogger(__name__)
 
 NOAA_SITE = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/"
-""" NOAA's URL used to retrieve nightlight satellite images. """
+"""NOAA's URL used to retrieve nightlight satellite images."""
 
 NOAA_RESOLUTION_DEG = (30 * ureg.arc_second).to(ureg.deg).magnitude
-""" NOAA nightlights coordinates resolution in degrees. """
+"""NOAA nightlights coordinates resolution in degrees."""
 
 NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
-""" NASA nightlights coordinates resolution in degrees. """
+"""NASA nightlights coordinates resolution in degrees."""
 
 NASA_TILE_SIZE = (21600, 21600)
-""" NASA nightlights tile resolution. """
+"""NASA nightlights tile resolution."""
 
 NOAA_BORDER = (-180, -65, 180, 75)
-""" NOAA nightlights border (min_lon, min_lat, max_lon, max_lat) """
+"""NOAA nightlights border (min_lon, min_lat, max_lon, max_lat)"""
 
 NASA_SITE = 'https://www.nasa.gov/specials/blackmarble/*/tiles/georeferrenced/'
 """NASA nightlight web url."""
@@ -71,7 +71,7 @@ BM_FILENAMES = ['BlackMarble_*_A1_geo_gray.tif',
 """Nightlight NASA files which generate the whole earth when put together."""
 
 def check_required_nl_files(bbox, *coords):
-    """ Determines which of the satellite pictures are necessary for
+    """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
     Parameters:
@@ -137,7 +137,7 @@ def check_required_nl_files(bbox, *coords):
 
 def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
                                check_path=SYSTEM_DIR, year=2016):
-    """ Checks if BM Satellite files are avaialbe and returns a vector
+    """Checks if BM Satellite files are avaialbe and returns a vector
     denoting the missing files.
 
     Parameters:
@@ -185,7 +185,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
 
 def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     files_exist=np.zeros(len(BM_FILENAMES),), dwnl_path=SYSTEM_DIR, year=2016):
-    """ Attempts to download nightlight files from NASA webpage.
+    """Attempts to download nightlight files from NASA webpage.
 
     Parameters:
         req_files (array): Boolean array which indicates the files
@@ -238,7 +238,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     return path_str
 
 def load_nightlight_nasa(bounds, req_files, year):
-    """ Get nightlight from NASA repository that contain input boundary.
+    """Get nightlight from NASA repository that contain input boundary.
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat
@@ -284,7 +284,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     return nightlight, coord_nl
 
 def unzip_tif_to_py(file_gz):
-    """ Unzip image file, read it, flip the x axis, save values as pickle
+    """Unzip image file, read it, flip the x axis, save values as pickle
     and remove tif.
 
     Parameters:
@@ -310,7 +310,7 @@ def unzip_tif_to_py(file_gz):
     return file_name, nightlight
 
 def untar_noaa_stable_nightlight(f_tar_ini):
-    """ Move input tar file to SYSTEM_DIR and extract stable light file.
+    """Move input tar file to SYSTEM_DIR and extract stable light file.
     Returns absolute path of stable light file in format tif.gz.
 
     Parameters:
@@ -349,7 +349,7 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     return f_tif_gz
 
 def load_nightlight_noaa(ref_year=2013, sat_name=None):
-    """ Get nightlight luminosites. Nightlight matrix, lat and lon ordered
+    """Get nightlight luminosites. Nightlight matrix, lat and lon ordered
     such that nightlight[1][0] corresponds to lat[1], lon[0] point (the image
     has been flipped).
 
