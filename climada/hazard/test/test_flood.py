@@ -39,9 +39,6 @@ class TestRiverFlood(unittest.TestCase):
         with self.assertRaises(KeyError):
             emptyFlood.set_from_nc(reg=['OYY'], dph_path=HAZ_DEMO_FLDDPH,
                                    frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
-            
-            
-    
 
     def test_exact_area_selection_country(self):
 
