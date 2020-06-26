@@ -31,7 +31,7 @@ EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.c
 EMDAT_2020_CSV_DEMO = os.path.join(DATA_DIR, 'demo', 'demo_emdat_impact_data_2020.csv')
 
 class TestEmdatImport(unittest.TestCase):
-    '''Test import of EM-DAT data (as CSV) for impact data analysis'''
+    """Test import of EM-DAT data (as CSV) for impact data analysis"""
     def test_emdat_df_2018_load(self):
         """load selected sub sample from CSV, return DataFrame"""
         df, years, iso3 = im_d.emdat_df_load('Bangladesh', 'TC', \
@@ -113,7 +113,7 @@ class TestEmdatImport(unittest.TestCase):
         self.assertIn('USA', list(df['ISO3']))
         self.assertIn('BGD', list(df['ISO3']))
         self.assertEqual(0, df['reference_year'].max())
-    
+
     def test_emdat_countries_by_hazard_2020_pass(self):
         """test to get list of countries impacted by tropical cyclones from 2000 to 2019"""
         iso3_codes, country_names = im_d.emdat_countries_by_hazard('TC', \
@@ -146,7 +146,7 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertAlmostEqual(11470996041.666666, impact_emdat.eai_exp[1], places=3)
 
     def test_emdat_to_impact_scale(self):
-        """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""    
+        """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""
         impact_emdat = im_d.emdat_to_impact(EMDAT_TEST_CSV,
                                         year_range=[2010, 2016], countries=['USA'],\
                                         hazard_type_emdat='Drought', \
@@ -181,11 +181,11 @@ class TestEmdatToImpact(unittest.TestCase):
 
     def test_emdat_to_impact_2020format(self):
         """test import TC EM-DAT to Impact() from new 2020 EMDAT format CSV"""
-        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO,
                                     countries='PHL', \
                                     hazard_type_climada='TC', \
                                     year_range=(2013,2013), imp_str="Total Affected")
-            
+
         #TC events in EM-DAT in the Philipppines, 2013:
         self.assertEqual(8, impact_emdat.event_id.size)
         #People affected by TC events in the Philippines in 2013 (AAI):

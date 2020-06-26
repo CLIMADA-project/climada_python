@@ -56,7 +56,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'haz' : 'peril_ID'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'measures',
                  'col_name': {'name' : 'name',
@@ -79,7 +79,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'measures',
                               'haz' : 'peril_ID'
                              }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 class MeasureSet():
     """Contains measures of type Measure. Loads from
@@ -444,14 +444,14 @@ class MeasureSet():
             raise var_err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Write excel file following template.
+        """Write excel file following template.
 
         Parameters:
             file_name (str): absolute file name to write
             var_names (dict, optional): name of the variables in the file
         """
         def write_meas(row_ini, imp_ws, xls_data):
-            """ Write one measure """
+            """Write one measure"""
             for icol, col_dat in enumerate(xls_data):
                 imp_ws.write(row_ini, icol, col_dat)
 

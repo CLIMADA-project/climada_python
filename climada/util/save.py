@@ -60,7 +60,7 @@ def save(out_file_name, var):
         raise ValueError
 
 def load(in_file_name):
-    """ Load variable contained in file. Uses configuration save_dir folder
+    """Load variable contained in file. Uses configuration save_dir folder
     if no absolute path provided.
 
     Parameters:

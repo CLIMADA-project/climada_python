@@ -45,22 +45,22 @@ import climada.util.plot as u_plot
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'TC'
-""" Hazard type acronym for Tropical Cyclone """
+"""Hazard type acronym for Tropical Cyclone"""
 
 INLAND_MAX_DIST_KM = 1000
-""" Maximum inland distance of the centroids in km """
+"""Maximum inland distance of the centroids in km"""
 
 CENTR_NODE_MAX_DIST_KM = 300
-""" Maximum distance between centroid and TC track node in km """
+"""Maximum distance between centroid and TC track node in km"""
 
 MODEL_VANG = {'H08': 0
              }
-""" Enumerate different symmetric wind field calculation."""
+"""Enumerate different symmetric wind field calculation."""
 
 KMH_TO_MS = (1.0 * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter/ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
-""" Unit conversion factors for JIT functions that can't use ureg """
+"""Unit conversion factors for JIT functions that can't use ureg"""
 
 class TropCyclone(Hazard):
     """Contains tropical cyclone events.
@@ -84,13 +84,13 @@ class TropCyclone(Hazard):
             'SA' South Atlantic
     """
     intensity_thres = 17.5
-    """ intensity threshold for storage in m/s """
+    """intensity threshold for storage in m/s"""
 
     vars_opt = Hazard.vars_opt.union({'category'})
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self, pool=None):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
         self.basin = list()
@@ -146,7 +146,7 @@ class TropCyclone(Hazard):
         self.tag.description = description
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
-        """ Compute future events for given RCP scenario and year. RCP 4.5
+        """Compute future events for given RCP scenario and year. RCP 4.5
         from Knutson et al 2015.
         Parameters:
             ref_year (int): year between 2000 ad 2100. Default: 2050
@@ -166,7 +166,7 @@ class TropCyclone(Hazard):
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
                         **kwargs):
-        """ Generate video of TC wind fields node by node and returns its
+        """Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
 
         Parameters:
@@ -256,7 +256,7 @@ class TropCyclone(Hazard):
     @staticmethod
     @jit(forceobj=True)
     def _tc_from_track(track, centroids, coastal_centr, model='H08'):
-        """ Set hazard from input file. If centroids are not provided, they are
+        """Set hazard from input file. If centroids are not provided, they are
         read from the same file.
         Parameters:
             track (xr.Dataset): tropical cyclone track.
@@ -291,7 +291,7 @@ class TropCyclone(Hazard):
         return new_haz
 
     def _apply_criterion(self, criterion, scale):
-        """ Apply changes defined in criterion with a given scale
+        """Apply changes defined in criterion with a given scale
         Parameters:
             criterion (list(dict)): list of criteria
             scale (float): scale parameter because of chosen year and RCP
@@ -319,7 +319,7 @@ class TropCyclone(Hazard):
         return haz_cc
 
 def coastal_centr_idx(centroids, lat_max=61):
-    """ Compute centroids indices which are inside INLAND_MAX_DIST_KM and
+    """Compute centroids indices which are inside INLAND_MAX_DIST_KM and
     with lat < lat_max.
     Parameters:
         lat_max (float, optional): Maximum latitude to consider. Default: 61.
@@ -332,7 +332,7 @@ def coastal_centr_idx(centroids, lat_max=61):
                           centroids.lat < lat_max).nonzero()[0]
 
 def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
-    """ Compute wind gusts at centroids from track. Track is interpolated to
+    """Compute wind gusts at centroids from track. Track is interpolated to
     configured time step.
     Parameters:
         track (xr.Dataset): track infomation
@@ -355,7 +355,7 @@ def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
 
 @jit(forceobj=True)
 def _windfield(track, centroids, coastal_idx, model):
-    """ Compute windfields (in m/s) in centroids using Holland model 08.
+    """Compute windfields (in m/s) in centroids using Holland model 08.
 
     Parameters:
         track (xr.Dataset): track infomation
@@ -389,7 +389,7 @@ def _windfield(track, centroids, coastal_idx, model):
 
 @jit
 def _vtrans(t_lat, t_lon, t_tstep):
-    """ Translational spped at every track node.
+    """Translational spped at every track node.
 
     Parameters:
         t_lat (np.array): track latitudes
@@ -411,7 +411,7 @@ def _vtrans(t_lat, t_lon, t_tstep):
 
 @jit
 def _extra_rad_max_wind(t_cen, t_rad):
-    """ Extrapolate RadiusMaxWind from pressure and change to km.
+    """Extrapolate RadiusMaxWind from pressure and change to km.
 
     Parameters:
         t_cen (np.array): track central pressures
@@ -439,7 +439,7 @@ def _extra_rad_max_wind(t_cen, t_rad):
 
 @jit(parallel=True, forceobj=True)
 def _wind_per_node(coastal_centr, track, v_trans, model):
-    """ Compute sustained winds at each centroid.
+    """Compute sustained winds at each centroid.
 
     Parameters:
         coastal_centr (2d np.array): centroids
@@ -494,7 +494,7 @@ def _wind_per_node(coastal_centr, track, v_trans, model):
     return intensity
 
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
-    """ Compute Hollands translational wind corrections. Returns factor.
+    """Compute Hollands translational wind corrections. Returns factor.
 
     Use the angle between the track forward vector and the vector towards each
     centroid to decide whether the translational wind needs to be added (on the
@@ -544,7 +544,7 @@ def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
 
 @jit(['f8(f8, f8, f8, f8, f8, f8, f8)'], nopython=True)
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
-    """ Halland's 2008 b value computation.
+    """Halland's 2008 b value computation.
 
     Parameters:
         v_trans (float): translational wind (m/s)
@@ -564,7 +564,7 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
 
 @jit(nopython=True)
 def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
-    """ Holland symmetric and static wind field (in m/s) according to
+    """Holland symmetric and static wind field (in m/s) according to
     Holland1980 or Holland2008m depending on hol_b parameter.
 
     Parameters:
@@ -588,7 +588,7 @@ def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
 
 @jit(nopython=True)
 def _vang_sym(t_env, t_cens, t_lat, t_step, t_rad, r_arr, v_trans, model):
-    """ Compute symmetric and static wind field (in m/s) filed (angular
+    """Compute symmetric and static wind field (in m/s) filed (angular
     wind component.
 
     Parameters:

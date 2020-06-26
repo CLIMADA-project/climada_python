@@ -45,7 +45,7 @@ LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 HAZ_TYPE = 'LS'
 
 
-""" for future: implement a function that downloads COOLR data by command, not manually"""
+"""for future: implement a function that downloads COOLR data by command, not manually"""
 # def get_coolr_shp(save_path=os.getcwd()):
 #    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
 #    global landslide catalog (COOLR of NASA) in shape-file format (zip)"""
@@ -114,7 +114,7 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
 
 
 def combine_nowcast_tiff(ls_folder_path, search_criteria='LS*.tif', operator="maximum"):
-    """ Function to overlay several tiff files with landslide hazard data either by
+    """Function to overlay several tiff files with landslide hazard data either by
     keeping maximum value per pixel or by summing up all pixel values.
     UPDATE: SOMETIMES WORKS, SOMETIMES NOT, ISSUE SEEMS TO BE WITH THE SHELL=TRUE COMMAND
     Parameters:
@@ -180,7 +180,7 @@ class Landslide(Hazard):
     """
 
     def __init__(self):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.tag.haz_type = 'LS'
 
@@ -243,11 +243,19 @@ class Landslide(Hazard):
     def _intensity_prob_to_binom(self, n_years):
         """convert occurrence probabilities in NGI/UNEP landslide hazard map into binary
         occurrences (yes/no) within a given time frame.
-        Parameters:
-            n_years (int): the timespan of the probabilistic simulation in years
-        Returns:
-            intensity_prob (csr matrix): initial probabilities of ls occurrence per year per pixel
-            intensity (csr matrix): binary (0/1) occurrence within pixel"""
+
+        Parameters
+        ----------
+        n_years : int
+            the timespan of the probabilistic simulation in years
+
+        Returns
+        -------
+        intensity_prob : csr matrix
+            initial probabilities of ls occurrence per year per pixel
+        intensity : csr matrix
+            binary (0/1) occurrence within pixel
+        """
 
         self.intensity_prob = self.intensity.copy() #save prob values
 
@@ -288,7 +296,7 @@ class Landslide(Hazard):
         self.intensity = self.intensity.tocsr()
 
     def plot_raw(self, ev_id=1, **kwargs):
-        """ Plot raw LHM data using imshow and without cartopy
+        """Plot raw LHM data using imshow and without cartopy
 
         Parameters:
             ev_id (int, optional): event id. Default: 1.
@@ -311,7 +319,7 @@ class Landslide(Hazard):
                               reshape(self.centroids.shape), **kwargs)
 
     def plot_events(self, ev_id=1, **kwargs):
-        """ Plot LHM event data using imshow and without cartopy
+        """Plot LHM event data using imshow and without cartopy
 
         Parameters:
             ev_id (int, optional): event id. Default: 1.

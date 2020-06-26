@@ -39,7 +39,7 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'CP'
-""" Default hazard type used in impact functions id."""
+"""Default hazard type used in impact functions id."""
 
 BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
 
@@ -333,7 +333,7 @@ class CropyieldIsimip(Exposures):
 
     def set_to_usd(self, dir_fao=INPUT_DIR+'FAO/', yearrange=YEARS_FAO, crop=CROP[0]):
         #to do: check api availability?; default yearrange for single year (e.g. 5a)
-        """ Calculates the exposure in USD using country and year specific data published
+        """Calculates the exposure in USD using country and year specific data published
         by the FAO.
 
         Parameters:
@@ -406,7 +406,7 @@ class CropyieldIsimip(Exposures):
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
                            yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD'):
-    """ Generates hazard set for all files contained in the input directory and saves them
+    """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files in the output directory
 
         Parameters:

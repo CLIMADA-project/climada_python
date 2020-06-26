@@ -36,7 +36,7 @@ HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
 
 class TestFreqCurve(unittest.TestCase):
-    '''Test exceedence frequency curve computation'''
+    """Test exceedence frequency curve computation"""
     def test_ref_value_pass(self):
         """Test result against reference value"""
         imp = Impact()
@@ -81,7 +81,7 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual('USD', ifc.unit)
 
     def test_ref_value_rp_pass(self):
-        """Test result against reference value with given return periods """
+        """Test result against reference value with given return periods"""
         imp = Impact()
         imp.frequency = np.ones(10) * 6.211180124223603e-04
         imp.at_event = np.zeros(10)
@@ -110,9 +110,9 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual('USD', ifc.unit)
 
 class TestOneExposure(unittest.TestCase):
-    '''Test one_exposure function'''
+    """Test one_exposure function"""
     def test_ref_value_insure_pass(self):
-        ''' Test result against reference value'''
+        """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
         ent = Entity()
@@ -167,10 +167,10 @@ class TestOneExposure(unittest.TestCase):
         self.assertEqual(0, impact.at_event[14309])
 
 class TestCalc(unittest.TestCase):
-    ''' Test impact calc method.'''
+    """Test impact calc method."""
 
     def test_ref_value_pass(self):
-        ''' Test result against reference value'''
+        """Test result against reference value"""
         # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
@@ -217,7 +217,7 @@ class TestCalc(unittest.TestCase):
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
     def test_calc_imp_mat_pass(self):
-        """ Test save imp_mat """
+        """Test save imp_mat"""
          # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
@@ -243,7 +243,7 @@ class TestCalc(unittest.TestCase):
             impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
 
     def test_calc_if_pass(self):
-        """ Execute when no if_HAZ present, but only if_ """
+        """Execute when no if_HAZ present, but only if_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.exposures.rename(columns={'if_TC':'if_'}, inplace=True)
@@ -285,10 +285,10 @@ class TestCalc(unittest.TestCase):
         self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
 
 class TestImpactYearSet(unittest.TestCase):
-    '''Test calc_impact_year_set method'''
+    """Test calc_impact_year_set method"""
 
     def test_impact_year_set_sum(self):
-        """Test result against reference value with given events """
+        """Test result against reference value with given events"""
         imp = Impact()
         imp.frequency = np.ones(10) * 6.211180124223603e-04
         imp.at_event = np.zeros(10)
@@ -333,7 +333,7 @@ class TestImpactYearSet(unittest.TestCase):
         self.assertEqual(len(iys_all_yr_1940), 61)
 
     def test_impact_year_set_empty(self):
-        """Test result for empty impact """
+        """Test result for empty impact"""
         imp = Impact()
         iys_all = imp.calc_impact_year_set()
         iys = imp.calc_impact_year_set(all_years=False)
@@ -341,10 +341,10 @@ class TestImpactYearSet(unittest.TestCase):
         self.assertEqual(len(iys_all), 0)
 
 class TestIO(unittest.TestCase):
-    ''' Test impact input/output methods.'''
+    """Test impact input/output methods."""
 
     def test_write_read_ev_test(self):
-        ''' Test result against reference value'''
+        """Test result against reference value"""
         # Create impact object
         num_ev = 10
         num_exp = 5
@@ -383,7 +383,7 @@ class TestIO(unittest.TestCase):
             zip(imp_write.event_name, imp_read.event_name) if i != j]))
 
     def test_write_read_exp_test(self):
-        ''' Test result against reference value'''
+        """Test result against reference value"""
         # Create impact object
         num_ev = 5
         num_exp = 10
@@ -423,7 +423,7 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_read_excel_pass(self):
-        """ Test write and read in excel """
+        """Test write and read in excel"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
@@ -453,7 +453,7 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_imp_mat(self):
-        """ Test write_excel_imp_mat function """
+        """Test write_excel_imp_mat function"""
         impact = Impact()
         impact.imp_mat = np.zeros((5, 4))
         impact.imp_mat[0, :] = np.arange(4)
@@ -471,9 +471,9 @@ class TestIO(unittest.TestCase):
                 np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
 
 class TestRPmatrix(unittest.TestCase):
-    ''' Test computation of impact per return period for whole exposure'''
+    """Test computation of impact per return period for whole exposure"""
     def test_local_exceedance_imp_pass(self):
-        """ Test calc local impacts per return period """
+        """Test calc local impacts per return period"""
          # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
@@ -497,9 +497,9 @@ class TestRPmatrix(unittest.TestCase):
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
 class TestRiskTrans(unittest.TestCase):
-    """ Test risk transfer methods """
+    """Test risk transfer methods"""
     def test_risk_trans_pass(self):
-        """ Test calc_risk_transfer """
+        """Test calc_risk_transfer"""
         # Create impact object
         imp = Impact()
         imp.event_id = np.arange(10)

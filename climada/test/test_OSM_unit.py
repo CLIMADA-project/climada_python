@@ -30,7 +30,7 @@ class TestOSMFunctions(unittest.TestCase):
     """Test OSM Class methods"""
 
     def test_osm_api_query(self):
-        """test _osm_api_query within get_features_OSM function """
+        """test _osm_api_query within get_features_OSM function"""
         bbox = [47.2, 8.03, 47.3, 8.07]
         item = 'landuse=forest'
         result_NodesFromWays, result_NodesWaysFromRels = OSM._osm_api_query(item, bbox)
@@ -39,7 +39,7 @@ class TestOSMFunctions(unittest.TestCase):
         self.assertGreater(len(result_NodesWaysFromRels.relations),0)
 
     def test_format_shape_osm(self):
-        """test _format_shape_osm function within get_features_OSM function: """
+        """test _format_shape_osm function within get_features_OSM function:"""
         #define input parameters
         bbox = [47.2, 8.03, 47.3, 8.07]
         item = 'landuse=forest'
@@ -56,7 +56,7 @@ class TestOSMFunctions(unittest.TestCase):
         self.assertEqual(globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))].iloc[-1].geometry.type,'MultiPolygon')
 
     def test_combine_dfs_osm(self):
-        """test _combine_dfs_osm function within get_features_OSM function: """
+        """test _combine_dfs_osm function within get_features_OSM function:"""
         # define input parameters
         types = {'landuse=forest','waterway'}
         bbox = [47.2, 8.03, 47.3, 8.07]

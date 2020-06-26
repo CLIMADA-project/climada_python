@@ -66,18 +66,18 @@ class TestRiverFlood(unittest.TestCase):
 
 
     def test_full_impact(self):
-        """ test full flood impact"""
+        """test full flood impact"""
         testRF = RiverFlood()
         testRF.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
                            countries = ['CHE'])
-        
+
         gdpa = GDP2Asset()
         gdpa.set_countries(countries=['CHE'], ref_year=2000, path = DEMO_GDP2ASSET)
-        
+
         if_set = flood_imp_func_set()
         imp=Impact()
         imp.calc(gdpa, if_set,testRF)
-        
+
         self.assertAlmostEqual(imp.at_event[0], 226839.72426476143)
         self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)
 

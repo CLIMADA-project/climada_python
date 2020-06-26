@@ -28,7 +28,7 @@ from climada.hazard.trop_cyclone import TropCyclone
 class TestClimateSce(unittest.TestCase):
 
     def test_apply_criterion_track(self):
-        """ Test _apply_criterion function. """
+        """Test _apply_criterion function."""
         tc = TropCyclone()
         tc.intensity = np.zeros((4, 10))
         tc.intensity[0, :] = np.arange(10)

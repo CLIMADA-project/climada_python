@@ -34,10 +34,10 @@ from climada.entity.exposures.litpop import LitPop
 
 
 def _insistent_osm_api_query(query_clause, read_chunk_size=100000, end_of_patience=127):
-    """Runs a single Overpass API query through overpy.Overpass.query. 
+    """Runs a single Overpass API query through overpy.Overpass.query.
     In case of failure it tries again after an ever increasing waiting period.
     If the waiting period surpasses a given limit an exception is raised.
-    
+
     Parameters:
         query_clause (str): the query
         read_chunk_size (int): paramter passed over to overpy.Overpass.query
@@ -91,7 +91,7 @@ def _osm_api_query(item, bbox):
 
 
 def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, save_path):
-    """ format edges, nodes and relations from overpy result objects into shapes
+    """format edges, nodes and relations from overpy result objects into shapes
     Parameters:
         bbox
         result_NodesFromWays
@@ -243,7 +243,7 @@ def _combine_dfs_osm(types, save_path, bbox):
         ..
     Returns:
         (gdf)
-    """    
+    """
     print('Combining all low-value GeoDataFrames into one GeoDataFrame...')
     OSM_features_gdf_combined = \
     GeoDataFrame(pd.DataFrame(columns=['Item', 'Name', 'Type', 'Natural_Type', 'geometry']),
@@ -262,7 +262,7 @@ def _combine_dfs_osm(types, save_path, bbox):
 
     OSM_features_gdf_combined.to_file(save_path +'/OSM_features_'+str(int(bbox[0]))+\
                                       '_'+str(int(bbox[1]))+'.shp')
-    
+
     return OSM_features_gdf_combined
 
 def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
@@ -315,7 +315,7 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
             plt.show()
 
     # Combine all dataframes into one, save with converting all to (multi)polygons.
-    OSM_features_gdf_combined = _combine_dfs_osm(types, save_path, bbox)        
+    OSM_features_gdf_combined = _combine_dfs_osm(types, save_path, bbox)
 
     if check_plot == 1:
         f, ax = plt.subplots(1)
@@ -403,7 +403,7 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
     return High_Value_Area
 
 def _get_litpop_bbox(country, highValueArea, **kwargs):
-    """ get litpop exposure for the bbox area of the queried OSM features
+    """get litpop exposure for the bbox area of the queried OSM features
     Parameters:
         country (str)
         highValueArea (gdf)
@@ -425,7 +425,7 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     return exp_sub
 
 def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
-    """ divide litpop exposure into high-value exposure and low-value exposure
+    """divide litpop exposure into high-value exposure and low-value exposure
     according to area queried in OSM, re-assign all low values to high-value centroids
     Parameters:
         exp_sub (exposure)
@@ -571,7 +571,7 @@ def _get_midpoints(highValueArea):
     return High_Value_Area_gdf
 
 def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
-    """ add value-columns to high-resolution exposure gdf
+    """add value-columns to high-resolution exposure gdf
     according to m2 area of underlying features.
 
     Parameters:

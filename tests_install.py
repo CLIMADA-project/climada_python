@@ -9,7 +9,7 @@ import matplotlib
 from climada.util.constants import SOURCE_DIR
 
 def find_install_tests():
-    """ select unit tests."""
+    """select unit tests."""
     suite = unittest.TestLoader().discover(start_dir='climada.engine.test',
                                            pattern='test_cost_benefit.py')
     suite.addTest(unittest.TestLoader().discover(start_dir='climada.engine.test',
@@ -17,7 +17,7 @@ def find_install_tests():
     return suite
 
 def main():
-    """ parse input argument: None or 'report'. Execute accordingly."""
+    """parse input argument: None or 'report'. Execute accordingly."""
     if sys.argv[1:]:
         import xmlrunner
         arg = sys.argv[1]

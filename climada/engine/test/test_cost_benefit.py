@@ -37,7 +37,7 @@ ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
                             '../../entity/exposures/test/data/demo_today.mat')
 
 class TestSteps(unittest.TestCase):
-    '''Test intermediate steps'''
+    """Test intermediate steps"""
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
         self.assertTrue(os.path.isfile(HAZ_TEST_MAT), "{} is not a file".format(HAZ_TEST_MAT))
@@ -121,7 +121,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.imp_meas_future['Building code']['impact'].aai_agg, 4.884150868173321e+09, places=3)
 
     def test_cb_one_meas_pres_pass(self):
-        """ Test _cost_ben_one with different future """
+        """Test _cost_ben_one with different future"""
         meas_name = 'Mangroves'
         meas_val = dict()
         meas_val['cost'] = (1.3117683608515418e+09, 1)
@@ -152,7 +152,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cb.cost_ben_ratio[meas_name], 0.011573232523528404)
 
     def test_cb_one_meas_fut_pass(self):
-        """ Test _cost_ben_one with same future """
+        """Test _cost_ben_one with same future"""
         meas_name = 'Mangroves'
         meas_val = dict()
         meas_val['cost'] = (1.3117683608515418e+09, 1)
@@ -270,7 +270,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.tot_climate_risk, 576865915288.2021, places=3)
 
     def test_time_array_pres_pass(self):
-        """ Test _time_dependency_array """
+        """Test _time_dependency_array"""
         cb = CostBenefit()
         cb.present_year = 2018
         cb.future_year = 2030
@@ -291,7 +291,7 @@ class TestSteps(unittest.TestCase):
                 (n_years-1)**imp_time_depen))
 
     def test_time_array_no_pres_pass(self):
-        """ Test _time_dependency_array """
+        """Test _time_dependency_array"""
         cb = CostBenefit()
         cb.present_year = 2018
         cb.future_year = 2030
@@ -302,7 +302,7 @@ class TestSteps(unittest.TestCase):
         self.assertTrue(np.array_equal(time_arr, np.ones(n_years)))
 
     def test_npv_unaverted_no_pres_pass(self):
-        """ Test _npv_unaverted_impact """
+        """Test _npv_unaverted_impact"""
         cb = CostBenefit()
         cb.present_year = 2018
         cb.future_year = 2030
@@ -318,7 +318,7 @@ class TestSteps(unittest.TestCase):
                 cb.future_year, time_dep * risk_future))
 
     def test_npv_unaverted_pres_pass(self):
-        """ Test _npv_unaverted_impact """
+        """Test _npv_unaverted_impact"""
         cb = CostBenefit()
         cb.present_year = 2018
         cb.future_year = 2030
@@ -337,7 +337,7 @@ class TestSteps(unittest.TestCase):
             cb.future_year, tot_climate_risk))
 
     def test_norm_value(self):
-        """ Test _norm_values """
+        """Test _norm_values"""
         norm_fact, norm_name = _norm_values(1)
         self.assertEqual(norm_fact, 1)
         self.assertEqual(norm_name, "")
@@ -379,7 +379,7 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(norm_name, "bn")
 
     def test_combine_fut_pass(self):
-        """ Test combine_measures with present and future """
+        """Test combine_measures with present and future"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -433,7 +433,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(new_cb.cost_ben_ratio[new_name], 0.19679962474434248)
 
     def test_combine_current_pass(self):
-        """ Test combine_measures with only future"""
+        """Test combine_measures with only future"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -469,7 +469,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(new_cb.cost_ben_ratio[new_name], 0.19679962474434248)
 
     def test_apply_transf_current_pass(self):
-        """ Test apply_risk_transfer with only future """
+        """Test apply_risk_transfer with only future"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -512,7 +512,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], 1)
 
     def test_apply_transf_cost_fact_pass(self):
-        """ Test apply_risk_transfer with only future annd cost factor """
+        """Test apply_risk_transfer with only future annd cost factor"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -555,7 +555,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], risk_transf[2])
 
     def test_apply_transf_future_pass(self):
-        """ Test apply_risk_transfer with present and future """
+        """Test apply_risk_transfer with present and future"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -605,7 +605,7 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name], 1)
 
     def test_remove_measure(self):
-        """ Test remove_measure method """
+        """Test remove_measure method"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
@@ -631,7 +631,7 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(len(cost_ben.benefit), 3)
 
 class TestCalc(unittest.TestCase):
-    '''Test calc'''
+    """Test calc"""
 
     def test_calc_change_pass(self):
         """Test calc with future change"""
@@ -713,7 +713,7 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.tot_climate_risk, 1.2150496306913972e+11, places=3)
 
 class TestRiskFuncs(unittest.TestCase):
-    '''Test risk functions definitions'''
+    """Test risk functions definitions"""
 
     def test_impact(self):
         ent = Entity()

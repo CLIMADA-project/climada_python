@@ -65,7 +65,7 @@ LONMAX = 12
 
 
 HAZ_TYPE = 'DR'
-""" Hazard type acronym Drought """
+"""Hazard type acronym Drought"""
 
 
 
@@ -80,7 +80,7 @@ class Drought(Hazard):
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
 #        Hazard.__init__(self)
         #self.file_url = SPEI_FILE_URL
@@ -209,7 +209,7 @@ class Drought(Hazard):
 
 
     def __traslate_matrix(self, spei_3d):
-        """ return hazard intensity as a simple threshold on the SPEI values
+        """return hazard intensity as a simple threshold on the SPEI values
         Parameters: see read_indices_spei, just call before
         Returns: matrix
         sparse.csr_matrix
@@ -242,11 +242,11 @@ class Drought(Hazard):
 
 
     def hazard_def(self, intensity_matrix):
-        """ return hazard set
+        """return hazard set
         Parameters: see intensity_from_spei
         Returns:
             Drought, full hazard set
-            check using new_haz.check()       """
+            check using new_haz.check()"""
 
         if self.intensity_definition == 2:
             HAZ_TYPE = 'DR_sumthr'
@@ -552,7 +552,7 @@ class Drought(Hazard):
 
         dates = np.arange(np.ceil(startdate/100)*100, np.ceil(startdate/100)*100+400, 100)
         list_dates = list()
-        for i in range(len(dates)): 
+        for i in range(len(dates)):
             list_dates.append(date_to_str(dates.astype(np.int64)[i]))
 
         colourmap = 'plasma'
