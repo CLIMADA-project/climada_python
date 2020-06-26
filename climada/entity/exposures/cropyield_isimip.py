@@ -409,7 +409,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     """ Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files in the output directory
 
-        Parameter:
+        Parameters:
         input_dir (string): path to input data directory
         filename (string): if not specified differently, the file
             'histsoc_landuse-15crops_annual_1861_2005.nc' will be used

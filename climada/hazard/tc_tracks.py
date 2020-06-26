@@ -753,7 +753,7 @@ class TCTracks():
     def write_netcdf(self, folder_name):
         """ Write a netcdf file per track with track.sid name in given folder.
 
-        Parameter:
+        Parameters:
             folder_name (str): folder name where to write files
         """
         list_path = [os.path.join(folder_name, track.sid+'.nc') for track in self.data]
