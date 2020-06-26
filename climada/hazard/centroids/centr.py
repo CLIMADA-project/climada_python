@@ -441,7 +441,7 @@ class Centroids():
         """ Set region_id as country ISO numeric code attribute for every pixel
         or point
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -453,7 +453,7 @@ class Centroids():
     def set_area_pixel(self, min_resol=1.0e-8, scheduler=None):
         """ Set area_pixel attribute for every pixel or point. area in m*m
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): if centroids are points, use this minimum
                 resolution in lat and lon. Default: 1.0e-8
             scheduler (str): used for dask map_partitions. “threads”,
@@ -487,7 +487,7 @@ class Centroids():
         """ Computes approximated area_pixel values: differentiated per latitude.
         area in m*m. Faster than set_area_pixel
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): if centroids are points, use this minimum
                 resolution in lat and lon. Default: 1.0e-8
         """
@@ -527,7 +527,7 @@ class Centroids():
         """ Set dist_coast attribute for every pixel or point. Distance to
         coast is computed in meters.
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -538,7 +538,7 @@ class Centroids():
     def set_on_land(self, scheduler=None):
         """ Set on_land attribute for every pixel or point
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -549,7 +549,7 @@ class Centroids():
     def remove_duplicate_points(self, scheduler=None):
         """ Return Centroids with removed duplicated points
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -592,7 +592,7 @@ class Centroids():
     def set_lat_lon_to_meta(self, min_resol=1.0e-8):
         """ Compute meta from lat and lon values.
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): minimum centroids resolution to use
                 in the raster. Default: 1.0e-8.
         """
@@ -636,7 +636,7 @@ class Centroids():
     def calc_pixels_polygons(self, scheduler=None):
         """ Return a GeoSeries with a polygon for every pixel
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -660,7 +660,7 @@ class Centroids():
     def write_hdf5(self, file_data):
         """ Write centroids attributes into hdf5 format.
 
-        Parameter:
+        Parameters:
             file_data (str or h5): if string, path to write data. if h5 object,
                 the datasets will be generated there
         """
@@ -694,7 +694,7 @@ class Centroids():
     def read_hdf5(self, file_data):
         """ Read centroids attributes from hdf5.
 
-        Parameter:
+        Parameters:
             file_data (str or h5): if string, path to read data. if h5 object,
                 the datasets will be read from there
         """
@@ -771,7 +771,7 @@ class Centroids():
         """ Set geometry attribute of GeoSeries with Points from latitude and
         longitude attributes if geometry not present.
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -795,7 +795,7 @@ class Centroids():
     def _ne_crs_geom(self, scheduler=None):
         """ Return x (lon) and y (lat) in the CRS of Natural Earth
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -827,7 +827,7 @@ def generate_nat_earth_centroids(res_as=360):
         files `NATEARTH_CENTROIDS_*AS`. These files are provided with CLIMADA
         so that this function should never be called!
 
-    Parameter:
+    Parameters:
         res_as (int): Resolution of file in arc-seconds. Default: 360.
     """
     if res_as not in [150, 360]:

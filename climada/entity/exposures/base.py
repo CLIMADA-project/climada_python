@@ -224,7 +224,7 @@ class Exposures(GeoDataFrame):
         """ Set geometry attribute of GeoDataFrame with Points from latitude and
         longitude attributes.
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """

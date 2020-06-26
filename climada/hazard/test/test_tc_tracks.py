@@ -141,26 +141,6 @@ class TestIO(unittest.TestCase):
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
-    def test_penv_pass(self):
-        """ Test _set_penv method."""
-        tc_track = TCTracks()
-        basin = 'US'
-        self.assertEqual(tc_track._set_penv(basin), 1010)
-        basin = 'NA'
-        self.assertEqual(tc_track._set_penv(basin), 1010)
-        basin = 'SA'
-        self.assertEqual(tc_track._set_penv(basin), 1010)
-        basin = 'NI'
-        self.assertEqual(tc_track._set_penv(basin), 1005)
-        basin = 'SI'
-        self.assertEqual(tc_track._set_penv(basin), 1005)
-        basin = 'SP'
-        self.assertEqual(tc_track._set_penv(basin), 1004)
-        basin = 'WP'
-        self.assertEqual(tc_track._set_penv(basin), 1005)
-        basin = 'EP'
-        self.assertEqual(tc_track._set_penv(basin), 1010)
-
     def test_get_track_pass(self):
         """ Test get_track."""
         tc_track = TCTracks()
@@ -634,22 +614,30 @@ class TestFuncs(unittest.TestCase):
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
 
-    def test_missing_pres_pass(self):
-        """Test central pressure function."""
-        cen_pres = np.array([-999, -999, -999, -999, -999, -999, -999, -999,
-                             -999, 992, -999, -999, 993, -999, -999, 1004])
-        v_max = np.array([45, 50, 50, 55, 60, 65, 70, 80, 75, 70, 70, 70, 70,
-                          65, 55, 45])
-        lat = np.array([13.8, 13.9, 14, 14.1, 14.1, 14.1, 14.1, 14.2, 14.2,
-                        14.3, 14.4, 14.6, 14.8, 15, 15.1, 15.1])
-        lon = np.array([-51.1, -52.8, -54.4, -56, -57.3, -58.4, -59.7, -61.1,
-                        -62.7, -64.3, -65.8, -67.4, -69.4, -71.4, -73, -74.2])
-        out_pres = tc._missing_pressure(cen_pres, v_max, lat, lon)
+    def test_estimate_pres_pass(self):
+        """Test central pressure estimation function."""
+        cen_pres = np.array([
+            -999, -999, -999, -999, -999, -999, -999, -999, -999, 992, -999,
+            -999, 993, -999, -999, 1004
+        ], dtype=float)
+        v_max = np.array([
+            45, 50, 50, 55, 60, 65, 70, 80, 75, 70, 70, 70, 70, 65, 55, 45
+        ], dtype=float)
+        lat = np.array([
+            13.8, 13.9, 14, 14.1, 14.1, 14.1, 14.1, 14.2, 14.2, 14.3, 14.4,
+            14.6, 14.8, 15, 15.1, 15.1
+        ])
+        lon = np.array([
+            -51.1, -52.8, -54.4, -56, -57.3, -58.4, -59.7, -61.1, -62.7, -64.3,
+            -65.8, -67.4, -69.4, -71.4, -73, -74.2
+        ])
+        out_pres = tc._estimate_pressure(cen_pres, v_max, lat, lon)
 
-        ref_res = np.array([989.7085, 985.6725, 985.7236, 981.6847, 977.6324,
-                            973.5743, 969.522, 961.3873, 965.5237, 969.6648,
-                            969.713, 969.7688, 969.8362, 973.9936, 982.2247,
-                            990.4395])
+        ref_res = np.array([
+            989.7085, 985.6725, 985.7236, 981.6847, 977.6324, 973.5743, 969.522,
+            961.3873, 965.5237, 992, 969.713, 969.7688, 993, 973.9936, 982.2247,
+            1004
+        ])
         np.testing.assert_array_almost_equal(ref_res, out_pres)
 
 # Execute Tests

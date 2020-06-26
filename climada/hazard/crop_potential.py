@@ -192,7 +192,7 @@ class CropPotential(Hazard):
     def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False, \
                   output_dir=OUTPUT_DIR):
         """ Calculates mean of the hazard for a given reference time period
-            Parameter:
+            Parameters:
                 yearrange (array): time period used to calculate the mean intensity
                 default: 1976-2005
 
@@ -228,7 +228,7 @@ class CropPotential(Hazard):
     def set_rel_yield_to_int(self, hist_mean):
         """ Sets relative yield to intensity (yearly yield / historic mean) per centroid
 
-            Parameter:
+            Parameters:
                 historic mean (array): historic mean per centroid
 
             Returns:
@@ -255,7 +255,7 @@ class CropPotential(Hazard):
     def set_percentile_to_int(self, reference_intensity=None):
         """ Sets percentile to intensity
 
-            Parameter:
+            Parameters:
                 reference_intensity (AD): intensity to be used as reference (e.g. the historic
                                     intensity can be used in order to be able to directly compare
                                     historic and future projection data)
@@ -415,7 +415,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
     """ Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files in the output directory
 
-        Parameter:
+        Parameters:
         input_dir (string): path to input data directory
         output_dir (string): path to output data directory
         bbox (list of four floats): bounding box:
