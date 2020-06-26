@@ -493,9 +493,13 @@ def _wind_per_node(coastal_centr, track, v_trans, model):
 
     return intensity
 
-@jit(forceobj=True)
 def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     """ Compute Hollands translational wind corrections. Returns factor.
+
+    Use the angle between the track forward vector and the vector towards each
+    centroid to decide whether the translational wind needs to be added (on the
+    right side of the track for Northern hemisphere) and to which extent (100%
+    exactly 90 to the right of the track, zero in front of the track).
 
     Parameters:
         t_lats (tuple): current and next latitude
@@ -507,28 +511,27 @@ def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
     Returns:
         np.array
     """
-    # we use the scalar product of the track forward vector and the vector
-    # towards each centroid to figure the angle between and hence whether
-    # the translational wind needs to be added (on the right side of the
-    # track for Northern hemisphere) and to which extent (100% exactly 90
-    # to the right of the track, zero in front of the track)
-    lon, nex_lon = t_lons
-    lat, nex_lat = t_lats
+    if close_centr.shape[0] == 0:
+        return np.zeros_like(r_arr)
+    this_coord, next_coord = np.array([t_lats, t_lons]).T
 
     # hence, rotate track forward vector 90 degrees clockwise, i.e.
-    node_dy = -nex_lon + lon
-    node_dx = nex_lat - lat
+    trans = next_coord - this_coord
+    trans_orth = np.array([-trans[1], trans[0]])
+    norm_trans = LA.norm(trans_orth)
+    if norm_trans == 0:
+        # a stationary point, no translational correction necessary
+        return np.zeros_like(r_arr)
 
     # the vector towards each centroid
-    centroids_dlon = close_centr[:, 1] - lon
-    centroids_dlat = close_centr[:, 0] - lat
+    centroids_d = close_centr - this_coord[None]
 
     # scalar product, a*b=|a|*|b|*cos(phi), phi angle between vectors
-    cos_phi = (centroids_dlon * node_dx + centroids_dlat * node_dy) / \
-        LA.norm([centroids_dlon, centroids_dlat], axis=0) / LA.norm([node_dx, node_dy])
+    norm = norm_trans * LA.norm(centroids_d, axis=1)
+    cos_phi = np.sum(centroids_d * trans_orth[None], axis=1) / norm
 
     # southern hemisphere
-    if lat < 0:
+    if this_coord[0] < 0:
         cos_phi = -cos_phi
 
     # calculate v_trans wind field array assuming that

@@ -92,7 +92,7 @@ def grid_is_regular(coord):
 def get_coastlines(bounds=None, resolution=110):
     """ Get Polygones of coast intersecting given bounds
 
-    Parameter:
+    Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat in EPSG:4326
         resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
             110m, i.e. 1:110.000.000
@@ -118,7 +118,7 @@ def get_coastlines(bounds=None, resolution=110):
 def convert_wgs_to_utm(lon, lat):
     """ Get EPSG code of UTM projection for input point in EPSG 4326
 
-    Parameter:
+    Parameters:
         lon (float): longitude point in EPSG 4326
         lat (float): latitude of point (lat, lon) in EPSG 4326
 
@@ -131,7 +131,7 @@ def convert_wgs_to_utm(lon, lat):
 def utm_zones(wgs_bounds):
     """ Get EPSG code and bounds of UTM zones covering specified region
 
-    Parameter:
+    Parameters:
         wgs_bounds (tuple): lon_min, lat_min, lon_max, lat_max
 
     Returns:
@@ -725,14 +725,21 @@ def pts_to_raster_meta(points_bounds, res):
 def raster_to_meshgrid(transform, width, height):
     """ Get coordinates of grid points in raster
 
-    Parameters:
-        transform (affine.Affine): Affine transform defining the raster.
-        width (int): Number of points in first coordinate axis.
-        height (int): Number of points in second coordinate axis.
+    Parameters
+    ----------
+    transform : affine.Affine
+        Affine transform defining the raster.
+    width : int
+        Number of points in first coordinate axis.
+    height : int
+        Number of points in second coordinate axis.
 
-    Returns:
-        x (np.array): x-coordinates of grid points
-        y (np.array): y-coordinates of grid points
+    Returns
+    -------
+    x : np.array
+        x-coordinates of grid points.
+    y : np.array
+        y-coordinates of grid points.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + width * xres
