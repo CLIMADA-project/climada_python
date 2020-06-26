@@ -11,19 +11,18 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
-
-sys.path.insert(0, os.path.abspath('../'))
+import os
+import sys
 
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 # sys.path.append(os.path.abspath('sphinxext'))
+sys.path.insert(0, os.path.abspath('../'))
 
 # set version
-__version__ = None
-# Sets the __version__ variable
-exec(open('../climada/_version.py').read())
+from climada import _version
+__version__ = _version.__version__
 
 # -- General configuration -----------------------------------------------------
 
@@ -38,7 +37,8 @@ extensions = ['matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
-              'nbsphinx']
+              'nbsphinx',
+              'readthedocs_ext.readthedocs',]
 
 nbsphinx_allow_errors = True
 
@@ -204,7 +204,7 @@ htmlhelp_basename = 'climadadoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  (master_doc, 'climada.tex', u'CLIMADA documentation',
+    (master_doc, 'climada.tex', u'CLIMADA documentation',
      u'CLIMADA contributors', 'manual'),
 ]
 
@@ -245,4 +245,3 @@ def setup(app):
 
 # improve parameters description
 napoleon_use_param = False
-
