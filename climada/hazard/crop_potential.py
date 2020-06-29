@@ -26,7 +26,6 @@ import logging
 import os
 from os import listdir
 from os.path import isfile, join
-import xarray as xr
 import numpy as np
 from matplotlib import pyplot as plt
 import cartopy
@@ -96,8 +95,8 @@ BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
 INT_DEF = 'Yearly Yield'
 
 #default: deposit the input files in the directory: climada_python/data/ISIMIP/Input/Hazard
-INPUT_DIR = DATA_DIR+'/ISIMIP/Input/Hazard'
-OUTPUT_DIR = DATA_DIR+'/ISIMIP/Output/Hazard'
+INPUT_DIR = DATA_DIR+'/ISIMIP/Input/Hazard/'
+OUTPUT_DIR = DATA_DIR+'/ISIMIP/Output/'
 
 class CropPotential(Hazard):
     """Contains events impacting the crop potential.
@@ -177,7 +176,7 @@ class CropPotential(Hazard):
         self.set_raster([filename], band=id_bands, \
                         geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
 
-        self.crop = (xr.open_dataset(filename, decode_times=False)).crop
+        self.crop = crop
         self.event_name = event_list
         self.frequency = np.ones(len(self.event_name))*(1/len(self.event_name))
         self.fraction = self.intensity.copy()
@@ -216,7 +215,7 @@ class CropPotential(Hazard):
                 os.mkdir(mean_dir)
             #save mean_file
             mean_file = h5py.File(mean_dir+'hist_mean_'+self.crop+'_'+str(yearrange[0])+ \
-                                  '-'+str(yearrange[1]), 'w')
+                                  '-'+str(yearrange[1])+'.h5', 'w')
             mean_file.create_dataset('mean', data=hist_mean)
             mean_file.create_dataset('lat', data=self.centroids.lat)
             mean_file.create_dataset('lon', data=self.centroids.lon)
@@ -429,9 +428,10 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
     #generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    mean_dir = output_dir+'/Hist_mean/'
-    if not os.path.exists(mean_dir):
-        os.mkdir(mean_dir)
+    if not os.path.exists(output_dir+'Hazard/'):
+        os.mkdir(output_dir+'Hazard/')
+    if not os.path.exists(output_dir+'Hist_mean/'):
+        os.mkdir(output_dir+'Hist_mean/')
 
     #generate lists of splitted historical filenames (in order to differentiate betweeen
     #the used ag_model, cl_model, crop, etc.); list of the future scenarios; list
@@ -488,10 +488,10 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         hist_mean_per_crop[crop_irr])['idx'], :] = hist_mean
         (hist_mean_per_crop[crop_irr])['idx'] = (hist_mean_per_crop[crop_irr])['idx']+1
 
-        filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+(items[i])[3]+'_'+\
+        filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+(items[i])[3]+'_'+ \
         (items[i])[4]+'_'+(items[i])[5]+'_'+crop_irr+'_'+str(yearrange[0])+'-'+str(yearrange[1])
 
-        cp_his.write_hdf5(output_dir+'/'+filename)
+        cp_his.write_hdf5(output_dir+'Hazard/'+filename)
 
         #compute the relative yield for all future scenarios with the corresponding historic mean
         for j, _ in enumerate(scenario_list):
@@ -505,16 +505,16 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
                                         irr=(((items[i])[6]).split('-'))[2])
             cp_fut.set_rel_yield_to_int(hist_mean)
             filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+scenario_list[j]+'_'+ \
-            (items[i])[4]+'_'+(items[i])[5]+'_'+ \
-            crop_irr+'_'+str(yearrange_fut[0])+'-'+str(yearrange_fut[1])
+            (items[i])[4]+'_'+(items[i])[5]+'_'+ crop_irr+'_'+str(yearrange_fut[0])+'-'+ \
+            str(yearrange_fut[1])
 
-            cp_fut.write_hdf5(output_dir+'/'+filename)
+            cp_fut.write_hdf5(output_dir+'Hazard/'+filename)
 
     #calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
     for i, _ in enumerate(crop_list):
         mean = np.mean((hist_mean_per_crop[crop_list[i]])['value'], 0)
-        mean_file = h5py.File(mean_dir+'hist_mean_'+crop_list[i]+'_'+str(yearrange[0])+ \
-                              '-'+str(yearrange[1]), 'w')
+        mean_file = h5py.File(output_dir+'Hist_mean/'+'hist_mean_'+crop_list[i]+'_'+\
+                              str(yearrange[0])+'-'+str(yearrange[1])+'.h5', 'w')
         mean_file.create_dataset('mean', data=mean)
         mean_file.create_dataset('lat', data=cp_his.centroids.lat)
         mean_file.create_dataset('lon', data=cp_his.centroids.lon)
