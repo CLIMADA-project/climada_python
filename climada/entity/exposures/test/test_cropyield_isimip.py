@@ -42,7 +42,7 @@ class TestCropyieldIsimip(unittest.TestCase):
         self.assertEqual(exp.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 't / y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.value.max(), 200112.53407640097, places=5)
+        self.assertAlmostEqual(exp.value.max(), 284244.8135314772, places=6)
 
     def test_set_to_usd(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
@@ -58,7 +58,7 @@ class TestCropyieldIsimip(unittest.TestCase):
         self.assertEqual(exp.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 'USD / y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.value.max(), 36329903.949638814, places=5)
+        self.assertAlmostEqual(exp.value.max(), 51603897.88397249, places=6)
 
 # Execute Tests
 TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropyieldIsimip)

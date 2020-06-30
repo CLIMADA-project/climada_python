@@ -202,10 +202,13 @@ class CropyieldIsimip(Exposures):
         time_idx = np.array([int(yearrange[0]-yearchunk['startyear']), \
                              int(yearrange[1]-yearchunk['startyear'])])
 
-        #The area covered by a grid cell is calculated depending on the latitude
-        #1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
-        #distance in km = 111.12*0.5*cos(lat); area = distance^2; 1km2 = 100ha
-        area = (111.12*0.5*np.cos(np.deg2rad(lat)))**2*100
+        # The area covered by a grid cell is calculated depending on the latitude
+        # 1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
+        # longitudal distance in km = 111.12*0.5*cos(lat); 
+        # latitudal distance in km = 111.12*0.5;
+        # area = longitudal distance * latitudal distance;
+        # 1km2 = 100ha
+        area = (111.12*0.5)**2 * np.cos(np.deg2rad(lat)) * 100
 
         #The area covered by a crop is calculated as the product of the fraction and
         #the grid cell size
@@ -222,7 +225,7 @@ class CropyieldIsimip(Exposures):
 
         #The historic mean, its latitude and longitude are set
         if isdir(hist_mean):
-        #The adecuate file from the directory (depending on crop and irrigation) is extracted
+        #The adequate file from the directory (depending on crop and irrigation) is extracted
         #and the variables hist_mean, lat_mean and lon_mean are set accordingly
             if irr != 'combined':
                 filename = hist_mean+'hist_mean_'+crop+'-'+irr+'_'+str(yearrange[0])+'-'+\
@@ -420,8 +423,8 @@ class CropyieldIsimip(Exposures):
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
                            yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD'):
-    """Generates hazard set for all files contained in the input directory and saves them
-    as hdf5 files in the output directory
+    """Generates CropyieldIsimip exposure sets for all files contained in the 
+    input directory and saves them as hdf5 files in the output directory
 
         Parameters:
         input_dir (string): path to input data directory
