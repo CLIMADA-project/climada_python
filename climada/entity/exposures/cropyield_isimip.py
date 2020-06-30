@@ -227,19 +227,19 @@ class CropyieldIsimip(Exposures):
             if irr != 'combined':
                 filename = hist_mean+'hist_mean_'+crop+'-'+irr+'_'+str(yearrange[0])+'-'+\
                 str(yearrange[1])+'.h5'
-                hist_mean = (h5py.File(filename))['mean'][()]
+                hist_mean = (h5py.File(filename, 'r'))['mean'][()]
             else:
                 filename = hist_mean+'hist_mean_'+crop+'-'+IRR[1]+'_'+str(yearrange[0])+\
                 '-'+str(yearrange[1])+'.h5'
                 filename2 = hist_mean+'hist_mean_'+crop+'-'+IRR[2]+'_'+str(yearrange[0])+\
                 '-'+str(yearrange[1])+'.h5'
-                hist_mean = ((h5py.File(filename))['mean'][()] + \
-                             (h5py.File(filename2))['mean'][()])/2
-            lat_mean = (h5py.File(filename))['lat'][()]
-            lon_mean = (h5py.File(filename))['lon'][()]
+                hist_mean = ((h5py.File(filename, 'r'))['mean'][()] + \
+                             (h5py.File(filename2, 'r'))['mean'][()])/2
+            lat_mean = (h5py.File(filename, 'r'))['lat'][()]
+            lon_mean = (h5py.File(filename, 'r'))['lon'][()]
         elif isfile(input_dir+hist_mean):
         #Hist_mean, lat_mean and lon_mean are extracted from the given file
-            hist_mean_file = h5py.File(input_dir+hist_mean)
+            hist_mean_file = h5py.File(input_dir+hist_mean, 'r')
             hist_mean = hist_mean_file['mean'][()]
             lat_mean = hist_mean_file['lat'][()]
             lon_mean = hist_mean_file['lon'][()]
