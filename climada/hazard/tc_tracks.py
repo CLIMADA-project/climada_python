@@ -295,6 +295,10 @@ class TCTracks():
         for i_track, t_msk in enumerate(ds.valid_t.data):
             st_ds = ds.sel(storm=i_track, date_time=t_msk)
             st_penv = xr.apply_ufunc(basin_fun, st_ds.basin, vectorize=True)
+            st_ds['time'][:1] = st_ds.time[:1].dt.floor('H')
+            if st_ds.time.size > 1:
+                st_ds['time_step'][0] = (st_ds.time[1] - st_ds.time[0]) \
+                                      / np.timedelta64(1, 's')
 
             with warnings.catch_warnings():
                 # See https://github.com/pydata/xarray/issues/4167
@@ -321,7 +325,7 @@ class TCTracks():
                 'central_pressure': ('time', st_ds.pres.data),
                 'environmental_pressure': ('time', st_ds.poci.data),
             }, coords={
-                'time': st_ds.time.data,
+                'time': st_ds.time.dt.round('s').data,
                 'lat': ('time', st_ds.lat.data),
                 'lon': ('time', st_ds.lon.data),
             }, attrs={
@@ -834,33 +838,24 @@ class TCTracks():
             xr.Dataset
         """
         if track.time.size > 3:
-            time_step = '{}H'.format(time_step_h)
-            track_int = track.resample(time=time_step).interpolate('linear')
-            track_int['time_step'] = ('time', track_int.time.size * [time_step_h])
             # handle change of sign in longitude
-            pos_lon = track.coords['lon'].values > 0
-            neg_lon = track.coords['lon'].values <= 0
-            if neg_lon.any() and pos_lon.any() and \
-            np.any(abs(track.coords['lon'].values[pos_lon]) > 170):
-                if neg_lon[0]:
-                    track.coords['lon'].values[pos_lon] -= 360
-                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                    interpolate('cubic')
-                    track_int.coords['lon'][track_int.coords['lon'] < -180] += 360
-                else:
-                    track.coords['lon'].values[neg_lon] += 360
-                    track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                    interpolate('cubic')
-                    track_int.coords['lon'][track_int.coords['lon'] > 180] -= 360
-            else:
-                track_int.coords['lon'] = track.lon.resample(time=time_step).\
-                    interpolate('cubic')
-            track_int.coords['lat'] = track.lat.resample(time=time_step).\
-                                      interpolate('cubic')
-            track_int.attrs = track.attrs
-            track_int.attrs['category'] = set_category( \
-                track.max_sustained_wind.values, \
-                track.max_sustained_wind_unit)
+            lon = track.lon.copy()
+            if (lon < -170).any() and (lon > 170).any():
+                # crosses 180 degrees east/west -> use positive degrees east
+                lon[lon < 0] += 360
+
+            time_step = '{}H'.format(time_step_h)
+            track_int = track.resample(time=time_step, keep_attrs=True, skipna=True)\
+                             .interpolate('linear')
+            track_int['time_step'][:] = time_step_h
+            lon_int = lon.resample(time=time_step).interpolate('cubic')
+            lon_int[lon_int > 180] -= 360
+            track_int.coords['lon'] = lon_int
+            track_int.coords['lat'] = track.lat.resample(time=time_step)\
+                                               .interpolate('cubic')
+            track_int.attrs['category'] = set_category(
+                track_int.max_sustained_wind.values,
+                track_int.max_sustained_wind_unit)
         else:
             LOGGER.warning('Track interpolation not done. ' \
                            'Not enough elements for %s', track.name)
