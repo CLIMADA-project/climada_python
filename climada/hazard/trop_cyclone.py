@@ -39,7 +39,7 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
-from climada.util.interpolation import dist_approx
+from climada.util.coordinates import dist_approx
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -53,8 +53,10 @@ INLAND_MAX_DIST_KM = 1000
 CENTR_NODE_MAX_DIST_KM = 300
 """Maximum distance between centroid and TC track node in km"""
 
-MODEL_VANG = {'H08': 0
-             }
+CENTR_NODE_MAX_DIST_DEG = 5.5
+"""Maximum distance between centroid and TC track node in degrees"""
+
+MODEL_VANG = { 'H08': 0 }
 """Enumerate different symmetric wind field calculation."""
 
 KMH_TO_MS = (1.0 * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
@@ -118,15 +120,19 @@ class TropCyclone(Hazard):
         num_tracks = tracks.size
         if centroids is None:
             centroids = Centroids.from_base_grid(res_as=360, land=True)
-        if ignore_distance_to_coast: # Select centroids with lat < 61
-            coastal_idx = np.logical_and(centroids.lat < 61, True).nonzero()[0]
-        else:  # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-            coastal_idx = coastal_centr_idx(centroids)
+
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 
+        if ignore_distance_to_coast:
+            # Select centroids with lat < 61
+            coastal_idx = (centroids.lat < 61).nonzero()[0]
+        else:
+            # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
+            coastal_idx = coastal_centr_idx(centroids)
+
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
-                    str(centroids.size))
+                    str(coastal_idx.size))
         if self.pool:
             chunksize = min(num_tracks//self.pool.ncpus, 1000)
             tc_haz = self.pool.map(self._tc_from_track, tracks.data,
@@ -135,10 +141,8 @@ class TropCyclone(Hazard):
                                    itertools.repeat(model, num_tracks),
                                    chunksize=chunksize)
         else:
-            tc_haz = list()
-            for track in tracks.data:
-                tc_haz.append(self._tc_from_track(track, centroids, coastal_idx,
-                                                  model))
+            tc_haz = [self._tc_from_track(track, centroids, coastal_idx, model)
+                      for track in tracks.data]
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
@@ -253,9 +257,7 @@ class TropCyclone(Hazard):
             ens_size = 1
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
-    @staticmethod
-    @jit(forceobj=True)
-    def _tc_from_track(track, centroids, coastal_centr, model='H08'):
+    def _tc_from_track(self, track, centroids, coastal_centr, model='H08'):
         """Set hazard from input file. If centroids are not provided, they are
         read from the same file.
         Parameters:
@@ -269,10 +271,17 @@ class TropCyclone(Hazard):
         Returns:
             TropCyclone
         """
+        try:
+            mod_id = MODEL_VANG[model]
+        except KeyError:
+            LOGGER.error('Model not implemented: %s.', model)
+            raise ValueError
+        intensity = _windfield(track, centroids.coord, coastal_centr, mod_id)
+        intensity[intensity < self.intensity_thres] = 0
+
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, 'IBTrACS: ' + track.name)
-        new_haz.intensity = gust_from_track(track, centroids, coastal_centr,
-                                            model)
+        new_haz.intensity = sparse.csr_matrix(intensity)
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
@@ -321,39 +330,18 @@ class TropCyclone(Hazard):
 def coastal_centr_idx(centroids, lat_max=61):
     """Compute centroids indices which are inside INLAND_MAX_DIST_KM and
     with lat < lat_max.
+
     Parameters:
         lat_max (float, optional): Maximum latitude to consider. Default: 61.
+
     Returns:
         np.array
     """
     if not centroids.dist_coast.size:
         centroids.set_dist_coast()
-    return np.logical_and(centroids.dist_coast < INLAND_MAX_DIST_KM*1000,
-                          centroids.lat < lat_max).nonzero()[0]
+    return ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
+            & (centroids.lat < lat_max)).nonzero()[0]
 
-def gust_from_track(track, centroids, coastal_idx=None, model='H08'):
-    """Compute wind gusts at centroids from track. Track is interpolated to
-    configured time step.
-    Parameters:
-        track (xr.Dataset): track infomation
-        centroids (Centroids): centroids where gusts are computed
-        coastal_idx (np.array): indices of centroids which are close to coast
-        model (str, optional): model to compute gust. Default Holland2008
-    Returns:
-        sparse.csr_matrix
-    """
-    if coastal_idx is None:
-        coastal_idx = coastal_centr_idx(centroids)
-    try:
-        mod_id = MODEL_VANG[model]
-    except KeyError:
-        LOGGER.error('Not implemented model %s.', model)
-        raise ValueError
-    # Compute wind gusts
-    intensity = _windfield(track, centroids.coord, coastal_idx, mod_id)
-    return sparse.csr_matrix(intensity)
-
-@jit(forceobj=True)
 def _windfield(track, centroids, coastal_idx, model):
     """Compute windfields (in m/s) in centroids using Holland model 08.
 
@@ -366,61 +354,155 @@ def _windfield(track, centroids, coastal_idx, model):
     Returns:
         np.array
     """
-    # Make sure that CentralPressure never exceeds EnvironmentalPressure
-    up_pr = np.argwhere(track.central_pressure.values >
-                        track.environmental_pressure.values)
-    track.central_pressure.values[up_pr] = \
-        track.environmental_pressure.values[up_pr]
+    # initialize intensity
+    intensity = np.zeros((centroids.shape[0],))
 
-    # Extrapolate RadiusMaxWind from pressure if not given
-    track['radius_max_wind'] = ('time', _extra_rad_max_wind( \
-        track.central_pressure.values, track.radius_max_wind.values))
+    # shorthands for track data
+    t_lat, t_lon = track.lat.values, track.lon.values
+    t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
+    t_cen, t_tstep = track.central_pressure.values, track.time_step.values
 
-    # Track translational speed at every node
-    v_trans = _vtrans(track.lat.values, track.lon.values,
-                      track.time_step.values)
+    # never use longitudes at -180 degrees or below
+    t_lon[t_lon <= -180] += 360
 
-    # Compute windfield
-    intensity = np.zeros((centroids.shape[0], ))
-    intensity[coastal_idx] = _wind_per_node(centroids[coastal_idx, :], track,
-                                            v_trans, model)
+    # only use longitudes above 180, if 180 degree border is crossed
+    if t_lon.min() > 180: t_lon -= 360
 
+    # restrict to centroids in rectangular bounding box around track
+    msk = _close_centroids(t_lat, t_lon, centroids[coastal_idx,:])
+    coastal_idx = coastal_idx[msk]
+    coastal_centr = centroids[coastal_idx, :]
+
+    if coastal_centr.shape[0] == 0:
+        return intensity
+
+    # compute distances and vectors to all centroids
+    v_centr = [ar[0] for ar in dist_approx(t_lat[None], t_lon[None],
+        coastal_centr[None,:, 0], coastal_centr[None,:, 1],
+        log=True, method="geosphere")]
+    d_centr = v_centr[0]
+
+    # exclude centroids that are too far from or too close to the eye
+    close_centr = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-5)
+
+    if not np.any(close_centr):
+        return intensity
+
+    # make sure that central pressure never exceeds environmental pressure
+    msk = (t_cen > t_env)
+    t_cen[msk] = t_env[msk]
+
+    # extrapolate radius of max wind from pressure if not given
+    t_rad[:] = _extra_rad_max_wind(t_cen, t_rad)
+
+    # translational speed of track at every node
+    v_trans = _vtrans(t_lat, t_lon, t_tstep)
+    v_trans_corr = _vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr)
+    v_trans_norm = v_trans[0]
+
+    # adjust pressure at previous track point
+    prev_pres = t_cen[:-1].copy()
+    msk = (prev_pres < 850)
+    prev_pres[msk] = t_cen[1:][msk]
+
+    # compute b-value
+    if model == 0:
+        hol_xx = 0.6 * (1. - (t_env - t_cen) / 215)
+        hol_b = _bs_hol08(v_trans_norm[:-1], t_env[1:], t_cen[1:], prev_pres,
+            t_lat[1:], hol_xx[1:], t_tstep[1:])
+    else:
+        #TODO: H80 with hol_b = b_value(v_trans, vmax, penv, pcen, rho)
+        raise NotImplementedError
+
+    # derive angular velocity
+    v_ang = _stat_holland(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
+                          t_cen[1:], t_lat[1:], close_centr[1:])
+
+    v_full = v_trans_norm[:-1,None] * v_trans_corr[1:] + v_ang
+    v_full[np.isnan(v_full)] = 0
+    intensity[coastal_idx] = v_full.max(axis=0)
     return intensity
 
-@jit
-def _vtrans(t_lat, t_lon, t_tstep):
-    """Translational spped at every track node.
+def _close_centroids(t_lat, t_lon, centroids):
+    """Choose centroids within padded rectangular region around track
 
     Parameters:
-        t_lat (np.array): track latitudes
-        t_lon (np.array): track longitudes
-        t_tstep (np.array): track time steps
+        t_lat (np.array): latitudinal coordinates of track points
+        t_lon (np.array): longitudinal coordinates of track points
+        centroids (np.array): coordinates of centroids to check
 
     Returns:
-        np.array
+        np.array (mask)
     """
-    v_trans = dist_approx(t_lat[:-1], t_lon[:-1],
-                          np.cos(np.radians(t_lat[:-1])), t_lat[1:],
-                          t_lon[1:]) / t_tstep[1:]
-    v_trans *= KMH_TO_MS
+    if (t_lon < -170).any() and (t_lon > 170).any():
+        # crosses 180 degrees east/west -> use positive degrees east
+        t_lon[t_lon < 0] += 360
 
-    # nautical miles/hour, limit to 30 nmph
-    v_max = 30 * KN_TO_MS
-    v_trans[v_trans > v_max] = v_max
-    return v_trans
+    track_bounds = np.array([t_lon.min(), t_lat.min(), t_lon.max(), t_lat.min()])
+    track_bounds[:2] -= CENTR_NODE_MAX_DIST_DEG
+    track_bounds[2:] += CENTR_NODE_MAX_DIST_DEG
+    if track_bounds[2] > 180:
+        # crosses 180 degrees East/West
+        track_bounds[2] -= 360
+
+    centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
+    msk_lat = (track_bounds[1] < centr_lat) & (centr_lat < track_bounds[3])
+    if track_bounds[2] < track_bounds[0]:
+        # crosses 180 degrees East/West
+        msk_lon = (track_bounds[0] < centr_lon) | (centr_lon < track_bounds[2])
+    else:
+        msk_lon = (track_bounds[0] < centr_lon) & (centr_lon < track_bounds[2])
+    return (msk_lat & msk_lon)
+
+def _vtrans(t_lat, t_lon, t_tstep):
+    """Translational vector and velocity at each track node.
+
+    Parameters
+    ----------
+    t_lat : np.array
+        track latitudes
+    t_lon : np.array
+        track longitudes
+    t_tstep : np.array
+        track time steps
+
+    Returns
+    -------
+    v_trans_norm : np.array
+        Same shape as input, the last velocity is always 0.
+    v_trans : np.array
+        Directional vectors of velocity.
+    """
+    v_trans = np.zeros((t_lat.size, 2))
+    v_trans_norm = np.zeros((t_lat.size,))
+    norm, vec = dist_approx(t_lat[:-1,None], t_lon[:-1,None],
+        t_lat[1:,None], t_lon[1:,None], log=True, method="geosphere")
+    v_trans[:-1,:] = vec[:,0,0]
+    v_trans[:-1,:] *= KMH_TO_MS / t_tstep[1:,None]
+    v_trans_norm[:-1] = norm[:,0,0]
+    v_trans_norm[:-1] *= KMH_TO_MS / t_tstep[1:]
+
+    # limit to 30 nautical miles per hour
+    msk = (v_trans_norm > 30 * KN_TO_MS)
+    fact = 30 * KN_TO_MS / v_trans_norm[msk]
+    v_trans[msk,:] *= fact[:,None]
+    v_trans_norm[msk] *= fact
+    return v_trans_norm, v_trans
 
 @jit
-def _extra_rad_max_wind(t_cen, t_rad):
+def _extra_rad_max_wind(t_pres, t_rad):
     """Extrapolate RadiusMaxWind from pressure and change to km.
 
     Parameters:
-        t_cen (np.array): track central pressures
-        t_rad (np.array): track radius of maximum wind
+        t_pres (np.array): track central pressures
+        t_rad (np.array): track radius of maximum wind in nautical miles
 
     Returns:
-        np.array
+        np.array (track radius of maximum wind in km)
     """
-    nan_mask = np.isnan(t_rad) | (t_rad <= 0.0)
+    nan_mask = np.isnan(t_rad)
+    t_rad[nan_mask] = 0
+    nan_mask |= (t_rad <= 0.0)
 
     # rmax thresholds in nm and pressure in mb
     rmax_1, rmax_2, rmax_3 = 15, 25, 50
@@ -428,123 +510,55 @@ def _extra_rad_max_wind(t_cen, t_rad):
     slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
     slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
 
-    to_change = nan_mask & (t_cen <= pres_1)
+    to_change = nan_mask & (t_pres <= pres_1)
     t_rad[to_change] = rmax_1
-    to_change = nan_mask & (t_cen > pres_1) & (t_cen <= pres_2)
-    t_rad[to_change] = rmax_1 + slope_1 * (t_cen[to_change] - pres_1)
-    to_change = nan_mask & (t_cen > pres_2)
-    t_rad[to_change] = rmax_2 + slope_2 * (t_cen[to_change] - pres_2)
+    to_change = nan_mask & (t_pres > pres_1) & (t_pres <= pres_2)
+    t_rad[to_change] = rmax_1 + slope_1 * (t_pres[to_change] - pres_1)
+    to_change = nan_mask & (t_pres > pres_2)
+    t_rad[to_change] = rmax_2 + slope_2 * (t_pres[to_change] - pres_2)
 
     return t_rad * NM_TO_KM
 
-@jit(parallel=True, forceobj=True)
-def _wind_per_node(coastal_centr, track, v_trans, model):
-    """Compute sustained winds at each centroid.
-
-    Parameters:
-        coastal_centr (2d np.array): centroids
-        track (xr.Dataset): track latitudes
-        v_trans (np.array): track translational velocity
-        model (int): Holland model selection according to MODEL_VANG
-
-    Returns:
-        2d np.array
-    """
-
-    t_lat, t_lon = track.lat.values, track.lon.values
-    t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
-    t_cen, t_tstep = track.central_pressure.values, track.time_step.values
-
-    centr_cos_lat = np.cos(np.radians(coastal_centr[:, 0]))
-    intensity = np.zeros((coastal_centr.shape[0],))
-
-    n_nodes = t_lat.size
-    if 'n_nodes' in track.attrs:
-        n_nodes = track.attrs['n_nodes']
-
-    for i_node in range(1, n_nodes):
-        # compute distance to all centroids
-        r_arr = dist_approx(coastal_centr[:, 0], coastal_centr[:, 1], \
-            centr_cos_lat, t_lat[i_node], t_lon[i_node])
-
-        # Choose centroids that are close enough
-        close_centr = np.argwhere(r_arr < CENTR_NODE_MAX_DIST_KM).reshape(-1,)
-        r_arr = r_arr[close_centr]
-
-        # translational component
-        if i_node < t_lat.size-1:
-            v_trans_corr = _vtrans_correct(t_lat[i_node:i_node+2], \
-                t_lon[i_node:i_node+2], t_rad[i_node], \
-                coastal_centr[close_centr, :], r_arr)
-        else:
-            v_trans_corr = np.zeros((r_arr.size,))
-
-        # angular component
-        v_ang = _vang_sym(t_env[i_node], t_cen[i_node-1:i_node+1],
-                          t_lat[i_node], t_tstep[i_node], t_rad[i_node],
-                          r_arr, v_trans[i_node-1], model)
-
-        v_full = v_trans[i_node-1] * v_trans_corr + v_ang
-        v_full[np.isnan(v_full)] = 0
-        v_full[v_full < TropCyclone.intensity_thres] = 0
-
-        # keep maximum instantaneous wind
-        intensity[close_centr] = np.maximum(intensity[close_centr], v_full)
-
-    return intensity
-
-def _vtrans_correct(t_lats, t_lons, t_rad, close_centr, r_arr):
-    """Compute Hollands translational wind corrections. Returns factor.
+def _vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr):
+    """Hollands translational wind corrections
 
     Use the angle between the track forward vector and the vector towards each
     centroid to decide whether the translational wind needs to be added (on the
     right side of the track for Northern hemisphere) and to which extent (100%
-    exactly 90 to the right of the track, zero in front of the track).
+    exactly 90 degree to the right of the track, zero in front of the track).
 
     Parameters:
-        t_lats (tuple): current and next latitude
-        t_lats (tuple): current and next longitude
-        t_rad (float): current radius of maximum wind
-        close_centr (np.array): centroids
-        r_arr (np.array): distance from current node to all centroids
+        v_centr (tuple): distance and vector from track points to centroids
+        v_trans (tuple): distance and vector between consecutive track points
+        t_rad (float): radius of maximum wind at each track point
+        t_lat (float): latitude coordinates of track points
+        close_centr (np.array): mask indicating which centroids are close enough
 
     Returns:
         np.array
     """
-    if close_centr.shape[0] == 0:
-        return np.zeros_like(r_arr)
-    this_coord, next_coord = np.array([t_lats, t_lons]).T
+    # exclude stationary points
+    msk = close_centr & (v_trans[0][:,None] > 0)
 
-    # hence, rotate track forward vector 90 degrees clockwise, i.e.
-    trans = next_coord - this_coord
-    trans_orth = np.array([-trans[1], trans[0]])
-    norm_trans = LA.norm(trans_orth)
-    if norm_trans == 0:
-        # a stationary point, no translational correction necessary
-        return np.zeros_like(r_arr)
+    # rotate track forward vector 90 degrees clockwise
+    trans_orth = np.array([-1.0, 1.0])[...,:] * v_trans[1][...,::-1]
+    trans_orth_bc = np.broadcast_arrays(v_centr[1], trans_orth[:,None,:])[1]
 
-    # the vector towards each centroid
-    centroids_d = close_centr - this_coord[None]
+    # scalar product, a*b = |a|*|b|*cos(phi), phi angle between vectors
+    norm = v_centr[0] * v_trans[0][:,None]
+    cos_phi = np.zeros_like(v_centr[0])
+    cos_phi[msk] = (v_centr[1][msk,:] * trans_orth_bc[msk,:]).sum(axis=-1) / norm[msk]
 
-    # scalar product, a*b=|a|*|b|*cos(phi), phi angle between vectors
-    norm = norm_trans * LA.norm(centroids_d, axis=1)
-    cos_phi = np.sum(centroids_d * trans_orth[None], axis=1) / norm
+    # inverse orientation on southern hemisphere
+    cos_phi[t_lat < 0,:] *= -1
 
-    # southern hemisphere
-    if this_coord[0] < 0:
-        cos_phi = -cos_phi
+    t_rad_bc = np.broadcast_arrays(t_rad[:,None], v_centr[0])[0]
+    v_trans_corr = np.zeros_like(v_centr[0])
+    v_trans_corr[msk] = np.fmin(1, t_rad_bc[msk] / v_centr[0][msk]) * cos_phi[msk]
+    return v_trans_corr
 
-    # calculate v_trans wind field array assuming that
-    # - effect of v_trans decreases with distance from eye (r_arr_normed)
-    # - v_trans is added 100% to the right of the track, 0% in front (cos_phi)
-    r_arr_normed = t_rad / r_arr
-    r_arr_normed[r_arr_normed > 1] = 1
-
-    return np.multiply(r_arr_normed, cos_phi)
-
-@jit(['f8(f8, f8, f8, f8, f8, f8, f8)'], nopython=True)
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
-    """Halland's 2008 b value computation.
+    """Holland's 2008 b value computation.
 
     Parameters:
         v_trans (float): translational wind (m/s)
@@ -558,62 +572,37 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
     Returns:
         float
     """
-    return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv-pcen) + \
+    return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
 
-@jit(nopython=True)
-def _stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord):
+def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     """Holland symmetric and static wind field (in m/s) according to
     Holland1980 or Holland2008m depending on hol_b parameter.
 
     Parameters:
-        r_arr (np.array): distance between coastal centroids and track node
-        r_max (float): radius_max_wind
-        hol_b (float): Holland's b parameter
-        penv (float): environmental pressure
-        pcen (float): central pressure
-        ycoord (float): latitude
+        d_centr (2d np.array): distance between coastal centroids and track node
+        r_max (1d np.array): radius_max_wind along track
+        hol_b (1d np.array): Holland's b parameter along track
+        penv (1d np.array): environmental pressure along track
+        pcen (1d np.array): central pressure along track
+        lat (1d np.array): latitude along track
+        close_centr (2d np.array): mask
 
     Returns:
         np.array
     """
+    v_ang = np.zeros_like(d_centr)
+    r_max, hol_b, lat, penv, pcen, d_centr = [ar[close_centr]
+        for ar in np.broadcast_arrays(r_max[:,None], hol_b[:,None], lat[:,None],
+                                      penv[:,None], pcen[:,None], d_centr)]
     rho = 1.15
-    f_val = 2 * 0.0000729 * np.sin(np.radians(np.abs(ycoord)))
-    r_arr_mult = 0.5 * 1000 * r_arr * f_val
+    f_val = 2 * 0.0000729 * np.sin(np.radians(np.abs(lat)))
+    d_centr_mult = 0.5 * 1000 * d_centr * f_val
     # units are m/s
-    r_max_norm = (r_max/r_arr)**hol_b
-    return np.sqrt(100 * hol_b / rho * r_max_norm * (penv - pcen) *
-                   np.exp(-r_max_norm) + r_arr_mult**2) - r_arr_mult
-
-@jit(nopython=True)
-def _vang_sym(t_env, t_cens, t_lat, t_step, t_rad, r_arr, v_trans, model):
-    """Compute symmetric and static wind field (in m/s) filed (angular
-    wind component.
-
-    Parameters:
-        t_env (float): environmental pressures
-        t_cens (tuple): previous and current central pressures
-        t_lat (float): latitude
-        t_tstep (float): time steps
-        t_rad (float): radius of maximum wind
-        r_arr (np.array): distance from current node to all centroids
-        v_trans (float): translational wind field
-        model (int): Holland model to use, default 2008.
-
-    Returns:
-        np.array
-    """
-    # data for windfield calculation
-    prev_pres, pres = t_cens
-    hol_xx = 0.6 * (1. - (t_env - pres) / 215)
-    if model == 0:
-        # adjust pressure at previous track point
-        if prev_pres < 850:
-            prev_pres = pres
-        hol_b = _bs_hol08(v_trans, t_env, pres, prev_pres, t_lat, hol_xx, t_step)
-    else:
-        # TODO H80: b=b_value(v_trans,vmax,penv,pcen,rho);
-        raise NotImplementedError
-
-    return _stat_holland(r_arr, t_rad, hol_b, t_env, pres, t_lat)
+    msk = (d_centr > 0)
+    r_max_norm = np.zeros_like(d_centr)
+    r_max_norm[msk] = (r_max[msk] / d_centr[msk])**hol_b[msk]
+    v_ang[close_centr] = np.sqrt(100 * hol_b / rho * r_max_norm
+        * (penv - pcen) * np.exp(-r_max_norm) + d_centr_mult**2) - d_centr_mult
+    return v_ang

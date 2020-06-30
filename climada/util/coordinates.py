@@ -42,7 +42,7 @@ import pandas as pd
 import scipy.interpolate
 import zipfile
 
-from climada.util.constants import DEF_CRS, SYSTEM_DIR, \
+from climada.util.constants import DEF_CRS, SYSTEM_DIR, ONE_LAT_KM, \
                                    NATEARTH_CENTROIDS_150AS, \
                                    NATEARTH_CENTROIDS_360AS, \
                                    ISIMIP_GPWV3_NATID_150AS, \
@@ -70,14 +70,147 @@ DEM_NODATA = -9999
 MAX_DEM_TILES_DOWN = 300
 """Maximum DEM tiles to dowload"""
 
+def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
+    """Convert lat/lon coodinates to radial vectors (on geosphere)
+
+    Parameters
+    ----------
+    lat, lon : ndarrays of floats, same shape
+        Latitudes and longitudes of points.
+    rad : bool, optional
+        If True, latitude and longitude are not given in degrees but in radians.
+    basis : bool, optional
+        If True, also return an orthonormal basis of the tangent space at the
+        given points in lat-lon coordinate system. Default: False.
+
+    Returns
+    -------
+    vn : ndarray of floats, shape (..., 3)
+        Same shape as lat/lon input with additional axis for components.
+    vbasis : ndarray of floats, shape (..., 2, 3)
+        Only present, if `basis` is True. Same shape as lat/lon input with
+        additional axes for components of the two basis vectors.
+    """
+    if rad:
+        rad_lat = lat + 0.5 * np.pi
+        rad_lon = lon
+    else:
+        rad_lat = np.radians(lat + 90)
+        rad_lon = np.radians(lon)
+    sin_lat, cos_lat = np.sin(rad_lat), np.cos(rad_lat)
+    sin_lon, cos_lon = np.sin(rad_lon), np.cos(rad_lon)
+    vn = np.stack((sin_lat * cos_lon, sin_lat * sin_lon, cos_lat), axis=-1)
+    if basis:
+        vbasis = np.stack((
+            cos_lat * cos_lon, cos_lat * sin_lon, -sin_lat,
+            -sin_lon, cos_lon, np.zeros_like(cos_lat),
+        ), axis=-1).reshape(lat.shape + (2, 3))
+        return vn, vbasis
+    else:
+        return vn
+
+def lon_normalize(lon):
+    """ Normalizes degrees such that always -180 < lon <= 180
+
+    The input data is modified in place (!) using the following operations:
+
+        (lon) -> (lon ± 360)
+
+    Parameters:
+        lon (np.array): Longitudinal coordinates
+
+    Returns:
+        np.array (same as input)
+    """
+    while True:
+        msk1 = (lon > 180)
+        lon[msk1] -= 360
+        msk2 = (lon <= -180)
+        lon[msk2] += 360
+        if msk1.sum() == 0 and msk2.sum() == 0:
+            break
+    return lon
+
+def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
+                method="equirect"):
+    """Compute approximation of geodistance in km
+
+    Parameters
+    ----------
+    lat1, lon1 : ndarrays of floats, shape (nbatch, nx)
+        Latitudes and longitudes of first points.
+    lat2, lon2 : ndarrays of floats, shape (nbatch, ny)
+        Latitudes and longitudes of second points.
+    log : bool, optional
+        If True, return the tangential vectors at the first points pointing to
+        the second points (Riemannian logarithm). Default: False.
+    normalize : bool, optional
+        If False, assume that lon values are already between -180 and 180.
+        Default: True
+    method : str, optional
+        Specify an approximation method to use:
+        * "equirect": equirectangular; very fast, good only at small distances.
+        * "geosphere": spherical approximation, slower, but much higher accuracy.
+        Default: "equirect".
+
+    Returns
+    -------
+    dists : ndarray of floats, shape (nbatch, nx, ny)
+        Approximate distances in km.
+    vtan : ndarray of floats, shape (nbatch, nx, ny, 2)
+        If `log` is True, tangential vectors at first points in local
+        lat-lon coordinate system.
+    """
+    if method == "equirect":
+        if normalize:
+            lon_normalize(lon1)
+            lon_normalize(lon2)
+        d_lat = lat2[:,None] - lat1[:,:,None]
+        d_lon = lon2[:,None] - lon1[:,:,None]
+        fact1 = np.heaviside(d_lon - 180, 0)
+        fact2 = np.heaviside(-d_lon - 180, 0)
+        d_lon -= (fact1 - fact2) * 360
+        d_lon *= np.cos(np.radians(lat1[:,:,None]))
+        dist_km = np.sqrt(d_lon**2 + d_lat**2) * ONE_LAT_KM
+        if log:
+            vtan = np.stack([d_lat, d_lon], axis=-1) * ONE_LAT_KM
+    elif method == "geosphere":
+        lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+        dlat = 0.5 * (lat2[:,None] - lat1[:,:,None])
+        dlon = 0.5 * (lon2[:,None] - lon1[:,:,None])
+        # haversine formula:
+        hav = np.sin(dlat)**2 \
+            + np.cos(lat1[:,:,None]) * np.cos(lat2[:,None]) * np.sin(dlon)**2
+        dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
+        if log:
+            v1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
+            v2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
+            scal = 1 - 2 * hav
+            fc = dist_km / np.fmax(np.spacing(1),np.sqrt(1 - scal**2))
+            vtan = fc[...,None] * (v2[:,None] - scal[...,None] * v1[:,:,None])
+            vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
+    else:
+        LOGGER.error("Unknown distance approximation method: %s", method)
+        raise KeyError
+    return (dist_km, vtan) if log else dist_km
+
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
 
-    Parameters:
-        coord (np.array):
+    Parameters
+    ----------
+    coord : np.array
+        Each row is a lat-lon-pair.
 
-    Returns:
-        bool (is regular), int (height), int (width)
+    Returns
+    -------
+    regular : bool
+        Whether the grid is regular. Only in this case, the following
+        width and height are reliable.
+    height : int
+        Height of the supposed grid.
+    width : int
+        Width of the supposed grid.
     """
     regular = False
     _, count_lat = np.unique(coord[:, 0], return_counts=True)

@@ -34,6 +34,7 @@ from rasterio import Affine
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import convert_wgs_to_utm, \
                                      coord_on_land, \
+                                     dist_approx, \
                                      dist_to_coast, \
                                      dist_to_coast_nasa, \
                                      equal_crs, \
@@ -44,6 +45,7 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      get_land_geometry, \
                                      get_resolution, \
                                      grid_is_regular, \
+                                     latlon_to_geosph_vector, \
                                      nat_earth_resolution, \
                                      points_to_raster, \
                                      pts_to_raster_meta, \
@@ -56,6 +58,53 @@ from climada.util.coordinates import convert_wgs_to_utm, \
 
 class TestFunc(unittest.TestCase):
     """Test the auxiliary used with plot functions"""
+
+    def test_geosph_vector(self):
+        """Test conversion from lat/lon to unit vector on geosphere"""
+        data = np.array([[0, 0], [-13, 179]], dtype=np.float64)
+        vn, vbasis = latlon_to_geosph_vector(data[:,0], data[:,1], basis=True)
+        basis_scal = (vbasis[...,0,:] * vbasis[...,1,:]).sum(axis=-1)
+        basis_norm = np.linalg.norm(vbasis, axis=-1)
+        self.assertTrue(np.allclose(np.linalg.norm(vn, axis=-1), 1))
+        self.assertTrue(np.allclose(basis_scal, 0))
+        self.assertTrue(np.allclose(basis_norm, 1))
+
+    def test_dist_approx_pass(self):
+        """Test approximate distance functions"""
+        data = np.array([
+            # lat1, lon1, lat2, lon2, dist, dist_sph
+            [45.5, -32.2, 14, 56, 7709.827814738594, 8758.34146833],
+            [45.5, 147.8, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, 507.8, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, -212.2, 14, -124, 7709.827814738594, 8758.34146833],
+        ])
+        compute_dist = np.stack([
+            dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], method="equirect")[:,0,0],
+            dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], method="geosphere")[:,0,0],
+        ], axis=-1)
+        self.assertEqual(compute_dist.shape[0], data.shape[0])
+        for d, cd in zip(data[:,4:], compute_dist):
+            self.assertAlmostEqual(d[0], cd[0])
+            self.assertAlmostEqual(d[1], cd[1])
+
+        data = np.array([
+            # lat1, lon1, lat2, lon2, dist, dist_sph
+            [0, 0, 0, 1, 111.12, 111.12],
+            [-13, 179, 5, -179, 2011.84774049, 2012.30698122],
+        ])
+        for i, method in enumerate(["equirect", "geosphere"]):
+            dist, vec = dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], log=True, method=method)
+            dist, vec = dist[:,0,0], vec[:,0,0]
+            self.assertTrue(np.allclose(np.linalg.norm(vec, axis=-1), dist))
+            self.assertTrue(np.allclose(dist, data[:,4 + i]))
+            # both points on equator (no change in latitude)
+            self.assertAlmostEqual(vec[0,0], 0)
+            # longitude from 179 to -179 is positive (!) in lon-direction
+            self.assertTrue(np.all(vec[1,:] > 100))
+
 
     def test_read_vector_pass(self):
         """Test one columns data"""
