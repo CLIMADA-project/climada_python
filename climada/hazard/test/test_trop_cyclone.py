@@ -50,7 +50,9 @@ class TestReader(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         coastal_centr = tc.coastal_centr_idx(CENTR_TEST_BRB)
-        tc_haz = TropCyclone._tc_from_track(tc_track.data[0], CENTR_TEST_BRB, coastal_centr)
+        tc_haz = TropCyclone()
+        tc_haz = tc_haz._tc_from_track(tc_track.data[0], CENTR_TEST_BRB,
+            coastal_centr, model='H08')
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
@@ -65,19 +67,31 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
-        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
-        self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
-
-        self.assertAlmostEqual(tc_haz.intensity[0, 100],
-                               38.84863159321016, 6)
-        self.assertEqual(tc_haz.intensity[0, 260], 0)
         self.assertEqual(tc_haz.fraction[0, 100], 1)
         self.assertEqual(tc_haz.fraction[0, 260], 0)
-
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
-        self.assertEqual(tc_haz.intensity.nonzero()[0].size, 280)
+
+        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
+        self.assertEqual(tc_haz.intensity.shape, (1, 296))
+        self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
+
+        self.assertEqual(tc_haz.intensity[0, 260], 0)
+        self.assertAlmostEqual(tc_haz.intensity[0, 1], 27.836017903268605)
+        self.assertAlmostEqual(tc_haz.intensity[0, 2], 29.468870290012674)
+        self.assertAlmostEqual(tc_haz.intensity[0, 3], 26.368195440950167)
+        self.assertAlmostEqual(tc_haz.intensity[0, 100], 38.81161329596203)
+        self.assertAlmostEqual(tc_haz.intensity[0, 250], 34.26164879536931)
+        self.assertAlmostEqual(tc_haz.intensity[0, 295], 44.33805066873576)
+
+        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+        wind = tc_haz.intensity.toarray()[0, coastal_centr]
+        self.assertAlmostEqual(wind[0] * to_kn, 51.16227717783039)
+        self.assertAlmostEqual(wind[80] * to_kn, 64.16023123186646)
+        self.assertAlmostEqual(wind[120] * to_kn, 41.438982714289686)
+        self.assertAlmostEqual(wind[200] * to_kn, 57.28807382906733)
+        self.assertAlmostEqual(wind[220] * to_kn, 69.60926979663681)
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""
@@ -182,31 +196,34 @@ class TestModel(unittest.TestCase):
 
     def test_stat_holland(self):
         """Test _stat_holland function. Compare to MATLAB reference."""
-        r_arr = np.array([293.6067129546862, 298.2652319413182])
-        r_max = 75.547902916671745
-        hol_b = 1.265551666104679
-        penv = 1010
-        pcen = 1005.268166666671
-        ycoord = 12.299999279463769
+        d_centr = np.array([[293.6067129546862, 298.2652319413182]])
+        r_max = np.array([75.547902916671745])
+        hol_b = np.array([1.265551666104679])
+        penv = np.array([1010.0])
+        pcen = np.array([1005.268166666671])
+        lat = np.array([12.299999279463769])
+        mask = np.ones_like(d_centr, dtype=bool)
 
-        _v_arr = tc._stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord)
+        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertAlmostEqual(_v_arr[0], 5.384115724400597)
         self.assertAlmostEqual(_v_arr[1], 5.281356766052531)
 
-        r_arr = np.array([])
-        _v_arr = tc._stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord)
+        d_centr = np.array([[]])
+        mask = np.ones_like(d_centr, dtype=bool)
+        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertTrue(np.array_equal(_v_arr, np.array([])))
 
-        r_arr = np.array([299.4501244109841,
-                          291.0737897183741,
-                          292.5441003235722])
-        r_max = 40.665454622610511
-        hol_b = 1.486076257880692
-        penv = 1010
-        pcen = 970.8727666672957
-        ycoord = 14.089110370469488
+        d_centr = np.array([
+                [299.4501244109841, 291.0737897183741, 292.5441003235722]
+        ])
+        r_max = np.array([40.665454622610511])
+        hol_b = np.array([1.486076257880692])
+        penv = np.array([1010.0])
+        pcen = np.array([970.8727666672957])
+        lat = np.array([14.089110370469488])
+        mask = np.ones_like(d_centr, dtype=bool)
 
-        _v_arr = tc._stat_holland(r_arr, r_max, hol_b, penv, pcen, ycoord)
+        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertAlmostEqual(_v_arr[0], 11.279764005440288)
         self.assertAlmostEqual(_v_arr[1], 11.682978583939310)
         self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
@@ -218,35 +235,44 @@ class TestModel(unittest.TestCase):
         self.assertEqual(coastal.size, CENTR_TEST_BRB.size)
 
     def test_vtrans_correct(self):
-        """Test _vtrans_correct function. Compare to MATLAB reference."""
-        i_node = 1
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.equal_timestep()
-        tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values))
-        r_arr = np.array([286.4938638337190, 290.5930935802884,
-                          295.0271327746536, 299.7811253637995,
-                          296.8484825705515, 274.9892882245964])
+        """Test _vtrans_correct function."""
+        # The correction does only depend on the relative positions of
+        # centroids and track points + hemisphere
+        v_centr = np.array([
+            [[-1, 0], [0, 1], [0, 1.4], [0, -1.4], [1.7, 2.2], [0.3, 0.9],],
+            [[-1, 0], [0, 1], [0, 1.4], [0, -1.4], [1.7, 2.2], [0.3, 0.9],],
+        ])
+        v_centr = (np.linalg.norm(v_centr, axis=-1), v_centr)
+        v_trans = np.array([[1, 0], [1, 0]])
+        v_trans = (np.linalg.norm(v_trans, axis=-1), v_trans)
+        t_rad = np.array([1.3, 1.3])
+        t_lat = np.array([34, -13])
+        close_centr = np.array([
+            [True, True, True, True, False, True],
+        ])
+        corr = tc._vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr)
+        self.assertEqual(corr.shape, (2, 6))
 
-        v_trans_corr = tc._vtrans_correct(
-            tc_track.data[0].lat.values[i_node:i_node+2],
-            tc_track.data[0].lon.values[i_node:i_node+2],
-            tc_track.data[0].radius_max_wind.values[i_node],
-            CENTR_TEST_BRB.coord[:6, :], r_arr)
+        # -> factor is 0% in front/behind the track
+        self.assertEqual(corr[0,0], 0)
 
-        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+        # -> factor is 100% to the right of the track,
+        self.assertEqual(corr[0,1], 1.0)
 
-        v_trans = 10.191466256012880 / to_kn
-        v_trans_corr *= v_trans
-        self.assertEqual(v_trans_corr.size, 6)
-        self.assertAlmostEqual(v_trans_corr[0] * to_kn, 0.06547673730228235)
-        self.assertAlmostEqual(v_trans_corr[1] * to_kn, 0.07106877437273672)
-        self.assertAlmostEqual(v_trans_corr[2] * to_kn, 0.07641714650288109)
-        self.assertAlmostEqual(v_trans_corr[3] * to_kn, 0.0627289214278824)
-        self.assertAlmostEqual(v_trans_corr[4] * to_kn, 0.0697427233582331)
-        self.assertAlmostEqual(v_trans_corr[5] * to_kn, 0.06855335593983322)
+        # -> factor decreases with distance from eye
+        self.assertEqual(corr[0,2], 0.9285714285714287)
+
+        # -> sign changes from right to left (and only that)
+        self.assertEqual(corr[0,3], -0.9285714285714287)
+
+        # -> centroids that are not close (according to mask) get value 0
+        self.assertEqual(corr[0,4], 0)
+
+        # -> factor decreases when rotating around the eye from right to front
+        self.assertEqual(corr[0,5], 0.9486832980505139)
+
+        # -> switching hemisphere changes sign (and only that)
+        self.assertTrue(np.allclose(corr[0], -corr[1]))
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
@@ -255,81 +281,15 @@ class TestModel(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
-        v_trans = tc._vtrans(tc_track.data[0].lat.values, tc_track.data[0].lon.values,
-                tc_track.data[0].time_step.values)
+        v_trans, _ = tc._vtrans(
+            tc_track.data[0].lat.values, tc_track.data[0].lon.values,
+            tc_track.data[0].time_step.values)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
-        self.assertEqual(v_trans.size, tc_track.data[0].time.size-1)
-        self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466256012880)
-
-    def test_vang_sym(self):
-        """Test _vang_sym function. Compare to MATLAB reference."""
-        i_node = 1
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.equal_timestep()
-        tc_track.data[0]['radius_max_wind'] = ('time', tc._extra_rad_max_wind(
-            tc_track.data[0].central_pressure.values,
-            tc_track.data[0].radius_max_wind.values))
-        r_arr = np.array([286.4938638337190, 290.5930935802884,
-                          295.0271327746536, 299.7811253637995,
-                          296.8484825705515, 274.9892882245964])
-        v_trans = 5.2429431910897559
-        v_ang = tc._vang_sym(tc_track.data[0].environmental_pressure.values[i_node],
-            tc_track.data[0].central_pressure.values[i_node-1:i_node+1],
-            tc_track.data[0].lat.values[i_node],
-            tc_track.data[0].time_step.values[i_node],
-            tc_track.data[0].radius_max_wind.values[i_node],
-            r_arr, v_trans, model=0)
-
-        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
-        self.assertEqual(v_ang.size, 6)
-        self.assertAlmostEqual(v_ang[0] * to_kn, 10.774196807905097)
-        self.assertAlmostEqual(v_ang[1] * to_kn, 10.591725180482094)
-        self.assertAlmostEqual(v_ang[2] * to_kn, 10.398212766600055)
-        self.assertAlmostEqual(v_ang[3] * to_kn, 10.195108683240084)
-        self.assertAlmostEqual(v_ang[4] * to_kn, 10.319869893291429)
-        self.assertAlmostEqual(v_ang[5] * to_kn, 11.305188714213809)
-
-    def test_windfield(self):
-        """Test _windfield function. Compare to MATLAB reference."""
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.equal_timestep()
-        coast_centr = tc.coastal_centr_idx(CENTR_TEST_BRB)
-
-        wind = tc._windfield(tc_track.data[0], CENTR_TEST_BRB.coord, coast_centr, model=0)
-
-        to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
-        self.assertEqual(wind.shape, (CENTR_TEST_BRB.size,))
-
-        wind = wind[coast_centr]
-        self.assertEqual(np.nonzero(wind)[0].size, 280)
-        self.assertAlmostEqual(wind[0] * to_kn, 51.16153933277889)
-        self.assertAlmostEqual(wind[80] * to_kn, 64.15891933409763)
-        self.assertAlmostEqual(wind[120] * to_kn, 41.43819201370903)
-        self.assertAlmostEqual(wind[200] * to_kn, 57.28814245245439)
-        self.assertAlmostEqual(wind[220] * to_kn, 69.62477194818004)
-
-    def test_gust_from_track(self):
-        """Test gust_from_track function. Compare to MATLAB reference."""
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.equal_timestep()
-        intensity = tc.gust_from_track(tc_track.data[0], CENTR_TEST_BRB, model='H08')
-
-        self.assertTrue(isinstance(intensity, sparse.csr.csr_matrix))
-        self.assertEqual(intensity.shape, (1, 296))
-        self.assertEqual(np.nonzero(intensity)[0].size, 280)
-
-        self.assertEqual(intensity[0, 260], 0)
-        self.assertAlmostEqual(intensity[0, 1], 27.835686180065114)
-        self.assertAlmostEqual(intensity[0, 2], 29.46862830056694)
-        self.assertAlmostEqual(intensity[0, 3], 26.36829914594632)
-        self.assertAlmostEqual(intensity[0, 100], 38.84863159321016)
-        self.assertAlmostEqual(intensity[0, 250], 34.26311998266044)
-        self.assertAlmostEqual(intensity[0, 295], 44.273964728810924)
+        self.assertEqual(v_trans.size, tc_track.data[0].time.size)
+        self.assertEqual(v_trans[-1], 0)
+        self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466078221902)
 
 
 class TestClimateSce(unittest.TestCase):
