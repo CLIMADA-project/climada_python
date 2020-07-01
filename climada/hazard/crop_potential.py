@@ -37,6 +37,7 @@ import h5py
 
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
+from climada.util import coordinates
 from climada.util.constants import DATA_DIR
 
 
@@ -184,6 +185,8 @@ class CropPotential(Hazard):
         self.units = 't / y / ha'
         self.date = np.array(dt.str_to_date(date))
         self.centroids.set_meta_to_lat_lon()
+        self.centroids.region_id = (coordinates.coord_on_land(self.centroids.lat, \
+                                                              self.centroids.lon)).astype(dtype=int)
         self.check()
 
         return self
@@ -491,7 +494,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+(items[i])[3]+'_'+ \
         (items[i])[4]+'_'+(items[i])[5]+'_'+crop_irr+'_'+str(yearrange[0])+'-'+str(yearrange[1])
 
-        cp_his.write_hdf5(output_dir+'Hazard/'+filename)
+        cp_his.select(reg_id=1).write_hdf5(output_dir+'Hazard/'+filename)
 
         #compute the relative yield for all future scenarios with the corresponding historic mean
         for j, _ in enumerate(scenario_list):
@@ -508,7 +511,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
             (items[i])[4]+'_'+(items[i])[5]+'_'+ crop_irr+'_'+str(yearrange_fut[0])+'-'+ \
             str(yearrange_fut[1])
 
-            cp_fut.write_hdf5(output_dir+'Hazard/'+filename)
+            cp_fut.select(reg_id=1).write_hdf5(output_dir+'Hazard/'+filename)
 
     #calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
     for i, _ in enumerate(crop_list):
