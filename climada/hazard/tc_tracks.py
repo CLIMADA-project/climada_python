@@ -837,7 +837,9 @@ class TCTracks():
         Returns:
             xr.Dataset
         """
-        if track.time.size > 3:
+        if track.time.size >= 2:
+            method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size-2)]
+
             # handle change of sign in longitude
             lon = track.lon.copy()
             if (lon < -170).any() and (lon > 170).any():
@@ -848,11 +850,11 @@ class TCTracks():
             track_int = track.resample(time=time_step, keep_attrs=True, skipna=True)\
                              .interpolate('linear')
             track_int['time_step'][:] = time_step_h
-            lon_int = lon.resample(time=time_step).interpolate('cubic')
+            lon_int = lon.resample(time=time_step).interpolate(method)
             lon_int[lon_int > 180] -= 360
             track_int.coords['lon'] = lon_int
             track_int.coords['lat'] = track.lat.resample(time=time_step)\
-                                               .interpolate('cubic')
+                                               .interpolate(method)
             track_int.attrs['category'] = set_category(
                 track_int.max_sustained_wind.values,
                 track_int.max_sustained_wind_unit)
