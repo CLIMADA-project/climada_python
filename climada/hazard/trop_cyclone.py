@@ -362,6 +362,9 @@ def _windfield(track, centroids, coastal_idx, model):
     t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
     t_cen, t_tstep = track.central_pressure.values, track.time_step.values
 
+    if t_lon.size < 2:
+        return intensity
+
     # never use longitudes at -180 degrees or below
     t_lon[t_lon <= -180] += 360
 
