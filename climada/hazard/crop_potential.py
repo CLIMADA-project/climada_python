@@ -413,7 +413,7 @@ class CropPotential(Hazard):
 
 
 def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, \
-                         yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange']):
+                         yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], returns='filename_list'):
     """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files in the output directory
 
@@ -423,6 +423,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
+        returns (str): optional return (either only a list of the names of the files that
+        are created or additionally a list of the created hazards)
 
     """
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
@@ -475,6 +477,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
 
     #calculate hazard as relative yield for all historic files and related future scenarios
     #and save them as hdf5 file in the output directory
+    filename_list = list()
+    output_list = list()
     for i, _ in enumerate(items):
         #historic file
         crop_irr = (((items[i])[6]).split('-'))[1]+'-'+(((items[i])[6]).split('-'))[2]
@@ -493,7 +497,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
 
         filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+(items[i])[3]+'_'+(items[i])[4] \
         +'_'+(items[i])[5]+'_'+crop_irr+'_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'
-
+        filename_list.append(filename)
+        output_list.append(cp_his)
         cp_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
         #compute the relative yield for all future scenarios with the corresponding historic mean
@@ -510,19 +515,28 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
             filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+scenario_list[j]+'_'+ \
             (items[i])[4]+'_'+(items[i])[5]+'_'+ crop_irr+'_'+str(yearrange_fut[0])+'-'+ \
             str(yearrange_fut[1])+'.hdf5'
-
+            filename_list.append(filename)
+            output_list.append(cp_fut)
             cp_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
     #calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
     for i, _ in enumerate(crop_list):
         mean = np.mean((hist_mean_per_crop[crop_list[i]])['value'], 0)
-        mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', 'hist_mean_'+crop_list[i]+'_'+\
-                              str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'), 'w')
+        mean_filename = 'hist_mean_'+crop_list[i]+'_'+ str(yearrange[0])+ \
+        '-'+str(yearrange[1])+'.hdf5'
+        filename_list.append(mean_filename)
+        output_list.append(mean)
+        mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', mean_filename), 'w')
         mean_file.create_dataset('mean', data=mean)
         mean_file.create_dataset('lat', data=cp_his.centroids.lat)
         mean_file.create_dataset('lon', data=cp_his.centroids.lon)
         mean_file.close()
+
         #save historic mean as netcdf (saves mean, lat and lon as arrays)
 #        mean_file = xr.Dataset({'mean': mean, 'lat': cp_his.centroids.lat, \
 #                                'lon': cp_his.centroids.lon})
 #        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_list[i]+'.nc')
+
+    if returns == 'filename_list':
+        return filename_list
+    return filename_list, output_list
