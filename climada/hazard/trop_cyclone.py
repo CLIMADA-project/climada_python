@@ -573,7 +573,7 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     f_val = 2 * 0.0000729 * np.sin(np.radians(np.abs(lat)))
     d_centr_mult = 0.5 * 1000 * d_centr * f_val
     # units are m/s
-    msk = (d_centr > 0)
+    msk = (d_centr > 1e-5) & (hol_b > 0) & (hol_b < 5)
     r_max_norm = np.zeros_like(d_centr)
     r_max_norm[msk] = (r_max[msk] / d_centr[msk])**hol_b[msk]
     sqrt_term = 100 * hol_b / rho * r_max_norm * (penv - pcen) \
