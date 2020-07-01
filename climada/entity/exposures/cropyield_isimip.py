@@ -108,15 +108,15 @@ IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 #               (http://www.fao.org/faostat/en/#data/PP)
 #   FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
 #               (http://www.fao.org/faostat/en/#definitions)
-INPUT_DIR = DATA_DIR+'/ISIMIP_crop/Input/Exposure/'
+INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Exposure')
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_country_codes.csv"
 
-#default output directory: climada_python/data/ISIMIP_crop/Output
+#default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
 #by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
 #climada_python/data/ISIMIP_crop/Output/hist_mean/
-HIST_MEAN_PATH = DATA_DIR+'/ISIMIP_crop/Output/'+'hist_mean/'
-OUTPUT_DIR = DATA_DIR+'/ISIMIP_crop/Output/Exposure/'
+HIST_MEAN_PATH = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Hist_mean')
+OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Exposure')
 
 
 
@@ -176,7 +176,7 @@ class CropyieldIsimip(Exposures):
             yearchunk = dict()
             yearchunk = {'yearrange' : np.array([int(items[6]), int(items[7].split('.')[0])]), \
                          'startyear' : int(items[6]), 'endyear': int(items[7].split('.')[0])}
-            filename = input_dir+filename
+            filename = os.path.join(input_dir, filename)
         else:
             items = filename.split('_')
             if 'histsoc' or '1860soc' in filename:
@@ -186,7 +186,7 @@ class CropyieldIsimip(Exposures):
                 cl_model = items[0]
                 scenario = items[1]
             yearchunk = YEARCHUNKS[scenario]
-            filename = input_dir+filename
+            filename = os.path.join(input_dir, filename)
 
         #Dataset is opened and data within the bbox extends is extracted
         data_set = xr.open_dataset(filename, decode_times=False)
@@ -228,21 +228,21 @@ class CropyieldIsimip(Exposures):
         #The adequate file from the directory (depending on crop and irrigation) is extracted
         #and the variables hist_mean, lat_mean and lon_mean are set accordingly
             if irr != 'combined':
-                filename = hist_mean+'hist_mean_'+crop+'-'+irr+'_'+str(yearrange[0])+'-'+\
-                str(yearrange[1])+'.h5'
+                filename = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+irr+'_'+\
+                str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
                 hist_mean = (h5py.File(filename, 'r'))['mean'][()]
             else:
-                filename = hist_mean+'hist_mean_'+crop+'-'+IRR[1]+'_'+str(yearrange[0])+\
-                '-'+str(yearrange[1])+'.h5'
-                filename2 = hist_mean+'hist_mean_'+crop+'-'+IRR[2]+'_'+str(yearrange[0])+\
-                '-'+str(yearrange[1])+'.h5'
+                filename = hist_mean, os.path.join('hist_mean_'+crop+'-'+IRR[1]+\
+                '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
+                filename2 = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+IRR[2]+\
+                '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
                 hist_mean = ((h5py.File(filename, 'r'))['mean'][()] + \
                              (h5py.File(filename2, 'r'))['mean'][()])/2
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
-        elif isfile(input_dir+hist_mean):
+        elif isfile(os.path.join(input_dir, hist_mean)):
         #Hist_mean, lat_mean and lon_mean are extracted from the given file
-            hist_mean_file = h5py.File(input_dir+hist_mean, 'r')
+            hist_mean_file = h5py.File(os.path.join(input_dir, hist_mean), 'r')
             hist_mean = hist_mean_file['mean'][()]
             lat_mean = hist_mean_file['lat'][()]
             lon_mean = hist_mean_file['lon'][()]
@@ -274,7 +274,7 @@ class CropyieldIsimip(Exposures):
         #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
             self['value_tonnes'] = self['value']
-            self.set_to_usd(dir_fao=input_dir+'FAO/')
+            self.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
 
         self.check()
 
@@ -346,7 +346,7 @@ class CropyieldIsimip(Exposures):
 
         return self
 
-    def set_to_usd(self, dir_fao=INPUT_DIR+'FAO/', yearrange=YEARS_FAO):
+    def set_to_usd(self, dir_fao=os.path.join(INPUT_DIR, 'FAO'), yearrange=YEARS_FAO):
         #to do: check api availability?; default yearrange for single year (e.g. 5a)
         """Calculates the exposure in USD using country and year specific data published
         by the FAO.
@@ -365,14 +365,14 @@ class CropyieldIsimip(Exposures):
 
         #open both FAO files and extract needed variables
         #FAO_FILE: contains producer prices per crop, country and year
-        fao = pd.read_csv(dir_fao + FAO_FILE)
+        fao = pd.read_csv(os.path.join(dir_fao, FAO_FILE))
         fao_area = getattr(fao, 'Area Code').values
         fao_crops = fao.Item.values
         fao_year = fao.Year.values
         fao_price = fao.Value.values
 
         #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
-        fao_countries = pd.read_csv(dir_fao + FAO_FILE2)
+        fao_countries = pd.read_csv(os.path.join(dir_fao, FAO_FILE2))
         fao_code = getattr(fao_countries, 'Country Code').values
         fao_iso = getattr(fao_countries, 'ISO3 Code').values
 
@@ -446,8 +446,6 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     #generate output directory if it does not exist yet
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
-    if not os.path.exists(output_dir+'Exposure/'):
-        os.mkdir(output_dir+'Exposure/')
 
     #create exposures for all crop-irrigation combinations and save them
     for i, _ in enumerate(filenames):
@@ -459,5 +457,5 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
                                       irr=((item[2]).split('-'))[1], unit=unit)
         filename_saveto = 'cropyield_isimip_'+((item[2]).split('-'))[0]+'-'+( \
                                               ((item[2]).split('-'))[1]).split('.')[0]+ \
-                                              '_'+str(yearrange[0])+'-'+str(yearrange[1])
-        cropyield.write_hdf5(output_dir+'Exposure/'+filename_saveto)
+                                              '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'
+        cropyield.write_hdf5(os.path.join(output_dir, filename_saveto))

@@ -22,9 +22,9 @@ import unittest
 from climada.entity.exposures.cropyield_isimip import CropyieldIsimip
 from climada.util.constants import DATA_DIR
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo/')
+INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FILENAME = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
-FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.h5'
+FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
 
 class TestCropyieldIsimip(unittest.TestCase):
     """Test Cropyield_Isimip Class methods"""
