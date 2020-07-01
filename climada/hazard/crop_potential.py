@@ -95,8 +95,8 @@ BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
 INT_DEF = 'Yearly Yield'
 
 #default: deposit the input files in the directory: climada_python/data/ISIMIP/Input/Hazard
-INPUT_DIR = DATA_DIR+'/ISIMIP/Input/Hazard/'
-OUTPUT_DIR = DATA_DIR+'/ISIMIP/Output/'
+INPUT_DIR = DATA_DIR+'/ISIMIP_crop/Input/Hazard/'
+OUTPUT_DIR = DATA_DIR+'/ISIMIP_crop/Output/'
 
 class CropPotential(Hazard):
     """Contains events impacting the crop potential.

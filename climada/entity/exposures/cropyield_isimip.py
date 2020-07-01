@@ -115,8 +115,8 @@ FAO_FILE2 = "FAOSTAT_data_country_codes.csv"
 #default output directory: climada_python/data/ISIMIP/Output
 #by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
 #climada_python/data/ISIMIP/Output/hist_mean/
-HIST_MEAN_PATH = DATA_DIR+'/ISIMIP/Output/'+'hist_mean/'
-OUTPUT_DIR = DATA_DIR+'/ISIMIP/Output/Exposure/'
+HIST_MEAN_PATH = DATA_DIR+'/ISIMIP_crop/Output/'+'hist_mean/'
+OUTPUT_DIR = DATA_DIR+'/ISIMIP_crop/Output/Exposure/'
 
 
 
