@@ -56,9 +56,15 @@ LOGGER = logging.getLogger(__name__)
 SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 137, 1000]
 """Saffir-Simpson Hurricane Wind Scale in kn based on NOAA"""
 
-CAT_NAMES = {1: 'Tropical Depression', 2: 'Tropical Storm',
-             3: 'Hurrican Cat. 1', 4: 'Hurrican Cat. 2',
-             5: 'Hurrican Cat. 3', 6: 'Hurrican Cat. 4', 7: 'Hurrican Cat. 5'}
+CAT_NAMES = {
+    -1: 'Tropical Depression',
+    0: 'Tropical Storm',
+    1: 'Hurrican Cat. 1',
+    2: 'Hurrican Cat. 2',
+    3: 'Hurrican Cat. 3',
+    4: 'Hurrican Cat. 4',
+    5: 'Hurrican Cat. 5',
+}
 """Saffir-Simpson category names."""
 
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
@@ -749,8 +755,7 @@ class TCTracks():
 
         leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                      for i_col in range(len(SAFFIR_SIM_CAT))]
-        leg_names = [CAT_NAMES[i_col] for i_col
-                     in range(1, len(SAFFIR_SIM_CAT)+1)]
+        leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
         if synth_flag:
             leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
             leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
@@ -1273,7 +1278,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
             close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
             LOGGER.debug('No historical track of category %s with landfall. ' \
                          'Decay parameters from category %s taken.',
-                         CAT_NAMES[ss_scale], CAT_NAMES[close_scale])
+                         CAT_NAMES[ss_scale - 2], CAT_NAMES[close_scale - 2])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
 
@@ -1292,7 +1297,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         axes[0].set_ylabel('Max sustained wind relative to landfall')
         axes[0].set_title('Wind')
         axes[0].plot(x_val[track_cat], v_lf[track_cat], '*', c=color,
-                     label=CAT_NAMES[track_cat])
+                     label=CAT_NAMES[track_cat - 2])
         axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
                      '-', c=color)
 
@@ -1300,7 +1305,7 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         axes[1].set_ylabel('Central pressure relative to landfall')
         axes[1].set_title('Pressure')
         axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
-                     label=CAT_NAMES[track_cat])
+                     label=CAT_NAMES[track_cat - 2])
         axes[1].plot(x_eval, _decay_p_function(p_rel[track_cat][0], \
                      p_rel[track_cat][1], x_eval), '-', c=color)
 
@@ -1395,7 +1400,7 @@ def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
     leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                  for i_col in range(len(SAFFIR_SIM_CAT))]
     leg_lines.append(Line2D([0], [0], color='k', lw=2))
-    leg_names = [CAT_NAMES[i_col] for i_col in range(1, len(SAFFIR_SIM_CAT)+1)]
+    leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
     leg_names.append('Sea')
     all_gr = [graph_v_a, graph_v_b, graph_p_a, graph_p_b, graph_ped_a,
               graph_pd_a, graph_hv, graph_hp, graph_hpd_a, graph_hped_a]
