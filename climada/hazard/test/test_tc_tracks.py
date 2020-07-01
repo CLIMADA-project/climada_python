@@ -26,10 +26,9 @@ import xarray as xr
 import numpy as np
 import netCDF4 as nc
 
-from climada.hazard.tc_tracks import TCTracks
 import climada.hazard.tc_tracks as tc
 from climada.util import ureg
-from climada.util.constants import TC_ANDREW_FL
+from climada.util.constants import TC_ANDREW_FL, SYSTEM_DIR
 from climada.util.coordinates import coord_on_land, dist_to_coast
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -40,11 +39,186 @@ TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
 TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
 
+class TestIBTracs(unittest.TestCase):
+    """Test reading and model of TC from IBTrACS files"""
+
+    def test_raw_ibtracs_empty_pass(self):
+        """Test reading TC from IBTrACS files"""
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
+        self.assertEqual(tc_track.get_track(), [])
+
+    def test_write_read_pass(self):
+        """Test writting and reading netcdf4 TCTracks instances"""
+        path = os.path.join(DATA_DIR, "tc_tracks_nc")
+        os.makedirs(path, exist_ok=True)
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
+                                     estimate_missing=True)
+        tc_track.write_netcdf(path)
+
+        tc_read = tc.TCTracks()
+        tc_read.read_netcdf(path)
+
+        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
+
+    def test_penv_rmax_penv_pass(self):
+        """read_ibtracs_netcdf"""
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
+        penv_ref = np.ones(97)*1010
+        penv_ref[26] = 1011
+        penv_ref[27] = 1012
+        penv_ref[28] = 1013
+        penv_ref[29] = 1014
+        penv_ref[30] = 1015
+        penv_ref[31] = 1014
+        penv_ref[32] = 1014
+        penv_ref[33] = 1014
+        penv_ref[34] = 1014
+        penv_ref[35] = 1012
+
+        self.assertTrue(np.allclose(
+            tc_track.get_track().environmental_pressure.values, penv_ref))
+        self.assertTrue(np.allclose(
+            tc_track.get_track().radius_max_wind.values, np.zeros(97)))
+
+    def test_read_raw_pass(self):
+        """Read a tropical cyclone."""
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='2017242N16333')
+        self.assertEqual(len(tc_track.data), 1)
+        self.assertEqual(tc_track.get_track().time.dt.year.values[0], 2017)
+        self.assertEqual(tc_track.get_track().time.dt.month.values[0], 8)
+        self.assertEqual(tc_track.get_track().time.dt.day.values[0], 30)
+        self.assertEqual(tc_track.get_track().time.dt.hour.values[0], 0)
+        self.assertAlmostEqual(tc_track.get_track().lat.values[0], 16.1 + 3.8146972514141453e-07)
+        self.assertAlmostEqual(tc_track.get_track().lon.values[0], -26.9 + 3.8146972514141453e-07)
+        self.assertAlmostEqual(tc_track.get_track().max_sustained_wind.values[0], 30)
+        self.assertAlmostEqual(tc_track.get_track().central_pressure.values[0], 1008)
+        self.assertAlmostEqual(tc_track.get_track().environmental_pressure.values[0], 1012)
+        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[0], 60)
+        self.assertEqual(tc_track.get_track().time.size, 123)
+
+        self.assertAlmostEqual(tc_track.get_track().lat.values[-1], 36.8 - 7.629394502828291e-07)
+        self.assertAlmostEqual(tc_track.get_track().lon.values[-1], -90.100006, 5)
+        self.assertAlmostEqual(tc_track.get_track().central_pressure.values[-1], 1005)
+        self.assertAlmostEqual(tc_track.get_track().max_sustained_wind.values[-1], 15)
+        self.assertAlmostEqual(tc_track.get_track().environmental_pressure.values[-1], 1008)
+        self.assertAlmostEqual(tc_track.get_track().radius_max_wind.values[-1], 60)
+
+        self.assertFalse(np.isnan(tc_track.get_track().radius_max_wind.values).any())
+        self.assertFalse(np.isnan(tc_track.get_track().environmental_pressure.values).any())
+        self.assertFalse(np.isnan(tc_track.get_track().max_sustained_wind.values).any())
+        self.assertFalse(np.isnan(tc_track.get_track().central_pressure.values).any())
+        self.assertFalse(np.isnan(tc_track.get_track().lat.values).any())
+        self.assertFalse(np.isnan(tc_track.get_track().lon.values).any())
+
+        self.assertEqual(tc_track.get_track().basin, 'NA')
+        self.assertEqual(tc_track.get_track().max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track.get_track().central_pressure_unit, 'mb')
+        self.assertEqual(tc_track.get_track().sid, '2017242N16333')
+        self.assertEqual(tc_track.get_track().name, 'IRMA')
+        self.assertEqual(tc_track.get_track().orig_event_flag, True)
+        self.assertEqual(tc_track.get_track().data_provider, 'usa')
+        self.assertEqual(tc_track.get_track().category, 5)
+
+    def test_read_range(self):
+        """Read several TCs."""
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
+                               year_range=(1915, 1916), basin='WP')
+        self.assertEqual(tc_track.size, 0)
+
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
+                                     basin='EP', estimate_missing=False)
+        self.assertEqual(tc_track.size, 32)
+
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
+                                     basin='EP', estimate_missing=True)
+        self.assertEqual(tc_track.size, 43)
+
+    def test_ibtracs_correct_pass(self):
+        """Check estimate_missing option"""
+        tc_try = tc.TCTracks()
+        tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
+                                  estimate_missing=True)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013.61584, 5)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008.63837, 5)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1014.1515, 4)
+
+    def test_wrong_decay_pass(self):
+        """Test decay not implemented when coefficient < 1"""
+        track = tc.TCTracks()
+        track.read_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
+
+        track_gen = track.data[0]
+        track_gen['lat'] = np.array([
+            28.20340431, 28.7915261, 29.38642458, 29.97836984, 30.56844404,
+            31.16265292, 31.74820301, 32.34449825, 32.92261894, 33.47430891,
+            34.01492525, 34.56789399, 35.08810845, 35.55965893, 35.94835174,
+            36.29355848, 36.45379561, 36.32473812, 36.07552209, 35.92224784,
+            35.84144186, 35.78298537, 35.86090718, 36.02440372, 36.37555559,
+            37.06207765, 37.73197352, 37.97524273, 38.05560287, 38.21901208,
+            38.31486156, 38.30813367, 38.28481808, 38.28410366, 38.25894812,
+            38.20583372, 38.22741099, 38.39970022, 38.68367797, 39.08329904,
+            39.41434629, 39.424984, 39.31327716, 39.30336335, 39.31714429,
+            39.27031932, 39.30848775, 39.48759833, 39.73326595, 39.96187967,
+            40.26954226, 40.76882202, 41.40398607, 41.93809726, 42.60395785,
+            43.57074792, 44.63816143, 45.61450458, 46.68528511, 47.89209365,
+            49.15580502
+        ])
+        track_gen['lon'] = np.array([
+            -79.20514075, -79.25243311, -79.28393082, -79.32324646,
+            -79.36668585, -79.41495519, -79.45198688, -79.40580325,
+            -79.34965443, -79.36938122, -79.30294825, -79.06809546,
+            -78.70281969, -78.29418936, -77.82170609, -77.30034709,
+            -76.79004969, -76.37038827, -75.98641014, -75.58383356,
+            -75.18310414, -74.7974524, -74.3797645, -73.86393572, -73.37910948,
+            -73.01059003, -72.77051313, -72.68011328, -72.66864779,
+            -72.62579773, -72.56307717, -72.46607618, -72.35871353,
+            -72.31120649, -72.15537583, -71.75577051, -71.25287498,
+            -70.75527907, -70.34788946, -70.17518421, -70.04446577,
+            -69.76582749, -69.44372386, -69.15881376, -68.84351922,
+            -68.47890287, -68.04184565, -67.53541437, -66.94008642,
+            -66.25596075, -65.53496635, -64.83491802, -64.12962685,
+            -63.54118808, -62.72934383, -61.34915091, -59.72580755,
+            -58.24404252, -56.71972992, -55.0809336, -53.31524758
+        ])
+
+        v_rel = {
+            3: 0.002249541544102336,
+            1: 0.00046889526284203036,
+            4: 0.002649273787364977,
+            2: 0.0016426186150461349,
+            5: 0.00246400811445618,
+            7: 0.0030442198547309075,
+            6: 0.002346537842810565,
+        }
+        p_rel = {
+            3: (1.028420239620591, 0.003174733355067952),
+            1: (1.0046803184177564, 0.0007997633912500546),
+            4: (1.0498749735343516, 0.0034665588904747515),
+            2: (1.0140127424090262, 0.002131858515233042),
+            5: (1.0619445995372885, 0.003467268426139696),
+            7: (1.0894914184297835, 0.004315034379018768),
+            6: (1.0714354641894077, 0.002783787561718677),
+        }
+        track_gen.attrs['orig_event_flag'] = False
+
+        cp_ref = np.array([1012., 1012.])
+        land_geom = tc._calc_land_geom([track_gen])
+        track_res = tc._apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
+        self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
+
+
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
 
     def test_read_processed_ibtracs_csv(self):
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
         self.assertEqual(tc_track.data[0].time.size, 38)
@@ -72,7 +246,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].category, 1)
 
     def test_read_simulations_emanuel(self):
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
 
         tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL, hemisphere='N')
         self.assertEqual(len(tc_track.data), 4)
@@ -109,7 +283,7 @@ class TestIO(unittest.TestCase):
 
     def test_read_one_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""
-        tc_track_G = TCTracks()
+        tc_track_G = tc.TCTracks()
         # populate tracks by loading data from NetCDF:
         nc_data = nc.Dataset(TEST_TRACK_GETTELMAN)
         nstorms = nc_data.dimensions['storm'].size
@@ -144,12 +318,12 @@ class TestFuncs(unittest.TestCase):
 
     def test_get_track_pass(self):
         """Test get_track."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         self.assertIsInstance(tc_track.get_track(), xr.Dataset)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
 
-        tc_track_bis = TCTracks()
+        tc_track_bis = tc.TCTracks()
         tc_track_bis.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.append(tc_track_bis)
         self.assertIsInstance(tc_track.get_track(), list)
@@ -157,7 +331,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=1)
 
@@ -186,18 +360,25 @@ class TestFuncs(unittest.TestCase):
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
-        171.257176,  171.946822,  172.5     ,  172.871797,  173.113396,   173.3     ,  173.496375,  173.725522,  174.      ,  174.331591,
-        174.728961,  175.2     ,  175.747632,  176.354929,  177.      ,   177.66677 ,  178.362433,  179.1     ,  179.885288, -179.304661,
-       -178.5     , -177.726442, -176.991938, -176.3     , -175.653595,  -175.053513, -174.5     , -173.992511, -173.527342, -173.1     ,
-       -172.705991, -172.340823, -172.      ])
-        tc_track.data[0].lat.values = np.array([40.196053,
-        40.6     , 40.930215, 41.215674, 41.5     , 41.816354, 42.156065,  42.5     , 42.833998, 43.16377 , 43.5     , 43.847656, 44.188854,
-        44.5     , 44.764269, 44.991925, 45.2     , 45.402675, 45.602707,  45.8     , 45.995402, 46.193543, 46.4     , 46.615718, 46.82312 ,
-        47.      , 47.130616, 47.225088, 47.3     , 47.369224, 47.435786,  47.5     , 47.562858, 47.628064, 47.7     , 47.783047, 47.881586,
-        48.      ])
+        tc_track.data[0].lon.values = np.array([
+            167.207761, 168.1, 168.936535, 169.728947, 170.5, 171.257176,
+            171.946822, 172.5, 172.871797, 173.113396, 173.3, 173.496375,
+            173.725522, 174., 174.331591, 174.728961, 175.2, 175.747632,
+            176.354929, 177., 177.66677, 178.362433, 179.1, 179.885288,
+            -179.304661, -178.5, -177.726442, -176.991938, -176.3, -175.653595,
+            -175.053513, -174.5, -173.992511, -173.527342, -173.1, -172.705991,
+            -172.340823, -172.
+        ])
+        tc_track.data[0].lat.values = np.array([
+            40.196053, 40.6, 40.930215, 41.215674, 41.5, 41.816354, 42.156065,
+            42.5, 42.833998, 43.16377, 43.5, 43.847656, 44.188854, 44.5,
+            44.764269, 44.991925, 45.2, 45.402675, 45.602707, 45.8, 45.995402,
+            46.193543, 46.4, 46.615718, 46.82312, 47., 47.130616, 47.225088,
+            47.3, 47.369224, 47.435786, 47.5, 47.562858, 47.628064, 47.7,
+            47.783047, 47.881586, 48.
+        ])
         tc_track.equal_timestep(time_step_h=1)
 
         self.assertEqual(tc_track.data[0].time.size, 223)
@@ -231,19 +412,26 @@ class TestFuncs(unittest.TestCase):
 
     def test_interp_origin_inv_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.data[0].lon.values = np.array([167.207761,  168.1     ,  168.936535,  169.728947,  170.5     ,
-        171.257176,  171.946822,  172.5     ,  172.871797,  173.113396,   173.3     ,  173.496375,  173.725522,  174.      ,  174.331591,
-        174.728961,  175.2     ,  175.747632,  176.354929,  177.      ,   177.66677 ,  178.362433,  179.1     ,  179.885288, -179.304661,
-       -178.5     , -177.726442, -176.991938, -176.3     , -175.653595,  -175.053513, -174.5     , -173.992511, -173.527342, -173.1     ,
-       -172.705991, -172.340823, -172.      ])
+        tc_track.data[0].lon.values = np.array([
+            167.207761, 168.1, 168.936535, 169.728947, 170.5, 171.257176,
+            171.946822, 172.5, 172.871797, 173.113396, 173.3, 173.496375,
+            173.725522, 174., 174.331591, 174.728961, 175.2, 175.747632,
+            176.354929, 177., 177.66677, 178.362433, 179.1, 179.885288,
+            -179.304661, -178.5, -177.726442, -176.991938, -176.3, -175.653595,
+            -175.053513, -174.5, -173.992511, -173.527342, -173.1, -172.705991,
+            -172.340823, -172.
+        ])
         tc_track.data[0].lon.values = - tc_track.data[0].lon.values
-        tc_track.data[0].lat.values = np.array([40.196053,
-        40.6     , 40.930215, 41.215674, 41.5     , 41.816354, 42.156065,  42.5     , 42.833998, 43.16377 , 43.5     , 43.847656, 44.188854,
-        44.5     , 44.764269, 44.991925, 45.2     , 45.402675, 45.602707,  45.8     , 45.995402, 46.193543, 46.4     , 46.615718, 46.82312 ,
-        47.      , 47.130616, 47.225088, 47.3     , 47.369224, 47.435786,  47.5     , 47.562858, 47.628064, 47.7     , 47.783047, 47.881586,
-        48.      ])
+        tc_track.data[0].lat.values = np.array([
+            40.196053, 40.6, 40.930215, 41.215674, 41.5, 41.816354, 42.156065,
+            42.5, 42.833998, 43.16377, 43.5, 43.847656, 44.188854, 44.5,
+            44.764269, 44.991925, 45.2, 45.402675, 45.602707, 45.8, 45.995402,
+            46.193543, 46.4, 46.615718, 46.82312, 47., 47.130616, 47.225088,
+            47.3, 47.369224, 47.435786, 47.5, 47.562858, 47.628064, 47.7,
+            47.783047, 47.881586, 48.
+        ])
         tc_track.equal_timestep(time_step_h=1)
 
         self.assertEqual(tc_track.data[0].time.size, 223)
@@ -275,10 +463,9 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
 
-
     def test_random_no_landfall_pass(self):
         """Test calc_random_walk with decay and no historical tracks with landfall"""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
             tc_track.calc_random_walk()
@@ -286,7 +473,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         ens_size=2
         tc_track.calc_random_walk(ens_size, seed=25, decay=False)
@@ -325,21 +512,28 @@ class TestFuncs(unittest.TestCase):
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_random_walk."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         ens_size=2
         with self.assertLogs('climada.hazard.tc_tracks', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size, seed=25, decay=True)
-        self.assertIn('No historical track of category Tropical Depression with landfall.', cm.output[1])
-        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[2])
-        self.assertIn('No historical track of category Hurrican Cat. 1 with landfall.', cm.output[3])
-        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.', cm.output[4])
-        self.assertIn('No historical track of category Hurrican Cat. 3 with landfall. Decay parameters from category Hurrican Cat. 4 taken.', cm.output[5])
-        self.assertIn('No historical track of category Hurrican Cat. 5 with landfall.', cm.output[6])
+        self.assertIn('No historical track of category Tropical Depression '
+                      'with landfall.', cm.output[1])
+        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.',
+                      cm.output[2])
+        self.assertIn('No historical track of category Hurrican Cat. 1 with '
+                      'landfall.', cm.output[3])
+        self.assertIn('Decay parameters from category Hurrican Cat. 4 taken.',
+                      cm.output[4])
+        self.assertIn('No historical track of category Hurrican Cat. 3 with '
+                      'landfall. Decay parameters from category Hurrican Cat. '
+                      '4 taken.', cm.output[5])
+        self.assertIn('No historical track of category Hurrican Cat. 5 with '
+                      'landfall.', cm.output[6])
 
     def test_calc_decay_no_landfall_pass(self):
         """Test _calc_land_decay with no historical tracks with landfall"""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
@@ -349,7 +543,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_calc_land_decay_pass(self):
         """Test _calc_land_decay with environmental pressure function."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
@@ -368,7 +562,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_decay_values_andrew_pass(self):
         """Test _decay_values with central pressure function."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
         land_geom = tc._calc_land_geom(tc_track.data)
@@ -379,37 +573,44 @@ class TestFuncs(unittest.TestCase):
         s_cell_1 = 1*[1.0149413347244263]
         s_cell_2 = 8*[1.047120451927185]
         s_cell = s_cell_1 + s_cell_2
-        p_vs_lf_time_relative = [1.0149413020277482, 1.018848167539267, 1.037696335078534, \
-                                 1.0418848167539267, 1.043979057591623, 1.0450261780104713, \
-                                 1.0460732984293193, 1.0471204188481675, 1.0471204188481675]
+        p_vs_lf_time_relative = [
+            1.0149413020277482, 1.018848167539267, 1.037696335078534,
+            1.0418848167539267, 1.043979057591623, 1.0450261780104713,
+            1.0460732984293193, 1.0471204188481675, 1.0471204188481675
+        ]
 
         self.assertEqual(list(p_lf.keys()), [ss_category])
         self.assertEqual(p_lf[ss_category][0], array.array('f', s_cell))
         self.assertEqual(p_lf[ss_category][1], array.array('f', p_vs_lf_time_relative))
 
-        v_vs_lf_time_relative = [0.8846153846153846, 0.6666666666666666, 0.4166666666666667, \
-                                 0.2916666666666667, 0.250000000000000, 0.250000000000000, \
-                                 0.20833333333333334, 0.16666666666666666, 0.16666666666666666]
+        v_vs_lf_time_relative = [
+            0.8846153846153846, 0.6666666666666666, 0.4166666666666667,
+            0.2916666666666667, 0.250000000000000, 0.250000000000000,
+            0.20833333333333334, 0.16666666666666666, 0.16666666666666666
+        ]
         self.assertEqual(list(v_lf.keys()), [ss_category])
         self.assertEqual(v_lf[ss_category], array.array('f', v_vs_lf_time_relative))
 
-        x_val_ref = np.array([95.9512939453125, 53.624916076660156, 143.09530639648438,
-                              225.0262908935547, 312.5832824707031, 427.43109130859375,
-                              570.1857299804688, 750.3827514648438, 1020.5431518554688])
+        x_val_ref = np.array([
+            95.9512939453125, 53.624916076660156, 143.09530639648438,
+            225.0262908935547, 312.5832824707031, 427.43109130859375,
+            570.1857299804688, 750.3827514648438, 1020.5431518554688
+        ])
         self.assertEqual(list(x_val.keys()), [ss_category])
         self.assertTrue(np.allclose(x_val[ss_category], x_val_ref))
 
     def test_dist_since_lf_pass(self):
         """Test _dist_since_lf for andrew tropical cyclone."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
         track['on_land'] = ('time', coord_on_land(track.lat.values,
              track.lon.values))
         track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
 
-        self.assertTrue(np.all(np.isnan(track.dist_since_lf.values[track.on_land == False])))
-        self.assertEqual(track.dist_since_lf.values[track.on_land == False].size, 38)
+        msk = track.on_land == False
+        self.assertTrue(np.all(np.isnan(track.dist_since_lf.values[msk])))
+        self.assertEqual(track.dist_since_lf.values[msk].size, 38)
 
         self.assertTrue(track.dist_since_lf.values[-1] >
                         dist_to_coast(track.lat.values[-1], track.lon.values[-1])/1000)
@@ -421,7 +622,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_calc_orig_lf(self):
         """Test _calc_orig_lf for andrew tropical cyclone."""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
         track['on_land'] = ('time', coord_on_land(track.lat.values,
@@ -435,18 +636,31 @@ class TestFuncs(unittest.TestCase):
 
     def test_decay_calc_coeff(self):
         """Test _decay_calc_coeff against MATLAB"""
-        x_val = {6: np.array([53.57314960249573, 142.97903059281566,
-            224.76733726289183,  312.14621544207563,  426.6757021862584,
-            568.9358305779094,  748.3713215157885, 1016.9904230811956])}
+        x_val = {
+            6: np.array([
+                53.57314960249573, 142.97903059281566, 224.76733726289183,
+                312.14621544207563, 426.6757021862584, 568.9358305779094,
+                748.3713215157885, 1016.9904230811956
+            ])
+        }
 
-        v_lf = {6: np.array([0.6666666666666666, 0.4166666666666667, \
-                             0.2916666666666667, 0.250000000000000,
-                             0.250000000000000, 0.20833333333333334, \
-                             0.16666666666666666, 0.16666666666666666])}
+        v_lf = {
+            6: np.array([
+                0.6666666666666666, 0.4166666666666667, 0.2916666666666667,
+                0.250000000000000, 0.250000000000000, 0.20833333333333334,
+                0.16666666666666666, 0.16666666666666666
+            ])
+        }
 
-        p_lf = {6: (8*[1.0471204188481675], np.array([1.018848167539267, 1.037696335078534, \
-                    1.0418848167539267, 1.043979057591623, 1.0450261780104713, 1.0460732984293193,
-                    1.0471204188481675, 1.0471204188481675]))}
+        p_lf = {
+            6: (8*[1.0471204188481675],
+                np.array([
+                    1.018848167539267, 1.037696335078534, 1.0418848167539267,
+                    1.043979057591623, 1.0450261780104713, 1.0460732984293193,
+                    1.0471204188481675, 1.0471204188481675
+                ])
+            )
+        }
 
         v_rel, p_rel = tc._decay_calc_coeff(x_val, v_lf, p_lf)
 
@@ -461,7 +675,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_apply_decay_no_landfall_pass(self):
         """Test _apply_land_decay with no historical tracks with landfall"""
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
@@ -469,73 +683,85 @@ class TestFuncs(unittest.TestCase):
         tc_ref = tc_track.data[0].copy()
         tc_track._apply_land_decay(dict(), dict(), land_geom)
 
-        self.assertTrue(np.array_equal(tc_track.data[0].max_sustained_wind.values, tc_ref.max_sustained_wind.values))
-        self.assertTrue(np.array_equal(tc_track.data[0].central_pressure.values, tc_ref.central_pressure.values))
-        self.assertTrue(np.array_equal(tc_track.data[0].environmental_pressure.values, tc_ref.environmental_pressure.values))
+        self.assertTrue(np.allclose(tc_track.data[0].max_sustained_wind.values,
+                                    tc_ref.max_sustained_wind.values))
+        self.assertTrue(np.allclose(tc_track.data[0].central_pressure.values,
+                                    tc_ref.central_pressure.values))
+        self.assertTrue(np.allclose(tc_track.data[0].environmental_pressure.values,
+                                    tc_ref.environmental_pressure.values))
         self.assertTrue(np.all(np.isnan(tc_track.data[0].dist_since_lf.values)))
 
     def test_apply_decay_pass(self):
         """Test _apply_land_decay against MATLAB reference."""
-        v_rel = { 6: 0.0038950967656296597,
-                  1: 0.0038950967656296597,
-                  2: 0.0038950967656296597,
-                  3: 0.0038950967656296597,
-                  4: 0.0038950967656296597,
-                  5: 0.0038950967656296597,
-                  7: 0.0038950967656296597}
+        v_rel = {
+            6: 0.0038950967656296597,
+            1: 0.0038950967656296597,
+            2: 0.0038950967656296597,
+            3: 0.0038950967656296597,
+            4: 0.0038950967656296597,
+            5: 0.0038950967656296597,
+            7: 0.0038950967656296597
+        }
 
-        p_rel = {6: (1.0499941, 0.007978940084158488),
-                 1: (1.0499941, 0.007978940084158488),
-                 2: (1.0499941, 0.007978940084158488),
-                 3: (1.0499941, 0.007978940084158488),
-                 4: (1.0499941, 0.007978940084158488),
-                 5: (1.0499941, 0.007978940084158488),
-                 7: (1.0499941, 0.007978940084158488)}
+        p_rel = {
+            6: (1.0499941, 0.007978940084158488),
+            1: (1.0499941, 0.007978940084158488),
+            2: (1.0499941, 0.007978940084158488),
+            3: (1.0499941, 0.007978940084158488),
+            4: (1.0499941, 0.007978940084158488),
+            5: (1.0499941, 0.007978940084158488),
+            7: (1.0499941, 0.007978940084158488)
+        }
 
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
         tc_track._apply_land_decay(v_rel, p_rel, land_geom, s_rel=True, check_plot=False)
 
-        p_ref = np.array([1.010000000000000, 1.009000000000000, 1.008000000000000,
-                          1.006000000000000, 1.003000000000000, 1.002000000000000,
-                          1.001000000000000, 1.000000000000000, 1.000000000000000,
-                          1.001000000000000, 1.002000000000000, 1.005000000000000,
-                          1.007000000000000, 1.010000000000000, 1.010000000000000,
-                          1.010000000000000, 1.010000000000000, 1.010000000000000,
-                          1.010000000000000, 1.007000000000000, 1.004000000000000,
-                          1.000000000000000, 0.994000000000000, 0.981000000000000,
-                          0.969000000000000, 0.961000000000000, 0.947000000000000,
-                          0.933000000000000, 0.922000000000000, 0.930000000000000,
-                          0.937000000000000, 0.951000000000000, 0.947000000000000,
-                          0.943000000000000, 0.948000000000000, 0.946000000000000,
-                          0.941000000000000, 0.937000000000000, 0.955000000000000,
-                          0.9741457117, 0.99244068917, 1.00086729492, 1.00545853355,
-                          1.00818354609, 1.00941850023, 1.00986192053, 1.00998400565])*1e3
+        p_ref = np.array([
+            1.010000000000000, 1.009000000000000, 1.008000000000000,
+            1.006000000000000, 1.003000000000000, 1.002000000000000,
+            1.001000000000000, 1.000000000000000, 1.000000000000000,
+            1.001000000000000, 1.002000000000000, 1.005000000000000,
+            1.007000000000000, 1.010000000000000, 1.010000000000000,
+            1.010000000000000, 1.010000000000000, 1.010000000000000,
+            1.010000000000000, 1.007000000000000, 1.004000000000000,
+            1.000000000000000, 0.994000000000000, 0.981000000000000,
+            0.969000000000000, 0.961000000000000, 0.947000000000000,
+            0.933000000000000, 0.922000000000000, 0.930000000000000,
+            0.937000000000000, 0.951000000000000, 0.947000000000000,
+            0.943000000000000, 0.948000000000000, 0.946000000000000,
+            0.941000000000000, 0.937000000000000, 0.955000000000000,
+            0.9741457117, 0.99244068917, 1.00086729492, 1.00545853355,
+            1.00818354609, 1.00941850023, 1.00986192053, 1.00998400565
+        ]) * 1e3
 
         self.assertTrue(np.allclose(p_ref, tc_track.data[0].central_pressure.values))
 
-        v_ref = np.array([0.250000000000000, 0.300000000000000, 0.300000000000000,
-                          0.350000000000000, 0.350000000000000, 0.400000000000000,
-                          0.450000000000000, 0.450000000000000, 0.450000000000000,
-                          0.450000000000000, 0.450000000000000, 0.450000000000000,
-                          0.450000000000000, 0.400000000000000, 0.400000000000000,
-                          0.400000000000000, 0.400000000000000, 0.450000000000000,
-                          0.450000000000000, 0.500000000000000, 0.500000000000000,
-                          0.550000000000000, 0.650000000000000, 0.800000000000000,
-                          0.950000000000000, 1.100000000000000, 1.300000000000000,
-                          1.450000000000000, 1.500000000000000, 1.250000000000000,
-                          1.300000000000000, 1.150000000000000, 1.150000000000000,
-                          1.150000000000000, 1.150000000000000, 1.200000000000000,
-                          1.250000000000000, 1.250000000000000, 1.200000000000000,
-                          0.9737967353, 0.687255951, 0.4994850556, 0.3551480462,
-                          0.2270548036, 0.1302099557, 0.0645385918, 0.0225325851])*1e2
+        v_ref = np.array([
+            0.250000000000000, 0.300000000000000, 0.300000000000000,
+            0.350000000000000, 0.350000000000000, 0.400000000000000,
+            0.450000000000000, 0.450000000000000, 0.450000000000000,
+            0.450000000000000, 0.450000000000000, 0.450000000000000,
+            0.450000000000000, 0.400000000000000, 0.400000000000000,
+            0.400000000000000, 0.400000000000000, 0.450000000000000,
+            0.450000000000000, 0.500000000000000, 0.500000000000000,
+            0.550000000000000, 0.650000000000000, 0.800000000000000,
+            0.950000000000000, 1.100000000000000, 1.300000000000000,
+            1.450000000000000, 1.500000000000000, 1.250000000000000,
+            1.300000000000000, 1.150000000000000, 1.150000000000000,
+            1.150000000000000, 1.150000000000000, 1.200000000000000,
+            1.250000000000000, 1.250000000000000, 1.200000000000000,
+            0.9737967353, 0.687255951, 0.4994850556, 0.3551480462, 0.2270548036,
+            0.1302099557, 0.0645385918, 0.0225325851
+        ]) * 1e2
 
         self.assertTrue(np.allclose(v_ref, tc_track.data[0].max_sustained_wind.values))
 
-        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values, tc_track.data[0].max_sustained_wind_unit)
+        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values,
+                                  tc_track.data[0].max_sustained_wind_unit)
         self.assertEqual(cat_ref, tc_track.data[0].category)
 
     def test_func_decay_p_pass(self):
@@ -593,24 +819,27 @@ class TestFuncs(unittest.TestCase):
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
 
-        max_sus_wind = np.array([28.769475, 34.52337, 40.277265,
-                                 46.03116, 51.785055, 51.785055, 51.785055,
-                                 51.785055, 40.277265, 28.769475])
+        max_sus_wind = np.array([
+            28.769475, 34.52337, 40.277265, 46.03116, 51.785055, 51.785055,
+            51.785055, 51.785055, 40.277265, 28.769475
+        ])
         max_sus_wind_unit = 'mph'
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(0, cat)
 
-        max_sus_wind = np.array([12.86111437, 12.86111437, 12.86111437,
-                                 15.43333724, 15.43333724, 15.43333724,
-                                 15.43333724, 15.43333724, 12.86111437,
-                                 12.86111437, 10.2888915])
+        max_sus_wind = np.array([
+            12.86111437, 12.86111437, 12.86111437, 15.43333724, 15.43333724,
+            15.43333724, 15.43333724, 15.43333724, 12.86111437, 12.86111437,
+            10.2888915
+        ])
         max_sus_wind_unit = 'm/s'
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(-1, cat)
 
-        max_sus_wind = np.array([148.16, 166.68, 185.2, 212.98, 222.24, 231.5,
-                                 240.76, 222.24, 203.72, 148.16, 138.9, 148.16,
-                                 120.38])
+        max_sus_wind = np.array([
+            148.16, 166.68, 185.2, 212.98, 222.24, 231.5, 240.76, 222.24,
+            203.72, 148.16, 138.9, 148.16, 120.38
+        ])
         max_sus_wind_unit = 'km/h'
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
@@ -645,7 +874,7 @@ class TestFuncs(unittest.TestCase):
         """Test estimate_rmw function."""
         NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 
-        tc_track = TCTracks()
+        tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         rad_max_wind = tc.estimate_rmw(
@@ -668,4 +897,5 @@ class TestFuncs(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIBTracs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
