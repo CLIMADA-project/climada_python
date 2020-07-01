@@ -426,7 +426,8 @@ class CropyieldIsimip(Exposures):
 
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
-                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD'):
+                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD', \
+                           returns='filename_list'):
     """Generates CropyieldIsimip exposure sets for all files contained in the
     input directory and saves them as hdf5 files in the output directory
 
@@ -438,6 +439,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
+        returns (str): optional return (either only a list of the names of the files that
+        are created or additionally a list of the created exposures)
 
     """
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not \
@@ -448,6 +451,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         os.mkdir(output_dir)
 
     #create exposures for all crop-irrigation combinations and save them
+    filename_list = list()
+    output_list = list()
     for i, _ in enumerate(filenames):
         item = filenames[i].split('_')
         cropyield = CropyieldIsimip()
@@ -458,4 +463,10 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         filename_saveto = 'cropyield_isimip_'+((item[2]).split('-'))[0]+'-'+( \
                                               ((item[2]).split('-'))[1]).split('.')[0]+ \
                                               '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'
+        filename_list.append(filename_saveto)
+        output_list.append(cropyield)
         cropyield.write_hdf5(os.path.join(output_dir, filename_saveto))
+
+    if returns == 'filename_list':
+        return filename_list
+    return filename_list, output_list
