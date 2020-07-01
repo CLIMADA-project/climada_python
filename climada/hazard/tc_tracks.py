@@ -39,7 +39,7 @@ import pandas as pd
 import xarray as xr
 from sklearn.neighbors import DistanceMetric
 import netCDF4 as nc
-from numba import jit
+from numba import jit, njit
 import scipy.io.matlab as matlab
 import warnings
 
@@ -176,6 +176,7 @@ class TCTracks():
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
                             year_range=None, basin=None, correct_pres=False,
+                            estimate_rmw=False,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
@@ -313,6 +314,10 @@ class TCTracks():
                     .bfill(dim='date_time', limit=4)
                 # this is the most time consuming line in the processing:
                 st_ds['poci'] = st_ds.poci.fillna(st_penv)
+
+            if estimate_rmw:
+                st_ds['rmw'][:] = estimate_rad_max_wind(st_ds.pres.values,
+                                                        st_ds.rmw.values)
 
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
@@ -1546,6 +1551,36 @@ def _estimate_pressure(cen_pres, v_max, lat, lon):
                             + c_lon * lon[msk] \
                             + c_vmax * v_max[msk]
     return cen_pres
+
+@njit
+def estimate_rad_max_wind(t_pres, t_rad):
+    """Estimate the radius of maximum winds from pressure
+
+    Parameters:
+        t_pres (np.array): track central pressures
+        t_rad (np.array): track radius of maximum wind in nautical miles
+
+    Returns:
+        np.array (track radius of maximum wind in nautical miles)
+    """
+    nan_mask = np.isnan(t_rad)
+    t_rad[nan_mask] = 0
+    nan_mask |= (t_rad <= 0.0)
+
+    # rmax thresholds in nm and pressure in mb
+    rmax_1, rmax_2, rmax_3 = 15, 25, 50
+    pres_1, pres_2, pres_3 = 950, 980, 1020
+    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
+    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
+
+    to_change = nan_mask & (t_pres <= pres_1)
+    t_rad[to_change] = rmax_1
+    to_change = nan_mask & (t_pres > pres_1) & (t_pres <= pres_2)
+    t_rad[to_change] = rmax_1 + slope_1 * (t_pres[to_change] - pres_1)
+    to_change = nan_mask & (t_pres > pres_2)
+    t_rad[to_change] = rmax_2 + slope_2 * (t_pres[to_change] - pres_2)
+
+    return t_rad
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
     """Compute maximum wind speed in unit_dest
