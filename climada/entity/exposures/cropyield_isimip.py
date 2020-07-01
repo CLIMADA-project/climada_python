@@ -101,20 +101,20 @@ IRR_NAME[IRR[0]] = {'name': 'combined'}
 IRR_NAME[IRR[1]] = {'name': 'rainfed'}
 IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 
-#default: deposit the landuse files in the directory: climada_python/data/ISIMIP/Input/Exposure
-#         deposit the FAO files in the directory: climada_python/data/ISIMIP/Input/Exposure/FAO
+#default: deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
+#         deposit the FAO files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure/FAO
 #The FAO files need to be downloaded and renamed
 #   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
 #   FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
 #               (http://www.fao.org/faostat/en/#definitions)
-INPUT_DIR = DATA_DIR+'/ISIMIP/Input/Exposure/'
+INPUT_DIR = DATA_DIR+'/ISIMIP_crop/Input/Exposure/'
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_country_codes.csv"
 
-#default output directory: climada_python/data/ISIMIP/Output
+#default output directory: climada_python/data/ISIMIP_crop/Output
 #by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
-#climada_python/data/ISIMIP/Output/hist_mean/
+#climada_python/data/ISIMIP_crop/Output/hist_mean/
 HIST_MEAN_PATH = DATA_DIR+'/ISIMIP_crop/Output/'+'hist_mean/'
 OUTPUT_DIR = DATA_DIR+'/ISIMIP_crop/Output/Exposure/'
 
@@ -204,7 +204,7 @@ class CropyieldIsimip(Exposures):
 
         # The area covered by a grid cell is calculated depending on the latitude
         # 1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
-        # longitudal distance in km = 111.12*0.5*cos(lat); 
+        # longitudal distance in km = 111.12*0.5*cos(lat);
         # latitudal distance in km = 111.12*0.5;
         # area = longitudal distance * latitudal distance;
         # 1km2 = 100ha
@@ -385,10 +385,11 @@ class CropyieldIsimip(Exposures):
         #create a list of the countries contained in the exposure
         iso3alpha = list()
         for item, _ in enumerate(self.region_id):
-            if (self.region_id[item] == 0) or (self.region_id[item] == -99) or \
-            (self.region_id[item] == 902) or (self.region_id[item] == 910)  or \
-            (self.region_id[item] == 914) or (self.region_id[item] == 915):
+            if (self.region_id[item] == 0) or (self.region_id[item] == -99):
                 iso3alpha.append('No country')
+            elif (self.region_id[item] == 902) or (self.region_id[item] == 910)  or \
+            (self.region_id[item] == 914) or (self.region_id[item] == 915):
+                iso3alpha.append('Other country')
             else:
                 iso3alpha.append(iso_cntry.get(self.region_id[item]).alpha3)
         list_countries = np.unique(iso3alpha)
@@ -399,10 +400,13 @@ class CropyieldIsimip(Exposures):
         for item, _ in enumerate(list_countries):
             country = list_countries[item]
             if country != 'No country':
-                idx_price = np.where((np.asarray(fao_country) == country) & \
-                                     (np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) & \
-                                     (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
-                price = np.mean(fao_price[idx_price])
+                if country == 'Other country':
+                    price = 0
+                else:
+                    idx_price = np.where((np.asarray(fao_country) == country) & \
+                                         (np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) &\
+                                         (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
+                    price = np.mean(fao_price[idx_price])
                 #if no price can be determined for a specific yearrange and country, the world
                 #average for that crop (in the specified yearrange) is used
                 if math.isnan(price) or price == 0:
@@ -423,7 +427,7 @@ class CropyieldIsimip(Exposures):
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
                            yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD'):
-    """Generates CropyieldIsimip exposure sets for all files contained in the 
+    """Generates CropyieldIsimip exposure sets for all files contained in the
     input directory and saves them as hdf5 files in the output directory
 
         Parameters:
