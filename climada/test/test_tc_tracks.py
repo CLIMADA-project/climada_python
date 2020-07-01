@@ -35,7 +35,7 @@ class TestDownload(unittest.TestCase):
     def test_raw_ibtracs_empty_pass(self):
         """read_ibtracs_netcdf"""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=False)
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', estimate_missing=False)
         self.assertEqual(tc_track.get_track(), [])
 
 class TestWriteRead(unittest.TestCase):
@@ -44,7 +44,7 @@ class TestWriteRead(unittest.TestCase):
     def test_write_read_pass(self):
         """read_ibtracs_netcdf"""
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', correct_pres=True)
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299', estimate_missing=True)
         tc_track.write_netcdf(DATA_DIR)
 
         tc_read = TCTracks()
@@ -124,7 +124,7 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(tc_track.size, 0)
 
         tc_track = TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP', correct_pres=False)
+        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=False)
         self.assertEqual(tc_track.size, 32)
 
         tc_track = TCTracks()
@@ -161,9 +161,9 @@ class TestIBTracs(unittest.TestCase):
         self.assertEqual(sel.size, 48)
 
     def test_ibtracs_correct_pass(self):
-        """Check correct_pres option"""
+        """Check estimate_missing option"""
         tc_try = TCTracks()
-        tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289', correct_pres=True)
+        tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289', estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1011.2905126953125)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1005.706236328125)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011.6555029296875)

@@ -71,27 +71,27 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
         self.assertEqual(tc_haz.fraction[0, 100], 1)
         self.assertEqual(tc_haz.fraction[0, 260], 0)
-        self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
+        self.assertEqual(tc_haz.fraction.nonzero()[0].size, 263)
 
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
-        self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
+        self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 263)
 
         self.assertEqual(tc_haz.intensity[0, 260], 0)
-        self.assertAlmostEqual(tc_haz.intensity[0, 1], 27.836017903268605)
-        self.assertAlmostEqual(tc_haz.intensity[0, 2], 29.468870290012674)
-        self.assertAlmostEqual(tc_haz.intensity[0, 3], 26.368195440950167)
-        self.assertAlmostEqual(tc_haz.intensity[0, 100], 38.81161329596203)
-        self.assertAlmostEqual(tc_haz.intensity[0, 250], 34.26164879536931)
-        self.assertAlmostEqual(tc_haz.intensity[0, 295], 44.33805066873576)
+        self.assertAlmostEqual(tc_haz.intensity[0, 1], 25.32172387220036)
+        self.assertAlmostEqual(tc_haz.intensity[0, 2], 26.77093534001236)
+        self.assertAlmostEqual(tc_haz.intensity[0, 3], 24.03850320851069)
+        self.assertAlmostEqual(tc_haz.intensity[0, 100], 35.1414962679868)
+        self.assertAlmostEqual(tc_haz.intensity[0, 250], 30.924750568841727)
+        self.assertAlmostEqual(tc_haz.intensity[0, 295], 40.605613790812285)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
         wind = tc_haz.intensity.toarray()[0, coastal_centr]
-        self.assertAlmostEqual(wind[0] * to_kn, 51.16227717783039)
-        self.assertAlmostEqual(wind[80] * to_kn, 64.16023123186646)
-        self.assertAlmostEqual(wind[120] * to_kn, 41.438982714289686)
-        self.assertAlmostEqual(wind[200] * to_kn, 57.28807382906733)
-        self.assertAlmostEqual(wind[220] * to_kn, 69.60926979663681)
+        self.assertAlmostEqual(wind[0] * to_kn, 46.59290508202303)
+        self.assertAlmostEqual(wind[80] * to_kn, 58.04014412198915)
+        self.assertAlmostEqual(wind[120] * to_kn, 37.87443335725528)
+        self.assertAlmostEqual(wind[200] * to_kn, 52.12407964134238)
+        self.assertAlmostEqual(wind[220] * to_kn, 62.6252906598788)
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""

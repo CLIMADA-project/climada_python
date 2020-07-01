@@ -41,6 +41,7 @@ from sklearn.neighbors import DistanceMetric
 import netCDF4 as nc
 from numba import jit, njit
 import scipy.io.matlab as matlab
+import statsmodels.api as sm
 import warnings
 
 from climada.util import ureg
@@ -175,8 +176,7 @@ class TCTracks():
         return []
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
-                            year_range=None, basin=None, correct_pres=False,
-                            estimate_rmw=False,
+                            year_range=None, basin=None, estimate_missing=False,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
@@ -191,8 +191,9 @@ class TCTracks():
             year_range(tuple, optional): (min_year, max_year). Default: (1980, 2018)
             basin (str, optional): e.g. US, SA, NI, SI, SP, WP, EP, NA. if not
                 provided, consider all basins.
-            correct_pres (bool, optional): correct central pressure if missing
-                values. Default: False
+            estimate_missing (bool, optional): estimate missing central pressure
+                wind speed and radius values using other available values.
+                Default: False
             file_name (str, optional): name of netcdf file to be dowloaded or located
                 at climada/data/system. Default: 'IBTrACS.ALL.v04r00.nc'.
         """
@@ -236,17 +237,9 @@ class TCTracks():
             ds = ds.sel(storm=valid_st)
 
         if not provider:
-            agency_pref = IBTRACS_AGENCIES.copy()
-            agency_map = { a.encode('utf-8'): i for i, a in enumerate(agency_pref) }
-            agency_map.update({
-                a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
-            })
-            agency_map[b''] = agency_map[b'wmo']
-            agency_fun = lambda x: agency_map[x]
-            track_agency = ds.wmo_agency.where(ds.wmo_agency != '', ds.usa_agency)
-            track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
+            agency_pref, track_agency_ix = ibtracs_track_agency(ds)
 
-        for v in ['wind', 'pres', 'rmw', 'poci']:
+        for v in ['wind', 'pres', 'rmw', 'poci', 'roci']:
             if provider:
                 # enforce use of specified provider's data points
                 ds[v] = ds[f'{provider}_{v}']
@@ -265,10 +258,11 @@ class TCTracks():
                 else:
                     ds[v] = all_vals.isel(agency=preferred_ix)
         ds = ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
-                 'wind', 'pres', 'rmw', 'poci']]
+                 'wind', 'pres', 'rmw', 'roci', 'poci']]
 
-        if correct_pres:
-            ds['pres'][:] = _estimate_pressure(ds.pres, ds.wind, ds.lat, ds.lon)
+        if estimate_missing:
+            ds['pres'][:] = _estimate_pressure(ds.pres, ds.lat, ds.lon, ds.wind)
+            ds['wind'][:] = _estimate_vmax(ds.wind, ds.lat, ds.lon, ds.pres)
 
         ds['valid_t'] &= ds.wind.notnull() & ds.pres.notnull()
         valid_st = ds.valid_t.any(dim="date_time")
@@ -309,15 +303,21 @@ class TCTracks():
                     .ffill(dim='date_time', limit=1) \
                     .bfill(dim='date_time', limit=1) \
                     .fillna(0)
+                st_ds['roci'] = st_ds.roci \
+                    .ffill(dim='date_time', limit=1) \
+                    .bfill(dim='date_time', limit=1) \
+                    .fillna(0)
                 st_ds['poci'] = st_ds.poci \
                     .ffill(dim='date_time', limit=4) \
                     .bfill(dim='date_time', limit=4)
                 # this is the most time consuming line in the processing:
                 st_ds['poci'] = st_ds.poci.fillna(st_penv)
 
-            if estimate_rmw:
-                st_ds['rmw'][:] = estimate_rad_max_wind(st_ds.pres.values,
-                                                        st_ds.rmw.values)
+            if estimate_missing:
+                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values,
+                    st_ds.lat.values, st_ds.pres.values)
+                st_ds['roci'][:] = _estimate_roci(st_ds.roci.values,
+                    st_ds.pres.values, st_ds.rmw.values)
 
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
@@ -326,6 +326,7 @@ class TCTracks():
             tr_ds = xr.Dataset({
                 'time_step': ('time', st_ds.time_step),
                 'radius_max_wind': ('time', st_ds.rmw.data),
+                'radius_oci': ('time', st_ds.roci.data),
                 'max_sustained_wind': ('time', st_ds.wind.data),
                 'central_pressure': ('time', st_ds.pres.data),
                 'environmental_pressure': ('time', st_ds.poci.data),
@@ -1000,7 +1001,7 @@ class TCTracks():
         if np.any(cen_pres <= 0):
             # TODO: Enforce to use estimated pressure values everywhere?!
             cen_pres[:] = -999
-            cen_pres = _estimate_pressure(cen_pres, max_sus_wind, lat, lon)
+            cen_pres = _estimate_pressure(cen_pres, lat, lon, max_sus_wind)
 
         tr_ds = xr.Dataset()
         tr_ds.coords['time'] = ('time', datetimes)
@@ -1536,51 +1537,165 @@ def _check_apply_decay_hist_plot(hist_tracks):
 
     return graph_hv, graph_hp, graph_hpd_a, graph_hped_a
 
-def _estimate_pressure(cen_pres, v_max, lat, lon):
-    """Replace missing pressures with statistical estimate from location
-        and maximum wind speed."""
+def _estimate_pressure(cen_pres, lat, lon, v_max):
+    """Replace missing pressure values with statistical estimate."""
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     v_max = np.where(np.isnan(v_max), -1, v_max)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (cen_pres <= 0) & (v_max > 0) & (lat > -999) & (lon > -999)
-    # ibtracs 1980 -2013 (r2=0.91):
-    c_const, c_lat, c_lon, c_vmax = 1024.388, 0.047, -0.029, -0.818
-    # peduzzi:
-    # c_const, c_lat, c_lon, c_vmax = 1024.688, 0.055, -0.028, -0.815
+    # ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2019))
+    # r^2: 0.8746154487335112
+    c_const, c_lat, c_lon, c_vmax = 1024.392, 0.0620, -0.0335, -0.737
     cen_pres[msk] = c_const + c_lat * lat[msk] \
                             + c_lon * lon[msk] \
                             + c_vmax * v_max[msk]
     return cen_pres
 
-@njit
-def estimate_rad_max_wind(t_pres, t_rad):
-    """Estimate the radius of maximum winds from pressure
+def _estimate_vmax(v_max, lat, lon, cen_pres):
+    """Replace missing wind speed values with statistical estimate."""
+    v_max = np.where(np.isnan(v_max), -1, v_max)
+    cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
+    lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
+    msk = (v_max <= 0) & (cen_pres > 0) & (lat > -999) & (lon > -999)
+    # ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2019))
+    # r^2: 0.8717153945288457
+    c_const, c_lat, c_lon, c_pres = 1216.823, 0.0852, -0.0398, -1.182
+    v_max[msk] = c_const + c_lat * lat[msk] \
+                         + c_lon * lon[msk] \
+                         + c_pres * cen_pres[msk]
+    return v_max
+
+def _estimate_roci(roci, cen_pres, rmw):
+    """Replace missing radius values with statistical estimate."""
+    roci = np.where(np.isnan(roci), -1, roci)
+    cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
+    rmw = np.where(np.isnan(rmw), -1, rmw)
+    msk = (roci <= 0) & (cen_pres > 0) & (rmw > 0)
+    # ibtracs_fit_param('roci', ['pres', 'rmw'], order=[2, 1], year_range=(1980, 2019))
+    # r^2: 0.2239625797986191
+    c_const, c_rmw, c_pres, c_pres2 = -18245.317, 0.904, 39.164, -0.0208
+    roci[msk] = c_const + c_rmw * rmw[msk] \
+                        + c_pres * cen_pres[msk] \
+                        + c_pres2 * cen_pres[msk]**2
+    return roci
+
+def estimate_rmw(rmw, lat, cen_pres):
+    """Replace missing radius values with statistical estimate."""
+    rmw = np.where(np.isnan(rmw), -1, rmw)
+    lat = np.where(np.isnan(lat), -999, lat)
+    cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
+    msk = (rmw <= 0) & (lat > -999) & (cen_pres > 0)
+    # ibtracs_fit_param('rmw', ['lat', 'pres'], order=2, year_range=(1980, 2019))
+    # r^2: 0.28089731039419485
+    c_const, c_lat, c_lat2, c_pres, c_pres2 = (5875.162, -0.03465, 0.0146,
+                                               -12.5166, 0.006677)
+    rmw[msk] = c_const + c_lat * lat[msk] \
+                       + c_lat2 * lat[msk]**2 \
+                       + c_pres * cen_pres[msk] \
+                       + c_pres2 * cen_pres[msk]**2
+    return rmw
+
+def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
+    """Statistically fit an ibtracs parameter to other ibtracs variables
+
+    A linear ordinary least squares fit is done using the statsmodels package.
 
     Parameters:
-        t_pres (np.array): track central pressures
-        t_rad (np.array): track radius of maximum wind in nautical miles
+        explained (str): name of explained variable
+        explanatory (iterable): names of explanatory variables
+        year_range (tuple): first and last year to include in the analysis
+        order (int or tuple): the maximal order of the explanatory variables
 
     Returns:
-        np.array (track radius of maximum wind in nautical miles)
+        OLSResults
     """
-    nan_mask = np.isnan(t_rad)
-    t_rad[nan_mask] = 0
-    nan_mask |= (t_rad <= 0.0)
+    wmo_vars = ['wind', 'pres', 'rmw', 'roci', 'poci']
+    all_vars = ['lat', 'lon'] + wmo_vars
+    explanatory = list(explanatory)
+    variables = explanatory + [explained]
+    for v in variables:
+        if v not in all_vars:
+            LOGGER.error("Unknown ibtracs variable: %s", v)
+            raise KeyError
 
-    # rmax thresholds in nm and pressure in mb
-    rmax_1, rmax_2, rmax_3 = 15, 25, 50
-    pres_1, pres_2, pres_3 = 950, 980, 1020
-    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
-    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
+    # load ibtracs dataset
+    fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
+    ds = xr.open_dataset(fn_nc)
 
-    to_change = nan_mask & (t_pres <= pres_1)
-    t_rad[to_change] = rmax_1
-    to_change = nan_mask & (t_pres > pres_1) & (t_pres <= pres_2)
-    t_rad[to_change] = rmax_1 + slope_1 * (t_pres[to_change] - pres_1)
-    to_change = nan_mask & (t_pres > pres_2)
-    t_rad[to_change] = rmax_2 + slope_2 * (t_pres[to_change] - pres_2)
+    # choose specified year range
+    years = ds.sid.str.slice(0, 4).astype(int)
+    m = (years >= year_range[0]) & (years <= year_range[1])
+    match = (years >= year_range[0]) & (years <= year_range[1])
+    ds = ds.sel(storm=match)
 
-    return t_rad
+    # fill values
+    agency_pref, track_agency_ix = ibtracs_track_agency(ds)
+    for v in wmo_vars:
+        if v not in variables: continue
+        # array of values in order of preference
+        cols = [f'{a}_{v}' for a in agency_pref]
+        cols = [col for col in cols if col in ds.data_vars.keys()]
+        all_vals = ds[cols].to_array(dim='agency')
+        preferred_ix = all_vals.notnull().argmax(dim='agency')
+        if v in ['wind', 'pres']:
+            # choice: wmo -> wmo_agency/usa_agency -> preferred
+            ds[v] = ds['wmo_' + v] \
+                .fillna(all_vals.isel(agency=track_agency_ix)) \
+                .fillna(all_vals.isel(agency=preferred_ix))
+        else:
+            ds[v] = all_vals.isel(agency=preferred_ix)
+    df = pd.DataFrame({ v: ds[v].values.ravel() for v in variables })
+    df = df.dropna(axis=0, how='any')
+
+    # prepare explanatory variables
+    d_explanatory = df[explanatory]
+    if isinstance(order, int):
+        order = (order,) * len(explanatory)
+    for ex, max_o in zip(explanatory, order):
+        if isinstance(max_o, tuple):
+            # piecewise linear with given break points
+            d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
+            msk = (df[ex] <= max_o[0])
+            col = f'{ex}<={max_o[0]}'
+            d_explanatory[col] = 0
+            d_explanatory.loc[msk, col] = df.loc[msk, ex]
+            for i in range(len(max_o)):
+                msk = (max_o[i] < df[ex])
+                if i + 1 < len(max_o):
+                    msk &= (df[ex] <= max_o[i + 1])
+                col = f'{ex}>{max_o[i]}'
+                d_explanatory[col] = 0
+                d_explanatory.loc[msk, col] = df.loc[msk, ex]
+        elif max_o < 0:
+            d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
+            for o in range(1, abs(max_o) + 1):
+                d_explanatory[f'{ex}^{-o}'] = df[ex]**(-o)
+        else:
+            for o in range(2, max_o + 1):
+                d_explanatory[f'{ex}^{o}'] = df[ex]**o
+    d_explained = df[[explained]]
+    d_explanatory['const'] = 1.0
+
+    # run statistical fit
+    sm_results = sm.OLS(d_explained, d_explanatory).fit()
+
+    # print results
+    print(sm_results.params)
+    print("r^2:", sm_results.rsquared)
+
+    return sm_results
+
+def ibtracs_track_agency(ds):
+    agency_pref = IBTRACS_AGENCIES.copy()
+    agency_map = { a.encode('utf-8'): i for i, a in enumerate(agency_pref) }
+    agency_map.update({
+        a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
+    })
+    agency_map[b''] = agency_map[b'wmo']
+    agency_fun = lambda x: agency_map[x]
+    track_agency = ds.wmo_agency.where(ds.wmo_agency != '', ds.usa_agency)
+    track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
+    return agency_pref, track_agency_ix
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
     """Compute maximum wind speed in unit_dest
