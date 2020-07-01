@@ -35,7 +35,7 @@ from tqdm import tqdm
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
-from climada.hazard.tc_tracks import TCTracks
+from climada.hazard.tc_tracks import TCTracks, estimate_rad_max_wind
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
@@ -396,7 +396,7 @@ def _windfield(track, centroids, coastal_idx, model):
     t_cen[msk] = t_env[msk]
 
     # extrapolate radius of max wind from pressure if not given
-    t_rad[:] = _extra_rad_max_wind(t_cen, t_rad)
+    t_rad[:] = estimate_rad_max_wind(t_cen, t_rad) * NM_TO_KM
 
     # translational speed of track at every node
     v_trans = _vtrans(t_lat, t_lon, t_tstep)
@@ -491,36 +491,6 @@ def _vtrans(t_lat, t_lon, t_tstep):
     v_trans[msk,:] *= fact[:,None]
     v_trans_norm[msk] *= fact
     return v_trans_norm, v_trans
-
-@jit
-def _extra_rad_max_wind(t_pres, t_rad):
-    """Extrapolate RadiusMaxWind from pressure and change to km.
-
-    Parameters:
-        t_pres (np.array): track central pressures
-        t_rad (np.array): track radius of maximum wind in nautical miles
-
-    Returns:
-        np.array (track radius of maximum wind in km)
-    """
-    nan_mask = np.isnan(t_rad)
-    t_rad[nan_mask] = 0
-    nan_mask |= (t_rad <= 0.0)
-
-    # rmax thresholds in nm and pressure in mb
-    rmax_1, rmax_2, rmax_3 = 15, 25, 50
-    pres_1, pres_2, pres_3 = 950, 980, 1020
-    slope_1 = (rmax_2 - rmax_1)/(pres_2 - pres_1)
-    slope_2 = (rmax_3 - rmax_2)/(pres_3 - pres_2)
-
-    to_change = nan_mask & (t_pres <= pres_1)
-    t_rad[to_change] = rmax_1
-    to_change = nan_mask & (t_pres > pres_1) & (t_pres <= pres_2)
-    t_rad[to_change] = rmax_1 + slope_1 * (t_pres[to_change] - pres_1)
-    to_change = nan_mask & (t_pres > pres_2)
-    t_rad[to_change] = rmax_2 + slope_2 * (t_pres[to_change] - pres_2)
-
-    return t_rad * NM_TO_KM
 
 def _vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr):
     """Hollands translational wind corrections

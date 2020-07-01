@@ -28,6 +28,7 @@ import netCDF4 as nc
 
 from climada.hazard.tc_tracks import TCTracks
 import climada.hazard.tc_tracks as tc
+from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 from climada.util.coordinates import coord_on_land, dist_to_coast
 
@@ -639,6 +640,28 @@ class TestFuncs(unittest.TestCase):
             1004
         ])
         np.testing.assert_array_almost_equal(ref_res, out_pres)
+
+    def test_estimate_rad_max_wind_pass(self):
+        """Test estimate_rad_max_wind function."""
+        NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
+
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        rad_max_wind = tc.estimate_rad_max_wind(
+            tc_track.data[0].central_pressure.values,
+            tc_track.data[0].radius_max_wind.values) * NM_TO_KM
+
+        self.assertEqual(rad_max_wind[0], 75.536713749999905)
+        self.assertAlmostEqual(rad_max_wind[10], 75.592659583328057)
+        self.assertAlmostEqual(rad_max_wind[128], 46.686527832605236)
+        self.assertAlmostEqual(rad_max_wind[129], 46.089211533333333)
+        self.assertAlmostEqual(rad_max_wind[130], 45.672274889277276)
+        self.assertAlmostEqual(rad_max_wind[189], 45.132715266666666)
+        self.assertAlmostEqual(rad_max_wind[190], 45.979603999211285)
+        self.assertAlmostEqual(rad_max_wind[191], 47.287173876478825)
+        self.assertEqual(rad_max_wind[192], 48.875090249999985)
+        self.assertAlmostEqual(rad_max_wind[200], 59.975901084074955)
 
 # Execute Tests
 if __name__ == "__main__":
