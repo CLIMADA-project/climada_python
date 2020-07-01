@@ -35,7 +35,7 @@ from tqdm import tqdm
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
-from climada.hazard.tc_tracks import TCTracks, estimate_rad_max_wind
+from climada.hazard.tc_tracks import TCTracks, estimate_rmw
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
@@ -396,7 +396,7 @@ def _windfield(track, centroids, coastal_idx, model):
     t_cen[msk] = t_env[msk]
 
     # extrapolate radius of max wind from pressure if not given
-    t_rad[:] = estimate_rad_max_wind(t_cen, t_rad) * NM_TO_KM
+    t_rad[:] = estimate_rmw(t_rad, t_lat, t_cen) * NM_TO_KM
 
     # translational speed of track at every node
     v_trans = _vtrans(t_lat, t_lon, t_tstep)
@@ -576,6 +576,7 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     msk = (d_centr > 0)
     r_max_norm = np.zeros_like(d_centr)
     r_max_norm[msk] = (r_max[msk] / d_centr[msk])**hol_b[msk]
-    v_ang[close_centr] = np.sqrt(100 * hol_b / rho * r_max_norm
-        * (penv - pcen) * np.exp(-r_max_norm) + d_centr_mult**2) - d_centr_mult
+    sqrt_term = 100 * hol_b / rho * r_max_norm * (penv - pcen) \
+                * np.exp(-r_max_norm) + d_centr_mult**2
+    v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - d_centr_mult
     return v_ang
