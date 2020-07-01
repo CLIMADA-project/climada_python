@@ -183,6 +183,7 @@ class TCTracks():
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
                             year_range=None, basin=None, estimate_missing=False,
+                            correct_pres=False,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
@@ -200,9 +201,16 @@ class TCTracks():
             estimate_missing (bool, optional): estimate missing central pressure
                 wind speed and radius values using other available values.
                 Default: False
+            correct_pres (bool, optional): For backwards compatibility, alias
+                for `estimate_missing`. This is deprecated, use
+                `estimate_missing` instead!
             file_name (str, optional): name of netcdf file to be dowloaded or located
                 at climada/data/system. Default: 'IBTrACS.ALL.v04r00.nc'.
         """
+        if correct_pres:
+            LOGGER.warning("`correct_pres` is deprecated. "
+                           "Use `estimate_missing` instead.")
+            estimate_missing = True
         self.data = list()
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
         if not glob.glob(fn_nc):
