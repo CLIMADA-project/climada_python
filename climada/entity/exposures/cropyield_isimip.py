@@ -439,8 +439,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
-        returns (str): optional return (either only a list of the names of the files that
-        are created or additionally a list of the created exposures)
+        returns (str): returned output
+        'filename_list': returns list of filenames only, else returns also list of data
 
     """
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not \

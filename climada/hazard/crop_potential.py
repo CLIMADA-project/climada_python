@@ -423,8 +423,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
-        returns (str): optional return (either only a list of the names of the files that
-        are created or additionally a list of the created hazards)
+        returns (str): returned output
+        'filename_list': returns list of filenames only, else returns also list of data
 
     """
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
