@@ -425,7 +425,8 @@ def _check_emdat_df(df_emdat, target_version=2020, varnames_emdat=varnames_emdat
                 df_emdat['ISO'].replace('', np.nan, inplace=True)
                 df_emdat['ISO'].replace(' Belgium"',np.nan, inplace=True)
                 df_emdat.dropna(subset=['ISO'], inplace=True)
-            if min(df_emdat.columns==varnames_emdat[version]):
+            if len(df_emdat.columns)==len(varnames_emdat[version]) and \
+               min(df_emdat.columns==varnames_emdat[version]):
                 df = pd.DataFrame(index=df_emdat.index.values, columns=varnames_emdat[target_version])
                 for idc, col in enumerate(df.columns):
                     if varnames_mapping['%i_%i' % (version, target_version)][idc]>=0:
