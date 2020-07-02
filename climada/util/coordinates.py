@@ -109,7 +109,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     else:
         return vn
 
-def lon_normalize(lon):
+def lon_normalize(lon, bounds=(-180, 180)):
     """ Normalizes degrees such that always -180 < lon <= 180
 
     The input data is modified in place (!) using the following operations:
@@ -118,18 +118,53 @@ def lon_normalize(lon):
 
     Parameters:
         lon (np.array): Longitudinal coordinates
+        bounds (tuple, optional): Minimum and maximum value to use instead of
+            (-180, 180). Make sure that the longitude values actually fit
+            within those bounds, before applying `lon_normalize`!
 
     Returns:
         np.array (same as input)
     """
+    maxiter = 10
+    i = 0
     while True:
-        msk1 = (lon > 180)
+        msk1 = (lon > bounds[1])
         lon[msk1] -= 360
-        msk2 = (lon <= -180)
+        msk2 = (lon <= bounds[0])
         lon[msk2] += 360
         if msk1.sum() == 0 and msk2.sum() == 0:
             break
+        i += 1
+        if i > maxiter:
+            LOGGER.warning("lon_normalize: killed before finishing")
+            break
     return lon
+
+def lon_bounds(lon):
+    """Bounds of a set of degree values, respecting the periodicity
+
+    Example:
+
+    >>> lon_bounds(np.array([-179, 175, 178]))
+    (175, 181)
+
+    Parameters:
+        lon (np.array): Longitudinal coordinates
+
+    Returns:
+        tuple
+    """
+    lon = lon_normalize(lon)
+    lon_uniq = np.unique(lon)
+    lon_uniq = np.concatenate([lon_uniq, [360 + lon_uniq[0]]])
+    gap_max = np.argmax(np.diff(lon_uniq))
+    lon_min = lon_uniq[gap_max + 1]
+    lon_max = lon_uniq[gap_max]
+    if lon_min > 180:
+        lon_min -= 360
+    else:
+        lon_max += 360
+    return (lon_min, lon_max)
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect"):
