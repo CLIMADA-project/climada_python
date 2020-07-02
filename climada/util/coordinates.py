@@ -50,6 +50,7 @@ from climada.util.constants import DEF_CRS, SYSTEM_DIR, ONE_LAT_KM, \
                                    RIVER_FLOOD_REGIONS_CSV
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
+from climada.util.constants import DATA_DIR
 
 pd.options.mode.chained_assignment = None
 
@@ -200,8 +201,8 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         if normalize:
             lon_normalize(lon1)
             lon_normalize(lon2)
-        d_lat = lat2[:,None] - lat1[:,:,None]
-        d_lon = lon2[:,None] - lon1[:,:,None]
+        d_lat = lat2[:, None] - lat1[:, :, None]
+        d_lon = lon2[:, None] - lon1[:, :, None]
         fact1 = np.heaviside(d_lon - 180, 0)
         fact2 = np.heaviside(-d_lon - 180, 0)
         d_lon -= (fact1 - fact2) * 360
@@ -1305,3 +1306,71 @@ def set_df_geometry_points(df_val, scheduler=None):
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
         df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
                                   .compute(scheduler=scheduler)
+
+def fao_code_def():
+    """Convert FAO country code to numeric-3 codes
+
+    Parameters:
+        isos (str or list of str): iso codes of countries (or single code).
+
+    Returns:
+        int or list of int
+    """
+    #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
+    #           (http://www.fao.org/faostat/en/#definitions)
+    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'demo', "FAOSTAT_data_country_codes.csv"))
+    fao_code = getattr(fao_file, 'Country Code').values
+    fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
+
+    #create a list of ISO3 codes and corresponding fao country codes
+    iso_list = list()
+    faocode_list = list()
+    for idx, iso in enumerate(fao_iso):
+        if isinstance(iso, str):
+            iso_list.append(country_iso_alpha2numeric(iso))
+            faocode_list.append(fao_code[idx])
+
+    return iso_list, faocode_list
+
+def country_faocode2iso(input_fao):
+    """Convert FAO country code to numeric-3 codes
+
+    Parameters:
+        isos (str or list of str): iso codes of countries (or single code).
+
+    Returns:
+        int or list of int
+    """
+
+    #load relation between ISO numeric-3 code and FAO country code
+    iso_list, faocode_list = fao_code_def()
+
+    #determine the fao country code for the input str or list
+    output_iso = np.zeros(len(input_fao))
+    for item, faocode in enumerate(input_fao):
+        idx = np.where(faocode == faocode_list)[0]
+        if len(idx) == 1:
+            output_iso[item] = iso_list[idx[0]]
+
+    return output_iso
+
+def country_iso2faocode(input_iso):
+    """Convert ISO numeric-3 codes to FAO country code
+
+    Parameters:
+        faocodes (str or list of str): FAO codes of countries (or single code).
+
+    Returns:
+        int or list of int
+    """
+    #load relation between ISO numeric-3 code and FAO country code
+    iso_list, faocode_list = fao_code_def()
+
+    #determine the fao country code for the input str or list
+    output_faocode = np.zeros(len(input_iso))
+    for item, iso in enumerate(input_iso):
+        idx = np.where(iso == iso_list)[0]
+        if len(idx) == 1:
+            output_faocode[item] = faocode_list[idx[0]]
+
+    return output_faocode
