@@ -59,11 +59,11 @@ SAFFIR_SIM_CAT = [34, 64, 83, 96, 113, 137, 1000]
 CAT_NAMES = {
     -1: 'Tropical Depression',
     0: 'Tropical Storm',
-    1: 'Hurrican Cat. 1',
-    2: 'Hurrican Cat. 2',
-    3: 'Hurrican Cat. 3',
-    4: 'Hurrican Cat. 4',
-    5: 'Hurrican Cat. 5',
+    1: 'Hurricane Cat. 1',
+    2: 'Hurricane Cat. 2',
+    3: 'Hurricane Cat. 3',
+    4: 'Hurricane Cat. 4',
+    5: 'Hurricane Cat. 5',
 }
 """Saffir-Simpson category names."""
 
@@ -1746,11 +1746,11 @@ def set_category(max_sus_wind, wind_unit, saffir_scale=None):
 
       - -1 tropical depression
       - 0 tropical storm
-      - 1 Hurrican category 1
-      - 2 Hurrican category 2
-      - 3 Hurrican category 3
-      - 4 Hurrican category 4
-      - 5 Hurrican category 5
+      - 1 Hurricane category 1
+      - 2 Hurricane category 2
+      - 3 Hurricane category 3
+      - 4 Hurricane category 4
+      - 5 Hurricane category 5
 
     Parameters:
         max_sus_wind (np.array): max sustained wind
