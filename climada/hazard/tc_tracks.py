@@ -722,35 +722,31 @@ class TCTracks():
             LOGGER.info('No tracks to plot')
             return None
 
-        deg_border = 0.5
+        pad = 1
+        lons = np.concatenate([t.lon.values for t in self.data])
+        lats = np.concatenate([t.lat.values for t in self.data])
+        min_lat, max_lat = lats.min() - pad, lats.max() + pad
+        min_lon, max_lon = coord_util.lon_bounds(lons)
+        min_lon, max_lon = min_lon - pad, max_lon + pad
+        mid_lon = 0.5 * (max_lon + min_lon)
+        extent = (min_lon, max_lon, min_lat, max_lat)
+
         if not axis:
-            _, axis = u_plot.make_map()
-        min_lat, max_lat = 10000, -10000
-        min_lon, max_lon = 10000, -10000
-        for track in self.data:
-            min_lat, max_lat = min(min_lat, np.min(track.lat.values)), \
-                               max(max_lat, np.max(track.lat.values))
-            min_lon, max_lon = min(min_lon, np.min(track.lon.values)), \
-                               max(max_lon, np.max(track.lon.values))
-        min_lon, max_lon = min_lon-deg_border, max_lon+deg_border
-        min_lat, max_lat = min_lat-deg_border, max_lat+deg_border
-        if abs(min_lon - max_lon) > 360:
-            min_lon, max_lon = -180, 180
-        axis.set_extent(([min_lon, max_lon, min_lat, max_lat]), crs=kwargs['transform'])
+            proj = ccrs.PlateCarree(central_longitude=mid_lon)
+            _, axis = u_plot.make_map(proj=proj)
+        axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
         synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
-            points = np.array([track.lon.values,
-                               track.lat.values]).T.reshape(-1, 1, 2)
-            segments = np.concatenate([points[:-1], points[1:]], axis=1)
-            try:
-                segments = np.delete(segments, np.argwhere(segments[:, 0, 0] * \
-                                     segments[:, 1, 0] < 0).reshape(-1), 0)
-            except IndexError:
-                pass
+            lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
+            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0],
+                bounds=(min_lon, max_lon))
+            segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
+            # remove segments which cross 180 degree longitude boundary
+            segments = segments[segments[:,0,0] * segments[:,1,0] >= 0,:,:]
             if track.orig_event_flag:
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
                     linestyle='solid', **kwargs)
