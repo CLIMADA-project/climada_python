@@ -106,11 +106,11 @@ IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 #The FAO files need to be downloaded and renamed
 #   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
-#   FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
-#               (http://www.fao.org/faostat/en/#definitions)
+#   FAO_FILE2: contains production quantity per crop, country and year
+#               (http://www.fao.org/faostat/en/#data/QC)
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Exposure')
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
-FAO_FILE2 = "FAOSTAT_data_country_codes.csv"
+FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
 
 #default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
 #by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
@@ -270,10 +270,13 @@ class CropyieldIsimip(Exposures):
         self.value_unit = 't / y'
         self.crop = crop
 
+        (self._metadata).append('crop')
+
         #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
             self['value_tonnes'] = self['value']
+            (self._metadata).append('value_tonnes')
             self.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
 
         self.check()
@@ -371,16 +374,7 @@ class CropyieldIsimip(Exposures):
         fao_year = fao.Year.values
         fao_price = fao.Value.values
 
-        #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
-        fao_countries = pd.read_csv(os.path.join(dir_fao, FAO_FILE2))
-        fao_code = getattr(fao_countries, 'Country Code').values
-        fao_iso = getattr(fao_countries, 'ISO3 Code').values
-
-        #create a list of linking the fao_area code to the iso3 code
-        fao_country = list()
-        for item, _ in enumerate(fao_area):
-            idx = (np.where(fao_area[item] == fao_code)[0])[0]
-            fao_country.append(fao_iso[idx])
+        fao_country = co.country_faocode2iso(fao_area)
 
         #create a list of the countries contained in the exposure
         iso3alpha = list()
@@ -423,6 +417,22 @@ class CropyieldIsimip(Exposures):
 
         return self
 
+    def aggregate_countries(self):
+        """Aggregate exposure data by country.
+
+        Returns:
+            list_countries (list): country codes
+            country_values (array): aggregated exposure value
+
+        """
+
+        list_countries = np.unique(self.region_id)
+        country_values = np.zeros(len(list_countries))
+        for i, iso_nr in enumerate(list_countries):
+            country_values[i] = self.loc[self.region_id == iso_nr].value.sum()
+
+        return list_countries, country_values
+
 
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
@@ -443,6 +453,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         'filename_list': returns list of filenames only, else returns also list of data
 
     """
+
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not \
                  f.startswith('.')]
 
@@ -470,3 +481,54 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     if returns == 'filename_list':
         return filename_list
     return filename_list, output_list
+
+def normalize_with_fao_cropyield(exp_firr, exp_noirr, dir_fao=os.path.join(INPUT_DIR, 'FAO')):
+    """Normalize the given exposures countrywise with the mean cropyield production quantity
+    documented by the FAO.
+
+        Parameters:
+        exp_firr (cropyield_isimip):
+
+    """
+
+    country_list, countries_firr = exp_firr.aggregate_countries()
+    country_list, countries_noirr = exp_noirr.aggregate_countries()
+
+    countries_yield = countries_firr+countries_noirr
+
+    fao = pd.read_csv(os.path.join(dir_fao, FAO_FILE2))
+    fao_crops = fao.Item.values
+    #to do: integrate yearrange as input
+#    fao_year = fao.Year.values
+    fao_values = fao.Value.values
+    fao_code = getattr(fao, 'Area Code').values
+
+    fao_country = co.country_iso2faocode(country_list)
+
+    fao_yield = np.zeros(len(country_list))
+    ratio = np.ones(len(country_list))
+    exp_firr_norm = CropyieldIsimip()
+    exp_firr_norm = exp_firr
+    exp_noirr_norm = CropyieldIsimip()
+    exp_noirr_norm = exp_noirr
+
+    for country, iso_nr in enumerate(country_list):
+        idx = np.where((np.asarray(fao_code) == fao_country[country]) & \
+                                         (np.asarray(fao_crops) == (\
+                                          CROP_NAME[exp_firr.crop])['fao']))
+        if len(idx) >= 1:
+            fao_yield[country] = np.mean(fao_values[idx])
+
+        #if a country has no values in the exposure (e.g. Cyprus) the FAO average value is used
+        if countries_yield[country] == 0:
+            countries_yield[country] = fao_yield[country]
+        #if a country has no fao value, the ratio is left being 1
+        elif fao_yield[country] != np.nan and fao_yield[country] != 0:
+            ratio[country] = fao_yield[country]/countries_yield[country]
+
+        exp_firr_norm.value[exp_firr.region_id == iso_nr] = ratio[country]* \
+        exp_firr.value[exp_firr.region_id == iso_nr]
+        exp_noirr_norm.value[exp_firr.region_id == iso_nr] = ratio[country]* \
+        exp_noirr.value[exp_noirr.region_id == iso_nr]
+
+    return country_list, ratio, exp_firr_norm, exp_noirr_norm
