@@ -1318,7 +1318,7 @@ def fao_code_def():
     """
     #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
-    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'demo', "FAOSTAT_data_country_codes.csv"))
+    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 
