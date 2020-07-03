@@ -112,7 +112,7 @@ FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
 #by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
 #climada_python/data/ISIMIP_crop/Output/hist_mean/
 HIST_MEAN_PATH = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Hist_mean')
-OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Exposure')
+OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 
 class CropyieldIsimip(Exposures):
@@ -454,8 +454,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
                  f.startswith('.')]
 
     #generate output directory if it does not exist yet
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    if not os.path.exists(os.path.join(output_dir, 'Exposure')):
+        os.mkdir(os.path.join(output_dir, 'Exposure'))
 
     #create exposures for all crop-irrigation combinations and save them
     filename_list = list()
@@ -472,7 +472,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
                                               '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'
         filename_list.append(filename_saveto)
         output_list.append(cropyield)
-        cropyield.write_hdf5(os.path.join(output_dir, filename_saveto))
+        cropyield.write_hdf5(os.path.join(output_dir, 'Exposure', filename_saveto))
 
     if returns == 'filename_list':
         return filename_list
