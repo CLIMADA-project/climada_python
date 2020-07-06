@@ -61,5 +61,6 @@ class TestCropyieldIsimip(unittest.TestCase):
         self.assertAlmostEqual(exp.value.max(), 51603897.88397249, places=6)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropyieldIsimip)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropyieldIsimip)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
