@@ -78,5 +78,6 @@ class TestDataAvail(unittest.TestCase):
         os.remove(IBTRACS_FILE)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDataAvail)
-xmlrunner.XMLTestRunner(output=os.path.join(SOURCE_DIR, '../tests_xml')).run(TESTS)
+if __name__ == '__main__':
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDataAvail)
+    xmlrunner.XMLTestRunner(output=os.path.join(SOURCE_DIR, '../tests_xml')).run(TESTS)

@@ -165,6 +165,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue('#refs#' in contents.keys())
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

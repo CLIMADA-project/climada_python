@@ -112,5 +112,6 @@ class TestLowFlow(unittest.TestCase):
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLowFlow)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLowFlow)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
