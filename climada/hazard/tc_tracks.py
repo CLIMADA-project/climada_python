@@ -904,11 +904,11 @@ class TCTracks():
         provider = 'ECMWF' if orig_centre is 98 else 'BUFR code ' + str(orig_centre)
             
         for i in significance_dquery.subset_indices():
-            sig = np.array(significance_dquery.get_values(i), dtype=int)
-            lat = np.array(latitude_dquery.get_values(i))
-            lon = np.array(longitude_dquery.get_values(i))
-            wnd = np.array(wind_10m_dquery.get_values(i))
-            pre = np.array(pressure_dquery.get_values(i))
+            sig = np.array(significance_dquery.get_values(i), dtype='int')
+            lat = np.array(latitude_dquery.get_values(i), dtype='float')
+            lon = np.array(longitude_dquery.get_values(i), dtype='float')
+            wnd = np.array(wind_10m_dquery.get_values(i), dtype='float')
+            pre = np.array(pressure_dquery.get_values(i), dtype='float')
             
             name = wmo_longname_dquery.get_values(i)[0].decode().strip()
             sid = storm_id_dquery.get_values(i)[0].decode().strip()
@@ -921,11 +921,11 @@ class TCTracks():
                     'max_sustained_wind': ('time', np.squeeze(wnd)),
                     'central_pressure': ('time', np.squeeze(pre)),
                     'ts_int': ('time', ts_int),
+                    'lat': ('time', lat[sig == 1]),
+                    'lon': ('time', lon[sig == 1]),
                 },
                 coords={
                     'time': ts, 
-                    'lat': ('time', lat[sig == 1]),
-                    'lon': ('time', lon[sig == 1])
                 },
                 attrs={
                     'max_sustained_wind_unit': 'm/s',
@@ -939,6 +939,7 @@ class TCTracks():
             )
 
             ds = ds.dropna('time')
+            ds = ds.set_coords(['lat','lon'])
             ds['time_step'] = ds.ts_int - ds.ts_int.shift({'time': 1}, fill_value=0)
             ds = ds.drop('ts_int') # TODO use drop_vars after upgrading xarray
 
