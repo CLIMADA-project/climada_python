@@ -59,6 +59,21 @@ class TestCropyieldIsimip(unittest.TestCase):
         self.assertEqual(exp.value_unit, 'USD / y')
         self.assertEqual(exp.crop, 'mai')
         self.assertAlmostEqual(exp.value.max(), 51603897.88397249, places=6)
+    
+    def test_set_to_usd_unnecessary(self):
+        """Test calculating cropyield_isimip Exposure in [USD / y]"""
+        exp = CropyieldIsimip()
+        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN, \
+                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]), \
+                                      scenario='flexible')
+        self.assertEqual(exp.longitude.min(), -4.75)
+        self.assertEqual(exp.longitude.max(), 15.75)
+        self.assertEqual(exp.latitude.min(), 42.25)
+        self.assertEqual(exp.latitude.max(), 54.75)
+        self.assertEqual(exp.value.shape, (1092,))
+        self.assertEqual(exp.value_unit, 'USD / y')
+        self.assertEqual(exp.crop, 'mai')
+        self.assertAlmostEqual(exp.value.max(), 51603897.88397249, places=6)
 
 # Execute Tests
 if __name__ == "__main__":
