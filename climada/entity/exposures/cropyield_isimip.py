@@ -119,10 +119,11 @@ HIST_MEAN_PATH = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Hist_mean')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Exposure')
 
 
-
 class CropyieldIsimip(Exposures):
     """Defines agriculture exposures from ISIMIP input data and FAO crop price data
     """
+    _metadata = Exposures._metadata + ['crop', 'value_tonnes']
+
     @property
     def _constructor(self):
         return CropyieldIsimip
@@ -270,15 +271,14 @@ class CropyieldIsimip(Exposures):
         self.value_unit = 't / y'
         self.crop = crop
 
-        (self._metadata).append('crop')
-
         #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
-            self['value_tonnes'] = self['value']
-            (self._metadata).append('value_tonnes')
-            self.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
-
+            self.value_tonnes = self['value']
+            self.set_to_usd(dir_fao=os.path.join(input_dir))
+        else:
+            self.value_tonnes = None
+        
         self.check()
 
         return self
