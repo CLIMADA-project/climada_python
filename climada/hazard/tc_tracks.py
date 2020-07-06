@@ -67,8 +67,8 @@ CAT_NAMES = {
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """Color scale to plot the Saffir-Simpson scale."""
 
-IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/'
-"""FTP of IBTrACS netcdf file containing all tracks v4.0"""
+IBTRACS_URL = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/netcdf'
+"""Site of IBTrACS netcdf file containing all tracks v4.0, s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
 
 IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
 """IBTrACS v4.0 file all"""
@@ -212,7 +212,7 @@ class TCTracks():
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
         if not glob.glob(fn_nc):
             try:
-                download_ftp(os.path.join(IBTRACS_URL, IBTRACS_FILE), IBTRACS_FILE)
+                download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
                 shutil.move(IBTRACS_FILE, fn_nc)
             except ValueError as err:
                 LOGGER.error('Error while downloading %s. Try to download it '+
