@@ -104,8 +104,8 @@ class TropCyclone(Hazard):
 
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08', ignore_distance_to_coast=False):
-        """Clear and model tropical cyclone from input IBTrACS tracks.
-        Parallel process.
+        """Clear and fill with windfields from specified tracks.
+
         Parameters:
             tracks (TCTracks): tracks of events
             centroids (Centroids, optional): Centroids where to model TC.
@@ -114,6 +114,7 @@ class TropCyclone(Hazard):
             model (str, optional): model to compute gust. Default Holland2008.
             ignore_distance_to_coast (boolean, optional): if True, centroids
                 far from coast are not ignored. Default False
+
         Raises:
             ValueError
         """
@@ -129,7 +130,10 @@ class TropCyclone(Hazard):
             coastal_idx = (centroids.lat < 61).nonzero()[0]
         else:
             # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-            coastal_idx = coastal_centr_idx(centroids)
+            if not centroids.dist_coast.size:
+                centroids.set_dist_coast()
+            coastal_idx = ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
+                           & (centroids.lat < 61)).nonzero()[0]
 
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(coastal_idx.size))
@@ -326,21 +330,6 @@ class TropCyclone(Hazard):
                 new_val[select] *= change
                 setattr(haz_cc, chg['variable'], new_val)
         return haz_cc
-
-def coastal_centr_idx(centroids, lat_max=61):
-    """Compute centroids indices which are inside INLAND_MAX_DIST_KM and
-    with lat < lat_max.
-
-    Parameters:
-        lat_max (float, optional): Maximum latitude to consider. Default: 61.
-
-    Returns:
-        np.array
-    """
-    if not centroids.dist_coast.size:
-        centroids.set_dist_coast()
-    return ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
-            & (centroids.lat < lat_max)).nonzero()[0]
 
 def _windfield(track, centroids, coastal_idx, model):
     """Compute windfields (in m/s) in centroids using Holland model 08.
