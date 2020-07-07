@@ -326,7 +326,7 @@ class TCTracks():
             if estimate_missing:
                 st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values,
                     st_ds.lat.values, st_ds.pres.values)
-                st_ds['roci'][:] = _estimate_roci(st_ds.roci.values,
+                st_ds['roci'][:] = estimate_roci(st_ds.roci.values,
                     st_ds.pres.values, st_ds.rmw.values)
 
             # ensure environmental pressure >= central pressure
@@ -667,8 +667,7 @@ class TCTracks():
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
-            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0],
-                bounds=(min_lon, max_lon))
+            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
             # remove segments which cross 180 degree longitude boundary
             segments = segments[segments[:,0,0] * segments[:,1,0] >= 0,:,:]
@@ -947,7 +946,7 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
                          + c_pres * cen_pres[msk]
     return v_max
 
-def _estimate_roci(roci, cen_pres, rmw):
+def estimate_roci(roci, cen_pres, rmw):
     """Replace missing radius values with statistical estimate."""
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)

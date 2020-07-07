@@ -110,7 +110,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     else:
         return vn
 
-def lon_normalize(lon, bounds=(-180, 180)):
+def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon <= 180
 
     The input data is modified in place (!) using the following operations:
@@ -119,13 +119,12 @@ def lon_normalize(lon, bounds=(-180, 180)):
 
     Parameters:
         lon (np.array): Longitudinal coordinates
-        bounds (tuple, optional): Minimum and maximum value to use instead of
-            (-180, 180). Make sure that the longitude values actually fit
-            within those bounds, before applying `lon_normalize`!
+        center (float, optional): Central longitude value to use instead of 0.
 
     Returns:
         np.array (same as input)
     """
+    bounds = (center - 180, center + 180)
     maxiter = 10
     i = 0
     while True:
@@ -145,9 +144,8 @@ def lon_bounds(lon):
     """Bounds of a set of degree values, respecting the periodicity
 
     Example:
-
-    >>> lon_bounds(np.array([-179, 175, 178]))
-    (175, 181)
+        >>> lon_bounds(np.array([-179, 175, 178]))
+        (175, 181)
 
     Parameters:
         lon (np.array): Longitudinal coordinates
