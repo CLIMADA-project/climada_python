@@ -259,16 +259,17 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
     def _tc_from_track(self, track, centroids, coastal_centr, model='H08'):
-        """Set hazard from input file. If centroids are not provided, they are
-        read from the same file.
+        """Generate windfield hazard from a single track dataset
+
         Parameters:
-            track (xr.Dataset): tropical cyclone track.
-            centroids (Centroids): Centroids instance. Use global
-                centroids if not provided.
-            coastal_centr (np.array): indeces of centroids close to coast.
-            model (str, optional): model to compute gust. Default Holland2008.
+            track (xr.Dataset): single tropical cyclone track.
+            centroids (Centroids): Centroids instance.
+            coastal_centr (np.array): Indices of centroids close to coast.
+            model (str, optional): Windfield model. Default: H08.
+
         Raises:
             ValueError, KeyError
+
         Returns:
             TropCyclone
         """
@@ -277,24 +278,27 @@ class TropCyclone(Hazard):
         except KeyError:
             LOGGER.error('Model not implemented: %s.', model)
             raise ValueError
-        intensity = _windfield(track, centroids.coord, coastal_centr, mod_id)
+        intensity = np.zeros(centroids.coord.shape[0])
+        intensity[coastal_centr] = _windfield(track,
+            centroids.coord[coastal_centr], mod_id)
         intensity[intensity < self.intensity_thres] = 0
 
         new_haz = TropCyclone()
-        new_haz.tag = TagHazard(HAZ_TYPE, 'IBTrACS: ' + track.name)
+        new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
         new_haz.intensity = sparse.csr_matrix(intensity)
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
-        # frequency set when all tracks available
         new_haz.frequency = np.array([1])
         new_haz.event_name = [track.sid]
         new_haz.fraction = new_haz.intensity.copy()
         new_haz.fraction.data.fill(1)
-        # store date of start
-        new_haz.date = np.array([dt.datetime(
-            track.time.dt.year[0], track.time.dt.month[0],
-            track.time.dt.day[0]).toordinal()])
+        # store first day of track as date
+        new_haz.date = np.array([
+            dt.datetime(track.time.dt.year[0],
+                        track.time.dt.month[0],
+                        track.time.dt.day[0]).toordinal()
+        ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
         new_haz.basin = [track.basin]
@@ -328,20 +332,19 @@ class TropCyclone(Hazard):
                 setattr(haz_cc, chg['variable'], new_val)
         return haz_cc
 
-def _windfield(track, centroids, coastal_idx, model):
+def _windfield(track, centroids, model):
     """Compute windfields (in m/s) in centroids using Holland model 08.
 
     Parameters:
         track (xr.Dataset): track infomation
         centroids (2d np.array): each row is a centroid [lat, lon]
-        coastal_idx (1d np.array): centroids indices that are close to coast
         model (int): Holland model selection according to MODEL_VANG
 
     Returns:
         np.array
     """
     # initialize intensity
-    intensity = np.zeros((centroids.shape[0],))
+    intensity = np.zeros(centroids.shape[0])
 
     # shorthands for track data
     t_lat, t_lon = track.lat.values, track.lon.values
@@ -358,16 +361,15 @@ def _windfield(track, centroids, coastal_idx, model):
     if t_lon.min() > 180: t_lon -= 360
 
     # restrict to centroids in rectangular bounding box around track
-    msk = _close_centroids(t_lat, t_lon, centroids[coastal_idx,:])
-    coastal_idx = coastal_idx[msk]
-    coastal_centr = centroids[coastal_idx, :]
+    track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
+    track_centr = centroids[track_centr_msk]
 
-    if coastal_centr.shape[0] == 0:
+    if track_centr.shape[0] == 0:
         return intensity
 
     # compute distances and vectors to all centroids
     v_centr = [ar[0] for ar in dist_approx(t_lat[None], t_lon[None],
-        coastal_centr[None,:, 0], coastal_centr[None,:, 1],
+        track_centr[None,:, 0], track_centr[None,:, 1],
         log=True, method="geosphere")]
     d_centr = v_centr[0]
 
@@ -409,7 +411,7 @@ def _windfield(track, centroids, coastal_idx, model):
 
     v_full = v_trans_norm[:-1,None] * v_trans_corr[1:] + v_ang
     v_full[np.isnan(v_full)] = 0
-    intensity[coastal_idx] = v_full.max(axis=0)
+    intensity[track_centr_msk] = v_full.max(axis=0)
     return intensity
 
 def _close_centroids(t_lat, t_lon, centroids):
