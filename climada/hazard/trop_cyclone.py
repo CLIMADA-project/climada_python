@@ -246,20 +246,17 @@ class TropCyclone(Hazard):
 
     def _set_frequency(self, tracks):
         """Set hazard frequency from tracks data.
+
         Parameters:
-            tracks (list(xr.Dataset))
+            tracks (list of xarray.Dataset)
         """
-        if not tracks:
-            return
-        delta_time = np.max([np.max(track.time.dt.year.values) \
-            for track in tracks]) - np.min([np.min(track.time.dt.year.values) \
-            for track in tracks]) + 1
+        if not tracks: return
+        year_max = np.amax([t.time.dt.year.values.max() for t in tracks])
+        year_min = np.amax([t.time.dt.year.values.min() for t in tracks])
+        year_delta = year_max - year_min + 1
         num_orig = self.orig.nonzero()[0].size
-        if num_orig > 0:
-            ens_size = self.event_id.size / num_orig
-        else:
-            ens_size = 1
-        self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
+        ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
+        self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
     def _tc_from_track(self, track, centroids, coastal_centr, model='H08'):
         """Set hazard from input file. If centroids are not provided, they are
