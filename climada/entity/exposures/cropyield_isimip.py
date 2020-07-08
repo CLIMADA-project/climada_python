@@ -32,9 +32,6 @@ import climada.util.coordinates as co
 from climada.util.constants import DATA_DIR
 
 
-
-
-
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
@@ -93,7 +90,6 @@ CROP_NAME[CROP[1]] = {'input': 'rice', 'fao' : 'Rice, paddy', 'print': 'Rice'}
 CROP_NAME[CROP[2]] = {'input': 'temperate_cereals', 'fao' : 'Wheat', 'print': 'Wheat'}
 CROP_NAME[CROP[3]] = {'input': 'oil_crops_soybean', 'fao' : 'Soybeans', 'print': 'Soybeans'}
 
-
 IRR = ['combined', 'noirr', 'firr']
 
 IRR_NAME = dict()
@@ -120,13 +116,25 @@ OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Exposure')
 
 
 class CropyieldIsimip(Exposures):
-    """Defines agriculture exposures from ISIMIP input data and FAO crop price data
-    """
-    _metadata = Exposures._metadata + ['crop', 'value_tonnes']
+    """Defines agriculture exposures from ISIMIP input data and 
+    FAO crop price data"""
+
+    _metadata = Exposures._metadata + ['crop']
 
     @property
     def _constructor(self):
         return CropyieldIsimip
+
+    # def __init__(self, *args, **kwargs):
+    #     """Initialize. Copy attributes of input Exposures."""
+    #     if len(args):
+    #         for var_meta in self._metadata:
+    #             try:
+    #                 val_meta = getattr(args[0], var_meta)
+    #                 setattr(self, var_meta, val_meta)
+    #             except AttributeError:
+    #                 pass
+    #     super(CropyieldIsimip, self).__init__(*args, **kwargs)
 
     def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH, \
                             bbox=BBOX, yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], \
@@ -233,7 +241,7 @@ class CropyieldIsimip(Exposures):
                 str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
                 hist_mean = (h5py.File(filename, 'r'))['mean'][()]
             else:
-                filename = hist_mean, os.path.join('hist_mean_'+crop+'-'+IRR[1]+\
+                filename = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+IRR[1]+\
                 '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
                 filename2 = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+IRR[2]+\
                 '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
@@ -274,10 +282,10 @@ class CropyieldIsimip(Exposures):
         #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
-            self.value_tonnes = self['value']
+            self['value_tonnes'] = self['value']
             self.set_to_usd(dir_fao=os.path.join(input_dir))
-        else:
-            self.value_tonnes = None
+        #else:
+        #    self.value_tonnes = None
         
         self.check()
 
@@ -432,7 +440,6 @@ class CropyieldIsimip(Exposures):
             country_values[i] = self.loc[self.region_id == iso_nr].value.sum()
 
         return list_countries, country_values
-
 
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
