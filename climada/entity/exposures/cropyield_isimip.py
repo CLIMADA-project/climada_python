@@ -125,17 +125,6 @@ class CropyieldIsimip(Exposures):
     def _constructor(self):
         return CropyieldIsimip
 
-    # def __init__(self, *args, **kwargs):
-    #     """Initialize. Copy attributes of input Exposures."""
-    #     if len(args):
-    #         for var_meta in self._metadata:
-    #             try:
-    #                 val_meta = getattr(args[0], var_meta)
-    #                 setattr(self, var_meta, val_meta)
-    #             except AttributeError:
-    #                 pass
-    #     super(CropyieldIsimip, self).__init__(*args, **kwargs)
-
     def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH, \
                             bbox=BBOX, yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], \
                             cl_model=None, scenario=SCENARIO[1], crop=CROP[0], irr=IRR[0], \
