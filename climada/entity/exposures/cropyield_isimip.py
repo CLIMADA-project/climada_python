@@ -273,7 +273,7 @@ class CropyieldIsimip(Exposures):
         #the exposure in t/y is saved as 'value_tonnes'
         if unit == 'USD':
             self['value_tonnes'] = self['value']
-            self.set_to_usd(dir_fao=os.path.join(input_dir))
+            self.set_to_usd(input_dir=input_dir)
 #        else:
 #            self.value_tonnes = None
 
@@ -307,7 +307,7 @@ class CropyieldIsimip(Exposures):
         """
 
         filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
-                     f.startswith('.')]
+                     f.startswith('.') if 'nc' in f]
 
         #If only files with a certain scenario and or cl_model shall be considered, they
         #are extracted from the original list of files
@@ -346,13 +346,13 @@ class CropyieldIsimip(Exposures):
 
         return self
 
-    def set_to_usd(self, dir_fao=os.path.join(INPUT_DIR, 'FAO'), yearrange=YEARS_FAO):
+    def set_to_usd(self, input_dir=INPUT_DIR, yearrange=YEARS_FAO):
         #to do: check api availability?; default yearrange for single year (e.g. 5a)
         """Calculates the exposure in USD using country and year specific data published
         by the FAO.
 
         Parameters:
-            dir_fao (string): directory containing the FAO pricing data
+            input_dir (string): directory containing the input (FAO pricing) data
             yearrange (array): year range for prices, f.i. (2000, 2018)
                 can also be set to a single year
             crop (str): crop type
@@ -365,7 +365,7 @@ class CropyieldIsimip(Exposures):
 
         #open both FAO files and extract needed variables
         #FAO_FILE: contains producer prices per crop, country and year
-        fao = pd.read_csv(os.path.join(dir_fao, FAO_FILE))
+        fao = pd.read_csv(os.path.join(input_dir, FAO_FILE))
         fao_area = getattr(fao, 'Area Code').values
         fao_crops = fao.Item.values
         fao_year = fao.Year.values
@@ -550,9 +550,9 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
 
         if unit == 'USD':
             exp_noirr['value_tonnes'] = exp_noirr['value']
-            exp_noirr.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
+            exp_noirr.set_to_usd(input_dir=input_dir)
             exp_firr['value_tonnes'] = exp_firr['value']
-            exp_firr.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
+            exp_firr.set_to_usd(input_dir=input_dir)
 
     if returns == 'all':
         return country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_yield, exp_totyield
