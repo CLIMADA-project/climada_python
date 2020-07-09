@@ -31,6 +31,7 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as co
 from climada.util.constants import DATA_DIR
+from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 
 logging.root.setLevel(logging.DEBUG)
@@ -268,6 +269,21 @@ class CropyieldIsimip(Exposures):
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[1]))
         self.value_unit = 't / y'
         self.crop = crop
+        self.ref_year = yearrange
+        try:
+            rows, cols, ras_trans = pts_to_raster_meta(
+                (self.longitude.min(), self.latitude.min(),
+                 self.longitude.max(), self.latitude.max()),
+                get_resolution(self.longitude, self.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except  ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure has only 1 data point')
+            self.meta = {}
 
         #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         #the exposure in t/y is saved as 'value_tonnes'
@@ -513,7 +529,7 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
 
     exp_totyield = countries_firr+countries_noirr
 
-    fao = pd.read_csv(os.path.join(input_dir, 'FAO', FAO_FILE2))
+    fao = pd.read_csv(os.path.join(input_dir, FAO_FILE2))
     fao_crops = fao.Item.values
     fao_year = fao.Year.values
     fao_values = fao.Value.values
