@@ -1306,13 +1306,11 @@ def set_df_geometry_points(df_val, scheduler=None):
                                   .compute(scheduler=scheduler)
 
 def fao_code_def():
-    """Convert FAO country code to numeric-3 codes
-
-    Parameters:
-        isos (str or list of str): iso codes of countries (or single code).
+    """Generates list of FAO country codes and corresponding ISO numeric-3 codes
 
     Returns:
-        int or list of int
+        iso_list (list): list of ISO numeric-3 codes
+        faocode_list (list): list of FAO country codes
     """
     #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
@@ -1326,18 +1324,18 @@ def fao_code_def():
     for idx, iso in enumerate(fao_iso):
         if isinstance(iso, str):
             iso_list.append(country_iso_alpha2numeric(iso))
-            faocode_list.append(fao_code[idx])
+            faocode_list.append(int(fao_code[idx]))
 
     return iso_list, faocode_list
 
 def country_faocode2iso(input_fao):
-    """Convert FAO country code to numeric-3 codes
+    """Convert FAO country code to ISO numeric-3 codes
 
     Parameters:
-        isos (str or list of str): iso codes of countries (or single code).
+        input_fao (int or array): FAO country codes of countries (or single code)
 
     Returns:
-        int or list of int
+        output_iso (int or array): ISO numeric-3 codes of countries (or single code)
     """
 
     #load relation between ISO numeric-3 code and FAO country code
@@ -1346,7 +1344,7 @@ def country_faocode2iso(input_fao):
     #determine the fao country code for the input str or list
     output_iso = np.zeros(len(input_fao))
     for item, faocode in enumerate(input_fao):
-        idx = np.where(faocode == faocode_list)[0]
+        idx = np.where(faocode_list == faocode)[0]
         if len(idx) == 1:
             output_iso[item] = iso_list[idx[0]]
 
@@ -1356,10 +1354,10 @@ def country_iso2faocode(input_iso):
     """Convert ISO numeric-3 codes to FAO country code
 
     Parameters:
-        faocodes (str or list of str): FAO codes of countries (or single code).
+        input_iso (int or array): ISO numeric-3 codes of countries (or single code)
 
     Returns:
-        int or list of int
+        output_faocode (int or array): FAO country codes of countries (or single code)
     """
     #load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
@@ -1367,7 +1365,7 @@ def country_iso2faocode(input_iso):
     #determine the fao country code for the input str or list
     output_faocode = np.zeros(len(input_iso))
     for item, iso in enumerate(input_iso):
-        idx = np.where(iso == iso_list)[0]
+        idx = np.where(iso_list == iso)[0]
         if len(idx) == 1:
             output_faocode[item] = faocode_list[idx[0]]
 
