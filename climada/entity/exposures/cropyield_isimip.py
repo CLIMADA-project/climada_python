@@ -25,6 +25,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import h5py
+from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
@@ -116,7 +117,7 @@ OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 
 class CropyieldIsimip(Exposures):
-    """Defines agriculture exposures from ISIMIP input data and 
+    """Defines agriculture exposures from ISIMIP input data and
     FAO crop price data"""
 
     _metadata = Exposures._metadata + ['crop']
@@ -273,10 +274,9 @@ class CropyieldIsimip(Exposures):
         if unit == 'USD':
             self['value_tonnes'] = self['value']
             self.set_to_usd(dir_fao=os.path.join(input_dir))
-        #else:
-        #    self.value_tonnes = None
-        
-        self.check()
+#        else:
+#            self.value_tonnes = None
+
 
         return self
 
@@ -432,7 +432,7 @@ class CropyieldIsimip(Exposures):
 
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
                            output_dir=OUTPUT_DIR, bbox=BBOX, \
-                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='USD', \
+                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='t', \
                            returns='filename_list'):
     """Generates CropyieldIsimip exposure sets for all files contained in the
     input directory and saves them as hdf5 files in the output directory
@@ -445,6 +445,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
+        unit (str): unit in which to return exposure (t/y or USD/y)
         returns (str): returned output
         'filename_list': returns list of filenames only, else returns also list of data
 
@@ -478,24 +479,43 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         return filename_list
     return filename_list, output_list
 
-def normalize_with_fao_cropyield(exp_firr, exp_noirr, dir_fao=os.path.join(INPUT_DIR, 'FAO')):
+def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
+                                 yearrange=np.array([2008, 2018]), \
+                                 unit='t', returns='all'):
     """Normalize the given exposures countrywise with the mean cropyield production quantity
     documented by the FAO.
 
         Parameters:
-        exp_firr (cropyield_isimip):
+        exp_firr (cropyield_isimip): exposure under full irrigation
+        exp_noirr (cropyield_isimip): exposure under no irrigation
+        input_dir (str): directory containing exposure input data
+        yearrange (array): the mean yield in this year range is used to normalize the exposure
+            data (default 2008-2018)
+        unit (str): unit in which to return exposure (t/y or USD/y)
+        returns (str): returned output
+            'all': country list, ratio = FAO/ISIMIP, normalized exposures, yield per country
+            as documented by the FAO and calculated by the ISIMIP dataset
+            else: country list, ratio = FAO/ISIMIP, normalized exposures
 
     """
+
+    #use the exposure in t/y to normalize with FAO yield values
+    if (exp_firr.value_unit == 'USD / y') and (exp_noirr.value_unit == 'USD / y'):
+        exp_firr.value = exp_firr.value_tonnes
+        exp_noirr.value = exp_noirr.value_tonnes
+    elif exp_firr.value_unit == 'USD / y':
+        exp_firr.value = exp_firr.value_tonnes
+    elif exp_noirr.value_unit == 'USD / y':
+        exp_noirr.value = exp_noirr.value_tonnes
 
     country_list, countries_firr = exp_firr.aggregate_countries()
     country_list, countries_noirr = exp_noirr.aggregate_countries()
 
-    countries_yield = countries_firr+countries_noirr
+    exp_totyield = countries_firr+countries_noirr
 
-    fao = pd.read_csv(os.path.join(dir_fao, FAO_FILE2))
+    fao = pd.read_csv(os.path.join(input_dir, 'FAO', FAO_FILE2))
     fao_crops = fao.Item.values
-    #to do: integrate yearrange as input
-#    fao_year = fao.Year.values
+    fao_year = fao.Year.values
     fao_values = fao.Value.values
     fao_code = getattr(fao, 'Area Code').values
 
@@ -511,20 +531,125 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, dir_fao=os.path.join(INPUT
     for country, iso_nr in enumerate(country_list):
         idx = np.where((np.asarray(fao_code) == fao_country[country]) & \
                                          (np.asarray(fao_crops) == (\
-                                          CROP_NAME[exp_firr.crop])['fao']))
+                                          CROP_NAME[exp_firr.crop])['fao']) & \
+                                          (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
         if len(idx) >= 1:
             fao_yield[country] = np.mean(fao_values[idx])
 
         #if a country has no values in the exposure (e.g. Cyprus) the FAO average value is used
-        if countries_yield[country] == 0:
-            countries_yield[country] = fao_yield[country]
+        if exp_totyield[country] == 0:
+            exp_totyield[country] = fao_yield[country]
         #if a country has no fao value, the ratio is left being 1
         elif fao_yield[country] != np.nan and fao_yield[country] != 0:
-            ratio[country] = fao_yield[country]/countries_yield[country]
+            ratio[country] = fao_yield[country]/exp_totyield[country]
 
         exp_firr_norm.value[exp_firr.region_id == iso_nr] = ratio[country]* \
         exp_firr.value[exp_firr.region_id == iso_nr]
         exp_noirr_norm.value[exp_firr.region_id == iso_nr] = ratio[country]* \
         exp_noirr.value[exp_noirr.region_id == iso_nr]
 
+        if unit == 'USD':
+            exp_noirr['value_tonnes'] = exp_noirr['value']
+            exp_noirr.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
+            exp_firr['value_tonnes'] = exp_firr['value']
+            exp_firr.set_to_usd(dir_fao=os.path.join(input_dir, 'FAO'))
+
+    if returns == 'all':
+        return country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_yield, exp_totyield
     return country_list, ratio, exp_firr_norm, exp_noirr_norm
+
+def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, \
+                          yearrange=np.array([2008, 2018]), \
+                          unit='t', returns='all'):
+    """
+
+        Parameters:
+        input_dir (str): directory containing exposure input data
+        output_dir (str): directory containing exposure datasets (output of exposure creation)
+        yearrange (array): the mean yield in this year range is used to normalize the exposure
+            data (default 2008-2018)
+        unit (str): unit in which to return exposure (t/y or USD/y)
+        returns (str): returned output
+            'all': lists containing data for each exposure file. Lists: crops, country list,
+            ratio = FAO/ISIMIP, normalized exposures, yield per country as documented by the
+            FAO and calculated by the ISIMIP dataset
+            else: lists containing data for each exposure file. Lists: crops, country list,
+            ratio = FAO/ISIMIP, normalized exposures
+        Returns:
+
+    """
+    filenames_exp = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if \
+                     (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not \
+                     f.startswith('.') if 'firr' in f]
+
+    crop_list = list()
+    countries_list = list()
+    ratio_list = list()
+    exp_firr_norm = list()
+    exp_noirr_norm = list()
+    fao_yield_list = list()
+    exp_totyield_list = list()
+
+    for crop, _ in enumerate(filenames_exp):
+        items_exp = filenames_exp[crop].split('_')
+        exp_noirr = CropyieldIsimip()
+        exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', filenames_exp[crop]))
+
+        filename_firr = items_exp[0]+'_'+items_exp[1]+'_'+items_exp[2].split('-')[0]+\
+        '-'+'noirr'+'_'+items_exp[3]
+        exp_firr = CropyieldIsimip()
+        exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', filename_firr))
+
+        if returns == 'all':
+            countries, ratio, exp_firr2, exp_noirr2, fao_yield, \
+            exp_totyield = normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=input_dir, \
+                                                        yearrange=yearrange, unit=unit)
+            fao_yield_list.append(fao_yield)
+            exp_totyield_list.append(exp_totyield)
+        else:
+            countries, ratio, exp_firr2, \
+            exp_noirr2 = normalize_with_fao_cropyield(exp_firr, exp_noirr, \
+                                                      input_dir=input_dir, \
+                                                      yearrange=yearrange, unit=unit, \
+                                                      returns='reduced')
+
+
+        crop_list.append(items_exp[2].split('-')[0])
+        countries_list.append(countries)
+        ratio_list.append(ratio)
+        exp_firr_norm.append(exp_firr2)
+        exp_noirr_norm.append(exp_noirr2)
+
+    if returns == 'all':
+        return crop_list, countries_list, ratio_list, exp_firr_norm, exp_noirr_norm, \
+                fao_yield_list, exp_totyield_list
+    return crop_list, countries_list, ratio_list, exp_firr_norm, exp_noirr_norm
+
+def semilogplot_ratio(crop, countries, ratio, output_dir=OUTPUT_DIR, save=True):
+    """Plot ratio = FAO/ISIMIP against country codes.
+
+        Parameters:
+        crop (str): crop to plot
+        countries (list): country codes of countries to plot
+        ratio (array): ratio = FAO/ISIMIP yield data of countries to plot
+        output_dir (str): directory to save figure
+        save (boolean): True saves figure, else figure is not saved
+        Returns:
+
+    """
+    fig = plt.figure()
+    axes = plt.gca()
+    axes.scatter(countries[ratio != 1], ratio[ratio != 1])
+    axes.set_yscale('log')
+    axes.set_ylabel('Ratio= FAO / ISIMIP')
+    axes.set_xlabel('ISO3 country code')
+    axes.set_ylim(np.nanmin(ratio), np.nanmax(ratio))
+    plt.title(crop)
+
+    if save:
+        if not os.path.exists(os.path.join(output_dir, 'Exposure_norm_plots')):
+            os.mkdir(os.path.join(output_dir, 'Exposure_norm_plots'))
+        plt.savefig(os.path.join(output_dir, 'Exposure_norm_plots', \
+                                 'fig_ratio_norm_'+crop))
+
+    return fig, axes
