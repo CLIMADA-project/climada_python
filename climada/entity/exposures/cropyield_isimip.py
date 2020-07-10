@@ -30,7 +30,7 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as co
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DATA_DIR, DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 
@@ -270,6 +270,7 @@ class CropyieldIsimip(Exposures):
         self.value_unit = 't / y'
         self.crop = crop
         self.ref_year = yearrange
+        self.crs = DEF_CRS
         try:
             rows, cols, ras_trans = pts_to_raster_meta(
                 (self.longitude.min(), self.latitude.min(),
@@ -292,7 +293,8 @@ class CropyieldIsimip(Exposures):
             self.set_to_usd(input_dir=input_dir)
 #        else:
 #            self.value_tonnes = None
-
+        
+        self.check()
 
         return self
 
