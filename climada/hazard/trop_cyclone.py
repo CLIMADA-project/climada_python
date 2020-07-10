@@ -120,20 +120,20 @@ class TropCyclone(Hazard):
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids.from_base_grid(res_as=360, land=True)
+            centroids = Centroids.from_base_grid(res_as=360, land=False)
 
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 
         if ignore_distance_to_coast:
             # Select centroids with lat < 61
-            coastal_idx = (centroids.lat < 61).nonzero()[0]
+            coastal_idx = (np.abs(centroids.lat) < 61).nonzero()[0]
         else:
             # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
             if not centroids.dist_coast.size:
                 centroids.set_dist_coast()
             coastal_idx = ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
-                           & (centroids.lat < 61)).nonzero()[0]
+                           & (np.abs(centroids.lat) < 61)).nonzero()[0]
 
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(coastal_idx.size))
@@ -429,7 +429,7 @@ def _close_centroids(t_lat, t_lon, centroids):
         # crosses 180 degrees east/west -> use positive degrees east
         t_lon[t_lon < 0] += 360
 
-    track_bounds = np.array([t_lon.min(), t_lat.min(), t_lon.max(), t_lat.min()])
+    track_bounds = np.array([t_lon.min(), t_lat.min(), t_lon.max(), t_lat.max()])
     track_bounds[:2] -= CENTR_NODE_MAX_DIST_DEG
     track_bounds[2:] += CENTR_NODE_MAX_DIST_DEG
     if track_bounds[2] > 180:
@@ -509,6 +509,7 @@ def _vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr):
     norm = v_centr[0] * v_trans[0][:,None]
     cos_phi = np.zeros_like(v_centr[0])
     cos_phi[msk] = (v_centr[1][msk,:] * trans_orth_bc[msk,:]).sum(axis=-1) / norm[msk]
+    cos_phi = np.clip(cos_phi, -1, 1)
 
     # inverse orientation on southern hemisphere
     cos_phi[t_lat < 0,:] *= -1
