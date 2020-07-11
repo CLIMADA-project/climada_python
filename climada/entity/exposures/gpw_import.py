@@ -150,7 +150,7 @@ def get_box_gpw(**parameters):
 #    country_cut_mode = parameters.get('country_cut_mode', 0)
     return_coords = parameters.get('return_coords', 0)
     reference_year = parameters.get('reference_year', 2015)
-    year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
+    year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
 
     if year != reference_year:
         LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',\

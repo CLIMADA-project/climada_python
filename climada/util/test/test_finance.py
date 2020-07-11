@@ -193,8 +193,9 @@ class TestWBWealthAccount(unittest.TestCase):
         self.assertEqual(res_val, ref_val)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNetpresValue)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBData))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWealth2GDP))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBWealthAccount))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNetpresValue)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBData))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWealth2GDP))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWBWealthAccount))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

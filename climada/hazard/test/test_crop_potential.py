@@ -60,5 +60,6 @@ class TestCropPotential(unittest.TestCase):
         self.assertAlmostEqual(haz.intensity.min, 0.0, places=5)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropPotential)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropPotential)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

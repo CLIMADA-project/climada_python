@@ -103,8 +103,9 @@ class RiverFlood(Hazard):
             LOGGER.error('Invalid flood-file path ' + frc_path)
             raise NameError
 
-        flood_dph = xr.open_dataset(dph_path)
-        time = flood_dph.time.data
+        with xr.open_dataset(dph_path) as flood_dph:
+            time = flood_dph.time.data
+        
         event_index = self._select_event(time, years)
         bands = event_index + 1
 
@@ -204,7 +205,9 @@ class RiverFlood(Hazard):
             self.orig = np.zeros(self.size, bool)
 
         self.frequency = np.ones(self.size) / self.size
-        self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
+        
+        with xr.open_dataset(dph_path) as flood_dph:
+            self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
                               flood_dph.time[i].dt.month,
                               flood_dph.time[i].dt.day).toordinal()
                               for i in event_index])
@@ -338,11 +341,11 @@ class RiverFlood(Hazard):
         fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
 
         if save_centr:
-            self.fv_ann_centr= sp.sparse.csr_matrix(fla_ann_centr)
+            self.fv_ann_centr= sp.sparse.csr_matrix(self.fla_ann_centr)
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
 
-
+    @staticmethod
     def _select_exact_area(countries=[], reg=[]):
         """Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,

@@ -49,14 +49,13 @@ class TestReader(unittest.TestCase):
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
-        coastal_centr = tc.coastal_centr_idx(CENTR_TEST_BRB)
+        tc_track.data = tc_track.data[:1]
         tc_haz = TropCyclone()
-        tc_haz = tc_haz._tc_from_track(tc_track.data[0], CENTR_TEST_BRB,
-            coastal_centr, model='H08')
+        tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08')
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.tag.file_name, 'IBTrACS: 1951239N12334')
+        self.assertEqual(tc_haz.tag.file_name, 'Name: 1951239N12334')
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -86,7 +85,7 @@ class TestReader(unittest.TestCase):
         self.assertAlmostEqual(tc_haz.intensity[0, 295], 40.605613790812285)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
-        wind = tc_haz.intensity.toarray()[0, coastal_centr]
+        wind = tc_haz.intensity.toarray()[0,:]
         self.assertAlmostEqual(wind[0] * to_kn, 46.59290508202303)
         self.assertAlmostEqual(wind[80] * to_kn, 58.04014412198915)
         self.assertAlmostEqual(wind[120] * to_kn, 37.87443335725528)
@@ -103,7 +102,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.tag.file_name, 'IBTrACS: 1951239N12334')
+        self.assertEqual(tc_haz.tag.file_name, 'Name: 1951239N12334')
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -133,7 +132,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.tag.file_name, ['IBTrACS: 1951239N12334', 'IBTrACS: 1951239N12334'])
+        self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334', 'Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -207,12 +206,6 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(_v_arr[0], 11.279764005440288)
         self.assertAlmostEqual(_v_arr[1], 11.682978583939310)
         self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
-
-    def test_coastal_centroids_pass(self):
-        """Test selection of centroids close to coast. MATLAB reference."""
-        coastal = tc.coastal_centr_idx(CENTR_TEST_BRB)
-
-        self.assertEqual(coastal.size, CENTR_TEST_BRB.size)
 
     def test_vtrans_correct(self):
         """Test _vtrans_correct function."""

@@ -74,6 +74,7 @@ class TestDateNumpy(unittest.TestCase):
         self.assertEqual(u_dt.first_year(np.array(ordinal_date)), 1918)
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDateString)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDateNumpy))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDateString)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDateNumpy))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
