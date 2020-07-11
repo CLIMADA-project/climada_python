@@ -60,5 +60,6 @@ class TestSave(unittest.TestCase):
         self.assertTrue(res['value'] == ent['value'])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

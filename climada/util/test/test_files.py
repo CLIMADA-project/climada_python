@@ -135,8 +135,9 @@ class TestExtension(unittest.TestCase):
         self.assertEqual('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1', get_extension(file_name)[0])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtension))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtension))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

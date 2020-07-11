@@ -242,7 +242,8 @@ class TestNN(unittest.TestCase):
         self.repeat_coord_pass('haversine')
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

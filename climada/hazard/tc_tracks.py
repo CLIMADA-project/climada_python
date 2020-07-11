@@ -68,8 +68,8 @@ CAT_NAMES = {
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """Color scale to plot the Saffir-Simpson scale."""
 
-IBTRACS_URL = 'ftp://eclipse.ncdc.noaa.gov/pub/ibtracs//v04r00/provisional/netcdf/'
-"""FTP of IBTrACS netcdf file containing all tracks v4.0"""
+IBTRACS_URL = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/netcdf'
+"""Site of IBTrACS netcdf file containing all tracks v4.0, s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
 
 IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
 """IBTrACS v4.0 file all"""
@@ -213,7 +213,7 @@ class TCTracks():
         fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
         if not glob.glob(fn_nc):
             try:
-                download_ftp(os.path.join(IBTRACS_URL, IBTRACS_FILE), IBTRACS_FILE)
+                download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
                 shutil.move(IBTRACS_FILE, fn_nc)
             except ValueError as err:
                 LOGGER.error('Error while downloading %s. Try to download it '+
@@ -327,7 +327,7 @@ class TCTracks():
             if estimate_missing:
                 st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values,
                     st_ds.lat.values, st_ds.pres.values)
-                st_ds['roci'][:] = _estimate_roci(st_ds.roci.values,
+                st_ds['roci'][:] = estimate_roci(st_ds.roci.values,
                     st_ds.pres.values, st_ds.rmw.values)
 
             # ensure environmental pressure >= central pressure
@@ -668,8 +668,7 @@ class TCTracks():
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
-            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0],
-                bounds=(min_lon, max_lon))
+            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
             # remove segments which cross 180 degree longitude boundary
             segments = segments[segments[:,0,0] * segments[:,1,0] >= 0,:,:]
@@ -1076,7 +1075,7 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
                          + c_pres * cen_pres[msk]
     return v_max
 
-def _estimate_roci(roci, cen_pres, rmw):
+def estimate_roci(roci, cen_pres, rmw):
     """Replace missing radius values with statistical estimate."""
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)

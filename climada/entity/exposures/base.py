@@ -443,11 +443,14 @@ class Exposures(GeoDataFrame):
         return axis
 
     def write_hdf5(self, file_name):
-        """Write data frame and metadata in hdf5 format"""
+        """Write data frame and metadata in hdf5 format
+
+        Parameters:
+            file_name (str): (path and) file name to write to.
+        """
         LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
         store.put('exposures', pd.DataFrame(self))
-
         var_meta = {}
         for var in self._metadata:
             var_meta[var] = getattr(self, var)
@@ -456,7 +459,15 @@ class Exposures(GeoDataFrame):
         store.close()
 
     def read_hdf5(self, file_name):
-        """Read data frame and metadata in hdf5 format"""
+        """Read data frame and metadata in hdf5 format
+
+        Parameters:
+            file_name (str): (path and) file name to read from.
+
+        Optional Parameters:
+            additional_vars (list): list of additional variable names to read that
+                are not in exposures.base._metadata
+        """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             self.__init__(store['exposures'])

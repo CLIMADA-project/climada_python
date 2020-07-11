@@ -82,7 +82,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)
 
 
-#
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
