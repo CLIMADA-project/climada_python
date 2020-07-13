@@ -296,8 +296,13 @@ class TCTracks():
         ds['time_step'][:,0] = ds.time_step[:,1]
         provider = provider if provider else 'ibtracs'
 
+        last_perc = 0
         all_tracks = []
         for i_track, t_msk in enumerate(ds.valid_t.data):
+            perc = 100 * len(all_tracks) / ds.sid.size
+            if perc - last_perc >= 10:
+                LOGGER.info("Progress: %d%%", perc)
+                last_perc = perc
             st_ds = ds.sel(storm=i_track, date_time=t_msk)
             st_penv = xr.apply_ufunc(basin_fun, st_ds.basin, vectorize=True)
             st_ds['time'][:1] = st_ds.time[:1].dt.floor('H')

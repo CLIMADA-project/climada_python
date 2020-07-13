@@ -145,8 +145,15 @@ class TropCyclone(Hazard):
                                    itertools.repeat(model, num_tracks),
                                    chunksize=chunksize)
         else:
-            tc_haz = [self._tc_from_track(track, centroids, coastal_idx, model)
-                      for track in tracks.data]
+            last_perc = 0
+            tc_haz = []
+            for track in tracks.data:
+                perc = 100 * len(tc_haz) / len(tracks.data)
+                if perc - last_perc >= 10:
+                    LOGGER.info("Progress: %d%%", perc)
+                    last_perc = perc
+                tc_haz.append(
+                    self._tc_from_track(track, centroids, coastal_idx, model))
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
