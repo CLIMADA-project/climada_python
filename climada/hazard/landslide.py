@@ -371,6 +371,7 @@ class Landslide(Hazard):
         self.units = 'm/m'
         self.event_id = np.arange(n_ev, dtype=int)
         self.orig = np.ones(n_ev, bool)
+        self.date = ls_gdf_bbox.ev_date
         self.frequency = np.ones(n_ev)/n_ev
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1)
