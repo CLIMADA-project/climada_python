@@ -620,7 +620,7 @@ class Hazard():
         # warn if return period is above return period of rarest event:
         for period in return_periods:
             if period > 1/self.frequency.min():
-                LOGGER.warning('Return period %1.1f exceeds max. event return period.' %(period))
+                LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
@@ -642,7 +642,7 @@ class Hazard():
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
         if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
-Reason: no negative intensity values were found in hazard.')
+                   Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
         return inten_stats
 
