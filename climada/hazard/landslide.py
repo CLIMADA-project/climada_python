@@ -416,8 +416,8 @@ class Landslide(Hazard):
                                                         bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
             self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
-                                            window_array[3], window_array[2]))
             self.intensity = self.intensity/10e6 #prob values were initially multiplied by 1 mio
+                                            window_array[2], window_array[3]))
             self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating landslides...')
