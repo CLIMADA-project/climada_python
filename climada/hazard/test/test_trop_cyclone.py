@@ -51,7 +51,8 @@ class TestReader(unittest.TestCase):
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
         tc_haz = TropCyclone()
-        tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08')
+        tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08',
+                               store_windfields=True)
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
@@ -77,20 +78,27 @@ class TestReader(unittest.TestCase):
         self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 263)
 
         self.assertEqual(tc_haz.intensity[0, 260], 0)
-        self.assertAlmostEqual(tc_haz.intensity[0, 1], 25.32172387220036)
-        self.assertAlmostEqual(tc_haz.intensity[0, 2], 26.77093534001236)
-        self.assertAlmostEqual(tc_haz.intensity[0, 3], 24.03850320851069)
-        self.assertAlmostEqual(tc_haz.intensity[0, 100], 35.1414962679868)
-        self.assertAlmostEqual(tc_haz.intensity[0, 250], 30.924750568841727)
-        self.assertAlmostEqual(tc_haz.intensity[0, 295], 40.605613790812285)
+        self.assertAlmostEqual(tc_haz.intensity[0, 1], 25.31408264386377)
+        self.assertAlmostEqual(tc_haz.intensity[0, 2], 26.76227933495309)
+        self.assertAlmostEqual(tc_haz.intensity[0, 3], 24.041402653331307)
+        self.assertAlmostEqual(tc_haz.intensity[0, 100], 35.30385118280622)
+        self.assertAlmostEqual(tc_haz.intensity[0, 250], 30.92304483320453)
+        self.assertAlmostEqual(tc_haz.intensity[0, 295], 40.83812621856698)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
         wind = tc_haz.intensity.toarray()[0,:]
-        self.assertAlmostEqual(wind[0] * to_kn, 46.59290508202303)
-        self.assertAlmostEqual(wind[80] * to_kn, 58.04014412198915)
-        self.assertAlmostEqual(wind[120] * to_kn, 37.87443335725528)
-        self.assertAlmostEqual(wind[200] * to_kn, 52.12407964134238)
-        self.assertAlmostEqual(wind[220] * to_kn, 62.6252906598788)
+        self.assertAlmostEqual(wind[0] * to_kn, 46.579693474667714)
+        self.assertAlmostEqual(wind[80] * to_kn, 58.02875447978202)
+        self.assertAlmostEqual(wind[120] * to_kn, 37.88354475637135)
+        self.assertAlmostEqual(wind[200] * to_kn, 52.11922840551828)
+        self.assertAlmostEqual(wind[220] * to_kn, 62.63089353360513)
+
+        windfields = tc_haz.windfields[0].toarray()
+        windfields = windfields.reshape(windfields.shape[0], -1, 2)
+        windfield_norms = np.linalg.norm(windfields, axis=-1).max(axis=0)
+        intensity = tc_haz.intensity.toarray()[0,:]
+        msk = (intensity > 0)
+        self.assertTrue(np.allclose(windfield_norms[msk], intensity[msk]))
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""
@@ -207,49 +215,8 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(_v_arr[1], 11.682978583939310)
         self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
 
-    def test_vtrans_correct(self):
-        """Test _vtrans_correct function."""
-        # The correction does only depend on the relative positions of
-        # centroids and track points + hemisphere
-        v_centr = np.array([
-            [[-1, 0], [0, 1], [0, 1.4], [0, -1.4], [1.7, 2.2], [0.3, 0.9],],
-            [[-1, 0], [0, 1], [0, 1.4], [0, -1.4], [1.7, 2.2], [0.3, 0.9],],
-        ])
-        v_centr = (np.linalg.norm(v_centr, axis=-1), v_centr)
-        v_trans = np.array([[1, 0], [1, 0]])
-        v_trans = (np.linalg.norm(v_trans, axis=-1), v_trans)
-        t_rad = np.array([1.3, 1.3])
-        t_lat = np.array([34, -13])
-        close_centr = np.array([
-            [True, True, True, True, False, True],
-        ])
-        corr = tc._vtrans_correct(v_centr, v_trans, t_rad, t_lat, close_centr)
-        self.assertEqual(corr.shape, (2, 6))
-
-        # -> factor is 0% in front/behind the track
-        self.assertEqual(corr[0,0], 0)
-
-        # -> factor is 100% to the right of the track,
-        self.assertEqual(corr[0,1], 1.0)
-
-        # -> factor decreases with distance from eye
-        self.assertEqual(corr[0,2], 0.9285714285714287)
-
-        # -> sign changes from right to left (and only that)
-        self.assertEqual(corr[0,3], -0.9285714285714287)
-
-        # -> centroids that are not close (according to mask) get value 0
-        self.assertEqual(corr[0,4], 0)
-
-        # -> factor decreases when rotating around the eye from right to front
-        self.assertEqual(corr[0,5], 0.9486832980505139)
-
-        # -> switching hemisphere changes sign (and only that)
-        self.assertTrue(np.allclose(corr[0], -corr[1]))
-
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
-        i_node = 1
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
@@ -261,8 +228,8 @@ class TestModel(unittest.TestCase):
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
         self.assertEqual(v_trans.size, tc_track.data[0].time.size)
-        self.assertEqual(v_trans[-1], 0)
-        self.assertAlmostEqual(v_trans[i_node-1]*to_kn, 10.191466078221902)
+        self.assertEqual(v_trans[0], 0)
+        self.assertAlmostEqual(v_trans[1] * to_kn, 10.191466078221902)
 
 
 class TestClimateSce(unittest.TestCase):
