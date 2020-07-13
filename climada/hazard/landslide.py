@@ -366,10 +366,11 @@ class Landslide(Hazard):
         self.centroids.set_lat_lon(ls_gdf_bbox.latitude, ls_gdf_bbox.longitude)
         n_cen = ls_gdf_bbox.latitude.size # number of centroids
         n_ev = n_cen
-        self.intensity = sparse.csr_matrix(np.ones((n_ev, n_cen)))
+
+        self.intensity = sparse.csr_matrix(np.diag(np.diag(np.ones((n_ev, n_cen)))))
         self.units = 'm/m'
         self.event_id = np.arange(n_ev, dtype=int)
-        self.orig = np.zeros(n_ev, bool)
+        self.orig = np.ones(n_ev, bool)
         self.frequency = np.ones(n_ev)/n_ev
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1)
