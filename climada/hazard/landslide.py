@@ -335,7 +335,12 @@ class Landslide(Hazard):
     def _get_hist_events(self, bbox, coolr_path):
         """for LS_MODEL[0]: load gdf with landslide event POINTS from
         global landslide catalog (COOLR of NASA) for bbox of interest"""
-        ls_gdf = geopandas.read_file(coolr_path)
+
+        try:
+            ls_gdf = geopandas.read_file(coolr_path)
+        except:
+            raise ValueError("The nasa_global_landslide_catalog_point files could not be found."\
+                             + "The script looked for the files on the following path: {}".format(coolr_path))
         ls_gdf_bbox = ls_gdf.cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
         return ls_gdf_bbox
 
