@@ -197,17 +197,16 @@ class Landslide(Hazard):
         """
         with rasterio.open(path_sourcefile) as src:
             utm = pyproj.Proj(init='epsg:4326') # Pass CRS of image from rasterio
+            lonlat = pyproj.Proj(init='epsg:4326')
+            lon, lat = (bbox[3], bbox[0])
+            west, north = pyproj.transform(lonlat, utm, lon, lat)
 
-        lonlat = pyproj.Proj(init='epsg:4326')
-        lon, lat = (bbox[3], bbox[0])
-        west, north = pyproj.transform(lonlat, utm, lon, lat)
+            # What is the corresponding row and column in our image?
+            row, col = src.index(west, north) # spatial --> image coordinates
 
-        # What is the corresponding row and column in our image?
-        row, col = src.index(west, north) # spatial --> image coordinates
-
-        lon, lat = (bbox[1], bbox[2])
-        east, south = pyproj.transform(lonlat, utm, lon, lat)
-        row2, col2 = src.index(east, south)
+            lon, lat = (bbox[1], bbox[2])
+            east, south = pyproj.transform(lonlat, utm, lon, lat)
+            row2, col2 = src.index(east, south)
         width = abs(col2-col)
         height = abs(row2-row)
 
