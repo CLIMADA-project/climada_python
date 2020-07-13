@@ -416,12 +416,34 @@ class Landslide(Hazard):
                                                         bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
             self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
-            self.intensity = self.intensity/10e6 #prob values were initially multiplied by 1 mio
                                             window_array[2], window_array[3]))
+            n_ev = self.intensity.nnz
+            n_cen = self.intensity.shape[1]
+            self.intensity_temp = []
+            for i, prob_val in enumerate(np.squeeze(np.asarray(self.intensity.todense()))):
+                if prob_val:
+                    event_intensity = np.zeros(n_cen)
+                    event_intensity[i] = 1
+                    if self.intensity_temp==[]:
+                        self.intensity_temp = event_intensity
+                    else:
+                        self.intensity_temp = sparse.vstack([
+                                sparse.csr_matrix(self.intensity_temp), 
+                                sparse.csr_matrix(event_intensity)])
+            
+            self.frequency = self.intensity.data/10e6
+            self.intensity = sparse.csr_matrix(self.intensity_temp.copy())
+            self.fraction = self.intensity.copy()
+            self.event_id = np.arange(n_ev, dtype=int)
+            self.event_name = self.event_id.copy()
+            self.orig = np.ones(n_ev, bool)
+            self.date= np.array([])
+            self.event_name = []
+            
             self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating landslides...')
-            self._intensity_prob_to_binom(n_years)
+            #self._intensity_prob_to_binom(n_years)
             self.check()
 
             if incl_neighbour:
