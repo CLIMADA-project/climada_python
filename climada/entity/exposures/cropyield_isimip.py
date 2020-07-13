@@ -291,9 +291,6 @@ class CropyieldIsimip(Exposures):
         if unit == 'USD':
             self['value_tonnes'] = self['value']
             self.set_to_usd(input_dir=input_dir)
-#        else:
-#            self.value_tonnes = None
-        
         self.check()
 
         return self
