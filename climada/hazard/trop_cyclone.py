@@ -252,9 +252,9 @@ class TropCyclone(Hazard):
         """
         if not tracks: return
         year_max = np.amax([t.time.dt.year.values.max() for t in tracks])
-        year_min = np.amax([t.time.dt.year.values.min() for t in tracks])
+        year_min = np.amin([t.time.dt.year.values.min() for t in tracks])
         year_delta = year_max - year_min + 1
-        num_orig = self.orig.nonzero()[0].size
+        num_orig = np.count_nonzero(self.orig)
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
         self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
