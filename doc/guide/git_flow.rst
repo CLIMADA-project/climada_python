@@ -15,6 +15,11 @@ develop branche, and at this point the branch owner must organize a code
 review. This allows for a smooth development of both the code and the
 science, without compromising the code legacy.
 
+Scientific publication should, once accepted, be made into a minimal 
+working example and pushed onto the Climada_papers repository.
+
+Do not forget to update the Jenkins test and the CLIMADA tutorial.
+
 Release cycle
 -------------
 
