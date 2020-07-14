@@ -166,9 +166,8 @@ class TestModel(unittest.TestCase):
         pcen = 1005.263333333329
         prepcen = 1005.258500000000
         lat = 12.299999504631343
-        xx = 0.586781395348824
         tint = 1
-        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, xx, tint)
+        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
         self.assertAlmostEqual(_bs_res, 1.270856908796045)
 
         v_trans = 5.123882725120426
@@ -176,9 +175,8 @@ class TestModel(unittest.TestCase):
         pcen = 1005.268166666671
         prepcen = 1005.263333333329
         lat = 12.299999279463769
-        xx = 0.586794883720942
         tint = 1
-        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, xx, tint)
+        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
         self.assertAlmostEqual(_bs_res, 1.265551666104679)
 
     def test_stat_holland(self):
