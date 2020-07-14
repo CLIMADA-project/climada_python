@@ -249,11 +249,8 @@ class Landslide(Hazard):
 
         self.intensity_prob = self.intensity.copy()
         for i, j in zip(*self.intensity.nonzero()):
-            if binom.rvs(n=n_years, p=self.intensity[i, j]) >= 1:
-                self.intensity[i, j] = 1
-            else:
-                self.intensity[i, j] = 0
-
+            self.intensity[i,j] =  binom.rvs(n=n_years, p=self.intensity[i, j])
+            
     def _intensity_binom_to_range(self, max_dist):
         """Affected neighbourhood' of pixels within certain threshold from ls occurrence
         can be included (takes long to compute, though).
