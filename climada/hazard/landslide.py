@@ -201,7 +201,6 @@ class Landslide(Hazard):
             lon, lat = (bbox[3], bbox[0])
             west, north = pyproj.transform(lonlat, utm, lon, lat)
 
-            # What is the corresponding row and column in our image?
             row, col = src.index(west, north) # spatial --> image coordinates
 
             lon, lat = (bbox[1], bbox[2])
@@ -248,8 +247,7 @@ class Landslide(Hazard):
             intensity_prob (csr matrix): initial probabilities of ls occurrence per year per pixel
             intensity (csr matrix): binary (0/1) occurrence within pixel"""
 
-        self.intensity_prob = self.intensity.copy() #save prob values
-
+        self.intensity_prob = self.intensity.copy()
         for i, j in zip(*self.intensity.nonzero()):
             if binom.rvs(n=n_years, p=self.intensity[i, j]) >= 1:
                 self.intensity[i, j] = 1
@@ -442,8 +440,8 @@ class Landslide(Hazard):
             
             self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
                                                       window_array[3], window_array[2])
+                        
             LOGGER.info('Generating landslides...')
-            #self._intensity_prob_to_binom(n_years)
             self.check()
 
             if incl_neighbour:
@@ -454,14 +452,6 @@ class Landslide(Hazard):
                 self.check()
 
             if check_plots == 1:
-#                fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-#                self.plot_raw() 
-#                fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
-#
-#                fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-#                self.plot_events()
-#                fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
-                
                 self.plot_intensity(0)
 
             return self
