@@ -362,7 +362,7 @@ class TropCyclone(Hazard):
         return haz_cc
 
 def compute_windfields(track, centroids, model):
-    """Compute windfields (in m/s) in centroids using Holland model 08.
+    """Compute 10-minute max. sustained winds (in m/s) at 10 meters above ground
 
     Parameters:
         track (xr.Dataset): track infomation
@@ -428,9 +428,8 @@ def compute_windfields(track, centroids, model):
 
     # compute b-value
     if model == 0:
-        hol_xx = 0.6 * (1. - (t_env - t_cen) / 215)
         hol_b = _bs_hol08(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
-            t_lat[1:], hol_xx[1:], t_tstep[1:])
+            t_lat[1:], t_tstep[1:])
     else:
         #TODO: H80 with hol_b = b_value(v_trans, vmax, penv, pcen, rho)
         raise NotImplementedError
@@ -447,7 +446,14 @@ def compute_windfields(track, centroids, model):
     v_ang[close_centr[1:]] = v_ang_norm[close_centr[1:],None] \
                              * v_ang_dir[close_centr[1:]]
 
-    # influence of translational speed decreases with distance from eye
+    """Influence of translational speed decreases with distance from eye
+
+    The "absorbing factor" is according to the following paper (see Fig. 7):
+
+    Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool for
+    converting point data from cyclone observations into tracks and wind speed
+    profiles in a GIS. UNED/GRID-Geneva. https://unepgrid.ch/en/resource/19B7D302
+    """
     t_rad_bc = np.broadcast_arrays(t_rad[:,None], d_centr)[0]
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr] = np.fmin(1,
@@ -526,8 +532,21 @@ def _vtrans(t_lat, t_lon, t_tstep):
     v_trans_norm[msk] *= fact
     return v_trans_norm, v_trans
 
-def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
-    """Holland's 2008 b value computation.
+def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
+    """Holland's 2008 b-value computation for surface winds (10-m above ground)
+
+    This is from equation (11) in the following paper:
+
+    Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
+    Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
+
+    For reference, it reads
+
+    b_s = -4.4 * 1e-5 * (penv - pcen)^2 + 0.01 * (penv - pcen)
+          + 0.03 * (dp/dt) - 0.014 * |lat| + 0.15 * (v_trans)^hol_xx + 1.0
+
+    where `dp/dt` is the time derivative of central pressure and `hol_xx` is
+    Holland's x parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
 
     Parameters:
         v_trans (float): translational wind (m/s)
@@ -535,19 +554,28 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, hol_xx, tint):
         pcen (float): central pressure (hPa)
         prepcen (float): previous central pressure (hPa)
         lat (float): latitude (degrees)
-        hol_xx (float): Holland's xx value
         tint (float): time step (h)
 
     Returns:
         float
     """
-    return -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
+    hol_xx = 0.6 * (1. - (penv - pcen) / 215)
+    hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
+    return np.clip(hol_b, 1, 2.5)
 
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     """Holland symmetric and static wind field (in m/s) according to
-    Holland1980 or Holland2008m depending on hol_b parameter.
+    Holland (1980) or Holland (2008) depending on hol_b parameter.
+
+    Because recorded winds are less reliable than pressure, recorded wind speeds
+    are not used, but max. sustained surface wind is estimated from central
+    pressure using the formula `v_m = ((b_s / (rho * e)) * (penv - pcen))^0.5`,
+    see equation (11) in the following paper:
+
+    Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
+    Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
 
     Parameters:
         d_centr (2d np.array): distance between coastal centroids and track node
@@ -565,14 +593,20 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     r_max, hol_b, lat, penv, pcen, d_centr = [ar[close_centr]
         for ar in np.broadcast_arrays(r_max[:,None], hol_b[:,None], lat[:,None],
                                       penv[:,None], pcen[:,None], d_centr)]
+
+    # air density
     rho = 1.15
+
+    # Coriolis force parameter
     f_val = 2 * 0.0000729 * np.sin(np.radians(np.abs(lat)))
+
+    # d_centr is in km, convert to m and apply Coriolis force factor
     d_centr_mult = 0.5 * 1000 * d_centr * f_val
-    # units are m/s
-    msk = (d_centr > 1e-5) & (hol_b > 0) & (hol_b < 5)
-    r_max_norm = np.zeros_like(d_centr)
-    r_max_norm[msk] = (r_max[msk] / d_centr[msk])**hol_b[msk]
+
+    # the factor 100 is from conversion between mbar and pascal
+    r_max_norm = (r_max / d_centr)**hol_b
     sqrt_term = 100 * hol_b / rho * r_max_norm * (penv - pcen) \
                 * np.exp(-r_max_norm) + d_centr_mult**2
+
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - d_centr_mult
     return v_ang
