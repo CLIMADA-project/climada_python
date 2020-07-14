@@ -71,7 +71,9 @@ Readability
 - Comment! Comments are welcome to be redundant.
   And whenever there is a particular reason for the way something is done, comment on it!
   It *will* pay off when maintaining, extending or debugging.
-
+- For functions which implement mathematical/scientific concepts, add the actual mathematical formula as comment or
+  to the Doctstrings. This will help maintain a high level of scientific accuracy. E.g. How is are the random walk
+  tracks computed for tropical cyclones?
 
 Performance
 ===========
