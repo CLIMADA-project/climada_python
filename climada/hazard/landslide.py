@@ -301,7 +301,7 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
+        return plt.imshow(self.intensity[event_pos, :].todense(). \
                               reshape(self.centroids.shape), **kwargs)
 
     def plot_events(self, ev_id=1, **kwargs):
