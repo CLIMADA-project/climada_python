@@ -362,7 +362,7 @@ class TropCyclone(Hazard):
         return haz_cc
 
 def compute_windfields(track, centroids, model):
-    """Compute 10-minute max. sustained winds (in m/s) at 10 meters above ground
+    """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
     Parameters:
         track (xr.Dataset): track infomation
@@ -533,9 +533,10 @@ def _vtrans(t_lat, t_lon, t_tstep):
     return v_trans_norm, v_trans
 
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
-    """Holland's 2008 b-value computation for surface winds (10-m above ground)
+    """Holland's 2008 b-value computation for sustained surface winds
 
-    This is from equation (11) in the following paper:
+    The parameter applies to 1-minute sustained winds at 10 meters above ground.
+    It is taken from equation (11) in the following paper:
 
     Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
     Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
@@ -566,16 +567,19 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     return np.clip(hol_b, 1, 2.5)
 
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
-    """Holland symmetric and static wind field (in m/s) according to
-    Holland (1980) or Holland (2008) depending on hol_b parameter.
+    """Holland symmetric and static wind field (in m/s)
 
     Because recorded winds are less reliable than pressure, recorded wind speeds
-    are not used, but max. sustained surface wind is estimated from central
+    are not used, but 1-min sustained surface winds are estimated from central
     pressure using the formula `v_m = ((b_s / (rho * e)) * (penv - pcen))^0.5`,
     see equation (11) in the following paper:
 
     Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
     Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
+
+    Depending on the hol_b parameter, the resulting model is according to
+    Holland (1980), which models gradient winds, or Holland (2008), which models
+    surface winds at 10 meters above ground.
 
     Parameters:
         d_centr (2d np.array): distance between coastal centroids and track node
