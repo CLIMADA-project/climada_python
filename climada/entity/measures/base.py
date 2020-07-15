@@ -32,10 +32,10 @@ import climada.util.checker as check
 LOGGER = logging.getLogger(__name__)
 
 IF_ID_FACT = 1000
-""" Factor internally used as id for impact functions when region selected."""
+"""Factor internally used as id for impact functions when region selected."""
 
 NULL_STR = 'nil'
-""" String considered as no path in measures exposures_set and hazard_set or
+"""String considered as no path in measures exposures_set and hazard_set or
 no string in imp_fun_map"""
 
 class Measure():
@@ -66,7 +66,7 @@ class Measure():
     """
 
     def __init__(self):
-        """ Empty initialization."""
+        """Empty initialization."""
         self.name = ''
         self.haz_type = ''
         self.color_rgb = np.array([0, 0, 0])
@@ -94,7 +94,7 @@ class Measure():
         self.risk_transf_cost_factor = 1
 
     def check(self):
-        """ Check consistent instance data.
+        """Check consistent instance data.
 
         Raises:
             ValueError
@@ -217,7 +217,7 @@ class Measure():
         return new_exp
 
     def _change_exposures_if(self, exposures):
-        """ Change exposures impact functions ids according to imp_fun_map.
+        """Change exposures impact functions ids according to imp_fun_map.
 
         Parameters:
             exposures (Exposures): exposures instance
@@ -308,7 +308,7 @@ class Measure():
 
     def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
                           new_haz):
-        """ Incorporate changes of new elements to previous ones only for the
+        """Incorporate changes of new elements to previous ones only for the
         selected exp_region_id. If exp_region_id is [], all new changes
         will be accepted.
 

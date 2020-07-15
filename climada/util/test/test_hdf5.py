@@ -30,10 +30,10 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_short_name.mat')
 
 class TestFunc(unittest.TestCase):
-    '''Test the auxiliary functions used to retrieve variables from HDF5'''
+    """Test the auxiliary functions used to retrieve variables from HDF5"""
 
     def test_get_string_pass(self):
-        '''Check function to get a string from input integer array'''
+        """Check function to get a string from input integer array"""
 
         # Load input
         contents = hdf5.read(HAZ_TEST_MAT)
@@ -56,8 +56,8 @@ class TestFunc(unittest.TestCase):
                          'hazards/atl_prob.mat', str_fn)
 
     def test_get_sparse_mat_pass(self):
-        '''Check contents of imported sparse matrix, using the function \
-        to build a sparse matrix from the read HDF5 variable'''
+        """Check contents of imported sparse matrix, using the function \
+        to build a sparse matrix from the read HDF5 variable"""
 
         # Load input
         contents = hdf5.read(HAZ_TEST_MAT)
@@ -81,14 +81,14 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(0, spr_mat[126, 86])
 
     def test_get_str_from_ref(self):
-        """ Check import string from a HDF5 object reference"""
+        """Check import string from a HDF5 object reference"""
         file = h5py.File(HAZ_TEST_MAT, 'r')
         var = file['hazard']['name'][0][0]
         res = hdf5.get_str_from_ref(HAZ_TEST_MAT, var)
         self.assertEqual('NNN_1185101', res)
 
     def test_get_list_str_from_ref(self):
-        """ Check import string from a HDF5 object reference"""
+        """Check import string from a HDF5 object reference"""
         file = h5py.File(HAZ_TEST_MAT, 'r')
         var = file['hazard']['name']
         var_list = hdf5.get_list_str_from_ref(HAZ_TEST_MAT, var)
@@ -97,10 +97,10 @@ class TestFunc(unittest.TestCase):
         self.assertEqual('NNN_1185101_gen2', var_list[2])
 
 class TestReader(unittest.TestCase):
-    '''Test HDF5 reader'''
+    """Test HDF5 reader"""
 
     def test_hazard_pass(self):
-        '''Checking result against matlab atl_prob.mat file'''
+        """Checking result against matlab atl_prob.mat file"""
 
         # Load input
         contents = hdf5.read(HAZ_TEST_MAT)
@@ -153,7 +153,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(2016, hazard['reference_year'])
 
     def test_with_refs_pass(self):
-        '''Allow to load references of the matlab file'''
+        """Allow to load references of the matlab file"""
 
         # Load input
         refs = True
@@ -165,6 +165,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue('#refs#' in contents.keys())
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunc))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

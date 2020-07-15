@@ -46,7 +46,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'impact_functions',
                               'peril' : 'peril_id'
                              }
                 }
-""" Excel and csv variable names """
+"""Excel and csv variable names"""
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'damagefunctions',
@@ -59,7 +59,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'peril' : 'peril_ID'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 class ImpactFuncSet():
     """Contains impact functions of type ImpactFunc. Loads from
@@ -400,14 +400,14 @@ class ImpactFuncSet():
             raise err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Write excel file following template.
+        """Write excel file following template.
 
         Parameters:
             file_name (str): absolute file name to write
             var_names (dict, optional): name of the variables in the file
         """
         def write_if(row_ini, imp_ws, xls_data):
-            """ Write one impact function """
+            """Write one impact function"""
             for icol, col_dat in enumerate(xls_data):
                 for irow, data in enumerate(col_dat, row_ini):
                     imp_ws.write(irow, icol, data)
@@ -436,7 +436,7 @@ class ImpactFuncSet():
     def _fill_dfr(self, dfr, var_names):
 
         def _get_xls_funcs(dfr, var_names):
-            """ Parse individual impact functions. """
+            """Parse individual impact functions."""
             dist_func = []
             for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']], \
             dfr[var_names['col_name']['func_id']]):

@@ -234,7 +234,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('Wrong Measure.name: LoLo != LaLa', cm.output[0])
 
     def test_def_color(self):
-        """ Test default grey scale used when no color set """
+        """Test default grey scale used when no color set"""
         meas = MeasureSet()
         act_1 = Measure()
         act_1.name = 'LaLa'
@@ -336,7 +336,7 @@ class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
     def test_demo_file(self):
-        """ Read demo excel file"""
+        """Read demo excel file"""
         meas = MeasureSet()
         description = 'One single file.'
         meas.read_excel(ENT_DEMO_TODAY, description)
@@ -380,7 +380,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(meas.tag.description, description)
 
     def test_template_file_pass(self):
-        """ Read template excel file"""
+        """Read template excel file"""
         meas = MeasureSet()
         meas.read_excel(ENT_TEMPLATE_XLS)
 
@@ -527,7 +527,7 @@ class TestWriter(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
     def test_write_read_file(self):
-        """ Write and read excel file"""
+        """Write and read excel file"""
 
         act_1 = Measure()
         act_1.name = 'Mangrove'

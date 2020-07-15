@@ -30,7 +30,7 @@ class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
     def test_required_files(self):
-        """ Test check_required_nl_files function with various countries."""
+        """Test check_required_nl_files function with various countries."""
         #Switzerland
         bbox = [5.954809204000128, 45.82071848599999, 10.466626831000013, 47.801166077000076]
         min_lon, min_lat, max_lon, max_lat = bbox
@@ -75,7 +75,7 @@ class TestNightLight(unittest.TestCase):
                           min_lon, max_lat, max_lon, min_lat)
 
     def test_check_files_exist(self):
-        """ Test check_nightlight_local_file_exists"""
+        """Test check_nightlight_local_file_exists"""
         # If invalid path is supplied it has to fall back to DATA_DIR
         np.testing.assert_array_equal(nightlight.check_nl_local_file_exists(np.ones\
                        (np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0],\
@@ -83,13 +83,13 @@ class TestNightLight(unittest.TestCase):
                       (np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR)[0])
 
     def test_download_nightlight_files(self):
-        """ Test check_nightlight_local_file_exists"""
+        """Test check_nightlight_local_file_exists"""
         # Not the same length of arguments
         self.assertRaises(ValueError, nightlight.download_nl_files ,(1, 0, 1), (1, 1))
 
         # The same length but not the correct length
         self.assertRaises(ValueError, nightlight.download_nl_files, (1, 0, 1), (1, 1, 1))
-        
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNightLight)

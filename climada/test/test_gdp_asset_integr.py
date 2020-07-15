@@ -23,7 +23,6 @@ import unittest
 from climada.entity.exposures import gdp_asset as ga
 from climada.util.constants import DEMO_GDP2ASSET
 
-
 class TestGDP2AssetClassCountries(unittest.TestCase):
     """Unit tests for the GDP2Asset exposure class"""
     def test_wrong_iso3_fail(self):

@@ -29,47 +29,51 @@ INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'co2_dis_global_daily_DEMO_FR'
 
 
-def init_test_data_unqiue_clusters():
+def init_test_data_unique_clusters():
     """creates sandbox test data for 2D cluster IDs for test of identification of
     unique 3D clusters"""
 
     df = pd.DataFrame(columns=['target_cluster', 'cluster_id', 'c_lat_lon', \
                                'c_lat_dt_month', 'c_lon_dt_month'])
-    
+
     df.c_lon_dt_month = np.array([1, 1, 1, 1, 2, 2, 3, 4, 5, 4, 4, 5, 6, -1, -1])
     df.c_lat_dt_month = np.array([1, -1, 2, 2, 2, 3, 5, 3, 4, 6, 6, 5, 7, -1, 1])
     df.c_lat_lon = np.array([1, 3, 1, 3, 3, 3, 5, 3, 5, 3, 4, 5, 2, -1, -1])
-    df.target_cluster = [ 1, -1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 3, -1, -1]
-    df.cluster_id = np.zeros(len(df.target_cluster), dtype=int)-1
+    df.target_cluster = [1, -1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 3, -1, -1]
+    df.cluster_id = np.zeros(len(df.target_cluster), dtype=int) - 1
     return df
 
 def init_test_data_clustering():
     """creates sandbox test data for monthly days below threshold data
     for testing clustering"""
-    
+
     df = pd.DataFrame(columns=['lat', 'lon', 'dis', \
-                              'dt_month', 'target_cluster'])
+                               'dt_month', 'target_cluster'])
 
     df.lat = np.array([-0, -0, -.5, -.5, -1, -.5, -1, -0, -.5, -1, -1, -1.5, -2.5])
-    df.lon = np.array([ 0,  1, 0,   1.5,  2, 0,    0,  1, 1.5,  0,  2,  0,    2.5])
+    df.lon = np.array([0, 1, 0, 1.5, 2, 0, 0, 1, 1.5, 0, 2, 0, 2.5])
     df.dt_month = np.array([1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3])
     df.dis = [5, 11, 5, 11, 11, 10, 10, 22, 22, 20, 22, 20, 1]
 
     df['iter_ev'] = np.ones(len(df), bool)
-    df['cons_id'] = np.zeros(len(df), int)-1
+    df['cons_id'] = np.zeros(len(df), int) - 1
     return df
+
 
 class TestLowFlow(unittest.TestCase):
     """Test for defining low flow event from discharge data file"""
-    def test_load_FR_all(self):
-        """Test defining low flow hazard from complete demo file (France)
-        and keep monthly data"""
-        haz = LowFlow()
-        haz.set_from_nc(input_dir=INPUT_DIR, percentile=2.5,
+
+    haz = LowFlow()
+    haz.set_from_nc(input_dir=INPUT_DIR, percentile=2.5,
                     yearrange=(2001, 2005), yearrange_ref=(2001, 2005),
                     gh_model='h08', cl_model='gfdl-esm2m',
-                    scenario='historical', scenario_ref='historical', soc='histsoc', \
+                    scenario='historical', scenario_ref='historical', soc='histsoc',
                     soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True)
+
+    def test_load_FR_all(self, haz=haz):
+        """Test defining low flow hazard from complete demo file (France)
+        and keep monthly data"""
+
         self.assertEqual(haz.data.shape[0], 1653)
         self.assertEqual(haz.data.shape[1], 14)
         self.assertEqual(haz.data.ndays.max(), 31.0)
@@ -86,12 +90,12 @@ class TestLowFlow(unittest.TestCase):
 
     def test_unique_clusters(self):
         """Test unique 3D cluster identification from 2D cluster data"""
-        data = init_test_data_unqiue_clusters()
+        data = init_test_data_unique_clusters()
         data = unique_clusters(data)
         self.assertEqual(data.size, 75)
         self.assertListEqual(list(data.cluster_id), list(data.target_cluster))
 
-    def test_identify_clusters_default(self):   
+    def test_identify_clusters_default(self):
         """test clustering event from monthly days below threshold data"""
         haz = LowFlow()
         # 1) direct neighbors only (allowing over cross in space):
@@ -103,15 +107,56 @@ class TestLowFlow(unittest.TestCase):
         # as (1), but allowing 1 month break in between:
         haz.data = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=2, min_samples=1)
-        target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]        
+        target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
         # as (1), but allowing 1 gridcell break in between:
         haz.data = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=2., clus_thresh_t=1, min_samples=1)
-        target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]        
+        target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
+    def test_combine_nc(self, haz=haz):
+        """test if the hazard is the same if defined from combining chunked data files"""
+
+        haz2 = LowFlow()
+        haz2.set_from_nc(input_dir=INPUT_DIR, percentile=2.5,
+                         yearrange=(2001, 2005), yearrange_ref=(2001, 2005),
+                         gh_model='h08', cl_model='gfdl-esm2m',
+                         scenario='historical', scenario_ref='historical', soc='histsoc',
+                         soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True,
+                         yearchunks=['2001_2003', '2004_2005'])
+
+        self.assertEqual(haz.data.shape[0], haz2.data.shape[0])
+        self.assertEqual(haz.data.shape[1], haz2.data.shape[1], )
+        self.assertEqual(haz.data.ndays.max(), haz2.data.ndays.max())
+        self.assertAlmostEqual(haz.data.ndays.mean(), haz2.data.ndays.mean())
+        self.assertAlmostEqual(haz.data.relative_dis.max(), haz2.data.relative_dis.max())
+        self.assertEqual(haz.centroids.lon.min(), haz2.centroids.lon.min())
+        self.assertEqual(haz.centroids.lon.max(), haz2.centroids.lon.max())
+        self.assertEqual(haz.centroids.lat.min(), haz2.centroids.lat.min())
+        self.assertEqual(haz.centroids.lat.max(), haz2.centroids.lat.max())
+        self.assertEqual(haz.intensity.shape, haz2.intensity.shape)
+        self.assertEqual(haz.event_id.size, haz2.event_id.size)
+        self.assertEqual(haz.intensity.max(), haz2.intensity.max())
+        self.assertEqual(haz.data.cluster_id.unique().size, haz2.data.cluster_id.unique().size)
+
+    def test_filter_events(self):
+        """test if the right events are being filtered out"""
+        haz = LowFlow()
+        haz.set_from_nc(input_dir=INPUT_DIR, percentile=2.5, min_intensity=10,
+                        min_number_cells=10, min_days_per_month=10,
+                        yearrange=(2001, 2005), yearrange_ref=(2001, 2005),
+                        gh_model='h08', cl_model='gfdl-esm2m',
+                        scenario='historical', scenario_ref='historical', soc='histsoc',
+                        soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True)
+        self.assertGreaterEqual(haz.data.ndays.min(), 10)
+        self.assertGreaterEqual(haz.intensity[haz.intensity != 0].min(), 10)
+        for event in range(haz.intensity.shape[0]):
+            self.assertGreaterEqual(haz.intensity[event, :].nnz, 10)
+
+
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLowFlow)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLowFlow)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
