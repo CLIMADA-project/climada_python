@@ -44,7 +44,7 @@ class TestTiffFcts(unittest.TestCase):
     def test_get_nowcast_tiff(self):
         start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(5), '%Y-%m-%d')
         end_date = dt.datetime.strftime(dt.datetime.now() - timedelta(1), '%Y-%m-%d')
-        tif_type= ["monthly","daily"]
+        tif_type = ["monthly", "daily"]
 
         for item in tif_type:
             landslide.get_nowcast_tiff(tif_type=item, starttime=start_date, endtime=end_date, save_path=DATA_DIR_TEST)
@@ -54,8 +54,8 @@ class TestTiffFcts(unittest.TestCase):
         search_criteria = "*5400.tif"
         LS_files_monthly = glob.glob(os.path.join(os.getcwd(), search_criteria))
 
-        self.assertTrue(len(LS_files_daily)>0)
-        self.assertTrue(len(LS_files_monthly)==12)
+        self.assertTrue(len(LS_files_daily) > 0)
+        self.assertTrue(len(LS_files_monthly) == 12)
 
         for item in LS_files_daily:
             os.remove(item)
@@ -87,8 +87,8 @@ class TestLSHazard(unittest.TestCase):
                      path_sourcefile=os.path.join(DATA_DIR_TEST, 'nasa_global_landslide_catalog_point.shp'), check_plots=0)
         self.assertEqual(LS_hist.size, 49)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
-        self.assertEqual(min(LS_hist.intensity.data),1)
-        self.assertEqual(max(LS_hist.intensity.data),1)
+        self.assertEqual(min(LS_hist.intensity.data), 1)
+        self.assertEqual(max(LS_hist.intensity.data), 1)
 
 
     def test_set_ls_model_prob(self):
@@ -97,27 +97,27 @@ class TestLSHazard(unittest.TestCase):
         LS_prob.set_ls_model_prob(ls_model="UNEP_NGI", n_years=500, bbox=[48, 10, 45, 7], \
                      incl_neighbour=False, check_plots=0)
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
-        self.assertEqual(LS_prob.intensity_prob.shape,(1, 129600))
-        self.assertEqual(max(LS_prob.intensity.data),1)
-        self.assertEqual(min(LS_prob.intensity.data),0)
-        self.assertEqual(LS_prob.intensity.shape,(1, 129600))
-        self.assertAlmostEqual(max(LS_prob.intensity_prob.data),8.999999999e-05)
-        self.assertEqual(min(LS_prob.intensity_prob.data),5e-07)
+        self.assertEqual(LS_prob.intensity_prob.shape, (1, 129600))
+        self.assertEqual(max(LS_prob.intensity.data), 1)
+        self.assertEqual(min(LS_prob.intensity.data), 0)
+        self.assertEqual(LS_prob.intensity.shape, (1, 129600))
+        self.assertAlmostEqual(max(LS_prob.intensity_prob.data), 8.999999999e-05)
+        self.assertEqual(min(LS_prob.intensity_prob.data), 5e-07)
         self.assertEqual(LS_prob.centroids.size, 129600)
 
         LS_prob_nb = Landslide()
         LS_prob_nb.set_ls_model_prob(ls_model="UNEP_NGI", n_years=500, bbox=[48, 10, 45, 7], \
                      incl_neighbour=True, check_plots=0)
         self.assertEqual(LS_prob_nb.tag.haz_type, 'LS')
-        self.assertEqual(LS_prob_nb.intensity_prob.shape,(1, 129600))
-        self.assertEqual(max(LS_prob_nb.intensity.data),1)
-        self.assertEqual(min(LS_prob_nb.intensity.data),0)
-        self.assertEqual(LS_prob_nb.intensity.shape,(1, 129600))
-        self.assertAlmostEqual(max(LS_prob_nb.intensity_prob.data),8.999999999e-05)
-        self.assertEqual(min(LS_prob_nb.intensity_prob.data),5e-07)
+        self.assertEqual(LS_prob_nb.intensity_prob.shape, (1, 129600))
+        self.assertEqual(max(LS_prob_nb.intensity.data), 1)
+        self.assertEqual(min(LS_prob_nb.intensity.data), 0)
+        self.assertEqual(LS_prob_nb.intensity.shape, (1, 129600))
+        self.assertAlmostEqual(max(LS_prob_nb.intensity_prob.data), 8.999999999e-05)
+        self.assertEqual(min(LS_prob_nb.intensity_prob.data), 5e-07)
         self.assertEqual(LS_prob_nb.centroids.size, 129600)
 
-        self.assertTrue(sum(LS_prob.intensity.data)<sum(LS_prob_nb.intensity.data))
+        self.assertTrue(sum(LS_prob.intensity.data) < sum(LS_prob_nb.intensity.data))
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestTiffFcts)

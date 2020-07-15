@@ -65,7 +65,7 @@ class TestIBTracs(unittest.TestCase):
         """read_ibtracs_netcdf"""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
-        penv_ref = np.ones(97)*1010
+        penv_ref = np.ones(97) * 1010
         penv_ref[26] = 1011
         penv_ref[27] = 1012
         penv_ref[28] = 1013
@@ -412,7 +412,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(track.dist_since_lf.values[msk].size, 38)
 
         self.assertTrue(track.dist_since_lf.values[-1] >
-                        dist_to_coast(track.lat.values[-1], track.lon.values[-1])/1000)
+                        dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall

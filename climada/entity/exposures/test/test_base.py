@@ -39,8 +39,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 def good_exposures():
     """Followng values are defined for each exposure"""
     data = {}
-    data['latitude'] = np.array([ 1, 2, 3])
-    data['longitude'] = np.array([ 2, 3, 4])
+    data['latitude'] = np.array([1, 2, 3])
+    data['longitude'] = np.array([2, 3, 4])
     data['value'] = np.array([1, 2, 3])
     data['deductible'] = np.array([1, 2, 3])
     data[INDICATOR_IF + 'NA'] = np.array([1, 2, 3])
@@ -61,7 +61,7 @@ class TestFuncs(unittest.TestCase):
         expo.check()
         # Fill with dummy values the centroids
         haz = Hazard('TC')
-        haz.centroids.set_lat_lon(np.ones(expo.shape[0]+6), np.ones(expo.shape[0]+6))
+        haz.centroids.set_lat_lon(np.ones(expo.shape[0] + 6), np.ones(expo.shape[0] + 6))
         # assign
         expo.assign_centroids(haz)
 
@@ -71,14 +71,14 @@ class TestFuncs(unittest.TestCase):
     def test_read_raster_pass(self):
         """set_from_raster"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(equal_crs(exp.crs, DEF_CRS))
-        self.assertAlmostEqual(exp['latitude'].max(), 10.248220966978932-0.009000000000000341/2)
-        self.assertAlmostEqual(exp['latitude'].min(), 10.248220966978932-0.009000000000000341/2-59*0.009000000000000341)
-        self.assertAlmostEqual(exp['longitude'].min(), -69.2471495969998+0.009000000000000341/2)
-        self.assertAlmostEqual(exp['longitude'].max(), -69.2471495969998+0.009000000000000341/2+49*0.009000000000000341)
-        self.assertEqual(len(exp), 60*50)
+        self.assertAlmostEqual(exp['latitude'].max(), 10.248220966978932 - 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['latitude'].min(), 10.248220966978932 - 0.009000000000000341 / 2 - 59 * 0.009000000000000341)
+        self.assertAlmostEqual(exp['longitude'].min(), -69.2471495969998 + 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['longitude'].max(), -69.2471495969998 + 0.009000000000000341 / 2 + 49 * 0.009000000000000341)
+        self.assertEqual(len(exp), 60 * 50)
         self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
@@ -88,22 +88,22 @@ class TestFuncs(unittest.TestCase):
         exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
         exp.crs = DEF_CRS
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][0], 51)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][1], 100)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000-1)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000 - 1)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
 
 
     def test_assign_raster_same_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
                                        np.arange(haz.centroids.size, dtype=int)))
@@ -128,7 +128,7 @@ class TestChecker(unittest.TestCase):
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo = expo.drop(['longitude'],axis=1)
+        expo = expo.drop(['longitude'], axis=1)
 
         with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):

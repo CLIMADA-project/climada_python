@@ -362,7 +362,7 @@ class TestSelect(unittest.TestCase):
     def test_select_date_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()
-        sel_haz = haz.select(date=(2,4))
+        sel_haz = haz.select(date=(2, 4))
 
         self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
         self.assertEqual(sel_haz.tag, haz.tag)
@@ -406,7 +406,7 @@ class TestSelect(unittest.TestCase):
     def test_select_date_and_orig_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()
-        sel_haz = haz.select(date=(2,4), orig=False)
+        sel_haz = haz.select(date=(2, 4), orig=False)
 
         self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
         self.assertEqual(sel_haz.tag, haz.tag)
@@ -427,14 +427,14 @@ class TestSelect(unittest.TestCase):
     def test_select_date_wrong_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()
-        sel_haz = haz.select(date=(6,8), orig=False)
+        sel_haz = haz.select(date=(6, 8), orig=False)
         self.assertEqual(sel_haz, None)
 
     def test_select_reg_id_pass(self):
         """Test select region of centroids."""
         haz = dummy_hazard()
         haz.centroids.region_id = np.array([5, 7, 9])
-        sel_haz = haz.select(date=(2,4), orig=False, reg_id=9)
+        sel_haz = haz.select(date=(2, 4), orig=False, reg_id=9)
 
         self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
                                        haz.centroids.coord[2, :]))
@@ -459,7 +459,7 @@ class TestAppend(unittest.TestCase):
         haz1 = Hazard('TC')
         haz1.read_excel(HAZ_TEMPLATE_XLS)
         haz2 = Hazard('TC')
-        haz2.centroids.geometry.crs = {'init':'epsg:4326'}
+        haz2.centroids.geometry.crs = {'init': 'epsg:4326'}
         haz1.append(haz2)
         haz1.check()
 
@@ -680,7 +680,7 @@ class TestAppend(unittest.TestCase):
                                        np.append(haz1_ori.date, haz2.date)))
         self.assertTrue(np.array_equal(haz1.orig,
                                        np.append(haz1_ori.orig, haz2.orig)))
-        self.assertTrue(np.array_equal(haz1.event_id, np.arange(1,9)))
+        self.assertTrue(np.array_equal(haz1.event_id, np.arange(1, 9)))
         self.assertTrue(np.array_equal(haz1.frequency,
                                        np.append(haz1_ori.frequency, haz2.frequency)))
         self.assertEqual(haz1_ori.units, haz1.units)
@@ -803,17 +803,17 @@ class TestYearset(unittest.TestCase):
         self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())),
                                        np.arange(1851, 2012)))
         self.assertTrue(np.array_equal(orig_year_set[1851],
-                                       np.array([1,11,21,31])))
+                                       np.array([1, 11, 21, 31])))
         self.assertTrue(np.array_equal(orig_year_set[1958],
-                                       np.array([8421,8431,8441,8451,8461,8471,8481,8491,8501,8511])))
+                                       np.array([8421, 8431, 8441, 8451, 8461, 8471, 8481, 8491, 8501, 8511])))
         self.assertTrue(np.array_equal(orig_year_set[1986],
-                                       np.array([11101,11111,11121,11131,11141,11151])))
+                                       np.array([11101, 11111, 11121, 11131, 11141, 11151])))
         self.assertTrue(np.array_equal(orig_year_set[1997],
-                                       np.array([12221,12231,12241,12251,12261,12271,12281,12291])))
+                                       np.array([12221, 12231, 12241, 12251, 12261, 12271, 12281, 12291])))
         self.assertTrue(np.array_equal(orig_year_set[2006],
-                                       np.array([13571,13581,13591,13601,13611,13621,13631,13641,13651,13661])))
+                                       np.array([13571, 13581, 13591, 13601, 13611, 13621, 13631, 13641, 13651, 13661])))
         self.assertTrue(np.array_equal(orig_year_set[2010],
-                                       np.array([14071,14081,14091,14101,14111,14121,14131,14141,14151,14161,14171,14181,14191,14201,14211,14221,14231,14241,14251])))
+                                       np.array([14071, 14081, 14091, 14101, 14111, 14121, 14131, 14141, 14151, 14161, 14171, 14181, 14191, 14201, 14211, 14221, 14231, 14241, 14251])))
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the Hazard class"""
@@ -835,8 +835,8 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(hazard.centroids.coord[0][0], -25.95)
         self.assertEqual(hazard.centroids.coord[0][1], 32.57)
-        self.assertEqual(hazard.centroids.coord[n_centroids-1][0], -24.7)
-        self.assertEqual(hazard.centroids.coord[n_centroids-1][1], 33.88)
+        self.assertEqual(hazard.centroids.coord[n_centroids - 1][0], -24.7)
+        self.assertEqual(hazard.centroids.coord[n_centroids - 1][1], 33.88)
 
         self.assertEqual(len(hazard.event_name), 100)
         self.assertEqual(hazard.event_name[12], 'event013')
@@ -844,12 +844,12 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
         self.assertEqual(hazard.event_id[0], 1)
-        self.assertEqual(hazard.event_id[n_events-1], 100)
+        self.assertEqual(hazard.event_id[n_events - 1], 100)
 
         self.assertEqual(hazard.date.dtype, int)
         self.assertEqual(hazard.date.shape, (n_events,))
         self.assertEqual(hazard.date[0], 675874)
-        self.assertEqual(hazard.date[n_events-1], 676329)
+        self.assertEqual(hazard.date[n_events - 1], 676329)
 
         self.assertEqual(hazard.event_name[0], 'event001')
         self.assertEqual(hazard.event_name[50], 'event051')
@@ -858,7 +858,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.frequency.dtype, np.float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
         self.assertEqual(hazard.frequency[0], 0.01)
-        self.assertEqual(hazard.frequency[n_events-2], 0.001)
+        self.assertEqual(hazard.frequency[n_events - 2], 0.001)
 
         self.assertEqual(hazard.intensity.dtype, np.float)
         self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
@@ -867,7 +867,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
         self.assertEqual(hazard.fraction[0, 0], 1)
         self.assertEqual(hazard.fraction[10, 19], 1)
-        self.assertEqual(hazard.fraction[n_events-1, n_centroids-1], 1)
+        self.assertEqual(hazard.fraction[n_events - 1, n_centroids - 1], 1)
 
         self.assertTrue(np.all(hazard.orig))
 
@@ -947,9 +947,9 @@ class TestHDF5(unittest.TestCase):
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         hazard.event_name = list(map(str, hazard.event_name))
-        for todense_flag in [False,True]:
+        for todense_flag in [False, True]:
             if todense_flag:
-                hazard.write_hdf5(file_name,todense=todense_flag)
+                hazard.write_hdf5(file_name, todense=todense_flag)
             else:
                 hazard.write_hdf5(file_name)
 
@@ -987,13 +987,13 @@ class TestCentroids(unittest.TestCase):
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
 
-        haz_fl.reproject_raster(dst_crs={'init':'epsg:2202'})
+        haz_fl.reproject_raster(dst_crs={'init': 'epsg:2202'})
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
         self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
         self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
         self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init':'epsg:2202'}))
+        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:2202'}))
         self.assertEqual(haz_fl.centroids.meta['width'], 968)
         self.assertEqual(haz_fl.centroids.meta['height'], 1081)
         self.assertEqual(haz_fl.fraction.min(), 0)
@@ -1013,10 +1013,10 @@ class TestCentroids(unittest.TestCase):
         haz_fl.raster_to_vector()
 
         self.assertEqual(haz_fl.centroids.meta, dict())
-        self.assertAlmostEqual(haz_fl.centroids.lat.min(), meta_orig['transform'][5]+meta_orig['height']*meta_orig['transform'][4]-meta_orig['transform'][4]/2)
-        self.assertAlmostEqual(haz_fl.centroids.lat.max(), meta_orig['transform'][5]+meta_orig['transform'][4]/2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.max(), meta_orig['transform'][2]+meta_orig['width']*meta_orig['transform'][0]-meta_orig['transform'][0]/2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.min(), meta_orig['transform'][2]+meta_orig['transform'][0]/2)
+        self.assertAlmostEqual(haz_fl.centroids.lat.min(), meta_orig['transform'][5] + meta_orig['height'] * meta_orig['transform'][4] - meta_orig['transform'][4] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lat.max(), meta_orig['transform'][5] + meta_orig['transform'][4] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.max(), meta_orig['transform'][2] + meta_orig['width'] * meta_orig['transform'][0] - meta_orig['transform'][0] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.min(), meta_orig['transform'][2] + meta_orig['transform'][0] / 2)
         self.assertTrue(equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
@@ -1030,16 +1030,16 @@ class TestCentroids(unittest.TestCase):
         haz_fl.orig = np.array([1])
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
-        haz_fl.reproject_vector(dst_crs={'init':'epsg:2202'})
+        haz_fl.reproject_vector(dst_crs={'init': 'epsg:2202'})
         self.assertTrue(np.allclose(haz_fl.centroids.lat, np.array([331585.4099637291, 696803.88, 1098649.44])))
         self.assertTrue(np.allclose(haz_fl.centroids.lon, np.array([11625664.37925186, 11939560.43, 12244857.13])))
-        self.assertTrue(equal_crs(haz_fl.centroids.crs, {'init':'epsg:2202'}))
+        self.assertTrue(equal_crs(haz_fl.centroids.crs, {'init': 'epsg:2202'}))
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), np.array([0.5, 0.2, 0.1])))
-        self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1])/2))
+        self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))
 
     def test_vector_to_raster_pass(self):
         """Test vector_to_raster"""
@@ -1050,12 +1050,12 @@ class TestCentroids(unittest.TestCase):
         haz_fl.orig = np.array([1])
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.vector_to_raster()
-        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init':'epsg:4326'}))
+        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:4326'}))
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][1], 0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][2], 0.5)
@@ -1069,7 +1069,7 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(haz_fl.intensity.min() >= 0)
         self.assertTrue(haz_fl.intensity.max() <= 0.5)
         self.assertTrue(haz_fl.fraction.min() >= 0)
-        self.assertTrue(haz_fl.fraction.max() <= 0.5/2)
+        self.assertTrue(haz_fl.fraction.max() <= 0.5 / 2)
 
 # Execute Tests
 if __name__ == "__main__":

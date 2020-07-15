@@ -36,7 +36,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(hazard_set.tag.haz_type, 'DR')
         self.assertEqual(hazard_set.size, 114)
         self.assertEqual(hazard_set.centroids.size, 130)
-        self.assertEqual(hazard_set.intensity[112,111], -1.6286273002624512)
+        self.assertEqual(hazard_set.intensity[112, 111], -1.6286273002624512)
 
 # Execute Tests
 if __name__ == "__main__":

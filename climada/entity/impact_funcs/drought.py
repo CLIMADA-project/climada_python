@@ -52,7 +52,7 @@ class IFDrought(ImpactFunc):
         self.intensity_unit = "NA"
         self.intensity = [-6.5, -4, -1, 0]
         self.mdd = [1, 1, 0, 0]
-        self.paa = [1,1,0,0]
+        self.paa = [1, 1, 0, 0]
 
     def set_default_sum(self):
         self.haz_type = "DR_sum"
@@ -60,8 +60,8 @@ class IFDrought(ImpactFunc):
         self.name = "drought default sum"
         self.intensity_unit = "NA"
         self.intensity = [-15, -12, -9, -7, -5, 0]
-        self.mdd = [1,0.65,0.5,0.3,0,0]
-        self.paa = [1,1,1,1,0,0]
+        self.mdd = [1, 0.65, 0.5, 0.3, 0, 0]
+        self.paa = [1, 1, 1, 1, 0, 0]
 
     def set_default_sumthr(self):
         self.haz_type = "DR_sumthr"
@@ -69,15 +69,15 @@ class IFDrought(ImpactFunc):
         self.name = "drought default sum - thr"
         self.intensity_unit = "NA"
         self.intensity = [-8, -5, -2, 0]
-        self.mdd = [0.7,0.3,0,0]
-        self.paa = [1,1,0,0]
+        self.mdd = [0.7, 0.3, 0, 0]
+        self.paa = [1, 1, 0, 0]
 
     def set_step(self):
         self.haz_type = "DR"
         self.id = 1
         self.name = "step"
         self.intensity_unit = "NA"
-        self.intensity = np.arange(-4,0)
+        self.intensity = np.arange(-4, 0)
         self.mdd = np.ones(self.intensity.size)
         self.paa = np.ones(self.mdd.size)
 

@@ -148,15 +148,15 @@ class Drought(Hazard):
         index_lat = np.where(np.logical_and(lat_total >= self.latmin,
                                             lat_total <= self.latmax))[0]
 
-        lat_vector = dataset.lat[index_lat[0]:index_lat[len(index_lat)-1]].data
-        lon_vector = dataset.lon[index_lon[0]:index_lon[len(index_lon)-1]].data
+        lat_vector = dataset.lat[index_lat[0]:index_lat[len(index_lat) - 1]].data
+        lon_vector = dataset.lon[index_lon[0]:index_lon[len(index_lon) - 1]].data
         self.time_vector = dataset.time.data
         self.lat_vector = lat_vector
         self.lon_vector = lon_vector
         self.timeforname = self.time_vector
 
-        spei_matrix = dataset.spei[:, index_lat[0]:index_lat[len(index_lat)-1],
-                                   index_lon[0]:index_lon[len(index_lon)-1]].data
+        spei_matrix = dataset.spei[:, index_lat[0]:index_lat[len(index_lat) - 1],
+                                   index_lon[0]:index_lon[len(index_lon) - 1]].data
 
         return spei_matrix
 
@@ -174,7 +174,7 @@ class Drought(Hazard):
                 if self.file_path == os.path.join(SPEI_FILE_DIR, SPEI_FILE_NAME):
 
                     try:
-                        path_dwl = download_file(SPEI_FILE_URL + '/'+ SPEI_FILE_NAME)
+                        path_dwl = download_file(SPEI_FILE_URL + '/' + SPEI_FILE_NAME)
 
                         try:
                             os.rename(path_dwl, self.file_path)
@@ -275,10 +275,10 @@ class Drought(Hazard):
 
         self.centroids.set_lat_lon(lat_1d, lon_1d)
 
-        self.event_id = np.arange(1, self.n_years+1, 1)
+        self.event_id = np.arange(1, self.n_years + 1, 1)
         # frequency set when all eventsavailable
         #self.frequency = np.array([1])
-        #per default equal to event_id
+        # per default equal to event_id
         name_list = []
 
         time = pd.to_datetime(self.timeforname)
@@ -287,13 +287,13 @@ class Drought(Hazard):
             name_list.append(str(time[i].year))
         self.event_name = name_list
 
-        self.frequency = np.ones(self.n_years)/self.n_years
+        self.frequency = np.ones(self.n_years) / self.n_years
 
         self.fraction = self.intensity.copy()
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
-        self.date = np.arange(1, self.n_years+1, 1)
-        #new_haz.orig =
+        self.date = np.arange(1, self.n_years + 1, 1)
+        # new_haz.orig =
         self.check()
         return self
 
@@ -315,7 +315,7 @@ class Drought(Hazard):
 
         #first_month = time[0].month
 
-        #index_offset to get index of january of first year considered
+        # index_offset to get index of january of first year considered
         index_offset = 12 - time[0].month + 1
 
 
@@ -324,13 +324,13 @@ class Drought(Hazard):
             index_offset += 12
 
 
-        last_year = time[len(time)-1].year
+        last_year = time[len(time) - 1].year
 
-        if time[len(time)-1].month < 9:
+        if time[len(time) - 1].month < 9:
             last_year -= 1
 
 
-        n_years = last_year - first_year + 1 # the first year not counted
+        n_years = last_year - first_year + 1  # the first year not counted
         #years_vector = np.arange(first_year, last_year)
         self.date = np.arange(first_year, last_year)
         self.n_years = n_years
@@ -342,20 +342,19 @@ class Drought(Hazard):
         date_end_matrix = np.zeros((n_years, spei_2d.shape[1]))
 
 
-        time = time[index_offset - 3: index_offset + 12*n_years - 3]
+        time = time[index_offset - 3: index_offset + 12 * n_years - 3]
         self.time_vector = self.time_vector[index_offset - 3: index_offset +
-                                            12*n_years - 3]
+                                            12 * n_years - 3]
 
         for pixel in range(spei_2d.shape[1]):
 
             array_time_centroid = spei_2d[index_offset - 3: index_offset +
-                                          12*n_years - 3, pixel]
+                                          12 * n_years - 3, pixel]
 
 
             list_events = self.__create_list(array_time_centroid)
 
-            [intmin, intsum, intsumthr, start, end] = self.__read_list\
-            (list_events, np.arange(first_year, last_year), first_year)
+            [intmin, intsum, intsumthr, start, end] = self.__read_list(list_events, np.arange(first_year, last_year), first_year)
 
             intensity_min_matrix[:, pixel] = intmin
             intensity_sum_matrix[:, pixel] = intsum
@@ -391,9 +390,9 @@ class Drought(Hazard):
         end_time = []
 
         list_events_info = list()
-        #create a list with every event exeeding the threshold
+        # create a list with every event exeeding the threshold
         for time_idx in range(len(array_time_in_centroid)):
-        #for time_idx in enumerate(array_time_in_centroid):
+        # for time_idx in enumerate(array_time_in_centroid):
 
             if array_time_in_centroid[time_idx] == 0:
 
@@ -487,7 +486,7 @@ class Drought(Hazard):
     def plot_intensity_drought(self, event=None):
         """plot drought intensity"""
 
-        #limits of the plots and colormap settings
+        # limits of the plots and colormap settings
         if self.intensity_definition == 1:
             minimum = -4
             colourmap = 'afmhot'
@@ -499,7 +498,7 @@ class Drought(Hazard):
             colourmap = 'gist_heat'
 
         # create boundaries between minimum and maximum
-        boundaries = np.arange(minimum, -1+0.02, 0.01)
+        boundaries = np.arange(minimum, -1 + 0.02, 0.01)
 
         # create list of colors from colormap
         list_colours = mpl.cm.get_cmap(colourmap, len(boundaries))
@@ -507,18 +506,18 @@ class Drought(Hazard):
         if self.intensity_definition == 2:
             colors = list(list_colours(np.arange(len(boundaries))))
         else:
-            colors = list(list_colours(np.arange(len(boundaries)-len(index_thr))))
-            #set all values above the threshold to white
+            colors = list(list_colours(np.arange(len(boundaries) - len(index_thr))))
+            # set all values above the threshold to white
             colors.extend(["white" for x in range(len(index_thr))])
-        #define colourmap
+        # define colourmap
         cmap = mpl.colors.ListedColormap(colors[1:], "")
 
         # set over-shoot to last color of list
-        cmap.set_over(colors[len(colors)-1])
+        cmap.set_over(colors[len(colors) - 1])
         if self.intensity_definition == 2:
             self.plot_intensity(event=event, cmap=cmap, vmin=minimum, vmax=0.01)
         else:
-            self.plot_intensity(event=event, cmap=cmap, vmin=minimum, vmax=-1+0.01)
+            self.plot_intensity(event=event, cmap=cmap, vmin=minimum, vmax=-1 + 0.01)
 
 
 
@@ -546,11 +545,11 @@ class Drought(Hazard):
     def plot_start_end_date(self, event=None):
         """plot start and end date of the chosen event"""
 
-        startyear = str_to_date(str(int(event)-1)+'-09-15')
-        startdate = str_to_date(str(int(event)-1)+'-10-01')
-        enddate = str_to_date(str(int(event)+1)+'-01-01')
+        startyear = str_to_date(str(int(event) - 1) + '-09-15')
+        startdate = str_to_date(str(int(event) - 1) + '-10-01')
+        enddate = str_to_date(str(int(event) + 1) + '-01-01')
 
-        dates = np.arange(np.ceil(startdate/100)*100, np.ceil(startdate/100)*100+400, 100)
+        dates = np.arange(np.ceil(startdate / 100) * 100, np.ceil(startdate / 100) * 100 + 400, 100)
         list_dates = list()
         for i in range(len(dates)):
             list_dates.append(date_to_str(dates.astype(np.int64)[i]))
@@ -562,19 +561,19 @@ class Drought(Hazard):
         index_thr = np.where(boundaries < startdate)[0]
         colors = ["white" for x in range(len(index_thr))]
         colors.extend(list(cmap_reds(np.arange(len(boundaries) - len(index_thr)))))
-        #define colourmap
+        # define colourmap
         cmap = mpl.colors.ListedColormap(colors[1:], "")
         # set over-color to last color of list
         cmap.set_over(colors[len(colors) - 1])
 
-        #Plot Start
+        # Plot Start
         self.intensity = sparse.csr_matrix(self.date_start)
         self.plot_intensity(event=event, cmap=cmap, vmin=startdate, \
                             vmax=enddate, snap="true")
         plt.ylabel('Date')
         plt.yticks(dates, list_dates)
 
-        #Plot End
+        # Plot End
         self.intensity = sparse.csr_matrix(self.date_end)
         self.plot_intensity(event=event, cmap=cmap, vmin=startdate,\
                             vmax=enddate, snap="true")

@@ -123,7 +123,7 @@ class BlackMarble(Exposures):
             (self.longitude.min(), self.latitude.min(),
              self.longitude.max(), self.latitude.max()),
             (coord_nl[0, 1], -coord_nl[0, 1]))
-        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
+        self.meta = {'width': cols, 'height': rows, 'crs': self.crs, 'transform': ras_trans}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,
@@ -167,7 +167,7 @@ class BlackMarble(Exposures):
         exp_bkmrb['value'] = np.asarray(nightlight_reg).reshape(-1,)
         exp_bkmrb['latitude'] = lat_reg
         exp_bkmrb['longitude'] = lon_reg
-        exp_bkmrb['region_id'] = np.ones(exp_bkmrb.value.size, int)*cntry_info[0]
+        exp_bkmrb['region_id'] = np.ones(exp_bkmrb.value.size, int) * cntry_info[0]
         exp_bkmrb[INDICATOR_IF] = np.ones(exp_bkmrb.value.size, int)
 
         return exp_bkmrb
@@ -289,7 +289,7 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
             nl_year = 2012
         LOGGER.info("Nightlights from NASA's earth observatory for year %s.",
                     str(nl_year))
-        res_fact = DEF_RES_NASA_KM/res_km
+        res_fact = DEF_RES_NASA_KM / res_km
         geom = [info[2] for info in cntry_info.values()]
         geom = shapely.ops.cascaded_union(geom)
         req_files = nl_utils.check_required_nl_files(geom.bounds)
@@ -312,7 +312,7 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
             nl_year = 2013
         LOGGER.info("Nightlights from NOAA's earth observation group for year %s.",
                     str(nl_year))
-        res_fact = DEF_RES_NOAA_KM/res_km
+        res_fact = DEF_RES_NOAA_KM / res_km
         # nightlight intensity with 30 arcsec resolution
         nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(nl_year)
 
@@ -370,24 +370,22 @@ def _cut_admin1(nightlight, lat, lon, admin1_geom, coord_nl, on_land):
     """
     all_geom = shapely.ops.cascaded_union(admin1_geom)
 
-    in_lat = math.floor((all_geom.bounds[1] - lat[0, 0])/coord_nl[0, 1]), \
-             math.ceil((all_geom.bounds[3] - lat[0, 0])/coord_nl[0, 1])
-    in_lon = math.floor((all_geom.bounds[0] - lon[0, 0])/coord_nl[1, 1]), \
-             math.ceil((all_geom.bounds[2] - lon[0, 0])/coord_nl[1, 1])
+    in_lat = math.floor((all_geom.bounds[1] - lat[0, 0]) / coord_nl[0, 1]), \
+             math.ceil((all_geom.bounds[3] - lat[0, 0]) / coord_nl[0, 1])
+    in_lon = math.floor((all_geom.bounds[0] - lon[0, 0]) / coord_nl[1, 1]), \
+             math.ceil((all_geom.bounds[2] - lon[0, 0]) / coord_nl[1, 1])
 
-    nightlight_reg = nightlight[in_lat[0]:in_lat[-1]+1, :] \
-                               [:, in_lon[0]:in_lon[-1]+1]
+    nightlight_reg = nightlight[in_lat[0]:in_lat[-1] + 1, :][:, in_lon[0]:in_lon[-1] + 1]
     nightlight_reg[nightlight_reg < 0.0] = 0.0
 
-    lat_reg, lon_reg = np.mgrid[lat[0, 0] + in_lat[0]*coord_nl[0, 1]:
-                                lat[0, 0] + in_lat[1]*coord_nl[0, 1]:
+    lat_reg, lon_reg = np.mgrid[lat[0, 0] + in_lat[0] * coord_nl[0, 1]:
+                                lat[0, 0] + in_lat[1] * coord_nl[0, 1]:
                                 complex(0, nightlight_reg.shape[0]),
-                                lon[0, 0] + in_lon[0]*coord_nl[1, 1]:
-                                lon[0, 0] + in_lon[1]*coord_nl[1, 1]:
+                                lon[0, 0] + in_lon[0] * coord_nl[1, 1]:
+                                lon[0, 0] + in_lon[1] * coord_nl[1, 1]:
                                 complex(0, nightlight_reg.shape[1])]
 
-    on_land_reg = on_land[in_lat[0]:in_lat[-1]+1, :] \
-                         [:, in_lon[0]:in_lon[-1]+1]
+    on_land_reg = on_land[in_lat[0]:in_lat[-1] + 1, :][:, in_lon[0]:in_lon[-1] + 1]
 
     return nightlight_reg, lat_reg, lon_reg, all_geom, on_land_reg
 
@@ -406,18 +404,18 @@ def _cut_country(geom, nightlight, coord_nl):
         on_land_reg (2d array of same size as previous with True values on land
         points)
     """
-    in_lat = math.floor((geom.bounds[1] - coord_nl[0, 0])/coord_nl[0, 1]), \
-             math.ceil((geom.bounds[3] - coord_nl[0, 0])/coord_nl[0, 1])
-    in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
-             math.ceil((geom.bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
+    in_lat = math.floor((geom.bounds[1] - coord_nl[0, 0]) / coord_nl[0, 1]), \
+             math.ceil((geom.bounds[3] - coord_nl[0, 0]) / coord_nl[0, 1])
+    in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0]) / coord_nl[1, 1]), \
+             math.ceil((geom.bounds[2] - coord_nl[1, 0]) / coord_nl[1, 1])
 
-    nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1] \
+    nightlight_reg = nightlight[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[-1] + 1] \
         .toarray()
-    lat_reg, lon_reg = np.mgrid[coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
-                                coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
+    lat_reg, lon_reg = np.mgrid[coord_nl[0, 0] + in_lat[0] * coord_nl[0, 1]:
+                                coord_nl[0, 0] + in_lat[1] * coord_nl[0, 1]:
                                 complex(0, nightlight_reg.shape[0]),
-                                coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]:
-                                coord_nl[1, 0] + in_lon[1]*coord_nl[1, 1]:
+                                coord_nl[1, 0] + in_lon[0] * coord_nl[1, 1]:
+                                coord_nl[1, 0] + in_lon[1] * coord_nl[1, 1]:
                                 complex(0, nightlight_reg.shape[1])]
 
     on_land_reg = np.zeros(lat_reg.shape, bool)
@@ -426,16 +424,16 @@ def _cut_country(geom, nightlight, coord_nl):
     except TypeError:
         geom = [geom]
     for poly in geom:
-        in_lat = math.floor((poly.bounds[1] - lat_reg[0, 0])/coord_nl[0, 1]), \
-                 math.ceil((poly.bounds[3] - lat_reg[0, 0])/coord_nl[0, 1])
-        in_lon = math.floor((poly.bounds[0] - lon_reg[0, 0])/coord_nl[1, 1]), \
-                 math.ceil((poly.bounds[2] - lon_reg[0, 0])/coord_nl[1, 1])
-        on_land_reg[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1] = \
+        in_lat = math.floor((poly.bounds[1] - lat_reg[0, 0]) / coord_nl[0, 1]), \
+                 math.ceil((poly.bounds[3] - lat_reg[0, 0]) / coord_nl[0, 1])
+        in_lon = math.floor((poly.bounds[0] - lon_reg[0, 0]) / coord_nl[1, 1]), \
+                 math.ceil((poly.bounds[2] - lon_reg[0, 0]) / coord_nl[1, 1])
+        on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] = \
             np.logical_or( \
-            on_land_reg[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1], \
+            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1], \
             shapely.vectorized.contains(poly, \
-            lon_reg[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1], \
-            lat_reg[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1]))
+            lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1], \
+            lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1]))
 
     # put zero values outside country
     nightlight_reg[np.logical_not(on_land_reg)] = 0.0
@@ -466,13 +464,13 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
         nightlight_res[nightlight_res < 0.0] = 0.0
 
         lat_res, lon_res = np.mgrid[
-            lat[0, 0] : lat[-1, 0] : complex(0, nightlight_res.shape[0]),
-            lon[0, 0] : lon[0, -1] : complex(0, nightlight_res.shape[1])]
+            lat[0, 0]: lat[-1, 0]: complex(0, nightlight_res.shape[0]),
+            lon[0, 0]: lon[0, -1]: complex(0, nightlight_res.shape[1])]
 
         on_land = shapely.vectorized.contains(geom, lon_res, lat_res)
 
         nightlight_res[np.logical_not(on_land)] = 0.0
-        nightlight_res = nightlight_res/nightlight_res.sum()*sum_val
+        nightlight_res = nightlight_res / nightlight_res.sum() * sum_val
 
     return nightlight_res[on_land].ravel(), lat_res[on_land], lon_res[on_land]
 
@@ -491,6 +489,6 @@ def _set_econ_indicators(nightlight, gdp_val, inc_grp, poly_val):
     """
     if nightlight.sum() > 0:
         nightlight = polyval(np.asarray(nightlight), poly_val)
-        nightlight = nightlight/nightlight.sum() * gdp_val * (inc_grp+1)
+        nightlight = nightlight / nightlight.sum() * gdp_val * (inc_grp + 1)
 
     return nightlight

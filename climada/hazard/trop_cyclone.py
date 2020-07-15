@@ -54,11 +54,11 @@ CENTR_NODE_MAX_DIST_KM = 300
 CENTR_NODE_MAX_DIST_DEG = 5.5
 """Maximum distance between centroid and TC track node in degrees"""
 
-MODEL_VANG = { 'H08': 0 }
+MODEL_VANG = {'H08': 0}
 """Enumerate different symmetric wind field calculation."""
 
-KMH_TO_MS = (1.0 * ureg.km/ureg.hour).to(ureg.meter/ureg.second).magnitude
-KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter/ureg.second).magnitude
+KMH_TO_MS = (1.0 * ureg.km / ureg.hour).to(ureg.meter / ureg.second).magnitude
+KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 """Unit conversion factors for JIT functions that can't use ureg"""
 
@@ -143,7 +143,7 @@ class TropCyclone(Hazard):
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(coastal_idx.size))
         if self.pool:
-            chunksize = min(num_tracks//self.pool.ncpus, 1000)
+            chunksize = min(num_tracks // self.pool.ncpus, 1000)
             tc_haz = self.pool.map(self._tc_from_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
                 itertools.repeat(coastal_idx, num_tracks),
@@ -220,11 +220,11 @@ class TropCyclone(Hazard):
             centroids.total_bounds[1] - 1 < track.lat.values)).reshape(-1)
 
         tc_list = []
-        tr_coord = {'lat':[], 'lon':[]}
-        for node in range(idx_plt.size-2):
+        tr_coord = {'lat': [], 'lon': []}
+        for node in range(idx_plt.size - 2):
             tr_piece = track.sel(time=slice(track.time.values[idx_plt[node]], \
-                track.time.values[idx_plt[node+2]]))
-            tr_piece.attrs['n_nodes'] = 2 # plot only one node
+                track.time.values[idx_plt[node + 2]]))
+            tr_piece.attrs['n_nodes'] = 2  # plot only one node
             tr_sel = TCTracks()
             tr_sel.append(tr_piece)
             tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
@@ -233,7 +233,7 @@ class TropCyclone(Hazard):
             tc_tmp = TropCyclone()
             tc_tmp.set_from_tracks(tr_sel, centroids)
             tc_tmp.event_name = [track.name + ' ' + time.strftime("%d %h %Y %H:%M", \
-                time.gmtime(tr_sel.data[0].time[1].values.astype(int)/1000000000))]
+                time.gmtime(tr_sel.data[0].time[1].values.astype(int) / 1000000000))]
             tc_list.append(tc_tmp)
 
         if 'cmap' not in kwargs:
@@ -252,8 +252,8 @@ class TropCyclone(Hazard):
         if file_name:
             LOGGER.info('Generating video %s', file_name)
             fig, axis = u_plot.make_map()
-            pbar = tqdm(total=idx_plt.size-2)
-            ani = animation.FuncAnimation(fig, run, frames=idx_plt.size-2,
+            pbar = tqdm(total=idx_plt.size - 2)
+            ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)
             ani.save(file_name, writer=writer)
             pbar.close()
@@ -310,7 +310,7 @@ class TropCyclone(Hazard):
         new_haz.intensity = sparse.csr_matrix(intensity.reshape(1, -1))
         if store_windfields:
             wf_full = np.zeros((npositions, ncentroids, 2))
-            wf_full[:,coastal_idx,:] = windfields
+            wf_full[:, coastal_idx, :] = windfields
             new_haz.windfields = [
                 sparse.csr_matrix(wf_full.reshape(npositions, -1))]
         new_haz.units = 'm/s'
@@ -399,7 +399,7 @@ def compute_windfields(track, centroids, model):
 
     # compute distances and vectors to all centroids
     d_centr, v_centr = [ar[0] for ar in dist_approx(t_lat[None], t_lon[None],
-        track_centr[None,:, 0], track_centr[None,:, 1],
+        track_centr[None, :, 0], track_centr[None, :, 1],
         log=True, method="geosphere")]
 
     # exclude centroids that are too far from or too close to the eye
@@ -407,7 +407,7 @@ def compute_windfields(track, centroids, model):
     if not np.any(close_centr):
         return windfields
     v_centr_normed = np.zeros_like(v_centr)
-    v_centr_normed[close_centr] = v_centr[close_centr] / d_centr[close_centr,None]
+    v_centr_normed[close_centr] = v_centr[close_centr] / d_centr[close_centr, None]
 
     # make sure that central pressure never exceeds environmental pressure
     pres_exceed_msk = (t_cen > t_env)
@@ -439,9 +439,9 @@ def compute_windfields(track, centroids, model):
     if np.count_nonzero(t_lat < 0) > np.count_nonzero(t_lat > 0):
         hemisphere = 'S'
     v_ang_rotate = [1.0, -1.0] if hemisphere == 'N' else [-1.0, 1.0]
-    v_ang_dir = np.array(v_ang_rotate)[...,:] * v_centr_normed[1:,:,::-1]
+    v_ang_dir = np.array(v_ang_rotate)[..., :] * v_centr_normed[1:, :, ::-1]
     v_ang = np.zeros_like(v_ang_dir)
-    v_ang[close_centr[1:]] = v_ang_norm[close_centr[1:],None] \
+    v_ang[close_centr[1:]] = v_ang_norm[close_centr[1:], None] \
                              * v_ang_dir[close_centr[1:]]
 
     # Influence of translational speed decreases with distance from eye.
@@ -452,16 +452,16 @@ def compute_windfields(track, centroids, model):
     #   wind speed profiles in a GIS. UNED/GRID-Geneva.
     #   https://unepgrid.ch/en/resource/19B7D302
     #
-    t_rad_bc = np.broadcast_arrays(t_rad[:,None], d_centr)[0]
+    t_rad_bc = np.broadcast_arrays(t_rad[:, None], d_centr)[0]
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr] = np.fmin(1,
         t_rad_bc[close_centr] / d_centr[close_centr])
 
     # add angular and corrected translational velocity vectors
-    v_full = v_trans[1][1:,None,:] * v_trans_corr[1:,:,None] + v_ang
+    v_full = v_trans[1][1:, None, :] * v_trans_corr[1:, :, None] + v_ang
     v_full[np.isnan(v_full)] = 0
 
-    windfields[1:,track_centr_idx,:] = v_full
+    windfields[1:, track_centr_idx, :] = v_full
     return windfields
 
 def _close_centroids(t_lat, t_lon, centroids):
@@ -516,17 +516,17 @@ def _vtrans(t_lat, t_lon, t_tstep):
     """
     v_trans = np.zeros((t_lat.size, 2))
     v_trans_norm = np.zeros((t_lat.size,))
-    norm, vec = dist_approx(t_lat[:-1,None], t_lon[:-1,None],
-        t_lat[1:,None], t_lon[1:,None], log=True, method="geosphere")
-    v_trans[1:,:] = vec[:,0,0]
-    v_trans[1:,:] *= KMH_TO_MS / t_tstep[1:,None]
-    v_trans_norm[1:] = norm[:,0,0]
+    norm, vec = dist_approx(t_lat[:-1, None], t_lon[:-1, None],
+        t_lat[1:, None], t_lon[1:, None], log=True, method="geosphere")
+    v_trans[1:, :] = vec[:, 0, 0]
+    v_trans[1:, :] *= KMH_TO_MS / t_tstep[1:, None]
+    v_trans_norm[1:] = norm[:, 0, 0]
     v_trans_norm[1:] *= KMH_TO_MS / t_tstep[1:]
 
     # limit to 30 nautical miles per hour
     msk = (v_trans_norm > 30 * KN_TO_MS)
     fact = 30 * KN_TO_MS / v_trans_norm[msk]
-    v_trans[msk,:] *= fact[:,None]
+    v_trans[msk, :] *= fact[:, None]
     v_trans_norm[msk] *= fact
     return v_trans_norm, v_trans
 
@@ -593,8 +593,8 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     """
     v_ang = np.zeros_like(d_centr)
     r_max, hol_b, lat, penv, pcen, d_centr = [ar[close_centr]
-        for ar in np.broadcast_arrays(r_max[:,None], hol_b[:,None], lat[:,None],
-                                      penv[:,None], pcen[:,None], d_centr)]
+        for ar in np.broadcast_arrays(r_max[:, None], hol_b[:, None], lat[:, None],
+                                      penv[:, None], pcen[:, None], d_centr)]
 
     # air density
     rho = 1.15

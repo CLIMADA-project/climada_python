@@ -28,19 +28,19 @@ class TestFuncs(unittest.TestCase):
 
     def test_get_transform_4326_pass(self):
         """Check _get_transformation for 4326 epsg."""
-        res, unit = u_plot.get_transformation({'init':'epsg:4326'})
+        res, unit = u_plot.get_transformation({'init': 'epsg:4326'})
         self.assertIsInstance(res, cartopy.crs.PlateCarree)
         self.assertEqual(unit, '°')
 
     def test_get_transform_3395_pass(self):
         """Check that assigned attribute is correctly set."""
-        res, unit = u_plot.get_transformation({'init':'epsg:3395'})
+        res, unit = u_plot.get_transformation({'init': 'epsg:3395'})
         self.assertIsInstance(res, cartopy.crs.Mercator)
         self.assertEqual(unit, 'm')
 
     def test_get_transform_3035_pass(self):
         """Check that assigned attribute is correctly set."""
-        res, unit = u_plot.get_transformation({'init':'epsg:3035'})
+        res, unit = u_plot.get_transformation({'init': 'epsg:3035'})
         self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
         self.assertEqual(unit, 'm')
 

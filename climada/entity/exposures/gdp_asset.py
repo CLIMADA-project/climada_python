@@ -196,17 +196,17 @@ def _read_GDP(shp_exposures, ref_year, path=None):
                                      method='nearest',
                                      bounds_error=False,
                                      fill_value=None)
-        asset = gdp*conv_factors
+        asset = gdp * conv_factors
 
     return asset
 
 
 def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
 
-    if (max(gdp_lat)+0.5 < max(shp_exposures[:, 0])) or\
-           (max(gdp_lon)+0.5 < max(shp_exposures[:, 1])) or\
-           (min(gdp_lat)-0.5 > min(shp_exposures[:, 0])) or\
-           (min(gdp_lon)-0.5 > min(shp_exposures[:, 1])):
+    if (max(gdp_lat) + 0.5 < max(shp_exposures[:, 0])) or\
+           (max(gdp_lon) + 0.5 < max(shp_exposures[:, 1])) or\
+           (min(gdp_lat) - 0.5 > min(shp_exposures[:, 0])) or\
+           (min(gdp_lon) - 0.5 > min(shp_exposures[:, 1])):
 
         LOGGER.error('Asset Data does not match selected country')
         raise IOError

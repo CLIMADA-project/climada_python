@@ -91,7 +91,7 @@ def check_required_nl_files(bbox, *coords):
     """
     try:
         if not coords:
-            #check if bbox is valid
+            # check if bbox is valid
             if (np.size(bbox) != 4) or (bbox[0] > bbox[2]) \
             or (bbox[1] > bbox[3]):
                 LOGGER.error('Invalid bounding box supplied.')
@@ -116,20 +116,20 @@ def check_required_nl_files(bbox, *coords):
     req_files = np.zeros(np.count_nonzero(BM_FILENAMES),)
 
     # determine the staring tile
-    first_tile_lon = min(np.floor((min_lon-(-180))/tile_width), 3) #"normalise" to zero
-    last_tile_lon = min(np.floor((max_lon-(-180))/tile_width), 3)
+    first_tile_lon = min(np.floor((min_lon - (-180)) / tile_width), 3)  # "normalise" to zero
+    last_tile_lon = min(np.floor((max_lon - (-180)) / tile_width), 3)
 
     # Now latitude. The height of all tiles is the same as the height.
     # Note that for this analysis returns an index which follows from North to South oritentation.
-    first_tile_lat = min(np.floor(-(min_lat-(90))/tile_width), 1)
-    last_tile_lat = min(np.floor(-(max_lat-90)/tile_width), 1)
+    first_tile_lat = min(np.floor(-(min_lat - (90)) / tile_width), 1)
+    last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
-    for i_lon in range(0, int(len(req_files)/2)):
+    for i_lon in range(0, int(len(req_files) / 2)):
         if first_tile_lon <= i_lon and last_tile_lon >= i_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
-                req_files[((i_lon))*2] = 1
+                req_files[((i_lon)) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
-                req_files[((i_lon))*2 + 1] = 1
+                req_files[((i_lon)) * 2 + 1] = 1
         else:
             continue
     return req_files
@@ -154,7 +154,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     """
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and '+ \
+        LOGGER.warning('The parameter \'required_files\' was too short and ' + \
                        'is ignored.')
     if not path.exists(check_path):
         check_path = SYSTEM_DIR
@@ -202,7 +202,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     if (len(req_files) != len(files_exist)) or \
         (len(req_files) != len(BM_FILENAMES)):
         raise ValueError('The given arguments are invalid. req_files and ' + \
-            'files_exist must both be as long as there are files to download'+\
+            'files_exist must both be as long as there are files to download' +\
             ' (' + str(len(BM_FILENAMES)) + ').')
     if not path.exists(dwnl_path):
         dwnl_path = SYSTEM_DIR
@@ -254,15 +254,15 @@ def load_nightlight_nasa(bounds, req_files, year):
     min_lon, min_lat, max_lon, max_lat = bounds
     bounds_mat = np.array([[min_lat, min_lon], [max_lat, max_lon]])
     global_idx = (bounds_mat - coord_min[None]) / coord_h[None]
-    global_idx[0,:] = np.floor(global_idx[0,:])
-    global_idx[1,:] = np.ceil(global_idx[1,:])
+    global_idx[0, :] = np.floor(global_idx[0, :])
+    global_idx[1, :] = np.ceil(global_idx[1, :])
     tile_size = np.array(NASA_TILE_SIZE)
 
     nightlight = []
     for idx, fname in enumerate(BM_FILENAMES):
         tile_coord = np.array([1 - idx % 2, idx // 2])
         extent = global_idx - (tile_coord * tile_size)[None]
-        if np.any(extent[1,:] < 0) or np.any(extent[0,:] >= NASA_TILE_SIZE):
+        if np.any(extent[1, :] < 0) or np.any(extent[0, :] >= NASA_TILE_SIZE):
             # this tile does not intersect the specified bounds
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
@@ -271,7 +271,7 @@ def load_nightlight_nasa(bounds, req_files, year):
         with Image.open(fname, "r") as im_nl:
             im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
             im_nl = sparse.csc.csc_matrix(im_nl)
-            im_nl = im_nl[extent[0,0]:extent[1,0]+1,extent[0,1]:extent[1,1]+1]
+            im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
             nightlight.append((tile_coord, im_nl))
     tile_coords = np.array([n[0] for n in nightlight])
     shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
@@ -279,7 +279,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
 
     coord_nl = np.vstack([coord_min, coord_h]).T
-    coord_nl[:, 0] += global_idx[0,:] * coord_h[:]
+    coord_nl[:, 0] += global_idx[0, :] * coord_h[:]
 
     return nightlight, coord_nl
 

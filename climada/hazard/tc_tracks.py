@@ -234,7 +234,7 @@ class TCTracks():
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in time range (%s, %s).', *year_range)
         if basin:
-            match &= (ds.basin[:,0] == basin.encode())
+            match &= (ds.basin[:, 0] == basin.encode())
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
         ds = ds.sel(storm=match)
@@ -283,17 +283,17 @@ class TCTracks():
             ds = ds.sel(storm=valid_st)
 
         max_wind = ds.wind.max(dim="date_time").data.ravel()
-        category_test = (max_wind[:,None] < np.array(SAFFIR_SIM_CAT)[None])
+        category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
         category = np.argmax(category_test, axis=1) - 1
-        basin_map = {b.encode("utf-8"): v for b,v in BASIN_ENV_PRESSURE.items()}
+        basin_map = {b.encode("utf-8"): v for b, v in BASIN_ENV_PRESSURE.items()}
         basin_fun = lambda b: basin_map[b]
 
         ds['id_no'] = ds.sid.str.replace(b'N', b'0') \
                             .str.replace(b'S', b'1') \
                             .astype(float)
         ds['time_step'] = xr.zeros_like(ds.time, dtype=float)
-        ds['time_step'][:,1:] = ds.time.diff(dim="date_time") / np.timedelta64(1, 's')
-        ds['time_step'][:,0] = ds.time_step[:,1]
+        ds['time_step'][:, 1:] = ds.time.diff(dim="date_time") / np.timedelta64(1, 's')
+        ds['time_step'][:, 0] = ds.time_step[:, 1]
         provider = provider if provider else 'ibtracs'
 
         last_perc = 0
@@ -422,7 +422,7 @@ class TCTracks():
         months, days, hours = data_hem(['month', 'day', 'hour'])
         months, days, hours = [np.int8(ar) for ar in [months, days, hours]]
         tc_rmw, tc_maxwind, tc_pressure = data_hem(['rm', 'v', 'p'])
-        years = data_mat['yearstore'][0,hem_idx]
+        years = data_mat['yearstore'][0, hem_idx]
 
         ntracks, nnodes = lat.shape
         LOGGER.info("Loading %s tracks on %s hemisphere.", ntracks, hemisphere)
@@ -437,13 +437,13 @@ class TCTracks():
             tc_rmw *= EMANUEL_RMW_CORR_FACTOR
 
         for i_track in range(lat.shape[0]):
-            valid_idx = (lat[i_track,:] != 0).nonzero()[0]
+            valid_idx = (lat[i_track, :] != 0).nonzero()[0]
             nnodes = valid_idx.size
-            time_step = np.abs(np.diff(hours[i_track,valid_idx])).min()
+            time_step = np.abs(np.diff(hours[i_track, valid_idx])).min()
 
             # deal with change of year
             year = np.full(valid_idx.size, years[i_track])
-            year_change = (np.diff(months[i_track,valid_idx]) < 0)
+            year_change = (np.diff(months[i_track, valid_idx]) < 0)
             year_change = year_change.nonzero()[0]
             if year_change.size > 0:
                 year[year_change[0] + 1:] += 1
@@ -465,14 +465,14 @@ class TCTracks():
                 reference_idx = 0 if not date_feb[0] else -1
                 reference_date = dt.datetime(
                     year[reference_idx],
-                    months[i_track,valid_idx[reference_idx]],
-                    days[i_track,valid_idx[reference_idx]],
-                    hours[i_track,valid_idx[reference_idx]],)
-                datetimes = [reference_date + dt.timedelta(hours=int(step*i))
+                    months[i_track, valid_idx[reference_idx]],
+                    days[i_track, valid_idx[reference_idx]],
+                    hours[i_track, valid_idx[reference_idx]],)
+                datetimes = [reference_date + dt.timedelta(hours=int(step * i))
                              for i in range(nnodes)]
             datetimes = np.array(datetimes)
 
-            max_sustained_wind = tc_maxwind[i_track,valid_idx]
+            max_sustained_wind = tc_maxwind[i_track, valid_idx]
             max_sustained_wind_unit = 'kn'
             env_pressure = np.full(nnodes, DEF_ENV_PRESSURE)
             category = set_category(max_sustained_wind,
@@ -480,7 +480,7 @@ class TCTracks():
                                     SAFFIR_SIM_CAT)
             tr_ds = xr.Dataset({
                 'time_step': ('time', np.full(nnodes, time_step)),
-                'radius_max_wind': ('time', tc_rmw[i_track,valid_idx]),
+                'radius_max_wind': ('time', tc_rmw[i_track, valid_idx]),
                 'max_sustained_wind': ('time', max_sustained_wind),
                 'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
                 'environmental_pressure': ('time', env_pressure),
@@ -508,7 +508,7 @@ class TCTracks():
         nc_data (str): netCDF4.Dataset Objekt
         i_tracks (int): track number
         """
-        scale_to_10m = (10./60.)**.11
+        scale_to_10m = (10. / 60.)**.11
         mps2kts = 1.94384
         basin_dict = {0: 'NA - North Atlantic',
                       1: 'SA - South Atlantic',
@@ -542,13 +542,13 @@ class TCTracks():
                     datetimes.append(datetimes[-1] + dt.timedelta(hours=3))
                 else:
                     pos = list(times).index(t)
-                    t = times[pos+1] - 1/24*3
+                    t = times[pos + 1] - 1 / 24 * 3
                     datetimes.append(dt.datetime.strptime(str(nc.num2date(t,
                                      'days since {}'.format('1858-11-17'),
                                      calendar='standard')), '%Y-%m-%d %H:%M:%S'))
         time_step = []
         for i_time, time in enumerate(datetimes[1:], 1):
-            time_step.append((time - datetimes[i_time-1]).total_seconds()/3600)
+            time_step.append((time - datetimes[i_time - 1]).total_seconds() / 3600)
         time_step.append(time_step[-1])
 
         basin = list()
@@ -559,21 +559,21 @@ class TCTracks():
                 basin.extend([np.nan])
 
         lon = nc_data.variables['lon'][i_track, :][:val_len]
-        lon[lon>180]=lon[lon>180]-360 # change lon format to -180 to 180
+        lon[lon > 180] = lon[lon > 180] - 360  # change lon format to -180 to 180
         lat = nc_data.variables['lat'][i_track, :][:val_len]
         cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
         av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
         max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
 
-        wind = nc_data.variables['wind'][i_track, :][:val_len]*mps2kts*scale_to_10m  # m/s to kn
+        wind = nc_data.variables['wind'][i_track, :][:val_len] * mps2kts * scale_to_10m  # m/s to kn
         if not all(wind.data):  # if wind is empty
-            wind = np.ones(wind.size)*-999.9
+            wind = np.ones(wind.size) * -999.9
 
         tr_df = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon': lon,
                               'max_sustained_wind': wind,
                               'central_pressure': cen_pres,
-                              'environmental_pressure': np.ones(lat.size)*1015.,
-                              'radius_max_wind': np.ones(lat.size)*65.,
+                              'environmental_pressure': np.ones(lat.size) * 1015.,
+                              'radius_max_wind': np.ones(lat.size) * 65.,
                               'maximum_precipitation': max_prec,
                               'average_precipitation': av_prec,
                               'basins': basin,
@@ -609,7 +609,7 @@ class TCTracks():
             land_geom = None
 
         if self.pool:
-            chunksize = min(self.size//self.pool.ncpus, 1000)
+            chunksize = min(self.size // self.pool.ncpus, 1000)
             self.data = self.pool.map(self._one_interp_data, self.data,
                                       itertools.repeat(time_step_h, self.size),
                                       itertools.repeat(land_geom, self.size),
@@ -670,10 +670,10 @@ class TCTracks():
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
-            lonlat[:,0] = coord_util.lon_normalize(lonlat[:,0], center=mid_lon)
+            lonlat[:, 0] = coord_util.lon_normalize(lonlat[:, 0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
             # remove segments which cross 180 degree longitude boundary
-            segments = segments[segments[:,0,0] * segments[:,1,0] >= 0,:,:]
+            segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
             if track.orig_event_flag:
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
                     linestyle='solid', **kwargs)
@@ -702,7 +702,7 @@ class TCTracks():
         Parameters:
             folder_name (str): folder name where to write files
         """
-        list_path = [os.path.join(folder_name, track.sid+'.nc') for track in self.data]
+        list_path = [os.path.join(folder_name, track.sid + '.nc') for track in self.data]
         LOGGER.info('Writting %s files.', self.size)
         for track in self.data:
             track.attrs['orig_event_flag'] = int(track.orig_event_flag)
@@ -736,7 +736,7 @@ class TCTracks():
             xr.Dataset
         """
         if track.time.size >= 2:
-            method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size-2)]
+            method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
             lon = track.lon.copy()
@@ -777,12 +777,12 @@ class TCTracks():
 
         datetimes = list()
         for time in dfr['isotime'].values:
-            year = np.fix(time/1e6)
-            time = time - year*1e6
-            month = np.fix(time/1e4)
-            time = time - month*1e4
-            day = np.fix(time/1e2)
-            hour = time - day*1e2
+            year = np.fix(time / 1e6)
+            time = time - year * 1e6
+            month = np.fix(time / 1e4)
+            time = time - month * 1e4
+            day = np.fix(time / 1e2)
+            hour = time - day * 1e2
             datetimes.append(dt.datetime(int(year), int(month), int(day), \
                                          int(hour)))
 
@@ -834,16 +834,16 @@ def _calc_land_geom(ens_track):
     """
     deg_buffer = 0.1
     min_lat = np.min([np.min(track.lat.values) for track in ens_track])
-    min_lat = max(min_lat-deg_buffer, -90)
+    min_lat = max(min_lat - deg_buffer, -90)
 
     max_lat = np.max([np.max(track.lat.values) for track in ens_track])
-    max_lat = min(max_lat+deg_buffer, 90)
+    max_lat = min(max_lat + deg_buffer, 90)
 
     min_lon = np.min([np.min(track.lon.values) for track in ens_track])
-    min_lon = max(min_lon-deg_buffer, -180)
+    min_lon = max(min_lon - deg_buffer, -180)
 
     max_lon = np.max([np.max(track.lon.values) for track in ens_track])
-    max_lon = min(max_lon+deg_buffer, 180)
+    max_lon = min(max_lon + deg_buffer, 180)
 
     return coord_util.get_land_geometry(extent=(min_lon, max_lon, \
         min_lat, max_lat), resolution=10)
@@ -874,7 +874,7 @@ def _dist_since_lf(track):
     # Index in sea that follows a land index
     sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]
     if not sea_land_idx.size:
-        return (dist_since_lf+1)*np.nan
+        return (dist_since_lf + 1) * np.nan
 
     # Index in sea that comes from previous land index
     land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
@@ -883,9 +883,9 @@ def _dist_since_lf(track):
     orig_lf = np.empty((sea_land_idx.size, 2))
     for i_lf, lf_point in enumerate(sea_land_idx):
         orig_lf[i_lf][0] = track.lat[lf_point] + \
-            (track.lat[lf_point+1] - track.lat[lf_point])/2
+            (track.lat[lf_point + 1] - track.lat[lf_point]) / 2
         orig_lf[i_lf][1] = track.lon[lf_point] + \
-            (track.lon[lf_point+1] - track.lon[lf_point])/2
+            (track.lon[lf_point + 1] - track.lon[lf_point]) / 2
 
     dist = DistanceMetric.get_metric('haversine')
     nodes1 = np.radians(np.array([track.lat.values[1:],
@@ -894,13 +894,13 @@ def _dist_since_lf(track):
                                   track.lon.values[:-1]]).transpose())
     dist_since_lf[1:] = dist.pairwise(nodes1, nodes0).diagonal()
     dist_since_lf[np.logical_not(track.on_land.values)] = 0.0
-    nodes1 = np.array([track.lat.values[sea_land_idx+1],
-                       track.lon.values[sea_land_idx+1]]).transpose()/180*np.pi
-    dist_since_lf[sea_land_idx+1] = \
-        dist.pairwise(nodes1, orig_lf/180*np.pi).diagonal()
+    nodes1 = np.array([track.lat.values[sea_land_idx + 1],
+                       track.lon.values[sea_land_idx + 1]]).transpose() / 180 * np.pi
+    dist_since_lf[sea_land_idx + 1] = \
+        dist.pairwise(nodes1, orig_lf / 180 * np.pi).diagonal()
     for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-        dist_since_lf[sea_land+1:land_sea] = \
-            np.cumsum(dist_since_lf[sea_land+1:land_sea])
+        dist_since_lf[sea_land + 1:land_sea] = \
+            np.cumsum(dist_since_lf[sea_land + 1:land_sea])
 
     dist_since_lf *= EARTH_RADIUS_KM
     dist_since_lf[np.logical_not(track.on_land.values)] = np.nan
@@ -1067,7 +1067,7 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
 
 def ibtracs_track_agency(ds):
     agency_pref = IBTRACS_AGENCIES.copy()
-    agency_map = { a.encode('utf-8'): i for i, a in enumerate(agency_pref) }
+    agency_map = {a.encode('utf-8'): i for i, a in enumerate(agency_pref)}
     agency_map.update({
         a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
     })

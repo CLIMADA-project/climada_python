@@ -40,7 +40,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
-                   yearly_impact=False, return_cost = 'False'):
+                   yearly_impact=False, return_cost='False'):
 
     """calculate one impact instance for the calibration algorithm and write
         to given DataFrame
@@ -69,37 +69,37 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
     IFS.append(impact_func)
     impacts = Impact()
     impacts.calc(exposure, IFS, hazard)
-    if yearly_impact: # impact per year
+    if yearly_impact:  # impact per year
         IYS = impacts.calc_impact_year_set(all_years=True)
         # Loop over whole year range:
         if df_out.empty | df_out.index.shape[0] == 1:
             for cnt_, year in enumerate(np.sort(list((IYS.keys())))):
                 if cnt_ > 0:
-                    df_out.loc[cnt_] = df_out.loc[0] # copy info from first row
+                    df_out.loc[cnt_] = df_out.loc[0]  # copy info from first row
                 if year in IYS:
                     df_out.loc[cnt_, 'impact_CLIMADA'] = IYS[year]
                 else:
                     df_out.loc[cnt_, 'impact_CLIMADA'] = 0.0
                 df_out.loc[cnt_, 'year'] = year
         else:
-            years_in_common = df_out.loc[df_out['year'].isin(np.sort(list((IYS.keys())))),'year']
+            years_in_common = df_out.loc[df_out['year'].isin(np.sort(list((IYS.keys())))), 'year']
             for cnt_, year in years_in_common.iteritems():
-                df_out.loc[df_out['year']==year,'impact_CLIMADA'] = IYS[year]
+                df_out.loc[df_out['year'] == year, 'impact_CLIMADA'] = IYS[year]
 
 
-    else: # impact per event
+    else:  # impact per event
         if df_out.empty | df_out.index.shape[0] == 1:
             for cnt_, impact in enumerate(impacts.at_event):
                 if cnt_ > 0:
-                    df_out.loc[cnt_] = df_out.loc[0] # copy info from first row
+                    df_out.loc[cnt_] = df_out.loc[0]  # copy info from first row
                 df_out.loc[cnt_, 'impact_CLIMADA'] = impact
                 df_out.loc[cnt_, 'event_id'] = int(impacts.event_id[cnt_])
                 df_out.loc[cnt_, 'event_name'] = impacts.event_name[cnt_]
                 df_out.loc[cnt_, 'year'] = \
                     dt.datetime.fromordinal(impacts.date[cnt_]).year
                 df_out.loc[cnt_, 'date'] = impacts.date[cnt_]
-        elif df_out.index.shape[0]==impacts.at_event.shape[0]:
-            for cnt_, (impact,ind) in enumerate(zip(impacts.at_event,df_out.index)):
+        elif df_out.index.shape[0] == impacts.at_event.shape[0]:
+            for cnt_, (impact, ind) in enumerate(zip(impacts.at_event, df_out.index)):
                 df_out.loc[ind, 'impact_CLIMADA'] = impact
                 df_out.loc[ind, 'event_id'] = int(impacts.event_id[cnt_])
                 df_out.loc[ind, 'event_name'] = impacts.event_name[cnt_]
@@ -111,10 +111,10 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
                              ' yet implemented. use yearly_impact=True or run'
                              ' without init_impact_data.')
     if not return_cost == 'False':
-        df_out = calib_cost_calc(df_out,return_cost)
+        df_out = calib_cost_calc(df_out, return_cost)
     return df_out
 
-def init_if(if_name_or_instance, param_dict, df_out = pd.DataFrame(index=[0])):
+def init_if(if_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0])):
     """create an ImpactFunc based on the parameters in param_dict using the
     method specified in if_parameterisation_name and document it in df_out.
 
@@ -137,14 +137,14 @@ def init_if(if_name_or_instance, param_dict, df_out = pd.DataFrame(index=[0])):
         param_dict are represented here.
     """
     ImpactFunc_final = None
-    if isinstance(if_name_or_instance,str):
+    if isinstance(if_name_or_instance, str):
         if if_name_or_instance == 'emanuel':
             ImpactFunc_final = IFTropCyclone()
             ImpactFunc_final.set_emanuel_usa(**param_dict)
             ImpactFunc_final.haz_type = 'TC'
             ImpactFunc_final.id = 1
             df_out['impact_function'] = if_name_or_instance
-    elif isinstance(if_name_or_instance,impact_funcs.ImpactFunc):
+    elif isinstance(if_name_or_instance, impact_funcs.ImpactFunc):
         ImpactFunc_final = change_if(if_name_or_instance, param_dict)
         df_out['impact_function'] = ('given_' +
                                       ImpactFunc_final.haz_type +
@@ -153,7 +153,7 @@ def init_if(if_name_or_instance, param_dict, df_out = pd.DataFrame(index=[0])):
         df_out[key] = val
     return ImpactFunc_final, df_out
 
-def change_if(if_instance,param_dict):
+def change_if(if_instance, param_dict):
     """apply a shifting or a scaling defined in param_dict to the impact
     function in if_istance and return it as a new ImpactFunc object.
     Parameters:
@@ -176,25 +176,25 @@ def change_if(if_instance,param_dict):
     temp_dict = dict()
     temp_dict['paa_intensity_ext'] = np.linspace(ImpactFunc_new.intensity.min(),
                             ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0]+1)*10+1)
+                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     temp_dict['mdd_intensity_ext'] = np.linspace(ImpactFunc_new.intensity.min(),
                             ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0]+1)*10+1)
+                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     temp_dict['paa_ext'] = paa_func(temp_dict['paa_intensity_ext'])
     temp_dict['mdd_ext'] = mdd_func(temp_dict['mdd_intensity_ext'])
     # apply changes given in param_dict
     for key, val in param_dict.items():
         field_key, action = key.split('_')
         if action == 'shift':
-            shift_absolut = ImpactFunc_new.intensity[np.nonzero(getattr(ImpactFunc_new,field_key))[0][0]] * \
-                            (val-1)
+            shift_absolut = ImpactFunc_new.intensity[np.nonzero(getattr(ImpactFunc_new, field_key))[0][0]] * \
+                            (val - 1)
             temp_dict[field_key + '_intensity_ext'] = \
                     temp_dict[field_key + '_intensity_ext'] + shift_absolut
         elif action == 'scale':
             temp_dict[field_key + '_ext'] = \
                     np.clip(temp_dict[field_key + '_ext'] * val,
-                            a_min = 0,
-                            a_max = 1)
+                            a_min=0,
+                            a_max=1)
         else:
             raise AttributeError('keys in param_dict not recognized. Use only:'
                                  'paa_shift, paa_scale, mdd_shift, mdd_scale')
@@ -202,7 +202,7 @@ def change_if(if_instance,param_dict):
     # map changed, high resolution impact functions back to initial resolution
     ImpactFunc_new.intensity = np.linspace(ImpactFunc_new.intensity.min(),
                             ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0]+1)*10+1)
+                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     paa_func_new = interpolate.interp1d(temp_dict['paa_intensity_ext'],
                                         temp_dict['paa_ext'],
                                         fill_value='extrapolate')
@@ -242,14 +242,14 @@ def init_impact_data(hazard_type,
                                              emdat_file_csv=source_file, year_range=year_range,
                                              reference_year=reference_year)
         else:
-            raise ValueError ('init_impact_data not yet implemented for yearly_impact = False.')
+            raise ValueError('init_impact_data not yet implemented for yearly_impact = False.')
             em_data = emdat_impact_event()
     else:
         raise ValueError('init_impact_data not yet implemented for other impact_data_sources than emdat.')
     return em_data
 
 
-def calib_cost_calc(df_out,cost_function):
+def calib_cost_calc(df_out, cost_function):
     """calculate the cost function of the modelled impact impact_CLIMADA and
         the reported impact impact_scaled in df_out
         Parameters:
@@ -264,9 +264,9 @@ def calib_cost_calc(df_out,cost_function):
                        pd.to_numeric(df_out['impact_CLIMADA']))**2)
     elif cost_function == 'logR2':
         impact1 = pd.to_numeric(df_out['impact_scaled'])
-        impact1[impact1<=0] = 1
+        impact1[impact1 <= 0] = 1
         impact2 = pd.to_numeric(df_out['impact_CLIMADA'])
-        impact2[impact2<=0] = 1
+        impact2[impact2 <= 0] = 1
         cost = np.sum((np.log(impact1) -
                        np.log(impact2))**2)
     else:
@@ -274,7 +274,7 @@ def calib_cost_calc(df_out,cost_function):
     return cost
 
 
-def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
+def calib_all(hazard, exposure, if_name_or_instance, param_full_dict,
               impact_data_source, year_range, yearly_impact=True):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and if_name_or_instance
@@ -295,25 +295,25 @@ def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
             df_result: DataFrame with modelled impact written to rows for each year
                 or event.
     """
-    df_result = None # init return variable
+    df_result = None  # init return variable
 
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
     # prepare impact data
-    if isinstance(impact_data_source,pd.DataFrame):
+    if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
     else:
         if list(impact_data_source.keys()) == ['emdat']:
-            df_impact_data = init_impact_data(hazard_type,region_ids, year_range,impact_data_source['emdat'],year_range[-1])
+            df_impact_data = init_impact_data(hazard_type, region_ids, year_range, impact_data_source['emdat'], year_range[-1])
         else:
             raise ValueError('other impact data sources not yet implemented.')
     params_generator = (dict(zip(param_full_dict, x)) for x in itertools.product(*param_full_dict.values()))
     for param_dict in params_generator:
         print(param_dict)
         df_out = copy.deepcopy(df_impact_data)
-        ImpactFunc_final, df_out = init_if(if_name_or_instance,param_dict,df_out)
-        df_out = calib_instance(hazard,exposure,ImpactFunc_final,df_out,yearly_impact)
+        ImpactFunc_final, df_out = init_if(if_name_or_instance, param_dict, df_out)
+        df_out = calib_instance(hazard, exposure, ImpactFunc_final, df_out, yearly_impact)
         if df_result is None:
             df_result = copy.deepcopy(df_out)
         else:
@@ -325,9 +325,9 @@ def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
 from scipy.optimize import minimize, Bounds, LinearConstraint
 
 
-def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
+def calib_optimize(hazard, exposure, if_name_or_instance, param_dict,
               impact_data_source, year_range, yearly_impact=True,
-              cost_fucntion='R2',show_details= False):
+              cost_fucntion='R2', show_details=False):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and if_name_or_instance
     Parameters:
@@ -359,24 +359,24 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
     # prepare impact data
-    if isinstance(impact_data_source,pd.DataFrame):
+    if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
     else:
         if list(impact_data_source.keys()) == ['emdat']:
-            df_impact_data = init_impact_data(hazard_type,region_ids, year_range,impact_data_source['emdat'],year_range[-1])
+            df_impact_data = init_impact_data(hazard_type, region_ids, year_range, impact_data_source['emdat'], year_range[-1])
         else:
             raise ValueError('other impact data sources not yet implemented.')
     # definie specific function to
     def specific_calib(x):
-        param_dict_temp = dict(zip(param_dict.keys(),x))
+        param_dict_temp = dict(zip(param_dict.keys(), x))
         print(param_dict_temp)
-        return calib_instance(hazard,exposure,
-                              init_if(if_name_or_instance,param_dict_temp)[0],
+        return calib_instance(hazard, exposure,
+                              init_if(if_name_or_instance, param_dict_temp)[0],
                               df_impact_data,
-                              yearly_impact=yearly_impact,return_cost=cost_fucntion)
+                              yearly_impact=yearly_impact, return_cost=cost_fucntion)
     # define constraints
     if if_name_or_instance == 'emanuel':
-        cons = [{'type': 'ineq', 'fun': lambda x:  -x[0] + x[1]},
+        cons = [{'type': 'ineq', 'fun': lambda x: -x[0] + x[1]},
                  {'type': 'ineq', 'fun': lambda x: -x[2] + 0.9999},
                  {'type': 'ineq', 'fun': lambda x: x[2]}]
     else:
@@ -388,14 +388,14 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
 
     x0 = list(param_dict.values())
     res = minimize(specific_calib, x0,
-                   #bounds=bounds,
+                   # bounds=bounds,
 #                   bounds=((0.0, np.inf), (0.0, np.inf), (0.0, 1.0)),
                    constraints=cons,
 #                   method='SLSQP',
                    method='trust-constr',
                    options={'xtol': 1e-5, 'disp': True, 'maxiter': 500})
 
-    param_dict_result = dict(zip(param_dict.keys(),res.x))
+    param_dict_result = dict(zip(param_dict.keys(), res.x))
 
     if res.success:
         LOGGER.info('Optimization successfully finished.')
@@ -410,7 +410,7 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
     return param_dict_result
 
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #
 #
 #    ## tryout calib_all

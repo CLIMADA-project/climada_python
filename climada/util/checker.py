@@ -49,12 +49,12 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
         if var_name in var_obl:
             if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) or \
             isinstance(var_val, list):
-                size(n_size, var_val, name_prefix+var_name)
+                size(n_size, var_val, name_prefix + var_name)
             elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
-                shape(n_row, n_col, var_val, name_prefix+var_name)
+                shape(n_row, n_col, var_val, name_prefix + var_name)
             elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) \
             and var_val.ndim == 2:
-                shape(n_row, n_col, var_val, name_prefix+var_name)
+                shape(n_row, n_col, var_val, name_prefix + var_name)
 
 def check_optionals(var_dict, var_opt, name_prefix, n_size):
     """Check size of obligatory variables.
@@ -71,7 +71,7 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
     for var_name, var_val in var_dict.items():
         if var_name in var_opt:
             if isinstance(var_val, (np.ndarray, list)):
-                array_optional(n_size, var_val, name_prefix+var_name)
+                array_optional(n_size, var_val, name_prefix + var_name)
 
 def empty_optional(var, var_name):
     """Check if a data structure is empty."""

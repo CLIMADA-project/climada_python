@@ -34,8 +34,8 @@ class TestNetpresValue(unittest.TestCase):
     def test_net_pres_val_pass(self):
         """Test net_present_value against MATLAB reference"""
         years = np.arange(2018, 2041)
-        disc_rates = np.ones(years.size)*0.02
-        val_years = np.ones(years.size)*6.512201157564418e9
+        disc_rates = np.ones(years.size) * 0.02
+        val_years = np.ones(years.size) * 6.512201157564418e9
         res = net_present_value(years, disc_rates, val_years)
 
         self.assertEqual(1.215049630691397e+11, res)

@@ -130,8 +130,8 @@ class RiverFlood(Hazard):
                 y_i = ((dest_centroids.lat - self.centroids.meta['transform'][5]) /
                        self.centroids.meta['transform'][4]).astype(int)
 
-                fraction = self.fraction[:, y_i*self.centroids.meta['width'] + x_i]
-                intensity = self.intensity[:, y_i*self.centroids.meta['width'] + x_i]
+                fraction = self.fraction[:, y_i * self.centroids.meta['width'] + x_i]
+                intensity = self.intensity[:, y_i * self.centroids.meta['width'] + x_i]
 
                 self.centroids = dest_centroids
                 self.intensity = sp.sparse.csr_matrix(intensity)
@@ -189,8 +189,8 @@ class RiverFlood(Hazard):
                    metafrc['transform'][0]).astype(int)
             y_i = ((centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
-            fraction = fraction[:, y_i*metafrc['width'] + x_i]
-            intensity = intensity[:, y_i*metaint['width'] + x_i]
+            fraction = fraction[:, y_i * metafrc['width'] + x_i]
+            intensity = intensity[:, y_i * metaint['width'] + x_i]
             self.centroids = centroids
             self.intensity = sp.sparse.csr_matrix(intensity)
             self.fraction = sp.sparse.csr_matrix(fraction)
@@ -251,7 +251,7 @@ class RiverFlood(Hazard):
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
 
-        trend = trend_data[:, y_i*metafrc['width'] + x_i]
+        trend = trend_data[:, y_i * metafrc['width'] + x_i]
 
         if dis == 'pos':
             dis_map = np.greater(trend, 0)
@@ -285,7 +285,7 @@ class RiverFlood(Hazard):
                    metafrc['transform'][0]).astype(int)
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
-            fraction = fraction[:, y_i*metafrc['width'] + x_i]
+            fraction = fraction[:, y_i * metafrc['width'] + x_i]
             new_fraction = np.array(np.subtract(self.fraction.todense(),
                                                 fraction))
             new_fraction = new_fraction.clip(0)

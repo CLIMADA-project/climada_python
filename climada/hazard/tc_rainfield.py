@@ -70,7 +70,7 @@ class TCRain(Hazard):
         LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
                     str(centroids.size))
         if self.pool:
-            chunksize = min(num_tracks//self.pool.ncpus, 1000)
+            chunksize = min(num_tracks // self.pool.ncpus, 1000)
             tc_haz = self.pool.map(self._set_from_track, tracks.data,
                                    itertools.repeat(centroids, num_tracks),
                                    itertools.repeat(dist_degree, num_tracks),
@@ -154,11 +154,11 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
 
     n_track_nodes = len(track.lat)
     n_centroids = len(centroids.lat)
-    cos_centroids_lat = np.cos(centroids.lat / 180*np.pi)
+    cos_centroids_lat = np.cos(centroids.lat / 180 * np.pi)
 
     rainsum = np.zeros(n_centroids)
 
-    ## transform wind speed in knots
+    # transform wind speed in knots
     if track.max_sustained_wind_unit == 'kn':
         pass
     elif track.max_sustained_wind_unit == 'km/h':
@@ -166,7 +166,7 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     elif track.max_sustained_wind_unit == 'mph':
         track.max_sustained_wind /= 1.151
     elif track.max_sustained_wind_unit == 'm/s':
-        track.max_sustained_wind /= (1000*60*60)
+        track.max_sustained_wind /= (1000 * 60 * 60)
         track.max_sustained_wind /= 1.852
 
     track.attrs['max_sustained_wind_unit'] = 'kn'
@@ -182,10 +182,10 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
             pos = np.where(inreach)[0]
 
             fradius_km = np.zeros(n_centroids)
-            dd = ((lons[node]-centroids.lon[pos])*cos_centroids_lat[pos])**2 + \
-                    + (lats[node]-centroids.lat[pos])**2
+            dd = ((lons[node] - centroids.lon[pos]) * cos_centroids_lat[pos])**2 + \
+                    + (lats[node] - centroids.lat[pos])**2
 
-            fradius_km[pos] = np.sqrt(dd)*111.12
+            fradius_km[pos] = np.sqrt(dd) * 111.12
 
             rainsum += _RCLIPER(track.max_sustained_wind.values[node],
                                 inreach, fradius_km)
@@ -207,29 +207,29 @@ def _RCLIPER(fmaxwind_kn, inreach, radius_km):
     rainrate = np.zeros(len(inreach))
 
     # Define Coefficients (CLIPER NHC bias adjusted (Tuleya, 2007))
-    a1 = -1.1 # inch per day
-    a2 = -1.6 # inch per day
+    a1 = -1.1  # inch per day
+    a2 = -1.6  # inch per day
     a3 = 64.   # km
     a4 = 150.  # km
 
-    b1 = 3.96 # inch per day
+    b1 = 3.96  # inch per day
     b2 = 4.8  # inch per day
     b3 = -13.  # km
     b4 = -16.  # km
 
-    u_norm_kn = 1. + (fmaxwind_kn-35.) / 33.
+    u_norm_kn = 1. + (fmaxwind_kn - 35.) / 33.
 
-    T0 = a1 + b1*u_norm_kn
-    Tm = a2 + b2*u_norm_kn
-    rm = a3 + b3*u_norm_kn
-    r0 = a4 + b4*u_norm_kn
+    T0 = a1 + b1 * u_norm_kn
+    Tm = a2 + b2 * u_norm_kn
+    rm = a3 + b3 * u_norm_kn
+    r0 = a4 + b4 * u_norm_kn
 
     i = np.logical_and(radius_km <= rm, inreach)
     ii = np.logical_and(radius_km > rm, inreach)
 
     # Calculate R-Cliper symmetric rain rate in mm/h
-    rainrate[i] = (T0+(Tm-T0)*(radius_km[i]/rm)) / 24. * 25.4
-    rainrate[ii] = (Tm*np.exp(-(radius_km[ii]-rm)/r0)) / 24. * 25.4
+    rainrate[i] = (T0 + (Tm - T0) * (radius_km[i] / rm)) / 24. * 25.4
+    rainrate[ii] = (Tm * np.exp(-(radius_km[ii] - rm) / r0)) / 24. * 25.4
 
     rainrate[np.isnan(rainrate)] = 0
     rainrate[rainrate < 0] = 0

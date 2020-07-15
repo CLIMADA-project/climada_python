@@ -91,11 +91,11 @@ class TestPlotter(unittest.TestCase):
         myexp = Exposures(myexp)
         myexp.check()
         myexp.tag.description = 'demo_today'
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('demo_today', myax.get_title())
 
         myexp.tag.description = ''
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('', myax.get_title())
 
     def test_impact_funcs_pass(self):

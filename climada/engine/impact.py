@@ -101,7 +101,7 @@ class Impact():
         # Calculate exceedence frequency
         exceed_freq = np.cumsum(self.frequency[sort_idxs])
         # Set return period and imact exceeding frequency
-        ifc.return_per = 1/exceed_freq[::-1]
+        ifc.return_per = 1 / exceed_freq[::-1]
         ifc.impact = self.at_event[sort_idxs][::-1]
         ifc.unit = self.unit
         ifc.label = 'Exceedance frequency curve'
@@ -207,18 +207,18 @@ class Impact():
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
-            exp_step = int(CONFIG['global']['max_matrix_size']/num_events)
+            exp_step = int(CONFIG['global']['max_matrix_size'] / num_events)
             if not exp_step:
                 LOGGER.error('Increase max_matrix_size configuration parameter'
                              ' to > %s', str(num_events))
                 raise ValueError
             # separte in chunks
             chk = -1
-            for chk in range(int(exp_iimp.size/exp_step)):
+            for chk in range(int(exp_iimp.size / exp_step)):
                 self._exp_impact( \
-                    exp_idx[exp_iimp[chk*exp_step:(chk+1)*exp_step]],\
+                    exp_idx[exp_iimp[chk * exp_step:(chk + 1) * exp_step]],\
                     exposures, hazard, imp_fun, insure_flag)
-            self._exp_impact(exp_idx[exp_iimp[(chk+1)*exp_step:]],\
+            self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],\
                 exposures, hazard, imp_fun, insure_flag)
 
         if not tot_exp:
@@ -310,7 +310,7 @@ class Impact():
         return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
-                                 raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                                 raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                                  label='value (log10)', axis=None, **kwargs):
         """Plot raster expected annual impact of each exposure.
 
@@ -530,15 +530,15 @@ class Impact():
                               for date in self.date])
         if orig_year.size == 0 and len(year_range) == 0:
             return dict()
-        if orig_year.size==0 or (len(year_range)>0 and all_years):
-            years = np.arange(min(year_range), max(year_range)+1)
+        if orig_year.size == 0 or (len(year_range) > 0 and all_years):
+            years = np.arange(min(year_range), max(year_range) + 1)
         elif all_years:
-            years = np.arange(min(orig_year), max(orig_year)+1)
+            years = np.arange(min(orig_year), max(orig_year) + 1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
-        if not len(year_range)==0:
-            years = years[years>=min(year_range)]
-            years = years[years<=max(year_range)]
+        if not len(year_range) == 0:
+            years = years[years >= min(year_range)]
+            years = years[years <= max(year_range)]
 
         year_set = dict()
 
@@ -566,20 +566,20 @@ class Impact():
             return []
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size']/self.imp_mat.shape[0])
+        cen_step = int(CONFIG['global']['max_matrix_size'] / self.imp_mat.shape[0])
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'\
                          ' > %s', str(self.imp_mat.shape[0]))
             raise ValueError
         # separte in chunks
         chk = -1
-        for chk in range(int(num_cen/cen_step)):
+        for chk in range(int(num_cen / cen_step)):
             self._loc_return_imp(np.array(return_periods), \
-                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
-                imp_stats[:, chk*cen_step:(chk+1)*cen_step])
+                self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(), \
+                imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
         self._loc_return_imp(np.array(return_periods), \
-            self.imp_mat[:, (chk+1)*cen_step:].toarray(), \
-            imp_stats[:, (chk+1)*cen_step:])
+            self.imp_mat[:, (chk + 1) * cen_step:].toarray(), \
+            imp_stats[:, (chk + 1) * cen_step:])
 
         return imp_stats
 
@@ -606,10 +606,10 @@ class Impact():
             raise ValueError
         if log10_scale:
             if np.min(imp_stats) < 0:
-                imp_stats_log = np.log10(abs(imp_stats)+1)
+                imp_stats_log = np.log10(abs(imp_stats) + 1)
                 colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
             elif np.min(imp_stats) < 1:
-                imp_stats_log = np.log10(imp_stats+1)
+                imp_stats_log = np.log10(imp_stats + 1)
                 colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
             else:
                 imp_stats_log = np.log10(imp_stats)
@@ -903,7 +903,7 @@ class Impact():
             event_id(int): id of the event
         """
         impact_csr_exp = Exposures()
-        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id-1, :]
+        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
         impact_csr_exp['latitude'] = self.coord_exp[:, 0]
         impact_csr_exp['longitude'] = self.coord_exp[:, 1]
         impact_csr_exp.crs = self.crs
@@ -938,8 +938,8 @@ class Impact():
                 pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
-        imp_fit = np.polyval(pol_coef, np.log(1/return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
+        imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
+        wrong_inten = np.logical_and(return_periods > np.max(1 / freq_cen), \
                 np.isnan(imp_fit))
         imp_fit[wrong_inten] = 0.
 

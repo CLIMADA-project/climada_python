@@ -59,7 +59,7 @@ class TestEmanuelFormula(unittest.TestCase):
     def test_values_pass(self):
         """Compute mdr interpolating values."""
         imp_fun = IFTropCyclone()
-        imp_fun.set_emanuel_usa(if_id=5, intensity=np.arange(0,6,1), v_thresh=2,
+        imp_fun.set_emanuel_usa(if_id=5, intensity=np.arange(0, 6, 1), v_thresh=2,
                  v_half=5, scale=0.5)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
@@ -77,13 +77,13 @@ class TestEmanuelFormula(unittest.TestCase):
         imp_fun = IFTropCyclone()
         with self.assertRaises(ValueError):
             imp_fun.set_emanuel_usa(if_id=5, v_thresh=2, v_half=1, \
-                                    intensity=np.arange(0,6,1))
+                                    intensity=np.arange(0, 6, 1))
 
     def test_wrong_scale(self):
         """Set shape parameters."""
         imp_fun = IFTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(if_id=5, scale=2, intensity=np.arange(0,6,1))
+            imp_fun.set_emanuel_usa(if_id=5, scale=2, intensity=np.arange(0, 6, 1))
 
 class TestCalibratedIFS(unittest.TestCase):
     """Test inititation of IFS with regional calibrated TC IFs
@@ -140,8 +140,8 @@ class TestCalibratedIFS(unittest.TestCase):
         self.assertEqual(if_si_p10.name, 'South Indian (SI)')
         self.assertAlmostEqual(if_si_p10.mdd.max(), 0.99999999880, places=5)
         self.assertAlmostEqual(if_si.calc_mdr(30), 0.01620503041, places=5)
-        intensity=np.random.randint(26, if_si.intensity.max())
-        self.assertTrue(if_si.calc_mdr(intensity)<if_si_p10.calc_mdr(intensity))
+        intensity = np.random.randint(26, if_si.intensity.max())
+        self.assertTrue(if_si.calc_mdr(intensity) < if_si_p10.calc_mdr(intensity))
 
     def test_get_countries_per_region(self):
         """Test static get_countries_per_region()"""

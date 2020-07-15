@@ -112,8 +112,8 @@ class ImpactFunc():
                            " intensity.", self.haz_type, self.name, self.id)
             return
 
-        #Warning for non-vanishing impact at intensity 0. If positive
-        #and negative intensity warning for interpolation at intensity 0.
+        # Warning for non-vanishing impact at intensity 0. If positive
+        # and negative intensity warning for interpolation at intensity 0.
         zero_idx = np.where(self.intensity == 0)[0]
         if zero_idx.size != 0:
             if self.mdd[zero_idx[0]] != 0 or self.paa[zero_idx[0]] != 0:

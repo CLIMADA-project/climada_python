@@ -204,24 +204,24 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         fact1 = np.heaviside(d_lon - 180, 0)
         fact2 = np.heaviside(-d_lon - 180, 0)
         d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:,:,None]))
+        d_lon *= np.cos(np.radians(lat1[:, :, None]))
         dist_km = np.sqrt(d_lon**2 + d_lat**2) * ONE_LAT_KM
         if log:
             vtan = np.stack([d_lat, d_lon], axis=-1) * ONE_LAT_KM
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = 0.5 * (lat2[:,None] - lat1[:,:,None])
-        dlon = 0.5 * (lon2[:,None] - lon1[:,:,None])
+        dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
+        dlon = 0.5 * (lon2[:, None] - lon1[:, :, None])
         # haversine formula:
         hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:,:,None]) * np.cos(lat2[:,None]) * np.sin(dlon)**2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
         dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
         if log:
             v1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             v2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
-            fc = dist_km / np.fmax(np.spacing(1),np.sqrt(1 - scal**2))
-            vtan = fc[...,None] * (v2[:,None] - scal[...,None] * v1[:,:,None])
+            fc = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
+            vtan = fc[..., None] * (v2[:, None] - scal[..., None] * v1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
@@ -481,9 +481,9 @@ def coord_on_land(lat, lon, land_geom=None):
         raise ValueError
     delta_deg = 1
     if land_geom is None:
-        land_geom = get_land_geometry(extent=(np.min(lon)-delta_deg, \
-            np.max(lon)+delta_deg, np.min(lat)-delta_deg, \
-            np.max(lat)+delta_deg), resolution=10)
+        land_geom = get_land_geometry(extent=(np.min(lon) - delta_deg, \
+            np.max(lon) + delta_deg, np.min(lat) - delta_deg, \
+            np.max(lat) + delta_deg), resolution=10)
     return shapely.vectorized.contains(land_geom, lon, lat)
 
 def nat_earth_resolution(resolution):
@@ -889,15 +889,15 @@ def pts_to_raster_meta(points_bounds, res):
         int, int, affine.Affine
     """
     Affine = rasterio.Affine
-    bounds = np.asarray(points_bounds).reshape(2,2)
+    bounds = np.asarray(points_bounds).reshape(2, 2)
     res = np.asarray(res).ravel()
     if res.size == 1:
         res = np.array([res[0], res[0]])
-    sizes = bounds[1,:] - bounds[0,:]
+    sizes = bounds[1, :] - bounds[0, :]
     nsteps = np.floor(sizes / np.abs(res)) + 1
     nsteps[np.abs(nsteps * res) < sizes + np.abs(res) / 2] += 1
-    bounds[:,res < 0] = bounds[::-1,res < 0]
-    origin = bounds[0,:] - res[:] / 2
+    bounds[:, res < 0] = bounds[::-1, res < 0]
+    origin = bounds[0, :] - res[:] / 2
     ras_trans = Affine.translation(*origin) * Affine.scale(*res)
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
@@ -1069,7 +1069,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
     if not dst_meta['crs']:
         dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
     intensity = inten[range(len(band)), :]
-    dst_shape = (len(band), dst_meta['height']*dst_meta['width'])
+    dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
     return dst_meta, intensity.reshape(dst_shape)
 
 def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
@@ -1247,7 +1247,7 @@ def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
         raster_res = res
 
     def apply_box(df_exp):
-        fun = lambda r: Point(r.longitude, r.latitude).buffer(res/2).envelope
+        fun = lambda r: Point(r.longitude, r.latitude).buffer(res / 2).envelope
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
@@ -1312,13 +1312,13 @@ def fao_code_def():
         iso_list (list): list of ISO numeric-3 codes
         faocode_list (list): list of FAO country codes
     """
-    #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
+    # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
     fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 
-    #create a list of ISO3 codes and corresponding fao country codes
+    # create a list of ISO3 codes and corresponding fao country codes
     iso_list = list()
     faocode_list = list()
     for idx, iso in enumerate(fao_iso):
@@ -1338,10 +1338,10 @@ def country_faocode2iso(input_fao):
         output_iso (int or array): ISO numeric-3 codes of countries (or single code)
     """
 
-    #load relation between ISO numeric-3 code and FAO country code
+    # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
 
-    #determine the fao country code for the input str or list
+    # determine the fao country code for the input str or list
     output_iso = np.zeros(len(input_fao))
     for item, faocode in enumerate(input_fao):
         idx = np.where(faocode_list == faocode)[0]
@@ -1359,10 +1359,10 @@ def country_iso2faocode(input_iso):
     Returns:
         output_faocode (int or array): FAO country codes of countries (or single code)
     """
-    #load relation between ISO numeric-3 code and FAO country code
+    # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
 
-    #determine the fao country code for the input str or list
+    # determine the fao country code for the input str or list
     output_faocode = np.zeros(len(input_iso))
     for item, iso in enumerate(input_iso):
         idx = np.where(iso_list == iso)[0]
