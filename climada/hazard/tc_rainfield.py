@@ -130,8 +130,8 @@ class TCRain(Hazard):
         """
         if not tracks:
             return
-        delta_time = np.max([np.max(track.time.dt.year.values) \
-            for track in tracks]) - np.min([np.min(track.time.dt.year.values) \
+        delta_time = np.max([np.max(track.time.dt.year.values)
+            for track in tracks]) - np.min([np.min(track.time.dt.year.values)
             for track in tracks]) + 1
         num_orig = self.orig.nonzero()[0].size
         if num_orig > 0:

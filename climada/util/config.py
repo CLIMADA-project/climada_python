@@ -79,7 +79,7 @@ CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))
 
 DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
 if not os.path.isfile(DEFAULT_PATH):
-    DEFAULT_PATH = resource_filename(Requirement.parse('climada'), \
+    DEFAULT_PATH = resource_filename(Requirement.parse('climada'),
                                      'defaults.conf')
 with open(DEFAULT_PATH) as def_conf:
     LOGGER.debug('Loading default config file: %s', DEFAULT_PATH)
@@ -100,7 +100,7 @@ def setup_conf_user():
     user_file = os.path.abspath(os.path.join(WORKING_DIR, conf_name))
     while not os.path.isfile(user_file) and user_file != UNIX_END + conf_name \
     and user_file != WINDOWS_END + conf_name:
-        user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
+        user_file = os.path.abspath(os.path.join(user_file, os.pardir,
                                                  os.pardir, conf_name))
 
     if os.path.isfile(user_file):
@@ -140,5 +140,5 @@ def setup_environ():
             first_dot = env_cpy.find(':')
         # add environment bin path
         if CONFIG['config']['env_name'] not in os.environ['PATH']:
-            os.environ['PATH'] = os.environ['PATH'].replace('conda3/bin', \
+            os.environ['PATH'] = os.environ['PATH'].replace('conda3/bin',
                 'conda3/envs/' + CONFIG['config']['env_name'] + '/bin')

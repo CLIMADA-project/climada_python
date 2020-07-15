@@ -53,8 +53,8 @@ BUFFER = 1.0
 MAX_BINS = 2000
 """Maximum number of bins in geo_bin_from_array"""
 
-def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
-                       buffer=BUFFER, extend='neither', \
+def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
+                       buffer=BUFFER, extend='neither',
                        proj=ccrs.PlateCarree(), axes=None, **kwargs):
     """Plot array values binned over input coordinates.
 
@@ -101,7 +101,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." % \
+            raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
 
         # Binned image with coastlines
@@ -113,11 +113,11 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
 
         if 'gridsize' not in kwargs:
             kwargs['gridsize'] = min(int(array_im.size / 2), MAX_BINS)
-        hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im, \
+        hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im,
             transform=proj, **kwargs)
 
         # Create colorbar in this axis
-        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
+        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
             pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
                             extend=extend)
@@ -127,7 +127,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
     return axes
 
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
-                           pop_name=True, buffer=BUFFER, extend='neither', \
+                           pop_name=True, buffer=BUFFER, extend='neither',
                            proj=ccrs.PlateCarree(), shapes=True, axes=None, **kwargs):
     """Plot array values binned over input coordinates.
 
@@ -174,7 +174,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." % \
+            raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
         # Binned image with coastlines
         extent = _get_borders(coord, buffer, proj)
@@ -183,10 +183,10 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
             add_shapes(axis)
         if pop_name:
             add_populated_places(axis, extent, proj)
-        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im, \
+        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
             transform=proj, **kwargs)
         # Create colorbar in this axis
-        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
+        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
             pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
                             extend=extend)
@@ -242,7 +242,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." % \
+            raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
         is_reg, height, width = grid_is_regular(coord)
         extent = _get_borders(coord, proj=proj)
@@ -251,7 +251,7 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
             grid_x, grid_y = np.mgrid[
                 extent[0]: extent[1]: complex(0, RESOLUTION),
                 extent[2]: extent[3]: complex(0, RESOLUTION)]
-            grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
+            grid_im = griddata((coord[:, 1], coord[:, 0]), array_im,
                                (grid_x, grid_y))
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
@@ -266,9 +266,9 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         axis.set_extent((extent), proj)
         add_shapes(axis)
         # Create colormesh, colorbar and labels in axis
-        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
+        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
             pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im), \
+        cbar = plt.colorbar(axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im),
             transform=proj, **kwargs), cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
@@ -324,11 +324,11 @@ def add_shapes(axis):
         projection (cartopy.crs projection, optional): geographical projection,
             PlateCarree default.
     """
-    shp_file = shapereader.natural_earth(resolution='10m', \
+    shp_file = shapereader.natural_earth(resolution='10m',
                 category='cultural', name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='', \
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
                             edgecolor='black')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
@@ -341,20 +341,20 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
             PlateCarree default.
 
     """
-    shp_file = shapereader.natural_earth(resolution='50m', \
+    shp_file = shapereader.natural_earth(resolution='50m',
                            category='cultural', name='populated_places_simple')
 
     shp = shapereader.Reader(shp_file)
     ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
-    ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj) \
+    ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
         if ext_trans[2][0] < point.x <= ext_trans[0][0]:
             if ext_trans[0][1] < point.y <= ext_trans[1][1]:
                 axis.plot(point.x, point.y, 'ko', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
-                axis.text(point.x, point.y, rec.attributes['name'], \
-                    horizontalalignment='right', verticalalignment='bottom', \
+                axis.text(point.x, point.y, rec.attributes['name'],
+                    horizontalalignment='right', verticalalignment='bottom',
                     transform=ccrs.PlateCarree(), fontsize=14)
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
@@ -367,20 +367,20 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
             PlateCarree default.
 
     """
-    shp_file = shapereader.natural_earth(resolution='10m', \
+    shp_file = shapereader.natural_earth(resolution='10m',
                            category='cultural', name='admin_0_countries')
 
     shp = shapereader.Reader(shp_file)
     ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
-    ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj) \
+    ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
         if ext_trans[2][0] < point_x <= ext_trans[0][0]:
             if ext_trans[0][1] < point_y <= ext_trans[1][1]:
-                axis.text(point_x, point_y, rec.attributes['NAME'], \
-                    horizontalalignment='center', verticalalignment='center', \
+                axis.text(point_x, point_y, rec.attributes['NAME'],
+                    horizontalalignment='center', verticalalignment='center',
                     transform=ccrs.PlateCarree(), fontsize=14)
 
 def _get_collection_arrays(array_sub):

@@ -92,17 +92,17 @@ def def_input_values():
 
 def def_ref():
     """Default output reference"""
-    return np.array([46, 46, 36, 36, 36, 46, 46, 46, 46, 46, 46,\
-                     36, 46, 46, 36, 46, 46, 46, 46, 46, 46, 46,\
-                     46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,\
-                     46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45,\
+    return np.array([46, 46, 36, 36, 36, 46, 46, 46, 46, 46, 46,
+                     36, 46, 46, 36, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45,
                      45, 45, 45, 45, 45, 45])
 
 def def_ref_50():
     """Default output reference for maximum distance threshold 50km"""
-    return np.array([46, 46, 36, -1, 36, 46, 46, 46, 46, 46, 46, 36, 46, 46, \
-                     36, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, \
-                     46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, \
+    return np.array([46, 46, 36, -1, 36, 46, 46, 46, 46, 46, 46, 36, 46, 46,
+                     36, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45,
                      45, 45, 45, 45, 45, 45, 45, 45])
 
 class TestDistance(unittest.TestCase):
@@ -134,15 +134,15 @@ class TestInterpIndex(unittest.TestCase):
         """Check exception is thrown when wrong method is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
-        self.assertIn('Interpolation using method' + \
+        self.assertIn('Interpolation using method' +
             ' with distance haversine is not supported.', cm.output[0])
 
     def test_wrong_distance_fail(self):
         """Check exception is thrown when wrong distance is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), \
+            interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
                                   distance='distance')
-        self.assertIn('Interpolation using NN' + \
+        self.assertIn('Interpolation using NN' +
             ' with distance distance is not supported.', cm.output[0])
 
     def test_wrong_centroid_fail(self):

@@ -35,49 +35,49 @@ class TestNightLight(unittest.TestCase):
         bbox = [5.954809204000128, 45.82071848599999, 10.466626831000013, 47.801166077000076]
         min_lon, min_lat, max_lon, max_lat = bbox
 
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
                          [0., 0., 0., 0., 1., 0., 0., 0.])
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon, min_lat,\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon, min_lat,
                                 max_lon, max_lat), [0., 0., 0., 0., 1., 0., 0., 0.])
 
         # UK
         bbox = [-13.69131425699993, 49.90961334800005, 1.7711694670000497, 60.84788646000004]
         min_lon, min_lat, max_lon, max_lat = bbox
 
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
                          [0., 0., 1., 0., 1., 0., 0., 0.])
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon,\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon,
                         min_lat, max_lon, max_lat), [0., 0., 1., 0., 1., 0., 0., 0.])
 
         # entire world
         bbox = [-180, -90, 180, 90]
         min_lon, min_lat, max_lon, max_lat = bbox
 
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
                          [1., 1., 1., 1., 1., 1., 1., 1.])
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon,\
+        np.testing.assert_array_equal(nightlight.check_required_nl_files(min_lon,
                         min_lat, max_lon, max_lat), [1., 1., 1., 1., 1., 1., 1., 1.])
 
         # Not enough coordinates
         bbox = [-180, -90, 180, 90]
         min_lon, min_lat, max_lon, max_lat = bbox
 
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,\
+        self.assertRaises(ValueError, nightlight.check_required_nl_files,
                           min_lon, min_lat, max_lon)
 
         # Invalid coordinate order
         bbox = [-180, -90, 180, 90]
         min_lon, min_lat, max_lon, max_lat = bbox
 
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,\
+        self.assertRaises(ValueError, nightlight.check_required_nl_files,
                           max_lon, min_lat, min_lon, max_lat)
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,\
+        self.assertRaises(ValueError, nightlight.check_required_nl_files,
                           min_lon, max_lat, max_lon, min_lat)
 
     def test_check_files_exist(self):
         """Test check_nightlight_local_file_exists"""
         # If invalid path is supplied it has to fall back to DATA_DIR
-        np.testing.assert_array_equal(nightlight.check_nl_local_file_exists(np.ones(np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0],\
+        np.testing.assert_array_equal(nightlight.check_nl_local_file_exists(np.ones(np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0],
                         nightlight.check_nl_local_file_exists(np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR)[0])
 
     def test_download_nightlight_files(self):

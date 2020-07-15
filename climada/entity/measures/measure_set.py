@@ -152,7 +152,7 @@ class MeasureSet():
             try:
                 del self._data[haz_type][name]
             except KeyError:
-                LOGGER.info("No Measure with hazard %s and id %s.", \
+                LOGGER.info("No Measure with hazard %s and id %s.",
                              haz_type, name)
         elif haz_type is not None:
             try:
@@ -185,7 +185,7 @@ class MeasureSet():
             try:
                 return self._data[haz_type][name]
             except KeyError:
-                LOGGER.info("No Measure with hazard %s and id %s.", \
+                LOGGER.info("No Measure with hazard %s and id %s.",
                             haz_type, name)
                 return list()
         elif haz_type is not None:
@@ -275,11 +275,11 @@ class MeasureSet():
             def_color = plt.cm.get_cmap('Greys', len(meas_dict))
             for i_meas, (name, meas) in enumerate(meas_dict.items()):
                 if (name != meas.name) | (name == ''):
-                    LOGGER.error("Wrong Measure.name: %s != %s.", name, \
+                    LOGGER.error("Wrong Measure.name: %s != %s.", name,
                                  meas.name)
                     raise ValueError
                 if key_haz != meas.haz_type:
-                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",\
+                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",
                                  key_haz, meas.haz_type)
                     raise ValueError
                 # set default color if not set
@@ -333,14 +333,14 @@ class MeasureSet():
                 meas.haz_type = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['haz']][idx][0])
                 meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
-                meas.hazard_set = hdf5.get_str_from_ref(file_name, \
+                meas.hazard_set = hdf5.get_str_from_ref(file_name,
                     data[var_names['var_name']['haz_set']][idx][0])
                 try:
-                    meas.hazard_inten_imp = ( \
-                        data[var_names['var_name']['haz_int_a']][idx][0], \
+                    meas.hazard_inten_imp = (
+                        data[var_names['var_name']['haz_int_a']][idx][0],
                         data[var_names['var_name']['haz_int_b']][0][idx])
                 except KeyError:
-                    meas.hazard_inten_imp = ( \
+                    meas.hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
 
                 # different convention of signes followed in MATLAB!
@@ -348,7 +348,7 @@ class MeasureSet():
                                    data[var_names['var_name']['mdd_b']][idx][0])
                 meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
                                    data[var_names['var_name']['paa_b']][idx][0])
-                meas.imp_fun_map = hdf5.get_str_from_ref(file_name, \
+                meas.imp_fun_map = hdf5.get_str_from_ref(file_name,
                                    data[var_names['var_name']['fun_map']][idx][0])
 
                 meas.exposures_set = hdf5.get_str_from_ref(
@@ -396,7 +396,7 @@ class MeasureSet():
                     meas.haz_type = dfr[var_names['col_name']['haz']][idx]
                 except KeyError:
                     pass
-                meas.color_rgb = np.fromstring( \
+                meas.color_rgb = np.fromstring(
                     dfr[var_names['col_name']['color']][idx], dtype=float, sep=' ')
                 meas.cost = dfr[var_names['col_name']['cost']][idx]
 
@@ -404,7 +404,7 @@ class MeasureSet():
                 meas.hazard_set = dfr[var_names['col_name']['haz_set']][idx]
                 # Search for (a, b) values, put a = 1 otherwise
                 try:
-                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],\
+                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],
                                              dfr[var_names['col_name']['haz_int_b']][idx])
                 except KeyError:
                     meas.hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])

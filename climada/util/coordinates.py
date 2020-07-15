@@ -481,8 +481,8 @@ def coord_on_land(lat, lon, land_geom=None):
         raise ValueError
     delta_deg = 1
     if land_geom is None:
-        land_geom = get_land_geometry(extent=(np.min(lon) - delta_deg, \
-            np.max(lon) + delta_deg, np.min(lat) - delta_deg, \
+        land_geom = get_land_geometry(extent=(np.min(lon) - delta_deg,
+            np.max(lon) + delta_deg, np.min(lat) - delta_deg,
             np.max(lat) + delta_deg), resolution=10)
     return shapely.vectorized.contains(land_geom, lon, lat)
 

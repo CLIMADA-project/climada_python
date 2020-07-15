@@ -29,7 +29,7 @@ _cut_country, fill_econ_indicators, _set_econ_indicators, _fill_admin1_geom, \
 _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 
-SHP_FN = shapereader.natural_earth(resolution='10m', \
+SHP_FN = shapereader.natural_earth(resolution='10m',
     category='cultural', name='admin_0_countries')
 SHP_FILE = shapereader.Reader(SHP_FN)
 
@@ -263,9 +263,9 @@ class TestEconIndices(unittest.TestCase):
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
             for i in [0, 1, 2, 3, 5]:  # test elements one by one:
-                self.assertEqual(country_isos[country][i], \
+                self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
-            self.assertAlmostEqual(country_isos[country][4] * 1e-6, \
+            self.assertAlmostEqual(country_isos[country][4] * 1e-6,
                                  country_isos_ref[country][4] * 1e-6, places=0)
 
     def test_fill_econ_indicators_kwargs_pass(self):
@@ -299,9 +299,9 @@ class TestEconIndices(unittest.TestCase):
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
             for i in [0, 1, 2, 3, 5]:  # test elements one by one:
-                self.assertEqual(country_isos[country][i], \
+                self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
-            self.assertAlmostEqual(country_isos[country][4] * 1e-6, \
+            self.assertAlmostEqual(country_isos[country][4] * 1e-6,
                                  country_isos_ref[country][4] * 1e-6, places=0)
 
 

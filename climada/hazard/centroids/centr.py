@@ -123,7 +123,7 @@ class Centroids():
         if self.meta:
             if 'width' not in self.meta.keys() or 'height' not in self.meta.keys() or \
             'crs' not in self.meta.keys() or 'transform' not in self.meta.keys():
-                LOGGER.error('Missing meta information: width, height,'\
+                LOGGER.error('Missing meta information: width, height,'
                              + 'crs or transform')
                 raise ValueError
             if self.meta['transform'][4] > 0:
@@ -284,10 +284,10 @@ class Centroids():
             np.array
         """
         if not self.geometry.crs:
-            self.lat, self.lon, self.geometry, inten = read_vector(file_name, \
+            self.lat, self.lon, self.geometry, inten = read_vector(file_name,
                 inten_name, dst_crs)
             return sparse.csr_matrix(inten)
-        tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name, \
+        tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name,
             inten_name, dst_crs)
         if not equal_crs(tmp_geometry.crs, self.geometry.crs) or \
         not np.allclose(tmp_lat, self.lat) or\
@@ -411,7 +411,7 @@ class Centroids():
                                                   centr.__dict__.values()):
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
             var_name not in ('lat', 'lon'):
-                setattr(self, var_name, np.append(var_val, centr_val). \
+                setattr(self, var_name, np.append(var_val, centr_val).
                         astype(var_val.dtype, copy=False))
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
@@ -476,7 +476,7 @@ class Centroids():
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res / 2).envelope
-        if ('units' in self.geometry.crs and \
+        if ('units' in self.geometry.crs and
         self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
         equal_crs(self.geometry.crs, {'proj': 'cea'}):
             self.area_pixel = xy_pixels.area.values
@@ -498,7 +498,7 @@ class Centroids():
                 self.area_pixel *= abs(self.meta['transform'].a) * abs(self.meta['transform'].e)
                 return
             res_lat, res_lon = self.meta['transform'].e, self.meta['transform'].a
-            lat_unique = np.arange(self.meta['transform'].f + res_lat / 2, \
+            lat_unique = np.arange(self.meta['transform'].f + res_lat / 2,
                 self.meta['transform'].f + self.meta['height'] * res_lat, res_lat)
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
@@ -507,7 +507,7 @@ class Centroids():
                                                      min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
-            if ('units' in self.geometry.crs \
+            if ('units' in self.geometry.crs
                 and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
                or equal_crs(self.geometry.crs, {'proj': 'cea'}):
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
@@ -683,7 +683,7 @@ class Centroids():
                             hf_str = centr_meta.create_dataset(key, (1,), dtype=str_dt)
                             hf_str[0] = value
                     elif key == 'transform':
-                        centr_meta.create_dataset(key, (6,), data=[value.a, value.b, \
+                        centr_meta.create_dataset(key, (6,), data=[value.a, value.b,
                             value.c, value.d, value.e, value.f], dtype=float)
         hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
         hf_str[0] = str(dict(self.crs))
@@ -708,10 +708,10 @@ class Centroids():
         if data.get('crs'):
             crs = ast.literal_eval(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
-            self.set_lat_lon(np.array(data.get('lat')), \
+            self.set_lat_lon(np.array(data.get('lat')),
                 np.array(data.get('lon')), crs)
         elif data.get('latitude') and data.get('latitude').size:
-            self.set_lat_lon(np.array(data.get('latitude')), \
+            self.set_lat_lon(np.array(data.get('latitude')),
                 np.array(data.get('longitude')), crs)
         else:
             centr_meta = data.get('meta')

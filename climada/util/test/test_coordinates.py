@@ -108,7 +108,7 @@ class TestFunc(unittest.TestCase):
 
     def test_read_vector_pass(self):
         """Test one columns data"""
-        shp_file = shapereader.natural_earth(resolution='110m', \
+        shp_file = shapereader.natural_earth(resolution='110m',
             category='cultural', name='populated_places_simple')
         lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
 

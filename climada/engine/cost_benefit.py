@@ -142,7 +142,7 @@ class CostBenefit():
         self.imp_meas_future = dict()
         self.imp_meas_present = dict()
 
-    def calc(self, hazard, entity, haz_future=None, ent_future=None, \
+    def calc(self, hazard, entity, haz_future=None, ent_future=None,
         future_year=None, risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False):
         """Compute cost-benefit ratio for every measure provided current
         and, optionally, future conditions. Present and future measures need
@@ -185,29 +185,29 @@ class CostBenefit():
 
         if not haz_future and not ent_future:
             self.future_year = future_year
-            self._calc_impact_measures(hazard, entity.exposures, \
-                entity.measures, entity.impact_funcs, 'future', \
+            self._calc_impact_measures(hazard, entity.exposures,
+                entity.measures, entity.impact_funcs, 'future',
                 risk_func, save_imp)
         else:
             if imp_time_depen is None:
                 imp_time_depen = 1
-            self._calc_impact_measures(hazard, entity.exposures, \
-                entity.measures, entity.impact_funcs, 'present', \
+            self._calc_impact_measures(hazard, entity.exposures,
+                entity.measures, entity.impact_funcs, 'present',
                 risk_func, save_imp)
             if haz_future and ent_future:
                 self.future_year = ent_future.exposures.ref_year
-                self._calc_impact_measures(haz_future, ent_future.exposures, \
-                    ent_future.measures, ent_future.impact_funcs, 'future', \
+                self._calc_impact_measures(haz_future, ent_future.exposures,
+                    ent_future.measures, ent_future.impact_funcs, 'future',
                     risk_func, save_imp)
             elif haz_future:
                 self.future_year = future_year
-                self._calc_impact_measures(haz_future, entity.exposures, \
-                    entity.measures, entity.impact_funcs, 'future', risk_func,\
+                self._calc_impact_measures(haz_future, entity.exposures,
+                    entity.measures, entity.impact_funcs, 'future', risk_func,
                     save_imp)
             else:
                 self.future_year = ent_future.exposures.ref_year
-                self._calc_impact_measures(hazard, ent_future.exposures, \
-                    ent_future.measures, ent_future.impact_funcs, 'future', \
+                self._calc_impact_measures(hazard, ent_future.exposures,
+                    ent_future.measures, ent_future.impact_funcs, 'future',
                     risk_func, save_imp)
 
         self._calc_cost_benefit(entity.disc_rates, imp_time_depen)
@@ -287,7 +287,7 @@ class CostBenefit():
                 an Impact. Default: average annual impact (aggregated).
         """
         m_transf_name = 'risk transfer (' + meas_name + ')'
-        self.color_rgb[m_transf_name] = np.maximum(np.minimum(self.color_rgb[meas_name] - \
+        self.color_rgb[m_transf_name] = np.maximum(np.minimum(self.color_rgb[meas_name] -
             np.ones(3) * 0.2, 1), 0)
 
         _, layer_no = self.imp_meas_future[NO_MEASURE]['impact']. \
@@ -330,7 +330,7 @@ class CostBenefit():
         # compare layer no measure
         layer_no = disc_rates.net_present_value(self.present_year,
                                                 self.future_year, layer_no)
-        layer = (self.cost_ben_ratio[m_transf_name] * self.benefit[m_transf_name] - \
+        layer = (self.cost_ben_ratio[m_transf_name] * self.benefit[m_transf_name] -
             cost_fix) / cost_factor
         self._print_results()
         self._print_risk_transfer(layer, layer_no, cost_fix, cost_factor)
@@ -381,16 +381,16 @@ class CostBenefit():
                   verticalalignment='bottom', rotation=90, fontsize=12, color='r')
         if abs(text_pos - self.tot_climate_risk / norm_fact) > 1:
             axis.scatter(self.tot_climate_risk / norm_fact, 0, c='r', zorder=200, clip_on=False)
-            axis.text(self.tot_climate_risk / norm_fact, 0, '  Tot risk', \
-                horizontalalignment='center', verticalalignment='bottom', rotation=90, \
+            axis.text(self.tot_climate_risk / norm_fact, 0, '  Tot risk',
+                horizontalalignment='center', verticalalignment='bottom', rotation=90,
                 fontsize=12, color='r')
 
         axis.set_xlim(0, max(self.tot_climate_risk / norm_fact,
                              np.array(list(self.benefit.values())).sum() / norm_fact))
-        axis.set_ylim(0, int(1 / np.nanmin(np.ma.masked_equal(np.array(list( \
+        axis.set_ylim(0, int(1 / np.nanmin(np.ma.masked_equal(np.array(list(
                       self.cost_ben_ratio.values())), 0))) + 1)
 
-        x_label = 'NPV averted damage over ' + str(self.future_year - \
+        x_label = 'NPV averted damage over ' + str(self.future_year -
             self.present_year + 1) + ' years (' + self.unit + ' ' + norm_name + ')'
         axis.set_xlabel(x_label)
         axis.set_ylabel('Benefit/Cost ratio')
@@ -496,28 +496,28 @@ class CostBenefit():
         LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year, risk_dev))
 
         # socioecon + cc
-        LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.\
+        LOGGER.info('Risk with development and climate change at {:d}: {:.3e}'.
                     format(future_year, fut_risk))
 
         axis.bar(1, curr_risk / norm_fact, **kwargs)
-        axis.text(1, curr_risk / norm_fact, str(int(round(curr_risk / norm_fact))), \
-            horizontalalignment='center', verticalalignment='bottom', \
+        axis.text(1, curr_risk / norm_fact, str(int(round(curr_risk / norm_fact))),
+            horizontalalignment='center', verticalalignment='bottom',
             fontsize=12, color='k')
         axis.bar(2, height=(risk_dev - curr_risk) / norm_fact, bottom=curr_risk / norm_fact, **kwargs)
-        axis.text(2, curr_risk / norm_fact + (risk_dev - curr_risk) / norm_fact / 2, \
-            str(int(round((risk_dev - curr_risk) / norm_fact))), \
+        axis.text(2, curr_risk / norm_fact + (risk_dev - curr_risk) / norm_fact / 2,
+            str(int(round((risk_dev - curr_risk) / norm_fact))),
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
         axis.bar(3, height=(fut_risk - risk_dev) / norm_fact, bottom=risk_dev / norm_fact, **kwargs)
-        axis.text(3, risk_dev / norm_fact + (fut_risk - risk_dev) / norm_fact / 2, \
-            str(int(round((fut_risk - risk_dev) / norm_fact))), \
+        axis.text(3, risk_dev / norm_fact + (fut_risk - risk_dev) / norm_fact / 2,
+            str(int(round((fut_risk - risk_dev) / norm_fact))),
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
         axis.bar(4, height=fut_risk / norm_fact, **kwargs)
-        axis.text(4, fut_risk / norm_fact, str(int(round(fut_risk / norm_fact))), \
-                  horizontalalignment='center', verticalalignment='bottom', \
+        axis.text(4, fut_risk / norm_fact, str(int(round(fut_risk / norm_fact))),
+                  horizontalalignment='center', verticalalignment='bottom',
                   fontsize=12, color='k')
 
         axis.set_xticks(np.arange(4) + 1)
-        axis.set_xticklabels(['Risk ' + str(present_year), \
+        axis.set_xticklabels(['Risk ' + str(present_year),
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(future_year)])
         axis.set_ylabel('Impact (' + imp.unit + ' ' + norm_name + ')')
         axis.set_title('Risk at {:d} and {:d}'.format(present_year, future_year))
@@ -552,16 +552,16 @@ class CostBenefit():
             tot_benefit = np.array([self.benefit[meas] for meas in in_meas_names]).sum()
             norm_fact = self.tot_climate_risk / bars[3].get_height()
         else:
-            tot_benefit = np.array([risk_func(self.imp_meas_future[NO_MEASURE]['impact']) - \
+            tot_benefit = np.array([risk_func(self.imp_meas_future[NO_MEASURE]['impact']) -
                 risk_func(self.imp_meas_future[meas]['impact']) for meas in in_meas_names]).sum()
             norm_fact = risk_func(self.imp_meas_future['no measure']['impact']) / bars[3].get_height()
         if combine:
             try:
                 LOGGER.info('Combining measures ' + str(in_meas_names))
-                all_meas = self.combine_measures(in_meas_names, 'combine', \
+                all_meas = self.combine_measures(in_meas_names, 'combine',
                     colors.to_rgba('black'), disc_rates, imp_time_depen, risk_func)
             except KeyError:
-                LOGGER.warning('Use calc() with save_imp=True to get a more accurate ' \
+                LOGGER.warning('Use calc() with save_imp=True to get a more accurate '
                                'approximation of total averted damage,')
             if accumulate:
                 tot_benefit = all_meas.benefit['combine']
@@ -617,13 +617,13 @@ class CostBenefit():
         imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
         risk_dev = self._npv_unaverted_impact(risk_func(imp), entity.disc_rates,
                                               time_dep, curr_risk)
-        LOGGER.info('Total risk with development at {:d}: {:.3e}'.format( \
+        LOGGER.info('Total risk with development at {:d}: {:.3e}'.format(
             self.future_year, risk_dev))
 
         # socioecon + cc
-        risk_tot = self._npv_unaverted_impact(self.imp_meas_future[NO_MEASURE]['risk'], \
+        risk_tot = self._npv_unaverted_impact(self.imp_meas_future[NO_MEASURE]['risk'],
             entity.disc_rates, time_dep, curr_risk)
-        LOGGER.info('Total risk with development and climate change at {:d}: {:.3e}'.\
+        LOGGER.info('Total risk with development and climate change at {:d}: {:.3e}'.
             format(self.future_year, risk_tot))
 
         # plot
@@ -631,27 +631,27 @@ class CostBenefit():
             _, axis = plt.subplots(1, 1)
         norm_fact, norm_name = _norm_values(curr_risk)
         axis.bar(1, risk_curr / norm_fact, **kwargs)
-        axis.text(1, risk_curr / norm_fact, str(int(round(risk_curr / norm_fact))), \
-            horizontalalignment='center', verticalalignment='bottom', \
+        axis.text(1, risk_curr / norm_fact, str(int(round(risk_curr / norm_fact))),
+            horizontalalignment='center', verticalalignment='bottom',
             fontsize=12, color='k')
         axis.bar(2, height=(risk_dev - risk_curr) / norm_fact, bottom=risk_curr / norm_fact, **kwargs)
-        axis.text(2, risk_curr / norm_fact + (risk_dev - risk_curr) / norm_fact / 2, \
-            str(int(round((risk_dev - risk_curr) / norm_fact))), \
+        axis.text(2, risk_curr / norm_fact + (risk_dev - risk_curr) / norm_fact / 2,
+            str(int(round((risk_dev - risk_curr) / norm_fact))),
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
         axis.bar(3, height=(risk_tot - risk_dev) / norm_fact, bottom=risk_dev / norm_fact, **kwargs)
-        axis.text(3, risk_dev / norm_fact + (risk_tot - risk_dev) / norm_fact / 2, \
-            str(int(round((risk_tot - risk_dev) / norm_fact))), \
+        axis.text(3, risk_dev / norm_fact + (risk_tot - risk_dev) / norm_fact / 2,
+            str(int(round((risk_tot - risk_dev) / norm_fact))),
             horizontalalignment='center', verticalalignment='center', fontsize=12, color='k')
         axis.bar(4, height=risk_tot / norm_fact, **kwargs)
-        axis.text(4, risk_tot / norm_fact, str(int(round(risk_tot / norm_fact))), \
-                  horizontalalignment='center', verticalalignment='bottom', \
+        axis.text(4, risk_tot / norm_fact, str(int(round(risk_tot / norm_fact))),
+                  horizontalalignment='center', verticalalignment='bottom',
                   fontsize=12, color='k')
 
         axis.set_xticks(np.arange(4) + 1)
-        axis.set_xticklabels(['Risk ' + str(self.present_year), \
+        axis.set_xticklabels(['Risk ' + str(self.present_year),
             'Economic \ndevelopment', 'Climate \nchange', 'Risk ' + str(self.future_year)])
         axis.set_ylabel('Impact (' + self.unit + ' ' + norm_name + ')')
-        axis.set_title('Total accumulated impact from {:d} to {:d}'.format( \
+        axis.set_title('Total accumulated impact from {:d} to {:d}'.format(
                        self.present_year, self.future_year))
         return axis
 
@@ -732,11 +732,11 @@ class CostBenefit():
                 # npv of the full unaverted damages
                 if self.imp_meas_present:
                     self.tot_climate_risk = self._npv_unaverted_impact(
-                        self.imp_meas_future[NO_MEASURE]['risk'], \
+                        self.imp_meas_future[NO_MEASURE]['risk'],
                         disc_rates, time_dep, self.imp_meas_present[NO_MEASURE]['risk'])
                 else:
                     self.tot_climate_risk = self._npv_unaverted_impact(
-                        self.imp_meas_future[NO_MEASURE]['risk'], \
+                        self.imp_meas_future[NO_MEASURE]['risk'],
                         disc_rates, time_dep)
                 continue
 
@@ -775,7 +775,7 @@ class CostBenefit():
                                                self.future_year, risk_tr)
         self.benefit[meas_name] = meas_ben
         with np.errstate(divide='ignore'):
-            self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] + \
+            self.cost_ben_ratio[meas_name] = (meas_val['cost'][0] +
                 meas_val['cost'][1] * risk_tr) / meas_ben
 
     def _time_dependency_array(self, imp_time_depen=None):
@@ -814,10 +814,10 @@ class CostBenefit():
         """
         if risk_present:
             tot_climate_risk = risk_present + (risk_future - risk_present) * time_dep
-            tot_climate_risk = disc_rates.net_present_value(self.present_year, \
+            tot_climate_risk = disc_rates.net_present_value(self.present_year,
                 self.future_year, tot_climate_risk)
         else:
-            tot_climate_risk = disc_rates.net_present_value(self.present_year, \
+            tot_climate_risk = disc_rates.net_present_value(self.present_year,
                 self.future_year, time_dep * risk_future)
         return tot_climate_risk
 
@@ -842,7 +842,7 @@ class CostBenefit():
             imp_dict = self.imp_meas_present
             new_imp_dict = new_cb.imp_meas_present
 
-        sum_ben = np.sum([imp_dict[NO_MEASURE]['impact'].at_event - \
+        sum_ben = np.sum([imp_dict[NO_MEASURE]['impact'].at_event -
             imp_dict[name]['impact'].at_event for name in in_meas_names], axis=0)
         new_imp = copy.deepcopy(imp_dict[in_meas_names[0]]['impact'])
         new_imp.at_event = np.maximum(imp_dict[NO_MEASURE]['impact'].at_event
@@ -855,7 +855,7 @@ class CostBenefit():
         new_imp_dict[new_name]['impact'] = new_imp
         new_imp_dict[new_name]['efc'] = new_imp.calc_freq_curve()
         new_imp_dict[new_name]['risk'] = risk_func(new_imp)
-        new_imp_dict[new_name]['cost'] = (np.array([imp_dict[name]['cost'][0] \
+        new_imp_dict[new_name]['cost'] = (np.array([imp_dict[name]['cost'][0]
             for name in in_meas_names]).sum(), 1)
         new_imp_dict[new_name]['risk_transf'] = 0
 
@@ -916,8 +916,8 @@ class CostBenefit():
             xmin = 0
             for meas_id in sort_cb:
                 meas_n = m_names[meas_id]
-                axis.add_patch(Rectangle((xmin, 0), cb_res.benefit[meas_n] / norm_fact, \
-                    1 / cb_res.cost_ben_ratio[meas_n], color=cb_res.color_rgb[meas_n],\
+                axis.add_patch(Rectangle((xmin, 0), cb_res.benefit[meas_n] / norm_fact,
+                    1 / cb_res.cost_ben_ratio[meas_n], color=cb_res.color_rgb[meas_n],
                     **kwargs))
 
                 if i_cb == 0:
@@ -926,20 +926,20 @@ class CostBenefit():
                               verticalalignment='bottom', rotation=90, fontsize=12)
                 xmin += cb_res.benefit[meas_n] / norm_fact
 
-            xy_lim[0] = max(xy_lim[0], max(int(cb_res.tot_climate_risk / norm_fact), \
+            xy_lim[0] = max(xy_lim[0], max(int(cb_res.tot_climate_risk / norm_fact),
                 np.array(list(cb_res.benefit.values())).sum() / norm_fact))
             try:
                 with np.errstate(divide='ignore'):
-                    xy_lim[1] = max(xy_lim[1], int(1 / cb_res.cost_ben_ratio[ \
+                    xy_lim[1] = max(xy_lim[1], int(1 / cb_res.cost_ben_ratio[
                           m_names[sort_cb[0]]]) + 1)
             except (ValueError, OverflowError):
-                xy_lim[1] = max(xy_lim[1], int(1 / np.array(list(cb_res.cost_ben_ratio.values())).\
+                xy_lim[1] = max(xy_lim[1], int(1 / np.array(list(cb_res.cost_ben_ratio.values())).
                       max()) + 1)
 
         axis.set_xlim(0, xy_lim[0])
         axis.set_ylim(0, xy_lim[1])
-        axis.set_xlabel('NPV averted damage over ' + \
-                        str(cb_list[0].future_year - cb_list[0].present_year + 1) + \
+        axis.set_xlabel('NPV averted damage over ' +
+                        str(cb_list[0].future_year - cb_list[0].present_year + 1) +
                         ' years (' + cb_list[0].unit + ' ' + norm_name + ')')
         axis.set_ylabel('Benefit/Cost ratio')
         return axis
@@ -968,8 +968,8 @@ class CostBenefit():
             kwargs['alpha'] = 0.4
         if 'mutation_scale' not in kwargs:
             kwargs['mutation_scale'] = 100
-        axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2, \
-            bar_top[1]), (bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2, \
+        axis.add_patch(FancyArrowPatch((bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2,
+            bar_top[1]), (bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2,
             risk_tot / norm_fact - arrow_len), **kwargs))
 
     def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):

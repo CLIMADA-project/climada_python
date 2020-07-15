@@ -202,13 +202,13 @@ class TestCalc(unittest.TestCase):
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, \
+        self.assertAlmostEqual(1.373490457046383e+08,
                                impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08, \
+        self.assertTrue(np.isclose(1.373490457046383e+08,
                                           impact.eai_exp[int(num_exp / 2)]))
-        self.assertAlmostEqual(1.066837260150042e+08, \
+        self.assertAlmostEqual(1.066837260150042e+08,
                                impact.eai_exp[num_exp - 1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08, \
+        self.assertTrue(np.isclose(1.066837260150042e+08,
                                           impact.eai_exp[int(num_exp - 1)]))
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
@@ -270,13 +270,13 @@ class TestCalc(unittest.TestCase):
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, \
+        self.assertAlmostEqual(1.373490457046383e+08,
                                impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08, \
+        self.assertTrue(np.isclose(1.373490457046383e+08,
                                           impact.eai_exp[int(num_exp / 2)]))
-        self.assertAlmostEqual(1.066837260150042e+08, \
+        self.assertAlmostEqual(1.066837260150042e+08,
                                impact.eai_exp[num_exp - 1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08, \
+        self.assertTrue(np.isclose(1.066837260150042e+08,
                                           impact.eai_exp[int(num_exp - 1)]))
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
@@ -303,7 +303,7 @@ class TestImpactYearSet(unittest.TestCase):
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
         imp.unit = 'USD'
-        imp.date = np.array([732801, 716160, 718313, 712468, 732802, \
+        imp.date = np.array([732801, 716160, 718313, 712468, 732802,
                              729285, 732931, 715419, 722404, 718351])
 
         iys_all = imp.calc_impact_year_set()
@@ -311,9 +311,9 @@ class TestImpactYearSet(unittest.TestCase):
         iys_all_yr = imp.calc_impact_year_set(year_range=(1975, 2000))
         iys_yr = imp.calc_impact_year_set(all_years=False, year_range=[1975, 2000])
         iys_all_yr_1940 = imp.calc_impact_year_set(all_years=True, year_range=[1940, 2000])
-        self.assertEqual(np.around(sum([iys[year] for year in iys])), \
+        self.assertEqual(np.around(sum([iys[year] for year in iys])),
                          np.around(sum(imp.at_event)))
-        self.assertEqual(sum([iys[year] for year in iys]), \
+        self.assertEqual(sum([iys[year] for year in iys]),
                          sum([iys_all[year] for year in iys_all]))
         self.assertEqual(len(iys), 7)
         self.assertEqual(len(iys_all), 57)
@@ -325,7 +325,7 @@ class TestImpactYearSet(unittest.TestCase):
         # year range (yr):
         self.assertEqual(len(iys_yr), 2)
         self.assertEqual(len(iys_all_yr), 26)
-        self.assertEqual(sum([iys_yr[year] for year in iys_yr]), \
+        self.assertEqual(sum([iys_yr[year] for year in iys_yr]),
                          sum([iys_all_yr[year] for year in iys_all_yr]))
         self.assertIn(1997 and 1978, iys_yr)
         self.assertFalse(2007 in iys_yr)

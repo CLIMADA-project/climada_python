@@ -60,22 +60,22 @@ SCENARIO = ['1860soc',
 YEARCHUNKS = dict()
 # two types of 1860soc (1661-2299 not implemented)
 YEARCHUNKS[SCENARIO[0]] = dict()
-YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1800, 1860]), \
+YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1800, 1860]),
           'startyear': 1661, 'endyear': 1860}
 YEARCHUNKS[SCENARIO[1]] = dict()
-YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([1976, 2005]), \
+YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([1976, 2005]),
           'startyear': 1861, 'endyear': 2005}
 YEARCHUNKS[SCENARIO[2]] = dict()
-YEARCHUNKS[SCENARIO[2]] = {'yearrange': np.array([2006, 2099]), \
+YEARCHUNKS[SCENARIO[2]] = {'yearrange': np.array([2006, 2099]),
           'startyear': 2006, 'endyear': 2299}
 YEARCHUNKS[SCENARIO[3]] = dict()
-YEARCHUNKS[SCENARIO[3]] = {'yearrange': np.array([2006, 2099]), \
+YEARCHUNKS[SCENARIO[3]] = {'yearrange': np.array([2006, 2099]),
           'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS[SCENARIO[4]] = dict()
-YEARCHUNKS[SCENARIO[4]] = {'yearrange': np.array([2006, 2099]), \
+YEARCHUNKS[SCENARIO[4]] = {'yearrange': np.array([2006, 2099]),
           'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS[SCENARIO[5]] = dict()
-YEARCHUNKS[SCENARIO[5]] = {'yearrange': np.array([2100, 2299]), \
+YEARCHUNKS[SCENARIO[5]] = {'yearrange': np.array([2100, 2299]),
           'startyear': 2100, 'endyear': 2299}
 
 YEARS_FAO = np.array([2000, 2018])
@@ -127,9 +127,9 @@ class CropyieldIsimip(Exposures):
     def _constructor(self):
         return CropyieldIsimip
 
-    def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH, \
-                            bbox=BBOX, yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], \
-                            cl_model=None, scenario=SCENARIO[1], crop=CROP[0], irr=IRR[0], \
+    def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH,
+                            bbox=BBOX, yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'],
+                            cl_model=None, scenario=SCENARIO[1], crop=CROP[0], irr=IRR[0],
                             unit='USD', fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill exposure from nc_dis file from ISIMIP
@@ -163,18 +163,18 @@ class CropyieldIsimip(Exposures):
             # if scenario == 'histsoc' or scenario == '1860soc':
             if scenario in('histsoc', '1860soc'):
                 string = '%s_%s_%s_%s.nc'
-                filename = os.path.join(input_dir, string % (scenario, fn_str_var, \
-                                                         str(yearchunk['startyear']), \
+                filename = os.path.join(input_dir, string % (scenario, fn_str_var,
+                                                         str(yearchunk['startyear']),
                                                          str(yearchunk['endyear'])))
             else:
                 string = '%s_%s_%s_%s_%s.nc'
-                filename = os.path.join(input_dir, string % (scenario, cl_model, fn_str_var, \
-                                                         str(yearchunk['startyear']), \
+                filename = os.path.join(input_dir, string % (scenario, cl_model, fn_str_var,
+                                                         str(yearchunk['startyear']),
                                                          str(yearchunk['endyear'])))
         elif scenario == 'flexible':
             items = filename.split('_')
             yearchunk = dict()
-            yearchunk = {'yearrange': np.array([int(items[6]), int(items[7].split('.')[0])]), \
+            yearchunk = {'yearrange': np.array([int(items[6]), int(items[7].split('.')[0])]),
                          'startyear': int(items[6]), 'endyear': int(items[7].split('.')[0])}
             filename = os.path.join(input_dir, filename)
         else:
@@ -199,7 +199,7 @@ class CropyieldIsimip(Exposures):
         self['region_id'] = co.get_country_code(self.latitude, self.longitude)
 
         # The indeces of the yearrange to be extracted are determined
-        time_idx = np.array([int(yearrange[0] - yearchunk['startyear']), \
+        time_idx = np.array([int(yearrange[0] - yearchunk['startyear']),
                              int(yearrange[1] - yearchunk['startyear'])])
 
         # The area covered by a grid cell is calculated depending on the latitude
@@ -213,12 +213,12 @@ class CropyieldIsimip(Exposures):
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
         if irr == 'combined':
-            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[1]])['name'])[\
+            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[1]])['name'])[
                          time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values + \
-                         (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[2]])['name'])[\
+                         (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[2]])['name'])[
                           time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values
         else:
-            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[irr])['name'])[\
+            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[irr])['name'])[
                          time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values
 
         area_crop = np.nan_to_num(area_crop).flatten()
@@ -228,15 +228,15 @@ class CropyieldIsimip(Exposures):
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
             if irr != 'combined':
-                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + irr + '_' +\
+                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + irr + '_' +
                 str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
                 hist_mean = (h5py.File(filename, 'r'))['mean'][()]
             else:
-                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[1] +\
+                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[1] +
                 '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
-                filename2 = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[2] +\
+                filename2 = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[2] +
                 '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
-                hist_mean = ((h5py.File(filename, 'r'))['mean'][()] + \
+                hist_mean = ((h5py.File(filename, 'r'))['mean'][()] +
                              (h5py.File(filename2, 'r'))['mean'][()]) / 2
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
@@ -255,7 +255,7 @@ class CropyieldIsimip(Exposures):
         if len(lat_mean) != len(self.latitude.values):
             idx_mean = np.zeros(len(self.latitude.values), dtype=int)
             for i in range(len(self.latitude.values)):
-                idx_mean[i] = (np.where(np.logical_and(lat_mean == self.latitude.values[i], \
+                idx_mean[i] = (np.where(np.logical_and(lat_mean == self.latitude.values[i],
                         lon_mean == self.longitude.values[i]))[0])[0]
         else:
             idx_mean = np.arange(0, len(lat_mean))
@@ -265,7 +265,7 @@ class CropyieldIsimip(Exposures):
         self['value'] = np.squeeze(area_crop * hist_mean[idx_mean])
 
         self.tag = Tag()
-        self.tag.description = ("Crop yield ISIMIP " + (CROP_NAME[crop])['print'] + ' ' + \
+        self.tag.description = ("Crop yield ISIMIP " + (CROP_NAME[crop])['print'] + ' ' +
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[1]))
         self.value_unit = 't / y'
         self.crop = crop
@@ -295,9 +295,9 @@ class CropyieldIsimip(Exposures):
 
         return self
 
-    def set_mean_of_several_models(self, input_dir=INPUT_DIR, hist_mean=HIST_MEAN_PATH, bbox=BBOX, \
-                                   yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], \
-                                   cl_model=None, scenario=None, crop=CROP[0], irr=IRR[0], \
+    def set_mean_of_several_models(self, input_dir=INPUT_DIR, hist_mean=HIST_MEAN_PATH, bbox=BBOX,
+                                   yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'],
+                                   cl_model=None, scenario=None, crop=CROP[0], irr=IRR[0],
                                    unit='USD', fn_str_var=FN_STR_VAR):
         """Wrapper to fill exposure from several nc_dis files from ISIMIP
         Parameters:
@@ -321,7 +321,7 @@ class CropyieldIsimip(Exposures):
                 ISIMIP simuation round
         """
 
-        filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
+        filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
                      f.startswith('.') if 'nc' in f]
 
         # If only files with a certain scenario and or cl_model shall be considered, they
@@ -341,8 +341,8 @@ class CropyieldIsimip(Exposures):
                 filenames2 = filenames
 
         # The first exposure is calculate to determine its size and initialize the combined exposure
-        self.set_from_single_run(input_dir, filename=filenames2[0], hist_mean=hist_mean, \
-                                 bbox=bbox, yearrange=yearrange, crop=crop, irr=irr, \
+        self.set_from_single_run(input_dir, filename=filenames2[0], hist_mean=hist_mean,
+                                 bbox=bbox, yearrange=yearrange, crop=crop, irr=irr,
                                  unit=unit, fn_str_var=fn_str_var)
 
         combined_exp = np.zeros([self.value.size, len(filenames2)])
@@ -350,7 +350,7 @@ class CropyieldIsimip(Exposures):
 
         # The calculations are repeated for all exposures
         for j in range(1, len(filenames2)):
-            self.set_from_single_run(input_dir, filename=filenames2[j], hist_mean=hist_mean, \
+            self.set_from_single_run(input_dir, filename=filenames2[j], hist_mean=hist_mean,
                                      bbox=bbox, yearrange=yearrange, crop=crop, irr=irr, unit=unit)
             combined_exp[:, j] = self.value
 
@@ -409,14 +409,14 @@ class CropyieldIsimip(Exposures):
                 if country == 'Other country':
                     price = 0
                 else:
-                    idx_price = np.where((np.asarray(fao_country) == country) & \
-                                         (np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) &\
+                    idx_price = np.where((np.asarray(fao_country) == country) &
+                                         (np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) &
                                          (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
                     price = np.mean(fao_price[idx_price])
                 # if no price can be determined for a specific yearrange and country, the world
                 # average for that crop (in the specified yearrange) is used
                 if math.isnan(price) or price == 0:
-                    idx_price = np.where((np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) & \
+                    idx_price = np.where((np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) &
                                      (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
                     price = np.mean(fao_price[idx_price])
                 idx_country = np.where(np.asarray(iso3alpha) == country)[0]
@@ -445,9 +445,9 @@ class CropyieldIsimip(Exposures):
 
         return list_countries, country_values
 
-def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH, \
-                           output_dir=OUTPUT_DIR, bbox=BBOX, \
-                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='t', \
+def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH,
+                           output_dir=OUTPUT_DIR, bbox=BBOX,
+                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='t',
                            returns='filename_list'):
     """Generates CropyieldIsimip exposure sets for all files contained in the
     input directory and saves them as hdf5 files in the output directory
@@ -466,7 +466,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
 
     """
 
-    filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not \
+    filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not
                  f.startswith('.')]
 
     # generate output directory if it does not exist yet
@@ -479,11 +479,11 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     for i, _ in enumerate(filenames):
         item = filenames[i].split('_')
         cropyield = CropyieldIsimip()
-        cropyield.set_from_single_run(input_dir=input_dir, filename=filename, \
-                                      hist_mean=hist_mean_dir, bbox=bbox, \
-                                      yearrange=yearrange, crop=((item[2]).split('-'))[0], \
+        cropyield.set_from_single_run(input_dir=input_dir, filename=filename,
+                                      hist_mean=hist_mean_dir, bbox=bbox,
+                                      yearrange=yearrange, crop=((item[2]).split('-'))[0],
                                       irr=((item[2]).split('-'))[1], unit=unit)
-        filename_saveto = 'cropyield_isimip_' + ((item[2]).split('-'))[0] + '-' + ( \
+        filename_saveto = 'cropyield_isimip_' + ((item[2]).split('-'))[0] + '-' + (
                                               ((item[2]).split('-'))[1]).split('.')[0] + \
                                               '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5'
         filename_list.append(filename_saveto)
@@ -494,8 +494,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         return filename_list
     return filename_list, output_list
 
-def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
-                                 yearrange=np.array([2008, 2018]), \
+def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR,
+                                 yearrange=np.array([2008, 2018]),
                                  unit='t', returns='all'):
     """Normalize the given exposures countrywise with the mean cropyield production quantity
     documented by the FAO.
@@ -544,9 +544,9 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
     exp_noirr_norm = exp_noirr
 
     for country, iso_nr in enumerate(country_list):
-        idx = np.where((np.asarray(fao_code) == fao_country[country]) & \
-                                         (np.asarray(fao_crops) == (\
-                                          CROP_NAME[exp_firr.crop])['fao']) & \
+        idx = np.where((np.asarray(fao_code) == fao_country[country]) &
+                                         (np.asarray(fao_crops) == (
+                                          CROP_NAME[exp_firr.crop])['fao']) &
                                           (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
         if len(idx) >= 1:
             fao_yield[country] = np.mean(fao_values[idx])
@@ -573,8 +573,8 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
         return country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_yield, exp_totyield
     return country_list, ratio, exp_firr_norm, exp_noirr_norm
 
-def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, \
-                          yearrange=np.array([2008, 2018]), \
+def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
+                          yearrange=np.array([2008, 2018]),
                           unit='t', returns='all'):
     """
 
@@ -593,8 +593,8 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, \
         Returns:
 
     """
-    filenames_exp = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if \
-                     (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not \
+    filenames_exp = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
+                     (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
                      f.startswith('.') if 'firr' in f]
 
     crop_list = list()
@@ -617,15 +617,15 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, \
 
         if returns == 'all':
             countries, ratio, exp_firr2, exp_noirr2, fao_yield, \
-            exp_totyield = normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=input_dir, \
+            exp_totyield = normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=input_dir,
                                                         yearrange=yearrange, unit=unit)
             fao_yield_list.append(fao_yield)
             exp_totyield_list.append(exp_totyield)
         else:
             countries, ratio, exp_firr2, \
-            exp_noirr2 = normalize_with_fao_cropyield(exp_firr, exp_noirr, \
-                                                      input_dir=input_dir, \
-                                                      yearrange=yearrange, unit=unit, \
+            exp_noirr2 = normalize_with_fao_cropyield(exp_firr, exp_noirr,
+                                                      input_dir=input_dir,
+                                                      yearrange=yearrange, unit=unit,
                                                       returns='reduced')
 
 
@@ -664,7 +664,7 @@ def semilogplot_ratio(crop, countries, ratio, output_dir=OUTPUT_DIR, save=True):
     if save:
         if not os.path.exists(os.path.join(output_dir, 'Exposure_norm_plots')):
             os.mkdir(os.path.join(output_dir, 'Exposure_norm_plots'))
-        plt.savefig(os.path.join(output_dir, 'Exposure_norm_plots', \
+        plt.savefig(os.path.join(output_dir, 'Exposure_norm_plots',
                                  'fig_ratio_norm_' + crop))
 
     return fig, axes

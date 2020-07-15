@@ -171,7 +171,7 @@ class Impact():
         self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where(np.logical_and(exposures.value > 0, \
+        exp_idx = np.where(np.logical_and(exposures.value > 0,
                            exposures[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
@@ -187,7 +187,7 @@ class Impact():
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
         if if_haz not in exposures:
-            LOGGER.info('Missing exposures impact functions for hazard %s. ' +\
+            LOGGER.info('Missing exposures impact functions for hazard %s. ' +
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
 
@@ -215,10 +215,10 @@ class Impact():
             # separte in chunks
             chk = -1
             for chk in range(int(exp_iimp.size / exp_step)):
-                self._exp_impact( \
-                    exp_idx[exp_iimp[chk * exp_step:(chk + 1) * exp_step]],\
+                self._exp_impact(
+                    exp_idx[exp_iimp[chk * exp_step:(chk + 1) * exp_step]],
                     exposures, hazard, imp_fun, insure_flag)
-            self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],\
+            self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],
                 exposures, hazard, imp_fun, insure_flag)
 
         if not tot_exp:
@@ -390,7 +390,7 @@ class Impact():
         try:
             self.imp_mat.shape[1]
         except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
 
@@ -429,7 +429,7 @@ class Impact():
         try:
             self.imp_mat.shape[1]
         except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
 
@@ -561,24 +561,24 @@ class Impact():
         try:
             self.imp_mat.shape[1]
         except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'\
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = int(CONFIG['global']['max_matrix_size'] / self.imp_mat.shape[0])
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+            LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.imp_mat.shape[0]))
             raise ValueError
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
-            self._loc_return_imp(np.array(return_periods), \
-                self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(), \
+            self._loc_return_imp(np.array(return_periods),
+                self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_imp(np.array(return_periods), \
-            self.imp_mat[:, (chk + 1) * cen_step:].toarray(), \
+        self._loc_return_imp(np.array(return_periods),
+            self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
             imp_stats[:, (chk + 1) * cen_step:])
 
         return imp_stats
@@ -601,7 +601,7 @@ class Impact():
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats == []:
-            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'\
+            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             raise ValueError
         if log10_scale:
@@ -620,7 +620,7 @@ class Impact():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp, \
+        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
             colbar_name, title, smooth=smooth, axes=axis, **kwargs)
 
         return axis, imp_stats
@@ -760,14 +760,14 @@ class Impact():
             args_exp['vmin'] = exp.value.values.min()
 
         if 'vmin' not in args_imp:
-            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list \
+            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                 if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
             args_exp['vmax'] = exp.value.values.max()
 
         if 'vmax' not in args_imp:
-            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list \
+            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
                 if imp.eai_exp.size]).max()
 
         if 'cmap' not in args_exp:
@@ -873,7 +873,7 @@ class Impact():
             self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
             impact = sparse.coo_matrix(impact)
         else:
-            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
+            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum(
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
@@ -939,7 +939,7 @@ class Impact():
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
         imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1 / freq_cen), \
+        wrong_inten = np.logical_and(return_periods > np.max(1 / freq_cen),
                 np.isnan(imp_fit))
         imp_fit[wrong_inten] = 0.
 

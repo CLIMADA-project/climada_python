@@ -213,16 +213,16 @@ class TropCyclone(Hazard):
         if not track:
             LOGGER.error('%s not found in track data.', track_name)
             raise ValueError
-        idx_plt = np.argwhere(np.logical_and(np.logical_and(np.logical_and( \
-            track.lon.values < centroids.total_bounds[2] + 1, \
-            centroids.total_bounds[0] - 1 < track.lon.values), \
-            track.lat.values < centroids.total_bounds[3] + 1), \
+        idx_plt = np.argwhere(np.logical_and(np.logical_and(np.logical_and(
+            track.lon.values < centroids.total_bounds[2] + 1,
+            centroids.total_bounds[0] - 1 < track.lon.values),
+            track.lat.values < centroids.total_bounds[3] + 1),
             centroids.total_bounds[1] - 1 < track.lat.values)).reshape(-1)
 
         tc_list = []
         tr_coord = {'lat': [], 'lon': []}
         for node in range(idx_plt.size - 2):
-            tr_piece = track.sel(time=slice(track.time.values[idx_plt[node]], \
+            tr_piece = track.sel(time=slice(track.time.values[idx_plt[node]],
                 track.time.values[idx_plt[node + 2]]))
             tr_piece.attrs['n_nodes'] = 2  # plot only one node
             tr_sel = TCTracks()
@@ -232,7 +232,7 @@ class TropCyclone(Hazard):
 
             tc_tmp = TropCyclone()
             tc_tmp.set_from_tracks(tr_sel, centroids)
-            tc_tmp.event_name = [track.name + ' ' + time.strftime("%d %h %Y %H:%M", \
+            tc_tmp.event_name = [track.name + ' ' + time.strftime("%d %h %Y %H:%M",
                 time.gmtime(tr_sel.data[0].time[1].values.astype(int) / 1000000000))]
             tc_list.append(tc_tmp)
 

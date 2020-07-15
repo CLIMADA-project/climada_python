@@ -96,7 +96,7 @@ def download_ftp(url, file_name):
     """
     LOGGER.info('Downloading file %s', file_name)
     try:
-        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
+        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1,
                                  desc=url.split('/')[-1]) as prog_bar:
             urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
     except Exception as exc:

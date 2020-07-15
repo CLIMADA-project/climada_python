@@ -86,7 +86,7 @@ def size(exp_len, var, var_name):
     """
     try:
         if exp_len != len(var):
-            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len, \
+            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len,
                          len(var))
             raise ValueError
     except TypeError:
@@ -101,11 +101,11 @@ def shape(exp_row, exp_col, var, var_name):
     """
     try:
         if exp_row != var.shape[0]:
-            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,\
+            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,
                          var.shape[0])
             raise ValueError
         if exp_col != var.shape[1]:
-            LOGGER.error("Invalid %s column size: %s != %s.", var_name, \
+            LOGGER.error("Invalid %s column size: %s != %s.", var_name,
                          exp_col, var.shape[1])
             raise ValueError
     except TypeError:

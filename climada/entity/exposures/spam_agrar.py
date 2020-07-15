@@ -147,9 +147,9 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
         self['latitude'] = lat.values
         self['longitude'] = lon.values
-        LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(\
+        LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(
                     np.min(self.latitude), np.max(self.latitude)))
-        LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
+        LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(
                     np.min(self.longitude), np.max(self.longitude)))
 
         # set region_id (numeric ISO3):
@@ -164,7 +164,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self['region_id'] = region_id
         self.ref_year = 2005
         self.tag = Tag()
-        self.tag.description = ("SPAM agrar exposure for variable "\
+        self.tag.description = ("SPAM agrar exposure for variable "
             + spam_v + " and technology " + spam_t)
 
         # if impact id variation iiv = 1, assign different damage function ID
@@ -183,7 +183,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         else:
             self.value_unit = 'USD'
 
-        LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(\
+        LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(
                     spam_v, spam_t, region, self.value.sum(), self.value_unit))
         self.check()
 
@@ -255,24 +255,24 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             fname = os.path.join(data_path, fname_short)
             if not os.path.isfile(fname):
                 try:
-                    self._spam_download_csv(data_path=data_path,\
+                    self._spam_download_csv(data_path=data_path,
                                             spam_variable=spam_var)
                 except:
-                    raise FileExistsError('The file ' + str(fname)\
-                                + ' could not '\
-                                + 'be found. Please download the file '\
-                                + 'first or choose a different folder. '\
-                                + 'The data can be downloaded from '\
-                                + 'https://dataverse.harvard.edu/'\
-                                + 'dataset.xhtml?persistentId=doi:'\
+                    raise FileExistsError('The file ' + str(fname)
+                                + ' could not '
+                                + 'be found. Please download the file '
+                                + 'first or choose a different folder. '
+                                + 'The data can be downloaded from '
+                                + 'https://dataverse.harvard.edu/'
+                                + 'dataset.xhtml?persistentId=doi:'
                                 + '10.7910/DVN/DHXBJX')
             LOGGER.debug('Importing %s', str(fname_short))
 
-            data = pd.read_csv(fname, sep=',', index_col=None, header=0, \
+            data = pd.read_csv(fname, sep=',', index_col=None, header=0,
                              encoding='ISO-8859-1')
 
         except:
-            LOGGER.error('Importing the SPAM agriculturer file failed. ' \
+            LOGGER.error('Importing the SPAM agriculturer file failed. '
                          'Operation aborted.')
             raise
         # remove data points with zero crop production: (works only for TA)
@@ -290,20 +290,20 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
             if not os.path.isfile(fname):
                 try:
-                    self._spam_download_csv(data_path=data_path,\
+                    self._spam_download_csv(data_path=data_path,
                                             spam_variable='cell5m')
                 except:
-                    raise FileExistsError('The file ' + str(fname)\
-                                + ' could not '\
-                                + 'be found. Please download the file '\
-                                + 'first or choose a different folder. '\
-                                + 'The data can be downloaded from '\
-                                + 'https://dataverse.harvard.edu/'\
-                                + 'dataset.xhtml?persistentId=doi:'\
+                    raise FileExistsError('The file ' + str(fname)
+                                + ' could not '
+                                + 'be found. Please download the file '
+                                + 'first or choose a different folder. '
+                                + 'The data can be downloaded from '
+                                + 'https://dataverse.harvard.edu/'
+                                + 'dataset.xhtml?persistentId=doi:'
                                 + '10.7910/DVN/DHXBJX')
             # LOGGER.debug('Inporting %s', str(fname))
 
-            concordance_data = pd.read_csv(fname, sep=',', index_col=None, \
+            concordance_data = pd.read_csv(fname, sep=',', index_col=None,
                                            header=0, encoding='ISO-8859-1')
 
             concordance_data = concordance_data[concordance_data['alloc_key'].isin(alloc_key_array)]
@@ -314,7 +314,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             lon = concordance_data.loc[:, 'x']
 
         except:
-            LOGGER.error('Importing the SPAM cell5m mapping file failed. ' \
+            LOGGER.error('Importing the SPAM cell5m mapping file failed. '
                          'Operation aborted.')
             raise
         return lat, lon
@@ -343,8 +343,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         if not adm0 is None:
             if data[data.iso3 == adm0].empty:
                 if data[data.name_cntr == adm0].empty:
-                    LOGGER.warning('Country name not found in data: %s', \
-                                   str(adm0) \
+                    LOGGER.warning('Country name not found in data: %s',
+                                   str(adm0)
                                + '. Try passing the ISO3-code instead.')
                 else:
                     data = data[data.name_cntr == adm0]
@@ -394,7 +394,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             if not os.path.isfile(fname):
                 url1 = 'https://dataverse.harvard.edu/api/access/datafile/:'\
                         + 'persistentId?persistentId=doi:10.7910/DVN/DHXBJX/'
-                permalinks = pd.DataFrame(columns=['A', 'H', \
+                permalinks = pd.DataFrame(columns=['A', 'H',
                         'P', 'Y', 'V_agg', 'cell5m'])
                 permalinks.loc[0, 'A'] = url1 + 'FS1JO8'
                 permalinks.loc[0, 'H'] = url1 + 'M727TX'
@@ -403,7 +403,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                 permalinks.loc[0, 'V_agg'] = url1 + 'UG0N7K'
                 permalinks.loc[0, 'cell5m'] = url1 + 'H2D3LI'
             else:
-                permalinks = pd.read_csv(fname, sep=',', index_col=None, \
+                permalinks = pd.read_csv(fname, sep=',', index_col=None,
                                          header=0)
                 LOGGER.debug('Importing %s', str(fname))
 

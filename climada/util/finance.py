@@ -180,7 +180,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
     if info_ind != 'INC_GRP':
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            cntry_gdp = wb.download(indicator=info_ind, \
+            cntry_gdp = wb.download(indicator=info_ind,
                 country=cntry_iso, start=1960, end=2030)
         years = np.array([int(year) for year in cntry_gdp.index.get_level_values('year')])
         sort_years = np.abs(years - ref_year).argsort()
@@ -204,7 +204,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
             raise err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
-        close_val = cntry_dfr.iloc[np.abs( \
+        close_val = cntry_dfr.iloc[np.abs(
             np.array(cntry_dfr.index[1:]) - ref_year).argsort() + 1].dropna()
         close_year = close_val.index[0]
         close_val = int(close_val.iloc[0])
@@ -252,7 +252,7 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
 
     return close_year, close_val
 
-def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
+def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
                file_name=FILE_GWP_WEALTH2GDP_FACTORS):
     """Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
@@ -266,11 +266,11 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
             float
     """
     fname = os.path.join(SYSTEM_DIR, file_name)
-    factors_all_countries = pd.read_csv(fname, sep=',', index_col=None, \
+    factors_all_countries = pd.read_csv(fname, sep=',', index_col=None,
                      header=0, encoding='ISO-8859-1')
     if ref_year != 2016:
-        LOGGER.warning('Reference year for the factor to convert GDP to '\
-            + 'wealth was set to 2016 because other years have not '\
+        LOGGER.warning('Reference year for the factor to convert GDP to '
+            + 'wealth was set to 2016 because other years have not '
             + 'been implemented yet.')
         ref_year = 2016
     if non_financial:
@@ -288,7 +288,7 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
     val = np.around(val, 5)
     return ref_year, val
 
-def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
+def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
                               no_land=True):
     """
     Download and unzip wealth accounting historical data (1995, 2000, 2005, 2010, 2014)
@@ -343,8 +343,8 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
         LOGGER.error('Downloading World Bank Wealth Accounting Data failed.')
         raise
 
-    data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso) \
-                  & data_wealth['Indicator Code'].\
+    data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso)
+                  & data_wealth['Indicator Code'].
                   str.contains(variable_name)].loc[:, '1995':'2014']
     years = list(map(int, list(data_wealth)))
     if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name:  # if country is not found in data
@@ -387,7 +387,7 @@ def _gdp_twn(ref_year, per_capita=False):
     Returns:
         float
     """
-    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), \
+    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR),
                                    'GDP_TWN_IMF_WEO_data.csv')):
         LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
         return 0
@@ -401,8 +401,8 @@ def _gdp_twn(ref_year, per_capita=False):
         close_year = 2024
     else:
         close_year = ref_year
-    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), \
-                                   'GDP_TWN_IMF_WEO_data.csv'), \
+    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR),
+                                   'GDP_TWN_IMF_WEO_data.csv'),
                                    index_col=None, header=0)
     close_val = data.loc[data['Subject Descriptor'] == var_name, str(close_year)].values[0]
     close_val = float(close_val.replace(',', ''))

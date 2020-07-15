@@ -48,7 +48,7 @@ class TestAppend(unittest.TestCase):
         with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 tag1.append(tag2)
-        self.assertIn("Hazards of different type can't be appended: " \
+        self.assertIn("Hazards of different type can't be appended: "
                          + "TC != EQ.", cm.output[0])
 
     def test_equal_same(self):

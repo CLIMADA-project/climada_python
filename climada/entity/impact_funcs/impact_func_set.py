@@ -131,7 +131,7 @@ class ImpactFuncSet():
             try:
                 del self._data[haz_type][fun_id]
             except KeyError:
-                LOGGER.warning("No ImpactFunc with hazard %s and id %s.", \
+                LOGGER.warning("No ImpactFunc with hazard %s and id %s.",
                              haz_type, fun_id)
         elif haz_type is not None:
             try:
@@ -247,11 +247,11 @@ class ImpactFuncSet():
         for key_haz, vul_dict in self._data.items():
             for fun_id, vul in vul_dict.items():
                 if (fun_id != vul.id) | (fun_id == ''):
-                    LOGGER.error("Wrong ImpactFunc.id: %s != %s.", fun_id, \
+                    LOGGER.error("Wrong ImpactFunc.id: %s != %s.", fun_id,
                                  vul.id)
                     raise ValueError
                 if (key_haz != vul.haz_type) | (key_haz == ''):
-                    LOGGER.error("Wrong ImpactFunc.haz_type: %s != %s.",\
+                    LOGGER.error("Wrong ImpactFunc.haz_type: %s != %s.",
                                  key_haz, vul.haz_type)
                     raise ValueError
                 vul.check()
@@ -341,8 +341,8 @@ class ImpactFuncSet():
         def _get_hdf5_funcs(imp, file_name, var_names):
             """Get rows that fill every impact function and its name."""
             func_pos = dict()
-            for row, (fun_id, fun_type) in enumerate(zip( \
-            imp[var_names['var_name']['fun_id']].squeeze(), \
+            for row, (fun_id, fun_type) in enumerate(zip(
+            imp[var_names['var_name']['fun_id']].squeeze(),
             imp[var_names['var_name']['peril']].squeeze())):
                 type_str = hdf5.get_str_from_ref(file_name, fun_type)
                 key = (type_str, int(fun_id))
@@ -381,13 +381,13 @@ class ImpactFuncSet():
                 func.id = imp_key[1]
                 # check that this function only has one intensity unit, if provided
                 try:
-                    func.intensity_unit = _get_hdf5_str(imp, imp_rows, \
+                    func.intensity_unit = _get_hdf5_str(imp, imp_rows,
                         file_name, var_names['var_name']['unit'])
                 except KeyError:
                     pass
                 # check that this function only has one name
                 try:
-                    func.name = _get_hdf5_str(imp, imp_rows, file_name, \
+                    func.name = _get_hdf5_str(imp, imp_rows, file_name,
                         var_names['var_name']['name'])
                 except KeyError:
                     func.name = str(func.id)
@@ -438,7 +438,7 @@ class ImpactFuncSet():
         def _get_xls_funcs(dfr, var_names):
             """Parse individual impact functions."""
             dist_func = []
-            for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']], \
+            for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']],
             dfr[var_names['col_name']['func_id']]):
                 if (haz_type, imp_id) not in dist_func:
                     dist_func.append((haz_type, imp_id))
@@ -448,7 +448,7 @@ class ImpactFuncSet():
             dist_func = _get_xls_funcs(dfr, var_names)
             for haz_type, imp_id in dist_func:
                 df_func = dfr[dfr[var_names['col_name']['peril']] == haz_type]
-                df_func = df_func[df_func[var_names['col_name']['func_id']] \
+                df_func = df_func[df_func[var_names['col_name']['func_id']]
                                   == imp_id]
 
                 func = ImpactFunc()

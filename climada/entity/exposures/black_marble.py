@@ -98,7 +98,7 @@ class BlackMarble(Exposures):
                                                     admin_key_dict[admin_file])
         fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs)
 
-        nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(\
+        nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(
             ref_year, cntry_info, res_km, from_hr)
 
         tag = Tag()
@@ -106,12 +106,12 @@ class BlackMarble(Exposures):
 
         for cntry_iso, cntry_val in cntry_info.items():
 
-            bkmrbl_list.append(self._set_one_country(cntry_val, nightlight, \
+            bkmrbl_list.append(self._set_one_country(cntry_val, nightlight,
                 coord_nl, res_fact, res_km, cntry_admin1[cntry_iso], **kwargs))
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list, \
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list,
             ignore_index=True)), crs=DEF_CRS)
 
         # set metadata
@@ -151,16 +151,16 @@ class BlackMarble(Exposures):
             poly_val = DEF_POLY_VAL
         geom = cntry_info[2]
 
-        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, \
+        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom,
             nightlight, coord_nl)
-        nightlight_reg = _set_econ_indicators(nightlight_reg, cntry_info[4], \
+        nightlight_reg = _set_econ_indicators(nightlight_reg, cntry_info[4],
                                               cntry_info[5], poly_val)
         if admin1_geom:
-            nightlight_reg, lat_reg, lon_reg, geom, on_land = _cut_admin1( \
+            nightlight_reg, lat_reg, lon_reg, geom, on_land = _cut_admin1(
                 nightlight_reg, lat_reg, lon_reg, admin1_geom, coord_nl, on_land)
 
         LOGGER.info('Generating resolution of approx %s km.', res_km)
-        nightlight_reg, lat_reg, lon_reg = _resample_land(geom, nightlight_reg,\
+        nightlight_reg, lat_reg, lon_reg = _resample_land(geom, nightlight_reg,
             lat_reg, lon_reg, res_fact, on_land)
 
         exp_bkmrb = BlackMarble()
@@ -293,13 +293,13 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
         geom = [info[2] for info in cntry_info.values()]
         geom = shapely.ops.cascaded_union(geom)
         req_files = nl_utils.check_required_nl_files(geom.bounds)
-        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files, \
+        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files,
             SYSTEM_DIR, nl_year)
         nl_utils.download_nl_files(req_files, files_exist, SYSTEM_DIR, nl_year)
         # nightlight intensity with 15 arcsec resolution
-        nightlight, coord_nl = nl_utils.load_nightlight_nasa(geom.bounds, \
+        nightlight, coord_nl = nl_utils.load_nightlight_nasa(geom.bounds,
             req_files, nl_year)
-        fn_nl = [file.replace('*', str(nl_year)) for idx, file \
+        fn_nl = [file.replace('*', str(nl_year)) for idx, file
                  in enumerate(nl_utils.BM_FILENAMES) if req_files[idx]]
         fn_nl = ' + '.join(fn_nl)
     else:
@@ -339,7 +339,7 @@ def _fill_admin1_geom(iso3, admin1_rec, prov_list):
                 prov_geom.append(rec.geometry)
                 break
         if not found:
-            options = [rec.attributes['name'] for rec in admin1_rec \
+            options = [rec.attributes['name'] for rec in admin1_rec
                        if rec.attributes['adm0_a3'] == iso3]
             LOGGER.error('%s not found. Possible provinces of %s are: %s',
                          prov, iso3, options)
@@ -429,10 +429,10 @@ def _cut_country(geom, nightlight, coord_nl):
         in_lon = math.floor((poly.bounds[0] - lon_reg[0, 0]) / coord_nl[1, 1]), \
                  math.ceil((poly.bounds[2] - lon_reg[0, 0]) / coord_nl[1, 1])
         on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] = \
-            np.logical_or( \
-            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1], \
-            shapely.vectorized.contains(poly, \
-            lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1], \
+            np.logical_or(
+            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
+            shapely.vectorized.contains(poly,
+            lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
             lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1]))
 
     # put zero values outside country
