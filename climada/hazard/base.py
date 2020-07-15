@@ -1246,8 +1246,7 @@ class Hazard():
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
         inten_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1 / freq_cen),
-                np.isnan(inten_fit))
+        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(inten_fit)
         inten_fit[wrong_inten] = 0.
 
         return inten_fit

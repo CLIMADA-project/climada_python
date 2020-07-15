@@ -193,7 +193,7 @@ class TestNightLight(unittest.TestCase):
         in_lat = (278, 280)
         in_lon = (333, 335)
         nightlight_ref = nightlight[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1].toarray()
-        nightlight_ref[np.logical_not(on_ref)] = 0.0
+        nightlight_ref[~on_ref] = 0.0
 
         self.assertTrue(np.allclose(lat_ref, lat_reg))
         self.assertTrue(np.allclose(lon_ref, lon_reg))

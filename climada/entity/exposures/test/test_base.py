@@ -232,7 +232,7 @@ class TestAddSea(unittest.TestCase):
         on_sea_lat = exp_sea.latitude.values[11:]
         on_sea_lon = exp_sea.longitude.values[11:]
         res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
-        res_on_sea = np.logical_not(res_on_sea)
+        res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')

@@ -213,11 +213,12 @@ class TropCyclone(Hazard):
         if not track:
             LOGGER.error('%s not found in track data.', track_name)
             raise ValueError
-        idx_plt = np.argwhere(np.logical_and(np.logical_and(np.logical_and(
-            track.lon.values < centroids.total_bounds[2] + 1,
-            centroids.total_bounds[0] - 1 < track.lon.values),
-            track.lat.values < centroids.total_bounds[3] + 1),
-            centroids.total_bounds[1] - 1 < track.lat.values)).reshape(-1)
+        idx_plt = np.argwhere(
+            (track.lon.values < centroids.total_bounds[2] + 1)
+            & (centroids.total_bounds[0] - 1 < track.lon.values)
+            & (track.lat.values < centroids.total_bounds[3] + 1)
+            & (centroids.total_bounds[1] - 1 < track.lat.values)
+        ).reshape(-1)
 
         tc_list = []
         tr_coord = {'lat': [], 'lon': []}
@@ -348,7 +349,7 @@ class TropCyclone(Hazard):
                 if isinstance(var_val, list):
                     var_val = np.array(var_val)
                 tmp_select = np.logical_or.reduce([var_val == val for val in cri_val])
-                select = np.logical_and(select, tmp_select)
+                select = select & tmp_select
             if chg['function'] == np.multiply:
                 change = 1 + (chg['change'] - 1) * scale
             elif chg['function'] == np.add:
