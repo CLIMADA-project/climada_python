@@ -163,6 +163,8 @@ Basic syntax guidelines taken from
    a GUI. With the command line you have to use text editor, you cannot
    do it directly with the git command)
 -  Put the name of the function/class/module/file that was edited
+-  When fixing an issue, add the reference gh-ISSUENUMBER to the commit message 
+   e.g. “fixes gh-40.” or “Closes gh-40.” For more infos see `here <https://docs.github.com/en/enterprise/2.16/user/github/managing-your-work-on-github/closing-issues-using-keywords#about-issue-references>`__.
 
 Git commands for CLIMADA
 ------------------------
