@@ -41,6 +41,9 @@ __all__ = ['SOURCE_DIR',
            'WS_DEMO_NC']
 
 import os
+# pylint: disable=unused-import
+# without importing numpy ahead of fiona the debugger may run into an error
+import numpy
 from fiona.crs import from_epsg
 
 SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
