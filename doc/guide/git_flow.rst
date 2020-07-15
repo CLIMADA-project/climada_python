@@ -1,8 +1,10 @@
+.. _Git Flow:
+
 Git Flow
 ========
 
-In general, policy and naming of branches follow the conventions of 
-`git flow <https://nvie.com/posts/a-successful-git-branching-model/>`_.
+In general, our policy and naming of branches follow the conventions of 
+`git flow <https://jeffkreeftmeijer.com/git-flow/>`_.
 
 Philosophy
 ----------

@@ -12,7 +12,7 @@ Contributions are very welcome! Please follow these steps:
 
     git clone https://github.com/CLIMADA-project/climada_python.git
 
-   For more information see :doc:`git_flow.rst`
+   For more information see :doc:`git_flow`.
 
 2. **Install the packages** in ``climada_python/requirements/env_climada.yml`` and
    ``climada_python/requirements/env_developer.yml`` (see :doc:`install`). You
@@ -27,7 +27,7 @@ Contributions are very welcome! Please follow these steps:
 
     git checkout -b branch_name
 
-   See CLIMADA-python's branching policies in :doc:`git_flow.rst`.
+   See CLIMADA-python's branching policies in :doc:`git_flow`.
  
    General information about Git branches:
    `about branches <https://help.github.com/en/articles/about-branches>`_.
@@ -73,25 +73,22 @@ Contributions are very welcome! Please follow these steps:
 
 9. Add your name to the **AUTHORS** file.
 
-10. **Push** the code or branch to GitHub. To push to the develop do so::
+10. **Push** the code or branch to GitHub. To push to the develop call::
 
-    git push origin develop
+     git push origin develop
 
- To push to your branch ``feature_branch_name`` do::
+    To push to your branch ``feature_branch_name`` call::
 
-    git push origin feature_branch_name
+     git push origin feature_branch_name
 
 11. Create a pull request.
 
-   When the branch is ready, create a new **pull request** from the feature branch. `About pull
-   requests <https://help.github.com/en/articles/about-pull-requests>`_.
+    When the branch is ready, create a new **pull request** from the feature branch. `About pull
+    requests <https://help.github.com/en/articles/about-pull-requests>`_.
 
-
-Notes
------
 
 Update CLIMADA's environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 Remember to regularly update your code as well as climada's environment. You might use the
 following commands to update the environments::
 
@@ -108,7 +105,7 @@ You can find more information about virtual environments with conda
 
 
 Continuous Integration
-======================
+----------------------
 The results from the Jenkins server are to be taken seriously. 
 Please run unit tests localy on the whole project, by calling `make unit_test` and if possible 
 remotely on Jenkins in a feature branch.
@@ -123,7 +120,7 @@ are not acceptable on the develop branch.
 Novel medium priority warnings should be fixed within 3 days.
 
 Tolerance overview
-------------------
+~~~~~~~~~~~~~~~~~~
 
 ======= ===== ======= ==== ====== ===
 Branch  Unittest          Linter
@@ -141,7 +138,7 @@ to the respective branch.
 
 
 Issues
-======
+------
 Issues are the main platform for discussing matters. Use them extensively! Each issue should 
 have one categoric label:
 
@@ -161,12 +158,12 @@ and optionally others. When closing issues they should get another label for the
 
 
 Code Review
-===========
+-----------
 Ask for a code review before merging a feature branch back into the develop branch.
 A list of potential reviewers can be found in the `WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Developer-Board>`_.
 
 
 Regular Releases
-================
+----------------
 Regular releases are planned on a quarterly base. Upcoming releases are listed in the `WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Upcoming-Releases>`_.
 
