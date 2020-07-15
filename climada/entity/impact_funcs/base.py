@@ -107,6 +107,11 @@ class ImpactFunc():
         check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
         check.size(num_exp, self.paa, 'ImpactFunc.paa')
 
+        if num_exp == 0:
+            LOGGER.warning("%s impact function with name '%s' (id=%s) has empty"
+                           " intensity.", self.haz_type, self.name, self.id)
+            return
+
         #Warning for non-vanishing impact at intensity 0. If positive
         #and negative intensity warning for interpolation at intensity 0.
         zero_idx = np.where(self.intensity == 0)[0]
