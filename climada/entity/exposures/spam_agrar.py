@@ -138,11 +138,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         if save_adm1:
             self.name_adm1 = data.loc[:, 'name_adm1'].values
 
-        if spam_v == 'V_agg': # total only (column 7)
+        if spam_v == 'V_agg':  # total only (column 7)
             i_1 = 7
             i_2 = 8
         else:
-            i_1 = 7 # get sum over all crops (columns 7 to 48)
+            i_1 = 7  # get sum over all crops (columns 7 to 48)
             i_2 = 49
         self['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
         self['latitude'] = lat.values
@@ -156,7 +156,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
             region_id = np.ones(self.value.size, int)\
-                *int(iso_cntry.get(country_id.iloc[0]).numeric)
+                * int(iso_cntry.get(country_id.iloc[0]).numeric)
         else:
             region_id = np.zeros(self.value.size, int)
             for i in range(0, self.value.size):
@@ -192,31 +192,31 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         # hazard type drought is default.
         iiv = 0
         if spam_t == 'TA':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+1*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 1 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+2*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 2 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+3*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 3 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+4*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 4 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+5*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 5 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):
@@ -249,7 +249,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         data_path = parameters.get('data_path', SYSTEM_DIR)
         spam_tech = parameters.get('spam_technology', 'TA')
         spam_var = parameters.get('spam_variable', 'V_agg')
-        fname_short = FILENAME_SPAM+'_'+ spam_var  + '_' + spam_tech + '.csv'
+        fname_short = FILENAME_SPAM + '_' + spam_var + '_' + spam_tech + '.csv'
 
         try:
             fname = os.path.join(data_path, fname_short)
@@ -306,8 +306,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             concordance_data = pd.read_csv(fname, sep=',', index_col=None, \
                                            header=0, encoding='ISO-8859-1')
 
-            concordance_data = concordance_data\
-                [concordance_data['alloc_key'].isin(alloc_key_array)]
+            concordance_data = concordance_data[concordance_data['alloc_key'].isin(alloc_key_array)]
 
             concordance_data = concordance_data.sort_values(by=['alloc_key'])
 

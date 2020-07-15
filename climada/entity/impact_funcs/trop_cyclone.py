@@ -61,7 +61,7 @@ class IFTropCyclone(ImpactFunc):
         if v_half <= v_thresh:
             LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
             raise ValueError
-        if  v_thresh < 0 or v_half < 0:
+        if v_thresh < 0 or v_half < 0:
             LOGGER.error('Negative shape parameter.')
             raise ValueError
         if scale > 1 or scale <= 0:
@@ -126,12 +126,12 @@ class IFSTropCyclone(ImpactFuncSet):
             df_calib_results = input_file_path
         else:
             df_calib_results = pd.read_csv(os.path.join(SYSTEM_DIR,\
-                                 'tc_if_cal_v%02.0f_%s.csv' %(version, \
+                                 'tc_if_cal_v%02.0f_%s.csv' % (version, \
                                  calibration_approach)), \
                                  encoding="ISO-8859-1", header=0)
 
         # define regions and parameters:
-        v_0 = 25.7 # v_threshold based on Emanuel (2011)
+        v_0 = 25.7  # v_threshold based on Emanuel (2011)
         scale = 1.0
 
         regions_short = ['NA1', 'NA2', 'NI', 'OC', 'SI', 'WP1', 'WP2', 'WP3', 'WP4']
@@ -166,7 +166,7 @@ class IFSTropCyclone(ImpactFuncSet):
 
         for idx, region in enumerate(regions_short):
             if_tc = IFTropCyclone()
-            if_tc.set_emanuel_usa(if_id=int(idx+1), v_thresh=v_0, v_half=reg_v_half[region],\
+            if_tc.set_emanuel_usa(if_id=int(idx + 1), v_thresh=v_0, v_half=reg_v_half[region],\
                                   scale=scale)
             if_tc.name = regions_long[region]
             self.append(if_tc)
@@ -192,7 +192,7 @@ class IFSTropCyclone(ImpactFuncSet):
         """
         if not region:
             region = 'all'
-        iso3n = {'NA1':   [660, 28, 32, 533, 44, 52, 84, 60, 68, 132, 136,
+        iso3n = {'NA1': [660, 28, 32, 533, 44, 52, 84, 60, 68, 132, 136,
                            152, 170, 188, 192, 212, 214, 218, 222, 238, 254,
                            308, 312, 320, 328, 332, 340, 388, 474, 484, 500,
                            558, 591, 600, 604, 630, 654, 659, 662, 670, 534,
@@ -202,7 +202,7 @@ class IFSTropCyclone(ImpactFuncSet):
                           231, 268, 356, 364, 368, 376, 400, 398, 414, 417,
                           422, 462, 496, 104, 524, 512, 586, 634, 682, 706,
                           144, 760, 762, 795, 800, 784, 860, 887], \
-                   'OC':  [16, 36, 184, 242, 258, 316, 296, 584, 583, 520,
+                   'OC': [16, 36, 184, 242, 258, 316, 296, 584, 583, 520,
                            540, 554, 570, 574, 580, 585, 598, 612, 882, 90,
                            626, 772, 776, 798, 548, 876], \
                    'SI': [174, 180, 748, 450, 454, 466, 480, 508, 710, 834,

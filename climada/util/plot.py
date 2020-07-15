@@ -112,7 +112,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
             add_populated_places(axis, extent, proj)
 
         if 'gridsize' not in kwargs:
-            kwargs['gridsize'] = min(int(array_im.size/2), MAX_BINS)
+            kwargs['gridsize'] = min(int(array_im.size / 2), MAX_BINS)
         hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im, \
             transform=proj, **kwargs)
 
@@ -249,8 +249,8 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         if smooth or not is_reg:
             # Create regular grid where to interpolate the array
             grid_x, grid_y = np.mgrid[
-                extent[0] : extent[1] : complex(0, RESOLUTION),
-                extent[2] : extent[3] : complex(0, RESOLUTION)]
+                extent[0]: extent[1]: complex(0, RESOLUTION),
+                extent[2]: extent[3]: complex(0, RESOLUTION)]
             grid_im = griddata((coord[:, 1], coord[:, 0]), array_im, \
                                (grid_x, grid_y))
         else:
@@ -422,10 +422,10 @@ def _get_row_col_size(num_sub):
     else:
         if num_sub % 3 == 0:
             num_col = 3
-            num_row = int(num_sub/3)
+            num_row = int(num_sub / 3)
         else:
             num_col = 2
-            num_row = int(num_sub/2) + num_sub % 2
+            num_row = int(num_sub / 2) + num_sub % 2
     return num_row, num_col
 
 def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
@@ -440,10 +440,10 @@ def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
     Returns:
         np.array
     """
-    min_lon = max(np.min(geo_coord[:, 1])-buffer, proj.x_limits[0])
-    max_lon = min(np.max(geo_coord[:, 1])+buffer, proj.x_limits[1])
-    min_lat = max(np.min(geo_coord[:, 0])-buffer, proj.y_limits[0])
-    max_lat = min(np.max(geo_coord[:, 0])+buffer, proj.y_limits[1])
+    min_lon = max(np.min(geo_coord[:, 1]) - buffer, proj.x_limits[0])
+    max_lon = min(np.max(geo_coord[:, 1]) + buffer, proj.x_limits[1])
+    min_lat = max(np.min(geo_coord[:, 0]) - buffer, proj.y_limits[0])
+    max_lat = min(np.max(geo_coord[:, 0]) + buffer, proj.y_limits[1])
     return [min_lon, max_lon, min_lat, max_lat]
 
 def get_transformation(crs_in):
@@ -454,7 +454,7 @@ def get_transformation(crs_in):
         ccrs.Projection, str
     """
     try:
-        if CRS.from_user_input(crs_in) == CRS.from_user_input({'init':'epsg:3395'}):
+        if CRS.from_user_input(crs_in) == CRS.from_user_input({'init': 'epsg:3395'}):
             crs_epsg = ccrs.Mercator()
         else:
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())

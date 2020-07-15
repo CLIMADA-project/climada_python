@@ -165,11 +165,11 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist*EARTH_RADIUS_KM > threshold)
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
     if num_warn:
         LOGGER.warning('Distance to closest centroid is greater than %s' \
             'km for %s coordinates.', threshold, num_warn)
-        assigned[dist*EARTH_RADIUS_KM > threshold] = -1
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])

@@ -37,26 +37,26 @@ import climada.util.hdf5_handler as hdf5
 LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_EXCEL = {'sheet_name': 'impact_functions',
-                 'col_name': {'func_id' : 'impact_fun_id',
-                              'inten' : 'intensity',
-                              'mdd' : 'mdd',
-                              'paa' : 'paa',
-                              'name' : 'name',
-                              'unit' : 'intensity_unit',
-                              'peril' : 'peril_id'
+                 'col_name': {'func_id': 'impact_fun_id',
+                              'inten': 'intensity',
+                              'mdd': 'mdd',
+                              'paa': 'paa',
+                              'name': 'name',
+                              'unit': 'intensity_unit',
+                              'peril': 'peril_id'
                              }
                 }
 """Excel and csv variable names"""
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'damagefunctions',
-               'var_name': {'fun_id' : 'DamageFunID',
-                            'inten' : 'Intensity',
-                            'mdd' : 'MDD',
-                            'paa' : 'PAA',
-                            'name' : 'name',
-                            'unit' : 'Intensity_unit',
-                            'peril' : 'peril_ID'
+               'var_name': {'fun_id': 'DamageFunID',
+                            'inten': 'Intensity',
+                            'mdd': 'MDD',
+                            'paa': 'PAA',
+                            'name': 'name',
+                            'unit': 'Intensity_unit',
+                            'peril': 'peril_ID'
                            }
               }
 """MATLAB variable names"""
@@ -97,7 +97,7 @@ class ImpactFuncSet():
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self._data = dict() # {hazard_type : {id:ImpactFunc}}
+        self._data = dict()  # {hazard_type : {id:ImpactFunc}}
 
     def append(self, func):
         """Append a ImpactFunc. Overwrite existing if same id and haz_type.

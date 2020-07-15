@@ -46,37 +46,37 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
     """gpw data is 17400 rows x 43200 cols in dimension (from 85 N to 60 S in
     latitude, full longitudinal range). Hence, the bounding box can easily be
     converted to the according indices in the gpw data"""
-    steps_p_res = 3600/resolution
-    zoom = 30/resolution
+    steps_p_res = 3600 / resolution
+    zoom = 30 / resolution
     col_min, row_min, col_max, row_max =\
         LitPop._litpop_coords_in_glb_grid(bbox, resolution)
 
     # accomodate to fact that not the whole grid is present in the v.10 dataset:
-    if arr1_shape[0]==17400:
-        row_min, row_max = int(row_min-5*steps_p_res), \
-            int(row_max-5*steps_p_res)
+    if arr1_shape[0] == 17400:
+        row_min, row_max = int(row_min - 5 * steps_p_res), \
+            int(row_max - 5 * steps_p_res)
 
     rows_gpw = arr1_shape[0]
     cols_gpw = arr1_shape[1]
-    if col_max < (cols_gpw/zoom)-1:
+    if col_max < (cols_gpw / zoom) - 1:
         col_max = col_max + 1
-    if row_max < (rows_gpw/zoom)-1:
+    if row_max < (rows_gpw / zoom) - 1:
         row_max = row_max + 1
     gpw_data = gpw_data[:, col_min:col_max]
 
-    if row_min >= 0 and row_min < (rows_gpw/zoom) and row_max >= 0 and\
-        row_max < (rows_gpw/zoom):
+    if row_min >= 0 and row_min < (rows_gpw / zoom) and row_max >= 0 and\
+        row_max < (rows_gpw / zoom):
         gpw_data = gpw_data[row_min:row_max, :]
-    elif row_min < 0 and row_max >= 0 and row_max < (rows_gpw/zoom):
+    elif row_min < 0 and row_max >= 0 and row_max < (rows_gpw / zoom):
         np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])),\
                        gpw_data[0:row_max, :])
     elif row_min < 0 and row_max < 0:
-        gpw_data = np.zeros((row_max-row_min, col_max-col_min))
-    elif row_min < 0 and row_max >= (rows_gpw/zoom):
+        gpw_data = np.zeros((row_max - row_min, col_max - col_min))
+    elif row_min < 0 and row_max >= (rows_gpw / zoom):
         np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])), gpw_data,\
-                       np.zeros((row_max-(rows_gpw/zoom)+1, gpw_data.shape[1])))
-    elif row_min >= (rows_gpw/zoom):
-        gpw_data = np.zeros((row_max-row_min, col_max-col_min))
+                       np.zeros((row_max - (rows_gpw / zoom) + 1, gpw_data.shape[1])))
+    elif row_min >= (rows_gpw / zoom):
+        gpw_data = np.zeros((row_max - row_min, col_max - col_min))
     return gpw_data
 
 def check_bounding_box(coord_list):
@@ -158,7 +158,7 @@ def get_box_gpw(**parameters):
     if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
         cut_bbox = np.array((-180, -90, 180, 90))
-    zoom_factor = 30/resolution # Orignal resolution is arc-seconds
+    zoom_factor = 30 / resolution  # Orignal resolution is arc-seconds
     file_exists = False
     for ver in GPW_VERSIONS:
         gpw_path = parameters.get('gpw_path', FOLDER_GPW % (ver, year))
@@ -202,7 +202,7 @@ def get_box_gpw(**parameters):
             total_population = arr1.sum()
             tile_temp = nd.zoom(arr1, zoom_factor, order=1)
             # normalize interpolated gridded population count to keep total population stable:
-            tile_temp = tile_temp*(total_population/tile_temp.sum())
+            tile_temp = tile_temp * (total_population / tile_temp.sum())
         else:
             tile_temp = arr1
         if tile_temp.ndim == 2:
@@ -217,8 +217,8 @@ def get_box_gpw(**parameters):
                                    order='F'), fill_value=0)
         del arr1
         if return_coords == 1:
-            lon = tuple((cut_bbox[0], 1/(3600/resolution)))
-            lat = tuple((cut_bbox[1], 1/(3600/resolution)))
+            lon = tuple((cut_bbox[0], 1 / (3600 / resolution)))
+            lat = tuple((cut_bbox[1], 1 / (3600 / resolution)))
             return tile_temp, lon, lat
 
         return tile_temp

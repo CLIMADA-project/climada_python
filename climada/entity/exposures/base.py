@@ -54,17 +54,17 @@ DEF_VALUE_UNIT = 'USD'
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
-               'var_name': {'lat' : 'lat',
-                            'lon' : 'lon',
-                            'val' : 'Value',
-                            'ded' : 'Deductible',
-                            'cov' : 'Cover',
-                            'imp' : 'DamageFunID',
-                            'cat' : 'Category_ID',
-                            'reg' : 'Region_ID',
-                            'uni' : 'Value_unit',
-                            'ass' : 'centroid_index',
-                            'ref' : 'reference_year'
+               'var_name': {'lat': 'lat',
+                            'lon': 'lon',
+                            'val': 'Value',
+                            'ded': 'Deductible',
+                            'cov': 'Cover',
+                            'imp': 'DamageFunID',
+                            'cat': 'Category_ID',
+                            'reg': 'Region_ID',
+                            'uni': 'Value_unit',
+                            'ass': 'centroid_index',
+                            'ref': 'reference_year'
                            }
               }
 """MATLAB variable names"""
@@ -204,10 +204,10 @@ class Exposures(GeoDataFrame):
             raise ValueError
         if hazard.centroids.meta:
             x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2]) \
-                   /hazard.centroids.meta['transform'][0]).astype(int)
+                   / hazard.centroids.meta['transform'][0]).astype(int)
             y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5]) \
-                   /hazard.centroids.meta['transform'][4]).astype(int)
-            assigned = y_i*hazard.centroids.meta['width'] + x_i
+                   / hazard.centroids.meta['transform'][4]).astype(int)
+            assigned = y_i * hazard.centroids.meta['width'] + x_i
             assigned[assigned < 0] = -1
             assigned[assigned >= hazard.centroids.size] = -1
         else:
@@ -264,8 +264,8 @@ class Exposures(GeoDataFrame):
         ulx, xres, _, uly, _, yres = meta['transform'].to_gdal()
         lrx = ulx + meta['width'] * xres
         lry = uly + meta['height'] * yres
-        x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
-                                     np.arange(uly+yres/2, lry, yres))
+        x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
+                                     np.arange(uly + yres / 2, lry, yres))
         try:
             self.crs = meta['crs'].to_dict()
         except AttributeError:
@@ -347,7 +347,7 @@ class Exposures(GeoDataFrame):
             pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
-                    raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                    raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
@@ -369,7 +369,7 @@ class Exposures(GeoDataFrame):
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
             raster = self.value.values.reshape((self.meta['height'],
                                                 self.meta['width']))
             # check raster starts by upper left corner
@@ -544,7 +544,7 @@ class Exposures(GeoDataFrame):
         Parameters:
             file_name (str): name output file in tif format
         """
-        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
             raster = self[value_name].values.reshape((self.meta['height'],
                                                       self.meta['width']))
             # check raster starts by upper left corner
@@ -573,15 +573,15 @@ def add_sea(exposures, sea_res):
     LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
                 str(sea_res[1]), str(sea_res[0]))
 
-    sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
+    sea_res = (sea_res[0] / ONE_LAT_KM, sea_res[1] / ONE_LAT_KM)
 
     min_lat = max(-90, float(exposures.latitude.min()) - sea_res[0])
     max_lat = min(90, float(exposures.latitude.max()) + sea_res[0])
     min_lon = max(-180, float(exposures.longitude.min()) - sea_res[0])
     max_lon = min(180, float(exposures.longitude.max()) + sea_res[0])
 
-    lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
-    lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
+    lat_arr = np.arange(min_lat, max_lat + sea_res[1], sea_res[1])
+    lon_arr = np.arange(min_lon, max_lon + sea_res[1], sea_res[1])
 
     lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()

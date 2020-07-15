@@ -47,7 +47,7 @@ def obtain_image_landsat_composite(landsat_collection, time_range, area):
      """
     collection = ee.ImageCollection(landsat_collection)
 
-    ## Filter by time range and location
+    # Filter by time range and location
     collection_time = collection.filterDate(time_range[0], time_range[1])
     image_area = collection_time.filterBounds(area)
     image_composite = ee.Algorithms.Landsat.simpleComposite(image_area, 75, 3)
@@ -67,7 +67,7 @@ def obtain_image_median(collection, time_range, area):
      """
     collection = ee.ImageCollection(collection)
 
-    ## Filter by time range and location
+    # Filter by time range and location
     collection_time = collection.filterDate(time_range[0], time_range[1])
     image_area = collection_time.filterBounds(area)
     image_median = image_area.median()
@@ -85,7 +85,7 @@ def obtain_image_sentinel(sentinel_collection, time_range, area):
     Returns:
         sentinel_median (ee.image.Image)
      """
-#First, method to remove cloud from the image
+# First, method to remove cloud from the image
     def maskclouds(image):
         band_qa = image.select('QA60')
         cloud_mask = ee.Number(2).pow(10).int()
@@ -138,9 +138,9 @@ def get_url(name, image, scale, region):
         path (str)
      """
     path = image.getDownloadURL({
-        'name':(name),
+        'name': (name),
         'scale': scale,
-        'region':(region)
+        'region': (region)
         })
 
     webbrowser.open_new_tab(path)

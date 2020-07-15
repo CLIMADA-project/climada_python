@@ -96,7 +96,7 @@ class TestReader(unittest.TestCase):
         windfields = tc_haz.windfields[0].toarray()
         windfields = windfields.reshape(windfields.shape[0], -1, 2)
         windfield_norms = np.linalg.norm(windfields, axis=-1).max(axis=0)
-        intensity = tc_haz.intensity.toarray()[0,:]
+        intensity = tc_haz.intensity.toarray()[0, :]
         msk = (intensity > 0)
         self.assertTrue(np.allclose(windfield_norms[msk], intensity[msk]))
 
@@ -235,7 +235,7 @@ class TestClimateSce(unittest.TestCase):
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""
         criterion = list()
-        tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
+        tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
         scale = 0.75
@@ -257,19 +257,19 @@ class TestClimateSce(unittest.TestCase):
         self.assertTrue(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
         self.assertFalse(np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
         self.assertFalse(np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[0, :].toarray()*1.03375, tc_cc.intensity[0, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[2, :].toarray()*1.03375, tc_cc.intensity[2, :].toarray()))
+        self.assertTrue(np.allclose(tc.intensity[0, :].toarray() * 1.03375, tc_cc.intensity[0, :].toarray()))
+        self.assertTrue(np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
 
     def test_two_criterion_track(self):
         """Test _apply_criterion function with two criteria"""
         criterion = list()
-        tmp_chg = {'criteria': {'basin': ['NA'], 'category':[1, 2, 3, 4, 5]},
+        tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
-        tmp_chg = {'criteria': {'basin': ['WP'], 'category':[1, 2, 3, 4, 5]},
+        tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.025, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
-        tmp_chg = {'criteria': {'basin': ['WP'], 'category':[1, 2, 3, 4, 5]},
+        tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
                    'year': 2100, 'change': 1.025, 'variable': 'frequency', 'function': np.multiply}
         criterion.append(tmp_chg)
         scale = 0.75
@@ -281,7 +281,7 @@ class TestClimateSce(unittest.TestCase):
         tc.intensity[2, :] = np.arange(10, 20)
         tc.intensity[3, 3] = 3
         tc.intensity = sparse.csr_matrix(tc.intensity)
-        tc.frequency = np.ones(4)*0.5
+        tc.frequency = np.ones(4) * 0.5
         tc.basin = ['NA'] * 4
         tc.basin[3] = 'WP'
         tc.category = np.array([2, 0, 4, 1])
@@ -292,11 +292,11 @@ class TestClimateSce(unittest.TestCase):
         self.assertFalse(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
         self.assertFalse(np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
         self.assertFalse(np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[0, :].toarray()*1.03375, tc_cc.intensity[0, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[2, :].toarray()*1.03375, tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[3, :].toarray()*1.01875, tc_cc.intensity[3, :].toarray()))
-        res_frequency = np.ones(4)*0.5
-        res_frequency[3] = 0.5*1.01875
+        self.assertTrue(np.allclose(tc.intensity[0, :].toarray() * 1.03375, tc_cc.intensity[0, :].toarray()))
+        self.assertTrue(np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
+        self.assertTrue(np.allclose(tc.intensity[3, :].toarray() * 1.01875, tc_cc.intensity[3, :].toarray()))
+        res_frequency = np.ones(4) * 0.5
+        res_frequency[3] = 0.5 * 1.01875
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
 if __name__ == "__main__":

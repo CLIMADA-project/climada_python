@@ -38,15 +38,15 @@ LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'discount',
-               'var_name': {'year' : 'year',
-                            'disc' : 'discount_rate'
+               'var_name': {'year': 'year',
+                            'disc': 'discount_rate'
                            }
               }
 """MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'discount',
-                 'col_name': {'year' : 'year',
-                              'disc' : 'discount_rate'
+                 'col_name': {'year': 'year',
+                              'disc': 'discount_rate'
                              }
                 }
 """Excel variable names"""
@@ -155,7 +155,7 @@ class DiscRates():
         Returns:
             float
         """
-        year_range = np.arange(ini_year, end_year+1)
+        year_range = np.arange(ini_year, end_year + 1)
         if year_range.size != val_years.size:
             LOGGER.error('Wrong size of yearly values.')
             raise ValueError
@@ -183,7 +183,7 @@ class DiscRates():
         axis.set_title('Discount rates')
         axis.set_xlabel('Year')
         axis.set_ylabel('discount rate (%)')
-        axis.plot(self.years, self.rates*100, **kwargs)
+        axis.plot(self.years, self.rates * 100, **kwargs)
         axis.set_xlim((self.years.min(), self.years.max()))
         return axis
 

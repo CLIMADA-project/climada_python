@@ -135,8 +135,8 @@ def setup_environ():
         first_dot = env_cpy.find(':')
         while first_dot >= 0:
             if not os.path.isdir(env_cpy[:first_dot]):
-                os.environ['PATH'] = os.environ['PATH'].replace(env_cpy[:first_dot+1], '')
-            env_cpy = env_cpy[first_dot+1:]
+                os.environ['PATH'] = os.environ['PATH'].replace(env_cpy[:first_dot + 1], '')
+            env_cpy = env_cpy[first_dot + 1:]
             first_dot = env_cpy.find(':')
         # add environment bin path
         if CONFIG['config']['env_name'] not in os.environ['PATH']:

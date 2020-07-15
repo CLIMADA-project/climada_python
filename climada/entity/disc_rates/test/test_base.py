@@ -35,7 +35,7 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongRates_fail(self):
         """Wrong discount rates definition"""
         disc_rate = DiscRates()
-        disc_rate.rates = np.array([3,4])
+        disc_rate.rates = np.array([3, 4])
         disc_rate.years = np.array([1])
 
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
@@ -154,9 +154,9 @@ class TestNetPresValue(unittest.TestCase):
         disc_rate.tag.file_name = 'file1.txt'
         disc_rate.tag.description = 'descr1'
         disc_rate.years = np.arange(2000, 2050)
-        disc_rate.rates = np.ones(disc_rate.years.size)*0.02
+        disc_rate.rates = np.ones(disc_rate.years.size) * 0.02
 
-        val_years = np.ones(23)*6.512201157564418e9
+        val_years = np.ones(23) * 6.512201157564418e9
         res = disc_rate.net_present_value(2018, 2040, val_years)
         self.assertEqual(res, 1.215049630691397e+11)
 
@@ -167,7 +167,7 @@ class TestNetPresValue(unittest.TestCase):
         disc_rate.tag.description = 'descr1'
         disc_rate.years = np.arange(2000, 2050)
         disc_rate.rates = np.arange(disc_rate.years.size)
-        val_years = np.ones(11)*6.512201157564418e9
+        val_years = np.ones(11) * 6.512201157564418e9
         with self.assertRaises(ValueError):
             disc_rate.net_present_value(2050, 2060, val_years)
 
@@ -186,7 +186,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(disc_rate.years.shape, (n_rates,))
         self.assertEqual(disc_rate.years[0], 2000)
-        self.assertEqual(disc_rate.years[n_rates-1], 2050)
+        self.assertEqual(disc_rate.years[n_rates - 1], 2050)
 
         self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(disc_rate.rates.shape, (n_rates,))
@@ -207,7 +207,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(disc_rate.years.shape, (n_rates,))
         self.assertEqual(disc_rate.years[0], 2000)
-        self.assertEqual(disc_rate.years[n_rates-1], 2101)
+        self.assertEqual(disc_rate.years[n_rates - 1], 2101)
 
         self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(disc_rate.rates.shape, (n_rates,))
@@ -233,7 +233,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertIn('int', str(disc_rate.years.dtype))
         self.assertEqual(len(disc_rate.years), n_rates)
         self.assertEqual(disc_rate.years[0], 2000)
-        self.assertEqual(disc_rate.years[n_rates-1], 2050)
+        self.assertEqual(disc_rate.years[n_rates - 1], 2050)
 
         self.assertIn('float', str(disc_rate.rates.dtype))
         self.assertEqual(len(disc_rate.rates), n_rates)
@@ -251,7 +251,7 @@ class TestWriter(unittest.TestCase):
         """Read demo excel file."""
         disc_rate = DiscRates()
         disc_rate.years = np.arange(1950, 2150)
-        disc_rate.rates = np.ones(disc_rate.years.size)*0.03
+        disc_rate.rates = np.ones(disc_rate.years.size) * 0.03
 
         file_name = os.path.join(os.path.join(CURR_DIR, 'data'), 'test_disc.xlsx')
         disc_rate.write_excel(file_name)

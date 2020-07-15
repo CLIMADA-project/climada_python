@@ -79,7 +79,7 @@ def download_file(url):
     LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
-                         total=math.ceil(total_size//block_size),
+                         total=math.ceil(total_size // block_size),
                          unit='KB', unit_scale=True):
             file.write(data)
     return file_abs_name

@@ -54,18 +54,18 @@ WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
 """Income group historical data from World bank."""
 
-INCOME_GRP_WB_TABLE = {'L' : 1, # low income
-                       'LM': 2, # lower middle income
-                       'UM': 3, # upper middle income
-                       'H' : 4, # high income
-                       '..': np.nan # no data
+INCOME_GRP_WB_TABLE = {'L': 1,  # low income
+                       'LM': 2,  # lower middle income
+                       'UM': 3,  # upper middle income
+                       'H': 4,  # high income
+                       '..': np.nan  # no data
                       }
 """Meaning of values of world banks' historical table on income groups."""
 
-INCOME_GRP_NE_TABLE = {5: 1, # Low income
-                       4: 2, # Lower middle income
-                       3: 3, # Upper middle income
-                       2: 4, # High income: nonOECD
+INCOME_GRP_NE_TABLE = {5: 1,  # Low income
+                       4: 2,  # Lower middle income
+                       3: 3,  # Upper middle income
+                       2: 4,  # High income: nonOECD
                        1: 4  # High income: OECD
                       }
 """Meaning of values of natural earth's income groups."""
@@ -98,7 +98,7 @@ def net_present_value(years, disc_rates, val_years):
 
     npv = val_years[-1]
     for val, disc in zip(val_years[-2::-1], disc_rates[-2::-1]):
-        npv = val + npv/(1+disc)
+        npv = val + npv / (1 + disc)
 
     return npv
 
@@ -183,11 +183,11 @@ def world_bank(cntry_iso, ref_year, info_ind):
             cntry_gdp = wb.download(indicator=info_ind, \
                 country=cntry_iso, start=1960, end=2030)
         years = np.array([int(year) for year in cntry_gdp.index.get_level_values('year')])
-        sort_years = np.abs(years-ref_year).argsort()
+        sort_years = np.abs(years - ref_year).argsort()
         close_val = cntry_gdp.iloc[sort_years].dropna()
         close_year = int(close_val.iloc[0].name[1])
         close_val = float(close_val.iloc[0].values)
-    else: # income group level
+    else:  # income group level
         fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
         dfr_wb = pd.DataFrame()
         try:
@@ -205,7 +205,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
         close_val = cntry_dfr.iloc[np.abs( \
-            np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
+            np.array(cntry_dfr.index[1:]) - ref_year).argsort() + 1].dropna()
         close_year = close_val.index[0]
         close_val = int(close_val.iloc[0])
 
@@ -275,17 +275,13 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
         ref_year = 2016
     if non_financial:
         try:
-            val = factors_all_countries\
-                [factors_all_countries.country_iso3 == cntry_iso]\
-                ['NFW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["NFW-to-GDP-ratio"].mean()
     else:
         try:
-            val = factors_all_countries\
-                [factors_all_countries.country_iso3 == cntry_iso]\
-                ['TW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
@@ -351,27 +347,27 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
                   & data_wealth['Indicator Code'].\
                   str.contains(variable_name)].loc[:, '1995':'2014']
     years = list(map(int, list(data_wealth)))
-    if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name: # if country is not found in data
+    if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name:  # if country is not found in data
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
         ref_year_fac, fac = wealth2gdp(cntry_iso)
-        return gdp_year, np.around((fac*gdp_val), 1), 0
-    if ref_year in years: # indicator for reference year is available directly
+        return gdp_year, np.around((fac * gdp_val), 1), 0
+    if ref_year in years:  # indicator for reference year is available directly
         result = data_wealth.loc[:, np.str(ref_year)].values[0]
-    elif ref_year > np.min(years) and ref_year < np.max(years): # interpolate
+    elif ref_year > np.min(years) and ref_year < np.max(years):  # interpolate
         result = np.interp(ref_year, years, data_wealth.values[0, :])
-    elif ref_year < np.min(years): # scale proportionally to GDP
+    elif ref_year < np.min(years):  # scale proportionally to GDP
         gdp_year, gdp0_val = gdp(cntry_iso, np.min(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, 0]*gdp_val/gdp0_val
+        result = data_wealth.values[0, 0] * gdp_val / gdp0_val
         ref_year = gdp_year
     else:
         gdp_year, gdp0_val = gdp(cntry_iso, np.max(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, -1]*gdp_val/gdp0_val
+        result = data_wealth.values[0, -1] * gdp_val / gdp0_val
         ref_year = gdp_year
-    if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
-        result = result/1.24
+    if 'NW.PCA.' in variable_name and no_land:  # remove value of built-up land from produced capital
+        result = result / 1.24
     return ref_year, np.around(result, 1), 1
 
 def _gdp_twn(ref_year, per_capita=False):
@@ -399,16 +395,16 @@ def _gdp_twn(ref_year, per_capita=False):
         var_name = 'Gross domestic product per capita, current prices'
     else:
         var_name = 'Gross domestic product, current prices'
-    if ref_year<1980:
+    if ref_year < 1980:
         close_year = 1980
-    elif ref_year>2024:
+    elif ref_year > 2024:
         close_year = 2024
     else:
         close_year = ref_year
     data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), \
                                    'GDP_TWN_IMF_WEO_data.csv'), \
                                    index_col=None, header=0)
-    close_val = data.loc[data['Subject Descriptor']==var_name, str(close_year)].values[0]
+    close_val = data.loc[data['Subject Descriptor'] == var_name, str(close_year)].values[0]
     close_val = float(close_val.replace(',', ''))
-    if not per_capita: close_val = close_val*1e9
+    if not per_capita: close_val = close_val * 1e9
     return close_year, close_val

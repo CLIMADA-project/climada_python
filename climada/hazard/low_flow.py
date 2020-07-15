@@ -612,7 +612,7 @@ def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, ke
     """
     # data = data.groupby('time.month')-threshold_grid # outdated
     data_threshold = data - threshold_grid
-    if keep_dis_data: # ToDo: check if still needed
+    if keep_dis_data:  # ToDo: check if still needed
         data_low = data.where(data_threshold < 0) / data.mean(dim='time')
         data_low = data_low.resample(time='1M').mean()
     data_threshold.dis.values[data_threshold.dis.values >= 0] = 0

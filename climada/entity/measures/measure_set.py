@@ -37,46 +37,46 @@ LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'measures',
-               'var_name': {'name' : 'name',
-                            'color' : 'color',
-                            'cost' : 'cost',
-                            'haz_int_a' : 'hazard_intensity_impact_a',
-                            'haz_int_b' : 'hazard_intensity_impact_b',
-                            'haz_frq' : 'hazard_high_frequency_cutoff',
-                            'haz_set' : 'hazard_event_set',
-                            'mdd_a' : 'MDD_impact_a',
-                            'mdd_b' : 'MDD_impact_b',
-                            'paa_a' : 'PAA_impact_a',
-                            'paa_b' : 'PAA_impact_b',
-                            'fun_map' : 'damagefunctions_map',
-                            'exp_set' : 'assets_file',
-                            'exp_reg' : 'Region_ID',
-                            'risk_att' : 'risk_transfer_attachement',
-                            'risk_cov' : 'risk_transfer_cover',
-                            'haz' : 'peril_ID'
+               'var_name': {'name': 'name',
+                            'color': 'color',
+                            'cost': 'cost',
+                            'haz_int_a': 'hazard_intensity_impact_a',
+                            'haz_int_b': 'hazard_intensity_impact_b',
+                            'haz_frq': 'hazard_high_frequency_cutoff',
+                            'haz_set': 'hazard_event_set',
+                            'mdd_a': 'MDD_impact_a',
+                            'mdd_b': 'MDD_impact_b',
+                            'paa_a': 'PAA_impact_a',
+                            'paa_b': 'PAA_impact_b',
+                            'fun_map': 'damagefunctions_map',
+                            'exp_set': 'assets_file',
+                            'exp_reg': 'Region_ID',
+                            'risk_att': 'risk_transfer_attachement',
+                            'risk_cov': 'risk_transfer_cover',
+                            'haz': 'peril_ID'
                            }
               }
 """MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'measures',
-                 'col_name': {'name' : 'name',
-                              'color' : 'color',
-                              'cost' : 'cost',
-                              'haz_int_a' : 'hazard intensity impact a',
-                              'haz_int_b' : 'hazard intensity impact b',
-                              'haz_frq' : 'hazard high frequency cutoff',
-                              'haz_set' : 'hazard event set',
-                              'mdd_a' : 'MDD impact a',
-                              'mdd_b' : 'MDD impact b',
-                              'paa_a' : 'PAA impact a',
-                              'paa_b' : 'PAA impact b',
-                              'fun_map' : 'damagefunctions map',
-                              'exp_set' : 'assets file',
-                              'exp_reg' : 'Region_ID',
-                              'risk_att' : 'risk transfer attachement',
-                              'risk_cov' : 'risk transfer cover',
-                              'risk_fact' : 'risk transfer cost factor',
-                              'haz' : 'peril_ID'
+                 'col_name': {'name': 'name',
+                              'color': 'color',
+                              'cost': 'cost',
+                              'haz_int_a': 'hazard intensity impact a',
+                              'haz_int_b': 'hazard intensity impact b',
+                              'haz_frq': 'hazard high frequency cutoff',
+                              'haz_set': 'hazard event set',
+                              'mdd_a': 'MDD impact a',
+                              'mdd_b': 'MDD impact b',
+                              'paa_a': 'PAA impact a',
+                              'paa_b': 'PAA impact b',
+                              'fun_map': 'damagefunctions map',
+                              'exp_set': 'assets file',
+                              'exp_reg': 'Region_ID',
+                              'risk_att': 'risk transfer attachement',
+                              'risk_cov': 'risk transfer cover',
+                              'risk_fact': 'risk transfer cost factor',
+                              'haz': 'peril_ID'
                              }
                 }
 """Excel variable names"""
@@ -118,7 +118,7 @@ class MeasureSet():
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self._data = dict() # {hazard_type : {name: Measure()}}
+        self._data = dict()  # {hazard_type : {name: Measure()}}
 
     def append(self, meas):
         """Append an Measure. Override if same name and haz_type.
@@ -411,8 +411,7 @@ class MeasureSet():
 
                 try:
                     meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
-                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name'] \
-                                                          ['exp_reg']][idx])
+                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name']['exp_reg']][idx])
                 except KeyError:
                     pass
                 except ValueError:

@@ -40,7 +40,7 @@ class TestDecay(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         land_geom = tc._calc_land_geom(tc_track.data)
         tc._track_land_params(tc_track.data[0], land_geom)
-        tc_track.data[0]['orig_event_flag']=False
+        tc_track.data[0]['orig_event_flag'] = False
         tc_ref = tc_track.data[0].copy()
         tc_synth._apply_land_decay(tc_track.data, dict(), dict(), land_geom)
 
@@ -134,7 +134,7 @@ class TestDecay(unittest.TestCase):
         res = tc_synth._decay_p_function(s_coef, b_coef, x_val)
         b_coef_res = tc_synth._solve_decay_p_function(s_coef, res, x_val)
 
-        self.assertTrue(np.allclose(b_coef_res[1:], np.ones((x_val.size-1,))*b_coef))
+        self.assertTrue(np.allclose(b_coef_res[1:], np.ones((x_val.size - 1,)) * b_coef))
         self.assertTrue(np.isnan(b_coef_res[0]))
 
     def test_func_decay_v_pass(self):
@@ -144,7 +144,7 @@ class TestDecay(unittest.TestCase):
         res = tc_synth._decay_v_function(a_coef, x_val)
         a_coef_res = tc_synth._solve_decay_v_function(res, x_val)
 
-        self.assertTrue(np.allclose(a_coef_res[1:], np.ones((x_val.size-1,))*a_coef))
+        self.assertTrue(np.allclose(a_coef_res[1:], np.ones((x_val.size - 1,)) * a_coef))
         self.assertTrue(np.isnan(a_coef_res[0]))
 
     def test_decay_ps_value(self):
@@ -159,9 +159,9 @@ class TestDecay(unittest.TestCase):
         p_landfall = 100
 
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=True)
-        self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx]/p_landfall))
+        self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx] / p_landfall))
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=False)
-        self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx]/p_landfall))
+        self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx] / p_landfall))
 
     def test_calc_decay_no_landfall_pass(self):
         """Test _calc_land_decay with no historical tracks with landfall"""
@@ -184,13 +184,13 @@ class TestDecay(unittest.TestCase):
         self.assertEqual(7, len(v_rel))
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.0038894834)
-            self.assertTrue(i+1 in v_rel.keys())
+            self.assertTrue(i + 1 in v_rel.keys())
 
         self.assertEqual(7, len(p_rel))
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.0598491)
             self.assertAlmostEqual(val[1], 0.0041949237)
-            self.assertTrue(i+1 in p_rel.keys())
+            self.assertTrue(i + 1 in p_rel.keys())
 
     def test_decay_values_andrew_pass(self):
         """Test _decay_values with central pressure function."""
@@ -202,8 +202,8 @@ class TestDecay(unittest.TestCase):
         v_lf, p_lf, x_val = tc_synth._decay_values(tc_track.data[0], land_geom, s_rel)
 
         ss_category = 6
-        s_cell_1 = 1*[1.0149413347244263]
-        s_cell_2 = 8*[1.047120451927185]
+        s_cell_1 = 1 * [1.0149413347244263]
+        s_cell_2 = 8 * [1.047120451927185]
         s_cell = s_cell_1 + s_cell_2
         p_vs_lf_time_relative = [
             1.0149413020277482, 1.018848167539267, 1.037696335078534,
@@ -250,7 +250,7 @@ class TestDecay(unittest.TestCase):
         }
 
         p_lf = {
-            6: (8*[1.0471204188481675],
+            6: (8 * [1.0471204188481675],
                 np.array([
                     1.018848167539267, 1.037696335078534, 1.0418848167539267,
                     1.043979057591623, 1.0450261780104713, 1.0460732984293193,
@@ -263,12 +263,12 @@ class TestDecay(unittest.TestCase):
 
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.004222091151737)
-            self.assertTrue(i+1 in v_rel.keys())
+            self.assertTrue(i + 1 in v_rel.keys())
 
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.047120418848168)
             self.assertAlmostEqual(val[1], 0.008871782287614)
-            self.assertTrue(i+1 in v_rel.keys())
+            self.assertTrue(i + 1 in v_rel.keys())
 
     def test_wrong_decay_pass(self):
         """Test decay not implemented when coefficient < 1"""
@@ -347,10 +347,10 @@ class TestSynth(unittest.TestCase):
         """Test against MATLAB reference."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        ens_size=2
+        ens_size = 2
         tc_track.calc_random_walk(ens_size=ens_size, seed=25, decay=False)
 
-        self.assertEqual(len(tc_track.data), ens_size+1)
+        self.assertEqual(len(tc_track.data), ens_size + 1)
 
         self.assertFalse(tc_track.data[1].orig_event_flag)
         self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
@@ -386,7 +386,7 @@ class TestSynth(unittest.TestCase):
         """Test land decay is called from calc_random_walk."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        ens_size=2
+        ens_size = 2
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
             tc_track.calc_random_walk(ens_size=ens_size, seed=25, decay=True)
         self.assertIn('No historical track of category Tropical Depression '

@@ -49,8 +49,8 @@ from climada.util.coordinates import NE_CRS, TMP_ELEVATION_FILE, DEM_NODATA, \
 __all__ = ['Centroids']
 
 DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
-               'var_name': {'lat' : 'lat',
-                            'lon' : 'lon',
+               'var_name': {'lat': 'lat',
+                            'lon': 'lon',
                             'dist_coast': 'distance2coast_km',
                             'admin0_name': 'admin0_name',
                             'admin0_iso3': 'admin0_ISO3',
@@ -61,9 +61,9 @@ DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
 """MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
-                 'col_name': {'region_id' : 'region_id',
-                              'lat' : 'latitude',
-                              'lon' : 'longitude',
+                 'col_name': {'region_id': 'region_id',
+                              'lat': 'latitude',
+                              'lon': 'longitude',
                              }
                 }
 """Excel variable names"""
@@ -168,7 +168,7 @@ class Centroids():
             raise ValueError("No base grid for resolution %s", str(res_as))
         centroids.read_hdf5(base_file)
         if land:
-            land_reg_ids = list(range(1,1000))
+            land_reg_ids = list(range(1, 1000))
             land_reg_ids.remove(10)  # Antarctica
             centroids = centroids.select(reg_id=land_reg_ids)
         return centroids
@@ -429,9 +429,9 @@ class Centroids():
         if self.meta:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
-            i_lat = np.floor((self.meta['transform'][5]- y_lat)/abs(self.meta['transform'][4]))
-            i_lon = np.floor((x_lon - self.meta['transform'][2])/abs(self.meta['transform'][0]))
-            close_idx = int(i_lat*self.meta['width'] + i_lon)
+            i_lat = np.floor((self.meta['transform'][5] - y_lat) / abs(self.meta['transform'][4]))
+            i_lon = np.floor((x_lon - self.meta['transform'][2]) / abs(self.meta['transform'][0]))
+            close_idx = int(i_lat * self.meta['width'] + i_lon)
         else:
             self.set_geometry_points(scheduler)
             close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
@@ -463,7 +463,7 @@ class Centroids():
             if hasattr(self.meta['crs'], 'linear_units') and \
             str.lower(self.meta['crs'].linear_units) in ['m', 'metre', 'meter']:
                 self.area_pixel = np.zeros((self.meta['height'], self.meta['width']))
-                self.area_pixel *= abs(self.meta['transform'].a)*abs(self.meta['transform'].e)
+                self.area_pixel *= abs(self.meta['transform'].a) * abs(self.meta['transform'].e)
                 return
             if abs(abs(self.meta['transform'].a) -
                    abs(self.meta['transform'].e)) > 1.0e-5:
@@ -475,13 +475,13 @@ class Centroids():
             res = np.abs(res).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res/2).envelope
+        xy_pixels = self.geometry.buffer(res / 2).envelope
         if ('units' in self.geometry.crs and \
         self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-        equal_crs(self.geometry.crs, {'proj':'cea'}):
+        equal_crs(self.geometry.crs, {'proj': 'cea'}):
             self.area_pixel = xy_pixels.area.values
         else:
-            self.area_pixel = xy_pixels.to_crs(crs={'proj':'cea'}).area.values
+            self.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
 
     def set_area_approx(self, min_resol=1.0e-8):
         """Computes approximated area_pixel values: differentiated per latitude.
@@ -495,10 +495,10 @@ class Centroids():
             if hasattr(self.meta['crs'], 'linear_units') and \
             str.lower(self.meta['crs'].linear_units) in ['m', 'metre', 'meter']:
                 self.area_pixel = np.zeros((self.meta['height'], self.meta['width']))
-                self.area_pixel *= abs(self.meta['transform'].a)*abs(self.meta['transform'].e)
+                self.area_pixel *= abs(self.meta['transform'].a) * abs(self.meta['transform'].e)
                 return
             res_lat, res_lon = self.meta['transform'].e, self.meta['transform'].a
-            lat_unique = np.arange(self.meta['transform'].f + res_lat/2, \
+            lat_unique = np.arange(self.meta['transform'].f + res_lat / 2, \
                 self.meta['transform'].f + self.meta['height'] * res_lat, res_lat)
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
@@ -650,7 +650,7 @@ class Centroids():
             LOGGER.error('Area can not be computed for not squared pixels.')
             raise ValueError
         self.set_geometry_points(scheduler)
-        return self.geometry.buffer(self.meta['transform'].a/2).envelope
+        return self.geometry.buffer(self.meta['transform'].a / 2).envelope
 
     def empty_geometry_points(self):
         """Removes points in geometry. Useful when centroids is used in
@@ -738,7 +738,7 @@ class Centroids():
     def size(self):
         """Get size of pixels or points"""
         if self.meta:
-            return self.meta['height']*self.meta['width']
+            return self.meta['height'] * self.meta['width']
         return self.lat.size
 
     @property
@@ -756,9 +756,9 @@ class Centroids():
         """Get total bounds (left, bottom, right, top)"""
         if self.meta:
             left = self.meta['transform'].xoff
-            right = left + self.meta['transform'][0]*self.meta['width']
+            right = left + self.meta['transform'][0] * self.meta['width']
             top = self.meta['transform'].yoff
-            bottom = top + self.meta['transform'][4]*self.meta['height']
+            bottom = top + self.meta['transform'][4] * self.meta['height']
             return left, bottom, right, top
         return self.lon.min(), self.lat.min(), self.lon.max(), self.lat.max()
 

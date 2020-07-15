@@ -329,7 +329,7 @@ class TestExtend(unittest.TestCase):
         meas.check()
 
         self.assertEqual(meas.size(), 2)
-        self.assertEqual(meas.get_names(), {'TC': ['Mangrove', 'Anything']} )
+        self.assertEqual(meas.get_names(), {'TC': ['Mangrove', 'Anything']})
         self.assertEqual(meas.get_measure(name=act_1.name)[0].paa_impact, act_11.paa_impact)
 
 class TestReaderExcel(unittest.TestCase):
@@ -413,7 +413,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.name, name)
         self.assertEqual(act_buil.haz_type, 'TC')
         self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.76, 0.84, 0.60])))
-        self.assertEqual(act_buil.cost,  63968125.00687534)
+        self.assertEqual(act_buil.cost, 63968125.00687534)
 
         self.assertEqual(act_buil.hazard_set, 'nil')
         self.assertEqual(act_buil.hazard_freq_cutoff, 0)
@@ -437,7 +437,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.name, name)
         self.assertEqual(act_buil.haz_type, 'TC')
         self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.90, 0.72, 0.72])))
-        self.assertEqual(act_buil.cost,  21000000)
+        self.assertEqual(act_buil.cost, 21000000)
 
         self.assertEqual(act_buil.hazard_set, 'nil')
         self.assertEqual(act_buil.hazard_freq_cutoff, 0)

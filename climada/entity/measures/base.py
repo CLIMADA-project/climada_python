@@ -78,12 +78,12 @@ class Measure():
 
         # related to change in exposures
         self.exposures_set = NULL_STR
-        self.imp_fun_map = NULL_STR # ids of impact functions to change e.g. 1to10
+        self.imp_fun_map = NULL_STR  # ids of impact functions to change e.g. 1to10
 
         # related to change in impact functions
-        self.hazard_inten_imp = (1, 0) # parameter a and b
-        self.mdd_impact = (1, 0) # parameter a and b
-        self.paa_impact = (1, 0) # parameter a and b
+        self.hazard_inten_imp = (1, 0)  # parameter a and b
+        self.mdd_impact = (1, 0)  # parameter a and b
+        self.paa_impact = (1, 0)  # parameter a and b
 
         # related to change in region
         self.exp_region_id = []
@@ -228,11 +228,11 @@ class Measure():
         LOGGER.debug('Setting new exposures impact functions%s', self.imp_fun_map)
         new_exp = copy.deepcopy(exposures)
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
-        to_id = int(self.imp_fun_map[self.imp_fun_map.find('to')+2:])
+        to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
         try:
-            exp_change = np.argwhere(new_exp[INDICATOR_IF+self.haz_type].values == from_id).\
+            exp_change = np.argwhere(new_exp[INDICATOR_IF + self.haz_type].values == from_id).\
                 reshape(-1)
-            new_exp[INDICATOR_IF+self.haz_type].values[exp_change] = to_id
+            new_exp[INDICATOR_IF + self.haz_type].values[exp_change] = to_id
         except KeyError:
             exp_change = np.argwhere(new_exp[INDICATOR_IF].values == from_id).\
                 reshape(-1)
@@ -302,7 +302,7 @@ class Measure():
         sel_haz = sort_idxs[cutoff]
         for row in sel_haz:
             new_haz.intensity.data[new_haz.intensity.indptr[row]: \
-                new_haz.intensity.indptr[row+1]] = 0
+                new_haz.intensity.indptr[row + 1]] = 0
         new_haz.intensity.eliminate_zeros()
         return new_haz
 
@@ -343,7 +343,7 @@ class Measure():
                 new_ifs.get_func()[self.haz_type][key + IF_ID_FACT] = \
                     new_ifs.get_func()[self.haz_type][key]
             try:
-                new_exp[INDICATOR_IF+self.haz_type] += IF_ID_FACT
+                new_exp[INDICATOR_IF + self.haz_type] += IF_ID_FACT
             except KeyError:
                 new_exp[INDICATOR_IF] += IF_ID_FACT
             # collect old impact functions as well (used by exposures)
@@ -352,22 +352,22 @@ class Measure():
         # concatenate previous and new exposures
         new_exp = pd.concat([exposures.iloc[no_chg_reg], new_exp.iloc[chg_reg]])
         # set missing values of centr_
-        if INDICATOR_CENTR+self.haz_type in new_exp.columns and \
-        np.isnan(new_exp[INDICATOR_CENTR+self.haz_type].values).any():
-            new_exp.drop(columns=INDICATOR_CENTR+self.haz_type, inplace=True)
+        if INDICATOR_CENTR + self.haz_type in new_exp.columns and \
+        np.isnan(new_exp[INDICATOR_CENTR + self.haz_type].values).any():
+            new_exp.drop(columns=INDICATOR_CENTR + self.haz_type, inplace=True)
         elif INDICATOR_CENTR in new_exp.columns and \
         np.isnan(new_exp[INDICATOR_CENTR].values).any():
             new_exp.drop(columns=INDICATOR_CENTR, inplace=True)
 
         # put hazard intensities outside region to previous intensities
         if hazard is not new_haz:
-            if INDICATOR_CENTR+self.haz_type in exposures.columns:
-                centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+            if INDICATOR_CENTR + self.haz_type in exposures.columns:
+                centr = exposures[INDICATOR_CENTR + self.haz_type].values[chg_reg]
             elif INDICATOR_CENTR in exposures.columns:
                 centr = exposures[INDICATOR_CENTR].values[chg_reg]
             else:
                 exposures.assign_centroids(hazard)
-                centr = exposures[INDICATOR_CENTR+self.haz_type].values[chg_reg]
+                centr = exposures[INDICATOR_CENTR + self.haz_type].values[chg_reg]
 
             centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
             new_haz_inten = new_haz.intensity.tolil()

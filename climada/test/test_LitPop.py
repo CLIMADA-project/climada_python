@@ -74,7 +74,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
         self.assertTrue(ent.region_id.min() == 756)
         self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(np.int((1000*ent.value.sum()).round()) == 1000)
+        self.assertTrue(np.int((1000 * ent.value.sum()).round()) == 1000)
 
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
@@ -193,8 +193,8 @@ class TestValidation(unittest.TestCase):
             checking Pearson correlation coefficient and RMSF"""
         rho = lp.admin1_validation('CHE', ['LitPop', 'Lit5'], [[1, 1], [5, 0]],\
                                     res_arcsec=30, check_plot=False)[0]
-        self.assertTrue(np.int(round(rho[0]*1e12)) == 945416798729)
-        self.assertTrue(np.int(round(rho[-1]*1e12)) == 3246081648798)
+        self.assertTrue(np.int(round(rho[0] * 1e12)) == 945416798729)
+        self.assertTrue(np.int(round(rho[-1] * 1e12)) == 3246081648798)
 
 class TestSetAdmin1(unittest.TestCase):
     """Test adding name and ID of Admin1-region to exposure"""
