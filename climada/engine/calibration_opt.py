@@ -238,12 +238,13 @@ def init_impact_data(hazard_type,
     """
     if impact_data_source == 'emdat':
         if yearly_impact:
-            em_data = emdat_impact_yearlysum(region_ids, hazard_type,
-                                             emdat_file_csv=source_file, year_range=year_range,
+            em_data = emdat_impact_yearlysum(source_file, countries=region_ids,
+                                             hazard=hazard_type,
+                                             year_range=year_range,
                                              reference_year=reference_year)
         else:
             raise ValueError('init_impact_data not yet implemented for yearly_impact = False.')
-            em_data = emdat_impact_event()
+            em_data = emdat_impact_event(source_file)
     else:
         raise ValueError('init_impact_data not yet implemented for other impact_data_sources than emdat.')
     return em_data

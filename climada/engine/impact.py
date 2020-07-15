@@ -82,7 +82,7 @@ class Impact():
         self.tot_value = 0
         self.aai_agg = 0
         self.unit = ''
-        self.imp_mat = []
+        self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.
@@ -247,7 +247,7 @@ class Impact():
             # next values are no longer valid
             new_imp.eai_exp = np.array([])
             new_imp.coord_exp = np.array([])
-            new_imp.imp_mat = []
+            new_imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
             # insurance layer metrics
             risk_transfer = copy.deepcopy(new_imp)
             risk_transfer.at_event = imp_layer
@@ -386,9 +386,7 @@ class Impact():
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError:
+        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
             LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
@@ -425,9 +423,7 @@ class Impact():
         Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError:
+        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
             LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
@@ -828,6 +824,7 @@ class Impact():
         # sorted impacts
         sort_pos = np.argsort(imp, axis=0)[::-1, :]
         columns = np.ones(imp.shape, int)
+        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
         columns *= np.arange(columns.shape[1])
         imp_sort = imp[sort_pos, columns]
         # cummulative frequency at sorted intensity
