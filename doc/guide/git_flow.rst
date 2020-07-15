@@ -1,6 +1,9 @@
 Git Flow
 ========
 
+In general, policy and naming of branches follow the conventions of 
+`git flow <https://nvie.com/posts/a-successful-git-branching-model/>`_.
+
 Philosophy
 ----------
 
@@ -23,8 +26,8 @@ Do not forget to update the Jenkins test and the CLIMADA tutorial.
 Release cycle
 -------------
 
-Roughly every four 4 months, everything in the develop branch is merged
-into the master branch for release. Dates are communicated in advance.
+When a new release is made, everything in the develop branch is merged
+into the master branch.
 
 Fork or clone?
 --------------
