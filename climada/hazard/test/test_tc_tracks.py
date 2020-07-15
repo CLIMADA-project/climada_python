@@ -419,20 +419,6 @@ class TestFuncs(unittest.TestCase):
         dist_on_land = track.dist_since_lf.values[track.on_land]
         self.assertTrue(np.all(np.diff(dist_on_land)[1:] > 0))
 
-    def test_calc_orig_lf(self):
-        """Test _calc_orig_lf for andrew tropical cyclone."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        track = tc_track.get_track()
-        track['on_land'] = ('time', coord_on_land(track.lat.values,
-             track.lon.values))
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]
-        orig_lf = tc._calc_orig_lf(track, sea_land_idx)
-
-        self.assertEqual(orig_lf.shape, (sea_land_idx.size, 2))
-        self.assertTrue(np.array_equal(orig_lf[0], np.array([25.5, -80.25])))
-        self.assertTrue(np.array_equal(orig_lf[1], np.array([29.65, -91.5])))
-
     def test_category_pass(self):
         """Test category computation."""
         max_sus_wind = np.array([25, 30, 35, 40, 45, 45, 45, 45, 35, 25])

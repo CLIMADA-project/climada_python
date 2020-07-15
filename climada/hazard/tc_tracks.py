@@ -215,8 +215,8 @@ class TCTracks():
                 download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
                 shutil.move(IBTRACS_FILE, fn_nc)
             except ValueError as err:
-                LOGGER.error('Error while downloading %s. Try to download it '+
-                             'manually and put the file in ' +
+                LOGGER.error('Error while downloading %s. Try to download it '
+                             'manually and put the file in '
                              'climada_python/data/system/', IBTRACS_URL)
                 raise err
 
@@ -409,10 +409,9 @@ class TCTracks():
         lat = data_mat['latstore']
         ntracks, nnodes = lat.shape
         years_uniq = np.unique(data_mat['yearstore'])
-        LOGGER.info(f"File contains {ntracks} tracks "
-                    f"(at most {nnodes} nodes each), "
-                    f"representing {years_uniq.size} years "
-                    f"({years_uniq[0]}-{years_uniq[-1]}).")
+        LOGGER.info("File contains %s tracks (at most %s nodes each), "
+                    "representing %s years (%s-%s).", ntracks, nnodes,
+                    years_uniq.size, years_uniq[0], years_uniq[-1])
 
         # filter according to chosen hemisphere
         hem_mask = (lat >= hem_min) & (lat <= hem_max) | (lat == 0)
@@ -426,7 +425,7 @@ class TCTracks():
         years = data_mat['yearstore'][0,hem_idx]
 
         ntracks, nnodes = lat.shape
-        LOGGER.info(f"Loading {ntracks} tracks on {hemisphere} hemisphere.")
+        LOGGER.info("Loading %s tracks on %s hemisphere.", ntracks, hemisphere)
 
         # change lon format to -180 to 180
         lon[lon > 180] = lon[lon > 180] - 360
@@ -793,7 +792,8 @@ class TCTracks():
         max_sus_wind = dfr['vmax'].values.astype('float')
         max_sus_wind_unit = 'kn'
         if np.any(cen_pres <= 0):
-            # TODO: Enforce to use estimated pressure values everywhere?!
+            # Warning: If any pressure value is invalid, this enforces to use
+            # estimated pressure values everywhere!
             cen_pres[:] = -999
             cen_pres = _estimate_pressure(cen_pres, lat, lon, max_sus_wind)
 
@@ -880,7 +880,12 @@ def _dist_since_lf(track):
     land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
     if track.on_land[-1]:
         land_sea_idx = np.append(land_sea_idx, track.time.size)
-    orig_lf = _calc_orig_lf(track, sea_land_idx)
+    orig_lf = np.empty((sea_land_idx.size, 2))
+    for i_lf, lf_point in enumerate(sea_land_idx):
+        orig_lf[i_lf][0] = track.lat[lf_point] + \
+            (track.lat[lf_point+1] - track.lat[lf_point])/2
+        orig_lf[i_lf][1] = track.lon[lf_point] + \
+            (track.lon[lf_point+1] - track.lon[lf_point])/2
 
     dist = DistanceMetric.get_metric('haversine')
     nodes1 = np.radians(np.array([track.lat.values[1:],
@@ -901,26 +906,6 @@ def _dist_since_lf(track):
     dist_since_lf[np.logical_not(track.on_land.values)] = np.nan
 
     return dist_since_lf
-
-def _calc_orig_lf(track, sea_land_idx):
-    """Approximate coast coordinates in landfall as the middle point
-    before landfall and after.
-
-    Parameters:
-        track (xr.Dataset): TC track
-        sea_land_idx (np.array): array position of sea before landfall
-
-    Returns:
-        np.array (first column lat and second lon of each landfall coord)
-    """
-    # TODO change to pos where landfall (v_landfall)??
-    orig_lf = np.empty((sea_land_idx.size, 2))
-    for i_lf, lf_point in enumerate(sea_land_idx):
-        orig_lf[i_lf][0] = track.lat[lf_point] + \
-            (track.lat[lf_point+1] - track.lat[lf_point])/2
-        orig_lf[i_lf][1] = track.lon[lf_point] + \
-            (track.lon[lf_point+1] - track.lon[lf_point])/2
-    return orig_lf
 
 def _estimate_pressure(cen_pres, lat, lon, v_max):
     """Replace missing pressure values with statistical estimate."""
