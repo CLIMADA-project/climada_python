@@ -1223,7 +1223,7 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     with rasterio.open(file_name, 'w', **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
+def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
                      scheduler=None):
     """Compute raster matrix and transformation from value column
 
