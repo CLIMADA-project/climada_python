@@ -255,8 +255,10 @@ class CropyieldIsimip(Exposures):
         if len(lat_mean) != len(self.latitude.values):
             idx_mean = np.zeros(len(self.latitude.values), dtype=int)
             for i in range(len(self.latitude.values)):
-                idx_mean[i] = (np.where(np.logical_and(lat_mean == self.latitude.values[i],
-                        lon_mean == self.longitude.values[i]))[0])[0]
+                idx_mean[i] = np.where(
+                    (lat_mean == self.latitude.values[i])
+                    & (lon_mean == self.longitude.values[i])
+                )[0][0]
         else:
             idx_mean = np.arange(0, len(lat_mean))
 

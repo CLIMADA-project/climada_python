@@ -585,7 +585,7 @@ def add_sea(exposures, sea_res):
 
     lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-    on_land = np.logical_not(co.coord_on_land(lat_mgrid, lon_mgrid))
+    on_land = ~co.coord_on_land(lat_mgrid, lon_mgrid)
 
     sea_exp = Exposures()
     sea_exp['latitude'] = lat_mgrid[on_land]

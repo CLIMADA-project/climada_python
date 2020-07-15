@@ -175,8 +175,8 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     lons = track.lon.values
 
     for node in range(n_track_nodes):
-        inreach = np.logical_and((np.abs(centroids.lat - lats[node]) < dlat),
-                                 (np.abs(centroids.lon - lons[node]) < dlon))
+        inreach = (np.abs(centroids.lat - lats[node]) < dlat) \
+                & (np.abs(centroids.lon - lons[node]) < dlon)
 
         if inreach.any():
             pos = np.where(inreach)[0]
@@ -224,8 +224,8 @@ def _RCLIPER(fmaxwind_kn, inreach, radius_km):
     rm = a3 + b3 * u_norm_kn
     r0 = a4 + b4 * u_norm_kn
 
-    i = np.logical_and(radius_km <= rm, inreach)
-    ii = np.logical_and(radius_km > rm, inreach)
+    i = (radius_km <= rm) & inreach
+    ii = (radius_km > rm) & inreach
 
     # Calculate R-Cliper symmetric rain rate in mm/h
     rainrate[i] = (T0 + (Tm - T0) * (radius_km[i] / rm)) / 24. * 25.4

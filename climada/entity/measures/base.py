@@ -287,8 +287,9 @@ class Measure():
         exp_imp = exposures
         if self.exp_region_id:
             # compute impact only in selected region
-            in_reg = np.logical_or.reduce([exposures.region_id.values == reg for reg
-                                           in self.exp_region_id])
+            in_reg = np.logical_or.reduce(
+                [exposures.region_id.values == reg for reg in self.exp_region_id]
+            )
             exp_imp = exposures[in_reg]
             exp_imp = Exposures(exp_imp, crs=exposures.crs)
         imp.calc(exp_imp, if_set, hazard)
@@ -329,9 +330,10 @@ class Measure():
         if exposures is new_exp:
             new_exp = copy.deepcopy(exposures)
 
-        chg_reg = np.logical_or.reduce([exposures.region_id.values == reg for reg
-                                        in self.exp_region_id])
-        no_chg_reg = np.argwhere(np.logical_not(chg_reg)).reshape(-1)
+        chg_reg = np.logical_or.reduce(
+            [exposures.region_id.values == reg for reg in self.exp_region_id]
+        )
+        no_chg_reg = np.argwhere(~chg_reg).reshape(-1)
         chg_reg = np.argwhere(chg_reg).reshape(-1)
         LOGGER.debug('Number of changed exposures: %s', chg_reg.size)
 

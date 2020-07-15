@@ -893,7 +893,7 @@ def _dist_since_lf(track):
     nodes0 = np.radians(np.array([track.lat.values[:-1],
                                   track.lon.values[:-1]]).transpose())
     dist_since_lf[1:] = dist.pairwise(nodes1, nodes0).diagonal()
-    dist_since_lf[np.logical_not(track.on_land.values)] = 0.0
+    dist_since_lf[~track.on_land.values] = 0.0
     nodes1 = np.array([track.lat.values[sea_land_idx + 1],
                        track.lon.values[sea_land_idx + 1]]).transpose() / 180 * np.pi
     dist_since_lf[sea_land_idx + 1] = \
@@ -903,7 +903,7 @@ def _dist_since_lf(track):
             np.cumsum(dist_since_lf[sea_land + 1:land_sea])
 
     dist_since_lf *= EARTH_RADIUS_KM
-    dist_since_lf[np.logical_not(track.on_land.values)] = np.nan
+    dist_since_lf[~track.on_land.values] = np.nan
 
     return dist_since_lf
 

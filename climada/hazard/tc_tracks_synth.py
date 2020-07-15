@@ -620,7 +620,7 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                  track.central_pressure[on_land],
                                  'o', c=CAT_COLORS[ss_scale])
 
-            on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
+            on_sea = np.arange(track.time.size)[~track.on_land]
             graph_v_a.plot(on_sea, track.max_sustained_wind[on_sea],
                            'o', c='k', markersize=5)
             graph_v_b.plot(on_sea, orig_wind[on_sea],
@@ -681,7 +681,7 @@ def _check_apply_decay_hist_plot(hist_tracks):
                                   track.central_pressure[on_land],
                                   'o', c=CAT_COLORS[scale])
 
-            on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
+            on_sea = np.arange(track.time.size)[~track.on_land]
             graph_hp.plot(on_sea, track.central_pressure[on_sea],
                           'o', c='k', markersize=5)
             graph_hv.plot(on_sea, track.max_sustained_wind[on_sea],

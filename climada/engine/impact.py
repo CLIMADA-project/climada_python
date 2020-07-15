@@ -171,8 +171,7 @@ class Impact():
         self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where(np.logical_and(exposures.value > 0,
-                           exposures[assign_haz] >= 0))[0]
+        exp_idx = np.where((exposures.value > 0) & (exposures[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
@@ -751,7 +750,7 @@ class Impact():
             imp_tmp.coord_exp = imp_tmp.coord_exp[save_exp, :]
             imp_tmp.eai_exp = imp_arr[save_exp]
             imp_list.append(imp_tmp)
-            exp_list.append(np.logical_not(save_exp))
+            exp_list.append(~save_exp)
 
         v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
@@ -939,8 +938,7 @@ class Impact():
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
         imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1 / freq_cen),
-                np.isnan(imp_fit))
+        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(imp_fit)
         imp_fit[wrong_inten] = 0.
 
         return imp_fit

@@ -429,14 +429,13 @@ def _cut_country(geom, nightlight, coord_nl):
         in_lon = math.floor((poly.bounds[0] - lon_reg[0, 0]) / coord_nl[1, 1]), \
                  math.ceil((poly.bounds[2] - lon_reg[0, 0]) / coord_nl[1, 1])
         on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] = \
-            np.logical_or(
-            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
-            shapely.vectorized.contains(poly,
-            lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
-            lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1]))
+            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] \
+            | shapely.vectorized.contains(poly,
+                lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
+                lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1])
 
     # put zero values outside country
-    nightlight_reg[np.logical_not(on_land_reg)] = 0.0
+    nightlight_reg[~on_land_reg] = 0.0
 
     return nightlight_reg, lat_reg, lon_reg, on_land_reg
 
@@ -469,7 +468,7 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
 
         on_land = shapely.vectorized.contains(geom, lon_res, lat_res)
 
-        nightlight_res[np.logical_not(on_land)] = 0.0
+        nightlight_res[~on_land] = 0.0
         nightlight_res = nightlight_res / nightlight_res.sum() * sum_val
 
     return nightlight_res[on_land].ravel(), lat_res[on_land], lon_res[on_land]

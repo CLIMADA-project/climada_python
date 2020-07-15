@@ -143,10 +143,8 @@ class Drought(Hazard):
 
         lat_total = dataset.lat.data
         lon_total = dataset.lon.data
-        index_lon = np.where(np.logical_and(lon_total >= self.lonmin,
-                                            lon_total <= self.lonmax))[0]
-        index_lat = np.where(np.logical_and(lat_total >= self.latmin,
-                                            lat_total <= self.latmax))[0]
+        index_lon = np.where((lon_total >= self.lonmin) & (lon_total <= self.lonmax))[0]
+        index_lat = np.where((lat_total >= self.latmin) & (lat_total <= self.latmax))[0]
 
         lat_vector = dataset.lat[index_lat[0]:index_lat[len(index_lat) - 1]].data
         lon_vector = dataset.lon[index_lon[0]:index_lon[len(index_lon) - 1]].data
