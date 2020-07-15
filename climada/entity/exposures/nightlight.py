@@ -107,8 +107,8 @@ def check_required_nl_files(bbox, *coords):
                 min_lon = bbox
                 min_lat, max_lon, max_lat = coords
     except:
-        raise ValueError('Invalid coordinates supplied. Please either ' + \
-            ' deliver a bounding box or the coordinates defining the ' + \
+        raise ValueError('Invalid coordinates supplied. Please either ' +
+            ' deliver a bounding box or the coordinates defining the ' +
             ' bounding box separately.')
 
     # longitude first. The width of all tiles is 90 degrees
@@ -154,11 +154,11 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     """
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and ' + \
+        LOGGER.warning('The parameter \'required_files\' was too short and ' +
                        'is ignored.')
     if not path.exists(check_path):
         check_path = SYSTEM_DIR
-        LOGGER.warning('The given path does not exist and is ignored. %s' + \
+        LOGGER.warning('The given path does not exist and is ignored. %s' +
                        ' is checked instead.', SYSTEM_DIR)
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
@@ -183,7 +183,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
 
     return (files_exist, check_path)
 
-def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
+def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     files_exist=np.zeros(len(BM_FILENAMES),), dwnl_path=SYSTEM_DIR, year=2016):
     """Attempts to download nightlight files from NASA webpage.
 
@@ -201,15 +201,15 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     """
     if (len(req_files) != len(files_exist)) or \
         (len(req_files) != len(BM_FILENAMES)):
-        raise ValueError('The given arguments are invalid. req_files and ' + \
-            'files_exist must both be as long as there are files to download' +\
+        raise ValueError('The given arguments are invalid. req_files and ' +
+            'files_exist must both be as long as there are files to download' +
             ' (' + str(len(BM_FILENAMES)) + ').')
     if not path.exists(dwnl_path):
         dwnl_path = SYSTEM_DIR
         if not path.exists(dwnl_path):
             raise ValueError('The folder does not exist. Operation aborted.')
         else:
-            LOGGER.warning('The given folder does not exist using the ' + \
+            LOGGER.warning('The given folder does not exist using the ' +
                 'Climada data directory instead.')
     if np.all(req_files == files_exist):
         LOGGER.debug('All required files already exist. ' +
@@ -233,7 +233,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
                     path_str = path.dirname(path_dwn)
     except:
         chdir(curr_wd)
-        raise RuntimeError('Download failed. Please check the network ' + \
+        raise RuntimeError('Download failed. Please check the network ' +
             'connection and whether filenames are still valid.')
     return path_str
 
@@ -362,10 +362,10 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         fn_light (str)
     """
     if sat_name is None:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' + \
+        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' +
             str(ref_year) + '*.stable_lights.avg_vis')
     else:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name + \
+        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name +
             str(ref_year) + '*.stable_lights.avg_vis')
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):

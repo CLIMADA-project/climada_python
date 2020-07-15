@@ -33,8 +33,8 @@ class TestCropPotential(unittest.TestCase):
     def test_load_EU_all(self):
         """Test defining crop potential hazard from complete demo file (Central Europe)"""
         haz = CropPotential()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), \
-                        ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical', \
+        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005),
+                        ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                         soc='2005soc', co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
 
         self.assertEqual(haz.centroids.lon.min(), -4.75)
@@ -48,8 +48,8 @@ class TestCropPotential(unittest.TestCase):
     def test_set_rel_yield(self):
         """Test setting intensity to relativ yield"""
         haz = CropPotential()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml', \
-                        cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc', \
+        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
+                        cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
                         co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(np.array([2001, 2005]))
         haz.set_rel_yield_to_int(hist_mean)

@@ -217,8 +217,8 @@ class Landslide(Hazard):
 
     def _get_raster_meta(self, path_sourcefile, window_array):
         """get geo-meta data from raster files to set centroids adequately"""
-        raster = rasterio.open(path_sourcefile, 'r', \
-                               window=Window(window_array[0], window_array[1],\
+        raster = rasterio.open(path_sourcefile, 'r',
+                               window=Window(window_array[0], window_array[1],
                                                window_array[2], window_array[3]))
         pixel_width = raster.meta['transform'][0]
         pixel_height = raster.meta['transform'][4]
@@ -236,7 +236,7 @@ class Landslide(Hazard):
         min_value = float(min(self.intensity_cat.data))
 
         for i, j in zip(*self.intensity.nonzero()):
-            self.intensity[i, j] = float((self.intensity[i, j] - min_value) /\
+            self.intensity[i, j] = float((self.intensity[i, j] - min_value) /
                           (max_value - min_value) * max_prob)
 
 
@@ -315,7 +315,7 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity_prob[event_pos, :].toarray(). \
+        return plt.imshow(self.intensity_prob[event_pos, :].toarray().
                               reshape(self.centroids.shape), **kwargs)
 
     def plot_events(self, ev_id=1, **kwargs):
@@ -338,7 +338,7 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity[event_pos, :].toarray(). \
+        return plt.imshow(self.intensity[event_pos, :].toarray().
                               reshape(self.centroids.shape), **kwargs)
 
     def _get_hist_events(self, bbox, coolr_path):
@@ -384,7 +384,7 @@ class Landslide(Hazard):
         return self
 
     def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI",
-                          path_sourcefile=[], n_years=500,\
+                          path_sourcefile=[], n_years=500,
                      incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
@@ -414,13 +414,13 @@ class Landslide(Hazard):
                 LOGGER.error('Empty bounding box, please set bounds.')
                 raise ValueError()
 
-            window_array = self._get_window_from_coords(path_sourcefile,\
+            window_array = self._get_window_from_coords(path_sourcefile,
                                                         bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
-            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
+            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],
                                             window_array[3], window_array[2]))
             self.intensity = self.intensity / 10e6  # prob values were initially multiplied by 1 mio
-            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
+            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating landslides...')
             self._intensity_prob_to_binom(n_years)
@@ -454,11 +454,11 @@ class Landslide(Hazard):
                 raise ValueError()
             window_array = self._get_window_from_coords(path_sourcefile, bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
-            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
+            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],
                                             window_array[3], window_array[2]))
             LOGGER.info('Setting probability values from categorical landslide hazard levels...')
             self._intensity_cat_to_prob(max_prob)
-            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
+            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating binary landslides...')
             self._intensity_prob_to_binom(n_years)

@@ -236,8 +236,8 @@ class TestAddSea(unittest.TestCase):
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
-        self.assertAlmostEqual(dist.pairwise([[exp_sea.longitude.values[-1], \
-            exp_sea.latitude.values[-1]], [exp_sea.longitude.values[-2], \
+        self.assertAlmostEqual(dist.pairwise([[exp_sea.longitude.values[-1],
+            exp_sea.latitude.values[-1]], [exp_sea.longitude.values[-2],
             exp_sea.latitude.values[-2]]])[0][1], sea_res_km)
 
 

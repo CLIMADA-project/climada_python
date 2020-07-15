@@ -67,9 +67,9 @@ class TestAppend(unittest.TestCase):
 
         self.assertTrue(np.array_equal(disc_rate.years, disc_rate_add.years))
         self.assertTrue(np.array_equal(disc_rate.rates, disc_rate_add.rates))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name, \
+        self.assertTrue(np.array_equal(disc_rate.tag.file_name,
                                        disc_rate_add.tag.file_name))
-        self.assertTrue(np.array_equal(disc_rate.tag.description, \
+        self.assertTrue(np.array_equal(disc_rate.tag.description,
                                        disc_rate_add.tag.description))
 
     def test_append_equal_same(self):
@@ -112,9 +112,9 @@ class TestAppend(unittest.TestCase):
         disc_rate.append(disc_rate_add)
         disc_rate.check()
 
-        self.assertTrue(np.array_equal(disc_rate.years, \
+        self.assertTrue(np.array_equal(disc_rate.years,
                                        np.array([2000, 2001, 2002, 2003])))
-        self.assertTrue(np.array_equal(disc_rate.rates, \
+        self.assertTrue(np.array_equal(disc_rate.rates,
                                        np.array([0.11, 0.22, 0.3, 0.33])))
         self.assertTrue(np.array_equal(disc_rate.tag.file_name, 'file1.txt + file2.txt'))
         self.assertTrue(np.array_equal(disc_rate.tag.description, 'descr1 + descr2'))

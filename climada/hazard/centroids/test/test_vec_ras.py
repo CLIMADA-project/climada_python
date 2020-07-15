@@ -600,7 +600,7 @@ class TestReader(unittest.TestCase):
     """Test Centroids setter vector and raster methods"""
     def test_set_vector_file_wrong_fail(self):
         """Test set_vector_file with wrong centroids"""
-        shp_file = shapereader.natural_earth(resolution='110m', \
+        shp_file = shapereader.natural_earth(resolution='110m',
             category='cultural', name='populated_places_simple')
         centr = Centroids()
         inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
@@ -621,7 +621,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(inten[1, 0], 832)
         self.assertEqual(inten[1, -1], 7206000)
 
-        shp_file = shapereader.natural_earth(resolution='10m', \
+        shp_file = shapereader.natural_earth(resolution='10m',
             category='cultural', name='populated_places_simple')
         with self.assertRaises(ValueError):
             centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])

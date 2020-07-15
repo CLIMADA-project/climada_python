@@ -32,7 +32,7 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
                         os.pardir, 'hazard', 'test', 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
 
@@ -352,7 +352,7 @@ class TestApply(unittest.TestCase):
             meas.haz_type = 'TC'
         entity.check()
 
-        new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures, \
+        new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures,
             entity.impact_funcs, hazard)
 
         self.assertTrue(new_exp is entity.exposures)

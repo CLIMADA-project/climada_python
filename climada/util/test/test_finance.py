@@ -25,7 +25,7 @@ from cartopy.io import shapereader
 from climada.util.finance import net_present_value, gdp, income_group, \
 nat_earth_adm0, world_bank, wealth2gdp, world_bank_wealth_account, _gdp_twn
 
-SHP_FN = shapereader.natural_earth(resolution='10m', \
+SHP_FN = shapereader.natural_earth(resolution='10m',
     category='cultural', name='admin_0_countries')
 SHP_FILE = shapereader.Reader(SHP_FN)
 
@@ -167,7 +167,7 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 2008
         cntry_iso = 'CHE'
         var_name = 'NW.PCA.PC'
-        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
+        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                         variable_name=var_name, no_land=0)
         ref_val = 328398.7
         self.assertEqual(res_year, ref_year)
@@ -177,7 +177,7 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 1985
         cntry_iso = 'IND'
         var_name = 'NW.TOW.TO'
-        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year, \
+        res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                         variable_name=var_name)
         ref_val = 5415188681942.5
         self.assertEqual(res_year, ref_year)

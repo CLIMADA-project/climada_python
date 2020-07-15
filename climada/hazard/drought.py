@@ -180,22 +180,22 @@ class Drought(Hazard):
                             os.rename(path_dwl, self.file_path)
 
                         except:
-                            raise FileNotFoundError('The file ' + str(path_dwl)\
+                            raise FileNotFoundError('The file ' + str(path_dwl)
                                 + ' could not be moved to ' + str(os.path.dirname(self.file_path)))
 
                     except:
-                        raise FileExistsError('The file ' + str(self.file_path)\
-                                + ' could not '\
-                                + 'be found. Please download the file '\
-                                + 'first or choose a different folder. '\
-                                + 'The data can be downloaded from '\
+                        raise FileExistsError('The file ' + str(self.file_path)
+                                + ' could not '
+                                + 'be found. Please download the file '
+                                + 'first or choose a different folder. '
+                                + 'The data can be downloaded from '
                                 + SPEI_FILE_URL)
 
             LOGGER.debug('Importing %s', str(SPEI_FILE_NAME))
             dataset = xr.open_dataset(self.file_path)
 
         except:
-            LOGGER.error('Importing the SPEI data file failed. ' \
+            LOGGER.error('Importing the SPEI data file failed. '
                          'Operation aborted.')
             raise
 
@@ -568,14 +568,14 @@ class Drought(Hazard):
 
         # Plot Start
         self.intensity = sparse.csr_matrix(self.date_start)
-        self.plot_intensity(event=event, cmap=cmap, vmin=startdate, \
+        self.plot_intensity(event=event, cmap=cmap, vmin=startdate,
                             vmax=enddate, snap="true")
         plt.ylabel('Date')
         plt.yticks(dates, list_dates)
 
         # Plot End
         self.intensity = sparse.csr_matrix(self.date_end)
-        self.plot_intensity(event=event, cmap=cmap, vmin=startdate,\
+        self.plot_intensity(event=event, cmap=cmap, vmin=startdate,
                             vmax=enddate, snap="true")
         plt.ylabel('Date')
         plt.yticks(dates, list_dates)

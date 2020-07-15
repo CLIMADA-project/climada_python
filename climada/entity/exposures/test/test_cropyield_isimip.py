@@ -31,8 +31,8 @@ class TestCropyieldIsimip(unittest.TestCase):
     def test_load_central_EU(self):
         """Test defining cropyield_isimip Exposure from complete demo file (Central Europe)"""
         exp = CropyieldIsimip()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN, \
-                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]), \
+        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t')
 
         self.assertEqual(exp.longitude.min(), -4.75)
@@ -47,8 +47,8 @@ class TestCropyieldIsimip(unittest.TestCase):
     def test_set_to_usd(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
         exp = CropyieldIsimip()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN, \
-                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]), \
+        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t')
         exp.set_to_usd(INPUT_DIR)
         self.assertEqual(exp.longitude.min(), -4.75)
@@ -63,8 +63,8 @@ class TestCropyieldIsimip(unittest.TestCase):
     def test_set_to_usd_unnecessary(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
         exp = CropyieldIsimip()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN, \
-                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]), \
+        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                      bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible')
         self.assertEqual(exp.longitude.min(), -4.75)
         self.assertEqual(exp.longitude.max(), 15.75)

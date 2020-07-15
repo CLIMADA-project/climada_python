@@ -117,14 +117,14 @@ class ImpactFunc():
         zero_idx = np.where(self.intensity == 0)[0]
         if zero_idx.size != 0:
             if self.mdd[zero_idx[0]] != 0 or self.paa[zero_idx[0]] != 0:
-                LOGGER.warning('For intensity = 0, mdd != 0 or paa != 0. '\
-                               'Consider shifting the origin of the intensity '\
-                               'scale. In impact.calc the impact is always '\
+                LOGGER.warning('For intensity = 0, mdd != 0 or paa != 0. '
+                               'Consider shifting the origin of the intensity '
+                               'scale. In impact.calc the impact is always '
                                'null at intensity = 0.')
         elif self.intensity[0] < 0 and self.intensity[-1] > 0:
-            LOGGER.warning('Impact function might be interpolated to non-zero'\
-                           ' value at intensity = 0. Consider shifting the '\
-                           'origin of the intensity scale. In impact.calc '\
+            LOGGER.warning('Impact function might be interpolated to non-zero'
+                           ' value at intensity = 0. Consider shifting the '
+                           'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
 

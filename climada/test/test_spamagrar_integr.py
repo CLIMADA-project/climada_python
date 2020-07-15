@@ -78,7 +78,7 @@ class TestOtherVar(unittest.TestCase):
         var = 'H'  # harvest area
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            ent.init_spam_agrar(country=country_name, spam_variable=var,\
+            ent.init_spam_agrar(country=country_name, spam_variable=var,
                                 spam_technology=tech)
         self.assertIn('Lat. range: +45.875 to +47.792.', cm.output[0])
         self.assertIn('Lon. range: +6.042 to +10.375.', cm.output[1])
@@ -93,7 +93,7 @@ class TestOtherVar(unittest.TestCase):
         var = 'Y'  # yield
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            ent.init_spam_agrar(name_adm2=adm2, spam_variable=var,\
+            ent.init_spam_agrar(name_adm2=adm2, spam_variable=var,
                                 spam_technology=tech)
         self.assertIn('Lat. range: -8.625 to -6.042.', cm.output[0])
         self.assertIn('Lon. range: -76.125 to -74.208.', cm.output[1])

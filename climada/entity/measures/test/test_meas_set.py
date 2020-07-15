@@ -165,7 +165,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
-        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.', \
+        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.',
                          cm.output[0])
 
     def test_check_wrongColor_fail(self):

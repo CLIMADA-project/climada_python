@@ -29,7 +29,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 class TestOpenStreetMapModule(unittest.TestCase):
     def test_get_features_osm(self):
         """test get_features_osm"""
-        Low_Value_gdf_47_8 = OSM.get_features_OSM([47.2, 8.0, 47.3, 8.07],\
+        Low_Value_gdf_47_8 = OSM.get_features_OSM([47.2, 8.0, 47.3, 8.07],
                                           {'waterway', 'landuse=forest'}, DATA_DIR, check_plot=0)
         self.assertIsInstance(Low_Value_gdf_47_8, geopandas.GeoDataFrame)
         self.assertNotIn('LineString', Low_Value_gdf_47_8.geometry.type)
@@ -39,9 +39,9 @@ class TestOpenStreetMapModule(unittest.TestCase):
 
     def test_get_highValueArea(self):
         """test get_highValueArea"""
-        Low_Value_gdf_47_8 = OSM.get_features_OSM([47.2, 8.0, 47.3, 8.07],\
+        Low_Value_gdf_47_8 = OSM.get_features_OSM([47.2, 8.0, 47.3, 8.07],
                                          {'waterway', 'landuse=forest'}, DATA_DIR, check_plot=0)
-        High_Value_gdf_47_8 = OSM.get_highValueArea([47.2, 8.0, 47.3, 8.07], DATA_DIR, \
+        High_Value_gdf_47_8 = OSM.get_highValueArea([47.2, 8.0, 47.3, 8.07], DATA_DIR,
                                                      DATA_DIR + '/OSM_features_47_8.shp', check_plot=0)
         self.assertTrue(math.isclose(47.2, High_Value_gdf_47_8.bounds.miny, rel_tol=0.05))
         self.assertTrue(math.isclose(8.07, High_Value_gdf_47_8.bounds.maxx, rel_tol=0.05))
@@ -50,7 +50,7 @@ class TestOpenStreetMapModule(unittest.TestCase):
     def test_get_osmstencil_litpop(self):
         """test for get_osmstencil_litpop"""
         for mode in ['proportional', 'nearest', 'even']:
-            exposure_high_47_8 = OSM.get_osmstencil_litpop([47.2, 8.0, 47.3, 8.07], 'CHE', mode, \
+            exposure_high_47_8 = OSM.get_osmstencil_litpop([47.2, 8.0, 47.3, 8.07], 'CHE', mode,
                               os.path.join(DATA_DIR, 'High_Value_Area_47_8.shp'), DATA_DIR, check_plot=0)
             self.assertIsInstance(exposure_high_47_8, Exposures)
             self.assertEqual(len(exposure_high_47_8.columns), 8)

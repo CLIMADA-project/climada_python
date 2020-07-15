@@ -287,7 +287,7 @@ class TestSteps(unittest.TestCase):
 
         n_years = cb.future_year - cb.present_year + 1
         self.assertEqual(time_arr.size, n_years)
-        self.assertTrue(np.allclose(time_arr, np.arange(n_years)**imp_time_depen / \
+        self.assertTrue(np.allclose(time_arr, np.arange(n_years)**imp_time_depen /
                 (n_years - 1)**imp_time_depen))
 
     def test_time_array_no_pres_pass(self):
@@ -314,7 +314,7 @@ class TestSteps(unittest.TestCase):
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
                               risk_present=None)
 
-        self.assertEqual(res, disc_rates.net_present_value(cb.present_year, \
+        self.assertEqual(res, disc_rates.net_present_value(cb.present_year,
                 cb.future_year, time_dep * risk_future))
 
     def test_npv_unaverted_pres_pass(self):
@@ -333,7 +333,7 @@ class TestSteps(unittest.TestCase):
 
 
         tot_climate_risk = risk_present + (risk_future - risk_present) * time_dep
-        self.assertEqual(res, disc_rates.net_present_value(cb.present_year, \
+        self.assertEqual(res, disc_rates.net_present_value(cb.present_year,
             cb.future_year, tot_climate_risk))
 
     def test_norm_value(self):

@@ -675,11 +675,11 @@ class TCTracks():
             # remove segments which cross 180 degree longitude boundary
             segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
             if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
                     linestyle='solid', **kwargs)
             else:
                 synth_flag = True
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm, \
+                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
                     linestyle=':', **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
@@ -757,7 +757,7 @@ class TCTracks():
                 track_int.max_sustained_wind.values,
                 track_int.max_sustained_wind_unit)
         else:
-            LOGGER.warning('Track interpolation not done. ' \
+            LOGGER.warning('Track interpolation not done. '
                            'Not enough elements for %s', track.name)
             track_int = track
 
@@ -783,7 +783,7 @@ class TCTracks():
             time = time - month * 1e4
             day = np.fix(time / 1e2)
             hour = time - day * 1e2
-            datetimes.append(dt.datetime(int(year), int(month), int(day), \
+            datetimes.append(dt.datetime(int(year), int(month), int(day),
                                          int(hour)))
 
         lat = dfr['cgps_lat'].values.astype('float')
@@ -805,7 +805,7 @@ class TCTracks():
         tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values.astype('float'))
         tr_ds['max_sustained_wind'] = ('time', max_sus_wind)
         tr_ds['central_pressure'] = ('time', cen_pres)
-        tr_ds['environmental_pressure'] = ('time', \
+        tr_ds['environmental_pressure'] = ('time',
                                            dfr['penv'].values.astype('float'))
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
@@ -815,12 +815,12 @@ class TCTracks():
         tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
         tr_ds.attrs['basin'] = dfr['gen_basin'].values[0]
         try:
-            tr_ds.attrs['id_no'] = float(name.replace('N', '0'). \
+            tr_ds.attrs['id_no'] = float(name.replace('N', '0').
                                          replace('S', '1'))
         except ValueError:
-            tr_ds.attrs['id_no'] = float(str(datetimes[0].date()). \
+            tr_ds.attrs['id_no'] = float(str(datetimes[0].date()).
                                          replace('-', ''))
-        tr_ds.attrs['category'] = set_category(max_sus_wind, \
+        tr_ds.attrs['category'] = set_category(max_sus_wind,
                    max_sus_wind_unit)
 
         self.data.append(tr_ds)
@@ -845,7 +845,7 @@ def _calc_land_geom(ens_track):
     max_lon = np.max([np.max(track.lon.values) for track in ens_track])
     max_lon = min(max_lon + deg_buffer, 180)
 
-    return coord_util.get_land_geometry(extent=(min_lon, max_lon, \
+    return coord_util.get_land_geometry(extent=(min_lon, max_lon,
         min_lat, max_lat), resolution=10)
 
 def _track_land_params(track, land_geom):
@@ -855,7 +855,7 @@ def _track_land_params(track, land_geom):
         track (xr.Dataset): track values
         land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
     """
-    track['on_land'] = ('time', coord_util.coord_on_land(track.lat.values, \
+    track['on_land'] = ('time', coord_util.coord_on_land(track.lat.values,
          track.lon.values, land_geom))
     track['dist_since_lf'] = ('time', _dist_since_lf(track))
 

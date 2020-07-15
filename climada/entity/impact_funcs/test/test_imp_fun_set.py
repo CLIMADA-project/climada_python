@@ -451,10 +451,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
         self.assertEqual(imp_funcs._data[hazard][first_id].name,
                          'Tropical cyclone default')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
@@ -478,10 +478,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
         self.assertEqual(imp_funcs._data[hazard][second_id].name,
                          'TC Building code')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)
@@ -528,10 +528,10 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
         self.assertEqual(imp_funcs._data[hazard][first_id].name,
                          'Tropical cyclone default')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
@@ -555,10 +555,10 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
         self.assertEqual(imp_funcs._data[hazard][second_id].name,
                          'TC Building code')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)

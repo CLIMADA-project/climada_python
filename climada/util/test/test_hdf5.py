@@ -47,12 +47,12 @@ class TestFunc(unittest.TestCase):
         # Check results
         self.assertEqual('14-Nov-2017 10:09:05', str_date)
         self.assertEqual(
-            'TC hazard event set, generated 14-Nov-2017 10:09:05', \
+            'TC hazard event set, generated 14-Nov-2017 10:09:05',
                 str_comment)
         self.assertEqual(
-            'generating 14450 windfields took 0.25 min ' + \
+            'generating 14450 windfields took 0.25 min ' +
             '(0.0010 sec/event)', str_wf)
-        self.assertEqual('/Users/aznarsig/Documents/MATLAB/climada_data/' + \
+        self.assertEqual('/Users/aznarsig/Documents/MATLAB/climada_data/' +
                          'hazards/atl_prob.mat', str_fn)
 
     def test_get_sparse_mat_pass(self):
@@ -63,9 +63,9 @@ class TestFunc(unittest.TestCase):
         contents = hdf5.read(HAZ_TEST_MAT)
 
         # get matrix size
-        mat_shape = (len(contents['hazard']['event_ID']), \
+        mat_shape = (len(contents['hazard']['event_ID']),
                      len(contents['hazard']['centroid_ID']))
-        spr_mat = hdf5.get_sparse_csr_mat(contents['hazard']['intensity'], \
+        spr_mat = hdf5.get_sparse_csr_mat(contents['hazard']['intensity'],
                                       mat_shape)
 
         self.assertEqual(mat_shape[0], spr_mat.shape[0])
@@ -141,11 +141,11 @@ class TestReader(unittest.TestCase):
         self.assertEqual(27, len(hazard.keys()))
 
         # Check some random values
-        mat_shape = (len(contents['hazard']['event_ID']), \
+        mat_shape = (len(contents['hazard']['event_ID']),
              len(contents['hazard']['centroid_ID']))
         sp_mat = hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
 
-        self.assertTrue(np.array_equal(np.array([[84], [67]]), \
+        self.assertTrue(np.array_equal(np.array([[84], [67]]),
                                               hazard['peril_ID']))
         self.assertEqual(34.537289477809473, sp_mat[2862, 97])
         self.assertEqual(-80, hazard['lon'][46])

@@ -50,5 +50,5 @@ def _read_one_nc(file_name, bbox=None, years=None):
         return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]))
 
     time_id = years - int(data.time.units[12:16])
-    return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]), \
+    return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]),
                     time=slice(time_id[0], time_id[1]))

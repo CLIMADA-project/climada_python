@@ -19,7 +19,7 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
-FOLDER_GPW = os.path.join(SYSTEM_DIR, \
+FOLDER_GPW = os.path.join(SYSTEM_DIR,
                           'gpw-v4-population-count-rev%02i_%04i_30_sec_tif')
 GPW_VERSIONS = [11, 10, 12, 13]
 # FILENAME_GPW1 = '_30_sec.tif'
@@ -68,12 +68,12 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
         row_max < (rows_gpw / zoom):
         gpw_data = gpw_data[row_min:row_max, :]
     elif row_min < 0 and row_max >= 0 and row_max < (rows_gpw / zoom):
-        np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])),\
+        np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])),
                        gpw_data[0:row_max, :])
     elif row_min < 0 and row_max < 0:
         gpw_data = np.zeros((row_max - row_min, col_max - col_min))
     elif row_min < 0 and row_max >= (rows_gpw / zoom):
-        np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])), gpw_data,\
+        np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])), gpw_data,
                        np.zeros((row_max - (rows_gpw / zoom) + 1, gpw_data.shape[1])))
     elif row_min >= (rows_gpw / zoom):
         gpw_data = np.zeros((row_max - row_min, col_max - col_min))
@@ -153,7 +153,7 @@ def get_box_gpw(**parameters):
     year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
 
     if year != reference_year:
-        LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',\
+        LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',
                     reference_year, year)
     if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
@@ -173,20 +173,20 @@ def get_box_gpw(**parameters):
     try:
         if not file_exists:
             if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
-                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],\
+                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],
                                   shell=True)
-                raise FileExistsError('The file ' + str(fname) + ' could not '\
-                                      + 'be found. Please download the file '\
-                                      + 'first or choose a different folder. '\
-                                      + 'Instructions on how to download the '\
-                                      + 'file has been openend in your PDF '\
+                raise FileExistsError('The file ' + str(fname) + ' could not '
+                                      + 'be found. Please download the file '
+                                      + 'first or choose a different folder. '
+                                      + 'Instructions on how to download the '
+                                      + 'file has been openend in your PDF '
                                       + 'viewer.')
             else:
-                raise FileExistsError('The file ' + str(fname) + ' could not '\
-                                      + 'be found. Please download the file '\
-                                      + 'first or choose a different folder. '\
-                                      + 'The data can be downloaded from '\
-                                      + 'http://sedac.ciesin.columbia.edu/'\
+                raise FileExistsError('The file ' + str(fname) + ' could not '
+                                      + 'be found. Please download the file '
+                                      + 'first or choose a different folder. '
+                                      + 'The data can be downloaded from '
+                                      + 'http://sedac.ciesin.columbia.edu/'
                                       + 'data/collection/gpw-v4/sets/browse')
         LOGGER.debug('Importing %s', str(fname))
         gpw_file = gdal.Open(fname)
@@ -195,7 +195,7 @@ def get_box_gpw(**parameters):
         del band1, gpw_file
         arr1[arr1 < 0] = 0
         if arr1.shape != (17400, 43200) and arr1.shape != (21600, 43200):
-            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '\
+            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '
                            + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
             LOGGER.warning('Expected dimensions: 17400x43200 or 21600x43200.')
         if zoom_factor != 1:
@@ -207,13 +207,13 @@ def get_box_gpw(**parameters):
             tile_temp = arr1
         if tile_temp.ndim == 2:
             if not cut_bbox is None:
-                tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution, \
+                tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution,
                                              arr1_shape=arr1.shape)
         else:
             LOGGER.error('Error: Matrix has an invalid number of dimensions \
                          (more than 2). Could not continue operation.')
             raise TypeError
-        tile_temp = pd.SparseArray(tile_temp.reshape((tile_temp.size,),\
+        tile_temp = pd.SparseArray(tile_temp.reshape((tile_temp.size,),
                                    order='F'), fill_value=0)
         del arr1
         if return_coords == 1:
