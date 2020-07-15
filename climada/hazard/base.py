@@ -136,7 +136,7 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type, pool=None):
+    def __init__(self, haz_type='', pool=None):
         """Initialize values.
 
         Parameters:
@@ -536,10 +536,10 @@ class Hazard():
         Returns:
             Hazard or children
         """
-        try:
-            haz = self.__class__()
-        except TypeError:
+        if type(self) is Hazard:
             haz = Hazard(self.tag.haz_type)
+        else:
+            haz = self.__class__()
         sel_ev = np.ones(self.event_id.size, dtype=bool)
         sel_cen = np.ones(self.centroids.size, dtype=bool)
 
@@ -1182,6 +1182,7 @@ class Hazard():
         # sorted intensity
         sort_pos = np.argsort(inten, axis=0)[::-1, :]
         columns = np.ones(inten.shape, int)
+        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
         columns *= np.arange(columns.shape[1])
         inten_sort = inten[sort_pos, columns]
         # cummulative frequency at sorted intensity
