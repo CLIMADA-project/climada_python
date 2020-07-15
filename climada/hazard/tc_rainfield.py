@@ -26,6 +26,8 @@ from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
 
+from climada.util.constants import GLB_CENTROIDS_MAT
+
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'TR'
@@ -34,10 +36,12 @@ class TCRain(Hazard):
     """Contains rainfall from tropical cyclone events."""
 
     intensity_thres = .1
+
     """intensity threshold for storage in mm"""
 
     def __init__(self, pool=None):
         """Empty constructor."""
+        
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
         self.basin = list()
@@ -84,6 +88,7 @@ class TCRain(Hazard):
                                                    intensity=self.intensity_thres))
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
+
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
@@ -92,6 +97,7 @@ class TCRain(Hazard):
     @jit(forceobj=True)
     def _set_from_track(track, centroids, dist_degree=3, intensity=0.1):
         """Set hazard from track and centroids.
+
         Parameters:
             track (xr.Dataset): tropical cyclone track.
             centroids (Centroids): Centroids instance.
@@ -142,6 +148,7 @@ class TCRain(Hazard):
 
 def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     """Compute rainfield for track at centroids.
+
     Parameters:
         track (xr.Dataset): tropical cyclone track.
         centroids (Centroids): Centroids instance.
@@ -196,6 +203,7 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
 
 def _RCLIPER(fmaxwind_kn, inreach, radius_km):
     """Calculate rainrate in mm/h based on RCLIPER given windspeed (kn) at
+
     a specific node
     Parameters:
         fmaxwind_kn (float): maximum sustained wind at specific node

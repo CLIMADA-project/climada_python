@@ -66,30 +66,36 @@ class BlackMarble(Exposures):
         return BlackMarble
 
     def set_countries(self, countries, ref_year=2016, res_km=None, from_hr=None,
-                      **kwargs):
-        """Model countries using values at reference year. If GDP or income
+                      admin_file='admin_0_countries', **kwargs):
+        """ Model countries using values at reference year. If GDP or income
         group not available for that year, consider the value of the closest
         available year.
 
         Parameters:
-            countries (list or dict): list of country names (admin0) or dict
-                with key = admin0 name and value = [admin1 names]
+            countries (list or dict): list of country names (admin0 or subunits) 
+                or dict with key = admin0 name and value = [admin1 names]
             ref_year (int, optional): reference year. Default: 2016
             res_km (float, optional): approx resolution in km. Default:
                 nightlights resolution.
             from_hr (bool, optional): force to use higher resolution image,
                 independently of its year of acquisition.
+            admin_file (str): file name, admin_0_countries or admin_0_map_subunits
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
                 country ISO_alpha3 code. 'poly_val' polynomial transformation
                 [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
                 provided). If provided, these are used.
         """
+        
+        admin_key = {'admin_0_countries': ['ADMIN', 'ADM0_A3'], 
+                     'admin_0_map_subunits': ['SUBUNIT', 'SU_A3']}
+        
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
-                                             name='admin_0_countries')
+                                             name=admin_file)
         shp_file = shapereader.Reader(shp_file)
 
-        cntry_info, cntry_admin1 = country_iso_geom(countries, shp_file)
+        cntry_info, cntry_admin1 = country_iso_geom(countries, shp_file, 
+                                                    admin_key[admin_file])
         fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs)
 
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(\
@@ -166,8 +172,8 @@ class BlackMarble(Exposures):
 
         return exp_bkmrb
 
-def country_iso_geom(countries, shp_file):
-    """Get country ISO alpha_3, country id (defined as the United Nations
+def country_iso_geom(countries, shp_file, admin_key):
+    """ Get country ISO alpha_3, country id (defined as the United Nations
     Statistics Division (UNSD) 3-digit equivalent numeric codes and 0 if
     country not found) and country's geometry shape.
 
@@ -178,6 +184,8 @@ def country_iso_geom(countries, shp_file):
         and value = [admin1 names]
     shp_file : cartopy.io.shapereader.Reader
         shape file
+    admin_key: str 
+        key to find admin0 or subunit name
 
     Returns
     -------
@@ -185,11 +193,12 @@ def country_iso_geom(countries, shp_file):
         key = ISO alpha_3 country, value = [country id, country name, country geometry],
     cntry_admin1 : dict
         key = ISO alpha_3 country, value = [admin1 geometries]
+
     """
     countries_shp = {}
     list_records = list(shp_file.records())
     for info_idx, info in enumerate(list_records):
-        countries_shp[info.attributes['ADMIN'].title()] = info_idx
+        countries_shp[info.attributes[admin_key[0]].title()] = info_idx
 
     cntry_info = dict()
     cntry_admin1 = dict()
@@ -213,7 +222,7 @@ def country_iso_geom(countries, shp_file):
             LOGGER.error('Country %s not found. Possible options: %s',
                          country_name, options)
             raise ValueError
-        iso3 = list_records[country_idx].attributes['ADM0_A3']
+        iso3 = list_records[country_idx].attributes[admin_key[1]]
         try:
             cntry_id = int(iso_cntry.get(iso3).numeric)
         except KeyError:
