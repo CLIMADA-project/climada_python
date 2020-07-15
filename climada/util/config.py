@@ -127,7 +127,7 @@ def setup_conf_user():
         check_conf()
 
 def setup_environ():
-    """ Parse binary environment and correct if necessary """
+    """Parse binary environment and correct if necessary"""
     if shutil.which('eio') is None:
         # correct binary path
         os.environ['PATH'] = os.environ['PATH'].replace(';', ':')

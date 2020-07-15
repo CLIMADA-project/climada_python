@@ -30,7 +30,7 @@ class TestReader(unittest.TestCase):
     """Test reader functionality of the ExposuresMat class"""
 
     def test_read_demo_pass(self):
-        """ Read one single excel file"""
+        """Read one single excel file"""
         # Read demo excel file
         expo = Exposures()
         expo.read_mat(ENT_TEST_MAT)

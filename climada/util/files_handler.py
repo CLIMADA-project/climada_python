@@ -34,9 +34,9 @@ from tqdm import tqdm
 LOGGER = logging.getLogger(__name__)
 
 class DownloadProgressBar(tqdm):
-    """ Class to use progress bar during dowloading """
+    """Class to use progress bar during dowloading"""
     def update_to(self, blocks=1, bsize=1, tsize=None):
-        """ Update progress bar
+        """Update progress bar
 
         Parameters:
             blocks (int, otional): Number of blocks transferred so far [default: 1].
@@ -49,7 +49,7 @@ class DownloadProgressBar(tqdm):
         self.update(blocks * bsize - self.n)
 
 def download_file(url):
-    """ Download file from url in current folder and provide absolute file path
+    """Download file from url in current folder and provide absolute file path
     and name.
 
     Parameters:
@@ -85,7 +85,7 @@ def download_file(url):
     return file_abs_name
 
 def download_ftp(url, file_name):
-    """ Download file from ftp in current folder.
+    """Download file from ftp in current folder.
 
     Parameters:
         url (str): url containing data to download
@@ -129,7 +129,7 @@ def to_list(num_exp, values, val_name):
     return val_list
 
 def get_file_names(file_name):
-    """ Return list of files contained. Supports globbing.
+    """Return list of files contained. Supports globbing.
 
     Parameters:
         file_name (str or list(str)): Either a single string or a list of
@@ -150,7 +150,7 @@ def get_file_names(file_name):
     return file_list
 
 def get_extension(file_name):
-    """ Get file without extension and its extension (e.g. ".nc", ".grd.gz").
+    """Get file without extension and its extension (e.g. ".nc", ".grd.gz").
 
     Parameters:
         file_name (str): file name (with or without path)
@@ -165,7 +165,7 @@ def get_extension(file_name):
     return file_pth, file_ext
 
 def _process_one_file_name(name, file_list):
-    """ Apend to input list the file contained in name
+    """Apend to input list the file contained in name
         Tries globbing if name is neither dir nor file.
     """
     if os.path.isdir(name):

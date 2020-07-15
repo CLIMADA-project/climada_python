@@ -42,23 +42,23 @@ LOGGER = logging.getLogger(__name__)
 def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
                    yearly_impact=False, return_cost = 'False'):
 
-    """ calculate one impact instance for the calibration algorithm and write 
+    """calculate one impact instance for the calibration algorithm and write
         to given DataFrame
 
         Parameters:
             hazard: hazard set instance
             exposure: exposure set instance
             impact_func: impact function instance
-            
+
         Optional Parameters:
             df_out: Output DataFrame with headers of columns defined and optionally with
-                first row (index=0) defined with values. If columns "impact", 
+                first row (index=0) defined with values. If columns "impact",
                 "event_id", or "year" are not included, they are created here.
                 Data like reported impacts or impact function parameters can be
                 given here; values are preserved.
-            yearly_impact (boolean): if set True, impact is returned per year, 
+            yearly_impact (boolean): if set True, impact is returned per year,
                 not per event
-            return_cost: if not 'False' but any of 'R2', 'logR2', 
+            return_cost: if not 'False' but any of 'R2', 'logR2',
                 cost is returned instead of df_out
 
         Returns:
@@ -85,7 +85,7 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
             years_in_common = df_out.loc[df_out['year'].isin(np.sort(list((IYS.keys())))),'year']
             for cnt_, year in years_in_common.iteritems():
                 df_out.loc[df_out['year']==year,'impact_CLIMADA'] = IYS[year]
-                
+
 
     else: # impact per event
         if df_out.empty | df_out.index.shape[0] == 1:
@@ -115,20 +115,26 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
     return df_out
 
 def init_if(if_name_or_instance, param_dict, df_out = pd.DataFrame(index=[0])):
-    """ create an ImpactFunc based on the parameters in param_dict using the 
+    """create an ImpactFunc based on the parameters in param_dict using the
     method specified in if_parameterisation_name and document it in df_out.
-    Parameters:
-            if_name_or_instance (str or ImpactFunc): method of impact function 
-                    parameterisation e.g. 'emanuel' or an instance of ImpactFunc
-            param_dict: dict of parameter_names and values
-                    e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
-                    or e.g. {'mdd_shift': 1.05, 'mdd_scale': 0.8, 
-                             'paa_shift': 1, paa_scale': 1}
-    Returns:
-        ImpactFunc: The Impact function based on the parameterisation
-        df_out: Output DataFrame with headers of columns defined and with
-                first row (index=0) defined with values. The impact function 
-                parameters from param_dict are represented here.
+
+    Parameters
+    ----------
+    if_name_or_instance : str or ImpactFunc
+        method of impact function parameterisation e.g. 'emanuel' or an
+        instance of ImpactFunc
+    param_dict: dict of parameter_names and values
+        e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
+        or {'mdd_shift': 1.05, 'mdd_scale': 0.8, 'paa_shift': 1, paa_scale': 1}
+
+    Returns
+    -------
+    imp_fun : ImpactFunc
+        The Impact function based on the parameterisation
+    df_out : DataFrame
+        Output DataFrame with headers of columns defined and with first row
+        (index=0) defined with values. The impact function parameters from
+        param_dict are represented here.
     """
     ImpactFunc_final = None
     if isinstance(if_name_or_instance,str):
@@ -148,13 +154,13 @@ def init_if(if_name_or_instance, param_dict, df_out = pd.DataFrame(index=[0])):
     return ImpactFunc_final, df_out
 
 def change_if(if_instance,param_dict):
-    """ apply a shifting or a scaling defined in param_dict to the impact 
+    """apply a shifting or a scaling defined in param_dict to the impact
     function in if_istance and return it as a new ImpactFunc object.
     Parameters:
             if_instance (ImpactFunc): an instance of ImpactFunc
             param_dict: dict of parameter_names and values (interpreted as
             factors, 1 = neutral)
-                    e.g. {'mdd_shift': 1.05, 'mdd_scale': 0.8, 
+                    e.g. {'mdd_shift': 1.05, 'mdd_scale': 0.8,
                           'paa_shift': 1, paa_scale': 1}
     Returns:
         ImpactFunc: The Impact function based on the parameterisation
@@ -197,34 +203,34 @@ def change_if(if_instance,param_dict):
     ImpactFunc_new.intensity = np.linspace(ImpactFunc_new.intensity.min(),
                             ImpactFunc_new.intensity.max(),
                             (ImpactFunc_new.intensity.shape[0]+1)*10+1)
-    paa_func_new = interpolate.interp1d(temp_dict['paa_intensity_ext'], 
+    paa_func_new = interpolate.interp1d(temp_dict['paa_intensity_ext'],
                                         temp_dict['paa_ext'],
                                         fill_value='extrapolate')
-    mdd_func_new = interpolate.interp1d(temp_dict['mdd_intensity_ext'], 
+    mdd_func_new = interpolate.interp1d(temp_dict['mdd_intensity_ext'],
                                         temp_dict['mdd_ext'],
                                         fill_value='extrapolate')
     ImpactFunc_new.paa = paa_func_new(ImpactFunc_new.intensity)
     ImpactFunc_new.mdd = mdd_func_new(ImpactFunc_new.intensity)
-    return ImpactFunc_new        
+    return ImpactFunc_new
 
-def init_impact_data(hazard_type, 
+def init_impact_data(hazard_type,
                      region_ids,
                      year_range,
                      source_file,
                      reference_year,
                      impact_data_source='emdat',
                      yearly_impact=True):
-    """ creates a dataframe containing the recorded impact data for one hazard 
+    """creates a dataframe containing the recorded impact data for one hazard
     type and one area (countries, country or local split)
     Parameters:
             hazard_type: default = 'TC', type of hazard 'WS','FL' etc.
-            region_ids: name the region_ids or country names 
-            year_range (list): list containting start and end year. 
+            region_ids: name the region_ids or country names
+            year_range (list): list containting start and end year.
                     e.g. [1980, 2017]
             reference_year: impacts will be scaled to this year
             impact_data_source: default 'emdat', others maybe possible
     Optional Parameters:
-            yearly_impact (boolean): if set True, impact is returned per year, 
+            yearly_impact (boolean): if set True, impact is returned per year,
                 not per event
     Returns:
             df_out: DataFrame with recorded impact written to rows for each year
@@ -244,24 +250,24 @@ def init_impact_data(hazard_type,
 
 
 def calib_cost_calc(df_out,cost_function):
-    """ calculate the cost function of the modelled impact impact_CLIMADA and
+    """calculate the cost function of the modelled impact impact_CLIMADA and
         the reported impact impact_scaled in df_out
         Parameters:
             df_out (pd.Dataframe): DataFrame as created in calib_instance
             cost_function (str): chooses the cost function e.g. 'R2' or 'logR2'
         Returns:
-            cost: the results of the cost function when comparing modelled and 
+            cost: the results of the cost function when comparing modelled and
                     reported impact
     """
     if cost_function == 'R2':
-        cost = np.sum((pd.to_numeric(df_out['impact_scaled']) - 
+        cost = np.sum((pd.to_numeric(df_out['impact_scaled']) -
                        pd.to_numeric(df_out['impact_CLIMADA']))**2)
     elif cost_function == 'logR2':
         impact1 = pd.to_numeric(df_out['impact_scaled'])
         impact1[impact1<=0] = 1
         impact2 = pd.to_numeric(df_out['impact_CLIMADA'])
         impact2[impact2<=0] = 1
-        cost = np.sum((np.log(impact1) - 
+        cost = np.sum((np.log(impact1) -
                        np.log(impact2))**2)
     else:
         raise ValueError('This cost function is not implemented.')
@@ -270,15 +276,15 @@ def calib_cost_calc(df_out,cost_function):
 
 def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
               impact_data_source, year_range, yearly_impact=True):
-    """ portrait the difference between modelled and reported impacts for all 
+    """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and if_name_or_instance
     Parameters:
         hazard: list or instance of hazard
         exposure: list or instance of exposure of full countries
-        if_name_or_instance (string or ImpactFunc): the name of a 
+        if_name_or_instance (string or ImpactFunc): the name of a
             parameterisation or an instance of class ImpactFunc
             e.g. 'emanuel'
-        param_full_dict (dict): a dict containing keys used for 
+        param_full_dict (dict): a dict containing keys used for
             if_name_or_instance and values which are iterable (lists)
             e.g. {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
         impact_data_source (dict or dataframe): with name of impact data source
@@ -290,7 +296,7 @@ def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
                 or event.
     """
     df_result = None # init return variable
-    
+
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
@@ -313,42 +319,42 @@ def calib_all(hazard,exposure,if_name_or_instance,param_full_dict,
         else:
             df_result = df_result.append(df_out, input)
 
-    
+
     return df_result
 
 from scipy.optimize import minimize, Bounds, LinearConstraint
 
 
 def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
-              impact_data_source, year_range, yearly_impact=True, 
+              impact_data_source, year_range, yearly_impact=True,
               cost_fucntion='R2',show_details= False):
-    """ portrait the difference between modelled and reported impacts for all 
+    """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and if_name_or_instance
     Parameters:
         hazard: list or instance of hazard
         exposure: list or instance of exposure of full countries
-        if_name_or_instance (string or ImpactFunc): the name of a 
+        if_name_or_instance (string or ImpactFunc): the name of a
             parameterisation or an instance of class ImpactFunc
             e.g. 'emanuel'
-        param_dict (dict): a dict containing keys used for 
+        param_dict (dict): a dict containing keys used for
             if_name_or_instance and one set of values
             e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
         impact_data_source (dict or dataframe): with name of impact data source
             and file location or dataframe
         year_range
         yearly_impact
-        cost_function (string): the argument for function calib_cost_calc, 
+        cost_function (string): the argument for function calib_cost_calc,
             default 'R2'
-        show_details (bool): if True, return a tuple with the parameters AND 
-            the details of the optimization like success, 
+        show_details (bool): if True, return a tuple with the parameters AND
+            the details of the optimization like success,
             status, number of iterations etc
-        
+
     Returns:
             param_dict_result: the parameters with the best calibration results
                 (or a tuple with (1) the parameters and (2) the optimization output)
     """
     param_dict_result = param_dict
-    
+
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
@@ -360,9 +366,9 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
             df_impact_data = init_impact_data(hazard_type,region_ids, year_range,impact_data_source['emdat'],year_range[-1])
         else:
             raise ValueError('other impact data sources not yet implemented.')
-    # definie specific function to 
+    # definie specific function to
     def specific_calib(x):
-        param_dict_temp = dict(zip(param_dict.keys(),x)) 
+        param_dict_temp = dict(zip(param_dict.keys(),x))
         print(param_dict_temp)
         return calib_instance(hazard,exposure,
                               init_if(if_name_or_instance,param_dict_temp)[0],
@@ -388,25 +394,25 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
 #                   method='SLSQP',
                    method='trust-constr',
                    options={'xtol': 1e-5, 'disp': True, 'maxiter': 500})
-    
+
     param_dict_result = dict(zip(param_dict.keys(),res.x))
-    
+
     if res.success:
         LOGGER.info('Optimization successfully finished.')
     else:
         LOGGER.info('Opimization did not finish successfully. Check you input'
                     ' or consult the detailed returns (with argument'
                     'show_details=True) for further information.')
-    
+
     if show_details:
         return param_dict_result, res
-    
+
     return param_dict_result
 
 
 #if __name__ == "__main__":
 #
-# 
+#
 #    ## tryout calib_all
 #    hazard = TropCyclone()
 #    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
@@ -414,7 +420,7 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
 #    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    if_name_or_instance = 'emanuel'
 #    param_full_dict = {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
-#    
+#
 #    impact_data_source = {'emdat':('D:/Documents_DATA/EM-DAT/'
 #                                   '20181031_disaster_list_all_non-technological/'
 #                                   'ThomasRoosli_2018-10-31.csv')}
@@ -431,7 +437,7 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
 #    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    if_name_or_instance = 'emanuel'
 #    param_dict = {'v_thresh': 25.7, 'v_half': 70, 'scale': 0.6}
-#    year_range = [2004, 2017] 
+#    year_range = [2004, 2017]
 #    cost_function = 'R2'
 #    show_details = True
 #    yearly_impact = True
@@ -439,9 +445,9 @@ def calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
 #                                   '20181031_disaster_list_all_non-technological/'
 #                                   'ThomasRoosli_2018-10-31.csv')}
 #    param_result,result = calib_optimize(hazard,exposure,if_name_or_instance,param_dict,
-#              impact_data_source, year_range, yearly_impact=yearly_impact, 
+#              impact_data_source, year_range, yearly_impact=yearly_impact,
 #              cost_fucntion=cost_function,show_details= show_details)
-#        
-#  
+#
+#
 
 

@@ -45,13 +45,13 @@ from climada.util.coordinates import grid_is_regular
 LOGGER = logging.getLogger(__name__)
 
 RESOLUTION = 250
-""" Number of pixels in one direction in rendered image """
+"""Number of pixels in one direction in rendered image"""
 
 BUFFER = 1.0
-""" Degrees to add in the border """
+"""Degrees to add in the border"""
 
 MAX_BINS = 2000
-""" Maximum number of bins in geo_bin_from_array """
+"""Maximum number of bins in geo_bin_from_array"""
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,\
                        buffer=BUFFER, extend='neither', \
@@ -384,7 +384,7 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
                     transform=ccrs.PlateCarree(), fontsize=14)
 
 def _get_collection_arrays(array_sub):
-    """ Get number of array rows and generate list of array if only one row
+    """Get number of array rows and generate list of array if only one row
 
     Parameters:
         array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
@@ -447,7 +447,7 @@ def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
     return [min_lon, max_lon, min_lat, max_lat]
 
 def get_transformation(crs_in):
-    """ Get projection and its units to use in cartopy transforamtions from
+    """Get projection and its units to use in cartopy transforamtions from
     current crs
 
     Returns:
