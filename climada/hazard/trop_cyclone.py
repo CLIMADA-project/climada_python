@@ -27,10 +27,8 @@ import copy
 import time
 import datetime as dt
 import numpy as np
-from numpy import linalg as LA
 from scipy import sparse
 import matplotlib.animation as animation
-from numba import jit
 from tqdm import tqdm
 
 from climada.hazard.base import Hazard
@@ -432,7 +430,6 @@ def compute_windfields(track, centroids, model):
         hol_b = _bs_hol08(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
             t_lat[1:], t_tstep[1:])
     else:
-        #TODO: H80 with hol_b = b_value(v_trans, vmax, penv, pcen, rho)
         raise NotImplementedError
 
     # derive angular velocity
@@ -447,14 +444,14 @@ def compute_windfields(track, centroids, model):
     v_ang[close_centr[1:]] = v_ang_norm[close_centr[1:],None] \
                              * v_ang_dir[close_centr[1:]]
 
-    """Influence of translational speed decreases with distance from eye
-
-    The "absorbing factor" is according to the following paper (see Fig. 7):
-
-    Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool for
-    converting point data from cyclone observations into tracks and wind speed
-    profiles in a GIS. UNED/GRID-Geneva. https://unepgrid.ch/en/resource/19B7D302
-    """
+    # Influence of translational speed decreases with distance from eye.
+    # The "absorbing factor" is according to the following paper (see Fig. 7):
+    #
+    #   Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool
+    #   for converting point data from cyclone observations into tracks and
+    #   wind speed profiles in a GIS. UNED/GRID-Geneva.
+    #   https://unepgrid.ch/en/resource/19B7D302
+    #
     t_rad_bc = np.broadcast_arrays(t_rad[:,None], d_centr)[0]
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr] = np.fmin(1,
