@@ -144,7 +144,8 @@ class TropCyclone(Hazard):
                     str(coastal_idx.size))
         if self.pool:
             chunksize = min(num_tracks // self.pool.ncpus, 1000)
-            tc_haz = self.pool.map(self._tc_from_track, tracks.data,
+            tc_haz = self.pool.map(
+                self._tc_from_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
                 itertools.repeat(coastal_idx, num_tracks),
                 itertools.repeat(model, num_tracks),
@@ -223,8 +224,9 @@ class TropCyclone(Hazard):
         tc_list = []
         tr_coord = {'lat': [], 'lon': []}
         for node in range(idx_plt.size - 2):
-            tr_piece = track.sel(time=slice(track.time.values[idx_plt[node]],
-                track.time.values[idx_plt[node + 2]]))
+            tr_piece = track.sel(
+                time=slice(track.time.values[idx_plt[node]],
+                           track.time.values[idx_plt[node + 2]]))
             tr_piece.attrs['n_nodes'] = 2  # plot only one node
             tr_sel = TCTracks()
             tr_sel.append(tr_piece)
@@ -233,8 +235,13 @@ class TropCyclone(Hazard):
 
             tc_tmp = TropCyclone()
             tc_tmp.set_from_tracks(tr_sel, centroids)
-            tc_tmp.event_name = [track.name + ' ' + time.strftime("%d %h %Y %H:%M",
-                time.gmtime(tr_sel.data[0].time[1].values.astype(int) / 1000000000))]
+            tc_tmp.event_name = [
+                track.name + ' ' + time.strftime(
+                    "%d %h %Y %H:%M",
+                    time.gmtime(tr_sel.data[0].time[1].values.astype(int)
+                                / 1000000000)
+                )
+            ]
             tc_list.append(tc_tmp)
 
         if 'cmap' not in kwargs:
@@ -266,7 +273,8 @@ class TropCyclone(Hazard):
         Parameters:
             tracks (list of xarray.Dataset)
         """
-        if not tracks: return
+        if not tracks:
+            return
         year_max = np.amax([t.time.dt.year.values.max() for t in tracks])
         year_min = np.amin([t.time.dt.year.values.min() for t in tracks])
         year_delta = year_max - year_min + 1
@@ -388,7 +396,8 @@ def compute_windfields(track, centroids, model):
     t_lon[t_lon <= -180] += 360
 
     # only use longitudes above 180, if 180 degree border is crossed
-    if t_lon.min() > 180: t_lon -= 360
+    if t_lon.min() > 180:
+        t_lon -= 360
 
     # restrict to centroids in rectangular bounding box around track
     track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
@@ -399,7 +408,8 @@ def compute_windfields(track, centroids, model):
         return windfields
 
     # compute distances and vectors to all centroids
-    d_centr, v_centr = [ar[0] for ar in dist_approx(t_lat[None], t_lon[None],
+    d_centr, v_centr = [ar[0] for ar in dist_approx(
+        t_lat[None], t_lon[None],
         track_centr[None, :, 0], track_centr[None, :, 1],
         log=True, method="geosphere")]
 
@@ -429,7 +439,7 @@ def compute_windfields(track, centroids, model):
     # compute b-value
     if model == 0:
         hol_b = _bs_hol08(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
-            t_lat[1:], t_tstep[1:])
+                          t_lat[1:], t_tstep[1:])
     else:
         raise NotImplementedError
 
@@ -455,8 +465,7 @@ def compute_windfields(track, centroids, model):
     #
     t_rad_bc = np.broadcast_arrays(t_rad[:, None], d_centr)[0]
     v_trans_corr = np.zeros_like(d_centr)
-    v_trans_corr[close_centr] = np.fmin(1,
-        t_rad_bc[close_centr] / d_centr[close_centr])
+    v_trans_corr[close_centr] = np.fmin(1, t_rad_bc[close_centr] / d_centr[close_centr])
 
     # add angular and corrected translational velocity vectors
     v_full = v_trans[1][1:, None, :] * v_trans_corr[1:, :, None] + v_ang
@@ -494,7 +503,7 @@ def _close_centroids(t_lat, t_lon, centroids):
         msk_lon = (track_bounds[0] < centr_lon) | (centr_lon < track_bounds[2])
     else:
         msk_lon = (track_bounds[0] < centr_lon) & (centr_lon < track_bounds[2])
-    return (msk_lat & msk_lon)
+    return msk_lat & msk_lon
 
 def _vtrans(t_lat, t_lon, t_tstep):
     """Translational vector and velocity at each track node.
@@ -518,7 +527,8 @@ def _vtrans(t_lat, t_lon, t_tstep):
     v_trans = np.zeros((t_lat.size, 2))
     v_trans_norm = np.zeros((t_lat.size,))
     norm, vec = dist_approx(t_lat[:-1, None], t_lon[:-1, None],
-        t_lat[1:, None], t_lon[1:, None], log=True, method="geosphere")
+                            t_lat[1:, None], t_lon[1:, None],
+                            log=True, method="geosphere")
     v_trans[1:, :] = vec[:, 0, 0]
     v_trans[1:, :] *= KMH_TO_MS / t_tstep[1:, None]
     v_trans_norm[1:] = norm[:, 0, 0]
@@ -593,9 +603,11 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
         np.array
     """
     v_ang = np.zeros_like(d_centr)
-    r_max, hol_b, lat, penv, pcen, d_centr = [ar[close_centr]
-        for ar in np.broadcast_arrays(r_max[:, None], hol_b[:, None], lat[:, None],
-                                      penv[:, None], pcen[:, None], d_centr)]
+    r_max, hol_b, lat, penv, pcen, d_centr = [
+        ar[close_centr] for ar in np.broadcast_arrays(
+            r_max[:, None], hol_b[:, None], lat[:, None],
+            penv[:, None], pcen[:, None], d_centr)
+    ]
 
     # air density
     rho = 1.15

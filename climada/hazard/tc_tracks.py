@@ -386,7 +386,7 @@ class TCTracks():
         for path in get_file_names(file_names):
             rmw_corr = os.path.basename(path) in EMANUEL_RMW_CORR_FILES
             self._read_file_emanuel(path, hemisphere=hemisphere,
-                                          rmw_corr=rmw_corr)
+                                    rmw_corr=rmw_corr)
 
     def _read_file_emanuel(self, path, hemisphere='S', rmw_corr=False):
         """Append tracks from file containing Kerry Emanuel simulations.
@@ -533,9 +533,12 @@ class TCTracks():
         datetimes = list()
         for t in times:
             try:
-                datetimes.append(dt.datetime.strptime(str(nc.num2date(t,
-                                 'days since {}'.format('1858-11-17'),
-                                 calendar='standard')), '%Y-%m-%d %H:%M:%S'))
+                datetimes.append(
+                    dt.datetime.strptime(
+                        str(nc.num2date(t,
+                                        'days since {}'.format('1858-11-17'),
+                                        calendar='standard')
+                        ), '%Y-%m-%d %H:%M:%S'))
             except ValueError:
                 # If wrong t, set t to previous t plus 3 hours
                 if datetimes:
