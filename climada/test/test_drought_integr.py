@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Tests on Drought Hazard exposure and Impact function.
 """
 
-import numpy as np
 import unittest
 
 from climada.hazard.drought import Drought

@@ -97,8 +97,7 @@ class TestLitPopExposure(unittest.TestCase):
         ref_year = 2016
         adm1 = True
         cons = True
-        comparison_total_val = world_bank_wealth_account(country_name[0], ref_year,
-                                                                no_land=1)[1]
+        comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)[1]
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution,
@@ -158,15 +157,14 @@ class TestFunctionIntegration(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         mask = lp._mask_from_shape(curr_shp, resolution=resolution,
-                                    points2check=all_coords)
-        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016,
-                                      [3, 0])
+                                   points2check=all_coords)
+        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [3, 0])
         litpop_curr = litpop_data[mask.sp_index.indices]
         lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
         litpop_curr = lp._calc_admin1(curr_country, country_info[curr_country],
                                       admin1_info[curr_country], litpop_curr,
-                 list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0,
-                 check_plot=0, masks_adm1=[], return_data=1)
+                                      list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0,
+                                      check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
         self.assertAlmostEqual(max(litpop_curr), 80313641015.12299, places=2)
 
@@ -175,7 +173,7 @@ class TestFunctionIntegration(unittest.TestCase):
         via function gpw_import.get_box_gpw() for Swaziland"""
         bbox = [30.78291, -27.3164, 32.11741, -25.73600]
         gpw, lon, lat = gpw_import.get_box_gpw(cut_bbox=bbox, resolution=300,
-                                  return_coords=1, reference_year=2015)
+                                               return_coords=1, reference_year=2015)
         self.assertEqual(len(gpw), 323)
         self.assertIn(np.around(max(gpw)), [103070.0, 137840.0])
         self.assertEqual(type(gpw),
@@ -192,7 +190,7 @@ class TestValidation(unittest.TestCase):
         """Validation for Switzerland: two combinations of Lit and Pop,
             checking Pearson correlation coefficient and RMSF"""
         rho = lp.admin1_validation('CHE', ['LitPop', 'Lit5'], [[1, 1], [5, 0]],
-                                    res_arcsec=30, check_plot=False)[0]
+                                   res_arcsec=30, check_plot=False)[0]
         self.assertTrue(np.int(round(rho[0] * 1e12)) == 945416798729)
         self.assertTrue(np.int(round(rho[-1] * 1e12)) == 3246081648798)
 
