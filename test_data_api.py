@@ -74,7 +74,7 @@ class TestDataAvail(unittest.TestCase):
         os.remove(file_down)
 
     def test_ibtracs_pass(self):
-        download_ftp(os.path.join(IBTRACS_URL, IBTRACS_FILE), IBTRACS_FILE)
+        download_ftp("/".join([IBTRACS_URL, IBTRACS_FILE]), IBTRACS_FILE)
         os.remove(IBTRACS_FILE)
 
 # Execute Tests
