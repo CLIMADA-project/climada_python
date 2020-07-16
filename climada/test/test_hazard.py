@@ -30,10 +30,10 @@ from climada.util.constants import HAZ_DEMO_FL
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestCentroids(unittest.TestCase):
-    """Test centroids functionalities """
+    """Test centroids functionalities"""
 
     def test_read_write_raster_pass(self):
-        """ Test write_raster: Hazard from raster data """
+        """Test write_raster: Hazard from raster data"""
         haz_fl = Hazard('FL')
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
@@ -46,11 +46,11 @@ class TestCentroids(unittest.TestCase):
 
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
-        self.assertTrue(np.allclose(haz_fl.intensity.todense(), haz_read.intensity.todense()))
-        self.assertEqual(np.unique(np.array(haz_fl.fraction.todense())).size, 2)
+        self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
+        self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
     def test_read_raster_pool_pass(self):
-        """ Test set_raster with pool """
+        """Test set_raster with pool"""
         from pathos.pools import ProcessPool as Pool
         pool = Pool()
         haz_fl = Hazard('FL', pool)
@@ -64,7 +64,7 @@ class TestCentroids(unittest.TestCase):
         pool.join()
 
     def test_read_write_vector_pass(self):
-        """ Test write_raster: Hazard from vector data"""
+        """Test write_raster: Hazard from vector data"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])
@@ -81,10 +81,10 @@ class TestCentroids(unittest.TestCase):
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.todense())), np.array([0.0, 0.1, 0.2, 0.5])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.1, 0.2, 0.5])))
 
     def test_write_fraction_pass(self):
-        """ Test write_raster with fraction """
+        """Test write_raster with fraction"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])
@@ -103,8 +103,8 @@ class TestCentroids(unittest.TestCase):
                              files_fraction=[os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertEqual(haz_read.fraction.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.todense())), np.array([0.0, 0.05, 0.1, 0.25])))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.todense())), np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
 
 # Execute Tests
 if __name__ == "__main__":

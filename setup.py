@@ -54,6 +54,7 @@ setup(
     packages=find_packages(where='.'),
 
     install_requires=[
+        'bottleneck==1.3.2',
         'cartopy==0.17.0', # conda!
         'cloudpickle', # install_test
         'contextily==1.0rc2',
@@ -90,11 +91,12 @@ setup(
         'scipy==1.2.1', # conda+
         'shapely==1.6.4', #
         'six==1.13.0', #
+        'statsmodels==0.11.1',
         'tables', # < pandas (climada.entity.measures.test.test_base.TestApply)
         'tabulate==0.8.3',
         'toolz', # < dask
         'tqdm==4.31.1',
-        'xarray==0.12.1',
+        'xarray==0.13.0',
         'xlrd', # < pandas
         'xlsxwriter==1.1.7',
         'xmlrunner==1.7.7', # ci tests

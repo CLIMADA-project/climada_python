@@ -25,7 +25,7 @@ import climada.util.interpolation as interp
 from climada.util.constants import ONE_LAT_KM
 
 def def_input_values():
-    '''Default input coordinates and centroids values'''
+    """Default input coordinates and centroids values"""
     # Load exposures coordinates from demo entity file
     exposures = np.array([[ 26.933899, -80.128799],
              [ 26.957203, -80.098284],
@@ -91,7 +91,7 @@ def def_input_values():
     return exposures, centroids
 
 def def_ref():
-    '''Default output reference'''
+    """Default output reference"""
     return np.array([46, 46, 36, 36, 36, 46, 46, 46, 46, 46, 46,\
                      36, 46, 46, 36, 46, 46, 46, 46, 46, 46, 46,\
                      46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,\
@@ -99,16 +99,16 @@ def def_ref():
                      45, 45, 45, 45, 45, 45])
 
 def def_ref_50():
-    '''Default output reference for maximum distance threshold 50km'''
+    """Default output reference for maximum distance threshold 50km"""
     return np.array([46, 46, 36, -1, 36, 46, 46, 46, 46, 46, 46, 36, 46, 46, \
                      36, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, \
                      46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, \
                      45, 45, 45, 45, 45, 45, 45, 45])
 
 class TestDistance(unittest.TestCase):
-    """ Test distance functions. """
+    """Test distance functions."""
     def test_dist_approx_pass(self):
-        """ Test against matlab reference. """
+        """Test against matlab reference."""
         lats1 = 45.5
         lons1 = -32.2
         cos_lats1 = np.cos(np.radians(lats1))
@@ -118,7 +118,7 @@ class TestDistance(unittest.TestCase):
             interp.dist_approx(lats1, lons1, cos_lats1, lats2, lons2))
 
     def test_dist_sqr_approx_pass(self):
-        """ Test against matlab reference. """
+        """Test against matlab reference."""
         lats1 = 45.5
         lons1 = -32.2
         cos_lats1 = np.cos(np.radians(lats1))
@@ -128,17 +128,17 @@ class TestDistance(unittest.TestCase):
             np.sqrt(interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2))*ONE_LAT_KM)
 
 class TestInterpIndex(unittest.TestCase):
-    ''' Test interpol_index function's interface'''
+    """Test interpol_index function's interface"""
 
     def test_wrong_method_fail(self):
-        ''' Check exception is thrown when wrong method is given'''
+        """Check exception is thrown when wrong method is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
         self.assertIn('Interpolation using method' + \
             ' with distance haversine is not supported.', cm.output[0])
 
     def test_wrong_distance_fail(self):
-        ''' Check exception is thrown when wrong distance is given'''
+        """Check exception is thrown when wrong distance is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), \
                                   distance='distance')
@@ -146,31 +146,31 @@ class TestInterpIndex(unittest.TestCase):
             ' with distance distance is not supported.', cm.output[0])
 
     def test_wrong_centroid_fail(self):
-        ''' Check exception is thrown when centroids missing one dimension'''
+        """Check exception is thrown when centroids missing one dimension"""
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)), 
+            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
                                   distance='approx')
         with self.assertRaises(ValueError):
             interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
                                   distance='haversine')
 
     def test_wrong_coord_fail(self):
-        ''' Check exception is thrown when coordinates missing one dimension'''
+        """Check exception is thrown when coordinates missing one dimension"""
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)), 
+            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
                                   distance='approx')
         with self.assertRaises(ValueError):
             interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
                                   distance='haversine')
 
 class TestNN(unittest.TestCase):
-    '''Test interpolator neareast neighbor with approximate distance'''
+    """Test interpolator neareast neighbor with approximate distance"""
 
     def tearDown(self):
         interp.THRESHOLD = 100
 
     def normal_pass(self, dist):
-        '''Checking result against matlab climada_demo_step_by_step'''
+        """Checking result against matlab climada_demo_step_by_step"""
         # Load input
         exposures, centroids = def_input_values()
 
@@ -184,15 +184,15 @@ class TestNN(unittest.TestCase):
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def normal_warning(self, dist):
-        '''Checking that a warning is raised when minimum distance greater
-        than threshold'''
+        """Checking that a warning is raised when minimum distance greater
+        than threshold"""
         # Load input
         exposures, centroids = def_input_values()
 
         # Interpolate with lower threshold to raise warnings
         threshold = 50
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
-            neighbors = interp.interpol_index(centroids, exposures, 'NN', 
+            neighbors = interp.interpol_index(centroids, exposures, 'NN',
                                               dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[0])
 
@@ -200,8 +200,8 @@ class TestNN(unittest.TestCase):
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def repeat_coord_pass(self, dist):
-        '''Check that exposures with the same coordinates have same
-        neighbors'''
+        """Check that exposures with the same coordinates have same
+        neighbors"""
 
         # Load input
         exposures, centroids = def_input_values()
@@ -218,31 +218,32 @@ class TestNN(unittest.TestCase):
         self.assertEqual(neighbors[2], neighbors[0])
 
     def test_approx_normal_pass(self):
-        ''' Call normal_pass test for approxiamte distance'''
+        """Call normal_pass test for approxiamte distance"""
         self.normal_pass('approx')
 
     def test_approx_normal_warning(self):
-        ''' Call normal_warning test for approxiamte distance'''
+        """Call normal_warning test for approxiamte distance"""
         self.normal_warning('approx')
 
     def test_approx_repeat_coord_pass(self):
-        ''' Call repeat_coord_pass test for approxiamte distance'''
+        """Call repeat_coord_pass test for approxiamte distance"""
         self.repeat_coord_pass('approx')
 
     def test_haver_normal_pass(self):
-        ''' Call normal_pass test for haversine distance'''
+        """Call normal_pass test for haversine distance"""
         self.normal_pass('haversine')
 
     def test_haver_normal_warning(self):
-        ''' Call normal_warning test for haversine distance'''
+        """Call normal_warning test for haversine distance"""
         self.normal_warning('haversine')
 
     def test_haver_repeat_coord_pass(self):
-        ''' Call repeat_coord_pass test for haversine distance'''
+        """Call repeat_coord_pass test for haversine distance"""
         self.repeat_coord_pass('haversine')
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
-TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

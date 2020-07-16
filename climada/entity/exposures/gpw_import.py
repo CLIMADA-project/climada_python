@@ -30,7 +30,7 @@ BUFFER_VAL = -340282306073709652508363335590014353408
 
 
 def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
-    """ Crops the imported GPW data to the bounding box to reduce memory foot
+    """Crops the imported GPW data to the bounding box to reduce memory foot
         print after it has been resized to desired resolution.
 
     Optional parameters:
@@ -43,7 +43,7 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
         gpw_data (array): Cropped GPW data
     """
 
-    """ gpw data is 17400 rows x 43200 cols in dimension (from 85 N to 60 S in
+    """gpw data is 17400 rows x 43200 cols in dimension (from 85 N to 60 S in
     latitude, full longitudinal range). Hence, the bounding box can easily be
     converted to the according indices in the gpw data"""
     steps_p_res = 3600/resolution
@@ -80,8 +80,8 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
     return gpw_data
 
 def check_bounding_box(coord_list):
-    """ Check if a bounding box is valid.
-    PARAMETERS:
+    """Check if a bounding box is valid.
+    Parameters:
         coord_list (4x1 array): bounding box to be checked.
     OUTPUT:
         isCorrectType (boolean): True if bounding box is valid, false otehrwise
@@ -103,45 +103,54 @@ def check_bounding_box(coord_list):
     return is_correct_type
 
 def get_box_gpw(**parameters):
-    """ Reads data from GPW GeoTiff file and cuts out the data along a chosen
+    """Reads data from GPW GeoTiff file and cuts out the data along a chosen
         bounding box.
 
-    Optional parameters:
-        gpw_path (str): absolute path where files are stored.
-            Default: SYSTEM_DIR
-        resolution (int): the resolution in arcsec in which the data output
-            is created.
-        country_cut_mode (int): Defines how the country is cut out:
-            if 0: the country is only cut out with a bounding box
-            if 1: the country is cut out along it's borders
-            Default: = 0 #TODO: Unimplemented
-        cut_bbox (1x4 array-like): Bounding box (ESRI type) to be cut out.
-            the layout of the bounding box corresponds to the bounding box of
-            the ESRI shape files and is as follows:
-            [minimum longitude, minimum latitude, maximum longitude, maxmimum
-             latitude]
-            if country_cut_mode = 1, the cut_bbox is overwritten/ignored.
-        return_coords (int): Determines whether latitude and longitude are
-            delievered along with gpw data (0)
-            or only gpw_data is returned (Default: 0)
-        add_one (boolean): Determine whether the integer one is added to all
-            cells to eliminate zero pixels (Default: 0) #TODO: Unimplemented
-        reference_year (int): reference year, available years are:
-            2000, 2005, 2010, 2015 (default), 2020
+    Parameters
+    ----------
+    gpw_path : str
+        Absolute path where files are stored. Default: SYSTEM_DIR
+    resolution : int
+        The resolution in arcsec in which the data output is created.
+    country_cut_mode : int
+        Defines how the country is cut out: If 0, the country is only cut out
+        with a bounding box. If 1, the country is cut out along it's borders
+        Default: 0.
+        #TODO: Unimplemented
+    cut_bbox : array-like, shape (1,4)
+        Bounding box (ESRI type) to be cut out.
+        The layout of the bounding box corresponds to the bounding box of
+        the ESRI shape files and is as follows:
+        [minimum longitude, minimum latitude, maximum longitude, maxmimum latitude]
+        If country_cut_mode = 1, the cut_bbox is overwritten/ignored.
+    return_coords : int
+        Determines whether latitude and longitude are delievered along with gpw
+        data (0) or only gpw_data is returned. Default: 0.
+    add_one : boolean
+        Determine whether the integer one is added to all cells to eliminate
+        zero pixels. Default: 0.
+        #TODO: Unimplemented
+    reference_year : int
+        reference year, available years are:
+        2000, 2005, 2010, 2015 (default), 2020
 
-    Returns:
-        tile_temp (pandas SparseArray): GPW data
-        lon (list): list with longitudinal infomation on the GPW data. Same
-            dimensionality as tile_temp (only returned if return_coords=1)
-        lat (list): list with latitudinal infomation on the GPW data. Same
-            dimensionality as tile_temp (only returned if return_coords=1)
+    Returns
+    -------
+    tile_temp : pandas SparseArray
+        GPW data
+    lon : list
+        List with longitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords is 1).
+    lat : list
+        list with latitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords is 1).
     """
     resolution = parameters.get('resolution', 30)
     cut_bbox = parameters.get('cut_bbox')
 #    country_cut_mode = parameters.get('country_cut_mode', 0)
     return_coords = parameters.get('return_coords', 0)
-    reference_year = parameters.get('reference_year', 2015)    
-    year = YEARS_AVAILABLE.flat[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
+    reference_year = parameters.get('reference_year', 2015)
+    year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
 
     if year != reference_year:
         LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',\

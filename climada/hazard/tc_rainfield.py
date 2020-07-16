@@ -25,6 +25,7 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
+
 from climada.util.constants import GLB_CENTROIDS_MAT
 
 LOGGER = logging.getLogger(__name__)
@@ -35,10 +36,12 @@ class TCRain(Hazard):
     """Contains rainfall from tropical cyclone events."""
 
     intensity_thres = .1
-    """ intensity threshold for storage in mm """
+
+    """intensity threshold for storage in mm"""
 
     def __init__(self, pool=None):
-        """Empty constructor. """
+        """Empty constructor."""
+        
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
         self.basin = list()
@@ -63,8 +66,7 @@ class TCRain(Hazard):
         """
         num_tracks = tracks.size
         if centroids is None:
-            centroids = Centroids()
-            centroids.read_mat(GLB_CENTROIDS_MAT)
+            centroids = Centroids.from_base_grid(res_as=360, land=True)
 
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
@@ -85,15 +87,17 @@ class TCRain(Hazard):
                                                    dist_degree=dist_degree,
                                                    intensity=self.intensity_thres))
         LOGGER.debug('Append events.')
-        self._append_all(tc_haz)
+        self.concatenate(tc_haz)
+
         LOGGER.debug('Compute frequency.')
         self._set_frequency(tracks.data)
         self.tag.description = description
 
     @staticmethod
-    @jit
+    @jit(forceobj=True)
     def _set_from_track(track, centroids, dist_degree=3, intensity=0.1):
-        """ Set hazard from track and centroids.
+        """Set hazard from track and centroids.
+
         Parameters:
             track (xr.Dataset): tropical cyclone track.
             centroids (Centroids): Centroids instance.
@@ -143,7 +147,8 @@ class TCRain(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
 def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
-    """ Compute rainfield for track at centroids.
+    """Compute rainfield for track at centroids.
+
     Parameters:
         track (xr.Dataset): tropical cyclone track.
         centroids (Centroids): Centroids instance.
@@ -197,7 +202,8 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     return sparse.csr_matrix(rainsum)
 
 def _RCLIPER(fmaxwind_kn, inreach, radius_km):
-    """ Calculate rainrate in mm/h based on RCLIPER given windspeed (kn) at
+    """Calculate rainrate in mm/h based on RCLIPER given windspeed (kn) at
+
     a specific node
     Parameters:
         fmaxwind_kn (float): maximum sustained wind at specific node

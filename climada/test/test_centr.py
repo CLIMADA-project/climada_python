@@ -28,10 +28,10 @@ HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data/'
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 class TestCentroidsReader(unittest.TestCase):
-    """ Test read functions Centroids """
+    """Test read functions Centroids"""
 
     def test_mat_pass(self):
-        ''' Read a centroid mat file correctly.'''
+        """Read a centroid mat file correctly."""
         centroids = Centroids()
         centroids.read_mat(HAZ_TEST_MAT)
 
@@ -43,7 +43,7 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[n_centroids-1][1], -75)
 
     def test_mat_global_pass(self):
-        """ Test read GLB_CENTROIDS_MAT """
+        """Test read GLB_CENTROIDS_MAT"""
         centroids = Centroids()
         centroids.read_mat(GLB_CENTROIDS_MAT)
 
@@ -51,7 +51,7 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.region_id[170825], 28)
 
     def test_centroid_pass(self):
-        ''' Read a centroid excel file correctly.'''
+        """Read a centroid excel file correctly."""
         centroids = Centroids()
         centroids.read_excel(HAZ_TEMPLATE_XLS)
 

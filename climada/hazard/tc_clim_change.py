@@ -26,11 +26,11 @@ import pandas as pd
 from climada.util.constants import SYSTEM_DIR
 
 TOT_RADIATIVE_FORCE = os.path.join(SYSTEM_DIR, 'rcp_db.xls')
-""" © RCP Database (Version 2.0.5) http://www.iiasa.ac.at/web-apps/tnt/RcpDb.
-generated: 2018-07-04 10:47:59. """
+"""© RCP Database (Version 2.0.5) http://www.iiasa.ac.at/web-apps/tnt/RcpDb.
+generated: 2018-07-04 10:47:59."""
 
 def get_knutson_criterion():
-    """ Fill changes in TCs according to Knutson et al. 2015 Global projections
+    """Fill changes in TCs according to Knutson et al. 2015 Global projections
     of intense tropical cyclone activity for the late twenty-first century from
     dynamical downscaling of CMIP5/RCP4.5 scenarios.
 
@@ -117,7 +117,7 @@ def get_knutson_criterion():
     return criterion
 
 def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
-    """ Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
+    """Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
     (i.e., present day). Late twenty-first century effects on intensity and
     frequency per Saffir-Simpson-category and ocean basin is scaled to target
     year and target RCP proportional to total radiative forcing of the respective
