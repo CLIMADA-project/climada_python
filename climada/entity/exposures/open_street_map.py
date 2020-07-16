@@ -15,7 +15,6 @@ import os
 import time
 from functools import partial
 
-import matplotlib
 #matplotlib.use('Qt5Agg', force=True)
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -82,8 +81,8 @@ def _osm_api_query(item, bbox):
     result_NodesFromWays = _insistent_osm_api_query(query_clause_NodesFromWays)
     print('Nodes from Ways query for %s: done.' % item)
 
-    query_clause_NodesWaysFromRels = "rel[%s][type=multipolygon](%f6, %f6, %f6, %f6);(._;>;);out;" \
-    % (item, bbox[0], bbox[1], bbox[2], bbox[3])
+    query_clause_NodesWaysFromRels = ("rel[%s][type=multipolygon](%f6, %f6, %f6, %f6);"
+                                      "(._;>;);out;" % (item, bbox[0], bbox[1], bbox[2], bbox[3]))
     result_NodesWaysFromRels = _insistent_osm_api_query(query_clause_NodesWaysFromRels)
     print('Nodes and Ways from Relations query for %s: done.' % item)
 
@@ -167,13 +166,13 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
             if relationway.role == 'outer':
                 for way in result_NodesWaysFromRels.ways:
                     if way.id == relationway.ref:
-                        OuterList.append(geometry.LineString([node.lon, node.lat]
-                                                                     for node in way.nodes))
+                        OuterList.append(
+                            geometry.LineString([node.lon, node.lat] for node in way.nodes))
             else:
                 for way in result_NodesWaysFromRels.ways:
                     if way.id == relationway.ref:
-                        InnerList.append(geometry.LineString([node.lon, node.lat]
-                                                                     for node in way.nodes))
+                        InnerList.append(
+                            geometry.LineString([node.lon, node.lat] for node in way.nodes))
 
         OuterPoly = []
         # in case outer polygons are not fragmented, add those already in correct geometry
@@ -215,8 +214,8 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
     schema_multi = {'geometry': 'MultiPolygon',
                     'properties': {'Name': 'str:80', 'Type': 'str:80', 'Item': 'str:80'}}
 
-    shapeout_multi = save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) + '_' +\
-            str(int(bbox[1])) + ".shp"
+    shapeout_multi = (save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) + '_'
+                      + str(int(bbox[1])) + ".shp")
 
     with fiona.open(shapeout_multi, 'w', crs=from_epsg(4326),
                     driver='ESRI Shapefile', schema=schema_multi) as output:
@@ -300,7 +299,8 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
         print('Querying Relations, Nodes and Ways for %s...' % item)
         result_NodesFromWays, result_NodesWaysFromRels = _osm_api_query(item, bbox)
 
-        # Formatting results for each feature into correct shapes (LineStrings, Polygons, MultiPolygons)
+        # Formatting results for each feature
+        # into correct shapes (LineStrings, Polygons, MultiPolygons)
         print('Converting results for %s to correct geometry and GeoDataFrame: Lines and Polygons'
               % item)
         globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))] = \
@@ -310,7 +310,7 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
         if check_plot == 1:
             f, ax = plt.subplots(1)
             ax = globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' +
-                        str(int(bbox[1]))].plot(ax=ax)
+                           str(int(bbox[1]))].plot(ax=ax)
             f.suptitle(str(item) + '_' + str(int(bbox[0])) + '_' + str(int(bbox[1])))
             plt.show()
 
@@ -322,7 +322,8 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
         ax = OSM_features_gdf_combined.plot(ax=ax)
         f.suptitle('Features_' + str(int(bbox[0])) + '_' + str(int(bbox[1])))
         plt.show()
-        f.savefig('Features_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + '.pdf', bbox_inches='tight')
+        f.savefig('Features_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + '.pdf',
+                  bbox_inches='tight')
 
     return OSM_features_gdf_combined
 
@@ -362,11 +363,11 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
                                    (bbox[3], bbox[0]), (bbox[3], bbox[2])])
 
 
-    if Low_Value_gdf == None:
+    if Low_Value_gdf is None:
         try:
-            Low_Value_gdf = geopandas.read_file(save_path
-                                                + '/OSM_features_gdf_combined_' + str(int(bbox[0])) +
-                                                '_' + str(int(bbox[1])) + '.shp')
+            Low_Value_gdf = geopandas.read_file(
+                save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_'
+                + str(int(bbox[1])) + '.shp')
         except:
             print('No Low-Value-Union found with name %s. \n Please add.'
                   % (save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' +
@@ -382,7 +383,8 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
 
     # save high value multipolygon as shapefile and re-read as gdf:
     schema = {'geometry': 'MultiPolygon', 'properties': {'Name': 'str:80'}}
-    shapeout = save_path + '/High_Value_Area_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp"
+    shapeout = (save_path + '/High_Value_Area_' + str(int(bbox[0]))
+                + '_' + str(int(bbox[1])) + ".shp")
     with fiona.open(shapeout, 'w', crs=from_epsg(4326), driver='ESRI Shapefile',
                     schema=schema) as output:
         prop1 = {'Name': 'High Value Area'}
@@ -465,7 +467,8 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
                             inplace=True)
 
     elif mode == "proportional":
-        # assign asset values of low-value points proportionally to value of points in high-value df.
+        # assign asset values of low-value points proportionally
+        # to value of points in high-value df.
         exp_sub_high['addedValprop'] = 0
         for i in range(0, len(exp_sub_high)):
             asset_factor = exp_sub_high.iloc[i].value / sum(exp_sub_high.value)
@@ -475,12 +478,13 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
                             inplace=True)
 
     else:
-        print("No proper re-assignment mode set. Please choose either nearest, even or proportional.")
+        print("No proper re-assignment mode set. "
+              "Please choose either nearest, even or proportional.")
 
     return exp_sub_high
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
-                              save_path=os.getcwd(), check_plot=1, **kwargs):
+                          save_path=os.getcwd(), check_plot=1, **kwargs):
     """
     Generate climada-compatible exposure by downloading LitPop exposure for a bounding box,
     corrected for centroids which lie inside a certain high-value multipolygon area
@@ -505,7 +509,7 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
                           save_path + '/High_Value_Area_47_8.shp' ,\
                           save_path = save_path)
     """
-    if highValueArea == None:
+    if highValueArea is None:
         try:
             High_Value_Area_gdf = \
             geopandas.read_file(os.getcwd() + '/High_Value_Area_' + str(int(bbox[0])) + '_' +
@@ -513,7 +517,7 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
         except:
             print('No file found of form %s. Please add or specify path.'
                   % (os.getcwd() + 'High_Value_Area_' + str(int(bbox[0])) + '_' +
-                    str(int(bbox[1])) + ".shp"))
+                     str(int(bbox[1])) + ".shp"))
     else:
         High_Value_Area_gdf = geopandas.read_file(highValueArea)
 
@@ -549,7 +553,8 @@ def _get_midpoints(highValueArea):
     """
     High_Value_Area_gdf = geopandas.read_file(highValueArea)
 
-    # For current exposure structure, simply get centroid and area (in m2) for each building polygon
+    # For current exposure structure, simply get centroid
+    # and area (in m2) for each building polygon
     High_Value_Area_gdf['projected_area'] = 0
     High_Value_Area_gdf['Midpoint'] = 0
 
@@ -603,7 +608,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     return High_Value_Area_gdf
 
 def make_osmexposure(highValueArea, mode="default", country=None,
-                              save_path=os.getcwd(), check_plot=1, **kwargs):
+                     save_path=os.getcwd(), check_plot=1, **kwargs):
     """
     Generate climada-compatiple entity by assigning values to midpoints of
     individual house shapes from OSM query, according to surface area and country.
@@ -624,8 +629,8 @@ def make_osmexposure(highValueArea, mode="default", country=None,
 
     Example:
         buildings_47_8 = \
-        make_osmexposure(save_path+ '/OSM_features_47_8.shp',\
-                                                mode="default", save_path = save_path, check_plot=1)
+        make_osmexposure(save_path + '/OSM_features_47_8.shp',
+                         mode="default", save_path = save_path, check_plot=1)
     """
     High_Value_Area_gdf = _get_midpoints(highValueArea)
 

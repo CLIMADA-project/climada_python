@@ -72,7 +72,7 @@ class BlackMarble(Exposures):
         available year.
 
         Parameters:
-            countries (list or dict): list of country names (admin0 or subunits) 
+            countries (list or dict): list of country names (admin0 or subunits)
                 or dict with key = admin0 name and value = [admin1 names]
             ref_year (int, optional): reference year. Default: 2016
             res_km (float, optional): approx resolution in km. Default:
@@ -85,16 +85,15 @@ class BlackMarble(Exposures):
                 [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
                 provided). If provided, these are used.
         """
-        
-        admin_key_dict = {'admin_0_countries': ['ADMIN', 'ADM0_A3'], 
+        admin_key_dict = {'admin_0_countries': ['ADMIN', 'ADM0_A3'],
                           'admin_0_map_subunits': ['SUBUNIT', 'SU_A3']}
-        
+
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
                                              name=admin_file)
         shp_file = shapereader.Reader(shp_file)
 
-        cntry_info, cntry_admin1 = country_iso_geom(countries, shp_file, 
+        cntry_info, cntry_admin1 = country_iso_geom(countries, shp_file,
                                                     admin_key_dict[admin_file])
         fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs)
 
@@ -106,13 +105,14 @@ class BlackMarble(Exposures):
 
         for cntry_iso, cntry_val in cntry_info.items():
 
-            bkmrbl_list.append(self._set_one_country(cntry_val, nightlight,
-                coord_nl, res_fact, res_km, cntry_admin1[cntry_iso], **kwargs))
+            bkmrbl_list.append(
+                self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
+                                      cntry_admin1[cntry_iso], **kwargs))
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(bkmrbl_list,
-            ignore_index=True)), crs=DEF_CRS)
+        Exposures.__init__(self, gpd.GeoDataFrame(
+            pd.concat(bkmrbl_list, ignore_index=True)), crs=DEF_CRS)
 
         # set metadata
         self.ref_year = ref_year
@@ -151,8 +151,7 @@ class BlackMarble(Exposures):
             poly_val = DEF_POLY_VAL
         geom = cntry_info[2]
 
-        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom,
-            nightlight, coord_nl)
+        nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, nightlight, coord_nl)
         nightlight_reg = _set_econ_indicators(nightlight_reg, cntry_info[4],
                                               cntry_info[5], poly_val)
         if admin1_geom:
@@ -161,7 +160,7 @@ class BlackMarble(Exposures):
 
         LOGGER.info('Generating resolution of approx %s km.', res_km)
         nightlight_reg, lat_reg, lon_reg = _resample_land(geom, nightlight_reg,
-            lat_reg, lon_reg, res_fact, on_land)
+                                                          lat_reg, lon_reg, res_fact, on_land)
 
         exp_bkmrb = BlackMarble()
         exp_bkmrb['value'] = np.asarray(nightlight_reg).reshape(-1,)
@@ -184,7 +183,7 @@ def country_iso_geom(countries, shp_file, admin_key=['ADMIN', 'ADM0_A3']):
         and value = [admin1 names]
     shp_file : cartopy.io.shapereader.Reader
         shape file
-    admin_key: str 
+    admin_key: str
         key to find admin0 or subunit name
 
     Returns
@@ -294,11 +293,11 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
         geom = shapely.ops.cascaded_union(geom)
         req_files = nl_utils.check_required_nl_files(geom.bounds)
         files_exist, _ = nl_utils.check_nl_local_file_exists(req_files,
-            SYSTEM_DIR, nl_year)
+                                                             SYSTEM_DIR, nl_year)
         nl_utils.download_nl_files(req_files, files_exist, SYSTEM_DIR, nl_year)
         # nightlight intensity with 15 arcsec resolution
         nightlight, coord_nl = nl_utils.load_nightlight_nasa(geom.bounds,
-            req_files, nl_year)
+                                                             req_files, nl_year)
         fn_nl = [file.replace('*', str(nl_year)) for idx, file
                  in enumerate(nl_utils.BM_FILENAMES) if req_files[idx]]
         fn_nl = ' + '.join(fn_nl)
@@ -370,10 +369,10 @@ def _cut_admin1(nightlight, lat, lon, admin1_geom, coord_nl, on_land):
     """
     all_geom = shapely.ops.cascaded_union(admin1_geom)
 
-    in_lat = math.floor((all_geom.bounds[1] - lat[0, 0]) / coord_nl[0, 1]), \
-             math.ceil((all_geom.bounds[3] - lat[0, 0]) / coord_nl[0, 1])
-    in_lon = math.floor((all_geom.bounds[0] - lon[0, 0]) / coord_nl[1, 1]), \
-             math.ceil((all_geom.bounds[2] - lon[0, 0]) / coord_nl[1, 1])
+    in_lat = (math.floor((all_geom.bounds[1] - lat[0, 0]) / coord_nl[0, 1]),
+              math.ceil((all_geom.bounds[3] - lat[0, 0]) / coord_nl[0, 1]))
+    in_lon = (math.floor((all_geom.bounds[0] - lon[0, 0]) / coord_nl[1, 1]),
+              math.ceil((all_geom.bounds[2] - lon[0, 0]) / coord_nl[1, 1]))
 
     nightlight_reg = nightlight[in_lat[0]:in_lat[-1] + 1, :][:, in_lon[0]:in_lon[-1] + 1]
     nightlight_reg[nightlight_reg < 0.0] = 0.0
@@ -404,10 +403,10 @@ def _cut_country(geom, nightlight, coord_nl):
         on_land_reg (2d array of same size as previous with True values on land
         points)
     """
-    in_lat = math.floor((geom.bounds[1] - coord_nl[0, 0]) / coord_nl[0, 1]), \
-             math.ceil((geom.bounds[3] - coord_nl[0, 0]) / coord_nl[0, 1])
-    in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0]) / coord_nl[1, 1]), \
-             math.ceil((geom.bounds[2] - coord_nl[1, 0]) / coord_nl[1, 1])
+    in_lat = (math.floor((geom.bounds[1] - coord_nl[0, 0]) / coord_nl[0, 1]),
+              math.ceil((geom.bounds[3] - coord_nl[0, 0]) / coord_nl[0, 1]))
+    in_lon = (math.floor((geom.bounds[0] - coord_nl[1, 0]) / coord_nl[1, 1]),
+              math.ceil((geom.bounds[2] - coord_nl[1, 0]) / coord_nl[1, 1]))
 
     nightlight_reg = nightlight[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[-1] + 1] \
         .toarray()
@@ -424,15 +423,15 @@ def _cut_country(geom, nightlight, coord_nl):
     except TypeError:
         geom = [geom]
     for poly in geom:
-        in_lat = math.floor((poly.bounds[1] - lat_reg[0, 0]) / coord_nl[0, 1]), \
-                 math.ceil((poly.bounds[3] - lat_reg[0, 0]) / coord_nl[0, 1])
-        in_lon = math.floor((poly.bounds[0] - lon_reg[0, 0]) / coord_nl[1, 1]), \
-                 math.ceil((poly.bounds[2] - lon_reg[0, 0]) / coord_nl[1, 1])
-        on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] = \
-            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] \
-            | shapely.vectorized.contains(poly,
-                lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
-                lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1])
+        in_lat = (math.floor((poly.bounds[1] - lat_reg[0, 0]) / coord_nl[0, 1]),
+                  math.ceil((poly.bounds[3] - lat_reg[0, 0]) / coord_nl[0, 1]))
+        in_lon = (math.floor((poly.bounds[0] - lon_reg[0, 0]) / coord_nl[1, 1]),
+                  math.ceil((poly.bounds[2] - lon_reg[0, 0]) / coord_nl[1, 1]))
+        on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1] = (
+            on_land_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1]
+            | shapely.vectorized.contains(
+                poly, lon_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1],
+                lat_reg[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1]))
 
     # put zero values outside country
     nightlight_reg[~on_land_reg] = 0.0

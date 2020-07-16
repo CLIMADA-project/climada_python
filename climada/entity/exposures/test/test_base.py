@@ -74,10 +74,16 @@ class TestFuncs(unittest.TestCase):
         exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(equal_crs(exp.crs, DEF_CRS))
-        self.assertAlmostEqual(exp['latitude'].max(), 10.248220966978932 - 0.009000000000000341 / 2)
-        self.assertAlmostEqual(exp['latitude'].min(), 10.248220966978932 - 0.009000000000000341 / 2 - 59 * 0.009000000000000341)
-        self.assertAlmostEqual(exp['longitude'].min(), -69.2471495969998 + 0.009000000000000341 / 2)
-        self.assertAlmostEqual(exp['longitude'].max(), -69.2471495969998 + 0.009000000000000341 / 2 + 49 * 0.009000000000000341)
+        self.assertAlmostEqual(exp['latitude'].max(),
+                               10.248220966978932 - 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['latitude'].min(),
+                               10.248220966978932 - 0.009000000000000341
+                               / 2 - 59 * 0.009000000000000341)
+        self.assertAlmostEqual(exp['longitude'].min(),
+                               -69.2471495969998 + 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['longitude'].max(),
+                               -69.2471495969998 + 0.009000000000000341
+                               / 2 + 49 * 0.009000000000000341)
         self.assertEqual(len(exp), 60 * 50)
         self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
@@ -236,9 +242,10 @@ class TestAddSea(unittest.TestCase):
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
-        self.assertAlmostEqual(dist.pairwise([[exp_sea.longitude.values[-1],
-            exp_sea.latitude.values[-1]], [exp_sea.longitude.values[-2],
-            exp_sea.latitude.values[-2]]])[0][1], sea_res_km)
+        self.assertAlmostEqual(dist.pairwise([
+            [exp_sea.longitude.values[-1], exp_sea.latitude.values[-1]],
+            [exp_sea.longitude.values[-2], exp_sea.latitude.values[-2]],
+        ])[0][1], sea_res_km)
 
 
 class TestGeoDFFuncs(unittest.TestCase):

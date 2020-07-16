@@ -120,8 +120,7 @@ class GDP2Asset(Exposures):
         natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-        lat, lon = get_region_gridpoints(countries=[natID], iso=False,
-            basemap="isimip")
+        lat, lon = get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)

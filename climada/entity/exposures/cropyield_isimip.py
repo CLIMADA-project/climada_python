@@ -60,23 +60,17 @@ SCENARIO = ['1860soc',
 YEARCHUNKS = dict()
 # two types of 1860soc (1661-2299 not implemented)
 YEARCHUNKS[SCENARIO[0]] = dict()
-YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1800, 1860]),
-          'startyear': 1661, 'endyear': 1860}
+YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1800, 1860]), 'startyear': 1661, 'endyear': 1860}
 YEARCHUNKS[SCENARIO[1]] = dict()
-YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([1976, 2005]),
-          'startyear': 1861, 'endyear': 2005}
+YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
 YEARCHUNKS[SCENARIO[2]] = dict()
-YEARCHUNKS[SCENARIO[2]] = {'yearrange': np.array([2006, 2099]),
-          'startyear': 2006, 'endyear': 2299}
+YEARCHUNKS[SCENARIO[2]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2299}
 YEARCHUNKS[SCENARIO[3]] = dict()
-YEARCHUNKS[SCENARIO[3]] = {'yearrange': np.array([2006, 2099]),
-          'startyear': 2006, 'endyear': 2099}
+YEARCHUNKS[SCENARIO[3]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS[SCENARIO[4]] = dict()
-YEARCHUNKS[SCENARIO[4]] = {'yearrange': np.array([2006, 2099]),
-          'startyear': 2006, 'endyear': 2099}
+YEARCHUNKS[SCENARIO[4]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS[SCENARIO[5]] = dict()
-YEARCHUNKS[SCENARIO[5]] = {'yearrange': np.array([2100, 2299]),
-          'startyear': 2100, 'endyear': 2299}
+YEARCHUNKS[SCENARIO[5]] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100, 'endyear': 2299}
 
 YEARS_FAO = np.array([2000, 2018])
 
@@ -99,8 +93,9 @@ IRR_NAME[IRR[0]] = {'name': 'combined'}
 IRR_NAME[IRR[1]] = {'name': 'rainfed'}
 IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 
-# default: deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
-#         deposit the FAO files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure/FAO
+# default:
+#   deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
+#   deposit the FAO files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure/FAO
 # The FAO files need to be downloaded and renamed
 #   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
@@ -161,16 +156,16 @@ class CropyieldIsimip(Exposures):
         if filename is None:
             yearchunk = YEARCHUNKS[scenario]
             # if scenario == 'histsoc' or scenario == '1860soc':
-            if scenario in('histsoc', '1860soc'):
+            if scenario in ('histsoc', '1860soc'):
                 string = '%s_%s_%s_%s.nc'
                 filename = os.path.join(input_dir, string % (scenario, fn_str_var,
-                                                         str(yearchunk['startyear']),
-                                                         str(yearchunk['endyear'])))
+                                                             str(yearchunk['startyear']),
+                                                             str(yearchunk['endyear'])))
             else:
                 string = '%s_%s_%s_%s_%s.nc'
                 filename = os.path.join(input_dir, string % (scenario, cl_model, fn_str_var,
-                                                         str(yearchunk['startyear']),
-                                                         str(yearchunk['endyear'])))
+                                                             str(yearchunk['startyear']),
+                                                             str(yearchunk['endyear'])))
         elif scenario == 'flexible':
             items = filename.split('_')
             yearchunk = dict()
@@ -213,10 +208,15 @@ class CropyieldIsimip(Exposures):
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
         if irr == 'combined':
-            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[1]])['name'])[
-                         time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values + \
-                         (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[2]])['name'])[
-                          time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values
+            area_crop = (
+                (getattr(data,
+                         (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[1]])['name'])[
+                            time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
+                ).values
+                + (getattr(data,
+                           (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[2]])['name'])[
+                               time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
+                ).values)
         else:
             area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[irr])['name'])[
                          time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values
@@ -229,13 +229,15 @@ class CropyieldIsimip(Exposures):
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
             if irr != 'combined':
                 filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + irr + '_' +
-                str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
+                                        str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
                 hist_mean = (h5py.File(filename, 'r'))['mean'][()]
             else:
-                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[1] +
-                '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
-                filename2 = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[2] +
-                '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
+                filename = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[1]
+                                        + '_' + str(yearrange[0]) + '-'
+                                        + str(yearrange[1]) + '.hdf5')
+                filename2 = os.path.join(hist_mean, 'hist_mean_' + crop + '-' + IRR[2]
+                                         + '_' + str(yearrange[0]) + '-'
+                                         + str(yearrange[1]) + '.hdf5')
                 hist_mean = ((h5py.File(filename, 'r'))['mean'][()] +
                              (h5py.File(filename2, 'r'))['mean'][()]) / 2
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
@@ -285,7 +287,8 @@ class CropyieldIsimip(Exposures):
                 'transform': ras_trans,
             }
         except ValueError:
-            LOGGER.warning('Could not write attribute meta, because exposure has only 1 data point')
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
             self.meta = {}
 
         # Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
@@ -342,7 +345,8 @@ class CropyieldIsimip(Exposures):
             else:
                 filenames2 = filenames
 
-        # The first exposure is calculate to determine its size and initialize the combined exposure
+        # The first exposure is calculate to determine its size
+        # and initialize the combined exposure
         self.set_from_single_run(input_dir, filename=filenames2[0], hist_mean=hist_mean,
                                  bbox=bbox, yearrange=yearrange, crop=crop, irr=irr,
                                  unit=unit, fn_str_var=fn_str_var)
@@ -419,7 +423,7 @@ class CropyieldIsimip(Exposures):
                 # average for that crop (in the specified yearrange) is used
                 if math.isnan(price) or price == 0:
                     idx_price = np.where((np.asarray(fao_crops) == (CROP_NAME[self.crop])['fao']) &
-                                     (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
+                                         (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
                     price = np.mean(fao_price[idx_price])
                 idx_country = np.where(np.asarray(iso3alpha) == country)[0]
                 area_price[idx_country] = self.value[idx_country] * price
@@ -485,9 +489,9 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
                                       hist_mean=hist_mean_dir, bbox=bbox,
                                       yearrange=yearrange, crop=((item[2]).split('-'))[0],
                                       irr=((item[2]).split('-'))[1], unit=unit)
-        filename_saveto = 'cropyield_isimip_' + ((item[2]).split('-'))[0] + '-' + (
-                                              ((item[2]).split('-'))[1]).split('.')[0] + \
-                                              '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5'
+        filename_saveto = ('cropyield_isimip_' + ((item[2]).split('-'))[0] + '-'
+                           + (((item[2]).split('-'))[1]).split('.')[0] + '_'
+                           + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename_saveto)
         output_list.append(cropyield)
         cropyield.write_hdf5(os.path.join(output_dir, 'Exposure', filename_saveto))
@@ -546,10 +550,9 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     exp_noirr_norm = exp_noirr
 
     for country, iso_nr in enumerate(country_list):
-        idx = np.where((np.asarray(fao_code) == fao_country[country]) &
-                                         (np.asarray(fao_crops) == (
-                                          CROP_NAME[exp_firr.crop])['fao']) &
-                                          (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
+        idx = np.where((np.asarray(fao_code) == fao_country[country])
+                       & (np.asarray(fao_crops) == (CROP_NAME[exp_firr.crop])['fao'])
+                       & (fao_year >= yearrange[0]) & (fao_year <= yearrange[1]))
         if len(idx) >= 1:
             fao_yield[country] = np.mean(fao_values[idx])
 

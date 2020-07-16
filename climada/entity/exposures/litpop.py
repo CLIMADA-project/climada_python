@@ -22,7 +22,6 @@ from sys import stdout
 import numpy as np
 import pandas as pd
 from pandas_datareader import wb
-from scipy import sparse
 from scipy import ndimage as nd
 from scipy import stats
 import geopandas as gpd
@@ -47,13 +46,13 @@ LOGGER = logging.getLogger(__name__)
 """Define LitPop class."""
 # Black Marble nightlight tile names, %i represents the Black Marble reference year
 BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
-                    'BlackMarble_%i_A2_geo_gray.tif',
-                    'BlackMarble_%i_B1_geo_gray.tif',
-                    'BlackMarble_%i_B2_geo_gray.tif',
-                    'BlackMarble_%i_C1_geo_gray.tif',
-                    'BlackMarble_%i_C2_geo_gray.tif',
-                    'BlackMarble_%i_D1_geo_gray.tif',
-                    'BlackMarble_%i_D2_geo_gray.tif']
+                'BlackMarble_%i_A2_geo_gray.tif',
+                'BlackMarble_%i_B1_geo_gray.tif',
+                'BlackMarble_%i_B2_geo_gray.tif',
+                'BlackMarble_%i_C1_geo_gray.tif',
+                'BlackMarble_%i_C2_geo_gray.tif',
+                'BlackMarble_%i_D1_geo_gray.tif',
+                'BlackMarble_%i_D2_geo_gray.tif']
 # years with Black Marble Tiles
 # https://earthobservatory.nasa.gov/features/NightLights/page3.php
 # Update if new years get available!
@@ -187,8 +186,7 @@ class LitPop(Exposures):
                 LOGGER.error('No valid country chosen. Operation aborted.')
                 raise ValueError
             else:
-                all_bbox = [_get_country_shape(countr, 1)[0]
-                        for countr in country_list]
+                all_bbox = [_get_country_shape(countr, 1)[0] for countr in country_list]
                 cut_bbox = _bbox_union(all_bbox)
         elif isinstance(countries, str):  # One country
             country_list = list()
@@ -219,9 +217,8 @@ class LitPop(Exposures):
 
         for cntry_iso, cntry_val in country_info.items():
             if fin_mode == 'pc':
-                total_asset_val = world_bank_wealth_account(cntry_iso,
-                                                               reference_year,
-                                                               no_land=True)[1]
+                total_asset_val = world_bank_wealth_account(cntry_iso, reference_year,
+                                                            no_land=True)[1]
                 # here, total_asset_val is Produced Capital "pc"
                 # no_land=True returns value w/o the mark-up of 24% for land value
             elif fin_mode in ['norm', 'none']:
@@ -251,19 +248,19 @@ class LitPop(Exposures):
                                            check_plot=check_plot, masks_adm1=[], return_data=1)
             else:
                 litpop_curr = _calc_admin0(litpop_curr,
-                                   country_info[curr_country][3],
-                                   country_info[curr_country][4])
+                                           country_info[curr_country][3],
+                                           country_info[curr_country][4])
             lp_cntry.append(self._set_one_country(country_info[curr_country],
-                litpop_curr, lon, lat, curr_country))
-            tag.description += \
-                'LitPop for %s at %i as, year=%i, financial mode=%s, GPW-year=%i, BM-year=%i, exp=[%i, %i]' \
-                % (country_info[curr_country][1], resolution, reference_year,
-                   fin_mode,
-                min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
-                min(BM_YEARS, key=lambda x: abs(x - reference_year)),
-                exponents[0], exponents[1])
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry,
-            ignore_index=True)), crs=DEF_CRS)
+                                                  litpop_curr, lon, lat, curr_country))
+            tag.description += ('LitPop for %s at %i as, year=%i, financial mode=%s, '
+                                'GPW-year=%i, BM-year=%i, exp=[%i, %i]'
+                                % (country_info[curr_country][1], resolution, reference_year,
+                                   fin_mode,
+                                   min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
+                                   min(BM_YEARS, key=lambda x: abs(x - reference_year)),
+                                   exponents[0], exponents[1]))
+        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
+                           crs=DEF_CRS)
         self.ref_year = reference_year
         self.tag = tag
         self.value_unit = 'USD'
@@ -279,12 +276,13 @@ class LitPop(Exposures):
                 'transform': ras_trans,
             }
         except ValueError:
-            LOGGER.warning('Could not write attribute meta, because exposure has only 1 data point')
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
             self.meta = {}
         if check_plot == 1:
             self.plot_log(admin1_plot=0)
         LOGGER.info("Creating the LitPop exposure took %i s",
-                        int(round(time.time() - start_time, 2)))
+                    int(round(time.time() - start_time, 2)))
         # self.set_geometry_points()
         self.check()
 
@@ -346,11 +344,11 @@ class LitPop(Exposures):
                                     max(self.coord[:, 1]),
                                     max(self.coord[:, 0])))
             plt.gca().set_xlim(countr_bbox[0]
-                   - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
-                   + 0.1 * (countr_bbox[2] - countr_bbox[0]))
+                               - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
+                               + 0.1 * (countr_bbox[2] - countr_bbox[0]))
             plt.gca().set_ylim(countr_bbox[1]
-                   - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
-                   + 0.1 * (countr_bbox[3] - countr_bbox[1]))
+                               - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
+                               + 0.1 * (countr_bbox[3] - countr_bbox[1]))
             plt.scatter(self.coord[:, 1], self.coord[:, 0],
                         c=self.value, marker=',', s=3,
                         norm=colors.LogNorm())
@@ -394,13 +392,13 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
     """
 
     nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year,
-                                    resolution=resolution, return_coords=0)
+                                       resolution=resolution, return_coords=0)
     gpw = gpw_import.get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,
-                                  return_coords=0, reference_year=reference_year)
+                                 return_coords=0, reference_year=reference_year)
     bm_temp = np.ones(nightlights.shape)
     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
-    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values,
-           dtype='uint16') + int(exponents[1] > 0))
+    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16')
+                                             + int(exponents[1] > 0))
     nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1] > 0))
     del bm_temp
 
@@ -425,9 +423,8 @@ def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
     OUTPUT:
         litpop_data (dataframe): gridded resulting LitPop
     """
-    litpop_data = pd.SparseArray(np.multiply(nightlights.values**exponents[0],
-                                            gpw.values**exponents[1]),
-                                            fill_value=0)
+    litpop_data = pd.SparseArray(
+        np.multiply(nightlights.values**exponents[0], gpw.values**exponents[1]), fill_value=0)
     return litpop_data
 
 def _litpop_box2coords(box, resolution, point_format=0):
@@ -457,9 +454,13 @@ def _litpop_box2coords(box, resolution, point_format=0):
                                  * ((-180 + (deg_per_pix / 2)) + l_i * deg_per_pix)
                                  for l_i in range(min_col, (max_col + 1))]))
     lon = lon.flatten(order='F')
-    lat = np.array(np.transpose([((90 - (deg_per_pix / 2)) - (l_j * deg_per_pix))
-                         for l_j in range(min_row, (max_row + 1))]
-                        * np.ones((max_col - min_col + 1, (max_row - min_row + 1)))))
+    lat = np.array(
+        np.transpose(
+            [((90 - (deg_per_pix / 2)) - (l_j * deg_per_pix))
+             for l_j in range(min_row, (max_row + 1))]
+            * np.ones((max_col - min_col + 1, (max_row - min_row + 1)))
+        )
+    )
     lat = lat.flatten(order='F')
     if point_format == 1:
         return list([(lon, lat) for lon, lat in zip(lon, lat)])
@@ -637,7 +638,6 @@ def _shape_cutter(shape, **opt_args):
                     of the shape (array)
     """
     from matplotlib import path
-    curr_time = time.time()
     resolution = opt_args.get('resolution', 30)
     check_enclaves = opt_args.get('check_enclaves', 1)
     check_plot = opt_args.get('check_plot', 0)
@@ -692,7 +692,7 @@ def _shape_cutter(shape, **opt_args):
     incl_coords = []
     for _, val in enumerate(sub_shape_path):
         add_points = _mask_from_path(val, resolution)
-        if not add_points is None:
+        if add_points is not None:
             [incl_coords.append(point) for point in add_points]
         del add_points
     stdout.write('\n')
@@ -701,7 +701,7 @@ def _shape_cutter(shape, **opt_args):
         # LOGGER.debug('Removing enclaves...')
         for _, val in enumerate(enclave_paths):
             temp_excl_points = _mask_from_path(val, resolution)
-            if not temp_excl_points is None:
+            if temp_excl_points is not None:
                 [excl_coords.append(point) for point in temp_excl_points]
             del temp_excl_points
         excl_coords = set(tuple(row) for row in excl_coords)
@@ -709,8 +709,9 @@ def _shape_cutter(shape, **opt_args):
                        in excl_coords]
     # LOGGER.debug('Successfully isolated coordinates from shape')
     total_bbox = np.array((min([x[0] for x in shape.points]),
-      min([x[1] for x in shape.points]), max(x[0] for x in shape.points),
-      max(x[1] for x in shape.points)))
+                           min([x[1] for x in shape.points]),
+                           max([x[0] for x in shape.points]),
+                           max([x[1] for x in shape.points])))
     if points2check == []:
         all_coords = _litpop_box2coords(total_bbox, resolution, 1)
     else:
@@ -744,9 +745,10 @@ def _shape_cutter(shape, **opt_args):
     return lon, lat, enclave_paths
 
 def _mask_from_path(path, resolution=30, return_points=1, return_mask=0):
-    curr_bbox = np.array((min([x[0] for x in path.vertices]), min([x[1] for x
-                          in path.vertices]), max([x[0] for x in
-                          path.vertices]), max([x[1] for x in path.vertices])))
+    curr_bbox = np.array((min([x[0] for x in path.vertices]),
+                          min([x[1] for x in path.vertices]),
+                          max([x[0] for x in path.vertices]),
+                          max([x[1] for x in path.vertices])))
     curr_points2check = _litpop_box2coords(curr_bbox, resolution, 1)
     del curr_bbox
     if curr_points2check == []:
@@ -819,8 +821,7 @@ def _mask_from_shape(check_shape, **opt_args):
     resolution = opt_args.get('resolution', 30)
     check_enclaves = opt_args.get('check_enclaves', 1)
     points2check = opt_args.get('points2check', [])
-    if (not hasattr(check_shape, 'points')) or\
-                            (not hasattr(check_shape, 'parts')):
+    if (not hasattr(check_shape, 'points')) or (not hasattr(check_shape, 'parts')):
         LOGGER.error('Not a valid shape. Please make sure, the shapefile is \
                      of type from package "shapefile".')
     sub_shapes = len(check_shape.parts)
@@ -839,11 +840,11 @@ def _mask_from_shape(check_shape, **opt_args):
                 temp_path = path.Path(all_coords_shape[check_shape.parts[i]:end_idx])
                 for idx, val in enumerate(sub_shape_path):
                     if val.contains_point(temp_path.vertices[0]) and \
-                        len(temp_path.vertices) > 2 and \
-                        val.contains_point(temp_path.vertices[1]) and\
-                        val.contains_point(temp_path.vertices[2]):
-                    # Only check if the first three vertices of the new shape
-                    # is in any of the old shapes for speed
+                            len(temp_path.vertices) > 2 and \
+                            val.contains_point(temp_path.vertices[1]) and\
+                            val.contains_point(temp_path.vertices[2]):
+                        # Only check if the first three vertices of the new shape
+                        # is in any of the old shapes for speed
                         add2enclave = 1
                         break
                 if add2enclave == 1:
@@ -867,7 +868,7 @@ def _mask_from_shape(check_shape, **opt_args):
     incl_coords = []
     for _, val in enumerate(sub_shape_path):
         add_points = _mask_from_path(val, resolution)
-        if not add_points is None:
+        if add_points is not None:
             [incl_coords.append(point) for point in add_points]
         del add_points
     # stdout.write('\n')
@@ -876,7 +877,7 @@ def _mask_from_shape(check_shape, **opt_args):
         LOGGER.debug('Removing enclaves...')
         for _, val in enumerate(enclave_paths):
             temp_excl_points = _mask_from_path(val, resolution)
-            if not temp_excl_points is None:
+            if temp_excl_points is not None:
                 [excl_coords.append(point) for point in temp_excl_points]
             del temp_excl_points
         excl_coords = set(tuple(row) for row in excl_coords)
@@ -884,8 +885,9 @@ def _mask_from_shape(check_shape, **opt_args):
                        excl_coords]
     LOGGER.debug('Successfully isolated coordinates from shape')
     total_bbox = np.array((min([x[0] for x in check_shape.points]),
-      min([x[1] for x in check_shape.points]), max(x[0] for x
-             in check_shape.points), max(x[1] for x in check_shape.points)))
+                           min([x[1] for x in check_shape.points]),
+                           max([x[0] for x in check_shape.points]),
+                           max([x[1] for x in check_shape.points])))
     if points2check == []:
         all_coords = _litpop_box2coords(total_bbox, resolution, 1)
     else:
@@ -1056,18 +1058,19 @@ def _gsdp_read(country_iso3, admin1_shape_data,
             admin1 unit, where the name of the admin1 unit is the key.
     """
     file_name = _check_excel_exists(look_folder, str(country_iso3 + '_GSDP'))
-    if not file_name is None:
+    if file_name is not None:
         admin1_xls_data = pd.read_excel(file_name)
         if admin1_xls_data.get('State_Province') is None:
-            admin1_xls_data = admin1_xls_data.rename(columns={admin1_xls_data.columns[0]: 'State_Province'})
+            admin1_xls_data = admin1_xls_data.rename(
+                columns={admin1_xls_data.columns[0]: 'State_Province'})
         if admin1_xls_data.get('GSDP_ref') is None:
-            admin1_xls_data = admin1_xls_data.rename(columns={admin1_xls_data.columns[-1]: 'GSDP_ref'})
+            admin1_xls_data = admin1_xls_data.rename(
+                columns={admin1_xls_data.columns[-1]: 'GSDP_ref'})
 #        prov = admin1_xls_data['State_Province'].tolist()
         out_dict = dict.fromkeys([nam[1]['name'] for nam in admin1_shape_data])
         postals = [nam[1]['postal'] for nam in admin1_shape_data]
         for subnat_shape in out_dict.keys():
-            for idx, subnat_xls\
-                in enumerate(admin1_xls_data['State_Province'].tolist()):
+            for idx, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
                 if _compare_strings_nospecchars(subnat_shape, subnat_xls):
                     out_dict[subnat_shape] = admin1_xls_data['GSDP_ref'][idx]
                     break
@@ -1120,7 +1123,7 @@ def _compare_strings_nospecchars(str1, str2):
     import re
     if not isinstance(str1, str) or not isinstance(str2, str):
         LOGGER.warning('Invalid datatype (not strings), which cannot be '
-                    + 'compared. Function will return exit and return false.')
+                       'compared. Function will return exit and return false.')
         return False
     pattern = re.compile('[^a-z|A-Z|0-9| ]')  # ignore special
     cstr1 = re.sub(pattern, '', str1).casefold()
@@ -1238,20 +1241,20 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
     """
     gsdp_data = _gsdp_read(curr_country, admin1_info)
     litpop_data = _normalise_litpop(litpop_data)
-    if not gsdp_data is None:
+    if gsdp_data is not None:
         sum_vals = sum(filter(None, gsdp_data.values()))
-        gsdp_data = {key: (value / sum_vals if not value is None else None)
+        gsdp_data = {key: (value / sum_vals if value is not None else None)
                      for (key, value) in gsdp_data.items()}
-        if not None in gsdp_data.values():  # standard loop if all GSDP data is available
+        if None not in gsdp_data.values():
+            # standard loop if all GSDP data is available
             temp_adm1 = {'adm0_LitPop_share': [], 'adm1_LitPop_share': []}
-            for idx3, adm1_shp in\
-                enumerate(admin1_info):
+            for idx3, adm1_shp in enumerate(admin1_info):
                 # start_time = time.time()
                 LOGGER.debug('Caclulating admin1 for %s.', adm1_shp[1]['name'])
                 if not masks_adm1:
                     mask_adm1 = _mask_from_shape(adm1_shp[0],
-                             resolution=resolution,
-                             points2check=coords)
+                                                 resolution=resolution,
+                                                 points2check=coords)
                     shr_adm0 = sum(litpop_data.values[mask_adm1.values])
                 else:
                     shr_adm0 = sum(litpop_data.values[masks_adm1[idx3].values])
@@ -1266,50 +1269,49 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                     mult = 0
                 if return_data:
                     if not masks_adm1:
-                        litpop_data = pd.SparseArray([val * mult if
-                              mask_adm1[idx] == 1 else val for idx, val in
-                              enumerate(litpop_data.values)], fill_value=0)
+                        litpop_data = pd.SparseArray(
+                            [val * mult if mask_adm1[idx] == 1 else val
+                             for idx, val in enumerate(litpop_data.values)],
+                            fill_value=0)
                     else:
-                        litpop_data = pd.SparseArray([val * mult if
-                              masks_adm1[idx3][idx] == 1 else val for idx, val in
-                              enumerate(litpop_data.values)], fill_value=0)
+                        litpop_data = pd.SparseArray(
+                            [val * mult if masks_adm1[idx3][idx] == 1 else val
+                             for idx, val in enumerate(litpop_data.values)],
+                            fill_value=0)
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share': [],
                          'adm1_LitPop_share': [], 'LitPop_sum': []}
             litpop_data = _calc_admin0(litpop_data, country_info[3],
                                        country_info[4])
             sum_litpop = sum(litpop_data.sp_values)
-            for idx3, adm1_shp in\
-                enumerate(admin1_info):
+            for idx3, adm1_shp in enumerate(admin1_info):
                 if not masks_adm1:
                     mask_adm1 = _mask_from_shape(adm1_shp[0],
-                                resolution=resolution,
-                                points2check=coords)
+                                                 resolution=resolution,
+                                                 points2check=coords)
                 else:
                     mask_adm1 = masks_adm1[idx3]
                 temp_adm1['mask'].append(mask_adm1)
                 temp_adm1['LitPop_sum'].append(sum(litpop_data.values[mask_adm1.values]))
-                temp_adm1['adm0_LitPop_share'].append(sum(litpop_data.values[mask_adm1.values]) / sum_litpop)
+                temp_adm1['adm0_LitPop_share'].append(sum(litpop_data.values[mask_adm1.values])
+                                                      / sum_litpop)
             del mask_adm1
-            sum_litpop_adm1 = sum([sum(litpop_data.values[
-                                temp_adm1['mask'][n1].values])
-                for n1, val in enumerate(gsdp_data.values()) if
-                not val is None])
+            sum_litpop_adm1 = sum([
+                sum(litpop_data.values[temp_adm1['mask'][n1].values])
+                for n1, val in enumerate(gsdp_data.values()) if val is not None
+            ])
             admin1_share = sum_litpop_adm1 / sum_litpop
-            for idx2, val in\
-                enumerate(gsdp_data.values()):
-                if not val is None:
+            for idx2, val in enumerate(gsdp_data.values()):
+                if val is not None:
                     LOGGER.debug('Calculating admin1 data for %s.',
                                  admin1_info[1][idx2].attributes['name'])
-                    mult = val * admin1_share\
-                            * (country_info[3] * country_info[4])\
-                            / temp_adm1['LitPop_sum'][idx2]
+                    mult = (val * admin1_share * (country_info[3] * country_info[4])
+                            / temp_adm1['LitPop_sum'][idx2])
                     temp_mask = temp_adm1['mask'][idx2].values
                     if return_data:
-                        litpop_data = pd.SparseArray([val1 * mult if
-                            temp_mask[idx] == 1 else val1
-                            for idx, val1 in
-                            enumerate(litpop_data.values)])
+                        litpop_data = pd.SparseArray(
+                            [val1 * mult if temp_mask[idx] == 1 else val1
+                             for idx, val1 in enumerate(litpop_data.values)])
 
                 else:
                     LOGGER.warning('No admin1 data found for %s.',
@@ -1322,7 +1324,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                 #        [temp_adm1['mask'][idx5].values])/LP_sum)
         if adm1_scatter == 1:
             pearsonr, spearmanr, rmse, rmsf = _litpop_scatter(temp_adm1['adm0_LitPop_share'],
-                            temp_adm1['adm1_LitPop_share'], admin1_info, check_plot)
+                                                              temp_adm1['adm1_LitPop_share'],
+                                                              admin1_info, check_plot)
     elif return_data:
         litpop_data = _calc_admin0(litpop_data, country_info[3],
                                    country_info[4])
@@ -1372,7 +1375,7 @@ def _normalise_litpop(litpop_data):
         litpop_data = pd.SparseArray(litpop_data.values / sum_all)
     else:
         LOGGER.error('LitPop data is not of expected type (Pandas '
-                   + 'SparseArray). Operation aborted.')
+                     'SparseArray). Operation aborted.')
         raise TypeError
     return litpop_data
 
@@ -1388,19 +1391,15 @@ def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
         Returns:
             cut_bbox (4x1 array): the bounding box, corrected if necessary.
     """
-    if (not country_adm0 is None) & (country_cut_mode == 1)\
-                                                    & (not cut_bbox is None):
+    if (country_adm0 is not None) & (country_cut_mode == 1) & (cut_bbox is not None):
         cut_bbox = _get_country_shape(country_adm0, 1)[0]
-        LOGGER.warning('Custom bounding box overwritten in chosen \
-                                                           country cut mode.')
-    elif (not country_adm0 is None) & (country_cut_mode == 1)\
-                                                    & (cut_bbox is None):
+        LOGGER.warning('Custom bounding box overwritten in chosen country cut mode.')
+    elif (country_adm0 is not None) & (country_cut_mode == 1) & (cut_bbox is None):
         cut_bbox = _get_country_shape(country_adm0, 1)[0]
-    if (country_cut_mode != 1) & (not cut_bbox is None):
+    if (country_cut_mode != 1) & (cut_bbox is not None):
         try:
             cut_bbox = np.array(cut_bbox)
-            if not(isinstance(cut_bbox, np.ndarray)) and \
-                        not np.size(cut_bbox) == 4:
+            if not isinstance(cut_bbox, np.ndarray) and not np.size(cut_bbox) == 4:
                 LOGGER.warning('Invalid bounding box provided. \
                                Bounding box ignored. Please ensure the \
                                bounding box is an array like type of \
@@ -1444,16 +1443,15 @@ def _litpop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     # Relative root mean square error:
     # rrmse = (sum(((adm0_data-adm1_data)/adm1_data)**2))**.5
     # Root mean squared fraction:
-    rmsf = np.exp(np.sqrt(np.sum((np.log(adm0_data / adm1_data))**2) /
-                                        adm0_data.shape[0]))
+    rmsf = np.exp(np.sqrt(np.sum((np.log(adm0_data / adm1_data))**2) / adm0_data.shape[0]))
     if check_plot:
         plt.figure()
         plt.scatter(adm1_data, adm0_data, c=(0.1, 0.1, 0.3))
 #        plt.suptitle('Comparison of admin0 and admin1 LitPop data for '\
 #                  + adm1_info[0].attributes['admin'])
         plt.plot([0, np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
-                  [0, np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
-                  ls="--", c=".3")
+                 [0, np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
+                 ls="--", c=".3")
     #    plt.annotate(label, xy=(adm0_data, adm1_data), xytext=(-20, 20),
     #        textcoords='offset points', ha='right', va='bottom')
         plt.suptitle(adm1_info[1][0].attributes['admin'] + ': rp='
@@ -1554,8 +1552,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
     else:
         country_crop_mode = parameters.get('country_crop_mode', 1)
     return_coords = parameters.get('return_coords', 0)
-    cut_bbox = _check_bbox_country_cut_mode(country_crop_mode,
-                                                   cut_bbox, country_adm0)
+    cut_bbox = _check_bbox_country_cut_mode(country_crop_mode, cut_bbox, country_adm0)
     nightlight_temp = None
     file_count = 0
     zoom_factor = 15 / resolution  # Orignal resolution is 15 arc-seconds
@@ -1569,8 +1566,10 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
                 continue
             else:
                 file_count = file_count + 1
-                arr1[j], curr_file = read_bm_file(bm_path,
-                    BM_FILENAMES[num_i * 2 + j] % min(BM_YEARS, key=lambda x: abs(x - reference_year)))
+                arr1[j], curr_file = read_bm_file(
+                    bm_path,
+                    BM_FILENAMES[num_i * 2 + j] % min(BM_YEARS,
+                                                      key=lambda x: abs(x - reference_year)))
                 if zoom_factor != 1:
 #                    LOGGER.debug('Resizing image according to chosen '\
 #                                + 'resolution')
@@ -1578,7 +1577,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
                                                  order=1))
                 else:
                     arr1[j] = pd.SparseDataFrame(arr1[j])
-                if not cut_bbox is None:
+                if cut_bbox is not None:
                     arr1[j] = _bm_bbox_cutter(arr1[j], (num_i * 2) + j, cut_bbox, resolution)
                 if file_count == 1:
                     # Now get the coordinates
@@ -1622,9 +1621,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
     del nightlight_temp
     if return_coords == 1:
         if cut_bbox is None:
-            temp_bbox = np.array((minlon, minlat,
-                      maxlon,
-                      maxlat))
+            temp_bbox = np.array((minlon, minlat, maxlon, maxlat))
             lon, lat = _litpop_box2coords(temp_bbox, resolution)
         else:
             lon, lat = _litpop_box2coords(cut_bbox, resolution)
@@ -1659,11 +1656,11 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     deg_per_pix = 1 / (3600 / fixed_source_resolution)
     minlat, maxlat, minlon, maxlon = bbox[1], bbox[3], bbox[0], bbox[2]
     minlat_tile, maxlat_tile, minlon_tile, maxlon_tile =\
-            (-90) + (curr_file // 2 == curr_file / 2) * (90),\
-            0 + (curr_file // 2 == curr_file / 2) * 90,\
-            (-180) + (curr_file // 2) * 90, (-90) + (curr_file // 2) * 90
+        (-90) + (curr_file // 2 == curr_file / 2) * (90),\
+        0 + (curr_file // 2 == curr_file / 2) * 90,\
+        (-180) + (curr_file // 2) * 90, (-90) + (curr_file // 2) * 90
     if minlat > maxlat_tile or maxlat < minlat_tile\
-        or minlon > maxlon_tile or maxlon < minlon_tile:
+            or minlon > maxlon_tile or maxlon < minlon_tile:
         LOGGER.warning('This tile does not contain any relevant data. \
                        Skipping file.')
         return pd.SparseDataFrame()
@@ -1676,9 +1673,9 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         * (3600 / resolution), (curr_file // 2) * 90 * (3600 / resolution),\
         (3600 / resolution) * 90 + (curr_file // 2) * 90 * (3600 / resolution)
     row_min = max(row_min, minrow_tile) -\
-                (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
+        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
     row_max = min(row_max, maxrow_tile) -\
-                (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
+        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
     col_min = max(col_min, mincol_tile) - (curr_file // 2) * (90) * (3600 / resolution)
     col_max = min(col_max, maxcol_tile) - (curr_file // 2) * (90) * (3600 / resolution)
 
@@ -1686,9 +1683,9 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         bm_data = pd.SparseDataFrame(bm_data.loc[row_min:row_max, col_min:col_max].values)
     else:
         row_max = min(row_max + 1, ((maxlat_tile - minlat_tile)
-                                 - (deg_per_pix / 2)) * (1 / deg_per_pix))
+                                    - (deg_per_pix / 2)) * (1 / deg_per_pix))
         col_max = min(col_max + 1, ((maxlon_tile - minlon_tile)
-                                  - (deg_per_pix / 2)) * (1 / deg_per_pix))
+                                    - (deg_per_pix / 2)) * (1 / deg_per_pix))
         bm_data = bm_data[row_min:row_max, col_min:col_max]
     return bm_data
 
@@ -1734,8 +1731,8 @@ def _get_box_blackmarble(cut_bbox, **args):
     # Determine required satellite files
     req_sat_files = nightlight.check_required_nl_files(cut_bbox)
     # Check existence of necessary files for BM-year:
-    files_exist = nightlight.check_nl_local_file_exists(req_sat_files, bm_path,
-         min(BM_YEARS, key=lambda x: abs(x - reference_year)))[0]
+    files_exist = nightlight.check_nl_local_file_exists(
+        req_sat_files, bm_path, min(BM_YEARS, key=lambda x: abs(x - reference_year)))[0]
     # Download necessary files:
     if not np.array_equal(req_sat_files, files_exist):
         try:
@@ -1831,12 +1828,11 @@ def admin1_validation(country, methods, exponents, **args):
 
     # Get LitPop, Lit and Pop, etc:
     nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year,
-                                resolution=resolution, return_coords=0)
+                                       resolution=resolution, return_coords=0)
 
     bm_temp = np.ones(nightlights.shape)
-     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
-    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values,
-           dtype='uint16'))
+    # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
+    bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16'))
     del nightlights
 
     nightlights0 = pd.SparseArray(bm_temp, fill_value=0)
@@ -1846,7 +1842,7 @@ def admin1_validation(country, methods, exponents, **args):
     nightlights1 = nightlights1[mask.sp_index.indices]
 
     gpw = gpw_import.get_box_gpw(cut_bbox=cut_bbox, resolution=resolution,
-                              return_coords=0, reference_year=reference_year)
+                                 return_coords=0, reference_year=reference_year)
     gpw = gpw[mask.sp_index.indices]
 
     lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
@@ -1854,7 +1850,7 @@ def admin1_validation(country, methods, exponents, **args):
     masks_adm1 = dict()
     for idx, adm1_shp in enumerate(admin1_info[country_list[0]]):
         masks_adm1[idx] = _mask_from_shape(adm1_shp[0], resolution=resolution,
-                  points2check=list(zip(lon, lat)))
+                                           points2check=list(zip(lon, lat)))
     n_scores = 4
     rho = np.zeros(len(methods) * n_scores)
     adm0 = dict()
@@ -1867,10 +1863,10 @@ def admin1_validation(country, methods, exponents, **args):
         else:  # Pop is used, use Lit+1 in [1, 256]
             _data = _LitPop_multiply(nightlights1, gpw, exponents=exponents[i])
         _, rho[i * n_scores:(i * n_scores) + n_scores], adm0[methods[i]], adm1[methods[i]] = \
-                _calc_admin1(country_list[0],
-                country_info[country_list[0]], admin1_info[country_list[0]],
-                _data, list(zip(lon, lat)), resolution, True, conserve_cntrytotal=0,
-                check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
+            _calc_admin1(country_list[0], country_info[country_list[0]],
+                         admin1_info[country_list[0]], _data, list(zip(lon, lat)),
+                         resolution, True, conserve_cntrytotal=0,
+                         check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
     return rho, adm0, adm1
 
 
@@ -1893,8 +1889,9 @@ def exposure_set_admin1(exposure, res_arcsec):
         for idx3, adm1_shp in enumerate(admin1_info):
             count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
-            mask_adm1 = _mask_from_shape(adm1_shp[0], resolution=res_arcsec,
-                     points2check=list(zip(exposure.longitude, exposure.latitude)))
+            mask_adm1 = _mask_from_shape(
+                adm1_shp[0], resolution=res_arcsec,
+                points2check=list(zip(exposure.longitude, exposure.latitude)))
             exposure.admin1_ID[mask_adm1.values] = adm1_shp[1][3]
             exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
     return exposure
