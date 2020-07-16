@@ -25,14 +25,12 @@ import pandas as pd
 import datetime as dt
 import copy
 from scipy import interpolate
+from scipy.optimize import minimize
 import itertools
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet, IFTropCyclone, impact_funcs
-from climada.engine.impact_data import emdat_countries_by_hazard, \
-    emdat_impact_yearlysum, emdat_impact_event
-from climada.hazard import TropCyclone
-from climada.entity.exposures.litpop import LitPop
+from climada.engine.impact_data import emdat_impact_yearlysum, emdat_impact_event
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -147,8 +145,8 @@ def init_if(if_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0])):
     elif isinstance(if_name_or_instance, impact_funcs.ImpactFunc):
         ImpactFunc_final = change_if(if_name_or_instance, param_dict)
         df_out['impact_function'] = ('given_' +
-                                      ImpactFunc_final.haz_type +
-                                      str(ImpactFunc_final.id))
+                                     ImpactFunc_final.haz_type +
+                                     str(ImpactFunc_final.id))
     for key, val in param_dict.items():
         df_out[key] = val
     return ImpactFunc_final, df_out
@@ -175,21 +173,22 @@ def change_if(if_instance, param_dict):
                                     fill_value='extrapolate')
     temp_dict = dict()
     temp_dict['paa_intensity_ext'] = np.linspace(ImpactFunc_new.intensity.min(),
-                            ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
+                                                 ImpactFunc_new.intensity.max(),
+                                                 (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     temp_dict['mdd_intensity_ext'] = np.linspace(ImpactFunc_new.intensity.min(),
-                            ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
+                                                 ImpactFunc_new.intensity.max(),
+                                                 (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     temp_dict['paa_ext'] = paa_func(temp_dict['paa_intensity_ext'])
     temp_dict['mdd_ext'] = mdd_func(temp_dict['mdd_intensity_ext'])
     # apply changes given in param_dict
     for key, val in param_dict.items():
         field_key, action = key.split('_')
         if action == 'shift':
-            shift_absolut = ImpactFunc_new.intensity[np.nonzero(getattr(ImpactFunc_new, field_key))[0][0]] * \
-                            (val - 1)
+            shift_absolut = (
+                ImpactFunc_new.intensity[np.nonzero(getattr(ImpactFunc_new, field_key))[0][0]]
+                * (val - 1))
             temp_dict[field_key + '_intensity_ext'] = \
-                    temp_dict[field_key + '_intensity_ext'] + shift_absolut
+                temp_dict[field_key + '_intensity_ext'] + shift_absolut
         elif action == 'scale':
             temp_dict[field_key + '_ext'] = \
                     np.clip(temp_dict[field_key + '_ext'] * val,
@@ -201,8 +200,8 @@ def change_if(if_instance, param_dict):
 
     # map changed, high resolution impact functions back to initial resolution
     ImpactFunc_new.intensity = np.linspace(ImpactFunc_new.intensity.min(),
-                            ImpactFunc_new.intensity.max(),
-                            (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
+                                           ImpactFunc_new.intensity.max(),
+                                           (ImpactFunc_new.intensity.shape[0] + 1) * 10 + 1)
     paa_func_new = interpolate.interp1d(temp_dict['paa_intensity_ext'],
                                         temp_dict['paa_ext'],
                                         fill_value='extrapolate')
@@ -246,7 +245,8 @@ def init_impact_data(hazard_type,
             raise ValueError('init_impact_data not yet implemented for yearly_impact = False.')
             em_data = emdat_impact_event(source_file)
     else:
-        raise ValueError('init_impact_data not yet implemented for other impact_data_sources than emdat.')
+        raise ValueError('init_impact_data not yet implemented for other impact_data_sources '
+                         'than emdat.')
     return em_data
 
 
@@ -306,10 +306,12 @@ def calib_all(hazard, exposure, if_name_or_instance, param_full_dict,
         df_impact_data = impact_data_source
     else:
         if list(impact_data_source.keys()) == ['emdat']:
-            df_impact_data = init_impact_data(hazard_type, region_ids, year_range, impact_data_source['emdat'], year_range[-1])
+            df_impact_data = init_impact_data(hazard_type, region_ids, year_range,
+                                              impact_data_source['emdat'], year_range[-1])
         else:
             raise ValueError('other impact data sources not yet implemented.')
-    params_generator = (dict(zip(param_full_dict, x)) for x in itertools.product(*param_full_dict.values()))
+    params_generator = (dict(zip(param_full_dict, x))
+                        for x in itertools.product(*param_full_dict.values()))
     for param_dict in params_generator:
         print(param_dict)
         df_out = copy.deepcopy(df_impact_data)
@@ -323,12 +325,10 @@ def calib_all(hazard, exposure, if_name_or_instance, param_full_dict,
 
     return df_result
 
-from scipy.optimize import minimize, Bounds, LinearConstraint
-
 
 def calib_optimize(hazard, exposure, if_name_or_instance, param_dict,
-              impact_data_source, year_range, yearly_impact=True,
-              cost_fucntion='R2', show_details=False):
+                   impact_data_source, year_range, yearly_impact=True,
+                   cost_fucntion='R2', show_details=False):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and if_name_or_instance
     Parameters:
@@ -364,7 +364,8 @@ def calib_optimize(hazard, exposure, if_name_or_instance, param_dict,
         df_impact_data = impact_data_source
     else:
         if list(impact_data_source.keys()) == ['emdat']:
-            df_impact_data = init_impact_data(hazard_type, region_ids, year_range, impact_data_source['emdat'], year_range[-1])
+            df_impact_data = init_impact_data(hazard_type, region_ids, year_range,
+                                              impact_data_source['emdat'], year_range[-1])
         else:
             raise ValueError('other impact data sources not yet implemented.')
     # definie specific function to
@@ -378,21 +379,21 @@ def calib_optimize(hazard, exposure, if_name_or_instance, param_dict,
     # define constraints
     if if_name_or_instance == 'emanuel':
         cons = [{'type': 'ineq', 'fun': lambda x: -x[0] + x[1]},
-                 {'type': 'ineq', 'fun': lambda x: -x[2] + 0.9999},
-                 {'type': 'ineq', 'fun': lambda x: x[2]}]
+                {'type': 'ineq', 'fun': lambda x: -x[2] + 0.9999},
+                {'type': 'ineq', 'fun': lambda x: x[2]}]
     else:
         cons = [{'type': 'ineq', 'fun': lambda x: -x[0] + 2},
-                 {'type': 'ineq', 'fun': lambda x: x[0]},
-                 {'type': 'ineq', 'fun': lambda x: -x[1] + 2},
-                 {'type': 'ineq', 'fun': lambda x: x[1]}]
+                {'type': 'ineq', 'fun': lambda x: x[0]},
+                {'type': 'ineq', 'fun': lambda x: -x[1] + 2},
+                {'type': 'ineq', 'fun': lambda x: x[1]}]
 
 
     x0 = list(param_dict.values())
     res = minimize(specific_calib, x0,
                    # bounds=bounds,
-#                   bounds=((0.0, np.inf), (0.0, np.inf), (0.0, 1.0)),
+                   # bounds=((0.0, np.inf), (0.0, np.inf), (0.0, 1.0)),
                    constraints=cons,
-#                   method='SLSQP',
+                   # method='SLSQP',
                    method='trust-constr',
                    options={'xtol': 1e-5, 'disp': True, 'maxiter': 500})
 
@@ -450,5 +451,3 @@ def calib_optimize(hazard, exposure, if_name_or_instance, param_dict,
 #              cost_fucntion=cost_function,show_details= show_details)
 #
 #
-
-

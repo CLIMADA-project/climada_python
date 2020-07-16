@@ -218,7 +218,7 @@ class Impact():
                     exp_idx[exp_iimp[chk * exp_step:(chk + 1) * exp_step]],
                     exposures, hazard, imp_fun, insure_flag)
             self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],
-                exposures, hazard, imp_fun, insure_flag)
+                             exposures, hazard, imp_fun, insure_flag)
 
         if not tot_exp:
             LOGGER.warning('No impact functions match the exposures.')
@@ -570,11 +570,11 @@ class Impact():
         chk = -1
         for chk in range(int(num_cen / cen_step)):
             self._loc_return_imp(np.array(return_periods),
-                self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
+                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
         self._loc_return_imp(np.array(return_periods),
-            self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
-            imp_stats[:, (chk + 1) * cen_step:])
+                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
+                             imp_stats[:, (chk + 1) * cen_step:])
 
         return imp_stats
 
@@ -616,7 +616,7 @@ class Impact():
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
-            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+                                        colbar_name, title, smooth=smooth, axes=axis, **kwargs)
 
         return axis, imp_stats
 
@@ -756,14 +756,14 @@ class Impact():
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
-                if imp.eai_exp.size]).min()
+                                         if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
             args_exp['vmax'] = exp.value.values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
-                if imp.eai_exp.size]).max()
+                                         if imp.eai_exp.size]).max()
 
         if 'cmap' not in args_exp:
             args_exp['cmap'] = 'winter_r'
