@@ -48,7 +48,7 @@ class TestFunc(unittest.TestCase):
         self.assertEqual('14-Nov-2017 10:09:05', str_date)
         self.assertEqual(
             'TC hazard event set, generated 14-Nov-2017 10:09:05',
-                str_comment)
+            str_comment)
         self.assertEqual(
             'generating 14450 windfields took 0.25 min ' +
             '(0.0010 sec/event)', str_wf)
@@ -66,7 +66,7 @@ class TestFunc(unittest.TestCase):
         mat_shape = (len(contents['hazard']['event_ID']),
                      len(contents['hazard']['centroid_ID']))
         spr_mat = hdf5.get_sparse_csr_mat(contents['hazard']['intensity'],
-                                      mat_shape)
+                                          mat_shape)
 
         self.assertEqual(mat_shape[0], spr_mat.shape[0])
         self.assertEqual(mat_shape[1], spr_mat.shape[1])
@@ -142,11 +142,11 @@ class TestReader(unittest.TestCase):
 
         # Check some random values
         mat_shape = (len(contents['hazard']['event_ID']),
-             len(contents['hazard']['centroid_ID']))
+                     len(contents['hazard']['centroid_ID']))
         sp_mat = hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
 
         self.assertTrue(np.array_equal(np.array([[84], [67]]),
-                                              hazard['peril_ID']))
+                                       hazard['peril_ID']))
         self.assertEqual(34.537289477809473, sp_mat[2862, 97])
         self.assertEqual(-80, hazard['lon'][46])
         self.assertEqual(28, hazard['lat'][87])

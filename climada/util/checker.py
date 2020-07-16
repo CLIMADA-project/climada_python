@@ -19,11 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 module containing functions to check variables properties.
 """
 
-__all__ = ['size',
-           'shape',
-           'array_optional',
-           'array_default'
-          ]
+__all__ = [
+    'size',
+    'shape',
+    'array_optional',
+    'array_default'
+]
 
 import logging
 import numpy as np
@@ -47,13 +48,12 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
     """
     for var_name, var_val in var_dict.items():
         if var_name in var_obl:
-            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) or \
-            isinstance(var_val, list):
+            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) \
+               or isinstance(var_val, list):
                 size(n_size, var_val, name_prefix + var_name)
             elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
                 shape(n_row, n_col, var_val, name_prefix + var_name)
-            elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) \
-            and var_val.ndim == 2:
+            elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) and var_val.ndim == 2:
                 shape(n_row, n_col, var_val, name_prefix + var_name)
 
 def check_optionals(var_dict, var_opt, name_prefix, n_size):

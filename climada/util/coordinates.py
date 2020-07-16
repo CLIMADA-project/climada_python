@@ -107,8 +107,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
             -sin_lon, cos_lon, np.zeros_like(cos_lat),
         ), axis=-1).reshape(lat.shape + (2, 3))
         return vn, vbasis
-    else:
-        return vn
+    return vn
 
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon <= 180
@@ -364,10 +363,12 @@ def dist_to_coast(coord_lat, lon=None):
     zones = utm_zones(geom.geometry.total_bounds)
     for izone, (epsg, bounds) in enumerate(zones):
         to_crs = from_epsg(epsg)
-        zone_mask = (bounds[1] <= geom.geometry.y) \
-                  & (geom.geometry.y <= bounds[3]) \
-                  & (bounds[0] <= geom.geometry.x) \
-                  & (geom.geometry.x <= bounds[2])
+        zone_mask = (
+            (bounds[1] <= geom.geometry.y)
+            & (geom.geometry.y <= bounds[3])
+            & (bounds[0] <= geom.geometry.x)
+            & (geom.geometry.x <= bounds[2])
+        )
         if np.count_nonzero(zone_mask) == 0:
             continue
         LOGGER.info("dist_to_coast: UTM %d (%d/%d)",
@@ -413,8 +414,8 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         os.chdir(cwd)
 
     intermediate_shape = None if highres else (3600, 1800)
-    dist = read_raster_sample(path, lat, lon,
-        intermediate_shape=intermediate_shape, fill_value=0)
+    dist = read_raster_sample(
+        path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0)
     return 1000 * np.abs(dist)
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
@@ -481,9 +482,12 @@ def coord_on_land(lat, lon, land_geom=None):
         raise ValueError
     delta_deg = 1
     if land_geom is None:
-        land_geom = get_land_geometry(extent=(np.min(lon) - delta_deg,
-            np.max(lon) + delta_deg, np.min(lat) - delta_deg,
-            np.max(lat) + delta_deg), resolution=10)
+        land_geom = get_land_geometry(
+            extent=(np.min(lon) - delta_deg,
+                    np.max(lon) + delta_deg,
+                    np.min(lat) - delta_deg,
+                    np.max(lat) + delta_deg),
+            resolution=10)
     return shapely.vectorized.contains(land_geom, lon, lat)
 
 def nat_earth_resolution(resolution):
@@ -633,8 +637,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if basemap == "natearth" and resolution not in [150, 360] \
        or basemap == "isimip" and resolution != 150:
         resolution /= 3600
-        region_id, transform = refine_raster_data(region_id, transform,
-            resolution, method='nearest', fill_value=0)
+        region_id, transform = refine_raster_data(
+            region_id, transform, resolution, method='nearest', fill_value=0)
         grid_shape = region_id.shape
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
 
@@ -648,10 +652,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         if rect:
             lat_msk, lon_msk = lat[msk], lon[msk]
             msk = msk.any(axis=0)[None] * msk.any(axis=1)[:, None]
-            msk |= (lat >= np.floor(lat_msk.min())) \
-                 & (lon >= np.floor(lon_msk.min())) \
-                 & (lat <= np.ceil(lat_msk.max())) \
-                 & (lon <= np.ceil(lon_msk.max()))
+            msk |= (
+                (lat >= np.floor(lat_msk.min()))
+                & (lon >= np.floor(lon_msk.min()))
+                & (lat <= np.ceil(lat_msk.max()))
+                & (lon <= np.ceil(lon_msk.max()))
+            )
         lat, lon = lat[msk], lon[msk]
     else:
         lat, lon = [ar.ravel() for ar in [lat, lon]]
@@ -771,7 +777,7 @@ def natearth_country_to_int(country):
     else:
         return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
 
-def get_country_code(lat, lon, gridded=False, natid=False):
+def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
 
     Oceans get the value zero. Areas that are not in ISO 3166 are given values
@@ -806,7 +812,7 @@ def get_country_code(lat, lon, gridded=False, natid=False):
         total_land = countries.geometry.unary_union
         ocean_mask = ~shapely.vectorized.contains(total_land, lon, lat)
         region_id[ocean_mask] = 0
-        for i, country in enumerate(countries.itertuples()):
+        for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
             select = shapely.vectorized.contains(country.geometry,
                                                  lon[unset], lat[unset])
@@ -936,12 +942,10 @@ def equal_crs(crs_one, crs_two):
     Returns:
         bool
     """
-    return rasterio.crs.CRS.from_user_input(crs_one) \
-           == rasterio.crs.CRS.from_user_input(crs_two)
+    return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
-def _read_raster_reproject(src, src_crs, dst_meta,
-        band=[1], geometry=None, dst_crs=None, transform=None,
-        resampling=rasterio.warp.Resampling.nearest):
+def _read_raster_reproject(src, src_crs, dst_meta, band=[1], geometry=None, dst_crs=None,
+                           transform=None, resampling=rasterio.warp.Resampling.nearest):
     """Helper function for `read_raster`"""
     if not dst_crs:
         dst_crs = src_crs
@@ -988,8 +992,7 @@ def _read_raster_reproject(src, src_crs, dst_meta,
                 dst.write(intensity)
 
             with memfile.open() as dst:
-                inten, mask_trans = rasterio.mask.mask(dst,
-                    geometry, crop=True, indexes=band)
+                inten, mask_trans = rasterio.mask.mask(dst, geometry, crop=True, indexes=band)
                 dst_meta.update({
                     "height": inten.shape[1],
                     "width": inten.shape[2],
@@ -1043,14 +1046,13 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
             if dst_crs or transform:
                 LOGGER.debug('Reprojecting ...')
                 transform = (transform, width, height) if transform else None
-                inten = _read_raster_reproject(src, src_crs, dst_meta,
-                    band=band, geometry=geometry, dst_crs=dst_crs,
-                    transform=transform, resampling=resampling)
+                inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
+                                               geometry=geometry, dst_crs=dst_crs,
+                                               transform=transform, resampling=resampling)
             else:
                 trans = dst_meta['transform']
                 if geometry:
-                    inten, trans = rasterio.mask.mask(src,
-                        geometry, crop=True, indexes=band)
+                    inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
@@ -1142,7 +1144,7 @@ def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
     data = np.float64(data)
     data[np.isnan(data)] = fill_value
     return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([y, x]).T,
-        method=method, bounds_error=False, fill_value=fill_value)
+                                     method=method, bounds_error=False, fill_value=fill_value)
 
 def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     """Refine raster data, given as array and affine transform
@@ -1260,10 +1262,8 @@ def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
     # construct raster
-    xmin, ymin, xmax, ymax = points_df.longitude.min(), \
-                             points_df.latitude.min(), \
-                             points_df.longitude.max(), \
-                             points_df.latitude.max()
+    xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
+                              points_df.longitude.max(), points_df.latitude.max())
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
                                                (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))

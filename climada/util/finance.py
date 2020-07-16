@@ -180,8 +180,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
     if info_ind != 'INC_GRP':
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            cntry_gdp = wb.download(indicator=info_ind,
-                country=cntry_iso, start=1960, end=2030)
+            cntry_gdp = wb.download(indicator=info_ind, country=cntry_iso, start=1960, end=2030)
         years = np.array([int(year) for year in cntry_gdp.index.get_level_values('year')])
         sort_years = np.abs(years - ref_year).argsort()
         close_val = cntry_gdp.iloc[sort_years].dropna()
@@ -267,21 +266,23 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
     """
     fname = os.path.join(SYSTEM_DIR, file_name)
     factors_all_countries = pd.read_csv(fname, sep=',', index_col=None,
-                     header=0, encoding='ISO-8859-1')
+                                        header=0, encoding='ISO-8859-1')
     if ref_year != 2016:
         LOGGER.warning('Reference year for the factor to convert GDP to '
-            + 'wealth was set to 2016 because other years have not '
-            + 'been implemented yet.')
+                       + 'wealth was set to 2016 because other years have not '
+                       + 'been implemented yet.')
         ref_year = 2016
     if non_financial:
         try:
-            val = factors_all_countries[factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[
+                factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["NFW-to-GDP-ratio"].mean()
     else:
         try:
-            val = factors_all_countries[factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[
+                factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
@@ -344,8 +345,8 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
         raise
 
     data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso)
-                  & data_wealth['Indicator Code'].
-                  str.contains(variable_name)].loc[:, '1995':'2014']
+                              & data_wealth['Indicator Code'].str.contains(variable_name)
+                             ].loc[:, '1995':'2014']
     years = list(map(int, list(data_wealth)))
     if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name:  # if country is not found in data
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
@@ -366,7 +367,8 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
         result = data_wealth.values[0, -1] * gdp_val / gdp0_val
         ref_year = gdp_year
-    if 'NW.PCA.' in variable_name and no_land:  # remove value of built-up land from produced capital
+    if 'NW.PCA.' in variable_name and no_land:
+        # remove value of built-up land from produced capital
         result = result / 1.24
     return ref_year, np.around(result, 1), 1
 
@@ -387,8 +389,7 @@ def _gdp_twn(ref_year, per_capita=False):
     Returns:
         float
     """
-    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR),
-                                   'GDP_TWN_IMF_WEO_data.csv')):
+    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv')):
         LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
         return 0
     if per_capita:
@@ -401,10 +402,10 @@ def _gdp_twn(ref_year, per_capita=False):
         close_year = 2024
     else:
         close_year = ref_year
-    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR),
-                                   'GDP_TWN_IMF_WEO_data.csv'),
-                                   index_col=None, header=0)
+    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv'),
+                       index_col=None, header=0)
     close_val = data.loc[data['Subject Descriptor'] == var_name, str(close_year)].values[0]
     close_val = float(close_val.replace(',', ''))
-    if not per_capita: close_val = close_val * 1e9
+    if not per_capita:
+        close_val = close_val * 1e9
     return close_year, close_val

@@ -114,11 +114,11 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         if 'gridsize' not in kwargs:
             kwargs['gridsize'] = min(int(array_im.size / 2), MAX_BINS)
         hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im,
-            transform=proj, **kwargs)
+                              transform=proj, **kwargs)
 
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-            pad=0.1, axes_class=plt.Axes)
+                                                     pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
                             extend=extend)
         cbar.set_label(name)
@@ -184,10 +184,10 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         if pop_name:
             add_populated_places(axis, extent, proj)
         hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
-            transform=proj, **kwargs)
+                               transform=proj, **kwargs)
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-            pad=0.1, axes_class=plt.Axes)
+                                                     pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
                             extend=extend)
         cbar.set_label(name)
@@ -267,9 +267,10 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         add_shapes(axis)
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-            pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im),
-            transform=proj, **kwargs), cax=cbax, orientation='vertical')
+                                                     pad=0.1, axes_class=plt.Axes)
+        cbar = plt.colorbar(
+            axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im), transform=proj, **kwargs),
+            cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
 
@@ -324,8 +325,8 @@ def add_shapes(axis):
         projection (cartopy.crs projection, optional): geographical projection,
             PlateCarree default.
     """
-    shp_file = shapereader.natural_earth(resolution='10m',
-                category='cultural', name='admin_0_countries')
+    shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
+                                         name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
         axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
@@ -341,8 +342,8 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
             PlateCarree default.
 
     """
-    shp_file = shapereader.natural_earth(resolution='50m',
-                           category='cultural', name='populated_places_simple')
+    shp_file = shapereader.natural_earth(resolution='50m', category='cultural',
+                                         name='populated_places_simple')
 
     shp = shapereader.Reader(shp_file)
     ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
@@ -354,8 +355,8 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
                 axis.plot(point.x, point.y, 'ko', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
                 axis.text(point.x, point.y, rec.attributes['name'],
-                    horizontalalignment='right', verticalalignment='bottom',
-                    transform=ccrs.PlateCarree(), fontsize=14)
+                          horizontalalignment='right', verticalalignment='bottom',
+                          transform=ccrs.PlateCarree(), fontsize=14)
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     """Add country names.
@@ -367,8 +368,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
             PlateCarree default.
 
     """
-    shp_file = shapereader.natural_earth(resolution='10m',
-                           category='cultural', name='admin_0_countries')
+    shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
+                                         name='admin_0_countries')
 
     shp = shapereader.Reader(shp_file)
     ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
@@ -380,8 +381,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
         if ext_trans[2][0] < point_x <= ext_trans[0][0]:
             if ext_trans[0][1] < point_y <= ext_trans[1][1]:
                 axis.text(point_x, point_y, rec.attributes['NAME'],
-                    horizontalalignment='center', verticalalignment='center',
-                    transform=ccrs.PlateCarree(), fontsize=14)
+                          horizontalalignment='center', verticalalignment='center',
+                          transform=ccrs.PlateCarree(), fontsize=14)
 
 def _get_collection_arrays(array_sub):
     """Get number of array rows and generate list of array if only one row
