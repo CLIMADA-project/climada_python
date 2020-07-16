@@ -86,8 +86,8 @@ class BlackMarble(Exposures):
                 provided). If provided, these are used.
         """
         
-        admin_key = {'admin_0_countries': ['ADMIN', 'ADM0_A3'], 
-                     'admin_0_map_subunits': ['SUBUNIT', 'SU_A3']}
+        admin_key_dict = {'admin_0_countries': ['ADMIN', 'ADM0_A3'], 
+                          'admin_0_map_subunits': ['SUBUNIT', 'SU_A3']}
         
         shp_file = shapereader.natural_earth(resolution='10m',
                                              category='cultural',
@@ -95,7 +95,7 @@ class BlackMarble(Exposures):
         shp_file = shapereader.Reader(shp_file)
 
         cntry_info, cntry_admin1 = country_iso_geom(countries, shp_file, 
-                                                    admin_key[admin_file])
+                                                    admin_key_dict[admin_file])
         fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs)
 
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(\
@@ -172,7 +172,7 @@ class BlackMarble(Exposures):
 
         return exp_bkmrb
 
-def country_iso_geom(countries, shp_file, admin_key):
+def country_iso_geom(countries, shp_file, admin_key=['ADMIN', 'ADM0_A3']):
     """ Get country ISO alpha_3, country id (defined as the United Nations
     Statistics Division (UNSD) 3-digit equivalent numeric codes and 0 if
     country not found) and country's geometry shape.
