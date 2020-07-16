@@ -19,14 +19,12 @@ from climada.util.constants import NAT_REG_ID
 Test flood module.
 """
 import unittest
-import datetime as dt
-import numpy as np
-from datetime import date
 from climada.hazard.river_flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC, DEMO_GDP2ASSET
 from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.engine import Impact
+
 
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
@@ -68,14 +66,14 @@ class TestRiverFlood(unittest.TestCase):
         """test full flood impact"""
         testRF = RiverFlood()
         testRF.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                           countries = ['CHE'])
+                           countries=['CHE'])
 
         gdpa = GDP2Asset()
-        gdpa.set_countries(countries=['CHE'], ref_year=2000, path = DEMO_GDP2ASSET)
+        gdpa.set_countries(countries=['CHE'], ref_year=2000, path=DEMO_GDP2ASSET)
 
         if_set = flood_imp_func_set()
-        imp=Impact()
-        imp.calc(gdpa, if_set,testRF)
+        imp = Impact()
+        imp.calc(gdpa, if_set, testRF)
 
         self.assertAlmostEqual(imp.at_event[0], 226839.72426476143)
         self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)

@@ -32,9 +32,9 @@ import datetime as dt
 from datetime import date
 from rasterio.warp import Resampling
 import copy
-from climada.util.constants import RIVER_FLOOD_REGIONS_CSV , ISIMIP_GPWV3_NATID_150AS
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
 from climada.util.coordinates import get_region_gridpoints,\
-                                     region2isos,country_iso2natid
+                                     region2isos, country_iso2natid
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.util.coordinates import get_land_geometry, read_raster
@@ -65,13 +65,14 @@ class RiverFlood(Hazard):
                         every centroid for every event
 
     """
+
     def __init__(self):
         """Empty constructor"""
 
         Hazard.__init__(self, HAZ_TYPE)
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
-                    centroids=None, countries=None, reg=None, shape=None,ISINatIDGrid=False,
+                    centroids=None, countries=None, reg=None, shape=None, ISINatIDGrid=False,
                     years=[2000]):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
@@ -105,7 +106,7 @@ class RiverFlood(Hazard):
 
         with xr.open_dataset(dph_path) as flood_dph:
             time = flood_dph.time.data
-        
+
         event_index = self._select_event(time, years)
         bands = event_index + 1
 
@@ -144,24 +145,24 @@ class RiverFlood(Hazard):
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
-                    #self.centroids.set_meta_to_lat_lon()
+                    # self.centroids.set_meta_to_lat_lon()
                 else:
                     cntry_geom = get_land_geometry(countries)
                     self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
-                    #self.centroids.set_meta_to_lat_lon()
+                    # self.centroids.set_meta_to_lat_lon()
 
         elif shape:
-            shapes =gpd.read_file(shape)
+            shapes = gpd.read_file(shape)
 
             rand_geom = shapes.geometry[0]
 
             self.set_raster(files_intensity=[dph_path],
-                                    files_fraction=[frc_path],
-                                    band=bands.tolist(),
-                                    geometry=rand_geom)
+                            files_fraction=[frc_path],
+                            band=bands.tolist(),
+                            geometry=rand_geom)
             return
 
         elif not centroids:
@@ -169,7 +170,7 @@ class RiverFlood(Hazard):
             self.set_raster(files_intensity=[dph_path],
                             files_fraction=[frc_path],
                             band=bands.tolist())
-            #self.centroids.set_meta_to_lat_lon()
+            # self.centroids.set_meta_to_lat_lon()
 
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
@@ -205,12 +206,12 @@ class RiverFlood(Hazard):
             self.orig = np.zeros(self.size, bool)
 
         self.frequency = np.ones(self.size) / self.size
-        
+
         with xr.open_dataset(dph_path) as flood_dph:
             self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
-                              flood_dph.time[i].dt.month,
-                              flood_dph.time[i].dt.day).toordinal()
-                              for i in event_index])
+                                 flood_dph.time[i].dt.month,
+                                 flood_dph.time[i].dt.day).toordinal()
+                                 for i in event_index])
 
     def _select_event(self, time, years):
         """
@@ -231,7 +232,6 @@ class RiverFlood(Hazard):
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
-
 
     def exclude_trends(self, fld_trend_path, dis):
         """
@@ -312,7 +312,7 @@ class RiverFlood(Hazard):
         for year_ind in range(len(years)):
             fla_ann_centr[year_ind, :] =\
                 np.sum(fla_ev_centr[year_ev_mk[year_ind, :], :],
-                        axis=0)
+                       axis=0)
         self.fla_annual = np.sum(fla_ann_centr, axis=1)
         self.fla_ann_av = np.mean(self.fla_annual)
         self.fla_ev_av = np.mean(self.fla_event)
@@ -338,12 +338,11 @@ class RiverFlood(Hazard):
             MemoryError
         """
 
-        fv_ann_centr = np.multiply(self.fla_ann_centr.todense(),self.intensity.todense())
+        fv_ann_centr = np.multiply(self.fla_ann_centr.todense(), self.intensity.todense())
 
         if save_centr:
-            self.fv_ann_centr= sp.sparse.csr_matrix(self.fla_ann_centr)
+            self.fv_ann_centr = sp.sparse.csr_matrix(self.fla_ann_centr)
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
-
 
     @staticmethod
     def _select_exact_area(countries=[], reg=[]):
@@ -359,17 +358,17 @@ class RiverFlood(Hazard):
             centroids
         """
         lat, lon = get_region_gridpoints(countries=countries, regions=reg,
-            basemap="isimip", resolution=150)
+                                         basemap="isimip", resolution=150)
 
         if reg:
-             country_isos = region2isos(reg)
+            country_isos = region2isos(reg)
         else:
-             country_isos = countries
+            country_isos = countries
 
         natIDs = country_iso2natid(country_isos)
 
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
         centroids.id = np.arange(centroids.lon.shape[0])
-        #centroids.set_region_id()
+        # centroids.set_region_id()
         return centroids, country_isos, natIDs
