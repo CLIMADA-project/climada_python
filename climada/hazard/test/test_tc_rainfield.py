@@ -115,7 +115,8 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(tc_haz.tag.haz_type, 'TR')
         self.assertEqual(tc_haz.tag.description, '')
-        self.assertEqual(tc_haz.tag.file_name, ['IBTrACS: 1951239N12334', 'IBTrACS: 1951239N12334'])
+        self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334',
+                                                'Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'mm')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -144,12 +145,11 @@ class TestModel(unittest.TestCase):
 
         rainfall = np.round(rainfall, decimals=9)
 
-        self.assertAlmostEqual(rainfall[0,0], 66.801702386)
-        self.assertAlmostEqual(rainfall[0,130], 43.290917792)
-        self.assertAlmostEqual(rainfall[0,200], 76.315923838)
+        self.assertAlmostEqual(rainfall[0, 0], 66.801702386)
+        self.assertAlmostEqual(rainfall[0, 130], 43.290917792)
+        self.assertAlmostEqual(rainfall[0, 200], 76.315923838)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-

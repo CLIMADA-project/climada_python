@@ -130,9 +130,8 @@ class TCRain(Hazard):
         """
         if not tracks:
             return
-        delta_time = np.max([np.max(track.time.dt.year.values)
-            for track in tracks]) - np.min([np.min(track.time.dt.year.values)
-            for track in tracks]) + 1
+        delta_time = (np.max([np.max(track.time.dt.year.values) for track in tracks])
+                      - np.min([np.min(track.time.dt.year.values) for track in tracks])) + 1
         num_orig = self.orig.nonzero()[0].size
         if num_orig > 0:
             ens_size = self.event_id.size / num_orig
@@ -182,8 +181,8 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
             pos = np.where(inreach)[0]
 
             fradius_km = np.zeros(n_centroids)
-            dd = ((lons[node] - centroids.lon[pos]) * cos_centroids_lat[pos])**2 + \
-                    + (lats[node] - centroids.lat[pos])**2
+            dd = ((lons[node] - centroids.lon[pos]) * cos_centroids_lat[pos])**2 \
+                + (lats[node] - centroids.lat[pos])**2
 
             fradius_km[pos] = np.sqrt(dd) * 111.12
 
@@ -235,4 +234,3 @@ def _RCLIPER(fmaxwind_kn, inreach, radius_km):
     rainrate[rainrate < 0] = 0
 
     return rainrate
-

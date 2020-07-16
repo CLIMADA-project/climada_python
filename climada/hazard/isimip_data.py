@@ -45,7 +45,8 @@ def _read_one_nc(file_name, bbox=None, years=None):
                                 specified time period
     """
     data = xr.open_dataset(file_name, decode_times=False)
-    if not bbox: bbox = bbox_world
+    if not bbox:
+        bbox = bbox_world
     if not years:
         return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]))
 

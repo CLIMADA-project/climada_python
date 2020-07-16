@@ -67,8 +67,11 @@ CAT_NAMES = {
 CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 """Color scale to plot the Saffir-Simpson scale."""
 
-IBTRACS_URL = 'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r00/access/netcdf'
-"""Site of IBTrACS netcdf file containing all tracks v4.0, s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
+IBTRACS_URL = ('https://www.ncei.noaa.gov/data/'
+               'international-best-track-archive-for-climate-stewardship-ibtracs/'
+               'v04r00/access/netcdf')
+"""Site of IBTrACS netcdf file containing all tracks v4.0,
+s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
 
 IBTRACS_FILE = 'IBTrACS.ALL.v04r00.nc'
 """IBTrACS v4.0 file all"""
@@ -568,7 +571,8 @@ class TCTracks():
         av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
         max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
 
-        wind = nc_data.variables['wind'][i_track, :][:val_len] * mps2kts * scale_to_10m  # m/s to kn
+        # m/s to kn
+        wind = nc_data.variables['wind'][i_track, :][:val_len] * mps2kts * scale_to_10m
         if not all(wind.data):  # if wind is empty
             wind = np.ones(wind.size) * -999.9
 
@@ -679,11 +683,11 @@ class TCTracks():
             segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
             if track.orig_event_flag:
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                    linestyle='solid', **kwargs)
+                                          linestyle='solid', **kwargs)
             else:
                 synth_flag = True
                 track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                    linestyle=':', **kwargs)
+                                          linestyle=':', **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -823,8 +827,7 @@ class TCTracks():
         except ValueError:
             tr_ds.attrs['id_no'] = float(str(datetimes[0].date()).
                                          replace('-', ''))
-        tr_ds.attrs['category'] = set_category(max_sus_wind,
-                   max_sus_wind_unit)
+        tr_ds.attrs['category'] = set_category(max_sus_wind, max_sus_wind_unit)
 
         self.data.append(tr_ds)
 
@@ -848,8 +851,8 @@ def _calc_land_geom(ens_track):
     max_lon = np.max([np.max(track.lon.values) for track in ens_track])
     max_lon = min(max_lon + deg_buffer, 180)
 
-    return coord_util.get_land_geometry(extent=(min_lon, max_lon,
-        min_lat, max_lat), resolution=10)
+    return coord_util.get_land_geometry(
+        extent=(min_lon, max_lon, min_lat, max_lat), resolution=10)
 
 def _track_land_params(track, land_geom):
     """Compute parameters of land for one track.
@@ -858,8 +861,8 @@ def _track_land_params(track, land_geom):
         track (xr.Dataset): track values
         land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
     """
-    track['on_land'] = ('time', coord_util.coord_on_land(track.lat.values,
-         track.lon.values, land_geom))
+    track['on_land'] = ('time',
+                        coord_util.coord_on_land(track.lat.values, track.lon.values, land_geom))
     track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
 def _dist_since_lf(track):
@@ -1009,7 +1012,8 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     # fill values
     agency_pref, track_agency_ix = ibtracs_track_agency(ds)
     for v in wmo_vars:
-        if v not in variables: continue
+        if v not in variables:
+            continue
         # array of values in order of preference
         cols = [f'{a}_{v}' for a in agency_pref]
         cols = [col for col in cols if col in ds.data_vars.keys()]
