@@ -22,7 +22,6 @@ Tests on Black marble.
 import unittest
 import numpy as np
 from cartopy.io import shapereader
-from scipy import sparse
 
 from climada.entity.exposures.black_marble import BlackMarble
 from climada.entity.exposures.nightlight import load_nightlight_nasa, \
@@ -44,7 +43,8 @@ class Test2013(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=1)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.",
+                      cm.output[0])
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
         self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12 * (4 + 1), 4))
@@ -70,7 +70,8 @@ class Test2013(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.",
+                      cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
         self.assertAlmostEqual(ent.value.sum(), 3.658e+08 * (4 + 1))
@@ -97,7 +98,8 @@ class Test1968(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 1968, res_km=0.5)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.",
+                      cm.output[0])
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
         self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10 * (4 + 1), 4))
@@ -173,8 +175,10 @@ class BMFuncs(unittest.TestCase):
 
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])
-        self.assertEqual(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1], NOAA_BORDER[3])
-        self.assertEqual(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1], NOAA_BORDER[2])
+        self.assertEqual(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1],
+                         NOAA_BORDER[3])
+        self.assertEqual(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1],
+                         NOAA_BORDER[2])
 
     def test_set_country_pass(self):
         """Test exposures attributes after black marble."""

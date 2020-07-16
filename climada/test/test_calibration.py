@@ -60,8 +60,8 @@ class TestCalib(unittest.TestCase):
                                         'other_param': [2],
                                         'hazard': [HAZ_TEST_MAT]})
         df_in_yearly = pd.DataFrame.from_dict({'v_threshold': [25.7],
-                                        'other_param': [2],
-                                        'hazard': [HAZ_TEST_MAT]})
+                                               'other_param': [2],
+                                               'hazard': [HAZ_TEST_MAT]})
 
         # Compute the impact over the whole exposures
         df_out = calib_instance(hazard, ent.exposures, imp_func, df_in)
@@ -88,8 +88,7 @@ class TestCalib(unittest.TestCase):
                 df_in[df_in.columns[2]])))
         self.assertTrue(all(df_out['impact_CLIMADA'].values ==
                             impact.at_event))
-        self.assertTrue(all(df_out_yearly['impact_CLIMADA'].values ==
-                             [*IYS.values()]))
+        self.assertTrue(all(df_out_yearly['impact_CLIMADA'].values == [*IYS.values()]))
 
 
 # Execute Tests

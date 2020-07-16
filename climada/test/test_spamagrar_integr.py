@@ -117,7 +117,7 @@ class TestInvalidInput(unittest.TestCase):
         tech = 'XY'  # does not exist
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='ERROR') as cm:
-            with self.assertRaises(ValueError): 
+            with self.assertRaises(ValueError):
                 ent.init_spam_agrar(spam_technology=tech)
         self.assertIn('Invalid input parameter(s).', cm.output[0])
 

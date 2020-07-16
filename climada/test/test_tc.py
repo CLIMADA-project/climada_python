@@ -21,11 +21,11 @@ Test TropCyclone class with multiprocess
 
 import os
 import unittest
-from pathos.pools import ProcessPool as Pool
-from scipy import sparse
+# from pathos.pools import ProcessPool as Pool
+# from scipy import sparse
 
-from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.trop_cyclone import TropCyclone
+# from climada.hazard.tc_tracks import TCTracks
+# from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.centr import Centroids
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data')
