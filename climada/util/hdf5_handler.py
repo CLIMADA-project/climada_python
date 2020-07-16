@@ -86,7 +86,7 @@ def get_string(array):
         Returns:
             string
     """
-    return u''.join(chr(c) for c in array)
+    return u''.join(chr(int(c)) for c in array)
 
 def get_str_from_ref(file_name, var):
     """Form string from a reference HDF5 variable of the given file.
