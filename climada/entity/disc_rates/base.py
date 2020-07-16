@@ -42,14 +42,14 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'disc' : 'discount_rate'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'discount',
                  'col_name': {'year' : 'year',
                               'disc' : 'discount_rate'
                              }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 class DiscRates():
     """Defines discount rates and basic methods. Loads from
@@ -234,7 +234,7 @@ class DiscRates():
             raise err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Write excel file following template.
+        """Write excel file following template.
 
         Parameters:
             file_name (str): absolute file name to write

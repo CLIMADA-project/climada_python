@@ -31,19 +31,19 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'CP'
-""" Default hazard type used in impact functions id."""
+"""Default hazard type used in impact functions id."""
 
 FILENAME_SPAM = 'spam2005V3r2_global'
-""" """
+"""TODO: Add Docstring!"""
 
 FILENAME_CELL5M = 'cell5m_allockey_xy.csv'
-""" """
+"""TODO: Add Docstring!"""
 
 FILENAME_PERMALINKS = 'spam2005V3r2_download_permalinks.csv'
-""" """
+"""TODO: Add Docstring!"""
 
 BUFFER_VAL = -340282306073709652508363335590014353408
-""" Hard coded value which is used for NANs in original data """
+"""Hard coded value which is used for NANs in original data"""
 
 class SpamAgrar(Exposures):
     """Defines agriculture exposures from SPAM
@@ -62,7 +62,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         return SpamAgrar
 
     def init_spam_agrar(self, **parameters):
-        """ initiates agriculture exposure from SPAM data:
+        """initiates agriculture exposure from SPAM data:
 
             https://dataverse.harvard.edu/
             dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
@@ -99,7 +99,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             save_name_adm1 (Boolean): Determines how many aditional data are saved:
                 False: only basics (lat, lon, total value), region_id per country
                 True: like 1 + name of admin1
-                
+
             haz_type (str): hazard type abbreviation, e.g.
                 'DR' for Drought or
                 'CP' for CropPotential
@@ -188,7 +188,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self.check()
 
     def _set_if(self, spam_t, haz_type):
-        """ Set impact function id depending on technology."""
+        """Set impact function id depending on technology."""
         # hazard type drought is default.
         iiv = 0
         if spam_t == 'TA':
@@ -220,7 +220,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):
-        """ Reads data from SPAM CSV file and cuts out the data for the
+        """Reads data from SPAM CSV file and cuts out the data for the
             according country, admin1, or admin2 (if requested).
 
         Optional parameters:

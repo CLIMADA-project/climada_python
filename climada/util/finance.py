@@ -44,7 +44,7 @@ LOGGER = logging.getLogger(__name__)
 
 WORLD_BANK_WEALTH_ACC = \
 "https://databank.worldbank.org/data/download/Wealth-Accounts_CSV.zip"
-""" Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
+"""Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
     https://datacatalog.worldbank.org/dataset/wealth-accounting
     Includes variable Produced Capital (NW.PCA.TO)"""
 
@@ -52,7 +52,7 @@ FILE_WORLD_BANK_WEALTH_ACC = "Wealth-AccountsData.csv"
 
 WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
-""" Income group historical data from World bank."""
+"""Income group historical data from World bank."""
 
 INCOME_GRP_WB_TABLE = {'L' : 1, # low income
                        'LM': 2, # lower middle income
@@ -60,7 +60,7 @@ INCOME_GRP_WB_TABLE = {'L' : 1, # low income
                        'H' : 4, # high income
                        '..': np.nan # no data
                       }
-""" Meaning of values of world banks' historical table on income groups. """
+"""Meaning of values of world banks' historical table on income groups."""
 
 INCOME_GRP_NE_TABLE = {5: 1, # Low income
                        4: 2, # Lower middle income
@@ -68,10 +68,10 @@ INCOME_GRP_NE_TABLE = {5: 1, # Low income
                        2: 4, # High income: nonOECD
                        1: 4  # High income: OECD
                       }
-""" Meaning of values of natural earth's income groups."""
+"""Meaning of values of natural earth's income groups."""
 
 FILE_GWP_WEALTH2GDP_FACTORS = 'WEALTH2GDP_factors_CRI_2016.csv'
-""" File with wealth-to-GDP factors from the
+"""File with wealth-to-GDP factors from the
 Credit Suisse's Global Wealth Report 2017 (household wealth)"""
 
 def _nat_earth_shp(resolution='10m', category='cultural',
@@ -103,7 +103,7 @@ def net_present_value(years, disc_rates, val_years):
     return npv
 
 def income_group(cntry_iso, ref_year, shp_file=None):
-    """ Get country's income group from World Bank's data at a given year,
+    """Get country's income group from World Bank's data at a given year,
     or closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -125,7 +125,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
     return close_year, close_val
 
 def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
-    """ Get country's (current value) GDP from World Bank's data at a given year, or
+    """Get country's (current value) GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -162,7 +162,7 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     return close_year, close_val
 
 def world_bank(cntry_iso, ref_year, info_ind):
-    """ Get country's GDP from World Bank's data at a given year, or
+    """Get country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -212,7 +212,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
     return close_year, close_val
 
 def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
-    """ Get country's parameter from natural earth's admin0 shape file.
+    """Get country's parameter from natural earth's admin0 shape file.
 
     Parameters:
         cntry_iso (str): key = ISO alpha_3 country
@@ -254,7 +254,7 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
 
 def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
                file_name=FILE_GWP_WEALTH2GDP_FACTORS):
-    """ Get country's wealth-to-GDP factor from the
+    """Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
         Missing value: returns NaN.
         Parameters:
@@ -375,12 +375,12 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
     return ref_year, np.around(result, 1), 1
 
 def _gdp_twn(ref_year, per_capita=False):
-    """returns GDP for TWN (Republic of China / Taiwan Province of China) based 
+    """returns GDP for TWN (Republic of China / Taiwan Province of China) based
     on a CSV sheet downloaded from the
-    International Monetary Fund (IMF). 
+    International Monetary Fund (IMF).
     The reason for this special treatment is the
     lack of GDP data for TWN in the World Bank data
-    
+
     Data Source:
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/index.aspx
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/weorept.aspx?sy=1980&ey=2024&scsm=1&ssd=1&sic=1&sort=country&ds=.&br=1&pr1.x=42&pr1.y=10&c=528&s=NGDPD%2CNGDP_D%2CNGDPDPC&grp=0&a=

@@ -34,6 +34,7 @@ from rasterio import Affine
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import convert_wgs_to_utm, \
                                      coord_on_land, \
+                                     dist_approx, \
                                      dist_to_coast, \
                                      dist_to_coast_nasa, \
                                      equal_crs, \
@@ -44,6 +45,7 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      get_land_geometry, \
                                      get_resolution, \
                                      grid_is_regular, \
+                                     latlon_to_geosph_vector, \
                                      nat_earth_resolution, \
                                      points_to_raster, \
                                      pts_to_raster_meta, \
@@ -55,10 +57,57 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      NE_EPSG
 
 class TestFunc(unittest.TestCase):
-    '''Test the auxiliary used with plot functions'''
+    """Test the auxiliary used with plot functions"""
+
+    def test_geosph_vector(self):
+        """Test conversion from lat/lon to unit vector on geosphere"""
+        data = np.array([[0, 0], [-13, 179]], dtype=np.float64)
+        vn, vbasis = latlon_to_geosph_vector(data[:,0], data[:,1], basis=True)
+        basis_scal = (vbasis[...,0,:] * vbasis[...,1,:]).sum(axis=-1)
+        basis_norm = np.linalg.norm(vbasis, axis=-1)
+        self.assertTrue(np.allclose(np.linalg.norm(vn, axis=-1), 1))
+        self.assertTrue(np.allclose(basis_scal, 0))
+        self.assertTrue(np.allclose(basis_norm, 1))
+
+    def test_dist_approx_pass(self):
+        """Test approximate distance functions"""
+        data = np.array([
+            # lat1, lon1, lat2, lon2, dist, dist_sph
+            [45.5, -32.2, 14, 56, 7709.827814738594, 8758.34146833],
+            [45.5, 147.8, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, 507.8, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, -212.2, 14, -124, 7709.827814738594, 8758.34146833],
+        ])
+        compute_dist = np.stack([
+            dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], method="equirect")[:,0,0],
+            dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], method="geosphere")[:,0,0],
+        ], axis=-1)
+        self.assertEqual(compute_dist.shape[0], data.shape[0])
+        for d, cd in zip(data[:,4:], compute_dist):
+            self.assertAlmostEqual(d[0], cd[0])
+            self.assertAlmostEqual(d[1], cd[1])
+
+        data = np.array([
+            # lat1, lon1, lat2, lon2, dist, dist_sph
+            [0, 0, 0, 1, 111.12, 111.12],
+            [-13, 179, 5, -179, 2011.84774049, 2012.30698122],
+        ])
+        for i, method in enumerate(["equirect", "geosphere"]):
+            dist, vec = dist_approx(data[:,None,0], data[:,None,1],
+                data[:,None,2], data[:,None,3], log=True, method=method)
+            dist, vec = dist[:,0,0], vec[:,0,0]
+            self.assertTrue(np.allclose(np.linalg.norm(vec, axis=-1), dist))
+            self.assertTrue(np.allclose(dist, data[:,4 + i]))
+            # both points on equator (no change in latitude)
+            self.assertAlmostEqual(vec[0,0], 0)
+            # longitude from 179 to -179 is positive (!) in lon-direction
+            self.assertTrue(np.all(vec[1,:] > 100))
+
 
     def test_read_vector_pass(self):
-        """ Test one columns data """
+        """Test one columns data"""
         shp_file = shapereader.natural_earth(resolution='110m', \
             category='cultural', name='populated_places_simple')
         lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
@@ -80,13 +129,13 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(intensity[1, -1], 7206000)
 
     def test_compare_crs(self):
-        """ Compare two crs """
+        """Compare two crs"""
         crs_one = {'init':'epsg:4326'}
         crs_two = {'init':'epsg:4326', 'no_defs': True}
         self.assertTrue(equal_crs(crs_one, crs_two))
 
     def test_set_df_geometry_points_pass(self):
-        """ Test set_df_geometry_points """
+        """Test set_df_geometry_points"""
         df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
         df_val['latitude'] = np.ones(10)*40.0
         df_val['longitude'] = np.ones(10)*0.50
@@ -96,7 +145,7 @@ class TestFunc(unittest.TestCase):
         self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10)*40.))
 
     def test_convert_wgs_to_utm_pass(self):
-        """ Test convert_wgs_to_utm """
+        """Test convert_wgs_to_utm"""
         lat, lon = 17.346597, -62.768669
         epsg = convert_wgs_to_utm(lon, lat)
         self.assertEqual(epsg, 32620)
@@ -122,7 +171,7 @@ class TestGetGeodata(unittest.TestCase):
             nat_earth_resolution(111)
 
     def test_get_coastlines_all_pass(self):
-        '''Check get_coastlines function over whole earth'''
+        """Check get_coastlines function over whole earth"""
         coast = get_coastlines(resolution=110)
         tot_bounds = coast.total_bounds
         self.assertEqual((134, 1), coast.shape)
@@ -132,7 +181,7 @@ class TestGetGeodata(unittest.TestCase):
         self.assertAlmostEqual(tot_bounds[3], 83.64513)
 
     def test_get_coastlines_pass(self):
-        '''Check get_coastlines function in defined extent'''
+        """Check get_coastlines function in defined extent"""
         bounds = (-100, -55, -20, 35)
         coast = get_coastlines(bounds, resolution=110)
         ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
@@ -194,7 +243,7 @@ class TestGetGeodata(unittest.TestCase):
         self.assertTrue(res[2])
 
     def test_dist_to_coast(self):
-        """ Test point in coast and point not in coast """
+        """Test point in coast and point not in coast"""
         points = np.array([
             # Caribbean Sea:
             [13.208333333333329, -59.625000000000014],
@@ -214,7 +263,7 @@ class TestGetGeodata(unittest.TestCase):
             self.assertAlmostEqual(d, r)
 
     def test_dist_to_coast_nasa(self):
-        """ Test point in coast and point not in coast """
+        """Test point in coast and point not in coast"""
         points = np.array([
             # Caribbean Sea:
             [13.208333333333329, -59.625000000000014],
@@ -230,15 +279,15 @@ class TestGetGeodata(unittest.TestCase):
             self.assertAlmostEqual(d, r)
 
     def test_get_country_geometries_country_pass(self):
-        """ get_country_geometries with selected countries. issues with the
+        """get_country_geometries with selected countries. issues with the
         natural earth data should be caught by test_get_land_geometry_* since
-        it's very similar """
+        it's very similar"""
         iso_countries = ['NLD', 'VNM']
         res = get_country_geometries(iso_countries, resolution=110)
         self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
 
     def test_get_country_geometries_country_norway_pass(self):
-        """ test correct numeric ISO3 for country Norway """
+        """test correct numeric ISO3 for country Norway"""
         iso_countries = ['NOR']
         extent = [10, 11, 55, 60]
         res1 = get_country_geometries(iso_countries)
@@ -285,7 +334,7 @@ class TestGetGeodata(unittest.TestCase):
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
 
     def test_country_code_pass(self):
-        """ Test set_region_id """
+        """Test set_region_id"""
 
         lon = np.array([-59.6250000000000, -59.6250000000000, -59.6250000000000,
                         -59.5416666666667, -59.5416666666667, -59.4583333333333,
@@ -314,7 +363,7 @@ class TestGetGeodata(unittest.TestCase):
 
 class TestRasterMeta(unittest.TestCase):
     def test_is_regular_pass(self):
-        """ Test is_regular function. """
+        """Test is_regular function."""
         coord = np.array([[1, 2], [4.4, 5.4], [4, 5]])
         reg, hei, wid = grid_is_regular(coord)
         self.assertFalse(reg)
@@ -366,7 +415,7 @@ class TestRasterMeta(unittest.TestCase):
         self.assertEqual(wid, 4)
 
     def test_get_resolution_pass(self):
-        """ Test _get_resolution method """
+        """Test _get_resolution method"""
         lat = np.array([13.125, 13.20833333, 13.29166667, 13.125,
                         13.20833333, 13.125, 12.625, 12.70833333,
                         12.79166667, 12.875, 12.95833333, 13.04166667])
@@ -378,7 +427,7 @@ class TestRasterMeta(unittest.TestCase):
         self.assertAlmostEqual(res_lon, 0.0833333333333)
 
     def test_vector_to_raster_pass(self):
-        """ Test vector_to_raster """
+        """Test vector_to_raster"""
         xmin, ymin, xmax, ymax = -60, -5, -50, 10 # bounds of points == centers pixels
         points_bounds = (xmin, ymin, xmax, ymax)
         res = 0.5
@@ -395,7 +444,7 @@ class TestRasterMeta(unittest.TestCase):
         self.assertTrue(xmax <= xmin - res/2 + cols*res)
 
     def test_pts_to_raster_irreg_pass(self):
-        """ Test pts_to_raster_meta with irregular points """
+        """Test pts_to_raster_meta with irregular points"""
         # bounds of points == centers of pixels
         points_bounds = (-124.19473, 32.81908, -114.4632, 42.020759999999996)
         xmin, ymin, xmax, ymax = points_bounds
@@ -411,7 +460,7 @@ class TestRasterMeta(unittest.TestCase):
         self.assertTrue(xmax <= xmin - res/2 + cols*res)
 
     def test_points_to_raster_pass(self):
-        """ Test points_to_raster """
+        """Test points_to_raster"""
         df_val = gpd.GeoDataFrame(crs={'init':'epsg:2202'})
         x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
         df_val['latitude'] = y.flatten()
@@ -430,7 +479,7 @@ class TestRasterMeta(unittest.TestCase):
 
 class TestRasterIO(unittest.TestCase):
     def test_window_raster_pass(self):
-        """ Test window """
+        """Test window"""
         meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50.1, 60))
         self.assertAlmostEqual(meta['crs'], DEF_CRS)
         self.assertAlmostEqual(meta['transform'].c, -69.2471495969998)
@@ -445,7 +494,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertAlmostEqual(inten_ras.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_poly_raster_pass(self):
-        """ Test geometry """
+        """Test geometry"""
         poly = box(-69.2471495969998, 9.708220966978912, -68.79714959699979, 10.248220966978932)
         meta, inten_ras = read_raster(HAZ_DEMO_FL, geometry=[poly])
         self.assertAlmostEqual(meta['crs'], DEF_CRS)
@@ -460,7 +509,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertEqual(inten_ras.shape, (1, 60*50))
 
     def test_crs_raster_pass(self):
-        """ Test change projection """
+        """Test change projection"""
         meta, inten_ras = read_raster(HAZ_DEMO_FL, dst_crs={'init':'epsg:2202'},
                                       resampling=Resampling.nearest)
         self.assertAlmostEqual(meta['crs'], {'init':'epsg:2202'})
@@ -477,7 +526,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertAlmostEqual(inten_ras.reshape((1081, 968))[45, 22], 0)
 
     def test_crs_and_geometry_raster_pass(self):
-        """ Test change projection and crop to geometry """
+        """Test change projection and crop to geometry"""
         ply = shapely.geometry.Polygon([
             (478080.8562247154, 1105419.13439131),
             (478087.5912452241, 1116475.583523723),
@@ -518,7 +567,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertTrue(np.array_equal(inten_all, inten_ras))
 
     def test_sample_raster(self):
-        """ Test sampling points from raster file """
+        """Test sampling points from raster file"""
         val_1, val_2, fill_value = 0.056825936, 0.10389626, -999
         i_j_vals = np.array([
             [44, 21, 0],
@@ -544,7 +593,7 @@ class TestRasterIO(unittest.TestCase):
             self.assertAlmostEqual(values[i], val)
 
     def test_refine_raster(self):
-        """ Test refinement of given raster data """
+        """Test refinement of given raster data"""
         data = np.array([
             [0.25, 0.75],
             [0.5, 1],

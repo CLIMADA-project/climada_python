@@ -30,10 +30,10 @@ from climada.util.constants import HAZ_DEMO_FL
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestCentroids(unittest.TestCase):
-    """Test centroids functionalities """
+    """Test centroids functionalities"""
 
     def test_read_write_raster_pass(self):
-        """ Test write_raster: Hazard from raster data """
+        """Test write_raster: Hazard from raster data"""
         haz_fl = Hazard('FL')
         haz_fl.set_raster([HAZ_DEMO_FL])
         haz_fl.check()
@@ -50,7 +50,7 @@ class TestCentroids(unittest.TestCase):
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
     def test_read_raster_pool_pass(self):
-        """ Test set_raster with pool """
+        """Test set_raster with pool"""
         from pathos.pools import ProcessPool as Pool
         pool = Pool()
         haz_fl = Hazard('FL', pool)
@@ -64,7 +64,7 @@ class TestCentroids(unittest.TestCase):
         pool.join()
 
     def test_read_write_vector_pass(self):
-        """ Test write_raster: Hazard from vector data"""
+        """Test write_raster: Hazard from vector data"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])
@@ -84,7 +84,7 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.1, 0.2, 0.5])))
 
     def test_write_fraction_pass(self):
-        """ Test write_raster with fraction """
+        """Test write_raster with fraction"""
         haz_fl = Hazard('FL')
         haz_fl.event_id = np.array([1])
         haz_fl.date = np.array([1])

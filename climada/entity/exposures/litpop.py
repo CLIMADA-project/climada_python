@@ -65,22 +65,22 @@ NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
 WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
-""" Income group historical data from World bank."""
+"""Income group historical data from World bank."""
 
 DEF_RES_NASA_KM = 0.5
-""" Default approximate resolution for NASA's nightlights in km."""
+"""Default approximate resolution for NASA's nightlights in km."""
 
 DEF_RES_GPW_KM = 1
-""" Default approximate resolution for the GPW dataset in km."""
+"""Default approximate resolution for the GPW dataset in km."""
 
 DEF_RES_NASA_ARCSEC = 15
-""" Default approximate resolution for NASA's nightlights in arcsec."""
+"""Default approximate resolution for NASA's nightlights in arcsec."""
 
 DEF_RES_GPW_ARCSEC = 30
-""" Default approximate resolution for the GPW dataset in arcsec."""
+"""Default approximate resolution for the GPW dataset in arcsec."""
 
 DEF_HAZ_TYPE = ''
-""" Default hazard type used in impact functions id, i.e. TC """
+"""Default hazard type used in impact functions id, i.e. TC"""
 
 class LitPop(Exposures):
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
@@ -100,7 +100,7 @@ class LitPop(Exposures):
         return LitPop
 
     def clear(self):
-        """ Appending the base class clear attribute to also delete attributes
+        """Appending the base class clear attribute to also delete attributes
             which are only used here.
         """
         Exposures.clear(self)
@@ -110,7 +110,7 @@ class LitPop(Exposures):
             pass
 
     def set_country(self, countries, **args):
-        """ Get LitPop based exposre for one country or multiple countries
+        """Get LitPop based exposre for one country or multiple countries
         using values at reference year. If produced capital, GDP, or income
         group, etc. not available for that year, consider the value of the closest
         available year.
@@ -290,7 +290,7 @@ class LitPop(Exposures):
 
     @staticmethod
     def _set_one_country(cntry_info, litpop_data, lon, lat, curr_country):
-        """ Model one country.
+        """Model one country.
 
         Parameters:
             cntry_info (list): [cntry_id, cnytry_name, cntry_geometry,
@@ -315,7 +315,7 @@ class LitPop(Exposures):
         return lp_ent
 
     def _append_additional_info(self, cntries_info):
-        """ Add country information in dictionary attribute country_data.
+        """Add country information in dictionary attribute country_data.
 
         Parameters:
             cntries_info (dict): country ISO3, name and shape
@@ -327,7 +327,7 @@ class LitPop(Exposures):
             self.country_data['shape'].append(cntry_info[2])
 
     def plot_log(self, admin1_plot=1):
-        """ Plots the LitPop data with the color scale reprenting the values
+        """Plots the LitPop data with the color scale reprenting the values
             in a logarithmic scale.
 
         Parameters:
@@ -367,7 +367,7 @@ class LitPop(Exposures):
 
 def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
                     reference_year=2016, exponents=[1, 1]):
-    '''
+    """
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
         certain bounding box for a given resolution.
@@ -391,7 +391,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
         litpop_data, lon, lat (tuple): if return_coords=1 a tuple in the
             form (lon, lat) with the coordinates falling into the cut_bbox are
             return along with the litpop_data (see above).
-    '''
+    """
 
     nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year, \
                                     resolution=resolution, return_coords=0)
@@ -411,7 +411,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0, \
         return litpop_data, lon, lat
     return litpop_data
 def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
-    '''
+    """
     PURPOSE:
         Pixel-wise multiplication of lit (nightlights^exponents[0]) and pop
         (gpw^exponents[1]) to compute LitPop.
@@ -424,14 +424,14 @@ def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
             population data, default = [1, 1]
     OUTPUT:
         litpop_data (dataframe): gridded resulting LitPop
-    '''
+    """
     litpop_data = pd.SparseArray(np.multiply(nightlights.values**exponents[0], \
                                             gpw.values**exponents[1]),\
                                             fill_value=0)
     return litpop_data
 
 def _litpop_box2coords(box, resolution, point_format=0):
-    '''
+    """
     PURPOSE:
         A function which calculates coordinates arrays explicitly from a
         bounding box for a given resolution
@@ -449,7 +449,7 @@ def _litpop_box2coords(box, resolution, point_format=0):
             the bounding box is returned.
         coordiates (array): if point_format =1 is selected a tuple entry of
             the form (lon, lat) for each point is returned.
-    '''
+    """
     deg_per_pix = 1/(3600/resolution)
     min_col, min_row, max_col, max_row =\
         _litpop_coords_in_glb_grid(box, resolution)
@@ -466,7 +466,7 @@ def _litpop_box2coords(box, resolution, point_format=0):
     return lon, lat
 
 def _litpop_coords_in_glb_grid(box, resolution):
-    '''
+    """
     PURPOSE:
         Function which calculates the coordinates from geographic to
     a cartesian coordinate system, where the NE-most point is 0,0.
@@ -481,7 +481,7 @@ def _litpop_coords_in_glb_grid(box, resolution):
     OUTPUTS:
         mincol, minrow, maxcol, maxrow (array): row and col numbers which
             define the box in the cartesian coordinate system.
-    '''
+    """
     minlon, minlat, maxlon, maxlat = box
     deg_per_pix = 1/(3600/resolution)
     minlon, maxlon = minlon-(-180), maxlon-(-180)
@@ -494,8 +494,9 @@ def _litpop_coords_in_glb_grid(box, resolution):
     maxrow = int(max(minrow + lat_dist-1, minrow))
     return np.array((mincol, minrow, maxcol, maxrow))
 
-"""def _litpop_convert_coords(box, resolution):
-    '''
+'''
+def _litpop_convert_coords(box, resolution):
+    """
     PURPOSE:
         A function which fits coordinates to global LitPop grid. Main purpose
         is to keep track of coordinates cut in reading BM and GPW without
@@ -510,7 +511,7 @@ def _litpop_coords_in_glb_grid(box, resolution):
     OUTPUT:
         box (1x4 array-like): bounding box with coordinates adjusted to global
             LitPop grid.
-    '''
+    """
     minlon, maxlon = box[0], box[2]
     minlat, maxlat = box[1], box[3]
     deg_per_pix = 1/(3600/resolution)
@@ -522,10 +523,10 @@ def _litpop_coords_in_glb_grid(box, resolution):
                     +(deg_per_pix/2), max_col*deg_per_pix\
                     +(deg_per_pix/2), max_row*deg_per_pix+(deg_per_pix/2)))
     return box
-    """
+'''
 
 def _get_country_shape(country_iso, only_geo=0):
-    """ Retrieves the shape file or coordinate information of a country.
+    """Retrieves the shape file or coordinate information of a country.
 
     Parameters:
         country_iso (str): country code of country to get
@@ -571,7 +572,7 @@ def _get_country_shape(country_iso, only_geo=0):
             return bbox, lat, lon
 
 def _match_target_res(target_res='NA'):
-    """ Checks whether the resolution is compatible with the "legacy"
+    """Checks whether the resolution is compatible with the "legacy"
         resolutions used in Matlab Climada and produces a warning message
         if not.
 
@@ -585,7 +586,7 @@ def _match_target_res(target_res='NA'):
                        adjusting it to %s arc-sec.', out_res)
 
 def _shape_cutter(shape, **opt_args):
-    """ Checks whether given coordinates are within a shape or not. Can also
+    """Checks whether given coordinates are within a shape or not. Can also
         check if a shape possesses enclaves and cuts them out accordingly.
         If no coordinates are supplied, all coordinates in the bounding box
         of the shape under the given resolution are checked.
@@ -766,53 +767,54 @@ def _mask_from_path(path, resolution=30, return_points=1, return_mask=0):
     return lon, lat
 
 def _mask_from_shape(check_shape, **opt_args):
-    """ creates a mask from a shape assigning value 1 to points inside and 0
+    """creates a mask from a shape assigning value 1 to points inside and 0
         otherwise.
 
-    Parameters:
-        check_shape (_Shape): shape file to check
-    Optional:
-        opt_args (keyword arguments):
-            resolution (scalar): resolution of the points to be checked in
-                arcsec. Required if the points need to be created first.
-                Defautl = 30.
-            check_enclaves (boolean): If activated, enclaves get detected and
-                cut out from shapes. Default = 1.
-            check_plot (boolean): If activated, a plot with the shap and the
-                mask is shown. Default = 0.
-            shape_format (str, tuple): colour of the shape if it is plotted.
-                Takes any colour format which is recognised by matplotlib.
-            enclave_format (str, tuple): colour of the enclaves if it they are
-                plotted. Takes any colour format which is recognised by
-                matplotlib.
-            return_mask (boolean): If activated, the mask is also returned
-            points2check (list): a list of points in tuple formaat (lon, lat)
-                for which should be checked whether they are inside the shape.
-                if no points are delivered, the points are created for the
-                bounding box of the shape.
-            point_format (boolean): If activated the points get returned as
-                a list in tuple format (lon, lat), otherwise, lon and lat
-                get returned separately.
+    Parameters
+    ----------
+    check_shape : _Shape
+        shape file to check
+    resolution : scalar, optional
+        resolution of the points to be checked in arcsec.
+        Required if the points need to be created first.
+        Default: 30.
+    check_enclaves : boolean, optional
+        If activated, enclaves get detected and cut out from shapes. Default: 1.
+    check_plot : boolean, optional
+        If activated, a plot with the shap and the mask is shown. Default: 0.
+    shape_format : str, tuple, optional
+        colour of the shape if it is plotted.
+        Takes any colour format which is recognised by matplotlib.
+    enclave_format : str, tuple, optional
+        colour of the enclaves if it they are plotted.
+        Takes any colour format which is recognised by matplotlib.
+    return_mask : boolean, optional
+        If activated, the mask is also returned
+    points2check : list, optional
+        A list of points in tuple formaat (lon, lat) for which should be
+        checked whether they are inside the shape.
+        If no points are delivered, the points are created for the bounding box
+        of the shape.
+    point_format : boolean, optional
+        If activated the points get returned as a list in tuple format
+        (lon, lat), otherwise, lon and lat get returned separately.
 
-    Returns (depending on the chosen options):
-        lon (list): list of longitudinal coordinate data of points inside shape
-            (returned if points_format = 0)
-        lat (list): list of latitudianl coordinate data of points inside shape
-            (returned if points_format = 0)
-        incl_coords (list): list of tuples of formate (lon, lat) of points
-            inside shape (returned if points_format=1)
-        enclave_paths (list): list of detected enclave paths
-        mask (pandas SparseArray): SparseArray which =1 where is point is
-            inside shape and zero otherwise. (only returned if return_mask=1)
-        if only_geo = 0 (default):
-            The shape of type shapefile._Shape
-        if only_geo = 1
-            bbox, lat, lon (tuple of size 3)
-                bbox is a 1x4 vector of the bounding box of the country (array)
-                lat is a mx1 vector of the latitudinal values of the vertices
-                    of the shape (array)
-                lon is a mx1 vector of the longitudinal values of the vertices
-                    of the shape (array)
+    Returns
+    -------
+    lon : list
+        list of longitudinal coordinate data of points inside shape
+        (returned if points_format = 0)
+    lat : list
+        list of latitudianl coordinate data of points inside shape
+        (returned if points_format = 0)
+    incl_coords : list
+        list of tuples of formate (lon, lat) of points
+        inside shape (returned if points_format=1)
+    enclave_paths : list
+        list of detected enclave paths
+    mask : pandas SparseArray
+        SparseArray which =1 where is point is
+        inside shape and zero otherwise. (only returned if return_mask=1)
     """
     from matplotlib import path
     resolution = opt_args.get('resolution', 30)
@@ -902,34 +904,20 @@ def _mask_from_shape(check_shape, **opt_args):
     return mask
 
 def _get_country_info(iso3):
-    """ Get country ISO alpha_3, country id (defined as country appearance
+    """Get country ISO alpha_3, country id (defined as country appearance
     order in natural earth shape file) and country's geometry.
 
-    Parameters:
-        countries (list or dict): list of country names (admin0) or dict
-            with key = admin0 name and value = [admin1 names]
-        shp_file (cartopy.io.shapereader.Reader): shape file
+    Parameters
+    ----------
+    iso3 : str
+        country code of country to get
 
-    Returns:
-        cntry_info (dict): key = ISO alpha_3 country, value = [country id,
-            country name, country geometry]
-
-    Retrieves the shape file or coordinate information of a country.
-
-    Parameters:
-        country_iso (str): country code of country to get
-        only_geo (boolean): Determines the output mode (default =0):
-            if =0: returns the entire shape file of the country
-            if =1: returns a tuple of values: bbox, lat, lon (see below)
-
-    Returns:
-        if only_geo = 0 (default):
-            The shape of type shapefile._Shape
-        if only_geo = 1
-            bbox, lat, lon (tuple of size 3)
-                bbox is a 1x4 vector of the bounding box of the country (array)
-                lat is a mx1 vector of the latitudinal values of the vertices of the shape (array)
-                lon is a mx1 vector of the longitudinal values of the vertices of the shape (array)
+    Returns
+    -------
+    cntry_info : tuple
+        (iso_num, country_name, country_shp)
+    country_admin1 : list
+        shapres and records of admin1 regions
     """
     shp = shapereader.natural_earth(resolution='10m',
                                     category='cultural',
@@ -978,7 +966,7 @@ def _bbox_union(bbox_in):
     return bbox
 
 def _get_iso3(country_name):
-    """ Find the ISO3 name corresponding to a country name. Can also be used
+    """Find the ISO3 name corresponding to a country name. Can also be used
         to check if an ISO3 exists.
 
     Parameters:
@@ -1012,7 +1000,7 @@ def _get_iso3(country_name):
     return ""
 
 def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group'):
-    """ Append factor to convert GDP to physcial asset values according to
+    """Append factor to convert GDP to physcial asset values according to
         the Global Wealth Databook by the Credit Suisse Research Institute.
         Requires a pickled file containg a dictionary with the three letter
         country code as the key. The values are lists, each containg the
@@ -1051,7 +1039,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
 
 def _gsdp_read(country_iso3, admin1_shape_data,\
                look_folder=os.path.join(SYSTEM_DIR, 'GSDP')):
-    ''' Retrieves the GSDP data for a certain country. It requires an
+    """Retrieves the GSDP data for a certain country. It requires an
         excel file in a subfolder "GSDP" in climadas data folder (or in the
         specified folder). The excel file should bear the name
         'ISO3_GSDP.xlsx' (or .xls), where ISO3 is the three letter country
@@ -1069,7 +1057,7 @@ def _gsdp_read(country_iso3, admin1_shape_data,\
     Returns:
         out_dict (dictionary): dictionary which contains the GSDP for each
             admin1 unit, where the name of the admin1 unit is the key.
-    '''
+    """
     file_name = _check_excel_exists(look_folder, str(country_iso3 + '_GSDP'))
     if not file_name is None:
         admin1_xls_data = pd.read_excel(file_name)
@@ -1102,7 +1090,7 @@ def _gsdp_read(country_iso3, admin1_shape_data,\
     return None
 
 def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
-    ''' Checks if an Excel file with the name file_name in the folder
+    """Checks if an Excel file with the name file_name in the folder
     file_path exists, checking for both xlsx and xls files.
 
     Parameters:
@@ -1110,7 +1098,7 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
         file_name (string): file name which is checked. Extension is ignored
         xlsx_before_xls (boolean): If set =1, xlsx files are priorised over
             xls files. Default=1.
-    '''
+    """
     try_ext = list()
     if xlsx_before_xls == 1:
         try_ext.append('.xlsx')
@@ -1125,7 +1113,7 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
     return None
 
 def _compare_strings_nospecchars(str1, str2):
-    """ Compares strings while ignoring non-alphanumeric and special
+    """Compares strings while ignoring non-alphanumeric and special
         characters.
 
     Parameters:
@@ -1145,7 +1133,7 @@ def _compare_strings_nospecchars(str1, str2):
     return bool(cstr1 == cstr2)
 
 def _plot_shape_to_plot(shp, gray_val=str(0.3)):
-    """ Plots a shape file to a pyplot.
+    """Plots a shape file to a pyplot.
 
     Parameters:
         shp (shapefile._Shape): shapefile to be plotted
@@ -1164,7 +1152,7 @@ def _plot_shape_to_plot(shp, gray_val=str(0.3)):
     plt.show()
 
 def _plot_paths_to_plot(list_of_paths, gray_val=str(0.3)):
-    """ Plot a path or paths to a pyplot
+    """Plot a path or paths to a pyplot
 
     Parameters:
         list of paths (list): paths to be plotted
@@ -1179,7 +1167,7 @@ def _plot_paths_to_plot(list_of_paths, gray_val=str(0.3)):
     plt.show()
 
 def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
-    """ Retrieves the shape file or coordinate information of a country.
+    """Retrieves the shape file or coordinate information of a country.
 
     Parameters:
         adm0_a3 (str): iso3 country code of country to get
@@ -1220,7 +1208,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
     # TODO: if a state/province has GSDP value, but no coordinates inside,
 #    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
 #    Potential fix: normalise the value in the end
-    """ Calculates the LitPop on admin1 level for provinces/states where such
+    """Calculates the LitPop on admin1 level for provinces/states where such
         information is available (i.e. GDP is distributed on a subnational
         instead of a national level). Requires excel files in a subfolder
         "GSDP" in climadas data folder. The excel files should contain a row
@@ -1357,7 +1345,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,\
     return litpop_data
 
 def _calc_admin0(litpop_data, total_asset_val, gdptoasset_factor):
-    """ Calculates the LitPop on a national level. The total value distributed
+    """Calculates the LitPop on a national level. The total value distributed
         corresponds to GDP times the factor to convert GDP to assets from
         the Gloabl Wealth Databook by the Credit Suisse Research Institute.
 
@@ -1378,7 +1366,7 @@ def _calc_admin0(litpop_data, total_asset_val, gdptoasset_factor):
     return litpop_data
 
 def _normalise_litpop(litpop_data):
-    """ Normailses LitPop data, such that its total sum equals to one.
+    """Normailses LitPop data, such that its total sum equals to one.
 
     Parameters:
         litpop_data (pandas SparseArray): The litpop_data which sjould be
@@ -1398,7 +1386,7 @@ def _normalise_litpop(litpop_data):
     return litpop_data
 
 def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
-    """ Checks whether a bounding box is valid an compatible with the chosen
+    """Checks whether a bounding box is valid an compatible with the chosen
         country cut mode.
 
         Parameters:
@@ -1444,7 +1432,7 @@ def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
     return cut_bbox
 
 def _litpop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
-    """ Plots the admin0 share of the states and provinces against the admin1
+    """Plots the admin0 share of the states and provinces against the admin1
         shares.
 
     Parameters:
@@ -1486,17 +1474,22 @@ def _litpop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     return pearsonr, spearmanr, rmse, rmsf
 
 def read_bm_file(bm_path, filename):
-    """ Reads a single NASA BlackMarble GeoTiff and returns the data. Run all
+    """Reads a single NASA BlackMarble GeoTiff and returns the data. Run all
         required checks first.
 
-        PARAMETERS:
-            bm_path (str): absolute path where files are stored.
-            filename (str): filename of the file to be read.
+    Parameters
+    ----------
+    bm_path : str
+        absolute path where files are stored.
+    filename : str
+        filename of the file to be read.
 
-        RETURNS:
-            arr1 (array): Raw BM data
-            curr_file (gdal GeoTiff File): Additional info from which
-                coordinates can be calculated.
+    Returns
+    -------
+    arr1 : array
+        Raw BM data
+    curr_file : gdal GeoTiff File
+        Additional info from which coordinates can be calculated.
     """
     try:
         LOGGER.debug('Importing %s.', os.path.join(bm_path, filename))
@@ -1511,43 +1504,53 @@ def read_bm_file(bm_path, filename):
 
 def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
            **parameters):
-    """ Potential TODO: put cutting before zooming (faster), but with expanding
+    """Potential TODO: put cutting before zooming (faster), but with expanding
     bbox in order to preserve additional pixels for interpolation..."""
-    """ Reads data from NASA GeoTiff files and cuts out the data along a chosen
+    """Reads data from NASA GeoTiff files and cuts out the data along a chosen
         bounding box. Call this after the functions
         nightlight.required_nl_files and nightlight.check_nl_local_file_exists
         have ensured which files are required and which ones exist and missing
         files have been donwloaded.
 
-        PARAMETERS:
-            required_files (8x1 array): boolean values which designates which
-                BM files are required. Can be generated by the function
-                nightlight.check_required_nl_files
-        OPTIONAL PARAMTERS
-            cut_bbox (1x4 array-like): Bounding box (ESRI type) to be cut out.
-                the layout of the bounding box corresponds to the bounding box
-                of the ESRI shape files and is as follows:
-                [minimum longitude, minimum latitude, maximum longitude,
-                 maxmimum latitude]
-            country_adm0 (str): Country Code of the country of interest.
-            country_cut_mode (int): Defines how the country is cut out:
-                if 0: the country is only cut out with a bounding box
-                if 1: the country is cut out along it's borders
-                Default: = 1
-            bm_path (str): absolute path where files are stored.
-            resolution (int): the resolution in arcsec in which the data output
-                is created.
-            return_coords (boolean): Determines whether latitude and longitude
-                are delievered along with gpw data (1) or only bm_data is
-                returned (1) (Default: 0)
-            reference_year (int): Default = 2016
+    Parameters
+    ----------
+    required_files : 8x1 array
+        boolean values which designates which BM files are required.
+        Can be generated by the function nightlight.check_required_nl_files
+    cut_bbox : 1x4 array-like, optional
+        Bounding box (ESRI type) to be cut out.
+        The layout of the bounding box corresponds to the bounding box
+        of the ESRI shape files and is as follows:
+        [minimum longitude, minimum latitude, maximum longitude, maxmimum latitude]
+    country_adm0 : str, optional
+        Country Code of the country of interest.
+    country_cut_mode : int, optional
+        Defines how the country is cut out:
+        if 0: the country is only cut out with a bounding box
+        if 1: the country is cut out along it's borders
+        Default: = 1
+    bm_path : str, optional
+        absolute path where files are stored.
+    resolution : int, optional
+        the resolution in arcsec in which the data output
+        is created.
+    return_coords : boolean, optional
+        Determines whether latitude and longitude
+        are delievered along with gpw data (1) or only bm_data is
+        returned (1) (Default: 0)
+    reference_year : int
+        Default = 2016
 
-        RETURNS:
-            nightlight_intensity (pandas SparseArray): BM data
-            lon (list): list with longitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if return_coords=1)
-            lat (list): list with latitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if return_coords=1)
+    Returns
+    -------
+    nightlight_intensity : pandas SparseArray
+        BM data
+    lon : list
+        list with longitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords=1)
+    lat : list
+        list with latitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords=1)
     """
     bm_path = parameters.get('file_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
@@ -1645,7 +1648,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),\
             return nightlight_intensity, None
 
 def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
-    """ Crops the imported blackmarble data to the bounding box to reduce
+    """Crops the imported blackmarble data to the bounding box to reduce
         memory foot print during import This is done for each of the eight
         Blackmarble tiles seperately, therefore, the function needs to know
         which file is currenlty being treated (curr_file).
@@ -1701,30 +1704,39 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     return bm_data
 
 def _get_box_blackmarble(cut_bbox, **args):
-    """ Reads data from NASA GeoTiff files and cuts out the data along a chosen
+    """Reads data from NASA GeoTiff files and cuts out the data along a chosen
         bounding box.
-        PARAMETERS:
-            cut_bbox (1x4 array-like): Bounding box (ESRI type) to be cut out.
-                the layout of the bounding box corresponds to the bounding box
-                of the ESRI shape files and is as follows:
-                [minimum longitude, minimum latitude, maximum longitude,
-                maxmimum latitude]
-        Optional parameters:
-            gpw_path (str): absolute path where files are stored. If the files
-                dont exist, they get saved there. Default: SYSTEM_DIR
-            resolution (int): the resolution in arcsec in which the data output
-                is created.
-            return_coords (boolean): Determines whether latitude and longitude
-                are delievered along with gpw data (1) or only bm_data is
-                returned (1) (Default: 0)
-            reference_year (int): Default: 2016
 
-        RETURNS:
-            nightlight_intensity (pandas SparseArray): BM data
-            lon (list): list with longitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if return_coords=1)
-            lat (list): list with latitudinal infomation on the GPW data. Same
-                dimensionality as tile_temp (only returned if return_coords=1)
+    Parameters
+    ----------
+    cut_bbox : 1x4 array-like
+        Bounding box (ESRI type) to be cut out.
+        the layout of the bounding box corresponds to the bounding box
+        of the ESRI shape files and is as follows:
+        [minimum longitude, minimum latitude, maximum longitude, maxmimum latitude]
+    gpw_path : str, optional
+        absolute path where files are stored. If the files
+        dont exist, they get saved there. Default: SYSTEM_DIR
+    resolution : int, optional
+        the resolution in arcsec in which the data output
+        is created.
+    return_coords : boolean, optional
+        Determines whether latitude and longitude
+        are delievered along with gpw data (1) or only bm_data is
+        returned (1) (Default: 0)
+    reference_year : int, optional
+        Default: 2016
+
+    Returns
+    -------
+    nightlight_intensity : pandas SparseArray
+        BM data
+    lon : list
+        list with longitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords=1)
+    lat : list
+        list with latitudinal infomation on the GPW data. Same
+        dimensionality as tile_temp (only returned if return_coords=1)
     """
     resolution = args.get('resolution', 30)
     reference_year = args.get('reference_year', 2016)
@@ -1761,7 +1773,7 @@ def _get_box_blackmarble(cut_bbox, **args):
     return nightlight_intensity
 
 def admin1_validation(country, methods, exponents, **args):
-    """ Get LitPop based exposre for one country or multiple countries
+    """Get LitPop based exposre for one country or multiple countries
     using values at reference year. If GDP or income
     group not available for that year, consider the value of the closest
     available year.
@@ -1876,7 +1888,7 @@ def admin1_validation(country, methods, exponents, **args):
 
 
 def exposure_set_admin1(exposure, res_arcsec):
-    """ add admin1 ID and name to exposure dataframe.
+    """add admin1 ID and name to exposure dataframe.
 
     Parameters:
         exposure: exposure instance
