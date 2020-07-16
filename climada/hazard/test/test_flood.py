@@ -28,6 +28,7 @@ from climada.hazard.centroids import Centroids
 
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
+
     def test_wrong_iso3_fail(self):
 
         emptyFlood = RiverFlood()
@@ -80,7 +81,6 @@ class TestRiverFlood(unittest.TestCase):
     def test_exact_area_selection_region(self):
 
         testCentr, isos, natIDs = RiverFlood._select_exact_area(reg=['SWA'])
-        
 
         self.assertEqual(testCentr.shape, (877, 976))
         self.assertAlmostEqual(np.min(testCentr.lat), -0.68767620000001, 4)
@@ -93,7 +93,7 @@ class TestRiverFlood(unittest.TestCase):
     def test_isimip_country_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                        countries=['DEU'], ISINatIDGrid=True)
+                       countries=['DEU'], ISINatIDGrid=True)
         self.assertEqual(rf.date[0], 730303)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
@@ -123,7 +123,7 @@ class TestRiverFlood(unittest.TestCase):
     def test_isimip_reg_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                        reg=['SWA'], ISINatIDGrid=True)
+                       reg=['SWA'], ISINatIDGrid=True)
 
         self.assertEqual(rf.date[0], 730303)
 
@@ -156,7 +156,7 @@ class TestRiverFlood(unittest.TestCase):
     def test_NATearth_country_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                        countries=['DEU'])
+                       countries=['DEU'])
 
         self.assertEqual(rf.date[0], 730303)
         self.assertEqual(rf.event_id[0], 0)
@@ -169,40 +169,21 @@ class TestRiverFlood(unittest.TestCase):
         self.assertEqual(np.argmin(rf.intensity), 0, 4)
         self.assertEqual(np.argmax(rf.intensity), 38380, 4)
 
-        #self.assertEqual(rf.fraction.shape, (1, 41548))
         self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
         self.assertAlmostEqual(np.max(rf.fraction), 0.9968000054359436, 4)
         self.assertEqual(np.argmin(rf.fraction), 0, 4)
         self.assertEqual(np.argmax(rf.fraction), 38143, 4)
-        
-    # def test_isimip_exclude_trend(self):
-        
-    #     dis_trends = '/home/insauer/projects/RiverDischarge/Data/TrendsMedianDischarge_MK.nc'
-        
-    #     rf_pos = RiverFlood()
-    #     rf_pos.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-    #                     countries=['CHE'], ISINatIDGrid=True)
-        
-    #     rf_pos.exclude_trends(dis_trends, 'pos')
-        
-        
-    
-    # def test_rand_polygon(self):
-        
-    #     rf = RiverFlood()
-    #     rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-    #                     shape = '/home/insauer/projects/DataTest/FloodAreaValidation/MFW_2012238_010E010N_2D2ON_V.shx')
 
     def test_NATearth_reg_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                      reg=['SWA'])
+                       reg=['SWA'])
 
         self.assertEqual(rf.date[0], 730303)
         self.assertEqual(rf.event_id[0], 0)
         self.assertEqual(rf.event_name[0], '2000')
         self.assertEqual(rf.orig[0], False)
-        self.assertAlmostEqual(rf.frequency[0], 1.00,1)
+        self.assertAlmostEqual(rf.frequency[0], 1.00, 1)
 
         self.assertEqual(rf.centroids.shape, (941, 978))
 
@@ -250,7 +231,7 @@ class TestRiverFlood(unittest.TestCase):
         rand_centroids.set_lat_lon(lat.flatten(), lon.flatten())
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
-                      centroids=rand_centroids, ISINatIDGrid=False)
+                       centroids=rand_centroids, ISINatIDGrid=False)
 
         self.assertEqual(rf.date[0], 730303)
         self.assertEqual(rf.event_id[0], 0)
@@ -288,13 +269,13 @@ class TestRiverFlood(unittest.TestCase):
                             centroids=cent)
         self.assertEqual(rf_rast.centroids.shape, (43, 61))
         self.assertAlmostEqual(np.min(rf_rast.centroids.lat),
-                              45.70000000000012, 4)
+                               45.70000000000012, 4)
         self.assertAlmostEqual(np.max(rf_rast.centroids.lat), 47.8, 4)
         self.assertAlmostEqual(np.min(rf_rast.centroids.lon), 7.5, 4)
         self.assertAlmostEqual(np.max(rf_rast.centroids.lon),
-                              10.49999999999999, 4)
+                               10.49999999999999, 4)
         self.assertAlmostEqual(rf_rast.centroids.lon[90],
-                              8.949999999999996, 4)
+                               8.949999999999996, 4)
         self.assertAlmostEqual(rf_rast.centroids.lat[90], 47.75, 4)
 
         self.assertEqual(rf_rast.intensity.shape, (1, 2623))
@@ -323,47 +304,47 @@ class TestRiverFlood(unittest.TestCase):
         for i in range(len(years)):
             testRFaddset = RiverFlood()
             testRFaddset.set_from_nc(countries=['AFG'],
-                                      dph_path=HAZ_DEMO_FLDDPH,
-                                      frc_path=HAZ_DEMO_FLDFRC,
-                                      ISINatIDGrid=True)
+                                     dph_path=HAZ_DEMO_FLDDPH,
+                                     frc_path=HAZ_DEMO_FLDFRC,
+                                     ISINatIDGrid=True)
             testRFaddset.date = np.array([manipulated_dates[i]])
             if i == 0:
                 testRFaddset.event_name = ['2000_2']
             else:
                 testRFaddset.event_name = [str(years[i])]
             testRFset.append(testRFaddset)
-                
+
         testRFset.set_flooded_area(save_centr=True)
         self.assertEqual(testRFset.units, 'm')
 
         self.assertEqual(testRFset.fla_event.shape[0], 4)
         self.assertEqual(testRFset.fla_annual.shape[0], 3)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[0]),
-                              17200498.22927546, 3)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[0]),
-                        32610)
+                         32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[2]),
-                              17200498.22927546, 3)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[2]),
-                        32610)
+                         32610)
 
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[0]),
-                              34400996.45855092, 3)
+                               34400996.45855092, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[0]),
-                        32610)
+                         32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[2]),
-                              17200498.22927546, 3)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
-                        32610)
+                         32610)
 
         self.assertAlmostEqual(testRFset.fla_event[0],
-                              6244242013.5826435, 3)
+                               6244242013.5826435, 3)
         self.assertAlmostEqual(testRFset.fla_annual[0],
-                              12488484027.165287, 3)
+                               12488484027.165287, 3)
         self.assertAlmostEqual(testRFset.fla_ann_av,
-                              8325656018.110191, 3)
+                               8325656018.110191, 3)
         self.assertAlmostEqual(testRFset.fla_ev_av,
-                              6244242013.5826435, 3)
+                               6244242013.5826435, 3)
 
     def test_select_events(self):
         testRFTime = RiverFlood()
@@ -379,7 +360,7 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(
                         testRFTime._select_event(test_time, years), [0, 3]))
 
-                                       
+
 if __name__ == "__main__":
     # Execute Tests
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
