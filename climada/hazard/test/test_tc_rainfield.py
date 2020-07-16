@@ -69,7 +69,6 @@ class TestReader(unittest.TestCase):
 
         self.assertAlmostEqual(tc_haz.intensity[0, 100], 99.7160586771286, 6)
         self.assertAlmostEqual(tc_haz.intensity[0, 260], 33.2087621869295)
-
         self.assertEqual(tc_haz.fraction[0, 100], 1)
         self.assertEqual(tc_haz.fraction[0, 260], 1)
 
@@ -78,7 +77,6 @@ class TestReader(unittest.TestCase):
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""
-
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_haz = TCRain()
@@ -108,7 +106,6 @@ class TestReader(unittest.TestCase):
 
     def test_two_files_pass(self):
         """Test set function set_from_tracks with two ibtracs."""
-
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TCRain()
@@ -139,7 +136,6 @@ class TestModel(unittest.TestCase):
 
     def test_rainfield_from_track_pass(self):
         """Test _rainfield_from_track function. Compare to MATLAB reference."""
-
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
@@ -149,7 +145,6 @@ class TestModel(unittest.TestCase):
         rainfall = np.round(rainfall, decimals=9)
 
         self.assertAlmostEqual(rainfall[0,0], 66.801702386)
-
         self.assertAlmostEqual(rainfall[0,130], 43.290917792)
         self.assertAlmostEqual(rainfall[0,200], 76.315923838)
 
