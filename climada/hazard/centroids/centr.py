@@ -28,8 +28,7 @@ from scipy import sparse
 import h5py
 import pandas as pd
 from rasterio import Affine
-from rasterio.warp import Resampling, reproject
-import rasterio
+from rasterio.warp import Resampling
 from geopandas import GeoSeries
 from shapely.geometry.point import Point
 
@@ -43,8 +42,7 @@ from climada.util.coordinates import dist_to_coast, get_resolution, \
                                      read_raster, read_vector, equal_crs, \
                                      get_country_code, dist_to_coast_nasa, \
                                      raster_to_meshgrid
-from climada.util.coordinates import NE_CRS, TMP_ELEVATION_FILE, DEM_NODATA, \
-                                     MAX_DEM_TILES_DOWN
+from climada.util.coordinates import NE_CRS
 
 __all__ = ['Centroids']
 
@@ -284,11 +282,9 @@ class Centroids():
             np.array
         """
         if not self.geometry.crs:
-            self.lat, self.lon, self.geometry, inten = read_vector(file_name,
-                inten_name, dst_crs)
+            self.lat, self.lon, self.geometry, inten = read_vector(file_name, inten_name, dst_crs)
             return sparse.csr_matrix(inten)
-        tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name,
-            inten_name, dst_crs)
+        tmp_lat, tmp_lon, tmp_geometry, inten = read_vector(file_name, inten_name, dst_crs)
         if not equal_crs(tmp_geometry.crs, self.geometry.crs) or \
         not np.allclose(tmp_lat, self.lat) or\
         not np.allclose(tmp_lon, self.lon):
@@ -476,9 +472,9 @@ class Centroids():
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res / 2).envelope
-        if ('units' in self.geometry.crs and
-        self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-        equal_crs(self.geometry.crs, {'proj': 'cea'}):
+        if ('units' in self.geometry.crs
+            and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
+                or equal_crs(self.geometry.crs, {'proj': 'cea'}):
             self.area_pixel = xy_pixels.area.values
         else:
             self.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
@@ -499,7 +495,8 @@ class Centroids():
                 return
             res_lat, res_lon = self.meta['transform'].e, self.meta['transform'].a
             lat_unique = np.arange(self.meta['transform'].f + res_lat / 2,
-                self.meta['transform'].f + self.meta['height'] * res_lat, res_lat)
+                                   self.meta['transform'].f + self.meta['height'] * res_lat,
+                                   res_lat)
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
         else:
@@ -683,8 +680,10 @@ class Centroids():
                             hf_str = centr_meta.create_dataset(key, (1,), dtype=str_dt)
                             hf_str[0] = value
                     elif key == 'transform':
-                        centr_meta.create_dataset(key, (6,), data=[value.a, value.b,
-                            value.c, value.d, value.e, value.f], dtype=float)
+                        centr_meta.create_dataset(
+                            key, (6,),
+                            data=[value.a, value.b, value.c, value.d, value.e, value.f],
+                            dtype=float)
         hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
         hf_str[0] = str(dict(self.crs))
 
@@ -708,11 +707,9 @@ class Centroids():
         if data.get('crs'):
             crs = ast.literal_eval(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
-            self.set_lat_lon(np.array(data.get('lat')),
-                np.array(data.get('lon')), crs)
+            self.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
         elif data.get('latitude') and data.get('latitude').size:
-            self.set_lat_lon(np.array(data.get('latitude')),
-                np.array(data.get('longitude')), crs)
+            self.set_lat_lon(np.array(data.get('latitude')), np.array(data.get('longitude')), crs)
         else:
             centr_meta = data.get('meta')
             self.meta['crs'] = crs
@@ -836,7 +833,6 @@ def generate_nat_earth_centroids(res_as=360):
     res_deg = res_as / 3600
     lat_dim = np.arange(-90 + res_deg, 90, res_deg)
     lon_dim = np.arange(-180 + res_deg, 180 + res_deg, res_deg)
-    grid_shape = (lat_dim.size, lon_dim.size)
     lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
     natids = np.uint16(get_country_code(lat, lon, gridded=False, natid=False))
 

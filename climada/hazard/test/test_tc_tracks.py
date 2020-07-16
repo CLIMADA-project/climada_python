@@ -126,7 +126,7 @@ class TestIBTracs(unittest.TestCase):
         """Read several TCs."""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
-                               year_range=(1915, 1916), basin='WP')
+                                     year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
 
         tc_track = tc.TCTracks()
@@ -143,7 +143,7 @@ class TestIBTracs(unittest.TestCase):
         """Check estimate_missing option"""
         tc_try = tc.TCTracks()
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
-                                  estimate_missing=True)
+                                   estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013.61584, 5)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008.63837, 5)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1014.1515, 4)
@@ -403,16 +403,15 @@ class TestFuncs(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
-        track['on_land'] = ('time', coord_on_land(track.lat.values,
-             track.lon.values))
+        track['on_land'] = ('time', coord_on_land(track.lat.values, track.lon.values))
         track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
 
-        msk = track.on_land == False
+        msk = ~track.on_land
         self.assertTrue(np.all(np.isnan(track.dist_since_lf.values[msk])))
         self.assertEqual(track.dist_since_lf.values[msk].size, 38)
 
-        self.assertTrue(track.dist_since_lf.values[-1] >
-                        dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
+        self.assertGreater(track.dist_since_lf.values[-1],
+                           dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall

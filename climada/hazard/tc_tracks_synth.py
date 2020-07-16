@@ -472,7 +472,8 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         v_decay = _decay_v_function(v_rel[ss_scale_idx],
                                     track.dist_since_lf[sea_land:land_sea].values)
         # dont applay decay if it would increas wind speeds
-        v_decay[v_decay > 1] = track.max_sustained_wind[sea_land:land_sea][v_decay > 1] / v_landfall
+        v_decay[v_decay > 1] = (track.max_sustained_wind[sea_land:land_sea][v_decay > 1]
+                                / v_landfall)
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea between two landfalls

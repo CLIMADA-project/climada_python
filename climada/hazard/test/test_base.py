@@ -46,9 +46,9 @@ def dummy_hazard():
     hazard.orig = np.array([True, False, False, True])
     hazard.frequency = np.array([0.1, 0.5, 0.5, 0.2])
     hazard.fraction = sparse.csr_matrix([[0.02, 0.03, 0.04],
-                                          [0.01, 0.01, 0.01],
-                                          [0.3, 0.1, 0.0],
-                                          [0.3, 0.2, 0.0]])
+                                         [0.01, 0.01, 0.01],
+                                         [0.3, 0.1, 0.0],
+                                         [0.3, 0.2, 0.0]])
     hazard.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4],
                                           [0.1, 0.1, 0.01],
                                           [4.3, 2.1, 1.0],
@@ -91,8 +91,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.frequency size: 3 != 2.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.frequency size: 3 != 2.', cm.output[0])
 
     def test_check_wrongInten_fail(self):
         """Wrong hazard definition"""
@@ -102,8 +101,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.', cm.output[0])
 
     def test_check_wrongFrac_fail(self):
         """Wrong hazard definition"""
@@ -113,8 +111,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.', cm.output[0])
 
     def test_check_wrongEvName_fail(self):
         """Wrong hazard definition"""
@@ -124,8 +121,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.event_name size: 3 != 1.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.event_name size: 3 != 1.', cm.output[0])
 
     def test_check_wrongId_fail(self):
         """Wrong hazard definition"""
@@ -135,8 +131,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('There are events with the same identifier.',
-                         cm.output[0])
+        self.assertIn('There are events with the same identifier.', cm.output[0])
 
     def test_check_wrong_date_fail(self):
         """Wrong hazard definition"""
@@ -146,8 +141,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.date size: 3 != 2.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.date size: 3 != 2.', cm.output[0])
 
     def test_check_wrong_orig_fail(self):
         """Wrong hazard definition"""
@@ -157,8 +151,7 @@ class TestLoader(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz.check()
-        self.assertIn('Invalid Hazard.orig size: 3 != 4.',
-                         cm.output[0])
+        self.assertIn('Invalid Hazard.orig size: 3 != 4.', cm.output[0])
 
     def test_event_name_to_id_pass(self):
         """Test event_name_to_id function."""
@@ -267,10 +260,10 @@ class TestRemoveDupl(unittest.TestCase):
 
         # expected values
         haz_res = dummy_hazard()
-        haz_res.intensity = sparse.hstack([haz_res.intensity,
-            sparse.csr_matrix((haz_res.intensity.shape[0], 3))], format='csr')
-        haz_res.fraction = sparse.hstack([haz_res.fraction,
-            sparse.csr_matrix((haz_res.fraction.shape[0], 3))], format='csr')
+        haz_res.intensity = sparse.hstack(
+            [haz_res.intensity, sparse.csr_matrix((haz_res.intensity.shape[0], 3))], format='csr')
+        haz_res.fraction = sparse.hstack(
+            [haz_res.fraction, sparse.csr_matrix((haz_res.fraction.shape[0], 3))], format='csr')
         self.assertTrue(np.array_equal(haz_res.intensity.toarray(),
                                        haz1.intensity.toarray()))
         self.assertTrue(sparse.isspmatrix_csr(haz1.intensity))
@@ -329,10 +322,10 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.date, np.array([1, 4])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.1, 0.2])))
-        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(), np.array([[0.02, 0.03, 0.04],
-                                          [0.3, 0.2, 0.0]])))
-        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(), np.array([[0.2, 0.3, 0.4],
-                                          [5.3, 0.2, 1.3]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.fraction.toarray(), np.array([[0.02, 0.03, 0.04], [0.3, 0.2, 0.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.intensity.toarray(), np.array([[0.2, 0.3, 0.4], [5.3, 0.2, 1.3]])))
         self.assertEqual(sel_haz.event_name, ['ev1', 'ev4'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -350,10 +343,10 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
-        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01],
-                                          [0.3, 0.1, 0.0]])))
-        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
-                                          [4.3, 2.1, 1.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01], [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01], [4.3, 2.1, 1.0]])))
         self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -371,12 +364,14 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3, 4])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False, True])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5, 0.2])))
-        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01],
-                                          [0.3, 0.1, 0.0],
-                                          [0.3, 0.2, 0.0]])))
-        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
-                                           [4.3, 2.1, 1.0],
-                                           [5.3, 0.2, 1.3]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01],
+                                                  [0.3, 0.1, 0.0],
+                                                  [0.3, 0.2, 0.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
+                                                   [4.3, 2.1, 1.0],
+                                                   [5.3, 0.2, 1.3]])))
         self.assertEqual(sel_haz.event_name, ['ev2', 'ev3', 'ev4'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -394,10 +389,10 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
-        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01],
-                                          [0.3, 0.1, 0.0]])))
-        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
-                                          [4.3, 2.1, 1.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01], [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01], [4.3, 2.1, 1.0]])))
         self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -415,10 +410,10 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([False, False])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.5, 0.5])))
-        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01],
-                                          [0.3, 0.1, 0.0]])))
-        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
-                                          [4.3, 2.1, 1.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.fraction.toarray(), np.array([[0.01, 0.01, 0.01], [0.3, 0.1, 0.0]])))
+        self.assertTrue(np.array_equal(
+            sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01], [4.3, 2.1, 1.0]])))
         self.assertEqual(sel_haz.event_name, ['ev2', 'ev3'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -564,8 +559,7 @@ class TestAppend(unittest.TestCase):
         with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz1.append(haz2)
-        self.assertIn("Hazards of different type can't be appended: "
-                         + "TC != WS.", cm.output[0])
+        self.assertIn("Hazards of different type can't be appended: TC != WS.", cm.output[0])
 
     def test_incompatible_units_fail(self):
         """Raise error when append two incompatible hazards."""
@@ -575,8 +569,8 @@ class TestAppend(unittest.TestCase):
         with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 haz1.append(haz2)
-        self.assertIn("Hazards with different units can't be appended: "
-            + 'm/s != km/h.', cm.output[0])
+        self.assertIn("Hazards with different units can't be appended: m/s != km/h.",
+                      cm.output[0])
 
     def test_all_different_extend(self):
         """Append totally different hazard."""
@@ -805,15 +799,21 @@ class TestYearset(unittest.TestCase):
         self.assertTrue(np.array_equal(orig_year_set[1851],
                                        np.array([1, 11, 21, 31])))
         self.assertTrue(np.array_equal(orig_year_set[1958],
-                                       np.array([8421, 8431, 8441, 8451, 8461, 8471, 8481, 8491, 8501, 8511])))
+                                       np.array([8421, 8431, 8441, 8451, 8461, 8471, 8481,
+                                                 8491, 8501, 8511])))
         self.assertTrue(np.array_equal(orig_year_set[1986],
                                        np.array([11101, 11111, 11121, 11131, 11141, 11151])))
         self.assertTrue(np.array_equal(orig_year_set[1997],
-                                       np.array([12221, 12231, 12241, 12251, 12261, 12271, 12281, 12291])))
+                                       np.array([12221, 12231, 12241, 12251, 12261, 12271,
+                                                 12281, 12291])))
         self.assertTrue(np.array_equal(orig_year_set[2006],
-                                       np.array([13571, 13581, 13591, 13601, 13611, 13621, 13631, 13641, 13651, 13661])))
+                                       np.array([13571, 13581, 13591, 13601, 13611, 13621,
+                                                 13631, 13641, 13651, 13661])))
         self.assertTrue(np.array_equal(orig_year_set[2010],
-                                       np.array([14071, 14081, 14091, 14101, 14111, 14121, 14131, 14141, 14151, 14161, 14171, 14181, 14191, 14201, 14211, 14221, 14231, 14241, 14251])))
+                                       np.array([14071, 14081, 14091, 14101, 14111, 14121,
+                                                 14131, 14141, 14151, 14161, 14171, 14181,
+                                                 14191, 14201, 14211, 14221, 14231, 14241,
+                                                 14251])))
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the Hazard class"""
@@ -973,7 +973,8 @@ class TestHDF5(unittest.TestCase):
             self.assertIsInstance(haz_read.event_name[0], str)
             self.assertTrue(np.array_equal(hazard.date, haz_read.date))
             self.assertTrue(np.array_equal(hazard.orig, haz_read.orig))
-            self.assertTrue(np.array_equal(hazard.intensity.toarray(), haz_read.intensity.toarray()))
+            self.assertTrue(np.array_equal(hazard.intensity.toarray(),
+                                           haz_read.intensity.toarray()))
             self.assertIsInstance(haz_read.intensity, sparse.csr_matrix)
             self.assertTrue(np.array_equal(hazard.fraction.toarray(), haz_read.fraction.toarray()))
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
@@ -1013,10 +1014,18 @@ class TestCentroids(unittest.TestCase):
         haz_fl.raster_to_vector()
 
         self.assertEqual(haz_fl.centroids.meta, dict())
-        self.assertAlmostEqual(haz_fl.centroids.lat.min(), meta_orig['transform'][5] + meta_orig['height'] * meta_orig['transform'][4] - meta_orig['transform'][4] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lat.max(), meta_orig['transform'][5] + meta_orig['transform'][4] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.max(), meta_orig['transform'][2] + meta_orig['width'] * meta_orig['transform'][0] - meta_orig['transform'][0] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.min(), meta_orig['transform'][2] + meta_orig['transform'][0] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lat.min(),
+                               meta_orig['transform'][5]
+                               + meta_orig['height'] * meta_orig['transform'][4]
+                               - meta_orig['transform'][4] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lat.max(),
+                               meta_orig['transform'][5] + meta_orig['transform'][4] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.max(),
+                               meta_orig['transform'][2]
+                               + meta_orig['width'] * meta_orig['transform'][0]
+                               - meta_orig['transform'][0] / 2)
+        self.assertAlmostEqual(haz_fl.centroids.lon.min(),
+                               meta_orig['transform'][2] + meta_orig['transform'][0] / 2)
         self.assertTrue(equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
@@ -1035,8 +1044,10 @@ class TestCentroids(unittest.TestCase):
         haz_fl.check()
 
         haz_fl.reproject_vector(dst_crs={'init': 'epsg:2202'})
-        self.assertTrue(np.allclose(haz_fl.centroids.lat, np.array([331585.4099637291, 696803.88, 1098649.44])))
-        self.assertTrue(np.allclose(haz_fl.centroids.lon, np.array([11625664.37925186, 11939560.43, 12244857.13])))
+        self.assertTrue(np.allclose(haz_fl.centroids.lat,
+                                    np.array([331585.4099637291, 696803.88, 1098649.44])))
+        self.assertTrue(np.allclose(haz_fl.centroids.lon,
+                                    np.array([11625664.37925186, 11939560.43, 12244857.13])))
         self.assertTrue(equal_crs(haz_fl.centroids.crs, {'init': 'epsg:2202'}))
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), np.array([0.5, 0.2, 0.1])))
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))

@@ -136,7 +136,8 @@ class LowFlow(Hazard):
                     min_days_per_month=1, yearrange=TARGET_YEARRANGE,
                     yearrange_ref=REFERENCE_YEARRANGE, gh_model=GH_MODEL[0], cl_model=CL_MODEL[0],
                     scenario=SCENARIO[0], scenario_ref=SCENARIO[0], soc=SOC[0],
-                    soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False, yearchunks='default'):
+                    soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False,
+                    yearchunks='default'):
         """Wrapper to fill hazard from nc_dis file from ISIMIP
         Parameters:
             input_dir (string): path to input data directory
@@ -177,10 +178,10 @@ class LowFlow(Hazard):
             fn_str_var (str): FileName STRing depending on VARiable and
                 ISIMIP simuation round
             keep_dis_data (boolean): keep monthly data (variable ndays = days below threshold)
-                as dataframe (attribute "data") and save additional field 'relative_dis' (relative discharge compared
-                to the long term)
-            yearchunks: list of year chunks corresponding to each nc flow file. If set to 'default', uses the
-                chunking corresponding to the scenario.
+                as dataframe (attribute "data") and save additional field 'relative_dis'
+                (relative discharge compared to the long term)
+            yearchunks: list of year chunks corresponding to each nc flow file. If set to
+                'default', uses the chunking corresponding to the scenario.
         raises:
             NameError
         """
@@ -202,13 +203,10 @@ class LowFlow(Hazard):
             centr_handling = 'full_hazard'
 
         # read data and call preprocessing routine:
-        self.data, centroids_import = _data_preprocessing_percentile(percentile,
-                                                                     yearrange, yearrange_ref,
-                                                                     input_dir, gh_model, cl_model,
-                                                                     scenario,
-                                                                     scenario_ref,
-                                                                     soc, soc_ref, fn_str_var, bbox, min_days_per_month,
-                                                                     keep_dis_data, yearchunks)
+        self.data, centroids_import = _data_preprocessing_percentile(
+            percentile, yearrange, yearrange_ref, input_dir, gh_model, cl_model,
+            scenario, scenario_ref, soc, soc_ref, fn_str_var, bbox, min_days_per_month,
+            keep_dis_data, yearchunks)
 
         if centr_handling == 'full_hazard':
             centroids = centroids_import
@@ -263,8 +261,9 @@ class LowFlow(Hazard):
         else:
             intensity_list = []
             for cl_id in uni_ev:
-                intensity_list.append(self._intensity_one_cluster(self.data,
-                                                                  tree_centr, cl_id, res_centr, num_centr))
+                intensity_list.append(
+                    self._intensity_one_cluster(self.data, tree_centr, cl_id,
+                                                res_centr, num_centr))
         self.tag = TagHazard(HAZ_TYPE)
         self.units = 'days'  # days below threshold
         self.centroids = centroids
@@ -324,9 +323,9 @@ class LowFlow(Hazard):
             data
         """
         # set iter_var (dimension not used for clustering)
-        if not 'lat' in cluster_vars:
+        if 'lat' not in cluster_vars:
             iter_var = 'lat'
-        elif not 'lon' in cluster_vars:
+        elif 'lon' not in cluster_vars:
             iter_var = 'lon'
         else:
             iter_var = 'dt_month'
@@ -447,8 +446,10 @@ def _init_centroids(data_x, centr_res_factor=1):
     res_data = np.min(np.abs([np.diff(data_x.lon.values).min(), np.diff(data_x.lat.values).min()]))
     centroids = Centroids()
     centroids.set_raster_from_pnt_bounds((data_x.lon.values.min(),
-                                          data_x.lat.values.min(), data_x.lon.values.max(),
-                                          data_x.lat.values.max()), res=res_data / centr_res_factor)
+                                          data_x.lat.values.min(),
+                                          data_x.lon.values.max(),
+                                          data_x.lat.values.max()),
+                                         res=res_data / centr_res_factor)
     centroids.set_meta_to_lat_lon()
     centroids.set_area_approx()
     centroids.set_on_land()
@@ -471,8 +472,8 @@ def unique_clusters(data):
         if np.isnan(c_lat_lon):
             data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'] = -1
         else:
-            if len(data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique()) == 1 and -1 in data.loc[
-                data.c_lat_lon == c_lat_lon, 'cluster_id'].unique():
+            if len(data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique()) == 1 \
+                    and -1 in data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique():
                 cc += 1
                 current = cc
             else:
@@ -587,7 +588,8 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
 
 
 def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir,
-                                      gh_model, cl_model, scenario, soc, fn_str_var, bbox, yearchunks):
+                                      gh_model, cl_model, scenario, soc, fn_str_var, bbox,
+                                      yearchunks):
     """returns the x-th percentile for every pixel over a given
     time horizon per month (based on daily data)
     OUTDATED"""

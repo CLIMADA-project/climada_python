@@ -179,15 +179,15 @@ class Drought(Hazard):
 
                         except:
                             raise FileNotFoundError('The file ' + str(path_dwl)
-                                + ' could not be moved to ' + str(os.path.dirname(self.file_path)))
+                                                    + ' could not be moved to '
+                                                    + str(os.path.dirname(self.file_path)))
 
                     except:
-                        raise FileExistsError('The file ' + str(self.file_path)
-                                + ' could not '
-                                + 'be found. Please download the file '
-                                + 'first or choose a different folder. '
-                                + 'The data can be downloaded from '
-                                + SPEI_FILE_URL)
+                        raise FileExistsError('The file ' + str(self.file_path) + ' could not '
+                                              + 'be found. Please download the file '
+                                              + 'first or choose a different folder. '
+                                              + 'The data can be downloaded from '
+                                              + SPEI_FILE_URL)
 
             LOGGER.debug('Importing %s', str(SPEI_FILE_NAME))
             dataset = xr.open_dataset(self.file_path)
@@ -224,7 +224,7 @@ class Drought(Hazard):
 
             one_event_1d = spei_3d[i, :, :]
 
-              # get rid of nan's
+            # get rid of nan's
             nan_pos = np.isnan(one_event_1d)
             one_event_1d[nan_pos] = 0
 
@@ -352,7 +352,8 @@ class Drought(Hazard):
 
             list_events = self.__create_list(array_time_centroid)
 
-            [intmin, intsum, intsumthr, start, end] = self.__read_list(list_events, np.arange(first_year, last_year), first_year)
+            [intmin, intsum, intsumthr, start, end] = self.__read_list(
+                list_events, np.arange(first_year, last_year), first_year)
 
             intensity_min_matrix[:, pixel] = intmin
             intensity_sum_matrix[:, pixel] = intsum
@@ -478,7 +479,7 @@ class Drought(Hazard):
             year_offset = year_start
 
         return intensity_min_array, intensity_sum_array, \
-               intensity_sum_thr_array, date_start_array, date_end_array
+            intensity_sum_thr_array, date_start_array, date_end_array
 
 
     def plot_intensity_drought(self, event=None):
@@ -547,7 +548,9 @@ class Drought(Hazard):
         startdate = str_to_date(str(int(event) - 1) + '-10-01')
         enddate = str_to_date(str(int(event) + 1) + '-01-01')
 
-        dates = np.arange(np.ceil(startdate / 100) * 100, np.ceil(startdate / 100) * 100 + 400, 100)
+        dates = np.arange(np.ceil(startdate / 100) * 100,
+                          np.ceil(startdate / 100) * 100 + 400,
+                          100)
         list_dates = list()
         for i in range(len(dates)):
             list_dates.append(date_to_str(dates.astype(np.int64)[i]))

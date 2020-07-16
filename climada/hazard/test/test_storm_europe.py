@@ -88,7 +88,8 @@ class TestReader(unittest.TestCase):
         var_names['sheet_name'] = 'fp_centroids-test'
         var_names['col_name']['region_id'] = 'iso_n3'
         test_centroids = Centroids()
-        test_centroids.read_excel(os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
+        test_centroids.read_excel(
+            os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
