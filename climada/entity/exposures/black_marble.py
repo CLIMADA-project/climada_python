@@ -42,16 +42,16 @@ from climada.util.coordinates import pts_to_raster_meta
 LOGGER = logging.getLogger(__name__)
 
 DEF_RES_NOAA_KM = 1
-""" Default approximate resolution for NOAA NGDC nightlights in km."""
+"""Default approximate resolution for NOAA NGDC nightlights in km."""
 
 DEF_RES_NASA_KM = 0.5
-""" Default approximate resolution for NASA's nightlights in km."""
+"""Default approximate resolution for NASA's nightlights in km."""
 
 DEF_HAZ_TYPE = 'TC'
-""" Default hazard type used in impact functions id. """
+"""Default hazard type used in impact functions id."""
 
 DEF_POLY_VAL = [0, 0, 1]
-""" Default polynomial transformation used. """
+"""Default polynomial transformation used."""
 
 class BlackMarble(Exposures):
     """Defines exposures from night light intensity, GDP and income group.
@@ -119,15 +119,16 @@ class BlackMarble(Exposures):
         self.tag = tag
         self.tag.file_name = fn_nl
         self.value_unit = 'USD'
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(), \
-            self.latitude.min(), self.longitude.max(), self.latitude.max()), \
-            coord_nl[0, 1])
+        rows, cols, ras_trans = pts_to_raster_meta(
+            (self.longitude.min(), self.latitude.min(),
+             self.longitude.max(), self.latitude.max()),
+            (coord_nl[0, 1], -coord_nl[0, 1]))
         self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
 
     @staticmethod
     def _set_one_country(cntry_info, nightlight, coord_nl, res_fact,
                          res_km, admin1_geom, **kwargs):
-        """ Model one country.
+        """Model one country.
 
         Parameters:
             cntry_info (lsit): [cntry_id, cnytry_name, cntry_geometry,
@@ -176,16 +177,23 @@ def country_iso_geom(countries, shp_file, admin_key):
     Statistics Division (UNSD) 3-digit equivalent numeric codes and 0 if
     country not found) and country's geometry shape.
 
-    Parameters:
-        countries (list or dict): list of country names (admin0 or subunits) or dict
-            with key = admin0 name and value = [admin1 names]
-        shp_file (cartopy.io.shapereader.Reader): shape file
-        admin_key (str): key to find admin0 or subunit name
-    Returns:
-        cntry_info (dict): key = ISO alpha_3 country, value = [country id,
-            country name, country geometry],
-        cntry_admin1 (dict): key = ISO alpha_3 country, value = [admin1
-            geometries]
+    Parameters
+    ----------
+    countries : list or dict
+        list of country names (admin0) or dict with key = admin0 name
+        and value = [admin1 names]
+    shp_file : cartopy.io.shapereader.Reader
+        shape file
+    admin_key: str 
+        key to find admin0 or subunit name
+
+    Returns
+    -------
+    cntry_info : dict
+        key = ISO alpha_3 country, value = [country id, country name, country geometry],
+    cntry_admin1 : dict
+        key = ISO alpha_3 country, value = [admin1 geometries]
+
     """
     countries_shp = {}
     list_records = list(shp_file.records())
@@ -226,7 +234,7 @@ def country_iso_geom(countries, shp_file, admin_key):
     return cntry_info, cntry_admin1
 
 def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
-    """ Get GDP and income group per country in reference year, or it closest
+    """Get GDP and income group per country in reference year, or it closest
     one. Source: world bank. Natural earth repository used when missing data.
     Modifies country info with values [country id, country name,
     country geometry, ref_year, gdp, income_group].
@@ -253,7 +261,7 @@ def fill_econ_indicators(ref_year, cntry_info, shp_file, **kwargs):
         cntry_val.append(inc_grp)
 
 def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
-    """ Obtain nightlight from different sources depending on reference year.
+    """Obtain nightlight from different sources depending on reference year.
     Compute resolution factor used at resampling depending on source.
 
     Parameters:
@@ -403,8 +411,8 @@ def _cut_country(geom, nightlight, coord_nl):
     in_lon = math.floor((geom.bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
              math.ceil((geom.bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
 
-    nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1].\
-        todense()
+    nightlight_reg = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[-1]+1] \
+        .toarray()
     lat_reg, lon_reg = np.mgrid[coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]:
                                 coord_nl[0, 0] + in_lat[1]*coord_nl[0, 1]:
                                 complex(0, nightlight_reg.shape[0]),

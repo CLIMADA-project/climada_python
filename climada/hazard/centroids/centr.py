@@ -34,12 +34,17 @@ from geopandas import GeoSeries
 from shapely.geometry.point import Point
 
 import climada.util.plot as u_plot
-from climada.util.constants import DEF_CRS, ONE_LAT_KM
+from climada.util.constants import DEF_CRS, ONE_LAT_KM, \
+                                   NATEARTH_CENTROIDS_150AS, \
+                                   NATEARTH_CENTROIDS_360AS
 import climada.util.hdf5_handler as hdf5
-from climada.util.coordinates import dist_to_coast, get_resolution, coord_on_land, \
-pts_to_raster_meta, read_raster, read_vector, equal_crs, get_country_code
+from climada.util.coordinates import dist_to_coast, get_resolution, \
+                                     coord_on_land, pts_to_raster_meta, \
+                                     read_raster, read_vector, equal_crs, \
+                                     get_country_code, dist_to_coast_nasa, \
+                                     raster_to_meshgrid
 from climada.util.coordinates import NE_CRS, TMP_ELEVATION_FILE, DEM_NODATA, \
-MAX_DEM_TILES_DOWN
+                                     MAX_DEM_TILES_DOWN
 
 __all__ = ['Centroids']
 
@@ -53,7 +58,7 @@ DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
                             'region_id': 'NatId'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                  'col_name': {'region_id' : 'region_id',
@@ -61,7 +66,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
                               'lon' : 'longitude',
                              }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 LOGGER = logging.getLogger(__name__)
 
@@ -70,7 +75,7 @@ if shutil.which('eio') is None:
     setup_environ()
 
 class Centroids():
-    """ Contains raster or vector centroids. Raster data can be set with
+    """Contains raster or vector centroids. Raster data can be set with
     set_raster_file() or set_meta(). Vector data can be set with set_lat_lon()
     or set_vector_file().
 
@@ -91,10 +96,10 @@ class Centroids():
 
     vars_check = {'lat', 'lon', 'geometry', 'area_pixel', 'dist_coast',
                   'on_land', 'region_id', 'elevation'}
-    """ Variables whose size will be checked """
+    """Variables whose size will be checked"""
 
     def __init__(self):
-        """ Initialize to None raster and vector """
+        """Initialize to None raster and vector"""
         self.meta = dict()
         self.geometry = GeoSeries()
         self.lat = np.array([])
@@ -106,8 +111,8 @@ class Centroids():
         self.elevation = np.array([])
 
     def check(self):
-        """ Check that either raster meta attribute is set or points lat, lon
-        and geometry.crs. Check attributes sizes """
+        """Check that either raster meta attribute is set or points lat, lon
+        and geometry.crs. Check attributes sizes"""
         n_centr = self.size
         for var_name, var_val in self.__dict__.items():
             if var_name in self.vars_check:
@@ -126,7 +131,7 @@ class Centroids():
                 raise ValueError
 
     def equal(self, centr):
-        """ Return true if two centroids equal, false otherwise
+        """Return true if two centroids equal, false otherwise
 
         Parameters:
             centr (Centroids): centroids to compare
@@ -135,17 +140,43 @@ class Centroids():
             bool
         """
         if self.meta and centr.meta:
-            return equal_crs(self.meta['crs'], centr.meta['crs']) and \
-            self.meta['height'] == centr.meta['height'] and \
-            self.meta['width'] == centr.meta['width'] and \
-            self.meta['transform'] == centr.meta['transform']
-        return equal_crs(self.geometry.crs, centr.geometry.crs) and \
-        self.lat.shape == centr.lat.shape and self.lon.shape == centr.lon.shape and \
-        np.allclose(self.lat, centr.lat) and np.allclose(self.lon, centr.lon)
+            return equal_crs(self.meta['crs'], centr.meta['crs']) \
+                and self.meta['height'] == centr.meta['height'] \
+                and self.meta['width'] == centr.meta['width'] \
+                and self.meta['transform'] == centr.meta['transform']
+        return equal_crs(self.geometry.crs, centr.geometry.crs) \
+            and self.lat.shape == centr.lat.shape \
+            and self.lon.shape == centr.lon.shape \
+            and np.allclose(self.lat, centr.lat) \
+            and np.allclose(self.lon, centr.lon)
+
+    @staticmethod
+    def from_base_grid(land=False, res_as=360):
+        """Initialize from base grid data provided with CLIMADA
+
+        Parameters:
+            land (bool, optional): If True, restrict to grid points on land.
+                Default: False.
+            res_as (int, optional): Base grid resolution in arc-seconds (one of
+                150, 360). Default: 360.
+        """
+        centroids = Centroids()
+        base_file = NATEARTH_CENTROIDS_360AS
+        if res_as == 150:
+            base_file = NATEARTH_CENTROIDS_150AS
+        elif res_as != 360:
+            raise ValueError("No base grid for resolution %s", str(res_as))
+        centroids.read_hdf5(base_file)
+        if land:
+            land_reg_ids = list(range(1,1000))
+            land_reg_ids.remove(10)  # Antarctica
+            centroids = centroids.select(reg_id=land_reg_ids)
+        return centroids
+
 
     def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
                                    n_lon, crs=DEF_CRS):
-        """ Set raster metadata (meta attribute) from pixel border data
+        """Set raster metadata (meta attribute) from pixel border data
 
         Parameters:
             xf_lat (float): upper latitude (top)
@@ -157,12 +188,17 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        self.meta = {'dtype':'float32', 'width':n_lon, 'height':n_lat,
-                     'crs':crs, 'transform':Affine(d_lon, 0.0, xo_lon,
-                                                   0.0, d_lat, xf_lat)}
+        self.meta = {
+            'dtype': 'float32',
+            'width': n_lon,
+            'height': n_lat,
+            'crs': crs,
+            'transform': Affine(d_lon, 0.0, xo_lon,
+                                0.0, d_lat, xf_lat),
+        }
 
     def set_raster_from_pnt_bounds(self, points_bounds, res, crs=DEF_CRS):
-        """ Set raster metadata (meta attribute) from points border data.
+        """Set raster metadata (meta attribute) from points border data.
         Raster border = point_border + res/2
 
         Parameters:
@@ -171,12 +207,16 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, res)
-        self.set_raster_from_pix_bounds(ras_trans[5], ras_trans[2], ras_trans[4],
-                                        ras_trans[0], rows, cols, crs)
+        rows, cols, ras_trans = pts_to_raster_meta(points_bounds, (res, -res))
+        self.meta = {
+            'width': cols,
+            'height': rows,
+            'crs': crs,
+            'transform': ras_trans,
+        }
 
     def set_lat_lon(self, lat, lon, crs=DEF_CRS):
-        """ Set Centroids points from given latitude, longitude and CRS.
+        """Set Centroids points from given latitude, longitude and CRS.
 
         Parameters:
             lat (np.array): latitude
@@ -189,7 +229,7 @@ class Centroids():
     def set_raster_file(self, file_name, band=[1], src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None, width=None,
                         height=None, resampling=Resampling.nearest):
-        """ Read raster of bands and set 0 values to the masked ones. Each
+        """Read raster of bands and set 0 values to the masked ones. Each
         band is an event. Select region using window or geometry. Reproject
         input by proving dst_crs and/or (transform, width, height).
 
@@ -220,16 +260,16 @@ class Centroids():
 
         tmp_meta, inten = read_raster(file_name, band, src_crs, window, geometry,
                                       dst_crs, transform, width, height, resampling)
-        if (tmp_meta['crs'] != self.meta['crs']) or \
-        (tmp_meta['transform'] != self.meta['transform']) or \
-        (tmp_meta['height'] != self.meta['height']) or \
-        (tmp_meta['width'] != self.meta['width']):
-            LOGGER.error('Raster data inconsistent with contained raster.')
+        if (tmp_meta['crs'] != self.meta['crs']) \
+           or (tmp_meta['transform'] != self.meta['transform']) \
+           or (tmp_meta['height'] != self.meta['height']) \
+           or (tmp_meta['width'] != self.meta['width']):
+            LOGGER.error('Raster data is inconsistent with contained raster.')
             raise ValueError
         return sparse.csr_matrix(inten)
 
     def set_vector_file(self, file_name, inten_name=['intensity'], dst_crs=None):
-        """ Read vector file format supported by fiona. Each intensity name is
+        """Read vector file format supported by fiona. Each intensity name is
         considered an event. Returns intensity array with shape
         (len(inten_name), len(geometry)).
 
@@ -257,7 +297,7 @@ class Centroids():
         return sparse.csr_matrix(inten)
 
     def read_mat(self, file_name, var_names=DEF_VAR_MAT):
-        """ Read centroids from CLIMADA's MATLAB version
+        """Read centroids from CLIMADA's MATLAB version
 
         Parameters:
             file_name (str): absolute or relative file name
@@ -300,7 +340,7 @@ class Centroids():
             raise err
 
     def read_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Read centroids from excel file with column names in var_names
+        """Read centroids from excel file with column names in var_names
 
         Parameters:
             file_name (str): absolute or relative file name
@@ -327,18 +367,18 @@ class Centroids():
             raise err
 
     def clear(self):
-        """ Clear vector and raster data """
+        """Clear vector and raster data"""
         self.__init__()
 
     def append(self, centr):
-        """ Append raster or points. Raster needs to have the same resolution """
+        """Append raster or points. Raster needs to have the same resolution"""
         if self.meta and centr.meta:
             LOGGER.debug('Appending raster')
             if centr.meta['crs'] != self.meta['crs']:
                 LOGGER.error('Different CRS not accepted.')
                 raise ValueError
-            if self.meta['transform'][0] != centr.meta['transform'][0] or \
-            self.meta['transform'][4] != centr.meta['transform'][4]:
+            if self.meta['transform'][0] != centr.meta['transform'][0] \
+               or self.meta['transform'][4] != centr.meta['transform'][4]:
                 LOGGER.error('Different raster resolutions.')
                 raise ValueError
             left = min(self.total_bounds[0], centr.total_bounds[0])
@@ -346,11 +386,16 @@ class Centroids():
             right = max(self.total_bounds[2], centr.total_bounds[2])
             top = max(self.total_bounds[3], centr.total_bounds[3])
             crs = self.meta['crs']
-            width = (right - left)/self.meta['transform'][0]
-            height = (bottom - top)/self.meta['transform'][4]
-            self.meta = {'dtype':'float32', 'width':width, 'height':height,
-                         'crs':crs, 'transform':Affine(self.meta['transform'][0], \
-                         0.0, left, 0.0, self.meta['transform'][4], top)}
+            width = (right - left) / self.meta['transform'][0]
+            height = (bottom - top) / self.meta['transform'][4]
+            self.meta = {
+                'dtype': 'float32',
+                'width': width,
+                'height': height,
+                'crs': crs,
+                'transform': Affine(self.meta['transform'][0], 0.0, left,
+                                    0.0, self.meta['transform'][4], top),
+            }
             self.lat, self.lon = np.array([]), np.array([])
         else:
             LOGGER.debug('Appending points')
@@ -370,7 +415,7 @@ class Centroids():
                         astype(var_val.dtype, copy=False))
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
-        """ Returns closest centroid and its index to a given point.
+        """Returns closest centroid and its index to a given point.
 
         Parameters:
             x_lon (float): x coord (lon)
@@ -393,10 +438,10 @@ class Centroids():
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
     def set_region_id(self, scheduler=None):
-        """ Set region_id as country ISO numeric code attribute for every pixel
+        """Set region_id as country ISO numeric code attribute for every pixel
         or point
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -406,9 +451,9 @@ class Centroids():
                                           ne_geom.geometry[:].x.values)
 
     def set_area_pixel(self, min_resol=1.0e-8, scheduler=None):
-        """ Set area_pixel attribute for every pixel or point. area in m*m
+        """Set area_pixel attribute for every pixel or point. area in m*m
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): if centroids are points, use this minimum
                 resolution in lat and lon. Default: 1.0e-8
             scheduler (str): used for dask map_partitions. “threads”,
@@ -426,7 +471,8 @@ class Centroids():
                 raise ValueError
             res = self.meta['transform'].a
         else:
-            res = min(get_resolution(self.lat, self.lon, min_resol))
+            res = get_resolution(self.lat, self.lon, min_resol=min_resol)
+            res = np.abs(res).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res/2).envelope
@@ -438,10 +484,10 @@ class Centroids():
             self.area_pixel = xy_pixels.to_crs(crs={'proj':'cea'}).area.values
 
     def set_area_approx(self, min_resol=1.0e-8):
-        """ Computes approximated area_pixel values: differentiated per latitude.
+        """Computes approximated area_pixel values: differentiated per latitude.
         area in m*m. Faster than set_area_pixel
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): if centroids are points, use this minimum
                 resolution in lat and lon. Default: 1.0e-8
         """
@@ -457,12 +503,13 @@ class Centroids():
             lon_unique_len = self.meta['width']
             res_lat = abs(res_lat)
         else:
-            res_lat, res_lon = get_resolution(self.lat, self.lon, min_resol)
+            res_lat, res_lon = np.abs(get_resolution(self.lat, self.lon,
+                                                     min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
-            if ('units' in self.geometry.crs and \
-            self.geometry.crs['units'] in ['m', 'metre', 'meter']) or \
-            equal_crs(self.geometry.crs, {'proj':'cea'}):
+            if ('units' in self.geometry.crs \
+                and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
+               or equal_crs(self.geometry.crs, {'proj': 'cea'}):
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
                 return
 
@@ -477,10 +524,10 @@ class Centroids():
             raise ValueError
 
     def set_dist_coast(self, scheduler=None):
-        """ Set dist_coast attribute for every pixel or point. Distance to
+        """Set dist_coast attribute for every pixel or point. Distance to
         coast is computed in meters.
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -489,9 +536,9 @@ class Centroids():
         self.dist_coast = dist_to_coast(ne_geom)
 
     def set_on_land(self, scheduler=None):
-        """ Set on_land attribute for every pixel or point
+        """Set on_land attribute for every pixel or point
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -500,9 +547,9 @@ class Centroids():
         self.on_land = coord_on_land(ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
     def remove_duplicate_points(self, scheduler=None):
-        """ Return Centroids with removed duplicated points
+        """Return Centroids with removed duplicated points
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -515,7 +562,7 @@ class Centroids():
         return self.select(sel_cen=sel_cen)
 
     def select(self, reg_id=None, sel_cen=None):
-        """ Return Centroids with points in the given reg_id or within mask
+        """Return Centroids with points in the given reg_id or within mask
 
         Parameters:
             reg_id (int): region to filter according to region_id values
@@ -543,32 +590,33 @@ class Centroids():
         return centr
 
     def set_lat_lon_to_meta(self, min_resol=1.0e-8):
-        """ Compute meta from lat and lon values. To match the existing lat
-        and lon, lat and lon need to start from the upper left corner!!
+        """Compute meta from lat and lon values.
 
-        Parameter:
+        Parameters:
             min_resol (float, optional): minimum centroids resolution to use
                 in the raster. Default: 1.0e-8.
         """
-        self.meta = dict()
-        res = min(get_resolution(self.lat, self.lon, min_resol))
+        res = get_resolution(self.lon, self.lat, min_resol=min_resol)
         rows, cols, ras_trans = pts_to_raster_meta(self.total_bounds, res)
         LOGGER.debug('Resolution points: %s', str(res))
-        self.meta = {'width':cols, 'height':rows, 'crs':self.crs, 'transform':ras_trans}
+        self.meta = {
+            'width': cols,
+            'height': rows,
+            'crs': self.crs,
+            'transform': ras_trans,
+        }
 
     def set_meta_to_lat_lon(self):
-        """ Compute lat and lon of every pixel center from meta raster """
-        ulx, xres, _, uly, _, yres = self.meta['transform'].to_gdal()
-        lrx = ulx + (self.meta['width'] * xres)
-        lry = uly + (self.meta['height'] * yres)
-        x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
-                                     np.arange(uly+yres/2, lry, yres))
-        self.lon = x_grid.flatten()
-        self.lat = y_grid.flatten()
+        """Compute lat and lon of every pixel center from meta raster"""
+        xgrid, ygrid = raster_to_meshgrid(self.meta['transform'],
+                                          self.meta['width'],
+                                          self.meta['height'])
+        self.lon = xgrid.flatten()
+        self.lat = ygrid.flatten()
         self.geometry = GeoSeries(crs=self.meta['crs'])
 
     def plot(self, axis=None, **kwargs):
-        """ Plot centroids scatter points over earth.
+        """Plot centroids scatter points over earth.
 
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
@@ -586,9 +634,9 @@ class Centroids():
         return axis
 
     def calc_pixels_polygons(self, scheduler=None):
-        """ Return a GeoSeries with a polygon for every pixel
+        """Return a GeoSeries with a polygon for every pixel
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -605,14 +653,14 @@ class Centroids():
         return self.geometry.buffer(self.meta['transform'].a/2).envelope
 
     def empty_geometry_points(self):
-        """ Removes points in geometry. Useful when centroids is used in
-        multiprocessing function """
+        """Removes points in geometry. Useful when centroids is used in
+        multiprocessing function"""
         self.geometry = GeoSeries(crs=self.geometry.crs)
 
     def write_hdf5(self, file_data):
-        """ Write centroids attributes into hdf5 format.
+        """Write centroids attributes into hdf5 format.
 
-        Parameter:
+        Parameters:
             file_data (str or h5): if string, path to write data. if h5 object,
                 the datasets will be generated there
         """
@@ -624,7 +672,7 @@ class Centroids():
         str_dt = h5py.special_dtype(vlen=str)
         for centr_name, centr_val in self.__dict__.items():
             if isinstance(centr_val, np.ndarray):
-                data.create_dataset(centr_name, data=centr_val)
+                data.create_dataset(centr_name, data=centr_val, compression="gzip")
             if centr_name == 'meta' and centr_val:
                 centr_meta = data.create_group(centr_name)
                 for key, value in centr_val.items():
@@ -644,9 +692,9 @@ class Centroids():
             data.close()
 
     def read_hdf5(self, file_data):
-        """ Read centroids attributes from hdf5.
+        """Read centroids attributes from hdf5.
 
-        Parameter:
+        Parameters:
             file_data (str or h5): if string, path to read data. if h5 object,
                 the datasets will be read from there
         """
@@ -672,8 +720,7 @@ class Centroids():
                 if key != 'transform':
                     self.meta[key] = value[0]
                 else:
-                    self.meta[key] = Affine(value[0], value[1], value[2],
-                                            value[3], value[4], value[5])
+                    self.meta[key] = Affine(*value)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(self, centr_name, np.array(data.get(centr_name)))
@@ -682,21 +729,21 @@ class Centroids():
 
     @property
     def crs(self):
-        """ Get CRS of raster or vector """
+        """Get CRS of raster or vector"""
         if self.meta:
             return self.meta['crs']
         return self.geometry.crs
 
     @property
     def size(self):
-        """ Get size of pixels or points"""
+        """Get size of pixels or points"""
         if self.meta:
             return self.meta['height']*self.meta['width']
         return self.lat.size
 
     @property
     def shape(self):
-        """ Get shape of rastered data """
+        """Get shape of rastered data"""
         try:
             if self.meta:
                 return (self.meta['height'], self.meta['width'])
@@ -706,7 +753,7 @@ class Centroids():
 
     @property
     def total_bounds(self):
-        """ Get total bounds (left, bottom, right, top)"""
+        """Get total bounds (left, bottom, right, top)"""
         if self.meta:
             left = self.meta['transform'].xoff
             right = left + self.meta['transform'][0]*self.meta['width']
@@ -717,14 +764,14 @@ class Centroids():
 
     @property
     def coord(self):
-        """ Get [lat, lon] array. Might take some time. """
+        """Get [lat, lon] array. Might take some time."""
         return np.array([self.lat, self.lon]).transpose()
 
     def set_geometry_points(self, scheduler=None):
-        """ Set geometry attribute of GeoSeries with Points from latitude and
+        """Set geometry attribute of GeoSeries with Points from latitude and
         longitude attributes if geometry not present.
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
@@ -746,9 +793,9 @@ class Centroids():
                 compute(scheduler=scheduler)
 
     def _ne_crs_geom(self, scheduler=None):
-        """ Return x (lon) and y (lat) in the CRS of Natural Earth
+        """Return x (lon) and y (lat) in the CRS of Natural Earth
 
-        Parameter:
+        Parameters:
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
 
@@ -763,7 +810,7 @@ class Centroids():
         return self.geometry.to_crs(NE_CRS)
 
     def __deepcopy__(self, memo):
-        """ Avoid error deep copy in GeoSeries by setting only the crs """
+        """Avoid error deep copy in GeoSeries by setting only the crs"""
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -773,3 +820,35 @@ class Centroids():
             else:
                 setattr(result, key, copy.deepcopy(value, memo))
         return result
+
+
+def generate_nat_earth_centroids(res_as=360):
+    """For reproducibility, this is the function that generates the centroids
+        files `NATEARTH_CENTROIDS_*AS`. These files are provided with CLIMADA
+        so that this function should never be called!
+
+    Parameters:
+        res_as (int): Resolution of file in arc-seconds. Default: 360.
+    """
+    if res_as not in [150, 360]:
+        raise ValueError("Only 150 and 360 arc-seconds are supported!")
+
+    res_deg = res_as / 3600
+    lat_dim = np.arange(-90 + res_deg, 90, res_deg)
+    lon_dim = np.arange(-180 + res_deg, 180 + res_deg, res_deg)
+    grid_shape = (lat_dim.size, lon_dim.size)
+    lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
+    natids = np.uint16(get_country_code(lat, lon, gridded=False, natid=False))
+
+    cen = Centroids()
+    cen.set_lat_lon(lat, lon)
+    cen.region_id = natids
+    cen.set_lat_lon_to_meta()
+    cen.lat = np.array([])
+    cen.lon = np.array([])
+
+    path = NATEARTH_CENTROIDS_150AS
+    if res_as == 360:
+        path = NATEARTH_CENTROIDS_360AS
+        cen.dist_coast = np.float16(dist_to_coast_nasa(lat, lon))
+    cen.write_hdf5(path)

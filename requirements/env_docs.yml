@@ -44,6 +44,10 @@ dependencies:
   - ipykernel=5.1.0
   - ipython=7.3.0
   - jupyter_client=5.2.4
+  - mock
+  - pandoc
+  - sphinx
+  - sphinx_rtd_theme
   - pip:
     - contextily==1.0rc2
     - haversine==2.1.1
@@ -58,4 +62,5 @@ dependencies:
     - ppft==1.6.4.9
     - xmlrunner==1.7.7
     - nbsphinx==0.4.2
-    - sphinx
+    - recommonmark
+    - readthedocs-sphinx-ext
