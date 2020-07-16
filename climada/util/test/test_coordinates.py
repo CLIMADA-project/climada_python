@@ -80,9 +80,9 @@ class TestFunc(unittest.TestCase):
         ])
         compute_dist = np.stack([
             dist_approx(data[:, None, 0], data[:, None, 1],
-                data[:, None, 2], data[:, None, 3], method="equirect")[:, 0, 0],
+                        data[:, None, 2], data[:, None, 3], method="equirect")[:, 0, 0],
             dist_approx(data[:, None, 0], data[:, None, 1],
-                data[:, None, 2], data[:, None, 3], method="geosphere")[:, 0, 0],
+                        data[:, None, 2], data[:, None, 3], method="geosphere")[:, 0, 0],
         ], axis=-1)
         self.assertEqual(compute_dist.shape[0], data.shape[0])
         for d, cd in zip(data[:, 4:], compute_dist):
@@ -96,7 +96,7 @@ class TestFunc(unittest.TestCase):
         ])
         for i, method in enumerate(["equirect", "geosphere"]):
             dist, vec = dist_approx(data[:, None, 0], data[:, None, 1],
-                data[:, None, 2], data[:, None, 3], log=True, method=method)
+                                    data[:, None, 2], data[:, None, 3], log=True, method=method)
             dist, vec = dist[:, 0, 0], vec[:, 0, 0]
             self.assertTrue(np.allclose(np.linalg.norm(vec, axis=-1), dist))
             self.assertTrue(np.allclose(dist, data[:, 4 + i]))
@@ -108,8 +108,8 @@ class TestFunc(unittest.TestCase):
 
     def test_read_vector_pass(self):
         """Test one columns data"""
-        shp_file = shapereader.natural_earth(resolution='110m',
-            category='cultural', name='populated_places_simple')
+        shp_file = shapereader.natural_earth(resolution='110m', category='cultural',
+                                             name='populated_places_simple')
         lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
 
         self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
@@ -419,9 +419,11 @@ class TestRasterMeta(unittest.TestCase):
         lat = np.array([13.125, 13.20833333, 13.29166667, 13.125,
                         13.20833333, 13.125, 12.625, 12.70833333,
                         12.79166667, 12.875, 12.95833333, 13.04166667])
-        lon = np.array([-59.6250000000000, -59.6250000000000, -59.6250000000000, -59.5416666666667,
-                        -59.5416666666667, -59.4583333333333, -60.2083333333333, -60.2083333333333,
-                        -60.2083333333333, -60.2083333333333, -60.2083333333333, -60.2083333333333])
+        lon = np.array([
+            -59.6250000000000, -59.6250000000000, -59.6250000000000, -59.5416666666667,
+            -59.5416666666667, -59.4583333333333, -60.2083333333333, -60.2083333333333,
+            -60.2083333333333, -60.2083333333333, -60.2083333333333, -60.2083333333333
+        ])
         res_lat, res_lon = get_resolution(lat, lon)
         self.assertAlmostEqual(res_lat, 0.0833333333333)
         self.assertAlmostEqual(res_lon, 0.0833333333333)
@@ -546,8 +548,7 @@ class TestRasterIO(unittest.TestCase):
     def test_transform_raster_pass(self):
         transform = Affine(0.009000000000000341, 0.0, -69.33714959699981,
                            0.0, -0.009000000000000341, 10.42822096697894)
-        meta, inten_ras = read_raster(HAZ_DEMO_FL,
-            transform=transform, height=500, width=501)
+        meta, inten_ras = read_raster(HAZ_DEMO_FL, transform=transform, height=500, width=501)
 
         left = meta['transform'].xoff
         top = meta['transform'].yoff

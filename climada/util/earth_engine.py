@@ -90,8 +90,7 @@ def obtain_image_sentinel(sentinel_collection, time_range, area):
         band_qa = image.select('QA60')
         cloud_mask = ee.Number(2).pow(10).int()
         cirrus_mask = ee.Number(2).pow(11).int()
-        mask = band_qa.bitwiseAnd(cloud_mask).eq(0) and(
-            band_qa.bitwiseAnd(cirrus_mask).eq(0))
+        mask = band_qa.bitwiseAnd(cloud_mask).eq(0) and (band_qa.bitwiseAnd(cirrus_mask).eq(0))
         return image.updateMask(mask).divide(10000)
 
     sentinel_filtered = (ee.ImageCollection(sentinel_collection).
@@ -141,7 +140,7 @@ def get_url(name, image, scale, region):
         'name': (name),
         'scale': scale,
         'region': (region)
-        })
+    })
 
     webbrowser.open_new_tab(path)
     return path

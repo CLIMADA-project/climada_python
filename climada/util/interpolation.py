@@ -132,7 +132,7 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
 
     if num_warn:
         LOGGER.warning('Distance to closest centroid is greater than %s'
-            'km for %s coordinates.', threshold, num_warn)
+                       'km for %s coordinates.', threshold, num_warn)
 
     return assigned
 
@@ -168,7 +168,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
     if num_warn:
         LOGGER.warning('Distance to closest centroid is greater than %s'
-            'km for %s coordinates.', threshold, num_warn)
+                       'km for %s coordinates.', threshold, num_warn)
         assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     # Copy result to all exposures and return value

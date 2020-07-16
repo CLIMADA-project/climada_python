@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Functions to deal with files.
 """
 
-__all__ = ['to_list',
-           'get_file_names'
-          ]
+__all__ = [
+    'to_list',
+    'get_file_names',
+]
 
 import os
 import glob

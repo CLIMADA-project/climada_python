@@ -19,11 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define configuration parameters.
 """
 
-__all__ = ['CONFIG',
-           'setup_logging',
-           'setup_conf_user',
-           'setup_environ'
-          ]
+__all__ = [
+    'CONFIG',
+    'setup_logging',
+    'setup_conf_user',
+    'setup_environ'
+]
 
 import sys
 import os
@@ -99,7 +100,7 @@ def setup_conf_user():
     conf_name = 'climada.conf'
     user_file = os.path.abspath(os.path.join(WORKING_DIR, conf_name))
     while not os.path.isfile(user_file) and user_file != UNIX_END + conf_name \
-    and user_file != WINDOWS_END + conf_name:
+            and user_file != WINDOWS_END + conf_name:
         user_file = os.path.abspath(os.path.join(user_file, os.pardir,
                                                  os.pardir, conf_name))
 
@@ -140,5 +141,5 @@ def setup_environ():
             first_dot = env_cpy.find(':')
         # add environment bin path
         if CONFIG['config']['env_name'] not in os.environ['PATH']:
-            os.environ['PATH'] = os.environ['PATH'].replace('conda3/bin',
-                'conda3/envs/' + CONFIG['config']['env_name'] + '/bin')
+            os.environ['PATH'] = os.environ['PATH'].replace(
+                'conda3/bin', 'conda3/envs/' + CONFIG['config']['env_name'] + '/bin')
