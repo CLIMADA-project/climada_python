@@ -162,7 +162,7 @@ class DiscRates():
         sel_disc = self.select(year_range)
         if sel_disc is None:
             LOGGER.error('No information of discount rates for provided years:'
-                        ' %s - %s', ini_year, end_year)
+                         ' %s - %s', ini_year, end_year)
             raise ValueError
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)

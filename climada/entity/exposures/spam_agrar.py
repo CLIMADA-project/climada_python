@@ -165,7 +165,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self.ref_year = 2005
         self.tag = Tag()
         self.tag.description = ("SPAM agrar exposure for variable "
-            + spam_v + " and technology " + spam_t)
+                                + spam_v + " and technology " + spam_t)
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
@@ -258,18 +258,16 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                     self._spam_download_csv(data_path=data_path,
                                             spam_variable=spam_var)
                 except:
-                    raise FileExistsError('The file ' + str(fname)
-                                + ' could not '
-                                + 'be found. Please download the file '
-                                + 'first or choose a different folder. '
-                                + 'The data can be downloaded from '
-                                + 'https://dataverse.harvard.edu/'
-                                + 'dataset.xhtml?persistentId=doi:'
-                                + '10.7910/DVN/DHXBJX')
+                    raise FileExistsError('The file ' + str(fname) + ' could not '
+                                          + 'be found. Please download the file '
+                                          + 'first or choose a different folder. '
+                                          + 'The data can be downloaded from '
+                                          + 'https://dataverse.harvard.edu/'
+                                          + 'dataset.xhtml?persistentId=doi:'
+                                          + '10.7910/DVN/DHXBJX')
             LOGGER.debug('Importing %s', str(fname_short))
 
-            data = pd.read_csv(fname, sep=',', index_col=None, header=0,
-                             encoding='ISO-8859-1')
+            data = pd.read_csv(fname, sep=',', index_col=None, header=0, encoding='ISO-8859-1')
 
         except:
             LOGGER.error('Importing the SPAM agriculturer file failed. '
@@ -293,20 +291,20 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                     self._spam_download_csv(data_path=data_path,
                                             spam_variable='cell5m')
                 except:
-                    raise FileExistsError('The file ' + str(fname)
-                                + ' could not '
-                                + 'be found. Please download the file '
-                                + 'first or choose a different folder. '
-                                + 'The data can be downloaded from '
-                                + 'https://dataverse.harvard.edu/'
-                                + 'dataset.xhtml?persistentId=doi:'
-                                + '10.7910/DVN/DHXBJX')
+                    raise FileExistsError('The file ' + str(fname) + ' could not '
+                                          + 'be found. Please download the file '
+                                          + 'first or choose a different folder. '
+                                          + 'The data can be downloaded from '
+                                          + 'https://dataverse.harvard.edu/'
+                                          + 'dataset.xhtml?persistentId=doi:'
+                                          + '10.7910/DVN/DHXBJX')
             # LOGGER.debug('Inporting %s', str(fname))
 
             concordance_data = pd.read_csv(fname, sep=',', index_col=None,
                                            header=0, encoding='ISO-8859-1')
 
-            concordance_data = concordance_data[concordance_data['alloc_key'].isin(alloc_key_array)]
+            concordance_data = concordance_data[
+                concordance_data['alloc_key'].isin(alloc_key_array)]
 
             concordance_data = concordance_data.sort_values(by=['alloc_key'])
 
@@ -340,12 +338,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
         signifier = ''
-        if not adm0 is None:
+        if adm0 is not None:
             if data[data.iso3 == adm0].empty:
                 if data[data.name_cntr == adm0].empty:
                     LOGGER.warning('Country name not found in data: %s',
-                                   str(adm0)
-                               + '. Try passing the ISO3-code instead.')
+                                   str(adm0) + '. Try passing the ISO3-code instead.')
                 else:
                     data = data[data.name_cntr == adm0]
                     signifier = signifier + adm0
@@ -353,13 +350,13 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                 data = data[data.iso3 == adm0]
                 signifier = signifier + adm0
 
-        if not adm1 is None:
+        if adm1 is not None:
             if data[data.name_adm1 == adm1].empty:
                 LOGGER.warning('Admin1 not found in data: %s', str(adm1))
             else:
                 data = data[data.name_adm1 == adm1]
                 signifier = signifier + ' ' + adm1
-        if not adm2 is None:
+        if adm2 is not None:
             if data[data.name_adm2 == adm2].empty:
                 LOGGER.warning('Admin2 not found in data: %s', str(adm2))
             else:
@@ -394,8 +391,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             if not os.path.isfile(fname):
                 url1 = 'https://dataverse.harvard.edu/api/access/datafile/:'\
                         + 'persistentId?persistentId=doi:10.7910/DVN/DHXBJX/'
-                permalinks = pd.DataFrame(columns=['A', 'H',
-                        'P', 'Y', 'V_agg', 'cell5m'])
+                permalinks = pd.DataFrame(columns=['A', 'H', 'P', 'Y', 'V_agg', 'cell5m'])
                 permalinks.loc[0, 'A'] = url1 + 'FS1JO8'
                 permalinks.loc[0, 'H'] = url1 + 'M727TX'
                 permalinks.loc[0, 'P'] = url1 + 'HPUWVA'

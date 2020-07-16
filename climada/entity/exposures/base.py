@@ -148,7 +148,7 @@ class Exposures(GeoDataFrame):
                 LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
 
         for var in self.vars_oblig:
-            if not var in self.columns:
+            if var not in self.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError
 
@@ -175,8 +175,8 @@ class Exposures(GeoDataFrame):
             if not found:
                 LOGGER.info("%s not set.", var)
             elif var == 'geometry' and \
-            (self.geometry.values[0].x != self.longitude.values[0] or
-            self.geometry.values[0].y != self.latitude.values[0]):
+                    (self.geometry.values[0].x != self.longitude.values[0] or
+                     self.geometry.values[0].y != self.latitude.values[0]):
                 LOGGER.error(("Geometry values do not correspond to latitude and "
                               "longitude. Use set_geometry_points() or set_lat_lon()."))
                 raise ValueError
@@ -216,7 +216,8 @@ class Exposures(GeoDataFrame):
                 assigned = np.arange(self.shape[0])
             else:
                 assigned = interpol_index(hazard.centroids.coord, coord,
-                    method=method, distance=distance, threshold=threshold)
+                                          method=method, distance=distance,
+                                          threshold=threshold)
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
@@ -307,7 +308,8 @@ class Exposures(GeoDataFrame):
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
-            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
+                                             pop_name, buffer, extend, proj=crs_epsg,
+                                             axes=axis, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, **kwargs):
@@ -344,7 +346,8 @@ class Exposures(GeoDataFrame):
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
-            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
+                                         pop_name, buffer, extend, proj=crs_epsg,
+                                         axes=axis, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
@@ -385,8 +388,8 @@ class Exposures(GeoDataFrame):
         # save tiff
         if save_tiff is not None:
             ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff',
-                height=meta['height'], width=meta['width'], count=1,
-                dtype=np.float32, crs=self.crs, transform=meta['transform'])
+                                     height=meta['height'], width=meta['width'], count=1,
+                                     dtype=np.float32, crs=self.crs, transform=meta['transform'])
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
@@ -396,10 +399,11 @@ class Exposures(GeoDataFrame):
         if not axis:
             _, axis = u_plot.make_map(proj=crs_epsg)
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-            pad=0.1, axes_class=plt.Axes)
+                                                        pad=0.1, axes_class=plt.Axes)
         axis.set_extent([max(xmin, crs_epsg.x_limits[0]),
-            min(xmax, crs_epsg.x_limits[1]), max(ymin, crs_epsg.y_limits[0]),
-            min(ymax, crs_epsg.y_limits[1])], crs_epsg)
+                         min(xmax, crs_epsg.x_limits[1]),
+                         max(ymin, crs_epsg.y_limits[0]),
+                         min(ymax, crs_epsg.y_limits[1])], crs_epsg)
         u_plot.add_shapes(axis)
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
@@ -652,7 +656,7 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
 
     try:
         exposures.value_unit = hdf5.get_str_from_ref(file_name,
-            data[var_names['var_name']['uni']][0][0])
+                                                     data[var_names['var_name']['uni']][0][0])
     except KeyError:
         exposures.value_unit = DEF_VALUE_UNIT
 

@@ -64,8 +64,8 @@ def _gpw_bbox_cutter(gpw_data, bbox, resolution, arr1_shape=[17400, 43200]):
         row_max = row_max + 1
     gpw_data = gpw_data[:, col_min:col_max]
 
-    if row_min >= 0 and row_min < (rows_gpw / zoom) and row_max >= 0 and\
-        row_max < (rows_gpw / zoom):
+    if row_min >= 0 and row_min < (rows_gpw / zoom) and row_max >= 0 \
+       and row_max < (rows_gpw / zoom):
         gpw_data = gpw_data[row_min:row_max, :]
     elif row_min < 0 and row_max >= 0 and row_max < (rows_gpw / zoom):
         np.concatenate(np.zeros((abs(row_min), gpw_data.shape[1])),
@@ -90,12 +90,10 @@ def check_bounding_box(coord_list):
     if coord_list.size != 4:
         is_correct_type = False
         return is_correct_type
-    min_lat, min_lon, max_lat, max_lon = coord_list[0], coord_list[1],\
-                                         coord_list[2], coord_list[3]
-    assert max_lat < min_lat, "Maximum latitude cannot be smaller than "\
-                                + "minimum latitude."
-    assert max_lon < min_lon, "Maximum longitude cannot be smaller than "\
-                                + "minimum longitude."
+    min_lat, min_lon, max_lat, max_lon = (coord_list[0], coord_list[1],
+                                          coord_list[2], coord_list[3])
+    assert max_lat < min_lat, "Maximum latitude cannot be smaller than minimum latitude."
+    assert max_lon < min_lon, "Maximum longitude cannot be smaller than minimum longitude."
     assert min_lat < -90, "Minimum latitude cannot be smaller than -90."
     assert min_lon < -180, "Minimum longitude cannot be smaller than -180."
     assert max_lat > 90, "Maximum latitude cannot be larger than 90."
@@ -173,8 +171,7 @@ def get_box_gpw(**parameters):
     try:
         if not file_exists:
             if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
-                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')],
-                                  shell=True)
+                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')], shell=True)
                 raise FileExistsError('The file ' + str(fname) + ' could not '
                                       + 'be found. Please download the file '
                                       + 'first or choose a different folder. '
@@ -206,7 +203,7 @@ def get_box_gpw(**parameters):
         else:
             tile_temp = arr1
         if tile_temp.ndim == 2:
-            if not cut_bbox is None:
+            if cut_bbox is not None:
                 tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution,
                                              arr1_shape=arr1.shape)
         else:
