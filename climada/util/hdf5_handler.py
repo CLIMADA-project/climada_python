@@ -56,7 +56,7 @@ def read(file_name, with_refs=False):
             Exception while reading
         """
     def get_group(group):
-        '''Recursive function to get variables from a group.'''
+        """Recursive function to get variables from a group."""
         contents = {}
         for name, obj in list(group.items()):
             if isinstance(obj, h5py.Dataset):

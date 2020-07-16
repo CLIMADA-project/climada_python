@@ -129,13 +129,13 @@ class TestPlotter(unittest.TestCase):
         ifc2.plot(axis=myax)
 
     def test_ctx_osm_pass(self):
-        """ Test basemap function using osm images """
+        """Test basemap function using osm images"""
         myexp = Exposures()
         myexp['latitude'] = np.array([30, 40, 50])
         myexp['longitude'] = np.array([0, 0, 0])
         myexp['value'] = np.array([1, 1, 1])
         myexp.check()
-        
+
         try:
             myexp.plot_basemap(url=ctx.sources.OSM_A)
         except urllib.error.HTTPError:

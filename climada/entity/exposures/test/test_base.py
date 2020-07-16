@@ -55,7 +55,7 @@ class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
-        """ Check that assigned attribute is correctly set."""
+        """Check that assigned attribute is correctly set."""
         # Fill with dummy values
         expo = good_exposures()
         expo.check()
@@ -69,7 +69,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
 
     def test_read_raster_pass(self):
-        """ set_from_raster """
+        """set_from_raster"""
         exp = Exposures()
         exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
         exp.check()
@@ -82,7 +82,7 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
-        """ Test assign_centroids with raster hazard """
+        """Test assign_centroids with raster hazard"""
         exp = Exposures()
         exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
         exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
@@ -98,7 +98,7 @@ class TestFuncs(unittest.TestCase):
 
 
     def test_assign_raster_same_pass(self):
-        """ Test assign_centroids with raster hazard """
+        """Test assign_centroids with raster hazard"""
         exp = Exposures()
         exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
         exp.check()
@@ -109,7 +109,7 @@ class TestFuncs(unittest.TestCase):
                                        np.arange(haz.centroids.size, dtype=int)))
 
 class TestChecker(unittest.TestCase):
-    """Test logs of check function """
+    """Test logs of check function"""
 
     def test_info_logs_pass(self):
         """Wrong exposures definition"""
@@ -145,7 +145,7 @@ class TestChecker(unittest.TestCase):
             expo.check()
 
 class TestIO(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
 
     def test_read_template_pass(self):
         """Wrong exposures definition"""
@@ -158,7 +158,7 @@ class TestIO(unittest.TestCase):
         exp_df.check()
 
     def test_io_hdf5_pass(self):
-        """ write and read hdf5 """
+        """write and read hdf5"""
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
         exp_df.set_geometry_points()
         exp_df.check()
@@ -195,7 +195,7 @@ class TestIO(unittest.TestCase):
             self.assertEqual(point_df.y, point_read.y)
 
 class TestAddSea(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = Exposures()
@@ -242,7 +242,7 @@ class TestAddSea(unittest.TestCase):
 
 
 class TestGeoDFFuncs(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
     def test_copy_pass(self):
         """Test copy function."""
         exp = good_exposures()
@@ -285,7 +285,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.tag.file_name, '')
 
     def test_constructoer_pass(self):
-        """ Test initialization with input GeiDataFrame """
+        """Test initialization with input GeiDataFrame"""
         in_gpd = gpd.GeoDataFrame()
         in_gpd['value'] = np.zeros(10)
         in_gpd.ref_year = 2015

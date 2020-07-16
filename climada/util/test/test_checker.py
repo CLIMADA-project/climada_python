@@ -95,5 +95,6 @@ class TestChecks(unittest.TestCase):
         self.assertIn('Invalid DummyClass.list size: 25 != 3.', cm.output[0])        
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecks)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecks)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

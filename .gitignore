@@ -56,6 +56,7 @@ climada/engine/test/data/test.xlsx
 climada/engine/test/data/test_imp_mat.npz
 climada/entity/impact_funcs/test/test_write.xlsx
 climada/hazard/test/data/test_haz.h5
+climada/hazard/test/data/tc_tracks_nc/*
 climada/test/data/1988234N13299.nc
 climada/test/data/exposure_high_47_8.h5
 climada/test/data/test_write_hazard.tif

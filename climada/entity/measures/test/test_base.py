@@ -184,7 +184,7 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp[INDICATOR_IF+'TC'].values, np.ones(new_exp.shape[0])*3))
 
     def test_change_all_hazard_pass(self):
-        """Test _change_all_hazard method """
+        """Test _change_all_hazard method"""
         meas = Measure()
         meas.hazard_set = HAZ_DEMO_H5
 
@@ -204,7 +204,7 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_haz.fraction.data, ref_haz.fraction.data))
 
     def test_change_all_exposures_pass(self):
-        """Test _change_all_exposures method """
+        """Test _change_all_exposures method"""
         meas = Measure()
         meas.exposures_set = EXP_DEMO_H5
 
@@ -340,7 +340,7 @@ class TestApply(unittest.TestCase):
                         new_haz.intensity[[36, 46]].toarray()))
 
     def test_apply_ref_pass(self):
-        """ Test apply method: apply all measures but insurance """
+        """Test apply method: apply all measures but insurance"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         hazard.haz_type = 'TC'
@@ -378,7 +378,7 @@ class TestApply(unittest.TestCase):
             1.000000000000000])))
 
     def test_calc_impact_pass(self):
-        """ Test calc_impact method: apply all measures but insurance """
+        """Test calc_impact method: apply all measures but insurance"""
 
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
@@ -417,7 +417,7 @@ class TestApply(unittest.TestCase):
 
 
     def test_calc_impact_transf_pass(self):
-        """ Test calc_impact method: apply all measures and insurance """
+        """Test calc_impact method: apply all measures and insurance"""
 
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)

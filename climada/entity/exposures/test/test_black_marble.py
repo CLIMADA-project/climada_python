@@ -42,7 +42,7 @@ class TestCountryIso(unittest.TestCase):
     """Test country_iso function."""
 
     def test_che_kos_pass(self):
-        """CHE, KOS """
+        """CHE, KOS"""
         country_name = ['Switzerland', 'Kosovo']
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
 
@@ -162,7 +162,7 @@ class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
     def test_cut_country_brb_1km_pass(self):
-        """ Test _cut_country function with fake Barbados."""
+        """Test _cut_country function with fake Barbados."""
         country_iso = 'BRB'
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
@@ -201,7 +201,7 @@ class TestNightLight(unittest.TestCase):
         self.assertTrue(np.allclose(nightlight_ref, nightlight_reg))
 
     def test_cut_country_brb_2km_pass(self):
-        """ Test _resample_land function with fake Barbados."""
+        """Test _resample_land function with fake Barbados."""
         country_iso = 'BRB'
         for cntry in list(SHP_FILE.records()):
             if cntry.attributes['ADM0_A3'] == country_iso:
@@ -251,19 +251,25 @@ class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""
 
     def test_fill_econ_indicators_pass(self):
-        """ Test fill_econ_indicators CHE, ZMB."""
+        """Test fill_econ_indicators CHE, ZMB."""
         ref_year = 2015
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
         fill_econ_indicators(ref_year, country_isos, SHP_FILE)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832391757.542, 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243350632.5008, 2]
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832291693, 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243347377, 2]
                            }
-        self.assertEqual(country_isos, country_isos_ref)
+        self.assertEqual(country_isos.keys(), country_isos_ref.keys())
+        for country in country_isos_ref.keys():
+            for i in [0, 1, 2, 3, 5]: # test elements one by one:
+                self.assertEqual(country_isos[country][i], \
+                                 country_isos_ref[country][i])
+            self.assertAlmostEqual(country_isos[country][4]*1e-6, \
+                                 country_isos_ref[country][4]*1e-6, places=0)
 
     def test_fill_econ_indicators_kwargs_pass(self):
-        """ Test fill_econ_indicators with kwargs inputs."""
+        """Test fill_econ_indicators with kwargs inputs."""
         ref_year = 2015
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
@@ -278,22 +284,29 @@ class TestEconIndices(unittest.TestCase):
         self.assertEqual(country_isos, country_isos_ref)
 
     def test_fill_econ_indicators_na_pass(self):
-        """ Test fill_econ_indicators with '' inputs."""
-        ref_year = 2015
+        """Test fill_econ_indicators with '' inputs."""
+        ref_year = 2019
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
-        gdp = {'CHE': 1.2, 'ZMB': ''}
+        gdp = {'CHE': 1.2*1e20, 'ZMB': ''}
         inc_grp = {'CHE': '', 'ZMB': 4}
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243350632.5008, inc_grp['ZMB']]
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2019, gdp['CHE'], 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2019, 23064722446, inc_grp['ZMB']]
                            }
-        self.assertEqual(country_isos, country_isos_ref)
+        self.assertEqual(country_isos.keys(), country_isos_ref.keys())
+        for country in country_isos_ref.keys():
+            for i in [0, 1, 2, 3, 5]: # test elements one by one:
+                self.assertEqual(country_isos[country][i], \
+                                 country_isos_ref[country][i])
+            self.assertAlmostEqual(country_isos[country][4]*1e-6, \
+                                 country_isos_ref[country][4]*1e-6, places=0)
+
 
     def test_set_econ_indicators_pass(self):
-        """ Test _set_econ_indicators pass."""
+        """Test _set_econ_indicators pass."""
         nightlight = np.arange(0, 20, 0.1).reshape((100, 2))
         gdp = 4.225e9
         inc_grp = 4

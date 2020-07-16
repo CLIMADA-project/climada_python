@@ -16,6 +16,7 @@ User guide
    guide/data_dependencies
    guide/configuration
    guide/developer
+   guide/git_flow
 
 
 ----------------------

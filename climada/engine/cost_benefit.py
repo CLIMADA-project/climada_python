@@ -34,13 +34,13 @@ from climada.engine.impact import Impact
 LOGGER = logging.getLogger(__name__)
 
 DEF_PRESENT_YEAR = 2016
-""" Default present reference year """
+"""Default present reference year"""
 
 DEF_FUTURE_YEAR = 2030
-""" Default future reference year """
+"""Default future reference year"""
 
 NO_MEASURE = 'no measure'
-""" Name of risk metrics when no measure is applied """
+"""Name of risk metrics when no measure is applied"""
 
 def risk_aai_agg(impact):
     """Risk measurement as average annual impact aggregated.
@@ -120,7 +120,7 @@ class CostBenefit():
     """
 
     def __init__(self):
-        """ Initilization """
+        """Initilization"""
         self.present_year = DEF_PRESENT_YEAR
         self.future_year = DEF_FUTURE_YEAR
 
@@ -144,7 +144,7 @@ class CostBenefit():
 
     def calc(self, hazard, entity, haz_future=None, ent_future=None, \
         future_year=None, risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False):
-        """ Compute cost-benefit ratio for every measure provided current
+        """Compute cost-benefit ratio for every measure provided current
         and, optionally, future conditions. Present and future measures need
         to have the same name. The measures costs need to be discounted by the user.
         If future entity provided, only the costs of the measures
@@ -216,7 +216,7 @@ class CostBenefit():
 
     def combine_measures(self, in_meas_names, new_name, new_color, disc_rates,
                          imp_time_depen=None, risk_func=risk_aai_agg):
-        """ Compute cost-benefit of the combination of measures previously
+        """Compute cost-benefit of the combination of measures previously
         computed by calc with save_imp=True. The benefits of the
         measures per event are added. To combine with risk transfer options use
         apply_risk_transfer.
@@ -266,7 +266,7 @@ class CostBenefit():
     def apply_risk_transfer(self, meas_name, attachment, cover, disc_rates,
                             cost_fix=0, cost_factor=1, imp_time_depen=None,
                             risk_func=risk_aai_agg):
-        """ Applies risk transfer to given measure computed before with saved
+        """Applies risk transfer to given measure computed before with saved
         impact and compares it to when no measure is applied. Appended to
         dictionaries of measures.
 
@@ -337,7 +337,7 @@ class CostBenefit():
         self._print_npv()
 
     def remove_measure(self, meas_name):
-        """ Remove computed values of given measure
+        """Remove computed values of given measure
 
         Parameters:
             meas_name (str): name of measure to remove
@@ -350,7 +350,7 @@ class CostBenefit():
             del self.imp_meas_present[meas_name]
 
     def plot_cost_benefit(self, cb_list=None, axis=None, **kwargs):
-        """ Plot cost-benefit graph. Call after calc().
+        """Plot cost-benefit graph. Call after calc().
 
         Parameters:
             cb_list (list(CostBenefit), optional): if other CostBenefit
@@ -397,7 +397,7 @@ class CostBenefit():
         return axis
 
     def plot_event_view(self, return_per=(10, 25, 100), axis=None, **kwargs):
-        """ Plot averted damages for return periods. Call after calc().
+        """Plot averted damages for return periods. Call after calc().
 
         Parameters:
             return_per (list, optional): years to visualize. Default 10, 25, 100
@@ -450,7 +450,7 @@ class CostBenefit():
     @staticmethod
     def plot_waterfall(hazard, entity, haz_future, ent_future,
                        risk_func=risk_aai_agg, axis=None, **kwargs):
-        """ Plot waterfall graph at future with given risk metric. Can be called
+        """Plot waterfall graph at future with given risk metric. Can be called
         before and after calc().
 
         Parameters:
@@ -525,7 +525,7 @@ class CostBenefit():
 
     def plot_arrow_averted(self, axis, in_meas_names=None, accumulate=False, combine=False,
                            risk_func=risk_aai_agg, disc_rates=None, imp_time_depen=1, **kwargs):
-        """ Plot waterfall graph with accumulated values from present to future
+        """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True.
 
         Parameters:
@@ -575,7 +575,7 @@ class CostBenefit():
     def plot_waterfall_accumulated(self, hazard, entity, ent_future,
                                    risk_func=risk_aai_agg, imp_time_depen=1,
                                    axis=None, **kwargs):
-        """ Plot waterfall graph with accumulated values from present to future
+        """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True. Provide same inputs as in calc.
 
         Parameters:
@@ -744,7 +744,7 @@ class CostBenefit():
 
     def _cost_ben_one(self, meas_name, meas_val, disc_rates, time_dep,
                       ini_state=NO_MEASURE):
-        """ Compute cost and benefit for given measure with time dependency
+        """Compute cost and benefit for given measure with time dependency
 
         Parameters:
             meas_name (str): name of measure
@@ -779,7 +779,7 @@ class CostBenefit():
                 meas_val['cost'][1]*risk_tr)/meas_ben
 
     def _time_dependency_array(self, imp_time_depen=None):
-        """ Construct time dependency array. Each year contains a value in [0,1]
+        """Construct time dependency array. Each year contains a value in [0,1]
         representing the rate of damage difference achieved that year, according
         to the growth represented by parameter imp_time_depen.
 
@@ -800,7 +800,7 @@ class CostBenefit():
 
     def _npv_unaverted_impact(self, risk_future, disc_rates, time_dep,
                               risk_present=None):
-        """ Net present value of total unaverted damages
+        """Net present value of total unaverted damages
 
         Parameters:
             risk_future (float): risk under future situation
@@ -822,7 +822,7 @@ class CostBenefit():
         return tot_climate_risk
 
     def _combine_imp_meas(self, new_cb, in_meas_names, new_name, risk_func, when='future'):
-        """ Compute impacts combined measures assuming they are independent, i.e.
+        """Compute impacts combined measures assuming they are independent, i.e.
         their benefit can be added. Costs are also added. For the new measure
         the dictionary imp_meas_future if when='future' and imp_meas_present
         if when='present'.
@@ -860,7 +860,7 @@ class CostBenefit():
         new_imp_dict[new_name]['risk_transf'] = 0
 
     def _print_results(self):
-        """ Print table with main results """
+        """Print table with main results"""
         norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
 
@@ -890,7 +890,7 @@ class CostBenefit():
 
     @staticmethod
     def _plot_list_cost_ben(cb_list, axis=None, **kwargs):
-        """ Overlay cost-benefit bars for every measure
+        """Overlay cost-benefit bars for every measure
 
         Parameters:
             cb_list (list): list of CostBenefit instances with filled values
@@ -946,7 +946,7 @@ class CostBenefit():
 
     @staticmethod
     def _plot_averted_arrow(axis, bar_4, tot_benefit, risk_tot, norm_fact, **kwargs):
-        """ Plot arrow inn fourth bar of total averted damage by implementing
+        """Plot arrow inn fourth bar of total averted damage by implementing
         all the measures.
 
         Parameters:
@@ -973,7 +973,7 @@ class CostBenefit():
             risk_tot/norm_fact-arrow_len), **kwargs))
 
     def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):
-        """ Print comparative of risk transfer with and without measure
+        """Print comparative of risk transfer with and without measure
 
         Parameters:
             layer (float): expected insurance layer with measure
@@ -996,7 +996,7 @@ class CostBenefit():
         print('Net Present Values')
 
 def _norm_values(value):
-    """ Compute normalization value and name
+    """Compute normalization value and name
 
     Parameters:
         value (float): value to normalize
