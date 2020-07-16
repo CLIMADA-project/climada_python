@@ -874,7 +874,7 @@ class Impact():
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value.values[exp_iimp])
-        if not isinstance(self.imp_mat, list):
+        if isinstance(self.imp_mat, tuple):
             row_ind, col_ind = impact.nonzero()
             self.imp_mat[0].extend(list(impact.data))
             self.imp_mat[1][0].extend(list(row_ind))

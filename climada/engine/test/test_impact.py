@@ -513,12 +513,12 @@ class TestRiskTrans(unittest.TestCase):
         imp.tot_value = 10
         imp.aai_agg = 100
         imp.unit = 'USD'
-        imp.imp_mat = []
+        imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
         new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
         self.assertEqual(new_imp.unit, imp.unit)
         self.assertEqual(new_imp.tot_value, imp.tot_value)
-        self.assertEqual(new_imp.imp_mat, imp.imp_mat)
+        self.assertTrue((new_imp.imp_mat == imp.imp_mat).toarray().all())
         self.assertEqual(new_imp.event_name, imp.event_name)
         self.assertTrue(np.allclose(new_imp.event_id, imp.event_id))
         self.assertTrue(np.allclose(new_imp.date, imp.date))
@@ -530,7 +530,7 @@ class TestRiskTrans(unittest.TestCase):
 
         self.assertEqual(imp_rt.unit, imp.unit)
         self.assertEqual(imp_rt.tot_value, imp.tot_value)
-        self.assertEqual(imp_rt.imp_mat, imp.imp_mat)
+        self.assertTrue((imp_rt.imp_mat == imp.imp_mat).toarray().all())
         self.assertEqual(imp_rt.event_name, imp.event_name)
         self.assertTrue(np.allclose(imp_rt.event_id, imp.event_id))
         self.assertTrue(np.allclose(imp_rt.date, imp.date))
