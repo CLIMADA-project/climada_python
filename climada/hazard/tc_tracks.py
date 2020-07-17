@@ -538,10 +538,9 @@ class TCTracks():
             try:
                 datetimes.append(
                     dt.datetime.strptime(
-                        str(nc.num2date(t,
-                                        'days since {}'.format('1858-11-17'),
-                                        calendar='standard')
-                        ), '%Y-%m-%d %H:%M:%S'))
+                        str(nc.num2date(t, 'days since {}'.format('1858-11-17'),
+                                        calendar='standard')),
+                        '%Y-%m-%d %H:%M:%S'))
             except ValueError:
                 # If wrong t, set t to previous t plus 3 hours
                 if datetimes:
@@ -549,9 +548,11 @@ class TCTracks():
                 else:
                     pos = list(times).index(t)
                     t = times[pos + 1] - 1 / 24 * 3
-                    datetimes.append(dt.datetime.strptime(str(nc.num2date(t,
-                                     'days since {}'.format('1858-11-17'),
-                                     calendar='standard')), '%Y-%m-%d %H:%M:%S'))
+                    datetimes.append(
+                        dt.datetime.strptime(
+                            str(nc.num2date(t, 'days since {}'.format('1858-11-17'),
+                                            calendar='standard')),
+                            '%Y-%m-%d %H:%M:%S'))
         time_step = []
         for i_time, time in enumerate(datetimes[1:], 1):
             time_step.append((time - datetimes[i_time - 1]).total_seconds() / 3600)

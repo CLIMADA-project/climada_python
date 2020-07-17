@@ -210,8 +210,9 @@ def get_box_gpw(**parameters):
             LOGGER.error('Error: Matrix has an invalid number of dimensions \
                          (more than 2). Could not continue operation.')
             raise TypeError
-        tile_temp = pd.SparseArray(tile_temp.reshape((tile_temp.size,),
-                                   order='F'), fill_value=0)
+        tile_temp = pd.SparseArray(
+            tile_temp.reshape((tile_temp.size,), order='F'),
+            fill_value=0)
         del arr1
         if return_coords == 1:
             lon = tuple((cut_bbox[0], 1 / (3600 / resolution)))

@@ -132,7 +132,7 @@ class ImpactFuncSet():
                 del self._data[haz_type][fun_id]
             except KeyError:
                 LOGGER.warning("No ImpactFunc with hazard %s and id %s.",
-                             haz_type, fun_id)
+                               haz_type, fun_id)
         elif haz_type is not None:
             try:
                 del self._data[haz_type]
@@ -341,9 +341,9 @@ class ImpactFuncSet():
         def _get_hdf5_funcs(imp, file_name, var_names):
             """Get rows that fill every impact function and its name."""
             func_pos = dict()
-            for row, (fun_id, fun_type) in enumerate(zip(
-            imp[var_names['var_name']['fun_id']].squeeze(),
-            imp[var_names['var_name']['peril']].squeeze())):
+            for row, (fun_id, fun_type) in enumerate(
+                    zip(imp[var_names['var_name']['fun_id']].squeeze(),
+                        imp[var_names['var_name']['peril']].squeeze())):
                 type_str = hdf5.get_str_from_ref(file_name, fun_type)
                 key = (type_str, int(fun_id))
                 if key not in func_pos:
@@ -382,13 +382,14 @@ class ImpactFuncSet():
                 # check that this function only has one intensity unit, if provided
                 try:
                     func.intensity_unit = _get_hdf5_str(imp, imp_rows,
-                        file_name, var_names['var_name']['unit'])
+                                                        file_name,
+                                                        var_names['var_name']['unit'])
                 except KeyError:
                     pass
                 # check that this function only has one name
                 try:
                     func.name = _get_hdf5_str(imp, imp_rows, file_name,
-                        var_names['var_name']['name'])
+                                              var_names['var_name']['name'])
                 except KeyError:
                     func.name = str(func.id)
                 func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
@@ -439,7 +440,7 @@ class ImpactFuncSet():
             """Parse individual impact functions."""
             dist_func = []
             for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']],
-            dfr[var_names['col_name']['func_id']]):
+                                          dfr[var_names['col_name']['func_id']]):
                 if (haz_type, imp_id) not in dist_func:
                     dist_func.append((haz_type, imp_id))
             return dist_func

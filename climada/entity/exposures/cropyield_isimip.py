@@ -209,17 +209,23 @@ class CropyieldIsimip(Exposures):
         # the grid cell size
         if irr == 'combined':
             area_crop = (
-                (getattr(data,
-                         (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[1]])['name'])[
-                            time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
+                (
+                    getattr(
+                        data, CROP_NAME[crop]['input'] + '_' + IRR_NAME[IRR[1]]['name']
+                    )[time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
                 ).values
-                + (getattr(data,
-                           (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[IRR[2]])['name'])[
-                               time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
-                ).values)
+                + (
+                    getattr(
+                        data, CROP_NAME[crop]['input'] + '_' + IRR_NAME[IRR[2]]['name']
+                    )[time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
+                ).values
+            )
         else:
-            area_crop = (getattr(data, (CROP_NAME[crop])['input'] + '_' + (IRR_NAME[irr])['name'])[
-                         time_idx[0]:time_idx[1], :, :].mean(dim='time') * area).values
+            area_crop = (
+                getattr(
+                    data, CROP_NAME[crop]['input'] + '_' + IRR_NAME[irr]['name']
+                )[time_idx[0]:time_idx[1], :, :].mean(dim='time') * area
+            ).values
 
         area_crop = np.nan_to_num(area_crop).flatten()
 

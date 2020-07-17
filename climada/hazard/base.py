@@ -382,13 +382,13 @@ class Hazard():
             raise ValueError
         if not transform:
             transform, width, height = calculate_default_transform(
-            self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'],
-            self.centroids.meta['height'], self.centroids.meta['transform'][2],
-            self.centroids.meta['transform'][5] +
-            self.centroids.meta['height'] * self.centroids.meta['transform'][4],
-            self.centroids.meta['transform'][2] +
-            self.centroids.meta['width'] * self.centroids.meta['transform'][0],
-            self.centroids.meta['transform'][5])
+                self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'],
+                self.centroids.meta['height'], self.centroids.meta['transform'][2],
+                (self.centroids.meta['transform'][5]
+                 + self.centroids.meta['height'] * self.centroids.meta['transform'][4]),
+                (self.centroids.meta['transform'][2]
+                 + self.centroids.meta['width'] * self.centroids.meta['transform'][0]),
+                self.centroids.meta['transform'][5])
         dst_meta = self.centroids.meta.copy()
         dst_meta.update({'crs': dst_crs, 'transform': transform,
                          'width': width, 'height': height
@@ -407,9 +407,12 @@ class Hazard():
                 **kwargs)
         kwargs.update(resampling=resampl_fract)
         for idx_ev, fract in enumerate(self.fraction.toarray()):
-            reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'],
-                      self.centroids.meta['width']))), destination=fraction[idx_ev, :, :],
-                      **kwargs)
+            reproject(
+                source=np.asarray(
+                    fract.reshape((self.centroids.meta['height'],
+                                   self.centroids.meta['width']))),
+                destination=fraction[idx_ev, :, :],
+                **kwargs)
         self.centroids.meta = dst_meta
         self.intensity = sparse.csr_matrix(
             intensity.reshape(self.size, dst_meta['height'] * dst_meta['width']))
@@ -819,9 +822,9 @@ class Hazard():
             l_dates = [u_dt.date_to_str(date) for date in self.date]
         elif isinstance(event, str):
             ev_ids = self.get_event_id(event)
-            l_dates = [u_dt.date_to_str(self.date[
-                       np.argwhere(self.event_id == ev_id)[0][0]])
-                       for ev_id in ev_ids]
+            l_dates = [
+                u_dt.date_to_str(self.date[np.argwhere(self.event_id == ev_id)[0][0]])
+                for ev_id in ev_ids]
         else:
             ev_idx = np.argwhere(self.event_id == event)[0][0]
             l_dates = [u_dt.date_to_str(self.date[ev_idx])]

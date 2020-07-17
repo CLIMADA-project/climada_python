@@ -209,9 +209,9 @@ class RiverFlood(Hazard):
 
         with xr.open_dataset(dph_path) as flood_dph:
             self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
-                                 flood_dph.time[i].dt.month,
-                                 flood_dph.time[i].dt.day).toordinal()
-                                 for i in event_index])
+                                              flood_dph.time[i].dt.month,
+                                              flood_dph.time[i].dt.day).toordinal()
+                                  for i in event_index])
 
     def _select_event(self, time, years):
         """

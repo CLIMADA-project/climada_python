@@ -153,7 +153,7 @@ class MeasureSet():
                 del self._data[haz_type][name]
             except KeyError:
                 LOGGER.info("No Measure with hazard %s and id %s.",
-                             haz_type, name)
+                            haz_type, name)
         elif haz_type is not None:
             try:
                 del self._data[haz_type]
@@ -333,8 +333,8 @@ class MeasureSet():
                 meas.haz_type = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['haz']][idx][0])
                 meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
-                meas.hazard_set = hdf5.get_str_from_ref(file_name,
-                    data[var_names['var_name']['haz_set']][idx][0])
+                meas.hazard_set = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['haz_set']][idx][0])
                 try:
                     meas.hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a']][idx][0],
@@ -348,8 +348,8 @@ class MeasureSet():
                                    data[var_names['var_name']['mdd_b']][idx][0])
                 meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
                                    data[var_names['var_name']['paa_b']][idx][0])
-                meas.imp_fun_map = hdf5.get_str_from_ref(file_name,
-                                   data[var_names['var_name']['fun_map']][idx][0])
+                meas.imp_fun_map = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['fun_map']][idx][0])
 
                 meas.exposures_set = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['exp_set']][idx][0])
