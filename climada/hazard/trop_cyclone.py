@@ -372,10 +372,11 @@ def compute_windfields(track, centroids, model):
     Returns:
         np.array
     """
-    # shorthands for track data
-    t_lat, t_lon = track.lat.values, track.lon.values
-    t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
-    t_cen, t_tstep = track.central_pressure.values, track.time_step.values
+    # copies of track data
+    t_lat, t_lon, t_tstep, t_rad, t_env, t_cen = [
+        track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
+                                           'environmental_pressure', 'central_pressure']
+    ]
 
     ncentroids = centroids.shape[0]
     npositions = t_lat.shape[0]
@@ -415,7 +416,7 @@ def compute_windfields(track, centroids, model):
     t_cen[pres_exceed_msk] = t_env[pres_exceed_msk]
 
     # extrapolate radius of max wind from pressure if not given
-    t_rad[:] = estimate_rmw(t_rad, t_lat, t_cen) * NM_TO_KM
+    t_rad[:] = estimate_rmw(t_rad, t_cen) * NM_TO_KM
 
     # translational speed of track at every node
     v_trans = _vtrans(t_lat, t_lon, t_tstep)
