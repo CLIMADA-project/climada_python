@@ -42,7 +42,7 @@ def save(out_file_name, var):
     abs_path = out_file_name
     if not os.path.isabs(abs_path):
         abs_path = os.path.abspath(os.path.join(
-                CONFIG['local_data']['save_dir'], out_file_name))
+            CONFIG['local_data']['save_dir'], out_file_name))
     folder_path = os.path.abspath(os.path.join(abs_path, os.pardir))
     try:
         # Generate folder if it doesn't exists
@@ -72,7 +72,7 @@ def load(in_file_name):
     abs_path = in_file_name
     if not os.path.isabs(abs_path):
         abs_path = os.path.abspath(os.path.join(
-                CONFIG['local_data']['save_dir'], in_file_name))
+            CONFIG['local_data']['save_dir'], in_file_name))
     with open(abs_path, 'rb') as file:
         data = pickle.load(file)
     return data

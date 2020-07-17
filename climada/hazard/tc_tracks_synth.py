@@ -331,8 +331,7 @@ def _decay_values(track, land_geom, s_rel):
                 v_lf[ss_scale_idx].extend(v_land)
                 p_lf[ss_scale_idx][0].extend(p_land_s)
                 p_lf[ss_scale_idx][1].extend(p_land)
-                x_val[ss_scale_idx].extend(track.dist_since_lf[
-                                           sea_land:land_sea])
+                x_val[ss_scale_idx].extend(track.dist_since_lf[sea_land:land_sea])
     return v_lf, p_lf, x_val
 
 
@@ -419,8 +418,10 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         axes[1].set_title('Pressure')
         axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
                      label=CAT_NAMES[track_cat - 2])
-        axes[1].plot(x_eval, _decay_p_function(p_rel[track_cat][0],
-                     p_rel[track_cat][1], x_eval), '-', c=color)
+        axes[1].plot(
+            x_eval,
+            _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
+            '-', c=color)
 
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):

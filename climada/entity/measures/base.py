@@ -143,8 +143,8 @@ class Measure():
         # cutoff events whose damage happen with high frequency (in region if specified)
         new_haz = self._cutoff_hazard_damage(new_exp, new_ifs, new_haz)
         # apply all previous changes only to the selected exposures
-        new_exp, new_ifs, new_haz = self._filter_exposures(exposures,
-            imp_fun_set, hazard, new_exp, new_ifs, new_haz)
+        new_exp, new_ifs, new_haz = self._filter_exposures(
+            exposures, imp_fun_set, hazard, new_exp, new_ifs, new_haz)
 
         return new_exp, new_ifs, new_haz
 
@@ -255,12 +255,12 @@ class Measure():
         new_imp_set = copy.deepcopy(imp_set)
         for imp_fun in new_imp_set.get_func(self.haz_type):
             LOGGER.debug('Transforming impact functions.')
-            imp_fun.intensity = np.maximum(imp_fun.intensity *
-                self.hazard_inten_imp[0] - self.hazard_inten_imp[1], 0.0)
-            imp_fun.mdd = np.maximum(imp_fun.mdd * self.mdd_impact[0] +
-                self.mdd_impact[1], 0.0)
-            imp_fun.paa = np.maximum(imp_fun.paa * self.paa_impact[0] +
-                self.paa_impact[1], 0.0)
+            imp_fun.intensity = np.maximum(
+                imp_fun.intensity * self.hazard_inten_imp[0] - self.hazard_inten_imp[1], 0.0)
+            imp_fun.mdd = np.maximum(
+                imp_fun.mdd * self.mdd_impact[0] + self.mdd_impact[1], 0.0)
+            imp_fun.paa = np.maximum(
+                imp_fun.paa * self.paa_impact[0] + self.paa_impact[1], 0.0)
 
         if not new_imp_set.size():
             LOGGER.info('No impact function of hazard %s found.', self.haz_type)
@@ -303,7 +303,7 @@ class Measure():
         sel_haz = sort_idxs[cutoff]
         for row in sel_haz:
             new_haz.intensity.data[new_haz.intensity.indptr[row]:
-                new_haz.intensity.indptr[row + 1]] = 0
+                                   new_haz.intensity.indptr[row + 1]] = 0
         new_haz.intensity.eliminate_zeros()
         return new_haz
 

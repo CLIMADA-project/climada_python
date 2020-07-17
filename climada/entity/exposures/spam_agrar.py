@@ -148,9 +148,9 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self['latitude'] = lat.values
         self['longitude'] = lon.values
         LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(
-                    np.min(self.latitude), np.max(self.latitude)))
+            np.min(self.latitude), np.max(self.latitude)))
         LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(
-                    np.min(self.longitude), np.max(self.longitude)))
+            np.min(self.longitude), np.max(self.longitude)))
 
         # set region_id (numeric ISO3):
         country_id = data.loc[:, 'iso3']
@@ -184,7 +184,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             self.value_unit = 'USD'
 
         LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(
-                    spam_v, spam_t, region, self.value.sum(), self.value_unit))
+            spam_v, spam_t, region, self.value.sum(), self.value_unit))
         self.check()
 
     def _set_if(self, spam_t, haz_type):

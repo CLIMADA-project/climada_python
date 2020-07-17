@@ -472,9 +472,10 @@ class Centroids():
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res / 2).envelope
-        if ('units' in self.geometry.crs
-            and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
-                or equal_crs(self.geometry.crs, {'proj': 'cea'}):
+        is_cea = ('units' in self.geometry.crs
+                  and self.geometry.crs['units'] in ['m', 'metre', 'meter']
+                  or equal_crs(self.geometry.crs, {'proj': 'cea'}))
+        if is_cea:
             self.area_pixel = xy_pixels.area.values
         else:
             self.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
@@ -504,9 +505,10 @@ class Centroids():
                                                      min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
-            if ('units' in self.geometry.crs
-                and self.geometry.crs['units'] in ['m', 'metre', 'meter']) \
-               or equal_crs(self.geometry.crs, {'proj': 'cea'}):
+            is_cea = ('units' in self.geometry.crs
+                      and self.geometry.crs['units'] in ['m', 'metre', 'meter']
+                      or equal_crs(self.geometry.crs, {'proj': 'cea'}))
+            if is_cea:
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
                 return
 
@@ -834,7 +836,7 @@ def generate_nat_earth_centroids(res_as=360):
     lat_dim = np.arange(-90 + res_deg, 90, res_deg)
     lon_dim = np.arange(-180 + res_deg, 180 + res_deg, res_deg)
     lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
-    natids = np.uint16(get_country_code(lat, lon, gridded=False, natid=False))
+    natids = np.uint16(get_country_code(lat, lon, gridded=False))
 
     cen = Centroids()
     cen.set_lat_lon(lat, lon)

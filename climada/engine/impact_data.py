@@ -291,7 +291,7 @@ def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
     # create ordinals
     for i in range(0, len(data.Date_start_clean.values)):
         lookup.Date_start_EM_ordinal[i] = datetime.toordinal(
-                    datetime.strptime(lookup.Date_start_EM.values[i], '%Y-%m-%d'))
+            datetime.strptime(lookup.Date_start_EM.values[i], '%Y-%m-%d'))
         # ordinals to numeric
     lookup.Date_start_EM_ordinal = pd.to_numeric(lookup.Date_start_EM_ordinal)
     # select time
@@ -868,7 +868,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             if np.isnan(day):
                 day = 1
             date_list[idx] = datetime.toordinal(datetime.strptime(
-                            '%02i/%02i/%04i' % (day, month, year), '%d/%m/%Y'))
+                '%02i/%02i/%04i' % (day, month, year), '%d/%m/%Y'))
             idx += 1
     impact_instance.date = np.array(date_list, int)
     impact_instance.crs = DEF_CRS
@@ -918,7 +918,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         except KeyError:
             countries_reg_id.append(0)
         df_tmp = em_data[em_data[VARNAMES_EMDAT[
-                    max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]
+            max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]
         if not reference_year:
             impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact"]) *
                                                impact_instance.frequency[0])

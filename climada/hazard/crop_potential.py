@@ -190,8 +190,8 @@ class CropPotential(Hazard):
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
         self.units = 't / y / ha'
-        self.date = np.array(dt.str_to_date([event_list[n] + '-01-01'
-                             for n, _ in enumerate(event_list)]))
+        self.date = np.array(dt.str_to_date(
+            [event_list[n] + '-01-01' for n, _ in enumerate(event_list)]))
         self.centroids.set_meta_to_lat_lon()
         self.centroids.region_id = (
             coordinates.coord_on_land(self.centroids.lat, self.centroids.lon)).astype(dtype=int)
@@ -278,9 +278,9 @@ class CropPotential(Hazard):
             reference_intensity = self.intensity
 
         for centroid in range(self.intensity.shape[1]):
-            array = (reference_intensity[:, centroid].toarray()).reshape(
-                    reference_intensity.shape[0])
-            for event in range(self.intensity.shape[0]):
+            nevents = reference_intensity.shape[0]
+            array = reference_intensity[:, centroid].toarray().reshape(nevents)
+            for event in range(nevents):
                 value = self.intensity[event, centroid]
                 hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array, value)
                                                   / 100)
@@ -482,8 +482,10 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     hist_mean_per_crop = dict()
     for i, _ in enumerate(crop_list):
         hist_mean_per_crop[i] = dict()
-        hist_mean_per_crop[crop_list[i]] = {'value': np.zeros([int(len(
-                          filenames) / len(crop_list)), len(hist_mean)]), 'idx': 0}
+        hist_mean_per_crop[crop_list[i]] = {
+            'value': np.zeros([int(len(filenames) / len(crop_list)), len(hist_mean)]),
+            'idx': 0,
+        }
 
     # calculate hazard as relative yield for all historic files and related future scenarios
     # and save them as hdf5 file in the output directory
@@ -501,9 +503,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
                                    irr=(((items[i])[6]).split('-'))[2])
         hist_mean = cp_his.calc_mean()
         cp_his.set_rel_yield_to_int(hist_mean)
-        ((hist_mean_per_crop[crop_irr])['value'])[(
-        hist_mean_per_crop[crop_irr])['idx'], :] = hist_mean
-        (hist_mean_per_crop[crop_irr])['idx'] = (hist_mean_per_crop[crop_irr])['idx'] + 1
+        hist_mean_per_crop[crop_irr]['value'][hist_mean_per_crop[crop_irr]['idx'], :] = hist_mean
+        hist_mean_per_crop[crop_irr]['idx'] = hist_mean_per_crop[crop_irr]['idx'] + 1
 
         filename = ('haz' + '_' + (items[i])[0] + '_' + (items[i])[1] + '_'
                     + (items[i])[3] + '_' + (items[i])[4] + '_' + (items[i])[5] + '_'

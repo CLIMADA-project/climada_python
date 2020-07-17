@@ -82,7 +82,7 @@ class GDP2Asset(Exposures):
                 tag.description += ("{} GDP2Asset \n").\
                     format(countries[cntr_ind])
             Exposures.__init__(self, gpd.GeoDataFrame(
-                        pd.concat(gdp2a_list, ignore_index=True)))
+                pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
             LOGGER.error('Exposure countries: ' + str(countries) + ' or reg ' +
                          str(reg) + ' could not be set, check ISO3 or' +
@@ -175,7 +175,7 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
                                        np.nan_to_num(asset),
                                        (shp_exposures[:, 0],
-                                       shp_exposures[:, 1]),
+                                        shp_exposures[:, 1]),
                                        method='nearest',
                                        bounds_error=False,
                                        fill_value=None)
@@ -183,7 +183,7 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         conv_factors = sp.interpolate.interpn((conv_lat, conv_lon),
                                               np.nan_to_num(conv_factors),
                                               (shp_exposures[:, 0],
-                                              shp_exposures[:, 1]),
+                                               shp_exposures[:, 1]),
                                               method='nearest',
                                               bounds_error=False,
                                               fill_value=None)
@@ -191,7 +191,7 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp = sp.interpolate.interpn((gdp_lat, gdp_lon),
                                      np.nan_to_num(gdp),
                                      (shp_exposures[:, 0],
-                                     shp_exposures[:, 1]),
+                                      shp_exposures[:, 1]),
                                      method='nearest',
                                      bounds_error=False,
                                      fill_value=None)

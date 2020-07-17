@@ -1573,8 +1573,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
                 if zoom_factor != 1:
 #                    LOGGER.debug('Resizing image according to chosen '\
 #                                + 'resolution')
-                    arr1[j] = pd.SparseDataFrame(nd.zoom(arr1[j], zoom_factor,
-                                                 order=1))
+                    arr1[j] = pd.SparseDataFrame(nd.zoom(arr1[j], zoom_factor, order=1))
                 else:
                     arr1[j] = pd.SparseDataFrame(arr1[j])
                 if cut_bbox is not None:

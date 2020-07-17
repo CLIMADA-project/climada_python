@@ -416,9 +416,9 @@ class LowFlow(Hazard):
 
         """
         LOGGER.debug('Number of days below threshold corresponding to event %s.', str(cluster_id))
-        temp_data = data.reindex(index=(np.argwhere(np.array(data['cluster_id'] ==
-                                                    cluster_id)).reshape(-1, )),
-                                 columns=['lat', 'lon', 'ndays'])
+        temp_data = data.reindex(
+            index=np.argwhere(np.array(data['cluster_id'] == cluster_id)).reshape(-1),
+            columns=['lat', 'lon', 'ndays'])
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni
         # Set the same index value for each duplicate (lat,lon) points -> lat_lon_cpy
         lat_lon_uni, lat_lon_cpy = np.unique(temp_data[['lat', 'lon']].values,
