@@ -18,19 +18,18 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Regroup methods to obtain images from Google Earth Engine API
 """
-# This module works only if you have a Google Earth Engine account
-# See tutorial climada_util_earth_engine.ipynb
 
 import logging
 import webbrowser
 
+# This module works only if you have a Google Earth Engine account.
+# That's why `earthengine-api` is not in the CLIMADA requirements.
+# See tutorial: climada_util_earth_engine.ipynb
+# pylint: disable=import-error
 import ee
-ee.Initialize()
-
-
-
 
 LOGGER = logging.getLogger(__name__)
+ee.Initialize()
 
 
 def obtain_image_landsat_composite(landsat_collection, time_range, area):
