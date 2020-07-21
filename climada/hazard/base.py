@@ -193,8 +193,8 @@ class Hazard():
         self.centroids.check()
         self._check_events()
 
-    def set_raster(self, files_intensity, files_fraction=None, attrs={},
-                   band=[1], src_crs=None, window=False, geometry=False,
+    def set_raster(self, files_intensity, files_fraction=None, attrs=None,
+                   band=None, src_crs=None, window=False, geometry=False,
                    dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
         """Append intensity and fraction from raster file. 0s put to the masked
@@ -206,7 +206,7 @@ class Hazard():
             files_intensity (list(str)): file names containing intensity
             files_fraction (list(str)): file names containing fraction
             attrs (dict, optional): name of Hazard attributes and their values
-            band (list(int), optional): bands to read (starting at 1)
+            band (list(int), optional): bands to read (starting at 1), default [1]
             src_crs (crs, optional): source CRS. Provide it if error without it.
             window (rasterio.windows.Windows, optional): window where data is
                 extracted
@@ -218,6 +218,10 @@ class Hazard():
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
         """
+        if not attrs:
+            attrs = {}
+        if not band:
+            band = [1]
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             LOGGER.error('Number of intensity files differs from fraction files: %s != %s',
                          len(files_intensity), len(files_fraction))
@@ -286,14 +290,16 @@ class Hazard():
         if 'unit' in attrs:
             self.unit = attrs['unit']
 
-    def set_vector(self, files_intensity, files_fraction=None, attrs={},
-                   inten_name=['intensity'], frac_name=['fraction'], dst_crs=None):
+    def set_vector(self, files_intensity, files_fraction=None, attrs=None,
+                   inten_name=None, frac_name=None, dst_crs=None):
         """Read vector files format supported by fiona. Each intensity name is
         considered an event.
 
         Parameters:
-            files_intensity (list(str)): file names containing intensity
-            files_fraction (list(str)): file names containing fraction
+            files_intensity (list(str)): file names containing intensity,
+                default: ['intensity']
+            files_fraction (list(str)): file names containing fraction,
+                default: ['fraction']
             attrs (dict, optional): name of Hazard attributes and their values
             inten_name (list(str), optional): name of variables containing
                 the intensities of each event
@@ -301,6 +307,12 @@ class Hazard():
                 the fractions of each event
             dst_crs (crs, optional): reproject to given crs
         """
+        if not attrs:
+            attrs = {}
+        if not inten_name:
+            inten_name = ['intensity']
+        if not frac_name:
+            inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             LOGGER.error('Number of intensity files differs from fraction files: %s != %s',
                          len(files_intensity), len(files_fraction))
@@ -443,7 +455,7 @@ class Hazard():
         self.centroids.meta = meta
         self.check()
 
-    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+    def read_mat(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
         Parameters:
@@ -455,6 +467,8 @@ class Hazard():
         Raises:
             KeyError
         """
+        if not var_names:
+            var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
         self.clear()
         self.tag.file_name = file_name
@@ -474,7 +488,7 @@ class Hazard():
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+    def read_excel(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
         Parameters:
@@ -488,6 +502,8 @@ class Hazard():
         Raises:
             KeyError
         """
+        if not var_names:
+            var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
         haz_type = self.tag.haz_type
         self.clear()
@@ -558,8 +574,8 @@ class Hazard():
             filtered_events = [self.event_name[i] for i in sel_ev]
             try:
                 new_sel = [filtered_events.index(n) for n in event_names]
-            except ValueError as e:
-                name = str(e).replace(" is not in list", "")
+            except ValueError as err:
+                name = str(err).replace(" is not in list", "")
                 LOGGER.info('No hazard with name %s', name)
                 return None
             sel_ev = sel_ev[new_sel]
@@ -602,9 +618,9 @@ class Hazard():
             np.array
         """
         # warn if return period is above return period of rarest event:
-        for rp in return_periods:
-            if rp > 1/self.frequency.min():
-                LOGGER.warning('Return period %1.1f exceeds max. event return period.' %(rp))
+        for period in return_periods:
+            if period > 1/self.frequency.min():
+                LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
@@ -626,7 +642,7 @@ class Hazard():
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
         if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
-Reason: no negative intensity values were found in hazard.')
+                   Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
         return inten_stats
 
@@ -848,7 +864,7 @@ Reason: no negative intensity values were found in hazard.')
         if not centroids_equal:
             self.centroids.append(hazard.centroids)
 
-        n_ini_ev = self.event_id.size
+        # n_ini_ev = self.event_id.size
         for var_name in vars(self).keys():
             var_old = getattr(self, var_name)
             var_new = getattr(hazard, var_name)
@@ -874,10 +890,10 @@ Reason: no negative intensity values were found in hazard.')
         set_ev = set(events)
         if len(set_ev) == self.event_id.size:
             return
-        unique_pos = sorted([events.index(e) for e in set_ev])
+        unique_pos = sorted([events.index(event) for event in set_ev])
         for var_name, var_val in vars(self).items():
             if isinstance(var_val, sparse.csr.csr_matrix):
-                setattr(self, var_name, var_val[unique_pos,:])
+                setattr(self, var_name, var_val[unique_pos, :])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, var_val[unique_pos])
             elif isinstance(var_val, list):

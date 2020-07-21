@@ -21,25 +21,6 @@ Linter
 The PyLint configuration file is `here <https://github.com/CLIMADA-project/climada_python/blob/master/.pylintrc>`_.
 As a general rule, aim for no warnings at all and always make sure *High Priority* warnings are immediately eliminated.
 
-Branches
---------
-In general, policy and naming of branches follow the conventions of `git flow <https://nvie.com/posts/a-successful-git-branching-model/>`_.
-
-The table below contains an overview of tolerance toward offences against unittest and linter.
-
-======= ===== ======= ==== ====== ===
-Branch  Unittest          Linter
-------- ------------- ---------------
-\       Error Failure High Medium Low
-======= ===== ======= ==== ====== ===
-Master  x     x       x    \(x\)  \-
-Develop x     n days  x    m days \-
-Feature \(x\) \-      \-   \-     \-
-======= ===== ======= ==== ====== ===
-
-x indicates "no tolerance", meaning that any code changes producing such offences should be fixed *before* pushing them
-to the respective branch.
-
 
 Best Practices
 ==============
@@ -71,7 +52,9 @@ Readability
 - Comment! Comments are welcome to be redundant.
   And whenever there is a particular reason for the way something is done, comment on it!
   It *will* pay off when maintaining, extending or debugging.
-
+- For functions which implement mathematical/scientific concepts, add the actual mathematical formula as comment or
+  to the Doctstrings. This will help maintain a high level of scientific accuracy. E.g. How is are the random walk
+  tracks computed for tropical cyclones?
 
 Performance
 ===========

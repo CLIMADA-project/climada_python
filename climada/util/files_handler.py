@@ -99,8 +99,8 @@ def download_ftp(url, file_name):
         with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
                                  desc=url.split('/')[-1]) as prog_bar:
             urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
-    except Exception:
-        raise ValueError
+    except Exception as exc:
+        raise ValueError(f'{exc.__class__} - "{exc}": failed to retrieve {url} into {file_name}')
 
 def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
