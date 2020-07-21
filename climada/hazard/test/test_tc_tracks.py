@@ -511,19 +511,18 @@ class TestFuncs(unittest.TestCase):
         tc_track.equal_timestep()
         rad_max_wind = tc.estimate_rmw(
             tc_track.data[0].radius_max_wind.values,
-            tc_track.data[0].lat.values,
             tc_track.data[0].central_pressure.values) * NM_TO_KM
 
-        self.assertEqual(rad_max_wind[0], 81.6408378127855)
-        self.assertAlmostEqual(rad_max_wind[10], 81.73794351663702)
-        self.assertAlmostEqual(rad_max_wind[128], 50.32253764709832)
-        self.assertAlmostEqual(rad_max_wind[129], 49.60461992577174)
-        self.assertAlmostEqual(rad_max_wind[130], 48.89470198649062)
-        self.assertAlmostEqual(rad_max_wind[189], 48.83710563572821)
-        self.assertAlmostEqual(rad_max_wind[190], 50.2831412975724)
-        self.assertAlmostEqual(rad_max_wind[191], 51.7640719258046)
-        self.assertEqual(rad_max_wind[192], 53.27976763792056)
-        self.assertAlmostEqual(rad_max_wind[200], 64.9065477736564)
+        self.assertAlmostEqual(rad_max_wind[0], 86.4471340900, places=5)
+        self.assertAlmostEqual(rad_max_wind[10], 86.525605570, places=5)
+        self.assertAlmostEqual(rad_max_wind[128], 55.25462781, places=5)
+        self.assertAlmostEqual(rad_max_wind[129], 54.40164284, places=5)
+        self.assertAlmostEqual(rad_max_wind[130], 53.54865787, places=5)
+        self.assertAlmostEqual(rad_max_wind[189], 52.62700450, places=5)
+        self.assertAlmostEqual(rad_max_wind[190], 54.36738477, places=5)
+        self.assertAlmostEqual(rad_max_wind[191], 56.10776504, places=5)
+        self.assertAlmostEqual(rad_max_wind[192], 57.84814530, places=5)
+        self.assertAlmostEqual(rad_max_wind[200], 70.00942075, places=5)
 
 # Execute Tests
 if __name__ == "__main__":

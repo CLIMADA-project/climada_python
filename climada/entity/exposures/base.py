@@ -117,7 +117,7 @@ class Exposures(GeoDataFrame):
 
     def __init__(self, *args, **kwargs):
         """Initialize. Copy attributes of input DataFrame."""
-        if len(args):
+        if args:
             for var_meta in self._metadata:
                 try:
                     val_meta = getattr(args[0], var_meta)
@@ -177,8 +177,8 @@ class Exposures(GeoDataFrame):
             elif var == 'geometry' and \
             (self.geometry.values[0].x != self.longitude.values[0] or \
             self.geometry.values[0].y != self.latitude.values[0]):
-                LOGGER.error('Geometry values do not correspond to latitude ' +\
-                'and longitude. Use set_geometry_points() or set_lat_lon().')
+                LOGGER.error(("Geometry values do not correspond to latitude and "
+                              "longitude. Use set_geometry_points() or set_lat_lon()."))
                 raise ValueError
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
@@ -475,7 +475,7 @@ class Exposures(GeoDataFrame):
             for key, val in metadata.items():
                 setattr(self, key, val)
 
-    def read_mat(self, file_name, var_names=DEF_VAR_MAT):
+    def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
 
         Parameters:
@@ -484,7 +484,7 @@ class Exposures(GeoDataFrame):
                 MATLAB variables. Default: DEF_VAR_MAT.
         """
         LOGGER.info('Reading %s', file_name)
-        if var_names is None:
+        if not var_names:
             var_names = DEF_VAR_MAT
 
         data = hdf5.read(file_name)

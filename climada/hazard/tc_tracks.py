@@ -296,8 +296,13 @@ class TCTracks():
         ds['time_step'][:,0] = ds.time_step[:,1]
         provider = provider if provider else 'ibtracs'
 
+        last_perc = 0
         all_tracks = []
         for i_track, t_msk in enumerate(ds.valid_t.data):
+            perc = 100 * len(all_tracks) / ds.sid.size
+            if perc - last_perc >= 10:
+                LOGGER.info("Progress: %d%%", perc)
+                last_perc = perc
             st_ds = ds.sel(storm=i_track, date_time=t_msk)
             st_penv = xr.apply_ufunc(basin_fun, st_ds.basin, vectorize=True)
             st_ds['time'][:1] = st_ds.time[:1].dt.floor('H')
@@ -324,10 +329,9 @@ class TCTracks():
                 st_ds['poci'] = st_ds.poci.fillna(st_penv)
 
             if estimate_missing:
-                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values,
-                    st_ds.lat.values, st_ds.pres.values)
-                st_ds['roci'][:] = estimate_roci(st_ds.roci.values,
-                    st_ds.pres.values, st_ds.rmw.values)
+                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values, st_ds.pres.values)
+                st_ds['roci'][:] = estimate_roci(st_ds.roci.values, st_ds.rmw.values)
+                st_ds['roci'][:] = np.fmax(st_ds.rmw.values, st_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
@@ -946,34 +950,40 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
                          + c_pres * cen_pres[msk]
     return v_max
 
-def estimate_roci(roci, cen_pres, rmw):
+def estimate_roci(roci, cen_pres):
     """Replace missing radius values with statistical estimate."""
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
-    rmw = np.where(np.isnan(rmw), -1, rmw)
-    msk = (roci <= 0) & (cen_pres > 0) & (rmw > 0)
-    # ibtracs_fit_param('roci', ['pres', 'rmw'], order=[2, 1], year_range=(1980, 2019))
-    # r^2: 0.2239625797986191
-    c_const, c_rmw, c_pres, c_pres2 = -18245.317, 0.904, 39.164, -0.0208
-    roci[msk] = c_const + c_rmw * rmw[msk] \
-                        + c_pres * cen_pres[msk] \
-                        + c_pres2 * cen_pres[msk]**2
+    msk = (roci <= 0) & (cen_pres > 0)
+    # ibtracs_fit_param('roci', ['pres'],
+    #                   order=[(872, 950, 985, 1005, 1021)],
+    #                   year_range=(1980, 2019))
+    # r^2: 0.9148320406675339
+    pres_l = [872, 950, 985, 1005, 1021]
+    roci_l = [210.711487, 215.897110, 198.261520, 159.589508, 90.900116]
+    roci[msk] = 0
+    for i in range(len(pres_l)):
+        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
+        roci[msk] += roci_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
+                                             - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
     return roci
 
-def estimate_rmw(rmw, lat, cen_pres):
+def estimate_rmw(rmw, cen_pres):
     """Replace missing radius values with statistical estimate."""
     rmw = np.where(np.isnan(rmw), -1, rmw)
-    lat = np.where(np.isnan(lat), -999, lat)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
-    msk = (rmw <= 0) & (lat > -999) & (cen_pres > 0)
-    # ibtracs_fit_param('rmw', ['lat', 'pres'], order=2, year_range=(1980, 2019))
-    # r^2: 0.28089731039419485
-    c_const, c_lat, c_lat2, c_pres, c_pres2 = (5875.162, -0.03465, 0.0146,
-                                               -12.5166, 0.006677)
-    rmw[msk] = c_const + c_lat * lat[msk] \
-                       + c_lat2 * lat[msk]**2 \
-                       + c_pres * cen_pres[msk] \
-                       + c_pres2 * cen_pres[msk]**2
+    msk = (rmw <= 0) & (cen_pres > 0)
+    # ibtracs_fit_param('rmw', ['pres'], order=[(872, 940, 980, 1021)], year_range=(1980, 2019))
+    # r^2: 0.7905970811843872
+    pres_l = [872, 940, 980, 1021]
+    rmw_l = [14.907318, 15.726927, 25.742142, 56.856522]
+    rmw[msk] = 0
+    for i in range(len(pres_l)):
+        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
+        rmw[msk] += rmw_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
+                                           - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
     return rmw
 
 def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
@@ -1024,37 +1034,42 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
                 .fillna(all_vals.isel(agency=preferred_ix))
         else:
             ds[v] = all_vals.isel(agency=preferred_ix)
-    df = pd.DataFrame({ v: ds[v].values.ravel() for v in variables })
-    df = df.dropna(axis=0, how='any')
+    df = pd.DataFrame({v: ds[v].values.ravel() for v in variables})
+    df = df.dropna(axis=0, how='any').reset_index(drop=True)
+    if 'lat' in explanatory:
+        df['lat'] = df['lat'].abs()
 
     # prepare explanatory variables
     d_explanatory = df[explanatory]
     if isinstance(order, int):
         order = (order,) * len(explanatory)
+    add_const = False
     for ex, max_o in zip(explanatory, order):
         if isinstance(max_o, tuple):
+            if df[ex].min() > max_o[0]:
+                print(f"Minimum data value is {df[ex].min()} > {max_o[0]}.")
+            if df[ex].max() < max_o[-1]:
+                print(f"Maximum data value is {df[ex].max()} < {max_o[-1]}.")
             # piecewise linear with given break points
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
-            msk = (df[ex] <= max_o[0])
-            col = f'{ex}<={max_o[0]}'
-            d_explanatory[col] = 0
-            d_explanatory.loc[msk, col] = df.loc[msk, ex]
             for i in range(len(max_o)):
-                msk = (max_o[i] < df[ex])
-                if i + 1 < len(max_o):
-                    msk &= (df[ex] <= max_o[i + 1])
-                col = f'{ex}>{max_o[i]}'
-                d_explanatory[col] = 0
-                d_explanatory.loc[msk, col] = df.loc[msk, ex]
+                col = f'{ex}{max_o[i]}'
+                slope_0 = 1. / (max_o[i] - max_o[i - 1]) if i > 0 else 0
+                slope_1 = 1. / (max_o[i + 1] - max_o[i]) if i + 1 < len(max_o) else 0
+                d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, max_o[i] - df[ex])
+                                                 - slope_1 * np.fmax(0, df[ex] - max_o[i])))
         elif max_o < 0:
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
             for o in range(1, abs(max_o) + 1):
                 d_explanatory[f'{ex}^{-o}'] = df[ex]**(-o)
+            add_const = True
         else:
             for o in range(2, max_o + 1):
                 d_explanatory[f'{ex}^{o}'] = df[ex]**o
+            add_const = True
     d_explained = df[[explained]]
-    d_explanatory['const'] = 1.0
+    if add_const:
+        d_explanatory['const'] = 1.0
 
     # run statistical fit
     sm_results = sm.OLS(d_explained, d_explanatory).fit()

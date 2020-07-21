@@ -41,48 +41,52 @@ from climada.util import coordinates
 from climada.util.constants import DATA_DIR
 
 
-
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'CP'
 """Hazard type acronym for Crop Potential"""
 
-
+# crop model names as in ISIMIP-filenames
 AG_MODEL = ['gepic',
             'lpjml',
             'pepic'
             ]
 
+# climate model names as in ISIMIP-filenames
 CL_MODEL = ['gfdl-esm2m',
             'hadgem2-es',
             'ipsl-cm5a-lr',
             'miroc5'
             ]
 
+# climate scenario names as in ISIMIP-filenames
 SCENARIO = ['historical',
             'rcp60'
             ]
 
+# socio-economic forcing settings as in ISIMIP-filenames
 SOC = ['2005soc',
        'histsoc'
        ]
 
+# CO2 forcing settings as in ISIMIP-filenames
 CO2 = ['co2',
        '2005co2'
        ]
-
+# crop types as in ISIMIP-filenames
 CROP = ['whe',
         'mai',
         'soy',
         'ric'
        ]
 
+# non-irrigated/irrigated as in ISIMIP-filenames
 IRR = ['noirr',
        'irr']
 
-
 FN_STR_VAR = 'global_annual'
 
+# start and end years per senario as in ISIMIP-filenames
 YEARCHUNKS = dict()
 YEARCHUNKS[SCENARIO[0]] = dict()
 YEARCHUNKS[SCENARIO[0]] = {'yearrange' : np.array([1976, 2005]), \
@@ -91,20 +95,25 @@ YEARCHUNKS[SCENARIO[1]] = dict()
 YEARCHUNKS[SCENARIO[1]] = {'yearrange' : np.array([2006, 2099]), \
           'startyear' : 2006, 'endyear': 2099}
 
+# geographical bounding box in decimal degrees (lon from -180 to 180)
 BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
 
 INT_DEF = 'Yearly Yield'
 
-#default: deposit the input files in the directory: climada_python/data/ISIMIP_crop/Input/Hazard
+# default paths for input and output data:
+# ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 class CropPotential(Hazard):
-    """Contains events impacting the crop potential.
+    """Agricultural climate risk: Crop potentia (relative to historical mean);
+    Each year corresponds to one hazard event;
+    Based on modelled crop yield, from ISIMIP (www.isimip.org, required input data).
 
     Attributes:
         crop_type (str): crop type (e.g. whe for wheat)
-        intensity_def (str): intensity defined as the Yearly Yield / Relative Yield / Percentile
+        intensity_def (str): intensity defined as:
+            'Yearly Yield' [t/(ha*y)], 'Relative Yield', or 'Percentile'
     """
 
     def __init__(self, pool=None):
@@ -166,14 +175,14 @@ class CropPotential(Hazard):
                                                  irr, fn_str_var, str(yearchunk['startyear']), \
                                                  str(yearchunk['endyear'])))
 
-        #define idx of the nc-bands to be extracted and the corresponding event names / dates
-        #corrected idx due to the bands in input starting with the idx = 1
+        # define indexes of the netcdf-bands to be extracted, and the
+        # corresponding event names and dates
+        # corrected indexes due to the bands in input starting with the index=1
         id_bands = np.arange(yearrange[0] - yearchunk['startyear']+1, \
                              yearrange[1] - yearchunk['startyear']+2).tolist()
         event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1]+1))]
-        date = [event_list[n]+'-01-01' for n, _ in enumerate(event_list)]
 
-        #hazard setup
+        # hazard setup: set attributes
         self.set_raster([filename], band=id_bands, \
                         geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
 
@@ -183,12 +192,12 @@ class CropPotential(Hazard):
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
         self.units = 't / y / ha'
-        self.date = np.array(dt.str_to_date(date))
+        self.date = np.array(dt.str_to_date([event_list[n]+'-01-01' \
+                             for n, _ in enumerate(event_list)]))
         self.centroids.set_meta_to_lat_lon()
         self.centroids.region_id = (coordinates.coord_on_land(self.centroids.lat, \
-                                                              self.centroids.lon)).astype(dtype=int)
+                                                self.centroids.lon)).astype(dtype=int)
         self.check()
-
         return self
 
     def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False, \
@@ -196,11 +205,11 @@ class CropPotential(Hazard):
         """Calculates mean of the hazard for a given reference time period
             Parameters:
                 yearrange (array): time period used to calculate the mean intensity
-                default: 1976-2005
+                default: 1976-2005 (historical)
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
-                time period for every centroid
+                time period for each centroid
         """
         time_array = np.array(self.event_name, dtype=int)
         idx_time = np.zeros(2, dtype=int)
@@ -210,13 +219,13 @@ class CropPotential(Hazard):
         hist_mean = np.nan_to_num(np.squeeze(np.asarray(mean)))
 
         if save:
-            #generate output directories if they do not exist yet
+            # generate output directories if they do not exist yet
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
             mean_dir = os.path.join(output_dir, 'Hist_mean')
             if not os.path.exists(mean_dir):
                 os.mkdir(mean_dir)
-            #save mean_file
+            # save mean_file
             mean_file = h5py.File(mean_dir+'hist_mean_'+self.crop+'_'+str(yearrange[0])+ \
                                   '-'+str(yearrange[1])+'.hdf5', 'w')
             mean_file.create_dataset('mean', data=hist_mean)
@@ -228,21 +237,22 @@ class CropPotential(Hazard):
 
 
     def set_rel_yield_to_int(self, hist_mean):
-        """Sets relative yield to intensity (yearly yield / historic mean) per centroid
+        """Sets relative yield (yearly yield / historic mean) as intensity
 
             Parameters:
-                historic mean (array): historic mean per centroid
+                hist_mean (array): historic mean per centroid
 
             Returns:
-                hazard with modified intensity
+                hazard with modified intensity [unitless]
         """
-        #determine idx of the centroids with a mean yield !=0
+        # determine idx of the centroids with a mean yield !=0
         idx = np.where(hist_mean != 0)[0]
 
-        #initialize new hazard_matrix
+        # initialize new hazard_matrix
         hazard_matrix = np.empty(self.intensity.shape)
         hazard_matrix[:, :] = np.nan
 
+        # compute relative yield for each event:
         for event in range(len(self.event_id)):
             hazard_matrix[event, idx] = self.intensity[event, idx]/hist_mean[idx]
 
@@ -258,9 +268,9 @@ class CropPotential(Hazard):
         """Sets percentile to intensity
 
             Parameters:
-                reference_intensity (AD): intensity to be used as reference (e.g. the historic
-                                    intensity can be used in order to be able to directly compare
-                                    historic and future projection data)
+                reference_intensity (AD): intensity to be used as reference
+                    (e.g. the historic intensity can be used in order to be able
+                     to directly compare historic and future projection data)
 
             Returns:
                 hazard with modified intensity
@@ -282,16 +292,16 @@ class CropPotential(Hazard):
 
         return self
 
-    def plot_intensity_cp(self, event, dif=0, axis=None, **kwargs):
+    def plot_intensity_cp(self, event=None, dif=False, axis=None, **kwargs):
         """Plots intensity with predefined settings depending on the intensity definition
 
         Parameters:
             event (int or str): event_id or event_name
-            dif (int): variable signilizing whether absolute values or the difference between
-                future and historic are plotted (dif=0: his/fut values; dif=1: difference = fut-his)
+            dif (boolean): variable signilizing whether absolute values or the difference between
+                future and historic are plotted (False: his/fut values; True: difference = fut-his)
             axis (geoaxes): axes to plot on
         """
-        if dif == 0:
+        if not dif:
             if self.intensity_def == 'Yearly Yield':
                 axes = self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10, \
                                            **kwargs)
@@ -301,7 +311,7 @@ class CropPotential(Hazard):
             elif self.intensity_def == 'Percentile':
                 axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1, \
                                            **kwargs)
-        elif dif == 1:
+        else:
             if self.intensity_def == 'Yearly Yield':
                 axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-2, vmax=2, \
                                            **kwargs)
@@ -415,7 +425,7 @@ class CropPotential(Hazard):
 def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, \
                          yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], returns='filename_list'):
     """Generates hazard set for all files contained in the input directory and saves them
-    as hdf5 files in the output directory
+    as hdf5 files to the output directory.
 
         Parameters:
         input_dir (string): path to input data directory
