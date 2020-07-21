@@ -351,7 +351,7 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
     if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name:  # if country is not found in data
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        ref_year_fac, fac = wealth2gdp(cntry_iso)
+        fac = wealth2gdp(cntry_iso)[1]
         return gdp_year, np.around((fac * gdp_val), 1), 0
     if ref_year in years:  # indicator for reference year is available directly
         result = data_wealth.loc[:, np.str(ref_year)].values[0]

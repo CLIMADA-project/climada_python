@@ -189,7 +189,7 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
         while (len(OuterList) > 0) & (i <= initialLength):
             OuterCoords.append(OuterList[0].coords[0:(len(OuterList[0].coords) + 1)])
             OuterList.remove(OuterList[0])
-            for count in range(0, len(OuterList)):
+            for _ in range(0, len(OuterList)):
                 # get all the other outer polygon pieces in the right order
                 # (only works if fragments are in correct order, anyways!!
                 # so added another loop around it in case not!)

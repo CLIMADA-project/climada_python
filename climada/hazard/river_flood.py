@@ -114,8 +114,7 @@ class RiverFlood(Hazard):
             # centroids as points
             if ISINatIDGrid:
 
-                dest_centroids, isos, natID = RiverFlood._select_exact_area(
-                    countries, reg)
+                dest_centroids = RiverFlood._select_exact_area(countries, reg)[0]
                 meta_centroids = copy.copy(dest_centroids)
                 meta_centroids.set_lat_lon_to_meta()
 

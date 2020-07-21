@@ -248,10 +248,10 @@ class Drought(Hazard):
 
         if self.intensity_definition == 2:
             HAZ_TYPE = 'DR_sumthr'
-            self.tag.haz_type = 'DR_sumthr'
+            self.tag.haz_type = HAZ_TYPE
         elif self.intensity_definition == 3:
             HAZ_TYPE = 'DR_sum'
-            self.tag.haz_type = 'DR_sum'
+            self.tag.haz_type = HAZ_TYPE
 
 #        self.tag = TagHazard(HAZ_TYPE, 'TEST')
 

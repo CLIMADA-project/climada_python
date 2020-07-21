@@ -664,7 +664,7 @@ def _shape_cutter(shape, **opt_args):
                 end_idx = shape.parts[i + 1] - 1
             if (i > 0) & (check_enclaves == 1):
                 temp_path = path.Path(all_coords_shape[shape.parts[i]:end_idx])
-                for idx, val in enumerate(sub_shape_path):
+                for val in sub_shape_path:
                     if val.contains_point(temp_path.vertices[0]) and \
                     len(temp_path.vertices) > 2 and \
                     val.contains_point(temp_path.vertices[1]) and\
@@ -838,7 +838,7 @@ def _mask_from_shape(check_shape, **opt_args):
                 end_idx = check_shape.parts[i + 1] - 1
             if (i > 0) & (check_enclaves == 1):
                 temp_path = path.Path(all_coords_shape[check_shape.parts[i]:end_idx])
-                for idx, val in enumerate(sub_shape_path):
+                for val in sub_shape_path:
                     if val.contains_point(temp_path.vertices[0]) and \
                             len(temp_path.vertices) > 2 and \
                             val.contains_point(temp_path.vertices[1]) and\
@@ -1885,7 +1885,7 @@ def exposure_set_admin1(exposure, res_arcsec):
     count = 0
     for cntry in np.unique(exposure.region_id):
         _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
-        for idx3, adm1_shp in enumerate(admin1_info):
+        for adm1_shp in admin1_info:
             count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
             mask_adm1 = _mask_from_shape(
