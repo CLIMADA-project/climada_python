@@ -899,6 +899,26 @@ class Hazard():
             elif isinstance(var_val, list):
                 setattr(self, var_name, [var_val[p] for p in unique_pos])
 
+    def set_frequency(self, yearrange=None):
+        """Set hazard frequency from yearrange or intensity matrix.
+
+        Optional parameters:
+            yearrange (tuple or list): year range to be used to compute frequency
+                per event. If yearrange is not given (None), the year range is
+                derived from self.date
+        """
+        if not yearrange:
+            delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
+                     dt.datetime.fromordinal(int(np.min(self.date))).year + 1
+        else:
+            delta_time = max(yearrange)-min(yearrange)+1
+        num_orig = self.orig.nonzero()[0].size
+        if num_orig > 0:
+            ens_size = self.event_id.size / num_orig
+        else:
+            ens_size = 1
+        self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
+
     @property
     def size(self):
         """Returns number of events"""

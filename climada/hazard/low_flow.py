@@ -232,6 +232,12 @@ class LowFlow(Hazard):
             del haz_tmp
         if not keep_dis_data:
             del self.data
+        self.set_frequency(yearrange=yearrange)
+        self.tag = TagHazard(haz_type=HAZ_TYPE, file_name=\
+                             FILENAME_NC % (gh_model, cl_model, "*", scenario, soc, \
+                                            fn_str_var, "*_*"), \
+                             description='year range: %i-%i, reference: %i-%i' %(yearrange[0], \
+                                         yearrange[-1], yearrange_ref[0], yearrange_ref[-1]))
 
     def events_from_clusters(self, centroids):
         """init hazard events from clusters"""
@@ -274,7 +280,7 @@ class LowFlow(Hazard):
             self.date[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
             self.date_end[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.max()
         self.orig = np.ones(num_ev, bool)
-        self._set_frequency()
+        self.set_frequency()
 
         # Following values are defined for each event and centroid
         self.intensity = sparse.lil_matrix(np.zeros((num_ev, num_centr)))
@@ -303,17 +309,6 @@ class LowFlow(Hazard):
 
         self.data = unique_clusters(self.data)
         return self.data
-
-    def _set_frequency(self):
-        """Set hazard frequency from intensity matrix."""
-        delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
-                     dt.datetime.fromordinal(int(np.min(self.date))).year + 1
-        num_orig = self.orig.nonzero()[0].size
-        if num_orig > 0:
-            ens_size = self.event_id.size / num_orig
-        else:
-            ens_size = 1
-        self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
     @staticmethod
     def _df_clustering(data, cluster_vars, res_data, clus_thres_xy, \
