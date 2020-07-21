@@ -36,7 +36,7 @@ import tqdm
 import xarray as xr
 
 # climada dependencies
-from climada.hazard.tc_tracks import TCTracks, set_category
+from climada.hazard.tc_tracks import TCTracks, set_category, DEF_ENV_PRESSURE
 from climada.util.files_handler import get_file_names
 
 # declare constants
@@ -61,7 +61,7 @@ and Wikipedia at https://en.wikipedia.org/wiki/Invest_(meteorology)
 """
 
 SIG_CENTRE = 1
-"""The 008005 significance for 'centre'"""
+"""The BUFR code 008005 significance for 'centre'"""
 
 LOGGER = logging.getLogger(__name__)
 
@@ -164,7 +164,6 @@ class TCForecast(TCTracks):
         """
 
         decoder = pybufrkit.decoder.Decoder()
-        list_out = []
 
         if hasattr(file, 'read'):
             bufr = decoder.process(file.read())
@@ -178,32 +177,37 @@ class TCForecast(TCTracks):
 
         # setup parsers and querents
         npparser = pybufrkit.dataquery.NodePathParser()
-        dquerent = pybufrkit.dataquery.DataQuerent(npparser)
+        data_query = pybufrkit.dataquery.DataQuerent(npparser).query
 
         meparser = pybufrkit.mdquery.MetadataExprParser()
-        mquerent = pybufrkit.mdquery.MetadataQuerent(meparser)
+        meta_query = pybufrkit.mdquery.MetadataQuerent(meparser).query
 
         if fcast_rep is None:
             fcast_rep = self._find_delayed_replicator(
-                mquerent.query(bufr, '%unexpanded_descriptors')
+                meta_query(bufr, '%unexpanded_descriptors')
             )
 
         # query the bufr message
-        significance_dquery = dquerent.query(bufr, fcast_rep + '> 008005')
-        latitude_dquery     = dquerent.query(bufr, fcast_rep + '> 005002')
-        longitude_dquery    = dquerent.query(bufr, fcast_rep + '> 006002')
-        wind_10m_dquery     = dquerent.query(bufr, fcast_rep + '> 011012')
-        pressure_dquery     = dquerent.query(bufr, fcast_rep + '> 010051')
-        timestamp_dquery    = dquerent.query(bufr, fcast_rep + '> 004024')
-        wmo_longname_dquery = dquerent.query(bufr, '/001027')
-        storm_id_dquery     = dquerent.query(bufr, '/001025')
+        msg = {
+            # subset forecast data
+            'significance': data_query(bufr, fcast_rep + '> 008005'),
+            'latitude': data_query(bufr, fcast_rep + '> 005002'),
+            'longitude': data_query(bufr, fcast_rep + '> 006002'),
+            'wind_10m': data_query(bufr, fcast_rep + '> 011012'),
+            'pressure': data_query(bufr, fcast_rep + '> 010051'),
+            'timestamp': data_query(bufr, fcast_rep + '> 004024'),
+
+            # subset metadata
+            'wmo_longname': data_query(bufr, '/001027'),
+            'storm_id': data_query(bufr, '/001025'),
+            'ens_type': data_query(bufr, '/001092'),
+            'ens_number': data_query(bufr, '/001091'),
+        }
 
         timestamp_origin = dt.datetime(
-            mquerent.query(bufr, '%year'),
-            mquerent.query(bufr, '%month'),
-            mquerent.query(bufr, '%day'),
-            mquerent.query(bufr, '%hour'),
-            mquerent.query(bufr, '%minute'),
+            meta_query(bufr, '%year'), meta_query(bufr, '%month'),
+            meta_query(bufr, '%day'), meta_query(bufr, '%hour'),
+            meta_query(bufr, '%minute'),
         )
         timestamp_origin = np.datetime64(timestamp_origin)
 
@@ -211,41 +215,24 @@ class TCForecast(TCTracks):
             id_no = timestamp_origin.item().strftime('%Y%m%d%H') + \
                     str(np.random.randint(1e3, 1e4))
 
-        orig_centre = mquerent.query(bufr, '%originating_centre')
+        orig_centre = meta_query(bufr, '%originating_centre')
         if orig_centre == 98:
             provider = 'ECMWF'
         else:
             provider = 'BUFR code ' + str(orig_centre)
 
-        data_subcat = mquerent.query(bufr, '%data_i18n_subcategory')
-        n_subsets = mquerent.query(bufr, '%n_subsets')
+        for i in msg['significance'].subset_indices():
+            sig = np.array(msg['significance'].get_values(i), dtype='int')
+            lat = np.array(msg['latitude'].get_values(i), dtype='float')
+            lon = np.array(msg['longitude'].get_values(i), dtype='float')
+            wnd = np.array(msg['wind_10m'].get_values(i), dtype='float')
+            pre = np.array(msg['pressure'].get_values(i), dtype='float')
 
-        if (data_subcat != 0) or (n_subsets == 1):
-            is_ensemble = False
-        elif (data_subcat == 0) and (n_subsets < 52):
-            is_ensemble = True
-        else:
-            is_ensemble = None
+            name = msg['wmo_longname'].get_values(i)[0].decode().strip()
+            sid = msg['storm_id'].get_values(i)[0].decode().strip()
 
-        for i in significance_dquery.subset_indices():
-            sig = np.array(significance_dquery.get_values(i), dtype='int')
-            lat = np.array(latitude_dquery.get_values(i), dtype='float')
-            lon = np.array(longitude_dquery.get_values(i), dtype='float')
-            wnd = np.array(wind_10m_dquery.get_values(i), dtype='float')
-            pre = np.array(pressure_dquery.get_values(i), dtype='float')
-
-            name = wmo_longname_dquery.get_values(i)[0].decode().strip()
-            sid = storm_id_dquery.get_values(i)[0].decode().strip()
-
-            timestep_int = np.array(timestamp_dquery.get_values(i)).squeeze()
+            timestep_int = np.array(msg['timestamp'].get_values(i)).squeeze()
             timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
-
-            if is_ensemble is None and i < 52:
-                is_ensemble = True
-            elif is_ensemble is None and i == 52:
-                is_ensemble = False
-            # in the old format, subset 51 is the ENS control run (unperturbed),
-            # see https://www.ecmwf.int/en/forecasts/datasets/set-iii#III-viii
 
             track = xr.Dataset(
                 data_vars={
@@ -266,8 +253,8 @@ class TCForecast(TCTracks):
                     'orig_event_flag': False,
                     'data_provider': provider,
                     'id_no': (int(id_no) + i / 100),
-                    'ensemble_number': i if is_ensemble else None,
-                    'is_ensemble': is_ensemble,
+                    'ensemble_number': msg['ens_number'],
+                    'is_ensemble': msg['ens_type'] != 0,
                     'forecast_time': timestamp_origin,
                 }
             )
@@ -275,10 +262,19 @@ class TCForecast(TCTracks):
             track = track.dropna('time')
 
             if track.sizes['time'] != 0:
+                # can only make latlon coords after dropna
                 track = track.set_coords(['lat', 'lon'])
                 track['time_step'] = track.ts_int - \
                     track.ts_int.shift({'time': 1}, fill_value=0)
-                track = track.drop('ts_int') # TODO use drop_vars after upgrading xarray
+
+                # TODO use drop_vars after upgrading xarray
+                track = track.drop('ts_int')
+
+                track['radius_max_wind'] = np.full_like(track.time, np.nan,
+                                                        dtype=float)
+                track['environmental_pressure'] = np.full_like(
+                    track.time, DEF_ENV_PRESSURE * 100, dtype=float
+                )
 
                 # according to specs always num-num-letter
                 track.attrs['basin'] = BASINS[sid[2]]
