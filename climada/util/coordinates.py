@@ -219,8 +219,8 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
             v1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             v2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
-            fc = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fc[..., None] * (v2[:, None] - scal[..., None] * v1[:, :, None])
+            fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
+            vtan = fact[..., None] * (v2[:, None] - scal[..., None] * v1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
@@ -611,20 +611,20 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         base_file = NATEARTH_CENTROIDS_150AS
         if resolution >= 360:
             base_file = NATEARTH_CENTROIDS_360AS
-        f = hdf5.read(base_file)
-        meta = f['meta']
+        hdf5_f = hdf5.read(base_file)
+        meta = hdf5_f['meta']
         grid_shape = (meta['height'][0], meta['width'][0])
         transform = rasterio.Affine(*meta['transform'])
-        region_id = f['region_id'].reshape(grid_shape)
+        region_id = hdf5_f['region_id'].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
-        f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
-        dim_lon, dim_lat = f['lon'], f['lat']
+        hdf5_f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
+        dim_lon, dim_lat = hdf5_f['lon'], hdf5_f['lat']
         bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
         orig_res = get_resolution(dim_lon, dim_lat)
         _, _, transform = pts_to_raster_meta(bounds, orig_res)
         grid_shape = (dim_lat.size, dim_lon.size)
-        region_id = f['NatIdGrid'].reshape(grid_shape).astype(int)
+        region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
         natid2iso_alpha = country_natid2iso(list(range(231)))
         natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
@@ -698,15 +698,15 @@ def country_iso_alpha2numeric(isos):
     """
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
-    OLD_ISO = {
+    old_iso = {
         '': 0,  # Ocean or fill_value
         "ANT": 530,  # Netherlands Antilles: split up since 2010
         "SCG": 891,  # Serbia and Montenegro: split up since 2006
     }
     nums = []
     for iso in isos:
-        if iso in OLD_ISO:
-            num = OLD_ISO[iso]
+        if iso in old_iso:
+            num = old_iso[iso]
         else:
             num = int(iso_cntry.get(iso).numeric)
         nums.append(num)
@@ -1109,13 +1109,13 @@ def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
     return interp_raster_data(data, lat, lon, transform, method=method,
                               fill_value=fill_value)
 
-def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
+def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
 
     Parameters:
         data (np.array): 2d numpy array containing the values
-        y (np.array): y-coordinates of points (corresp. to first axis of data)
-        x (np.array): x-coordinates of points (corresp. to second axis of data)
+        interp_y (np.array): y-coordinates of points (corresp. to first axis of data)
+        interp_x (np.array): x-coordinates of points (corresp. to second axis of data)
         transform (affine.Affine): affine transform defining the raster
         method (str, optional): The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
@@ -1143,7 +1143,7 @@ def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
 
     data = np.float64(data)
     data[np.isnan(data)] = fill_value
-    return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([y, x]).T,
+    return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
                                      method=method, bounds_error=False, fill_value=fill_value)
 
 def refine_raster_data(data, transform, res, method='linear', fill_value=0):

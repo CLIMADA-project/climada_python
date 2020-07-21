@@ -64,7 +64,7 @@ class GDP2Asset(Exposures):
             raise NameError
 
         if not os.path.exists(path):
-            LOGGER.error('Invalid path ' + path)
+            LOGGER.error('Invalid path %s', path)
             raise NameError
         try:
 
@@ -84,9 +84,8 @@ class GDP2Asset(Exposures):
             Exposures.__init__(self, gpd.GeoDataFrame(
                 pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
-            LOGGER.error('Exposure countries: ' + str(countries) + ' or reg ' +
-                         str(reg) + ' could not be set, check ISO3 or' +
-                         ' reference year ' + str(ref_year))
+            LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
+                         ' reference year %s', countries, reg, ref_year)
             raise KeyError
         self.tag = tag
         self.ref_year = ref_year
@@ -153,13 +152,12 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp_lat = gdp_file.lat.data
         time = gdp_file.time.dt.year
     except OSError:
-        LOGGER.error('Problems while reading ,' + path +
-                     ' check exposure_file specifications')
+        LOGGER.error('Problems while reading %s check exposure_file specifications', path)
         raise OSError
     try:
         year_index = np.where(time == ref_year)[0][0]
     except IndexError:
-        LOGGER.error('No data available for year ' + str(ref_year))
+        LOGGER.error('No data available for year %s', ref_year)
         raise KeyError
     conv_lon = asset_converter.lon.data
     conv_lat = asset_converter.lat.data

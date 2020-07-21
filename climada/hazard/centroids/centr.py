@@ -122,7 +122,7 @@ class Centroids():
             if 'width' not in self.meta.keys() or 'height' not in self.meta.keys() or \
             'crs' not in self.meta.keys() or 'transform' not in self.meta.keys():
                 LOGGER.error('Missing meta information: width, height,'
-                             + 'crs or transform')
+                             'crs or transform')
                 raise ValueError
             if self.meta['transform'][4] > 0:
                 LOGGER.error('Meta does not contain upper left corner data.')

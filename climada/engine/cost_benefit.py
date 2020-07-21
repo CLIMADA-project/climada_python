@@ -564,7 +564,7 @@ class CostBenefit():
                          / bars[3].get_height())
         if combine:
             try:
-                LOGGER.info('Combining measures ' + str(in_meas_names))
+                LOGGER.info('Combining measures %s', in_meas_names)
                 all_meas = self.combine_measures(in_meas_names, 'combine',
                                                  colors.to_rgba('black'), disc_rates,
                                                  imp_time_depen, risk_func)
