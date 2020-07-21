@@ -186,7 +186,7 @@ class Impact():
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
         if if_haz not in exposures:
-            LOGGER.info('Missing exposures impact functions for hazard %s. ' +
+            LOGGER.info('Missing exposures impact functions for hazard %s. '
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
 

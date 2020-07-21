@@ -98,10 +98,10 @@ class RiverFlood(Hazard):
             LOGGER.error('No flood-fraction-path set')
             raise NameError
         if not os.path.exists(dph_path):
-            LOGGER.error('Invalid flood-file path ' + dph_path)
+            LOGGER.error('Invalid flood-file path %s', dph_path)
             raise NameError
         if not os.path.exists(frc_path):
-            LOGGER.error('Invalid flood-file path ' + frc_path)
+            LOGGER.error('Invalid flood-file path %s', frc_path)
             raise NameError
 
         with xr.open_dataset(dph_path) as flood_dph:
@@ -227,7 +227,7 @@ class RiverFlood(Hazard):
         event_names = pd.to_datetime(time).year
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
-            LOGGER.error('No events found for selected ' + str(years))
+            LOGGER.error('No events found for selected %s', years)
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
@@ -241,7 +241,7 @@ class RiverFlood(Hazard):
             NameError
         """
         if not os.path.exists(fld_trend_path):
-            LOGGER.error('Invalid ReturnLevel-file path ' + fld_trend_path)
+            LOGGER.error('Invalid ReturnLevel-file path %s', fld_trend_path)
             raise NameError
         else:
             metafrc, trend_data = read_raster(fld_trend_path, band=[1])
@@ -276,7 +276,7 @@ class RiverFlood(Hazard):
         """
 
         if not os.path.exists(frc_path):
-            LOGGER.error('Invalid ReturnLevel-file path ' + frc_path)
+            LOGGER.error('Invalid ReturnLevel-file path %s', frc_path)
             raise NameError
         else:
             metafrc, fraction = read_raster(frc_path, band=[1])

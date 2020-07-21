@@ -1808,8 +1808,7 @@ def admin1_validation(country, methods, exponents, **args):
         country_info[country_list[0]], admin1_info[country_list[0]]\
             = _get_country_info(country_list[0])
     else:
-        LOGGER.error('Country parameter data type not recognised. '
-                     + 'Operation aborted.')
+        LOGGER.error('Country parameter data type not recognised. Operation aborted.')
         raise TypeError
     shp_file = shapereader.natural_earth(resolution='10m',
                                          category='cultural',

@@ -153,11 +153,11 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     """
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and ' +
+        LOGGER.warning('The parameter \'required_files\' was too short and '
                        'is ignored.')
     if not path.exists(check_path):
         check_path = SYSTEM_DIR
-        LOGGER.warning('The given path does not exist and is ignored. %s' +
+        LOGGER.warning('The given path does not exist and is ignored. %s'
                        ' is checked instead.', SYSTEM_DIR)
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
@@ -169,16 +169,14 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
-        LOGGER.debug('Found all required satellite data (' +
-                     str(int(sum(required_files))) + ' files) in folder ' +
-                     check_path)
+        LOGGER.debug('Found all required satellite data (%s files) in folder %s',
+                     int(sum(required_files)), check_path)
     elif sum(files_exist) == 0:
         LOGGER.info('No satellite files found locally in %s', check_path)
     else:
-        LOGGER.debug('Not all satellite files available. Found ' +
-                     str(int(sum(files_exist))) + ' out of ' +
-                     str(int(sum(required_files))) + ' required files in ' +
-                     check_path)
+        LOGGER.debug('Not all satellite files available. '
+                     'Found %d out of %d required files in %s',
+                     int(sum(files_exist)), int(sum(required_files)), check_path)
 
     return (files_exist, check_path)
 
@@ -211,7 +209,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
             LOGGER.warning('The given folder does not exist using the '
                            'Climada data directory instead.')
     if np.all(req_files == files_exist):
-        LOGGER.debug('All required files already exist. ' +
+        LOGGER.debug('All required files already exist. '
                      'No downloads necessary.')
         return None
     try:

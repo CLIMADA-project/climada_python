@@ -198,7 +198,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
             dfr_wb = dfr_wb.replace(INCOME_GRP_WB_TABLE.keys(),
                                     INCOME_GRP_WB_TABLE.values())
         except (IOError, requests.exceptions.ConnectionError) as err:
-            LOGGER.error('Internet connection failed while downloading ' +
+            LOGGER.error('Internet connection failed while downloading '
                          'historical income groups.')
             raise err
 
@@ -269,8 +269,8 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
                                         header=0, encoding='ISO-8859-1')
     if ref_year != 2016:
         LOGGER.warning('Reference year for the factor to convert GDP to '
-                       + 'wealth was set to 2016 because other years have not '
-                       + 'been implemented yet.')
+                       'wealth was set to 2016 because other years have not '
+                       'been implemented yet.')
         ref_year = 2016
     if non_financial:
         try:

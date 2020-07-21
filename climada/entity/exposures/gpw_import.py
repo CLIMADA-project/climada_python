@@ -165,7 +165,7 @@ def get_box_gpw(**parameters):
         fname = os.path.join(gpw_path, FILENAME_GPW % (ver, year))
         if os.path.isfile(fname):
             file_exists = True
-            LOGGER.info('GPW Version v4.%2i' % ver)
+            LOGGER.info('GPW Version v4.%2i', ver)
             break
 
     try:
@@ -192,8 +192,8 @@ def get_box_gpw(**parameters):
         del band1, gpw_file
         arr1[arr1 < 0] = 0
         if arr1.shape != (17400, 43200) and arr1.shape != (21600, 43200):
-            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: '
-                           + '%s x %s', str(arr1.shape[0]), str(arr1.shape[1]))
+            LOGGER.warning('GPW data dimensions mismatch. Actual dimensions: %s x %s',
+                           arr1.shape[0], arr1.shape[1])
             LOGGER.warning('Expected dimensions: 17400x43200 or 21600x43200.')
         if zoom_factor != 1:
             total_population = arr1.sum()
