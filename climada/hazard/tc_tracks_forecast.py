@@ -105,7 +105,7 @@ class TCForecast(TCTracks):
                 pass
 
     @staticmethod
-    def fetch_bufr_ftp(target_dir=None, close_files=False):
+    def fetch_bufr_ftp(target_dir=None):
         """
         Fetch and read latest ECMWF TC track predictions from the FTP dissemination
         server. If target_dir is set, the files get downloaded persistently to the
@@ -131,14 +131,14 @@ class TCForecast(TCTracks):
 
             LOGGER.info('Fetching BUFR tracks:')
             for rfile in tqdm.tqdm(remotefiles, unit='files'):
-                if target_dir is None:
-                    lfile = tempfile.TemporaryFile(mode='w+b')
-                else:
+                if target_dir:
                     lfile = open(os.path.join(target_dir, rfile), 'w+b')
+                else:
+                    lfile = tempfile.TemporaryFile(mode='w+b')
 
                 con.retrbinary('RETR ' + rfile, lfile.write)
 
-                if close_files:
+                if target_dir:
                     localfiles.append(lfile.name)
                     lfile.close()
                 else:
