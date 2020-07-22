@@ -25,6 +25,7 @@ import os
 import glob
 import shutil
 import logging
+import warnings
 import datetime as dt
 import itertools
 import numpy as np
@@ -40,13 +41,13 @@ import netCDF4 as nc
 from numba import jit
 import scipy.io.matlab as matlab
 import statsmodels.api as sm
-import warnings
 
 from climada.util import ureg
 import climada.util.coordinates as coord_util
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
+import climada.hazard.tc_tracks_synth
 
 LOGGER = logging.getLogger(__name__)
 
@@ -223,146 +224,150 @@ class TCTracks():
                              'climada_python/data/system/', IBTRACS_URL)
                 raise err
 
-        ds = xr.open_dataset(fn_nc)
-        match = np.ones(ds.sid.shape[0], dtype=bool)
+        ibtracs_ds = xr.open_dataset(fn_nc)
+        match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
         if storm_id:
             if not isinstance(storm_id, list):
                 storm_id = [storm_id]
-            match &= ds.sid.isin([i.encode() for i in storm_id])
+            match &= ibtracs_ds.sid.isin([i.encode() for i in storm_id])
         else:
             year_range = year_range if year_range else (1980, 2018)
         if year_range:
-            years = ds.sid.str.slice(0, 4).astype(int)
+            years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
             match &= (years >= year_range[0]) & (years <= year_range[1])
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in time range (%s, %s).', *year_range)
         if basin:
-            match &= (ds.basin[:, 0] == basin.encode())
+            match &= (ibtracs_ds.basin[:, 0] == basin.encode())
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
-        ds = ds.sel(storm=match)
-        ds['valid_t'] = ds.time.notnull()
-        valid_st = ds.valid_t.any(dim="date_time")
+        ibtracs_ds = ibtracs_ds.sel(storm=match)
+        ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
+        valid_st = ibtracs_ds.valid_t.any(dim="date_time")
         invalid_st = np.nonzero(~valid_st.data)[0]
         if invalid_st.size > 0:
-            st_ids = ', '.join(ds.sid.sel(storm=invalid_st).astype(str).data)
+            st_ids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data)
             LOGGER.warning('No valid timestamps found for %s.', st_ids)
-            ds = ds.sel(storm=valid_st)
+            ibtracs_ds = ibtracs_ds.sel(storm=valid_st)
 
         if not provider:
-            agency_pref, track_agency_ix = ibtracs_track_agency(ds)
+            agency_pref, track_agency_ix = ibtracs_track_agency(ibtracs_ds)
 
-        for v in ['wind', 'pres', 'rmw', 'poci', 'roci']:
+        for var in ['wind', 'pres', 'rmw', 'poci', 'roci']:
             if provider:
                 # enforce use of specified provider's data points
-                ds[v] = ds[f'{provider}_{v}']
+                ibtracs_ds[var] = ibtracs_ds[f'{provider}_{var}']
             else:
                 # array of values in order of preference
-                cols = [f'{a}_{v}' for a in agency_pref]
-                cols = [col for col in cols if col in ds.data_vars.keys()]
-                all_vals = ds[cols].to_array(dim='agency')
+                cols = [f'{a}_{var}' for a in agency_pref]
+                cols = [col for col in cols if col in ibtracs_ds.data_vars.keys()]
+                all_vals = ibtracs_ds[cols].to_array(dim='agency')
                 preferred_ix = all_vals.notnull().argmax(dim='agency')
 
-                if v in ['wind', 'pres']:
+                if var in ['wind', 'pres']:
                     # choice: wmo -> wmo_agency/usa_agency -> preferred
-                    ds[v] = ds['wmo_' + v] \
+                    ibtracs_ds[var] = ibtracs_ds['wmo_' + var] \
                         .fillna(all_vals.isel(agency=track_agency_ix)) \
                         .fillna(all_vals.isel(agency=preferred_ix))
                 else:
-                    ds[v] = all_vals.isel(agency=preferred_ix)
-        ds = ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
-                 'wind', 'pres', 'rmw', 'roci', 'poci']]
+                    ibtracs_ds[var] = all_vals.isel(agency=preferred_ix)
+        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
+                                 'wind', 'pres', 'rmw', 'roci', 'poci']]
 
         if estimate_missing:
-            ds['pres'][:] = _estimate_pressure(ds.pres, ds.lat, ds.lon, ds.wind)
-            ds['wind'][:] = _estimate_vmax(ds.wind, ds.lat, ds.lon, ds.pres)
+            ibtracs_ds['pres'][:] = _estimate_pressure(ibtracs_ds.pres,
+                                                       ibtracs_ds.lat, ibtracs_ds.lon,
+                                                       ibtracs_ds.wind)
+            ibtracs_ds['wind'][:] = _estimate_vmax(ibtracs_ds.wind,
+                                                   ibtracs_ds.lat, ibtracs_ds.lon,
+                                                   ibtracs_ds.pres)
 
-        ds['valid_t'] &= ds.wind.notnull() & ds.pres.notnull()
-        valid_st = ds.valid_t.any(dim="date_time")
+        ibtracs_ds['valid_t'] &= ibtracs_ds.wind.notnull() & ibtracs_ds.pres.notnull()
+        valid_st = ibtracs_ds.valid_t.any(dim="date_time")
         invalid_st = np.nonzero(~valid_st.data)[0]
         if invalid_st.size > 0:
-            st_ids = ', '.join(ds.sid.sel(storm=invalid_st).astype(str).data)
+            st_ids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data)
             LOGGER.warning('No valid wind/pressure values found for %s.', st_ids)
-            ds = ds.sel(storm=valid_st)
+            ibtracs_ds = ibtracs_ds.sel(storm=valid_st)
 
-        max_wind = ds.wind.max(dim="date_time").data.ravel()
+        max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
         category = np.argmax(category_test, axis=1) - 1
         basin_map = {b.encode("utf-8"): v for b, v in BASIN_ENV_PRESSURE.items()}
         basin_fun = lambda b: basin_map[b]
 
-        ds['id_no'] = ds.sid.str.replace(b'N', b'0') \
-                            .str.replace(b'S', b'1') \
-                            .astype(float)
-        ds['time_step'] = xr.zeros_like(ds.time, dtype=float)
-        ds['time_step'][:, 1:] = ds.time.diff(dim="date_time") / np.timedelta64(1, 's')
-        ds['time_step'][:, 0] = ds.time_step[:, 1]
+        ibtracs_ds['id_no'] = (ibtracs_ds.sid.str.replace(b'N', b'0')
+                               .str.replace(b'S', b'1')
+                               .astype(float))
+        ibtracs_ds['time_step'] = xr.zeros_like(ibtracs_ds.time, dtype=float)
+        ibtracs_ds['time_step'][:, 1:] = (ibtracs_ds.time.diff(dim="date_time")
+                                          / np.timedelta64(1, 's'))
+        ibtracs_ds['time_step'][:, 0] = ibtracs_ds.time_step[:, 1]
         provider = provider if provider else 'ibtracs'
 
         last_perc = 0
         all_tracks = []
-        for i_track, t_msk in enumerate(ds.valid_t.data):
-            perc = 100 * len(all_tracks) / ds.sid.size
+        for i_track, t_msk in enumerate(ibtracs_ds.valid_t.data):
+            perc = 100 * len(all_tracks) / ibtracs_ds.sid.size
             if perc - last_perc >= 10:
                 LOGGER.info("Progress: %d%%", perc)
                 last_perc = perc
-            st_ds = ds.sel(storm=i_track, date_time=t_msk)
-            st_penv = xr.apply_ufunc(basin_fun, st_ds.basin, vectorize=True)
-            st_ds['time'][:1] = st_ds.time[:1].dt.floor('H')
-            if st_ds.time.size > 1:
-                st_ds['time_step'][0] = (st_ds.time[1] - st_ds.time[0]) \
+            track_ds = ibtracs_ds.sel(storm=i_track, date_time=t_msk)
+            st_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
+            track_ds['time'][:1] = track_ds.time[:1].dt.floor('H')
+            if track_ds.time.size > 1:
+                track_ds['time_step'][0] = (track_ds.time[1] - track_ds.time[0]) \
                                       / np.timedelta64(1, 's')
 
             with warnings.catch_warnings():
                 # See https://github.com/pydata/xarray/issues/4167
                 warnings.simplefilter(action="ignore", category=FutureWarning)
 
-                st_ds['rmw'] = st_ds.rmw \
+                track_ds['rmw'] = track_ds.rmw \
                     .ffill(dim='date_time', limit=1) \
                     .bfill(dim='date_time', limit=1) \
                     .fillna(0)
-                st_ds['roci'] = st_ds.roci \
+                track_ds['roci'] = track_ds.roci \
                     .ffill(dim='date_time', limit=1) \
                     .bfill(dim='date_time', limit=1) \
                     .fillna(0)
-                st_ds['poci'] = st_ds.poci \
+                track_ds['poci'] = track_ds.poci \
                     .ffill(dim='date_time', limit=4) \
                     .bfill(dim='date_time', limit=4)
                 # this is the most time consuming line in the processing:
-                st_ds['poci'] = st_ds.poci.fillna(st_penv)
+                track_ds['poci'] = track_ds.poci.fillna(st_penv)
 
             if estimate_missing:
-                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values, st_ds.pres.values)
-                st_ds['roci'][:] = estimate_roci(st_ds.roci.values, st_ds.rmw.values)
-                st_ds['roci'][:] = np.fmax(st_ds.rmw.values, st_ds.roci.values)
+                track_ds['rmw'][:] = estimate_rmw(track_ds.rmw.values, track_ds.pres.values)
+                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.rmw.values)
+                track_ds['roci'][:] = np.fmax(track_ds.rmw.values, track_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
-            st_ds['poci'][:] = np.fmax(st_ds.poci, st_ds.pres)
+            track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
 
-            tr_ds = xr.Dataset({
-                'time_step': ('time', st_ds.time_step),
-                'radius_max_wind': ('time', st_ds.rmw.data),
-                'radius_oci': ('time', st_ds.roci.data),
-                'max_sustained_wind': ('time', st_ds.wind.data),
-                'central_pressure': ('time', st_ds.pres.data),
-                'environmental_pressure': ('time', st_ds.poci.data),
+            all_tracks.append(xr.Dataset({
+                'time_step': ('time', track_ds.time_step),
+                'radius_max_wind': ('time', track_ds.rmw.data),
+                'radius_oci': ('time', track_ds.roci.data),
+                'max_sustained_wind': ('time', track_ds.wind.data),
+                'central_pressure': ('time', track_ds.pres.data),
+                'environmental_pressure': ('time', track_ds.poci.data),
             }, coords={
-                'time': st_ds.time.dt.round('s').data,
-                'lat': ('time', st_ds.lat.data),
-                'lon': ('time', st_ds.lon.data),
+                'time': track_ds.time.dt.round('s').data,
+                'lat': ('time', track_ds.lat.data),
+                'lon': ('time', track_ds.lon.data),
             }, attrs={
                 'max_sustained_wind_unit': 'kn',
                 'central_pressure_unit': 'mb',
-                'name': st_ds.name.astype(str).item(),
-                'sid': st_ds.sid.astype(str).item(),
+                'name': track_ds.name.astype(str).item(),
+                'sid': track_ds.sid.astype(str).item(),
                 'orig_event_flag': True,
                 'data_provider': provider,
-                'basin': st_ds.basin.values[0].astype(str).item(),
-                'id_no': st_ds.id_no.item(),
+                'basin': track_ds.basin.values[0].astype(str).item(),
+                'id_no': track_ds.id_no.item(),
                 'category': category[i_track],
-            })
-            all_tracks.append(tr_ds)
+            }))
         self.data = all_tracks
 
     def read_processed_ibtracs_csv(self, file_names):
@@ -457,13 +462,13 @@ class TCTracks():
                                 days[i_track, valid_idx],
                                 hours[i_track, valid_idx])
                 datetimes = list(datetimes)
-            except ValueError as e:
+            except ValueError as err:
                 # dates are known to contain invalid February 30
                 date_feb = (months[i_track, valid_idx] == 2) \
                          & (days[i_track, valid_idx] > 28)
                 if np.count_nonzero(date_feb) == 0:
                     # unknown invalid date issue
-                    raise e
+                    raise err
                 step = time_step if not date_feb[0] else -time_step
                 reference_idx = 0 if not date_feb[0] else -1
                 reference_date = dt.datetime(
@@ -534,11 +539,11 @@ class TCTracks():
         times = nc_data.variables['source_time'][i_track, :][:val_len]
 
         datetimes = list()
-        for t in times:
+        for time in times:
             try:
                 datetimes.append(
                     dt.datetime.strptime(
-                        str(nc.num2date(t, 'days since {}'.format('1858-11-17'),
+                        str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
                                         calendar='standard')),
                         '%Y-%m-%d %H:%M:%S'))
             except ValueError:
@@ -546,11 +551,11 @@ class TCTracks():
                 if datetimes:
                     datetimes.append(datetimes[-1] + dt.timedelta(hours=3))
                 else:
-                    pos = list(times).index(t)
-                    t = times[pos + 1] - 1 / 24 * 3
+                    pos = list(times).index(time)
+                    time = times[pos + 1] - 1 / 24 * 3
                     datetimes.append(
                         dt.datetime.strptime(
-                            str(nc.num2date(t, 'days since {}'.format('1858-11-17'),
+                            str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
                                             calendar='standard')),
                             '%Y-%m-%d %H:%M:%S'))
         time_step = []
@@ -558,12 +563,12 @@ class TCTracks():
             time_step.append((time - datetimes[i_time - 1]).total_seconds() / 3600)
         time_step.append(time_step[-1])
 
-        basin = list()
-        for bs in nc_data.variables['basin'][i_track, :][:val_len]:
+        basins = list()
+        for basin in nc_data.variables['basin'][i_track, :][:val_len]:
             try:
-                basin.extend([basin_dict[bs]])
+                basins.extend([basin_dict[basin]])
             except KeyError:
-                basin.extend([np.nan])
+                basins.extend([np.nan])
 
         lon = nc_data.variables['lon'][i_track, :][:val_len]
         lon[lon > 180] = lon[lon > 180] - 360  # change lon format to -180 to 180
@@ -584,7 +589,7 @@ class TCTracks():
                               'radius_max_wind': np.ones(lat.size) * 65.,
                               'maximum_precipitation': max_prec,
                               'average_precipitation': av_prec,
-                              'basins': basin,
+                              'basins': basins,
                               'time_step': time_step})
 
         # construct xarray
@@ -595,7 +600,7 @@ class TCTracks():
                        'central_pressure_unit': 'mb',
                        'sid': sid,
                        'name': sid, 'orig_event_flag': False,
-                       'basin': basin[0],
+                       'basin': basins[0],
                        'id_no': i_track,
                        'category': set_category(wind, 'kn')}
         self.data.append(tr_ds)
@@ -612,7 +617,7 @@ class TCTracks():
                     time_step_h)
 
         if land_params:
-            land_geom = _calc_land_geom(self.data)
+            land_geom = land_within_tracks_bounds(self.data)
         else:
             land_geom = None
 
@@ -631,8 +636,7 @@ class TCTracks():
 
     def calc_random_walk(self, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        from climada.hazard.tc_tracks_synth import calc_random_walk
-        self.data = calc_random_walk(self, **kwargs)
+        self.data = climada.hazard.tc_tracks_synth.calc_random_walk(self, **kwargs)
 
     @property
     def size(self):
@@ -770,7 +774,7 @@ class TCTracks():
             track_int = track
 
         if land_geom:
-            _track_land_params(track_int, land_geom)
+            track_land_params(track_int, land_geom)
         return track_int
 
     def _read_ibtracs_csv_single(self, file_name):
@@ -833,33 +837,36 @@ class TCTracks():
         self.data.append(tr_ds)
 
 
-def _calc_land_geom(ens_track):
+def land_within_tracks_bounds(tracks):
     """Compute land geometry used for land distance computations.
+
+    Parameters:
+        tracks (list of xr.Dataset): tropical cyclone tracks
 
     Returns:
         shapely.geometry.multipolygon.MultiPolygon
     """
     deg_buffer = 0.1
-    min_lat = np.min([np.min(track.lat.values) for track in ens_track])
+    min_lat = np.min([np.min(track.lat.values) for track in tracks])
     min_lat = max(min_lat - deg_buffer, -90)
 
-    max_lat = np.max([np.max(track.lat.values) for track in ens_track])
+    max_lat = np.max([np.max(track.lat.values) for track in tracks])
     max_lat = min(max_lat + deg_buffer, 90)
 
-    min_lon = np.min([np.min(track.lon.values) for track in ens_track])
+    min_lon = np.min([np.min(track.lon.values) for track in tracks])
     min_lon = max(min_lon - deg_buffer, -180)
 
-    max_lon = np.max([np.max(track.lon.values) for track in ens_track])
+    max_lon = np.max([np.max(track.lon.values) for track in tracks])
     max_lon = min(max_lon + deg_buffer, 180)
 
     return coord_util.get_land_geometry(
         extent=(min_lon, max_lon, min_lat, max_lat), resolution=10)
 
-def _track_land_params(track, land_geom):
+def track_land_params(track, land_geom):
     """Compute parameters of land for one track.
 
     Parameters:
-        track (xr.Dataset): track values
+        track (xr.Dataset): tropical cyclone track
         land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
     """
     track['on_land'] = ('time',
@@ -954,11 +961,11 @@ def estimate_roci(roci, cen_pres):
     pres_l = [872, 950, 985, 1005, 1021]
     roci_l = [210.711487, 215.897110, 198.261520, 159.589508, 90.900116]
     roci[msk] = 0
-    for i in range(len(pres_l)):
-        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
-        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
-        roci[msk] += roci_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
-                                             - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
+    for i, pres_l_i in enumerate(pres_l):
+        slope_0 = 1. / (pres_l_i - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l_i) if i + 1 < len(pres_l) else 0
+        roci[msk] += roci_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l_i - cen_pres[msk])
+                                             - slope_1 * np.fmax(0, cen_pres[msk] - pres_l_i)))
     return roci
 
 def estimate_rmw(rmw, cen_pres):
@@ -971,11 +978,11 @@ def estimate_rmw(rmw, cen_pres):
     pres_l = [872, 940, 980, 1021]
     rmw_l = [14.907318, 15.726927, 25.742142, 56.856522]
     rmw[msk] = 0
-    for i in range(len(pres_l)):
-        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
-        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
-        rmw[msk] += rmw_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
-                                           - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
+    for i, pres_l_i in enumerate(pres_l):
+        slope_0 = 1. / (pres_l_i - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l_i) if i + 1 < len(pres_l) else 0
+        rmw[msk] += rmw_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l_i - cen_pres[msk])
+                                           - slope_1 * np.fmax(0, cen_pres[msk] - pres_l_i)))
     return rmw
 
 def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
@@ -996,71 +1003,71 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     all_vars = ['lat', 'lon'] + wmo_vars
     explanatory = list(explanatory)
     variables = explanatory + [explained]
-    for v in variables:
-        if v not in all_vars:
-            LOGGER.error("Unknown ibtracs variable: %s", v)
+    for var in variables:
+        if var not in all_vars:
+            LOGGER.error("Unknown ibtracs variable: %s", var)
             raise KeyError
 
     # load ibtracs dataset
     fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
-    ds = xr.open_dataset(fn_nc)
+    ibtracs_ds = xr.open_dataset(fn_nc)
 
     # choose specified year range
-    years = ds.sid.str.slice(0, 4).astype(int)
+    years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
     match = (years >= year_range[0]) & (years <= year_range[1])
-    ds = ds.sel(storm=match)
+    ibtracs_ds = ibtracs_ds.sel(storm=match)
 
     # fill values
-    agency_pref, track_agency_ix = ibtracs_track_agency(ds)
-    for v in wmo_vars:
-        if v not in variables:
+    agency_pref, track_agency_ix = ibtracs_track_agency(ibtracs_ds)
+    for var in wmo_vars:
+        if var not in variables:
             continue
         # array of values in order of preference
-        cols = [f'{a}_{v}' for a in agency_pref]
-        cols = [col for col in cols if col in ds.data_vars.keys()]
-        all_vals = ds[cols].to_array(dim='agency')
+        cols = [f'{a}_{var}' for a in agency_pref]
+        cols = [col for col in cols if col in ibtracs_ds.data_vars.keys()]
+        all_vals = ibtracs_ds[cols].to_array(dim='agency')
         preferred_ix = all_vals.notnull().argmax(dim='agency')
-        if v in ['wind', 'pres']:
+        if var in ['wind', 'pres']:
             # choice: wmo -> wmo_agency/usa_agency -> preferred
-            ds[v] = ds['wmo_' + v] \
+            ibtracs_ds[var] = ibtracs_ds['wmo_' + var] \
                 .fillna(all_vals.isel(agency=track_agency_ix)) \
                 .fillna(all_vals.isel(agency=preferred_ix))
         else:
-            ds[v] = all_vals.isel(agency=preferred_ix)
-    df = pd.DataFrame({v: ds[v].values.ravel() for v in variables})
-    df = df.dropna(axis=0, how='any').reset_index(drop=True)
+            ibtracs_ds[var] = all_vals.isel(agency=preferred_ix)
+    fit_df = pd.DataFrame({var: ibtracs_ds[var].values.ravel() for var in variables})
+    fit_df = fit_df.dropna(axis=0, how='any').reset_index(drop=True)
     if 'lat' in explanatory:
-        df['lat'] = df['lat'].abs()
+        fit_df['lat'] = fit_df['lat'].abs()
 
     # prepare explanatory variables
-    d_explanatory = df[explanatory]
+    d_explanatory = fit_df[explanatory]
     if isinstance(order, int):
         order = (order,) * len(explanatory)
     add_const = False
     for ex, max_o in zip(explanatory, order):
         if isinstance(max_o, tuple):
-            if df[ex].min() > max_o[0]:
-                print(f"Minimum data value is {df[ex].min()} > {max_o[0]}.")
-            if df[ex].max() < max_o[-1]:
-                print(f"Maximum data value is {df[ex].max()} < {max_o[-1]}.")
+            if fit_df[ex].min() > max_o[0]:
+                print(f"Minimum data value is {fit_df[ex].min()} > {max_o[0]}.")
+            if fit_df[ex].max() < max_o[-1]:
+                print(f"Maximum data value is {fit_df[ex].max()} < {max_o[-1]}.")
             # piecewise linear with given break points
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
-            for i in range(len(max_o)):
-                col = f'{ex}{max_o[i]}'
-                slope_0 = 1. / (max_o[i] - max_o[i - 1]) if i > 0 else 0
-                slope_1 = 1. / (max_o[i + 1] - max_o[i]) if i + 1 < len(max_o) else 0
-                d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, max_o[i] - df[ex])
-                                                 - slope_1 * np.fmax(0, df[ex] - max_o[i])))
+            for i, max_o_i in enumerate(max_o):
+                col = f'{ex}{max_o_i}'
+                slope_0 = 1. / (max_o_i - max_o[i - 1]) if i > 0 else 0
+                slope_1 = 1. / (max_o[i + 1] - max_o_i) if i + 1 < len(max_o) else 0
+                d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, max_o_i - fit_df[ex])
+                                                 - slope_1 * np.fmax(0, fit_df[ex] - max_o_i)))
         elif max_o < 0:
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
-            for o in range(1, abs(max_o) + 1):
-                d_explanatory[f'{ex}^{-o}'] = df[ex]**(-o)
+            for order in range(1, abs(max_o) + 1):
+                d_explanatory[f'{ex}^{-order}'] = fit_df[ex]**(-order)
             add_const = True
         else:
-            for o in range(2, max_o + 1):
-                d_explanatory[f'{ex}^{o}'] = df[ex]**o
+            for order in range(2, max_o + 1):
+                d_explanatory[f'{ex}^{order}'] = fit_df[ex]**order
             add_const = True
-    d_explained = df[[explained]]
+    d_explained = fit_df[[explained]]
     if add_const:
         d_explanatory['const'] = 1.0
 
@@ -1073,7 +1080,21 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
 
     return sm_results
 
-def ibtracs_track_agency(ds):
+def ibtracs_track_agency(ds_sel):
+    """Get preferred IBTrACS agency for each entry in the dataset
+
+    Parameters
+    ----------
+    ds_sel : xarray.Dataset
+        Subselection of original IBTrACS NetCDF dataset.
+
+    Returns
+    -------
+    agency_pref : list of str
+        Names of IBTrACS agencies in order of preference.
+    track_agency_ix : xarray.DataArray of ints
+        For each entry in `ds_sel`, the agency to use, given as an index into `agency_pref`.
+    """
     agency_pref = IBTRACS_AGENCIES.copy()
     agency_map = {a.encode('utf-8'): i for i, a in enumerate(agency_pref)}
     agency_map.update({
@@ -1081,7 +1102,7 @@ def ibtracs_track_agency(ds):
     })
     agency_map[b''] = agency_map[b'wmo']
     agency_fun = lambda x: agency_map[x]
-    track_agency = ds.wmo_agency.where(ds.wmo_agency != '', ds.usa_agency)
+    track_agency = ds_sel.wmo_agency.where(ds_sel.wmo_agency != '', ds_sel.usa_agency)
     track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
     return agency_pref, track_agency_ix
 
