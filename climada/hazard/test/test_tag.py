@@ -48,8 +48,7 @@ class TestAppend(unittest.TestCase):
         with self.assertLogs('climada.hazard.tag', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 tag1.append(tag2)
-        self.assertIn("Hazards of different type can't be appended: " \
-                         + "TC != EQ.", cm.output[0])
+        self.assertIn("Hazards of different type can't be appended: TC != EQ.", cm.output[0])
 
     def test_equal_same(self):
         """Appends an other tag correctly."""
@@ -84,8 +83,7 @@ class TestJoin(unittest.TestCase):
     def test_one_str_pass(self):
         """Test __str__ method with one file"""
         tag = TagHazard('TC', 'file_name1.mat', 'dummy file 1')
-        self.assertEqual(str(tag),
-                ' Type: TC\n File: file_name1\n Description: dummy file 1')
+        self.assertEqual(str(tag), ' Type: TC\n File: file_name1\n Description: dummy file 1')
 
     def test_teo_str_pass(self):
         """Test __str__ method with one file"""
@@ -93,7 +91,7 @@ class TestJoin(unittest.TestCase):
         tag2 = TagHazard('TC', 'file2.xls', 'desc2')
         tag1.append(tag2)
         self.assertEqual(str(tag1),
-                ' Type: TC\n File: file1 + file2\n Description: desc1 + desc2')
+                         ' Type: TC\n File: file1 + file2\n Description: desc1 + desc2')
 
     def test_join_names_pass(self):
         """Test join_file_names function."""

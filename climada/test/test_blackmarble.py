@@ -22,7 +22,6 @@ Tests on Black marble.
 import unittest
 import numpy as np
 from cartopy.io import shapereader
-from scipy import sparse
 
 from climada.entity.exposures.black_marble import BlackMarble
 from climada.entity.exposures.nightlight import load_nightlight_nasa, \
@@ -44,10 +43,11 @@ class Test2013(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=1)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.",
+                      cm.output[0])
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
-        self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12*(4+1), 4))
+        self.assertTrue(np.isclose(ent.value.sum(), 1.362e+12 * (4 + 1), 4))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 2699)
         self.assertEqual(ent.meta['height'], 1938)
@@ -70,10 +70,11 @@ class Test2013(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 2013.",
+                      cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
-        self.assertAlmostEqual(ent.value.sum(), 3.658e+08*(4+1))
+        self.assertAlmostEqual(ent.value.sum(), 3.658e+08 * (4 + 1))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
     def test_anguilla_pass(self):
@@ -82,7 +83,7 @@ class Test2013(unittest.TestCase):
         ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn("Anguilla 2013 GDP: 1.754e+08 income group: 3", ent.tag.description)
-        self.assertAlmostEqual(ent.value.sum(), 1.754e+08*(3+1))
+        self.assertAlmostEqual(ent.value.sum(), 1.754e+08 * (3 + 1))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
 class Test1968(unittest.TestCase):
@@ -97,10 +98,11 @@ class Test1968(unittest.TestCase):
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 1968, res_km=0.5)
-        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.", cm.output[0])
+        self.assertIn("Nightlights from NOAA's earth observation group for year 1992.",
+                      cm.output[0])
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
-        self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10*(4+1), 4))
+        self.assertTrue(np.isclose(ent.value.sum(), 1.894e+10 * (4 + 1), 4))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
 class Test2012(unittest.TestCase):
@@ -115,7 +117,7 @@ class Test2012(unittest.TestCase):
             ent.set_countries(country_name, 2012, res_km=5.0)
         self.assertTrue('NOAA' in cm.output[-3])
         size1 = ent.value.size
-        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11 * (3 + 1), 4))
 
         try:
             ent = BlackMarble()
@@ -124,7 +126,7 @@ class Test2012(unittest.TestCase):
                 self.assertTrue('NASA' in cm.output[-3])
                 size2 = ent.value.size
                 self.assertTrue(size1 < size2)
-                self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
+                self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11 * (3 + 1), 4))
         except TypeError:
             print('MemoryError caught')
             pass
@@ -134,7 +136,7 @@ class Test2012(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0, from_hr=False)
         self.assertTrue('NOAA' in cm.output[-3])
-        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11*(3+1), 4))
+        self.assertTrue(np.isclose(ent.value.sum(), 8.740e+11 * (3 + 1), 4))
         size3 = ent.value.size
         self.assertEqual(size1, size3)
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
@@ -164,8 +166,8 @@ class BMFuncs(unittest.TestCase):
 
         self.assertTrue(coord_nl[0, 0] < bounds[1])
         self.assertTrue(coord_nl[1, 0] < bounds[0])
-        self.assertTrue(coord_nl[0, 0]+(nightlight.shape[0]-1)*coord_nl[0,1] > bounds[3])
-        self.assertTrue(coord_nl[1, 0]+(nightlight.shape[1]-1)*coord_nl[1,1] > bounds[2])
+        self.assertTrue(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1] > bounds[3])
+        self.assertTrue(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1] > bounds[2])
 
     def test_load_noaa_pass(self):
         """Test load_nightlight_noaa function."""
@@ -173,8 +175,10 @@ class BMFuncs(unittest.TestCase):
 
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])
-        self.assertEqual(coord_nl[0, 0]+(nightlight.shape[0]-1)*coord_nl[0,1], NOAA_BORDER[3])
-        self.assertEqual(coord_nl[1, 0]+(nightlight.shape[1]-1)*coord_nl[1,1], NOAA_BORDER[2])
+        self.assertEqual(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1],
+                         NOAA_BORDER[3])
+        self.assertEqual(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1],
+                         NOAA_BORDER[2])
 
     def test_set_country_pass(self):
         """Test exposures attributes after black marble."""

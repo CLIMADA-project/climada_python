@@ -44,7 +44,7 @@ def calc_random_walk(tracks,
                      ens_size=9,
                      ens_amp0=1.5,
                      ens_amp=0.1,
-                     max_angle=np.pi/10,
+                     max_angle=np.pi / 10,
                      seed=CONFIG['trop_cyclone']['random_seed'],
                      decay=True):
     """
@@ -94,7 +94,7 @@ def calc_random_walk(tracks,
 
     random_vec = list()
     for track in tracks.data:
-        random_vec.append(np.random.uniform(size=ens_size*(2+track.time.size)))
+        random_vec.append(np.random.uniform(size=ens_size * (2 + track.time.size)))
 
     new_ens = list()
     if tracks.pool:
@@ -139,8 +139,8 @@ def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
     """
     ens_track = list()
     n_dat = track.time.size
-    rand_unif_ini = rnd_vec[:2*ens_size].reshape((2, ens_size))
-    rand_unif_ang = rnd_vec[2*ens_size:]
+    rand_unif_ini = rnd_vec[:2 * ens_size].reshape((2, ens_size))
+    rand_unif_ang = rnd_vec[2 * ens_size:]
 
     xy_ini = ens_amp0 * (rand_unif_ini - 0.5)
     tmp_ang = np.cumsum(2 * max_angle * rand_unif_ang - max_angle)
@@ -162,9 +162,9 @@ def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
         i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
         i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
         i_track.attrs['orig_event_flag'] = False
-        i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens+1)
-        i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens+1)
-        i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens+1)/100
+        i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens + 1)
+        i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens + 1)
+        i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
 
         ens_track.append(i_track)
 
@@ -304,22 +304,22 @@ def _decay_values(track, land_geom, s_rel):
         land_sea_idx = np.append(land_sea_idx, track.time.size)
     if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
         for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-            v_landfall = track.max_sustained_wind[sea_land-1].values
-            ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0]+1
+            v_landfall = track.max_sustained_wind[sea_land - 1].values
+            ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0] + 1
 
-            v_land = track.max_sustained_wind[sea_land-1:land_sea].values
+            v_land = track.max_sustained_wind[sea_land - 1:land_sea].values
             if v_land[0] > 0:
-                v_land = (v_land[1:]/v_land[0]).tolist()
+                v_land = (v_land[1:] / v_land[0]).tolist()
             else:
                 v_land = v_land[1:].tolist()
 
-            p_landfall = float(track.central_pressure[sea_land-1].values)
-            p_land = track.central_pressure[sea_land-1:land_sea].values
-            p_land = (p_land[1:]/p_land[0]).tolist()
+            p_landfall = float(track.central_pressure[sea_land - 1].values)
+            p_land = track.central_pressure[sea_land - 1:land_sea].values
+            p_land = (p_land[1:] / p_land[0]).tolist()
 
             p_land_s = _calc_decay_ps_value(
-                track, p_landfall, land_sea-1, s_rel)
-            p_land_s = len(p_land)*[p_land_s]
+                track, p_landfall, land_sea - 1, s_rel)
+            p_land_s = len(p_land) * [p_land_s]
 
             if ss_scale_idx not in v_lf:
                 v_lf[ss_scale_idx] = array.array('f', v_land)
@@ -331,8 +331,7 @@ def _decay_values(track, land_geom, s_rel):
                 v_lf[ss_scale_idx].extend(v_land)
                 p_lf[ss_scale_idx][0].extend(p_land_s)
                 p_lf[ss_scale_idx][1].extend(p_land)
-                x_val[ss_scale_idx].extend(track.dist_since_lf[
-                                           sea_land:land_sea])
+                x_val[ss_scale_idx].extend(track.dist_since_lf[sea_land:land_sea])
     return v_lf, p_lf, x_val
 
 
@@ -385,9 +384,9 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     if not scale_fill.size:
         LOGGER.info('No historical track with landfall.')
         return v_rel, p_rel
-    for ss_scale in range(1, len(SAFFIR_SIM_CAT)+1):
+    for ss_scale in range(1, len(SAFFIR_SIM_CAT) + 1):
         if ss_scale not in p_rel:
-            close_scale = scale_fill[np.argmin(np.abs(scale_fill-ss_scale))]
+            close_scale = scale_fill[np.argmin(np.abs(scale_fill - ss_scale))]
             LOGGER.debug('No historical track of category %s with landfall. '
                          'Decay parameters from category %s taken.',
                          CAT_NAMES[ss_scale - 2], CAT_NAMES[close_scale - 2])
@@ -419,8 +418,10 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         axes[1].set_title('Pressure')
         axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
                      label=CAT_NAMES[track_cat - 2])
-        axes[1].plot(x_eval, _decay_p_function(p_rel[track_cat][0],
-                     p_rel[track_cat][1], x_eval), '-', c=color)
+        axes[1].plot(
+            x_eval,
+            _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
+            '-', c=color)
 
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
@@ -454,38 +455,39 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         return track
     for idx, (sea_land, land_sea) \
             in enumerate(zip(sea_land_idx, land_sea_idx)):
-        v_landfall = track.max_sustained_wind[sea_land-1].values
-        p_landfall = float(track.central_pressure[sea_land-1].values)
+        v_landfall = track.max_sustained_wind[sea_land - 1].values
+        p_landfall = float(track.central_pressure[sea_land - 1].values)
         try:
-            ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0]+1
+            ss_scale_idx = np.where(v_landfall < SAFFIR_SIM_CAT)[0][0] + 1
         except IndexError:
             continue
         if land_sea - sea_land == 1:
             continue
-        p_decay = _calc_decay_ps_value(track, p_landfall, land_sea-1, s_rel)
+        p_decay = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
         p_decay = _decay_p_function(p_decay, p_rel[ss_scale_idx][1],
                                     track.dist_since_lf[sea_land:land_sea].values)
         # dont applay decay if it would decrease central pressure
-        p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1]/p_landfall
+        p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1] / p_landfall
         track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
         v_decay = _decay_v_function(v_rel[ss_scale_idx],
                                     track.dist_since_lf[sea_land:land_sea].values)
         # dont applay decay if it would increas wind speeds
-        v_decay[v_decay > 1] = track.max_sustained_wind[sea_land:land_sea][v_decay > 1]/v_landfall
+        v_decay[v_decay > 1] = (track.max_sustained_wind[sea_land:land_sea][v_decay > 1]
+                                / v_landfall)
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea between two landfalls
-        if land_sea < track.time.size and idx+1 < sea_land_idx.size:
-            rndn = 0.1 * float(np.abs(np.random.normal(size=1)*5)+6)
+        if land_sea < track.time.size and idx + 1 < sea_land_idx.size:
+            rndn = 0.1 * float(np.abs(np.random.normal(size=1) * 5) + 6)
             r_diff = track.central_pressure[land_sea].values - \
-                track.central_pressure[land_sea-1].values + rndn
-            track.central_pressure[land_sea:sea_land_idx[idx+1]] += - r_diff
+                track.central_pressure[land_sea - 1].values + rndn
+            track.central_pressure[land_sea:sea_land_idx[idx + 1]] += - r_diff
 
             rndn = rndn * 10  # mean value 10
             r_diff = track.max_sustained_wind[land_sea].values - \
-                track.max_sustained_wind[land_sea-1].values - rndn
-            track.max_sustained_wind[land_sea:sea_land_idx[idx+1]] += - r_diff
+                track.max_sustained_wind[land_sea - 1].values - rndn
+            track.max_sustained_wind[land_sea:sea_land_idx[idx + 1]] += - r_diff
 
     # correct limits
     np.warnings.filterwarnings('ignore')
@@ -545,13 +547,13 @@ def _solve_decay_v_function(v_y, x_val):
 
 def _decay_p_function(s_coef, b_coef, x_val):
     """Decay function used for pressure after landfall."""
-    return s_coef - (s_coef - 1) * np.exp(-b_coef*x_val)
+    return s_coef - (s_coef - 1) * np.exp(-b_coef * x_val)
 
 
 def _solve_decay_p_function(ps_y, p_y, x_val):
     """Solve decay function used for pressure after landfall.
     Get B coefficient."""
-    return -np.log((ps_y - p_y)/(ps_y - 1.0)) / x_val
+    return -np.log((ps_y - p_y) / (ps_y - 1.0)) / x_val
 
 
 def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
@@ -592,15 +594,15 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
     for track, orig_wind, orig_pres in \
             zip(sy_tracks, syn_orig_wind, syn_orig_pres):
         # Index in land that comes from previous sea index
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]+1
+        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
         # Index in sea that comes from previous land index
-        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0]+1
+        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
         if track.on_land[-1]:
             land_sea_idx = np.append(land_sea_idx, track.time.size)
         if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-                v_lf = track.max_sustained_wind[sea_land-1].values
-                p_lf = track.central_pressure[sea_land-1].values
+                v_lf = track.max_sustained_wind[sea_land - 1].values
+                p_lf = track.central_pressure[sea_land - 1].values
                 ss_scale = np.where(v_lf < SAFFIR_SIM_CAT)[0][0]
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
@@ -613,14 +615,14 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                 graph_p_b.plot(on_land, orig_pres[on_land],
                                'o', c=CAT_COLORS[ss_scale])
                 graph_pd_a.plot(track.dist_since_lf[on_land],
-                                track.central_pressure[on_land]/p_lf,
+                                track.central_pressure[on_land] / p_lf,
                                 'o', c=CAT_COLORS[ss_scale])
                 graph_ped_a.plot(track.dist_since_lf[on_land],
                                  track.environmental_pressure[on_land] -
                                  track.central_pressure[on_land],
                                  'o', c=CAT_COLORS[ss_scale])
 
-            on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
+            on_sea = np.arange(track.time.size)[~track.on_land]
             graph_v_a.plot(on_sea, track.max_sustained_wind[on_sea],
                            'o', c='k', markersize=5)
             graph_v_b.plot(on_sea, orig_wind[on_sea],
@@ -657,15 +659,15 @@ def _check_apply_decay_hist_plot(hist_tracks):
 
     for track in hist_tracks:
         # Index in land that comes from previous sea index
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]+1
+        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
         # Index in sea that comes from previous land index
-        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0]+1
+        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
         if track.on_land[-1]:
             land_sea_idx = np.append(land_sea_idx, track.time.size)
         if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-                p_lf = track.central_pressure[sea_land-1].values
-                scale = np.where(track.max_sustained_wind[sea_land-1].values <
+                p_lf = track.central_pressure[sea_land - 1].values
+                scale = np.where(track.max_sustained_wind[sea_land - 1].values <
                                  SAFFIR_SIM_CAT)[0][0]
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
@@ -674,14 +676,14 @@ def _check_apply_decay_hist_plot(hist_tracks):
                 graph_hp.add_curve(on_land, track.central_pressure[on_land],
                                    'o', c=CAT_COLORS[scale])
                 graph_hpd_a.plot(track.dist_since_lf[on_land],
-                                 track.central_pressure[on_land]/p_lf,
+                                 track.central_pressure[on_land] / p_lf,
                                  'o', c=CAT_COLORS[scale])
                 graph_hped_a.plot(track.dist_since_lf[on_land],
                                   track.environmental_pressure[on_land] -
                                   track.central_pressure[on_land],
                                   'o', c=CAT_COLORS[scale])
 
-            on_sea = np.arange(track.time.size)[np.logical_not(track.on_land)]
+            on_sea = np.arange(track.time.size)[~track.on_land]
             graph_hp.plot(on_sea, track.central_pressure[on_sea],
                           'o', c='k', markersize=5)
             graph_hv.plot(on_sea, track.max_sustained_wind[on_sea],

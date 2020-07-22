@@ -100,12 +100,12 @@ RIVER_FLOOD_REGIONS_CSV = os.path.join(SYSTEM_DIR, 'NatRegIDs.csv')
 HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
 """Raster file of flood over Venezuela. Model from GAR2015"""
 
-HAZ_DEMO_FLDDPH = os.path.join(DATA_DIR, 'demo',
-    'flddph_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+HAZ_DEMO_FLDDPH = os.path.join(
+    DATA_DIR, 'demo', 'flddph_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
 """NetCDF4 Flood depth from isimip simulations"""
 
-HAZ_DEMO_FLDFRC = os.path.join(DATA_DIR, 'demo',
-    'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+HAZ_DEMO_FLDFRC = os.path.join(
+    DATA_DIR, 'demo', 'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
 """NetCDF4 Flood fraction from isimip simulations"""
 
 HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
@@ -149,7 +149,7 @@ TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
 
 
 ISIMIP_NATID_TO_ISO = [
-       '', 'ABW', 'AFG', 'AGO', 'AIA', 'ALB', 'AND', 'ANT', 'ARE', 'ARG', 'ARM',
+    '', 'ABW', 'AFG', 'AGO', 'AIA', 'ALB', 'AND', 'ANT', 'ARE', 'ARG', 'ARM',
     'ASM', 'ATG', 'AUS', 'AUT', 'AZE', 'BDI', 'BEL', 'BEN', 'BFA', 'BGD', 'BGR',
     'BHR', 'BHS', 'BIH', 'BLR', 'BLZ', 'BMU', 'BOL', 'BRA', 'BRB', 'BRN', 'BTN',
     'BWA', 'CAF', 'CAN', 'CHE', 'CHL', 'CHN', 'CIV', 'CMR', 'COD', 'COG', 'COK',

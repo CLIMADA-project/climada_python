@@ -72,7 +72,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(entity_xls.exposures.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(entity_xls.disc_rates.tag.file_name, ENT_TEMPLATE_XLS)
         self.assertEqual(entity_xls.measures.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(entity_xls.impact_funcs.tag.file_name, \
+        self.assertEqual(entity_xls.impact_funcs.tag.file_name,
                          ENT_TEMPLATE_XLS)
 
 class TestCheck(unittest.TestCase):

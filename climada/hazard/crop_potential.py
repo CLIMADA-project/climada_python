@@ -89,14 +89,12 @@ FN_STR_VAR = 'global_annual'
 # start and end years per senario as in ISIMIP-filenames
 YEARCHUNKS = dict()
 YEARCHUNKS[SCENARIO[0]] = dict()
-YEARCHUNKS[SCENARIO[0]] = {'yearrange' : np.array([1976, 2005]), \
-          'startyear' : 1861, 'endyear': 2005}
+YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
 YEARCHUNKS[SCENARIO[1]] = dict()
-YEARCHUNKS[SCENARIO[1]] = {'yearrange' : np.array([2006, 2099]), \
-          'startyear' : 2006, 'endyear': 2099}
+YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
 
 # geographical bounding box in decimal degrees (lon from -180 to 180)
-BBOX = np.array([-180, -85, 180, 85]) # [Lon min, lat min, lon max, lat max]
+BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
 
 INT_DEF = 'Yearly Yield'
 
@@ -128,10 +126,10 @@ class CropPotential(Hazard):
         self.crop = CROP[0]
         self.intensity_def = INT_DEF
 
-    def set_from_single_run(self, input_dir=None, bbox=BBOX, \
-                            yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], \
-                            ag_model=AG_MODEL[0], cl_model=CL_MODEL[0], \
-                            scenario=SCENARIO[0], soc=SOC[0], co2=CO2[0], \
+    def set_from_single_run(self, input_dir=None, bbox=BBOX,
+                            yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
+                            ag_model=AG_MODEL[0], cl_model=CL_MODEL[0],
+                            scenario=SCENARIO[0], soc=SOC[0], co2=CO2[0],
                             crop=CROP[0], irr=IRR[0], fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill hazard from nc_dis file from ISIMIP
@@ -171,36 +169,36 @@ class CropPotential(Hazard):
 
         yearchunk = YEARCHUNKS[scenario]
         string = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc'
-        filename = os.path.join(input_dir, string % (ag_model, cl_model, scenario, soc, co2, crop, \
-                                                 irr, fn_str_var, str(yearchunk['startyear']), \
-                                                 str(yearchunk['endyear'])))
+        filename = os.path.join(input_dir, string % (ag_model, cl_model, scenario, soc, co2, crop,
+                                                     irr, fn_str_var, str(yearchunk['startyear']),
+                                                     str(yearchunk['endyear'])))
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
         # corrected indexes due to the bands in input starting with the index=1
-        id_bands = np.arange(yearrange[0] - yearchunk['startyear']+1, \
-                             yearrange[1] - yearchunk['startyear']+2).tolist()
-        event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1]+1))]
+        id_bands = np.arange(yearrange[0] - yearchunk['startyear'] + 1,
+                             yearrange[1] - yearchunk['startyear'] + 2).tolist()
+        event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1] + 1))]
 
         # hazard setup: set attributes
-        self.set_raster([filename], band=id_bands, \
+        self.set_raster([filename], band=id_bands,
                         geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
 
         self.crop = crop
         self.event_name = event_list
-        self.frequency = np.ones(len(self.event_name))*(1/len(self.event_name))
+        self.frequency = np.ones(len(self.event_name)) * (1 / len(self.event_name))
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
         self.units = 't / y / ha'
-        self.date = np.array(dt.str_to_date([event_list[n]+'-01-01' \
-                             for n, _ in enumerate(event_list)]))
+        self.date = np.array(dt.str_to_date(
+            [event_list[n] + '-01-01' for n, _ in enumerate(event_list)]))
         self.centroids.set_meta_to_lat_lon()
-        self.centroids.region_id = (coordinates.coord_on_land(self.centroids.lat, \
-                                                self.centroids.lon)).astype(dtype=int)
+        self.centroids.region_id = (
+            coordinates.coord_on_land(self.centroids.lat, self.centroids.lon)).astype(dtype=int)
         self.check()
         return self
 
-    def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False, \
+    def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False,
                   output_dir=OUTPUT_DIR):
         """Calculates mean of the hazard for a given reference time period
             Parameters:
@@ -226,8 +224,8 @@ class CropPotential(Hazard):
             if not os.path.exists(mean_dir):
                 os.mkdir(mean_dir)
             # save mean_file
-            mean_file = h5py.File(mean_dir+'hist_mean_'+self.crop+'_'+str(yearrange[0])+ \
-                                  '-'+str(yearrange[1])+'.hdf5', 'w')
+            mean_file = h5py.File(mean_dir + 'hist_mean_' + self.crop + '_' + str(yearrange[0]) +
+                                  '-' + str(yearrange[1]) + '.hdf5', 'w')
             mean_file.create_dataset('mean', data=hist_mean)
             mean_file.create_dataset('lat', data=self.centroids.lat)
             mean_file.create_dataset('lon', data=self.centroids.lon)
@@ -254,7 +252,7 @@ class CropPotential(Hazard):
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
-            hazard_matrix[event, idx] = self.intensity[event, idx]/hist_mean[idx]
+            hazard_matrix[event, idx] = self.intensity[event, idx] / hist_mean[idx]
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
@@ -280,11 +278,12 @@ class CropPotential(Hazard):
             reference_intensity = self.intensity
 
         for centroid in range(self.intensity.shape[1]):
-            array = (reference_intensity[:, centroid].toarray()).reshape(\
-                    reference_intensity.shape[0])
-            for event in range(self.intensity.shape[0]):
+            nevents = reference_intensity.shape[0]
+            array = reference_intensity[:, centroid].toarray().reshape(nevents)
+            for event in range(nevents):
                 value = self.intensity[event, centroid]
-                hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array, value))/100
+                hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array, value)
+                                                  / 100)
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Percentile'
@@ -303,20 +302,20 @@ class CropPotential(Hazard):
         """
         if not dif:
             if self.intensity_def == 'Yearly Yield':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10, \
+                axes = self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10,
                                            **kwargs)
             elif self.intensity_def == 'Relative Yield':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=2, \
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=2,
                                            **kwargs)
             elif self.intensity_def == 'Percentile':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1, \
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1,
                                            **kwargs)
         else:
             if self.intensity_def == 'Yearly Yield':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-2, vmax=2, \
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-2, vmax=2,
                                            **kwargs)
             elif self.intensity_def == 'Relative Yield':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-0.5, \
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-0.5,
                                            vmax=0.5, **kwargs)
 
         return axes
@@ -331,31 +330,31 @@ class CropPotential(Hazard):
         if years is None:
             event_list = self.event_name
         else:
-            event_list = [str(n) for n in range(years[0], years[1]+1)]
+            event_list = [str(n) for n in range(years[0], years[1] + 1)]
 
         self.centroids.set_meta_to_lat_lon()
 
-        len_lat = abs(self.centroids.lat[0]-self.centroids.lat[-1])*(2.5/13.5)
-        len_lon = abs(self.centroids.lon[0]-self.centroids.lon[-1])*(5/26)
+        len_lat = abs(self.centroids.lat[0] - self.centroids.lat[-1]) * (2.5 / 13.5)
+        len_lon = abs(self.centroids.lon[0] - self.centroids.lon[-1]) * (5 / 26)
 
         nr_subplots = len(event_list)
 
         if len_lon >= len_lat:
-            colums = int(np.floor(np.sqrt(nr_subplots/(len_lon/len_lat))))
-            rows = int(np.ceil(nr_subplots/colums))
+            colums = int(np.floor(np.sqrt(nr_subplots / (len_lon / len_lat))))
+            rows = int(np.ceil(nr_subplots / colums))
         else:
-            rows = int(np.floor(np.sqrt(nr_subplots/(len_lat/len_lon))))
-            colums = int(np.ceil(nr_subplots/colums))
+            rows = int(np.floor(np.sqrt(nr_subplots / (len_lat / len_lon))))
+            colums = int(np.ceil(nr_subplots / colums))
 
-        fig, axes = plt.subplots(rows, colums, sharex=True, sharey=True, \
-                                 figsize=(colums*len_lon, rows*len_lat), \
+        fig, axes = plt.subplots(rows, colums, sharex=True, sharey=True,
+                                 figsize=(colums * len_lon, rows * len_lat),
                                  subplot_kw=dict(projection=cartopy.crs.PlateCarree()))
         colum = 0
         row = 0
 
         for year in range(nr_subplots):
-            axes.flat[year].set_extent([np.min(self.centroids.lon), np.max(self.centroids.lon), \
-                      np.min(self.centroids.lat), np.max(self.centroids.lat)])
+            axes.flat[year].set_extent([np.min(self.centroids.lon), np.max(self.centroids.lon),
+                                        np.min(self.centroids.lat), np.max(self.centroids.lat)])
 
             if rows == 1:
                 self.plot_intensity_cp(event=event_list[year], axis=axes[colum])
@@ -364,7 +363,7 @@ class CropPotential(Hazard):
             else:
                 self.plot_intensity_cp(event=event_list[year], axis=axes[row, colum])
 
-            if colum <= colums-2:
+            if colum <= colums - 2:
                 colum = colum + 1
             else:
                 colum = 0
@@ -422,8 +421,9 @@ class CropPotential(Hazard):
         return axes
 
 
-def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, \
-                         yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], returns='filename_list'):
+def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
+                         yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
+                         returns='filename_list'):
     """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files to the output directory.
 
@@ -437,10 +437,10 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         'filename_list': returns list of filenames only, else returns also list of data
 
     """
-    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not \
+    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
                  f.startswith('.')]
 
-    #generate output directories if they do not exist yet
+    # generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     if not os.path.exists(os.path.join(output_dir, 'Hazard')):
@@ -448,9 +448,9 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
     if not os.path.exists(os.path.join(output_dir, 'Hist_mean')):
         os.mkdir(os.path.join(output_dir, 'Hist_mean'))
 
-    #generate lists of splitted historical filenames (in order to differentiate betweeen
-    #the used ag_model, cl_model, crop, etc.); list of the future scenarios; list
-    #of all crop-irr combinations
+    # generate lists of splitted historical filenames (in order to differentiate betweeen
+    # the used ag_model, cl_model, crop, etc.); list of the future scenarios; list
+    # of all crop-irr combinations
     items = list()
     crop_list = list()
     scenario_list = list()
@@ -460,80 +460,83 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
             items.append(item)
         elif item[3] not in scenario_list:
             scenario_list.append(item[3])
-        crop_irr = ((item[6]).split('-'))[1]+'-'+((item[6]).split('-'))[2]
+        crop_irr = ((item[6]).split('-'))[1] + '-' + ((item[6]).split('-'))[2]
         if crop_irr not in crop_list:
             crop_list.append(crop_irr)
 
-    #generate hazard using the first file to determine the size of the historic mean
-    #file structure: ag_model _ cl_model _ scenario _ soc _ co2 _
+    # generate hazard using the first file to determine the size of the historic mean
+    # file structure: ag_model _ cl_model _ scenario _ soc _ co2 _
     #   yield-crop-irr _ fn_str_var _ startyear _ endyear . nc
     #e.g. gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_
     #   global_annual_1861_2005.nc
     cp_zero = CropPotential()
-    cp_zero.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange, \
-                                ag_model=(items[0])[0], cl_model=(items[0])[1], \
-                                scenario=(items[0])[3], soc=(items[0])[4], co2=(items[0])[5],\
-                                crop=(((items[0])[6]).split('-'))[1], \
+    cp_zero.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
+                                ag_model=(items[0])[0], cl_model=(items[0])[1],
+                                scenario=(items[0])[3], soc=(items[0])[4], co2=(items[0])[5],
+                                crop=(((items[0])[6]).split('-'))[1],
                                 irr=(((items[0])[6]).split('-'))[2])
     hist_mean = cp_zero.calc_mean()
     cp_zero.set_rel_yield_to_int(hist_mean)
 
-    #initiate the historic mean for each combination of crop and irrigation type
+    # initiate the historic mean for each combination of crop and irrigation type
     hist_mean_per_crop = dict()
     for i, _ in enumerate(crop_list):
         hist_mean_per_crop[i] = dict()
-        hist_mean_per_crop[crop_list[i]] = {'value': np.zeros([int(len( \
-                          filenames)/len(crop_list)), len(hist_mean)]), 'idx' : 0}
+        hist_mean_per_crop[crop_list[i]] = {
+            'value': np.zeros([int(len(filenames) / len(crop_list)), len(hist_mean)]),
+            'idx': 0,
+        }
 
-    #calculate hazard as relative yield for all historic files and related future scenarios
-    #and save them as hdf5 file in the output directory
+    # calculate hazard as relative yield for all historic files and related future scenarios
+    # and save them as hdf5 file in the output directory
     filename_list = list()
     output_list = list()
     for i, _ in enumerate(items):
-        #historic file
-        crop_irr = (((items[i])[6]).split('-'))[1]+'-'+(((items[i])[6]).split('-'))[2]
+        # historic file
+        crop_irr = (((items[i])[6]).split('-'))[1] + '-' + (((items[i])[6]).split('-'))[2]
 
         cp_his = CropPotential()
-        cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange, \
-                                    ag_model=(items[i])[0], cl_model=(items[i])[1], \
-                                    scenario=(items[i])[3], soc=(items[i])[4], \
-                                    co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1],\
-                                    irr=(((items[i])[6]).split('-'))[2])
+        cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
+                                   ag_model=(items[i])[0], cl_model=(items[i])[1],
+                                   scenario=(items[i])[3], soc=(items[i])[4],
+                                   co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1],
+                                   irr=(((items[i])[6]).split('-'))[2])
         hist_mean = cp_his.calc_mean()
         cp_his.set_rel_yield_to_int(hist_mean)
-        ((hist_mean_per_crop[crop_irr])['value'])[( \
-        hist_mean_per_crop[crop_irr])['idx'], :] = hist_mean
-        (hist_mean_per_crop[crop_irr])['idx'] = (hist_mean_per_crop[crop_irr])['idx']+1
+        hist_mean_per_crop[crop_irr]['value'][hist_mean_per_crop[crop_irr]['idx'], :] = hist_mean
+        hist_mean_per_crop[crop_irr]['idx'] = hist_mean_per_crop[crop_irr]['idx'] + 1
 
-        filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+(items[i])[3]+'_'+(items[i])[4] \
-        +'_'+(items[i])[5]+'_'+crop_irr+'_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5'
+        filename = ('haz' + '_' + (items[i])[0] + '_' + (items[i])[1] + '_'
+                    + (items[i])[3] + '_' + (items[i])[4] + '_' + (items[i])[5] + '_'
+                    + crop_irr + '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename)
         output_list.append(cp_his)
         cp_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
-        #compute the relative yield for all future scenarios with the corresponding historic mean
+        # compute the relative yield for all future scenarios with the corresponding historic mean
         for j, _ in enumerate(scenario_list):
-            yearrange_fut = np.array([(YEARCHUNKS[scenario_list[j]])['startyear'], \
+            yearrange_fut = np.array([(YEARCHUNKS[scenario_list[j]])['startyear'],
                                       (YEARCHUNKS[scenario_list[j]])['endyear']])
             cp_fut = CropPotential()
-            cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut, \
-                                        ag_model=(items[i])[0], cl_model=(items[i])[1], \
-                                        scenario=scenario_list[j], soc=(items[i])[4],\
-                                        co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1], \
-                                        irr=(((items[i])[6]).split('-'))[2])
+            cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
+                                       ag_model=(items[i])[0], cl_model=(items[i])[1],
+                                       scenario=scenario_list[j], soc=(items[i])[4],
+                                       co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1],
+                                       irr=(((items[i])[6]).split('-'))[2])
             cp_fut.set_rel_yield_to_int(hist_mean)
-            filename = 'haz'+'_'+(items[i])[0]+'_'+(items[i])[1]+'_'+scenario_list[j]+'_'+ \
-            (items[i])[4]+'_'+(items[i])[5]+'_'+ crop_irr+'_'+str(yearrange_fut[0])+'-'+ \
-            str(yearrange_fut[1])+'.hdf5'
+            filename = ('haz' + '_' + (items[i])[0] + '_' + (items[i])[1] + '_'
+                        + scenario_list[j] + '_' + (items[i])[4] + '_' + (items[i])[5]
+                        + '_' + crop_irr + '_' + str(yearrange_fut[0]) + '-'
+                        + str(yearrange_fut[1]) + '.hdf5')
             filename_list.append(filename)
             output_list.append(cp_fut)
             cp_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
-    #calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
+    # calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
     for i, _ in enumerate(crop_list):
         mean = np.mean((hist_mean_per_crop[crop_list[i]])['value'], 0)
-        mean_filename = 'hist_mean_'+crop_list[i]+'_'+ str(yearrange[0])+ \
-        '-'+str(yearrange[1])+'.hdf5'
+        mean_filename = 'hist_mean_' + crop_list[i] + '_' + str(yearrange[0]) + \
+        '-' + str(yearrange[1]) + '.hdf5'
         filename_list.append(mean_filename)
         output_list.append(mean)
         mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', mean_filename), 'w')
@@ -542,7 +545,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX, 
         mean_file.create_dataset('lon', data=cp_his.centroids.lon)
         mean_file.close()
 
-        #save historic mean as netcdf (saves mean, lat and lon as arrays)
+        # save historic mean as netcdf (saves mean, lat and lon as arrays)
 #        mean_file = xr.Dataset({'mean': mean, 'lat': cp_his.centroids.lat, \
 #                                'lon': cp_his.centroids.lon})
 #        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_list[i]+'.nc')

@@ -107,8 +107,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
             -sin_lon, cos_lon, np.zeros_like(cos_lat),
         ), axis=-1).reshape(lat.shape + (2, 3))
         return vn, vbasis
-    else:
-        return vn
+    return vn
 
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon <= 180
@@ -204,24 +203,24 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         fact1 = np.heaviside(d_lon - 180, 0)
         fact2 = np.heaviside(-d_lon - 180, 0)
         d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:,:,None]))
+        d_lon *= np.cos(np.radians(lat1[:, :, None]))
         dist_km = np.sqrt(d_lon**2 + d_lat**2) * ONE_LAT_KM
         if log:
             vtan = np.stack([d_lat, d_lon], axis=-1) * ONE_LAT_KM
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = 0.5 * (lat2[:,None] - lat1[:,:,None])
-        dlon = 0.5 * (lon2[:,None] - lon1[:,:,None])
+        dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
+        dlon = 0.5 * (lon2[:, None] - lon1[:, :, None])
         # haversine formula:
         hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:,:,None]) * np.cos(lat2[:,None]) * np.sin(dlon)**2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
         dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
         if log:
             v1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             v2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
-            fc = dist_km / np.fmax(np.spacing(1),np.sqrt(1 - scal**2))
-            vtan = fc[...,None] * (v2[:,None] - scal[...,None] * v1[:,:,None])
+            fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
+            vtan = fact[..., None] * (v2[:, None] - scal[..., None] * v1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
@@ -364,10 +363,12 @@ def dist_to_coast(coord_lat, lon=None):
     zones = utm_zones(geom.geometry.total_bounds)
     for izone, (epsg, bounds) in enumerate(zones):
         to_crs = from_epsg(epsg)
-        zone_mask = (bounds[1] <= geom.geometry.y) \
-                  & (geom.geometry.y <= bounds[3]) \
-                  & (bounds[0] <= geom.geometry.x) \
-                  & (geom.geometry.x <= bounds[2])
+        zone_mask = (
+            (bounds[1] <= geom.geometry.y)
+            & (geom.geometry.y <= bounds[3])
+            & (bounds[0] <= geom.geometry.x)
+            & (geom.geometry.x <= bounds[2])
+        )
         if np.count_nonzero(zone_mask) == 0:
             continue
         LOGGER.info("dist_to_coast: UTM %d (%d/%d)",
@@ -413,8 +414,8 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         os.chdir(cwd)
 
     intermediate_shape = None if highres else (3600, 1800)
-    dist = read_raster_sample(path, lat, lon,
-        intermediate_shape=intermediate_shape, fill_value=0)
+    dist = read_raster_sample(
+        path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0)
     return 1000 * np.abs(dist)
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
@@ -481,9 +482,12 @@ def coord_on_land(lat, lon, land_geom=None):
         raise ValueError
     delta_deg = 1
     if land_geom is None:
-        land_geom = get_land_geometry(extent=(np.min(lon)-delta_deg, \
-            np.max(lon)+delta_deg, np.min(lat)-delta_deg, \
-            np.max(lat)+delta_deg), resolution=10)
+        land_geom = get_land_geometry(
+            extent=(np.min(lon) - delta_deg,
+                    np.max(lon) + delta_deg,
+                    np.min(lat) - delta_deg,
+                    np.max(lat) + delta_deg),
+            resolution=10)
     return shapely.vectorized.contains(land_geom, lon, lat)
 
 def nat_earth_resolution(resolution):
@@ -607,20 +611,20 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         base_file = NATEARTH_CENTROIDS_150AS
         if resolution >= 360:
             base_file = NATEARTH_CENTROIDS_360AS
-        f = hdf5.read(base_file)
-        meta = f['meta']
+        hdf5_f = hdf5.read(base_file)
+        meta = hdf5_f['meta']
         grid_shape = (meta['height'][0], meta['width'][0])
         transform = rasterio.Affine(*meta['transform'])
-        region_id = f['region_id'].reshape(grid_shape)
+        region_id = hdf5_f['region_id'].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
-        f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
-        dim_lon, dim_lat = f['lon'], f['lat']
+        hdf5_f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
+        dim_lon, dim_lat = hdf5_f['lon'], hdf5_f['lat']
         bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
         orig_res = get_resolution(dim_lon, dim_lat)
         _, _, transform = pts_to_raster_meta(bounds, orig_res)
         grid_shape = (dim_lat.size, dim_lon.size)
-        region_id = f['NatIdGrid'].reshape(grid_shape).astype(int)
+        region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
         natid2iso_alpha = country_natid2iso(list(range(231)))
         natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
@@ -633,8 +637,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if basemap == "natearth" and resolution not in [150, 360] \
        or basemap == "isimip" and resolution != 150:
         resolution /= 3600
-        region_id, transform = refine_raster_data(region_id, transform,
-            resolution, method='nearest', fill_value=0)
+        region_id, transform = refine_raster_data(
+            region_id, transform, resolution, method='nearest', fill_value=0)
         grid_shape = region_id.shape
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
 
@@ -648,10 +652,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         if rect:
             lat_msk, lon_msk = lat[msk], lon[msk]
             msk = msk.any(axis=0)[None] * msk.any(axis=1)[:, None]
-            msk |= (lat >= np.floor(lat_msk.min())) \
-                 & (lon >= np.floor(lon_msk.min())) \
-                 & (lat <= np.ceil(lat_msk.max())) \
-                 & (lon <= np.ceil(lon_msk.max()))
+            msk |= (
+                (lat >= np.floor(lat_msk.min()))
+                & (lon >= np.floor(lon_msk.min()))
+                & (lat <= np.ceil(lat_msk.max()))
+                & (lon <= np.ceil(lon_msk.max()))
+            )
         lat, lon = lat[msk], lon[msk]
     else:
         lat, lon = [ar.ravel() for ar in [lat, lon]]
@@ -692,15 +698,15 @@ def country_iso_alpha2numeric(isos):
     """
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
-    OLD_ISO = {
+    old_iso = {
         '': 0,  # Ocean or fill_value
         "ANT": 530,  # Netherlands Antilles: split up since 2010
         "SCG": 891,  # Serbia and Montenegro: split up since 2006
     }
     nums = []
     for iso in isos:
-        if iso in OLD_ISO:
-            num = OLD_ISO[iso]
+        if iso in old_iso:
+            num = old_iso[iso]
         else:
             num = int(iso_cntry.get(iso).numeric)
         nums.append(num)
@@ -771,7 +777,7 @@ def natearth_country_to_int(country):
     else:
         return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
 
-def get_country_code(lat, lon, gridded=False, natid=False):
+def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
 
     Oceans get the value zero. Areas that are not in ISO 3166 are given values
@@ -806,7 +812,7 @@ def get_country_code(lat, lon, gridded=False, natid=False):
         total_land = countries.geometry.unary_union
         ocean_mask = ~shapely.vectorized.contains(total_land, lon, lat)
         region_id[ocean_mask] = 0
-        for i, country in enumerate(countries.itertuples()):
+        for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
             select = shapely.vectorized.contains(country.geometry,
                                                  lon[unset], lat[unset])
@@ -889,15 +895,15 @@ def pts_to_raster_meta(points_bounds, res):
         int, int, affine.Affine
     """
     Affine = rasterio.Affine
-    bounds = np.asarray(points_bounds).reshape(2,2)
+    bounds = np.asarray(points_bounds).reshape(2, 2)
     res = np.asarray(res).ravel()
     if res.size == 1:
         res = np.array([res[0], res[0]])
-    sizes = bounds[1,:] - bounds[0,:]
+    sizes = bounds[1, :] - bounds[0, :]
     nsteps = np.floor(sizes / np.abs(res)) + 1
     nsteps[np.abs(nsteps * res) < sizes + np.abs(res) / 2] += 1
-    bounds[:,res < 0] = bounds[::-1,res < 0]
-    origin = bounds[0,:] - res[:] / 2
+    bounds[:, res < 0] = bounds[::-1, res < 0]
+    origin = bounds[0, :] - res[:] / 2
     ras_trans = Affine.translation(*origin) * Affine.scale(*res)
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
@@ -936,12 +942,10 @@ def equal_crs(crs_one, crs_two):
     Returns:
         bool
     """
-    return rasterio.crs.CRS.from_user_input(crs_one) \
-           == rasterio.crs.CRS.from_user_input(crs_two)
+    return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
-def _read_raster_reproject(src, src_crs, dst_meta,
-        band=[1], geometry=None, dst_crs=None, transform=None,
-        resampling=rasterio.warp.Resampling.nearest):
+def _read_raster_reproject(src, src_crs, dst_meta, band=[1], geometry=None, dst_crs=None,
+                           transform=None, resampling=rasterio.warp.Resampling.nearest):
     """Helper function for `read_raster`"""
     if not dst_crs:
         dst_crs = src_crs
@@ -988,8 +992,7 @@ def _read_raster_reproject(src, src_crs, dst_meta,
                 dst.write(intensity)
 
             with memfile.open() as dst:
-                inten, mask_trans = rasterio.mask.mask(dst,
-                    geometry, crop=True, indexes=band)
+                inten, mask_trans = rasterio.mask.mask(dst, geometry, crop=True, indexes=band)
                 dst_meta.update({
                     "height": inten.shape[1],
                     "width": inten.shape[2],
@@ -1043,14 +1046,13 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
             if dst_crs or transform:
                 LOGGER.debug('Reprojecting ...')
                 transform = (transform, width, height) if transform else None
-                inten = _read_raster_reproject(src, src_crs, dst_meta,
-                    band=band, geometry=geometry, dst_crs=dst_crs,
-                    transform=transform, resampling=resampling)
+                inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
+                                               geometry=geometry, dst_crs=dst_crs,
+                                               transform=transform, resampling=resampling)
             else:
                 trans = dst_meta['transform']
                 if geometry:
-                    inten, trans = rasterio.mask.mask(src,
-                        geometry, crop=True, indexes=band)
+                    inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
@@ -1069,7 +1071,7 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
     if not dst_meta['crs']:
         dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
     intensity = inten[range(len(band)), :]
-    dst_shape = (len(band), dst_meta['height']*dst_meta['width'])
+    dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
     return dst_meta, intensity.reshape(dst_shape)
 
 def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
@@ -1107,13 +1109,13 @@ def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
     return interp_raster_data(data, lat, lon, transform, method=method,
                               fill_value=fill_value)
 
-def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
+def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
 
     Parameters:
         data (np.array): 2d numpy array containing the values
-        y (np.array): y-coordinates of points (corresp. to first axis of data)
-        x (np.array): x-coordinates of points (corresp. to second axis of data)
+        interp_y (np.array): y-coordinates of points (corresp. to first axis of data)
+        interp_x (np.array): x-coordinates of points (corresp. to second axis of data)
         transform (affine.Affine): affine transform defining the raster
         method (str, optional): The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
@@ -1141,8 +1143,8 @@ def interp_raster_data(data, y, x, transform, method='linear', fill_value=0):
 
     data = np.float64(data)
     data[np.isnan(data)] = fill_value
-    return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([y, x]).T,
-        method=method, bounds_error=False, fill_value=fill_value)
+    return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
+                                     method=method, bounds_error=False, fill_value=fill_value)
 
 def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     """Refine raster data, given as array and affine transform
@@ -1223,7 +1225,7 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     with rasterio.open(file_name, 'w', **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
+def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
                      scheduler=None):
     """Compute raster matrix and transformation from value column
 
@@ -1247,7 +1249,7 @@ def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
         raster_res = res
 
     def apply_box(df_exp):
-        fun = lambda r: Point(r.longitude, r.latitude).buffer(res/2).envelope
+        fun = lambda r: Point(r.longitude, r.latitude).buffer(res / 2).envelope
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
@@ -1260,10 +1262,8 @@ def points_to_raster(points_df, val_names=['value'], res=None, raster_res=None,
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
     # construct raster
-    xmin, ymin, xmax, ymax = points_df.longitude.min(), \
-                             points_df.latitude.min(), \
-                             points_df.longitude.max(), \
-                             points_df.latitude.max()
+    xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
+                              points_df.longitude.max(), points_df.latitude.max())
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
                                                (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))
@@ -1312,13 +1312,13 @@ def fao_code_def():
         iso_list (list): list of ISO numeric-3 codes
         faocode_list (list): list of FAO country codes
     """
-    #FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
+    # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
     fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 
-    #create a list of ISO3 codes and corresponding fao country codes
+    # create a list of ISO3 codes and corresponding fao country codes
     iso_list = list()
     faocode_list = list()
     for idx, iso in enumerate(fao_iso):
@@ -1338,10 +1338,10 @@ def country_faocode2iso(input_fao):
         output_iso (int or array): ISO numeric-3 codes of countries (or single code)
     """
 
-    #load relation between ISO numeric-3 code and FAO country code
+    # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
 
-    #determine the fao country code for the input str or list
+    # determine the fao country code for the input str or list
     output_iso = np.zeros(len(input_fao))
     for item, faocode in enumerate(input_fao):
         idx = np.where(faocode_list == faocode)[0]
@@ -1359,10 +1359,10 @@ def country_iso2faocode(input_iso):
     Returns:
         output_faocode (int or array): FAO country codes of countries (or single code)
     """
-    #load relation between ISO numeric-3 code and FAO country code
+    # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
 
-    #determine the fao country code for the input str or list
+    # determine the fao country code for the input str or list
     output_faocode = np.zeros(len(input_iso))
     for item, iso in enumerate(input_iso):
         idx = np.where(iso_list == iso)[0]
