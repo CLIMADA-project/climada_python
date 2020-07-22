@@ -122,6 +122,9 @@ venv.bak/
 # mac finder files
 .DS_Store
 
+# temporary files needed for GeoClaw runs
+data/geoclaw/
+
 # climada system data files
 # they get downloaded separately from the repo
 data/system/global_coast*
