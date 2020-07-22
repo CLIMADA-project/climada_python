@@ -38,8 +38,8 @@ class TestDecay(unittest.TestCase):
         """Test _apply_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        land_geom = tc._calc_land_geom(tc_track.data)
-        tc._track_land_params(tc_track.data[0], land_geom)
+        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        tc.track_land_params(tc_track.data[0], land_geom)
         tc_track.data[0]['orig_event_flag'] = False
         tc_ref = tc_track.data[0].copy()
         tc_synth._apply_land_decay(tc_track.data, dict(), dict(), land_geom)
@@ -77,8 +77,8 @@ class TestDecay(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
-        land_geom = tc._calc_land_geom(tc_track.data)
-        tc._track_land_params(tc_track.data[0], land_geom)
+        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        tc.track_land_params(tc_track.data[0], land_geom)
         tc_synth._apply_land_decay(tc_track.data, v_rel, p_rel, land_geom,
                                    s_rel=True, check_plot=False)
 
@@ -167,8 +167,8 @@ class TestDecay(unittest.TestCase):
         """Test _calc_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        land_geom = tc._calc_land_geom(tc_track.data)
-        tc._track_land_params(tc_track.data[0], land_geom)
+        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        tc.track_land_params(tc_track.data[0], land_geom)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
             tc_synth._calc_land_decay(tc_track.data, land_geom)
         self.assertIn('No historical track with landfall.', cm.output[0])
@@ -177,8 +177,8 @@ class TestDecay(unittest.TestCase):
         """Test _calc_land_decay with environmental pressure function."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        land_geom = tc._calc_land_geom(tc_track.data)
-        tc._track_land_params(tc_track.data[0], land_geom)
+        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        tc.track_land_params(tc_track.data[0], land_geom)
         v_rel, p_rel = tc_synth._calc_land_decay(tc_track.data, land_geom)
 
         self.assertEqual(7, len(v_rel))
@@ -197,8 +197,8 @@ class TestDecay(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
-        land_geom = tc._calc_land_geom(tc_track.data)
-        tc._track_land_params(tc_track.data[0], land_geom)
+        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        tc.track_land_params(tc_track.data[0], land_geom)
         v_lf, p_lf, x_val = tc_synth._decay_values(tc_track.data[0], land_geom, s_rel)
 
         ss_category = 6
@@ -330,7 +330,7 @@ class TestDecay(unittest.TestCase):
         track_gen.attrs['orig_event_flag'] = False
 
         cp_ref = np.array([1012., 1012.])
-        land_geom = tc._calc_land_geom([track_gen])
+        land_geom = tc.land_within_tracks_bounds([track_gen])
         track_res = tc_synth._apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
         self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
 
