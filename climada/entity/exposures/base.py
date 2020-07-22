@@ -54,17 +54,17 @@ DEF_VALUE_UNIT = 'USD'
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
-               'var_name': {'lat' : 'lat',
-                            'lon' : 'lon',
-                            'val' : 'Value',
-                            'ded' : 'Deductible',
-                            'cov' : 'Cover',
-                            'imp' : 'DamageFunID',
-                            'cat' : 'Category_ID',
-                            'reg' : 'Region_ID',
-                            'uni' : 'Value_unit',
-                            'ass' : 'centroid_index',
-                            'ref' : 'reference_year'
+               'var_name': {'lat': 'lat',
+                            'lon': 'lon',
+                            'val': 'Value',
+                            'ded': 'Deductible',
+                            'cov': 'Cover',
+                            'imp': 'DamageFunID',
+                            'cat': 'Category_ID',
+                            'reg': 'Region_ID',
+                            'uni': 'Value_unit',
+                            'ass': 'centroid_index',
+                            'ref': 'reference_year'
                            }
               }
 """MATLAB variable names"""
@@ -148,7 +148,7 @@ class Exposures(GeoDataFrame):
                 LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
 
         for var in self.vars_oblig:
-            if not var in self.columns:
+            if var not in self.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError
 
@@ -175,8 +175,8 @@ class Exposures(GeoDataFrame):
             if not found:
                 LOGGER.info("%s not set.", var)
             elif var == 'geometry' and \
-            (self.geometry.values[0].x != self.longitude.values[0] or \
-            self.geometry.values[0].y != self.latitude.values[0]):
+                    (self.geometry.values[0].x != self.longitude.values[0] or
+                     self.geometry.values[0].y != self.latitude.values[0]):
                 LOGGER.error(("Geometry values do not correspond to latitude and "
                               "longitude. Use set_geometry_points() or set_lat_lon()."))
                 raise ValueError
@@ -203,11 +203,11 @@ class Exposures(GeoDataFrame):
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
-            x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2]) \
-                   /hazard.centroids.meta['transform'][0]).astype(int)
-            y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5]) \
-                   /hazard.centroids.meta['transform'][4]).astype(int)
-            assigned = y_i*hazard.centroids.meta['width'] + x_i
+            x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2])
+                   / hazard.centroids.meta['transform'][0]).astype(int)
+            y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5])
+                   / hazard.centroids.meta['transform'][4]).astype(int)
+            assigned = y_i * hazard.centroids.meta['width'] + x_i
             assigned[assigned < 0] = -1
             assigned[assigned >= hazard.centroids.size] = -1
         else:
@@ -215,8 +215,9 @@ class Exposures(GeoDataFrame):
             if np.array_equal(coord, hazard.centroids.coord):
                 assigned = np.arange(self.shape[0])
             else:
-                assigned = interpol_index(hazard.centroids.coord, coord, \
-                    method=method, distance=distance, threshold=threshold)
+                assigned = interpol_index(hazard.centroids.coord, coord,
+                                          method=method, distance=distance,
+                                          threshold=threshold)
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
@@ -264,8 +265,8 @@ class Exposures(GeoDataFrame):
         ulx, xres, _, uly, _, yres = meta['transform'].to_gdal()
         lrx = ulx + meta['width'] * xres
         lry = uly + meta['height'] * yres
-        x_grid, y_grid = np.meshgrid(np.arange(ulx+xres/2, lrx, xres),
-                                     np.arange(uly+yres/2, lry, yres))
+        x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
+                                     np.arange(uly + yres / 2, lry, yres))
         try:
             self.crs = meta['crs'].to_dict()
         except AttributeError:
@@ -306,8 +307,9 @@ class Exposures(GeoDataFrame):
         value = self.value[mask][pos_vals].values
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
-        return u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
-            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
+        return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
+                                             pop_name, buffer, extend, proj=crs_epsg,
+                                             axes=axis, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, **kwargs):
@@ -343,11 +345,12 @@ class Exposures(GeoDataFrame):
         value = self.value[mask][pos_vals].values
         coord = np.stack([self.latitude[mask][pos_vals].values,
                           self.longitude[mask][pos_vals].values], axis=1)
-        return u_plot.geo_bin_from_array(value, coord, cbar_label, title, \
-            pop_name, buffer, extend, proj=crs_epsg, axes=axis, **kwargs)
+        return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
+                                         pop_name, buffer, extend, proj=crs_epsg,
+                                         axes=axis, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
-                    raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                    raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
@@ -369,7 +372,7 @@ class Exposures(GeoDataFrame):
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
             raster = self.value.values.reshape((self.meta['height'],
                                                 self.meta['width']))
             # check raster starts by upper left corner
@@ -384,9 +387,9 @@ class Exposures(GeoDataFrame):
             raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
         if save_tiff is not None:
-            ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff', \
-                height=meta['height'], width=meta['width'], count=1, \
-                dtype=np.float32, crs=self.crs, transform=meta['transform'])
+            ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff',
+                                     height=meta['height'], width=meta['width'], count=1,
+                                     dtype=np.float32, crs=self.crs, transform=meta['transform'])
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
@@ -395,11 +398,12 @@ class Exposures(GeoDataFrame):
         self.longitude.max(), self.latitude.max()
         if not axis:
             _, axis = u_plot.make_map(proj=crs_epsg)
-        cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%", \
-            pad=0.1, axes_class=plt.Axes)
-        axis.set_extent([max(xmin, crs_epsg.x_limits[0]), \
-            min(xmax, crs_epsg.x_limits[1]), max(ymin, crs_epsg.y_limits[0]), \
-            min(ymax, crs_epsg.y_limits[1])], crs_epsg)
+        cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
+                                                        pad=0.1, axes_class=plt.Axes)
+        axis.set_extent([max(xmin, crs_epsg.x_limits[0]),
+                         min(xmax, crs_epsg.x_limits[1]),
+                         max(ymin, crs_epsg.y_limits[0]),
+                         min(ymax, crs_epsg.y_limits[1])], crs_epsg)
         u_plot.add_shapes(axis)
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
@@ -544,7 +548,7 @@ class Exposures(GeoDataFrame):
         Parameters:
             file_name (str): name output file in tif format
         """
-        if self.meta and self.meta['height']*self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
             raster = self[value_name].values.reshape((self.meta['height'],
                                                       self.meta['width']))
             # check raster starts by upper left corner
@@ -573,19 +577,19 @@ def add_sea(exposures, sea_res):
     LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
                 str(sea_res[1]), str(sea_res[0]))
 
-    sea_res = (sea_res[0]/ONE_LAT_KM, sea_res[1]/ONE_LAT_KM)
+    sea_res = (sea_res[0] / ONE_LAT_KM, sea_res[1] / ONE_LAT_KM)
 
     min_lat = max(-90, float(exposures.latitude.min()) - sea_res[0])
     max_lat = min(90, float(exposures.latitude.max()) + sea_res[0])
     min_lon = max(-180, float(exposures.longitude.min()) - sea_res[0])
     max_lon = min(180, float(exposures.longitude.max()) + sea_res[0])
 
-    lat_arr = np.arange(min_lat, max_lat+sea_res[1], sea_res[1])
-    lon_arr = np.arange(min_lon, max_lon+sea_res[1], sea_res[1])
+    lat_arr = np.arange(min_lat, max_lat + sea_res[1], sea_res[1])
+    lon_arr = np.arange(min_lon, max_lon + sea_res[1], sea_res[1])
 
     lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-    on_land = np.logical_not(co.coord_on_land(lat_mgrid, lon_mgrid))
+    on_land = ~co.coord_on_land(lat_mgrid, lon_mgrid)
 
     sea_exp = Exposures()
     sea_exp['latitude'] = lat_mgrid[on_land]
@@ -609,7 +613,7 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures['latitude'] = data[var_names['var_name']['lat']].reshape(-1)
     exposures['longitude'] = data[var_names['var_name']['lon']].reshape(-1)
 
-    exposures[INDICATOR_IF] = np.squeeze( \
+    exposures[INDICATOR_IF] = np.squeeze(
         data[var_names['var_name']['imp']]).astype(int, copy=False)
 
 def _read_mat_optional(exposures, data, var_names):
@@ -651,8 +655,8 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.ref_year = DEF_REF_YEAR
 
     try:
-        exposures.value_unit = hdf5.get_str_from_ref(file_name, \
-            data[var_names['var_name']['uni']][0][0])
+        exposures.value_unit = hdf5.get_str_from_ref(file_name,
+                                                     data[var_names['var_name']['uni']][0][0])
     except KeyError:
         exposures.value_unit = DEF_VALUE_UNIT
 

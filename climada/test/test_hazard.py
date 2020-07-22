@@ -72,7 +72,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.orig = np.array([1])
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
@@ -81,7 +81,8 @@ class TestCentroids(unittest.TestCase):
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.1, 0.2, 0.5])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
+                                    np.array([0.0, 0.1, 0.2, 0.5])))
 
     def test_write_fraction_pass(self):
         """Test write_raster with fraction"""
@@ -92,7 +93,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.orig = np.array([1])
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1])/2)
+        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
@@ -100,11 +101,13 @@ class TestCentroids(unittest.TestCase):
 
         haz_read = Hazard('FL')
         haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')],
-                             files_fraction=[os.path.join(DATA_DIR, 'test_write_hazard.tif')])
+                            files_fraction=[os.path.join(DATA_DIR, 'test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertEqual(haz_read.fraction.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())), np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())),
+                                    np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
+                                    np.array([0.0, 0.05, 0.1, 0.25])))
 
 # Execute Tests
 if __name__ == "__main__":

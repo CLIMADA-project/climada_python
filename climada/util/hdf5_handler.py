@@ -134,5 +134,5 @@ def get_sparse_csr_mat(mat_dict, shape):
     ('jc' not in mat_dict):
         raise ValueError('Input data is not a sparse matrix.')
 
-    return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'], \
+    return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'],
                               mat_dict['jc']), shape).tocsr()

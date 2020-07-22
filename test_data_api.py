@@ -33,6 +33,7 @@ from pandas_datareader import wb
 
 from climada.entity.exposures.nightlight import NOAA_SITE, NASA_SITE, BM_FILENAMES
 from climada.hazard.tc_tracks import IBTRACS_URL, IBTRACS_FILE
+from climada.hazard.tc_tracks_forecast import TCForecast
 from climada.util.finance import WORLD_BANK_WEALTH_ACC, WORLD_BANK_INC_GRP
 from climada.util.files_handler import download_file, download_ftp
 from climada.util.constants import SOURCE_DIR
@@ -76,6 +77,11 @@ class TestDataAvail(unittest.TestCase):
     def test_ibtracs_pass(self):
         download_ftp("/".join([IBTRACS_URL, IBTRACS_FILE]), IBTRACS_FILE)
         os.remove(IBTRACS_FILE)
+
+    def test_ecmwf_tc_bufr(self):
+        """Test availability ECMWF essentials TC forecast."""
+        fcast = TCForecast.fetch_bufr_ftp()
+        [f.close() for f in fcast]
 
 # Execute Tests
 if __name__ == '__main__':

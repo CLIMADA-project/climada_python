@@ -47,30 +47,30 @@ import climada.util.coordinates as co
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_VAR_EXCEL = {'sheet_name': {'inten' : 'hazard_intensity',
-                                'freq' : 'hazard_frequency'
+DEF_VAR_EXCEL = {'sheet_name': {'inten': 'hazard_intensity',
+                                'freq': 'hazard_frequency'
                                },
-                 'col_name': {'cen_id' : 'centroid_id/event_id',
-                              'even_id' : 'event_id',
-                              'even_dt' : 'event_date',
-                              'even_name' : 'event_name',
-                              'freq' : 'frequency',
+                 'col_name': {'cen_id': 'centroid_id/event_id',
+                              'even_id': 'event_id',
+                              'even_dt': 'event_date',
+                              'even_name': 'event_name',
+                              'freq': 'frequency',
                               'orig': 'orig_event_flag'
                              },
                  'col_centroids': {'sheet_name': 'centroids',
-                                   'col_name': {'cen_id' : 'centroid_id',
-                                                'lat' : 'latitude',
-                                                'lon' : 'longitude'
+                                   'col_name': {'cen_id': 'centroid_id',
+                                                'lat': 'latitude',
+                                                'lon': 'longitude'
                                                }
                                   }
                 }
 """Excel variable names"""
 
 DEF_VAR_MAT = {'field_name': 'hazard',
-               'var_name': {'per_id' : 'peril_ID',
-                            'even_id' : 'event_ID',
-                            'ev_name' : 'name',
-                            'freq' : 'frequency',
+               'var_name': {'per_id': 'peril_ID',
+                            'even_id': 'event_ID',
+                            'ev_name': 'name',
+                            'freq': 'frequency',
                             'inten': 'intensity',
                             'unit': 'units',
                             'frac': 'fraction',
@@ -79,9 +79,9 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             'orig': 'orig_event_flag'
                            },
                'var_cent': {'field_names': ['centroids', 'hazard'],
-                            'var_name': {'cen_id' : 'centroid_ID',
-                                         'lat' : 'lat',
-                                         'lon' : 'lon'
+                            'var_name': {'cen_id': 'centroid_ID',
+                                         'lat': 'lat',
+                                         'lon': 'lon'
                                         }
                            }
               }
@@ -136,7 +136,7 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type, pool=None):
+    def __init__(self, haz_type='', pool=None):
         """Initialize values.
 
         Parameters:
@@ -166,7 +166,7 @@ class Hazard():
         self.date = np.array([], int)
         self.orig = np.array([], bool)
         # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0))) # events x centroids
+        self.intensity = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
         self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
         if pool:
             self.pool = pool
@@ -230,37 +230,41 @@ class Hazard():
 
         self.centroids = Centroids()
         if self.pool:
-            chunksize = min(len(files_intensity)//self.pool.ncpus, 1000)
+            chunksize = min(len(files_intensity) // self.pool.ncpus, 1000)
             # set first centroids
-            inten_list = [sparse.csr.csr_matrix(self.centroids.set_raster_file( \
-                files_intensity[0], band, src_crs, window, geometry, dst_crs, \
+            inten_list = [sparse.csr.csr_matrix(self.centroids.set_raster_file(
+                files_intensity[0], band, src_crs, window, geometry, dst_crs,
                 transform, width, height, resampling))]
-            inten_list += self.pool.map(self.centroids.set_raster_file, \
-            files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs), \
-            itertools.repeat(window), itertools.repeat(geometry), \
-            itertools.repeat(dst_crs), itertools.repeat(transform), \
-            itertools.repeat(width), itertools.repeat(height), \
-            itertools.repeat(resampling), chunksize=chunksize)
+            inten_list += self.pool.map(
+                self.centroids.set_raster_file,
+                files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs),
+                itertools.repeat(window), itertools.repeat(geometry),
+                itertools.repeat(dst_crs), itertools.repeat(transform),
+                itertools.repeat(width), itertools.repeat(height),
+                itertools.repeat(resampling), chunksize=chunksize)
             self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
-                fract_list = self.pool.map(self.centroids.set_raster_file, \
-                files_fraction, itertools.repeat(band), itertools.repeat(src_crs), \
-                itertools.repeat(window), itertools.repeat(geometry), \
-                itertools.repeat(dst_crs), itertools.repeat(transform), \
-                itertools.repeat(width), itertools.repeat(height), \
-                itertools.repeat(resampling), chunksize=chunksize)
+                fract_list = self.pool.map(
+                    self.centroids.set_raster_file,
+                    files_fraction, itertools.repeat(band), itertools.repeat(src_crs),
+                    itertools.repeat(window), itertools.repeat(geometry),
+                    itertools.repeat(dst_crs), itertools.repeat(transform),
+                    itertools.repeat(width), itertools.repeat(height),
+                    itertools.repeat(resampling), chunksize=chunksize)
                 self.fraction = sparse.vstack(fract_list, format='csr')
         else:
             inten_list = []
             for file in files_intensity:
-                inten_list.append(self.centroids.set_raster_file(file, band, src_crs, window, \
-                    geometry, dst_crs, transform, width, height, resampling))
+                inten_list.append(self.centroids.set_raster_file(
+                    file, band, src_crs, window, geometry, dst_crs, transform,
+                    width, height, resampling))
             self.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
                 fract_list = []
                 for file in files_fraction:
-                    fract_list.append(self.centroids.set_raster_file(file, band, src_crs, \
-                        window, geometry, dst_crs, transform, width, height, resampling))
+                    fract_list.append(self.centroids.set_raster_file(
+                        file, band, src_crs, window, geometry, dst_crs, transform,
+                        width, height, resampling))
                 self.fraction = sparse.vstack(fract_list, format='csr')
 
         if files_fraction is None:
@@ -270,7 +274,7 @@ class Hazard():
         if 'event_id' in attrs:
             self.event_id = attrs['event_id']
         else:
-            self.event_id = np.arange(1, self.intensity.shape[0]+1)
+            self.event_id = np.arange(1, self.intensity.shape[0] + 1)
         if 'frequency' in attrs:
             self.frequency = attrs['frequency']
         else:
@@ -334,7 +338,7 @@ class Hazard():
         if 'event_id' in attrs:
             self.event_id = attrs['event_id']
         else:
-            self.event_id = np.arange(1, self.intensity.shape[0]+1)
+            self.event_id = np.arange(1, self.intensity.shape[0] + 1)
         if 'frequency' in attrs:
             self.frequency = attrs['frequency']
         else:
@@ -377,14 +381,14 @@ class Hazard():
             LOGGER.error('Provide width and height to given transformation.')
             raise ValueError
         if not transform:
-            transform, width, height = calculate_default_transform(\
-            self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'], \
-            self.centroids.meta['height'], self.centroids.meta['transform'][2], \
-            self.centroids.meta['transform'][5] + \
-            self.centroids.meta['height']*self.centroids.meta['transform'][4],
-            self.centroids.meta['transform'][2] + \
-            self.centroids.meta['width']*self.centroids.meta['transform'][0], \
-            self.centroids.meta['transform'][5])
+            transform, width, height = calculate_default_transform(
+                self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'],
+                self.centroids.meta['height'], self.centroids.meta['transform'][2],
+                (self.centroids.meta['transform'][5]
+                 + self.centroids.meta['height'] * self.centroids.meta['transform'][4]),
+                (self.centroids.meta['transform'][2]
+                 + self.centroids.meta['width'] * self.centroids.meta['transform'][0]),
+                self.centroids.meta['transform'][5])
         dst_meta = self.centroids.meta.copy()
         dst_meta.update({'crs': dst_crs, 'transform': transform,
                          'width': width, 'height': height
@@ -396,19 +400,24 @@ class Hazard():
                   'dst_transform': transform, 'dst_crs': dst_crs,
                   'resampling': resampl_inten}
         for idx_ev, inten in enumerate(self.intensity.toarray()):
-            reproject(source=np.asarray(inten.reshape((self.centroids.meta['height'], \
-                self.centroids.meta['width']))), destination=intensity[idx_ev, :, :], \
+            reproject(
+                source=np.asarray(inten.reshape((self.centroids.meta['height'],
+                                                 self.centroids.meta['width']))),
+                destination=intensity[idx_ev, :, :],
                 **kwargs)
         kwargs.update(resampling=resampl_fract)
         for idx_ev, fract in enumerate(self.fraction.toarray()):
-            reproject(source=np.asarray(fract.reshape((self.centroids.meta['height'], \
-                      self.centroids.meta['width']))), destination=fraction[idx_ev, :, :], \
-                      **kwargs)
+            reproject(
+                source=np.asarray(
+                    fract.reshape((self.centroids.meta['height'],
+                                   self.centroids.meta['width']))),
+                destination=fraction[idx_ev, :, :],
+                **kwargs)
         self.centroids.meta = dst_meta
-        self.intensity = sparse.csr_matrix(intensity.reshape(self.size, \
-            dst_meta['height'] * dst_meta['width']))
-        self.fraction = sparse.csr_matrix(fraction.reshape(self.size, \
-            dst_meta['height'] * dst_meta['width']))
+        self.intensity = sparse.csr_matrix(
+            intensity.reshape(self.size, dst_meta['height'] * dst_meta['width']))
+        self.fraction = sparse.csr_matrix(
+            fraction.reshape(self.size, dst_meta['height'] * dst_meta['width']))
         self.check()
 
     def reproject_vector(self, dst_crs, scheduler=None):
@@ -441,12 +450,12 @@ class Hazard():
         points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
         points_df['latitude'] = self.centroids.lat
         points_df['longitude'] = self.centroids.lon
-        val_names = ['val'+str(i_ev) for i_ev in range(2*self.size)]
+        val_names = ['val' + str(i_ev) for i_ev in range(2 * self.size)]
         for i_ev, inten_name in enumerate(val_names):
             if i_ev < self.size:
                 points_df[inten_name] = np.asarray(self.intensity[i_ev, :].toarray()).reshape(-1)
             else:
-                points_df[inten_name] = np.asarray(self.fraction[i_ev-self.size, :].toarray()).\
+                points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
         raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
@@ -536,10 +545,10 @@ class Hazard():
         Returns:
             Hazard or children
         """
-        try:
-            haz = self.__class__()
-        except TypeError:
+        if type(self) is Hazard:
             haz = Hazard(self.tag.haz_type)
+        else:
+            haz = self.__class__()
         sel_ev = np.ones(self.event_id.size, dtype=bool)
         sel_cen = np.ones(self.centroids.size, dtype=bool)
 
@@ -599,11 +608,11 @@ class Hazard():
 
         # reset frequency if date span has changed (optional):
         if reset_frequency:
-            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year - \
-                                    dt.datetime.fromordinal(self.date.min()).year)+1
-            year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year - \
-                                    dt.datetime.fromordinal(haz.date.min()).year)+1
-            haz.frequency = haz.frequency*year_span_old/year_span_new
+            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
+                                   dt.datetime.fromordinal(self.date.min()).year) + 1
+            year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
+                                   dt.datetime.fromordinal(haz.date.min()).year) + 1
+            haz.frequency = haz.frequency * year_span_old / year_span_new
 
         haz.sanitize_event_ids()
         return haz
@@ -619,26 +628,28 @@ class Hazard():
         """
         # warn if return period is above return period of rarest event:
         for period in return_periods:
-            if period > 1/self.frequency.min():
+            if period > 1 / self.frequency.min():
                 LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
         LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
                     return_periods)
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size']/self.intensity.shape[0])
+        cen_step = int(CONFIG['global']['max_matrix_size'] / self.intensity.shape[0])
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+            LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.intensity.shape[0]))
             raise ValueError
         # separte in chunks
         chk = -1
-        for chk in range(int(num_cen/cen_step)):
-            self._loc_return_inten(np.array(return_periods), \
-                self.intensity[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
-                inten_stats[:, chk*cen_step:(chk+1)*cen_step])
-        self._loc_return_inten(np.array(return_periods), \
-            self.intensity[:, (chk+1)*cen_step:].toarray(), \
-            inten_stats[:, (chk+1)*cen_step:])
+        for chk in range(int(num_cen / cen_step)):
+            self._loc_return_inten(
+                np.array(return_periods),
+                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                inten_stats[:, chk * cen_step:(chk + 1) * cen_step])
+        self._loc_return_inten(
+            np.array(return_periods),
+            self.intensity[:, (chk + 1) * cen_step:].toarray(),
+            inten_stats[:, (chk + 1) * cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
         if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
@@ -668,8 +679,9 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,\
-            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
+                                           colbar_name, title, smooth=smooth,
+                                           axes=axis, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
@@ -770,8 +782,8 @@ class Hazard():
         Returns:
             np.array(int)
         """
-        list_id = self.event_id[[i_name for i_name, val_name \
-            in enumerate(self.event_name) if val_name == event_name]]
+        list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
+                                 if val_name == event_name]]
         if list_id.size == 0:
             LOGGER.error("No event with name: %s", event_name)
             raise ValueError
@@ -810,9 +822,9 @@ class Hazard():
             l_dates = [u_dt.date_to_str(date) for date in self.date]
         elif isinstance(event, str):
             ev_ids = self.get_event_id(event)
-            l_dates = [u_dt.date_to_str(self.date[ \
-                       np.argwhere(self.event_id == ev_id)[0][0]]) \
-                       for ev_id in ev_ids]
+            l_dates = [
+                u_dt.date_to_str(self.date[np.argwhere(self.event_id == ev_id)[0][0]])
+                for ev_id in ev_ids]
         else:
             ev_idx = np.argwhere(self.event_id == event)[0][0]
             l_dates = [u_dt.date_to_str(self.date[ev_idx])]
@@ -943,12 +955,13 @@ class Hazard():
             with rasterio.open(file_name, 'w', **profile) as dst:
                 LOGGER.info('Writing %s', file_name)
                 for i_ev in range(variable.shape[0]):
-                    raster = rasterize([(x, val) for (x, val) in \
-                        zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))], \
-                        out_shape=(profile['height'], profile['width']),\
-                        transform=profile['transform'], fill=0, \
+                    raster = rasterize(
+                        [(x, val) for (x, val) in
+                         zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))],
+                        out_shape=(profile['height'], profile['width']),
+                        transform=profile['transform'], fill=0,
                         all_touched=True, dtype=profile['dtype'],)
-                    dst.write(raster.astype(profile['dtype']), i_ev+1)
+                    dst.write(raster.astype(profile['dtype']), i_ev + 1)
 
     def write_hdf5(self, file_name, todense=False):
         """Write hazard in hdf5 format.
@@ -1012,8 +1025,10 @@ class Hazard():
                 if isinstance(hf_csr, h5py.Dataset):
                     setattr(self, var_name, sparse.csr_matrix(hf_csr))
                 else:
-                    setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:], \
-                        hf_csr['indices'][:], hf_csr['indptr'][:]), hf_csr.attrs['shape']))
+                    setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:],
+                                                               hf_csr['indices'][:],
+                                                               hf_csr['indptr'][:]),
+                                                              hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
                 setattr(self, var_name, hf_data.get(var_name)[0])
             elif isinstance(var_val, list):
@@ -1098,15 +1113,16 @@ class Hazard():
                     LOGGER.error('Wrong event id: %s.', ev_id)
                     raise ValueError from IndexError
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]), \
-                                          self.event_name[event_pos])
+                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
+                                             self.event_name[event_pos])
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id), \
-                    str(self.event_id[event_pos]), self.event_name[event_pos])
+                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id),
+                                                         str(self.event_id[event_pos]),
+                                                         self.event_name[event_pos])
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
                 title = '%s max intensity at each point' % self.tag.haz_type
@@ -1143,8 +1159,9 @@ class Hazard():
                 LOGGER.error('Wrong centroid id: %s.', centr_idx)
                 raise ValueError from IndexError
             array_val = mat_var[:, centr_pos].toarray()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_idx), \
-                    coord[centr_pos, 0], coord[centr_pos, 1])
+            title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
+                                               coord[centr_pos, 0],
+                                               coord[centr_pos, 1])
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
@@ -1152,7 +1169,7 @@ class Hazard():
             array_val = mat_var[:, centr_pos].toarray()
 
             title = '%s-largest Centroid. %s: (%s, %s)' % \
-                (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0], \
+                (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0],
                  coord[centr_pos, 1])
         else:
             array_val = np.max(mat_var, axis=1).toarray()
@@ -1182,6 +1199,7 @@ class Hazard():
         # sorted intensity
         sort_pos = np.argsort(inten, axis=0)[::-1, :]
         columns = np.ones(inten.shape, int)
+        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
         columns *= np.arange(columns.shape[1])
         inten_sort = inten[sort_pos, columns]
         # cummulative frequency at sorted intensity
@@ -1210,12 +1228,13 @@ class Hazard():
         check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                 num_ev, num_ev, num_cen)
         check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = check.array_default(num_ev, self.event_name, \
-            'Hazard.event_name', list(self.event_id))
-        self.date = check.array_default(num_ev, self.date, 'Hazard.date', \
-                            np.ones(self.event_id.shape, dtype=int))
-        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig', \
-                            np.zeros(self.event_id.shape, dtype=bool))
+        self.event_name = check.array_default(num_ev, self.event_name,
+                                              'Hazard.event_name',
+                                              list(self.event_id))
+        self.date = check.array_default(num_ev, self.date, 'Hazard.date',
+                                        np.ones(self.event_id.shape, dtype=int))
+        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig',
+                                        np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             LOGGER.error("There are events with same date and name.")
             raise ValueError
@@ -1245,9 +1264,8 @@ class Hazard():
                 pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=1)
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
-        inten_fit = np.polyval(pol_coef, np.log(1/return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
-                np.isnan(inten_fit))
+        inten_fit = np.polyval(pol_coef, np.log(1 / return_periods))
+        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(inten_fit)
         inten_fit[wrong_inten] = 0.
 
         return inten_fit
@@ -1256,8 +1274,8 @@ class Hazard():
         """Read MATLAB hazard's attributes."""
         self.frequency = np.squeeze(data[var_names['var_name']['freq']])
         self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
-        self.event_id = np.squeeze(data[var_names['var_name']['even_id']]. \
-            astype(np.int, copy=False))
+        self.event_id = np.squeeze(
+            data[var_names['var_name']['even_id']].astype(np.int, copy=False))
         try:
             self.units = hdf5.get_string(data[var_names['var_name']['unit']])
         except KeyError:
@@ -1266,13 +1284,13 @@ class Hazard():
         n_cen = self.centroids.size
         n_event = len(self.event_id)
         try:
-            self.intensity = hdf5.get_sparse_csr_mat( \
+            self.intensity = hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in intensity matrix.')
             raise err
         try:
-            self.fraction = hdf5.get_sparse_csr_mat( \
+            self.fraction = hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in fraction matrix.')
@@ -1294,9 +1312,11 @@ class Hazard():
 
         try:
             datenum = data[var_names['var_name']['datenum']].squeeze()
-            self.date = np.array([(dt.datetime.fromordinal(int(date)) + \
-                dt.timedelta(days=date%1)- \
-                dt.timedelta(days=366)).toordinal() for date in datenum])
+            self.date = np.array([
+                (dt.datetime.fromordinal(int(date))
+                 + dt.timedelta(days=date % 1)
+                 - dt.timedelta(days=366)).toordinal()
+                for date in datenum])
         except KeyError:
             pass
 
@@ -1317,17 +1337,17 @@ class Hazard():
         # number of events (ignore centroid_ID column)
         # check the number of events is the same as the one in the frequency
         if dfr.shape[1] - 1 is not num_events:
-            LOGGER.error('Hazard intensity is given for a number of events ' \
-                    'different from the number of defined in its frequency: ' \
-                    '%s != %s', dfr.shape[1] - 1, num_events)
+            LOGGER.error('Hazard intensity is given for a number of events '
+                         'different from the number of defined in its frequency: '
+                         '%s != %s', dfr.shape[1] - 1, num_events)
             raise ValueError
         # check number of centroids is the same as retrieved before
         if dfr.shape[0] is not self.centroids.size:
-            LOGGER.error('Hazard intensity is given for a number of centroids ' \
-                    'different from the number of centroids defined: %s != %s', \
-                    dfr.shape[0], self.centroids.size)
+            LOGGER.error('Hazard intensity is given for a number of centroids '
+                         'different from the number of centroids defined: %s != %s',
+                         dfr.shape[0], self.centroids.size)
             raise ValueError
 
-        self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events+1].transpose())
+        self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))

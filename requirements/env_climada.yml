@@ -55,4 +55,5 @@ dependencies:
     - pillow==6.2.2
     - pint==0.9
     - ppft==1.6.4.9
+    - pybufrkit>=0.2.16
     - xmlrunner==1.7.7

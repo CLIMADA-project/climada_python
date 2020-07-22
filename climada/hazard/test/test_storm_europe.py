@@ -88,7 +88,8 @@ class TestReader(unittest.TestCase):
         var_names['sheet_name'] = 'fp_centroids-test'
         var_names['col_name']['region_id'] = 'iso_n3'
         test_centroids = Centroids()
-        test_centroids.read_excel(os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
+        test_centroids.read_excel(
+            os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
@@ -138,7 +139,7 @@ class TestReader(unittest.TestCase):
             # but the centroid's location that is decisive
         )
         self.assertEqual(storms_prob.size, 60)
-        self.assertTrue(np.allclose((1/storms_prob.frequency).astype(int), 330))
+        self.assertTrue(np.allclose((1 / storms_prob.frequency).astype(int), 330))
         self.assertAlmostEqual(storms.frequency.sum(),
                                storms_prob.frequency.sum())
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)

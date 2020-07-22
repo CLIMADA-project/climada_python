@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Functions to deal with files.
 """
 
-__all__ = ['to_list',
-           'get_file_names'
-          ]
+__all__ = [
+    'to_list',
+    'get_file_names',
+]
 
 import os
 import glob
@@ -79,7 +80,7 @@ def download_file(url):
     LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
-                         total=math.ceil(total_size//block_size),
+                         total=math.ceil(total_size // block_size),
                          unit='KB', unit_scale=True):
             file.write(data)
     return file_abs_name
@@ -96,7 +97,7 @@ def download_ftp(url, file_name):
     """
     LOGGER.info('Downloading file %s', file_name)
     try:
-        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
+        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1,
                                  desc=url.split('/')[-1]) as prog_bar:
             urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
     except Exception as exc:

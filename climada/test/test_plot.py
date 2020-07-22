@@ -91,11 +91,11 @@ class TestPlotter(unittest.TestCase):
         myexp = Exposures(myexp)
         myexp.check()
         myexp.tag.description = 'demo_today'
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('demo_today', myax.get_title())
 
         myexp.tag.description = ''
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('', myax.get_title())
 
     def test_impact_funcs_pass(self):
@@ -104,7 +104,7 @@ class TestPlotter(unittest.TestCase):
         myfuncs.read_excel(ENT_DEMO_TODAY)
         myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
-        self.assertIn('TC 1: Tropical cyclone default', \
+        self.assertIn('TC 1: Tropical cyclone default',
                       myax[0].title.get_text())
         self.assertIn('TC 3: TC Building code', myax[1].title.get_text())
 

@@ -144,11 +144,11 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
 
     # prepare hazard set
     print("Start preparing hazard set")
-    hit_countries = hit_country_per_hazard(intensity_path_haz, names_path_haz, \
+    hit_countries = hit_country_per_hazard(intensity_path_haz, names_path_haz,
                                            reg_id_path_haz, date_path_haz)
     # prepare damage set
 
-    #### adjust emdat_data to the path!!
+    # adjust emdat_data to the path!!
     print("Start preparing damage set")
     lookup = create_lookup(emdat_data, start_time, end_time, disaster_subtype='Tropical cyclone')
     # calculate possible hits
@@ -209,10 +209,11 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
         lookup = assign_track_to_em(lookup=lookup, possible_tracks_1=hit5_match,
                                     possible_tracks_2=hit5_match, level=12)
     if not keep_checks:
-        lookup = lookup.drop(['Date_start_EM_ordinal', 'possible_track', \
+        lookup = lookup.drop(['Date_start_EM_ordinal', 'possible_track',
                               'possible_track_all'], axis=1)
     lookup.groupby('allocation_level').count()
-    print('(%d/%s) tracks allocated' %(len(lookup[lookup.allocation_level.notnull()]), len(lookup)))
+    print('(%d/%s) tracks allocated' % (
+        len(lookup[lookup.allocation_level.notnull()]), len(lookup)))
     return lookup
 
 
@@ -241,7 +242,7 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
     all_hits = []
     for track in range(0, len(names)):
         # select track
-        tc_track = inten[track,]
+        tc_track = inten[track, ]
         # select only indices that are not zero
         hits = tc_track.nonzero()[1]
         # get the country of these indices and remove dublicates
@@ -252,7 +253,7 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
     # create data frame for output
     hit_countries = pd.DataFrame(columns=['hit_country', 'Date_start', 'ibtracsID'])
     for track, _ in enumerate(names):
-        #Check if track has hit any country else go to the next track
+        # Check if track has hit any country else go to the next track
         if len(all_hits[track]) > 0:
             # loop over hit_country
             for hit in range(0, len(all_hits[track])):
@@ -260,8 +261,8 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
                 ctry_iso = iso_cntry.get(all_hits[track][hit]).alpha3
                 # create entry for each country a hazard has hit
                 hit_countries = hit_countries.append({'hit_country': ctry_iso,
-                                                      'Date_start' : date[track],
-                                                      'ibtracsID' : names[track]},
+                                                      'Date_start': date[track],
+                                                      'ibtracsID': names[track]},
                                                      ignore_index=True)
     # retrun data frame with all hit countries per hazard
     return hit_countries
@@ -278,10 +279,10 @@ def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
             pd.dataframe lookup
         """
     data = emdat_data[emdat_data['Disaster_subtype'] == disaster_subtype]
-    lookup = pd.DataFrame(columns=['hit_country', 'Date_start_EM', \
-                                     'Date_start_EM_ordinal', 'Disaster_name', \
-                                     'EM_ID', 'ibtracsID', 'allocation_level', \
-                                     'possible_track', 'possible_track_all'])
+    lookup = pd.DataFrame(columns=['hit_country', 'Date_start_EM',
+                                   'Date_start_EM_ordinal', 'Disaster_name',
+                                   'EM_ID', 'ibtracsID', 'allocation_level',
+                                   'possible_track', 'possible_track_all'])
     lookup.hit_country = data.ISO
     lookup.Date_start_EM = data.Date_start_clean
     lookup.Disaster_name = data.Disaster_name
@@ -289,8 +290,8 @@ def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
     lookup = lookup.reset_index(drop=True)
     # create ordinals
     for i in range(0, len(data.Date_start_clean.values)):
-        lookup.Date_start_EM_ordinal[i] = datetime.toordinal( \
-                    datetime.strptime(lookup.Date_start_EM.values[i], '%Y-%m-%d'))
+        lookup.Date_start_EM_ordinal[i] = datetime.toordinal(
+            datetime.strptime(lookup.Date_start_EM.values[i], '%Y-%m-%d'))
         # ordinals to numeric
     lookup.Date_start_EM_ordinal = pd.to_numeric(lookup.Date_start_EM_ordinal)
     # select time
@@ -325,10 +326,11 @@ def emdat_possible_hit(lookup, hit_countries, delta_t):
     possible_hit_all = []
     for i in range(0, len(lookup.EM_ID.values)):
         possible_hit = []
-        country_tracks = hit_countries[hit_countries['hit_country'] == lookup.hit_country.values[i]]
+        country_tracks = hit_countries[
+            hit_countries['hit_country'] == lookup.hit_country.values[i]]
         for j in range(0, len(country_tracks.Date_start.values)):
-            if (lookup.Date_start_EM_ordinal.values[i]-country_tracks.Date_start.values[j]) < \
-                delta_t and (lookup.Date_start_EM_ordinal.values[i] - \
+            if (lookup.Date_start_EM_ordinal.values[i] - country_tracks.Date_start.values[j]) < \
+                delta_t and (lookup.Date_start_EM_ordinal.values[i] -
                              country_tracks.Date_start.values[j]) >= 0:
                 possible_hit.append(country_tracks.ibtracsID.values[j])
         possible_hit_all.append(possible_hit)
@@ -381,23 +383,24 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
     for i, _ in enumerate(possible_tracks_1):
         if np.isnan(lookup.allocation_level.values[i]):
             number_emdat_id = len(possible_tracks_1[i])
-            #print(number_emdat_id)
+            # print(number_emdat_id)
             for j in range(0, number_emdat_id):
                 # check that number of possible track stays the same at given
                 # time difference and that list is not empty
                 if len(possible_tracks_1[i][j]) == len(possible_tracks_2[i][j]) == 1 \
-                    and possible_tracks_1[i][j] != []:
+                        and possible_tracks_1[i][j] != []:
                     # check that all tracks are the same
-                    if all(possible_tracks_1[i][0] == possible_tracks_1[i][k] \
+                    if all(possible_tracks_1[i][0] == possible_tracks_1[i][k]
                            for k in range(0, len(possible_tracks_1[i]))):
-                        #check that track ID has not been assigned to that country already
+                        # check that track ID has not been assigned to that country already
                         ctry_lookup = lookup[lookup['hit_country'] == lookup.hit_country.values[i]]
                         if possible_tracks_1[i][0][0] not in ctry_lookup.ibtracsID.values:
                             lookup.ibtracsID.values[i] = possible_tracks_1[i][0][0]
                             lookup.allocation_level.values[i] = level
                 elif possible_tracks_1[i][j] != []:
                     lookup.possible_track.values[i] = possible_tracks_1[i]
-        else: lookup.possible_track_all.values[i] = possible_tracks_1[i]
+        else:
+            lookup.possible_track_all.values[i] = possible_tracks_1[i]
     return lookup
 
 def check_assigned_track(lookup, checkset):
@@ -410,7 +413,7 @@ def check_assigned_track(lookup, checkset):
             error scores
     """
     # merge checkset and lookup
-    check = pd.merge(checkset, lookup[['hit_country', 'EM_ID', 'ibtracsID']],\
+    check = pd.merge(checkset, lookup[['hit_country', 'EM_ID', 'ibtracsID']],
                      on=['hit_country', 'EM_ID'])
     check_size = len(check.ibtracsID.values)
     # not assigned values
@@ -418,12 +421,14 @@ def check_assigned_track(lookup, checkset):
     # correct assigned values
     correct = sum(check.ibtracsID.values == check.IBtracsID_checked.values)
     # wrongly assigned values
-    wrong = len(check.ibtracsID.values)-not_assigned-correct
-    print('%.1f%% tracks assigned correctly, %.1f%% wrongly, %.1f%% not assigned' \
-          %(correct/check_size*100, wrong/check_size*100, not_assigned/check_size*100))
+    wrong = len(check.ibtracsID.values) - not_assigned - correct
+    print('%.1f%% tracks assigned correctly, %.1f%% wrongly, %.1f%% not assigned'
+          % (correct / check_size * 100,
+             wrong / check_size * 100,
+             not_assigned / check_size * 100))
 
 
-def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
+def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
                    target_version=2020):
     """
     Get a clean and standardized DataFrame from EM-DAT-CSV-file
@@ -453,7 +458,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
     Returns:
         df_data (pandas.DataFrame): DataFrame containing cleaned and filtered EM-DAT impact data
     """
-    ## (1) load EM-DAT data from CSV to DataFrame, skipping the header:
+    # (1) load EM-DAT data from CSV to DataFrame, skipping the header:
     if isinstance(emdat_file, str):
         df_emdat = pd.read_csv(emdat_file, encoding="ISO-8859-1", header=0)
         counter = 0
@@ -471,7 +476,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
     # drop rows with 9 or more NaN values (e.g. footer):
     df_emdat = df_emdat.dropna(thresh=9)
 
-    ## (2)  handle version, clean up, and add columns:
+    # (2)  handle version, clean up, and add columns:
     # (2.1) identify underlying EMDAT version of csv:
     version = 2020
     for vers in list(VARNAMES_EMDAT.keys()):
@@ -479,11 +484,11 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
            all(item in list(df_emdat.columns) for item in VARNAMES_EMDAT[vers].values()):
             version = vers
     # (2.2) create new DataFrame df_data with column names as target version
-    df_data = pd.DataFrame(index=df_emdat.index.values, \
-                      columns=VARNAMES_EMDAT[target_version].values())
-    if 'Year' not in df_data.columns: # make sure column "Year" exists
+    df_data = pd.DataFrame(index=df_emdat.index.values,
+                           columns=VARNAMES_EMDAT[target_version].values())
+    if 'Year' not in df_data.columns:  # make sure column "Year" exists
         df_data['Year'] = np.nan
-    for _, col in enumerate(df_data.columns): # loop over columns
+    for _, col in enumerate(df_data.columns):  # loop over columns
         if col in VARNAMES_EMDAT[version]:
             df_data[col] = df_emdat[VARNAMES_EMDAT[version][col]]
         elif col in df_emdat.columns:
@@ -529,7 +534,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
         for var in ['Disaster Subtype', 'Disaster Type', 'Country']:
             df_data[VARNAMES_EMDAT[target_version][var]].fillna('None', inplace=True)
 
-    ## (3) Filter by countries, year range, and disaster type
+    # (3) Filter by countries, year range, and disaster type
     # (3.1) Countries:
     if countries and isinstance(countries, str):
         countries = [countries]
@@ -544,8 +549,8 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
             if np.isnan(df_data.loc[0, 'Year']):
                 df_data.loc[0, 'Year'] = \
                     df_data.loc[0, VARNAMES_EMDAT[target_version]['Start Year']]
-        df_data = df_data[(df_data['Year'] >= min(year_range)) & \
-                (df_data['Year'] <= max(year_range))]
+        df_data = df_data[(df_data['Year'] >= min(year_range)) &
+                          (df_data['Year'] <= max(year_range))]
 
     # (3.3) Disaster type:
     if hazard and isinstance(hazard, str):
@@ -562,10 +567,9 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None, \
                 disaster_types += PERIL_TYPE_MATCH_DICT[haz]
             if haz in PERIL_SUBTYPE_MATCH_DICT.keys():
                 disaster_subtypes += PERIL_SUBTYPE_MATCH_DICT[haz]
-        df_data = df_data[(df_data[VARNAMES_EMDAT[target_version] \
-                                   ['Disaster Type']].isin(disaster_types)) | \
-                (df_data[VARNAMES_EMDAT[target_version] \
-                         ['Disaster Subtype']].isin(disaster_subtypes))]
+        df_data = df_data[
+            (df_data[VARNAMES_EMDAT[target_version]['Disaster Type']].isin(disaster_types)) |
+            (df_data[VARNAMES_EMDAT[target_version]['Disaster Subtype']].isin(disaster_subtypes))]
     return df_data.reset_index(drop=True)
 
 def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
@@ -647,9 +651,9 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
     LOGGER.error('Invalid reference_year')
     return None
 
-def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None, \
-                         reference_year=None, imp_str="Total Damages ('000 US$)", \
-                         version=2020):
+def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
+                           reference_year=None, imp_str="Total Damages ('000 US$)",
+                           version=2020):
     """function to load EM-DAT data and sum impact per year
     Parameters:
         emdat_file (str or DataFrame): Either string with full path to CSV-file or
@@ -680,20 +684,20 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
             year and country.
     """
     imp_str = VARNAMES_EMDAT[version][imp_str]
-    df_data = clean_emdat_df(emdat_file_csv, countries=countries, hazard=hazard, \
-                        year_range=year_range, target_version=version)
+    df_data = clean_emdat_df(emdat_file_csv, countries=countries, hazard=hazard,
+                             year_range=year_range, target_version=version)
 
-    df_data[imp_str+" scaled"] = scale_impact2refyear(df_data[imp_str].values, \
-                                  df_data.Year.values, df_data.ISO.values, \
-                                  reference_year=reference_year)
-    out = pd.DataFrame(columns=['ISO', 'region_id', 'year', 'impact', \
+    df_data[imp_str + " scaled"] = scale_impact2refyear(df_data[imp_str].values,
+                                                        df_data.Year.values, df_data.ISO.values,
+                                                        reference_year=reference_year)
+    out = pd.DataFrame(columns=['ISO', 'region_id', 'year', 'impact',
                                 'impact_scaled', 'reference_year'])
     for country in df_data.ISO.unique():
         country = iso_cntry.get(country).alpha3
         if not df_data.loc[df_data.ISO == country].size:
             continue
-        all_years = np.arange(min(df_data.Year), max(df_data.Year)+1)
-        data_out = pd.DataFrame(index=np.arange(0, len(all_years)), \
+        all_years = np.arange(min(df_data.Year), max(df_data.Year) + 1)
+        data_out = pd.DataFrame(index=np.arange(0, len(all_years)),
                                 columns=out.columns)
         df_country = df_data.loc[df_data.ISO == country]
         for cnt, year in enumerate(all_years):
@@ -704,16 +708,16 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
             data_out.loc[cnt, 'impact'] = \
                 np.nansum(df_country[df_country.Year.isin([year])][imp_str])
             data_out.loc[cnt, 'impact_scaled'] = \
-                np.nansum(df_country[df_country.Year.isin([year])][imp_str+" scaled"])
-            if '000 US' in imp_str: # EM-DAT damages provided in '000 USD
-                data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact']*1e3
-                data_out.loc[cnt, 'impact_scaled'] = data_out.loc[cnt, 'impact_scaled']*1e3
+                np.nansum(df_country[df_country.Year.isin([year])][imp_str + " scaled"])
+            if '000 US' in imp_str:  # EM-DAT damages provided in '000 USD
+                data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact'] * 1e3
+                data_out.loc[cnt, 'impact_scaled'] = data_out.loc[cnt, 'impact_scaled'] * 1e3
         out = out.append(data_out)
     out = out.reset_index(drop=True)
     return out
 
-def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=None, \
-                       reference_year=None, imp_str="Total Damages ('000 US$)", \
+def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=None,
+                       reference_year=None, imp_str="Total Damages ('000 US$)",
                        version=2020):
     """function to load EM-DAT data return impact per event
 
@@ -747,13 +751,14 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
             as 1000 US$ (e.g. imp_str="Total Damages ('000 US$) scaled").
     """
     imp_str = VARNAMES_EMDAT[version][imp_str]
-    df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range, \
-                        countries=countries, target_version=version)
+    df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range,
+                             countries=countries, target_version=version)
     df_data['year'] = df_data['Year']
     df_data['reference_year'] = reference_year
     df_data['impact'] = df_data[imp_str]
-    df_data['impact_scaled'] = scale_impact2refyear(df_data[imp_str].values, df_data.Year.values, \
-                                                df_data.ISO.values, reference_year=reference_year)
+    df_data['impact_scaled'] = scale_impact2refyear(df_data[imp_str].values, df_data.Year.values,
+                                                    df_data.ISO.values,
+                                                    reference_year=reference_year)
     df_data['region_id'] = np.nan
     for country in df_data.ISO.unique():
         try:
@@ -766,8 +771,8 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
         df_data['impact_scaled'] *= 1e3
     return df_data.reset_index(drop=True)
 
-def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countries=None,\
-                    hazard_type_emdat=None, \
+def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countries=None,
+                    hazard_type_emdat=None,
                     reference_year=None, imp_str="Total Damages"):
     """function to load EM-DAT data return impact per event
 
@@ -822,36 +827,38 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     impact_instance = Impact()
 
     impact_instance.tag = dict()
-    impact_instance.tag['haz'] = TagHaz(haz_type=hazard_type_climada, \
-                       file_name=emdat_file_csv, description='EM-DAT impact, direct import')
-    impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv, \
-                       description='EM-DAT impact, direct import')
+    impact_instance.tag['haz'] = TagHaz(haz_type=hazard_type_climada,
+                                        file_name=emdat_file_csv,
+                                        description='EM-DAT impact, direct import')
+    impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
+                                     description='EM-DAT impact, direct import')
     impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
 
 
     # Load EM-DAT impact data by event:
-    em_data = emdat_impact_event(emdat_file_csv, countries=countries, hazard=hazard_type_emdat, \
-                       year_range=year_range, reference_year=reference_year, imp_str=imp_str, \
-                       version=max(VARNAMES_EMDAT.keys()))
+    em_data = emdat_impact_event(emdat_file_csv, countries=countries, hazard=hazard_type_emdat,
+                                 year_range=year_range, reference_year=reference_year,
+                                 imp_str=imp_str, version=max(VARNAMES_EMDAT.keys()))
 
     if isinstance(countries, str):
         countries = [countries]
     elif not countries:
-        countries = emdat_countries_by_hazard(emdat_file_csv, year_range=year_range, \
+        countries = emdat_countries_by_hazard(emdat_file_csv, year_range=year_range,
                                               hazard=hazard_type_emdat)[0]
 
     if em_data.empty:
         return impact_instance, countries
     impact_instance.event_id = np.array(em_data.index, int)
-    impact_instance.event_name = list(em_data[VARNAMES_EMDAT[max(VARNAMES_EMDAT.keys())]['Dis No']])
+    impact_instance.event_name = list(
+        em_data[VARNAMES_EMDAT[max(VARNAMES_EMDAT.keys())]['Dis No']])
 
     date_list = list()
     for year in list(em_data['Year']):
         date_list.append(datetime.toordinal(datetime.strptime(str(year), '%Y')))
-    if 'Start Year' in em_data.columns and 'Start Month' in em_data.columns and \
-        'Start Day' in em_data.columns:
+    if 'Start Year' in em_data.columns and 'Start Month' in em_data.columns \
+            and 'Start Day' in em_data.columns:
         idx = 0
-        for year, month, day in zip(em_data['Start Year'], em_data['Start Month'], \
+        for year, month, day in zip(em_data['Start Year'], em_data['Start Month'],
                                     em_data['Start Day']):
             if np.isnan(year):
                 idx += 1
@@ -860,8 +867,8 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
                 month = 1
             if np.isnan(day):
                 day = 1
-            date_list[idx] = datetime.toordinal(datetime.strptime( \
-                            '%02i/%02i/%04i' %(day, month, year), '%d/%m/%Y'))
+            date_list[idx] = datetime.toordinal(datetime.strptime(
+                '%02i/%02i/%04i' % (day, month, year), '%d/%m/%Y'))
             idx += 1
     impact_instance.date = np.array(date_list, int)
     impact_instance.crs = DEF_CRS
@@ -873,7 +880,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     impact_instance.at_event[np.isnan(impact_instance.at_event)] = 0
     if not year_range:
         year_range = [em_data['Year'].min(), em_data['Year'].max()]
-    impact_instance.frequency = np.ones(em_data.shape[0])/(1+np.diff(year_range))
+    impact_instance.frequency = np.ones(em_data.shape[0]) / (1 + np.diff(year_range))
     impact_instance.tot_value = 0
     impact_instance.aai_agg = np.nansum(impact_instance.at_event * impact_instance.frequency)
     impact_instance.unit = 'USD'
@@ -887,7 +894,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     countries_reg_id = list()
     countries_lat = list()
     countries_lon = list()
-    impact_instance.eai_exp = np.zeros(len(countries)) # empty: damage at exposure
+    impact_instance.eai_exp = np.zeros(len(countries))  # empty: damage at exposure
     for idx, cntry in enumerate(countries):
         try:
             cntry = iso_cntry.get(cntry).alpha3
@@ -910,14 +917,14 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
         except KeyError:
             countries_reg_id.append(0)
-        df_tmp = em_data[em_data[VARNAMES_EMDAT[\
-                    max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]
+        df_tmp = em_data[em_data[VARNAMES_EMDAT[
+            max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]
         if not reference_year:
-            impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact"])*\
-                                   impact_instance.frequency[0])
+            impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact"]) *
+                                               impact_instance.frequency[0])
         else:
-            impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact_scaled"])*\
-                                   impact_instance.frequency[0])
+            impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact_scaled"]) *
+                                               impact_instance.frequency[0])
 
     impact_instance.coord_exp = np.stack([countries_lat, countries_lon], axis=1)
     return impact_instance, countries

@@ -45,13 +45,13 @@ class IFStormEurope(ImpactFunc):
         self.name = 'Schwierz 2011'
         self.id = if_id
         self.intensity_unit = 'm/s'
-        self.intensity = np.array([  0,  20,  25,  30,  35,  40,  45,  50,  55,  60,  80, 100])
-        self.paa = np.array([0.     , 0.     , 0.001  , 0.00676, 
+        self.intensity = np.array([0, 20, 25, 30, 35, 40, 45, 50, 55, 60, 80, 100])
+        self.paa = np.array([0., 0., 0.001, 0.00676, 
                              0.03921, 0.10707, 0.25357, 0.48869, 
-                             0.82907, 1.     , 1.     , 1.     ])
-        self.mdd = np.array([0.        , 0.        , 0.001     , 0.00177515,
+                             0.82907, 1., 1., 1.])
+        self.mdd = np.array([0., 0., 0.001, 0.00177515,
                              0.00367253, 0.00749977, 0.01263556, 0.01849639,
-                             0.02370487, 0.037253,   0.037253  , 0.037253  ])
+                             0.02370487, 0.037253, 0.037253, 0.037253])
         self.check()
     
     def set_welker(self, if_id=1):

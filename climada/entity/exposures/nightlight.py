@@ -26,7 +26,6 @@ import re
 import gzip
 import pickle
 import logging
-import math
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
@@ -91,7 +90,7 @@ def check_required_nl_files(bbox, *coords):
     """
     try:
         if not coords:
-            #check if bbox is valid
+            # check if bbox is valid
             if (np.size(bbox) != 4) or (bbox[0] > bbox[2]) \
             or (bbox[1] > bbox[3]):
                 LOGGER.error('Invalid bounding box supplied.')
@@ -107,29 +106,29 @@ def check_required_nl_files(bbox, *coords):
                 min_lon = bbox
                 min_lat, max_lon, max_lat = coords
     except:
-        raise ValueError('Invalid coordinates supplied. Please either ' + \
-            ' deliver a bounding box or the coordinates defining the ' + \
-            ' bounding box separately.')
+        raise ValueError('Invalid coordinates supplied. Please either '
+                         ' deliver a bounding box or the coordinates defining the '
+                         ' bounding box separately.')
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
     req_files = np.zeros(np.count_nonzero(BM_FILENAMES),)
 
     # determine the staring tile
-    first_tile_lon = min(np.floor((min_lon-(-180))/tile_width), 3) #"normalise" to zero
-    last_tile_lon = min(np.floor((max_lon-(-180))/tile_width), 3)
+    first_tile_lon = min(np.floor((min_lon - (-180)) / tile_width), 3)  # "normalise" to zero
+    last_tile_lon = min(np.floor((max_lon - (-180)) / tile_width), 3)
 
     # Now latitude. The height of all tiles is the same as the height.
     # Note that for this analysis returns an index which follows from North to South oritentation.
-    first_tile_lat = min(np.floor(-(min_lat-(90))/tile_width), 1)
-    last_tile_lat = min(np.floor(-(max_lat-90)/tile_width), 1)
+    first_tile_lat = min(np.floor(-(min_lat - (90)) / tile_width), 1)
+    last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
-    for i_lon in range(0, int(len(req_files)/2)):
+    for i_lon in range(0, int(len(req_files) / 2)):
         if first_tile_lon <= i_lon and last_tile_lon >= i_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
-                req_files[((i_lon))*2] = 1
+                req_files[((i_lon)) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
-                req_files[((i_lon))*2 + 1] = 1
+                req_files[((i_lon)) * 2 + 1] = 1
         else:
             continue
     return req_files
@@ -154,11 +153,11 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     """
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and '+ \
+        LOGGER.warning('The parameter \'required_files\' was too short and '
                        'is ignored.')
     if not path.exists(check_path):
         check_path = SYSTEM_DIR
-        LOGGER.warning('The given path does not exist and is ignored. %s' + \
+        LOGGER.warning('The given path does not exist and is ignored. %s'
                        ' is checked instead.', SYSTEM_DIR)
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
@@ -170,21 +169,20 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
-        LOGGER.debug('Found all required satellite data (' +
-                     str(int(sum(required_files))) + ' files) in folder ' +
-                     check_path)
+        LOGGER.debug('Found all required satellite data (%s files) in folder %s',
+                     int(sum(required_files)), check_path)
     elif sum(files_exist) == 0:
         LOGGER.info('No satellite files found locally in %s', check_path)
     else:
-        LOGGER.debug('Not all satellite files available. Found ' +
-                     str(int(sum(files_exist))) + ' out of ' +
-                     str(int(sum(required_files))) + ' required files in ' +
-                     check_path)
+        LOGGER.debug('Not all satellite files available. '
+                     'Found %d out of %d required files in %s',
+                     int(sum(files_exist)), int(sum(required_files)), check_path)
 
     return (files_exist, check_path)
 
-def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
-    files_exist=np.zeros(len(BM_FILENAMES),), dwnl_path=SYSTEM_DIR, year=2016):
+def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
+                      files_exist=np.zeros(len(BM_FILENAMES),),
+                      dwnl_path=SYSTEM_DIR, year=2016):
     """Attempts to download nightlight files from NASA webpage.
 
     Parameters:
@@ -199,20 +197,19 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     Returns:
         path_str (str): Absolute path to file storage.
     """
-    if (len(req_files) != len(files_exist)) or \
-        (len(req_files) != len(BM_FILENAMES)):
-        raise ValueError('The given arguments are invalid. req_files and ' + \
-            'files_exist must both be as long as there are files to download'+\
-            ' (' + str(len(BM_FILENAMES)) + ').')
+    if (len(req_files) != len(files_exist)) or (len(req_files) != len(BM_FILENAMES)):
+        raise ValueError('The given arguments are invalid. req_files and '
+                         'files_exist must both be as long as there are files to download'
+                         ' (' + str(len(BM_FILENAMES)) + ').')
     if not path.exists(dwnl_path):
         dwnl_path = SYSTEM_DIR
         if not path.exists(dwnl_path):
             raise ValueError('The folder does not exist. Operation aborted.')
         else:
-            LOGGER.warning('The given folder does not exist using the ' + \
-                'Climada data directory instead.')
+            LOGGER.warning('The given folder does not exist using the '
+                           'Climada data directory instead.')
     if np.all(req_files == files_exist):
-        LOGGER.debug('All required files already exist. ' +
+        LOGGER.debug('All required files already exist. '
                      'No downloads necessary.')
         return None
     try:
@@ -233,8 +230,8 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
                     path_str = path.dirname(path_dwn)
     except:
         chdir(curr_wd)
-        raise RuntimeError('Download failed. Please check the network ' + \
-            'connection and whether filenames are still valid.')
+        raise RuntimeError('Download failed. Please check the network '
+                           'connection and whether filenames are still valid.')
     return path_str
 
 def load_nightlight_nasa(bounds, req_files, year):
@@ -254,15 +251,15 @@ def load_nightlight_nasa(bounds, req_files, year):
     min_lon, min_lat, max_lon, max_lat = bounds
     bounds_mat = np.array([[min_lat, min_lon], [max_lat, max_lon]])
     global_idx = (bounds_mat - coord_min[None]) / coord_h[None]
-    global_idx[0,:] = np.floor(global_idx[0,:])
-    global_idx[1,:] = np.ceil(global_idx[1,:])
+    global_idx[0, :] = np.floor(global_idx[0, :])
+    global_idx[1, :] = np.ceil(global_idx[1, :])
     tile_size = np.array(NASA_TILE_SIZE)
 
     nightlight = []
     for idx, fname in enumerate(BM_FILENAMES):
         tile_coord = np.array([1 - idx % 2, idx // 2])
         extent = global_idx - (tile_coord * tile_size)[None]
-        if np.any(extent[1,:] < 0) or np.any(extent[0,:] >= NASA_TILE_SIZE):
+        if np.any(extent[1, :] < 0) or np.any(extent[0, :] >= NASA_TILE_SIZE):
             # this tile does not intersect the specified bounds
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
@@ -271,7 +268,7 @@ def load_nightlight_nasa(bounds, req_files, year):
         with Image.open(fname, "r") as im_nl:
             im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
             im_nl = sparse.csc.csc_matrix(im_nl)
-            im_nl = im_nl[extent[0,0]:extent[1,0]+1,extent[0,1]:extent[1,1]+1]
+            im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
             nightlight.append((tile_coord, im_nl))
     tile_coords = np.array([n[0] for n in nightlight])
     shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
@@ -279,7 +276,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
 
     coord_nl = np.vstack([coord_min, coord_h]).T
-    coord_nl[:, 0] += global_idx[0,:] * coord_h[:]
+    coord_nl[:, 0] += global_idx[0, :] * coord_h[:]
 
     return nightlight, coord_nl
 
@@ -362,11 +359,11 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         fn_light (str)
     """
     if sat_name is None:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' + \
-            str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' +
+                             str(ref_year) + '*.stable_lights.avg_vis')
     else:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name + \
-            str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name +
+                             str(ref_year) + '*.stable_lights.avg_vis')
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
         fn_light = glob.glob(fn_light + ".p")[0]
