@@ -235,9 +235,12 @@ class LowFlow(Hazard):
         self.set_frequency(yearrange=yearrange)
         self.tag = TagHazard(haz_type=HAZ_TYPE, file_name=\
                              FILENAME_NC % (gh_model, cl_model, "*", scenario, soc, \
-                                            fn_str_var, "*_*"), \
-                             description='year range: %i-%i, reference: %i-%i' %(yearrange[0], \
-                                         yearrange[-1], yearrange_ref[0], yearrange_ref[-1]))
+                                            fn_str_var, "*_*.nc"), \
+                             description='yearrange: %i-%i (%s, %s), reference: %i-%i (%s, %s)' \
+                                 %(yearrange[0], yearrange[-1], scenario, soc, \
+                                   yearrange_ref[0], yearrange_ref[-1], \
+                                   scenario_ref, soc_ref)
+                             )
 
     def events_from_clusters(self, centroids):
         """init hazard events from clusters"""
