@@ -213,39 +213,39 @@ class CropyieldIsimip(Exposures):
         #The area covered by a crop is calculated as the product of the fraction and
         #the grid cell size
         if irr == 'combined':
-            area_crop = (getattr(data, (CROP_NAME[crop])['input']+'_'+(IRR_NAME[IRR[1]])['name'])[\
-                         time_idx[0]:time_idx[1], :, :].mean(dim='time')*area).values + \
-                         (getattr(data, (CROP_NAME[crop])['input']+'_'+(IRR_NAME[IRR[2]])['name'])[\
-                          time_idx[0]:time_idx[1], :, :].mean(dim='time')*area).values
+            irr = [IRR[1], IRR[2]] # ['noirr', 'firr']
         else:
-            area_crop = (getattr(data, (CROP_NAME[crop])['input']+'_'+(IRR_NAME[irr])['name'])[\
-                         time_idx[0]:time_idx[1], :, :].mean(dim='time')*area).values
+            irr = [irr]
+        area_crop = dict()
+        for irr_var in irr:
+            area_crop[irr_var] = (
+                getattr(
+                    data, (CROP_NAME[crop])['input']+'_'+ (IRR_NAME[irr_var])['name']
+                )[time_idx[0]:time_idx[1], :, :].mean(dim='time')*area
+            ).values
+            area_crop[irr_var] = np.nan_to_num(area_crop[irr_var]).flatten()
 
-        area_crop = np.nan_to_num(area_crop).flatten()
-
-        #The historic mean, its latitude and longitude are set
+        #set historic mean, its latitude, and longitude:
+        hist_mean_dict = dict()
         if isdir(hist_mean):
         #The adequate file from the directory (depending on crop and irrigation) is extracted
         #and the variables hist_mean, lat_mean and lon_mean are set accordingly
-            if irr != 'combined':
-                filename = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+irr+'_'+\
-                str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
-                hist_mean = (h5py.File(filename, 'r'))['mean'][()]
-            else:
-                filename = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+IRR[1]+\
-                '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
-                filename2 = os.path.join(hist_mean, 'hist_mean_'+crop+'-'+IRR[2]+\
-                '_'+str(yearrange[0])+'-'+str(yearrange[1])+'.hdf5')
-                hist_mean = ((h5py.File(filename, 'r'))['mean'][()] + \
-                             (h5py.File(filename2, 'r'))['mean'][()])/2
+            for irr_var in irr:
+                filename = os.path.join(hist_mean, 'hist_mean_%s-%s_%i_%i.hdf5' %(\
+                                        crop, irr_var, yearrange[0], yearrange[1])
+                                        )
+                hist_mean_dict[irr_var] = (h5py.File(filename, 'r'))['mean'][()]
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
         elif isfile(os.path.join(input_dir, hist_mean)):
         #Hist_mean, lat_mean and lon_mean are extracted from the given file
-            hist_mean_file = h5py.File(os.path.join(input_dir, hist_mean), 'r')
-            hist_mean = hist_mean_file['mean'][()]
-            lat_mean = hist_mean_file['lat'][()]
-            lon_mean = hist_mean_file['lon'][()]
+            if len(irr) > 1:
+                LOGGER.error('For irr=combined, hist_mean can not be single file. Aborting.')
+                raise ValueError('Wrong combination of parameters irr and hist_mean.')
+            hist_mean = h5py.File(os.path.join(input_dir, hist_mean), 'r')
+            hist_mean_dict[irr[0]] = hist_mean['mean'][()]
+            lat_mean = hist_mean['lat'][()]
+            lon_mean = hist_mean['lon'][()]
         else:
         #Hist_mean as returned by the hazard crop_potential is used (array format) with same
         #bbox extensions as the exposure
@@ -262,10 +262,16 @@ class CropyieldIsimip(Exposures):
 
         #The exposure [t/y] is computed per grid cell as the product of the area covered
         #by a crop [ha] and its yield [t/ha/y]
-        self['value'] = np.squeeze(area_crop*hist_mean[idx_mean])
-
+        self['value'] = np.squeeze(area_crop[irr[0]]*hist_mean_dict[irr[0]][idx_mean])
+        for irr_val in irr[1:]: # add other irrigation types if irr=combined
+            self['value'] += np.squeeze(area_crop[irr_val]*hist_mean_dict[irr_val][idx_mean])
         self.tag = Tag()
-        self.tag.description = ("Crop yield ISIMIP " + (CROP_NAME[crop])['print'] + ' ' + \
+        if len(irr) > 1:
+            irr = 'combined'
+        else:
+            irr = irr[0]
+        self.tag.description = ("Crop yield exposure from ISIMIP " + \
+                                (CROP_NAME[crop])['print'] + ' ' + \
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[1]))
         self.value_unit = 't / y'
         self.crop = crop
@@ -288,7 +294,7 @@ class CropyieldIsimip(Exposures):
 
         #Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         #the exposure in t/y is saved as 'value_tonnes'
-        if unit == 'USD':
+        if 'USD' in unit:
             self['value_tonnes'] = self['value']
             self.set_to_usd(input_dir=input_dir)
         self.check()
@@ -515,12 +521,9 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
     """
 
     #use the exposure in t/y to normalize with FAO yield values
-    if (exp_firr.value_unit == 'USD / y') and (exp_noirr.value_unit == 'USD / y'):
+    if exp_firr.value_unit == 'USD / y':
         exp_firr.value = exp_firr.value_tonnes
-        exp_noirr.value = exp_noirr.value_tonnes
-    elif exp_firr.value_unit == 'USD / y':
-        exp_firr.value = exp_firr.value_tonnes
-    elif exp_noirr.value_unit == 'USD / y':
+    if exp_noirr.value_unit == 'USD / y':
         exp_noirr.value = exp_noirr.value_tonnes
 
     country_list, countries_firr = exp_firr.aggregate_countries()
@@ -543,6 +546,7 @@ def normalize_with_fao_cropyield(exp_firr, exp_noirr, input_dir=INPUT_DIR, \
     exp_noirr_norm = CropyieldIsimip()
     exp_noirr_norm = exp_noirr
 
+    # loop over countries: compute ratio & apply normalization:
     for country, iso_nr in enumerate(country_list):
         idx = np.where((np.asarray(fao_code) == fao_country[country]) & \
                                          (np.asarray(fao_crops) == (\
