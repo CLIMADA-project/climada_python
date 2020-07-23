@@ -23,6 +23,7 @@ from numba import jit
 from scipy import sparse
 
 from climada.hazard.base import Hazard
+from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
 
@@ -85,7 +86,7 @@ class TCRain(Hazard):
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
-        self._set_frequency(tracks.data)
+        TropCyclone.frequency_from_tracks(self, tracks.data)
         self.tag.description = description
 
     @staticmethod
@@ -122,22 +123,6 @@ class TCRain(Hazard):
         new_haz.category = np.array([track.category])
         new_haz.basin = [track.basin]
         return new_haz
-
-    def _set_frequency(self, tracks):
-        """Set hazard frequency from tracks data.
-        Parameters:
-            tracks (list(xr.Dataset))
-        """
-        if not tracks:
-            return
-        delta_time = (np.max([np.max(track.time.dt.year.values) for track in tracks])
-                      - np.min([np.min(track.time.dt.year.values) for track in tracks])) + 1
-        num_orig = self.orig.nonzero()[0].size
-        if num_orig > 0:
-            ens_size = self.event_id.size / num_orig
-        else:
-            ens_size = 1
-        self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
 def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
     """Compute rainfield for track at centroids.

@@ -166,7 +166,7 @@ class TropCyclone(Hazard):
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
-        self._set_frequency(tracks.data)
+        self.frequency_from_tracks(tracks.data)
         self.tag.description = description
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
@@ -267,7 +267,7 @@ class TropCyclone(Hazard):
             pbar.close()
         return tc_list, tr_coord
 
-    def _set_frequency(self, tracks):
+    def frequency_from_tracks(self, tracks):
         """Set hazard frequency from tracks data.
 
         Parameters:
