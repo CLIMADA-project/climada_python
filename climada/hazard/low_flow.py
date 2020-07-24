@@ -194,7 +194,7 @@ class LowFlow(Hazard):
             NameError
         """
         print('GETTING STARTED!')
-        if input_dir is not None:
+        if input_dir:
             if not os.path.exists(input_dir):
                 LOGGER.warning('Input directory %s does not exist', input_dir)
                 raise NameError
@@ -202,7 +202,7 @@ class LowFlow(Hazard):
             LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
-        if centroids is not None:
+        if centroids:
             centr_handling = 'align'
         elif countries or reg:
             LOGGER.warning('country or reg ignored: not yet implemented')
@@ -284,10 +284,14 @@ class LowFlow(Hazard):
         self.event_id = self.event_id[self.event_id > 0]
         self.event_name = list(map(str, self.event_id))
         self.date = np.zeros(num_ev, int)
+        self.date_start = np.zeros(num_ev, int)
         self.date_end = np.zeros(num_ev, int)
 
         for ev_idx, ev_id in enumerate(uni_ev):
-            self.date[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
+            # set event date to date of maximum intensity (ndays)
+            self.date[ev_idx] = self.data[self.data.cluster_id == ev_id]\
+                .groupby('dtime')['ndays'].sum().idxmax()
+            self.date_start[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
             self.date_end[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.max()
         self.orig = np.ones(num_ev, bool)
         self.set_frequency()

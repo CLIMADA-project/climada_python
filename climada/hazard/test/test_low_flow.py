@@ -48,7 +48,7 @@ def init_test_data_unique_clusters():
 
 def init_test_data_clustering():
     """creates sandbox test data for monthly days below threshold data
-    for testing clustering"""
+    for testing clustering and event intensity computation"""
 
     df = pd.DataFrame(columns=['lat', 'lon', 'ndays',
                                'dt_month', 'target_cluster'])
@@ -125,6 +125,13 @@ class TestLowFlowDummyData(unittest.TestCase):
         self.assertEqual(haz.intensity.todense().size, 144)
         self.assertEqual(haz.intensity.sum(), 170.)
         self.assertListEqual(list(np.array(haz.intensity.todense()[0])[0]), target_intensity_e1)
+        # dates:
+        self.assertListEqual(list(haz.date), [60, 1, 60, 60])
+        self.assertListEqual(list(haz.date_start), [1, 1, 60, 60])
+        for date, date_start, date_end in zip(haz.date, haz.date_start, haz.date_end):
+            self.assertLessEqual(date_start, date_end)
+            self.assertLessEqual(date_start, date)
+            self.assertLessEqual(date, date_end)
 
 
     def test_events_from_clusters_parameter(self):
@@ -148,6 +155,7 @@ class TestLowFlowDummyData(unittest.TestCase):
 class TestLowFlowNETCDF(unittest.TestCase):
     """Test for defining low flow event from discharge data file"""
 
+    # init test hazard instance from trimmed ISIMIP output netcdf file
     haz = LowFlow()
     haz.set_from_nc(input_dir=INPUT_DIR, percentile=2.5,
                     yearrange=(2001, 2005), yearrange_ref=(2001, 2005),
@@ -171,6 +179,13 @@ class TestLowFlowNETCDF(unittest.TestCase):
         self.assertEqual(haz.event_id.size, 66)
         self.assertEqual(haz.intensity.max(), 46.0)
         self.assertEqual(haz.data.cluster_id.unique().size, haz.event_id.size)
+        self.assertEqual(haz.date[2], 731519)
+        self.assertEqual(haz.date_start[2], 731396)
+        self.assertEqual(haz.date_end[2], 731519)
+        for date, date_start, date_end in zip(haz.date, haz.date_start, haz.date_end):
+            self.assertLessEqual(date_start, date_end)
+            self.assertLessEqual(date_start, date)
+            self.assertLessEqual(date, date_end)
 
     def test_combine_nc(self, haz=haz):
         """test if the hazard is the same if defined from combining chunked data files"""
