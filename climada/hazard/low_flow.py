@@ -705,5 +705,5 @@ def _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy, intensity_raw):
     for idx in range(index_uni.size):
         if ind[idx] != -1:
             intensity_cl[0, ind[idx]] = \
-                np.sum(intensity_raw[lat_lon_cpy == index_uni[idx]])  # ToDo: TEST!
+                np.sum(intensity_raw[lat_lon_cpy == index_uni[idx]])
     return intensity_cl
