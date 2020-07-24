@@ -16,7 +16,7 @@ We use rather long-lived feature branches, as we are scientist and not
 software engineers. The creator of a feature branch is the
 owner/responsible for its content. You can use the workflow you prefer
 inside of your feature branch. It must be regularly merged into the
-develop branche, and at this point the branch owner must organize a code
+develop branch, and at this point the branch owner must organize a code
 review. This allows for a smooth development of both the code and the
 science, without compromising the code legacy.
 
@@ -53,25 +53,25 @@ The branching system is adapted for the scientific setting from
 +------------+--------------------+------------+---------------+
 | Comments   | Cosmetic changes   | Stable     | Infinite      |
 +------------+--------------------+------------+---------------+
-| Hofix      | Bug fixes          | Reviewed   | Infinite      |
+| Hotfix     | Bug fixes          | Reviewed   | Infinite      |
 +------------+--------------------+------------+---------------+
 | Feature    | Development        | Anything   | Max. 1 year   |
 +------------+--------------------+------------+---------------+
 
--  The master branch is used for the quarterly releases of stable code.
+-  The ``master`` branch is used for the quarterly releases of stable code.
 
--  The develop branch is used to gather working/tested code in between
+-  The ``develop`` branch is used to gather working/tested code in between
    releases.
 
 -  Development is done in feature branches.
 
--  Cosmetic fixes (comments etc.) is done in the commets branch.
+-  Cosmetic fixes (comments etc.) are done in a comment branch.
 
--  Bug fixes is done in the Hotfix branch.
+-  Bug fixes are done in a Hotfix branch.
 
 -  Feature branches are used for any CLIMADA development. Note that a
    feature branch should not live forever and should contribute to the
-   develop branch. Hence, try to make your code working for each
+   ``develop`` branch. Hence, try to merge your working code for each
    release, or every second release at least. Ideally, a branch is
    cleaned after max. one year and then archived.
 
@@ -96,8 +96,7 @@ details on how to use the .gitignore file.
 
 -  If your script (not a paper script, but a core CLIMADA script)
    produces files, add these to the gitignore file so that they are not
-   commited. Note that the gitignore is then commited, hence the same
-   for all! Do only add your file.
+   committed. Add .gitignore to a commit. Do only add your file.
 
 -  Remember to remove a file from the gitignore if it is not produced by
    the code anymore.
@@ -105,7 +104,7 @@ details on how to use the .gitignore file.
 Don'ts
 ------
 
--  Do not rebase on the develop/master branches.
+-  Do not rebase on the ``develop``/``master`` branches, or on any branch that has already been pushed to GitHub.
 -  Do not use fast-forwarding on the remote branches.
 
 Creating feature branches
@@ -143,9 +142,9 @@ GUI or command line
 -  The probably most complete way to use git is through the command
    line. However, this is not very visual, in particular at the
    beginning. Consider using a GUI program such as “git desktop” or
-   “Gitkraken”.
+   “Gitkraken”. Your python IDE is also likely to have a visual git interface.
 
--  Consider using an external merging tool
+-  Consider using an external merging and conflict resolution tool
 
 Commit messages
 ---------------
@@ -156,10 +155,10 @@ Basic syntax guidelines taken from
 -  Limit the subject line to 50 characters
 -  Capitalize the subject line
 -  Do not end the subject line with a period
--  Use the imperative mood in the subject line
--  Wrap the body at 72 characters
+-  Use the imperative mood in the subject line (e.g. "Add new tests")
+-  Wrap the body at 72 characters (most editors will do this automatically)
 -  Use the body to explain what and why vs. how
--  Separate subject from body with a blank line (This is best done with
+-  Separate the subject from body with a blank line (This is best done with
    a GUI. With the command line you have to use text editor, you cannot
    do it directly with the git command)
 -  Put the name of the function/class/module/file that was edited
@@ -183,8 +182,7 @@ A) Regular / daily commits locally
 2. ``git status``
 3. ``git add file1``
 4. ``git commit -m “Remove function xyz from feature.py”``
-5. ``git status`` (verify that there are no tracked files that are
-   uncommited)
+5. ``git status`` (verify that there are no more tracked files to be committed)
 
 B) Push to remote branch (at least once/week, ideally daily)
 
@@ -192,21 +190,21 @@ B) Push to remote branch (at least once/week, ideally daily)
 2. ``git checkout feature/feature_name`` (be sure to be on your branch)
 3. Make all commits according to A
 4. ``git status`` (check whether your local branch is behind the remote)
-5. ``git pull --rebase`` (resolve all conflicts if there are any)
-6. ``git push origin feature/feature_name``
+5. ``git pull --rebase`` (`resolve all conflicts <https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts>`_ if there are any)
+6. ``git push -u origin feature/feature_name`` if this is the first time you're pushing to the remote repository. Or just ``git push`` if the branch already exists there.
 
 C) Merge develop into your branch (regularly/when develop changes)
 
 1. ``git fetch –all``
 2. Make all commit according to A
-3. ``git status`` (verify that there are no racked files that are
-   uncommited)
+3. ``git status`` (verify that there are no tracked files that are
+   uncommitted)
 4. ``git checkout develop``
 5. ``git pull --rebase``
 6. ``git checkout feature/feature_name``
 7. ``git merge --no-ff develop``
 8. resolve all conflicts if there are any
-9. ``git push origin feature/feature_name``
+9. ``git push origin feature/feature_name`` if this is the first time you're pushing to the remote repository. Or just ``git push`` if the branch already exists there.
 
 D) Prepare to merge into develop (ideally before every release
 
@@ -215,20 +213,17 @@ D) Prepare to merge into develop (ideally before every release
 3.  ``git status`` (see how many commits the branch is behind the
     remote)
 4.  Make all commits according to A
-5.  Push to the remote branch according to B
-6.  Merge develop into your branch according to C
-7.  If not everything is ready to go into develop, create a new branch
-    feature/feature\_name-release with
-    ``git checkout -b feature/feature_name-release``
+5.  Merge develop into your branch according to C
+6.  Push the branch to GitHub. If parts of the feature are incomplete and not everything is ready to go into ``develop``, create a new branch
+    ``feature/feature_name-release`` with
 
     -  ``git checkout feature/feature_name-release``
     -  Clean the code so that only changes to be pushed remain
-    -  commit all changes according to A)
-    -  ``guit push origin feature/feature_name-release``
+    -  Check that the code on the new branch passes unit and integration testing.
+    -  Commit all changes according to A)
+    -  ``git push -u origin feature/feature_name-release``
 
-8.  Find someone to do a code review on feature/feature\_name-release.
-    Implement the code review suggestions (once done, redo D))
-9.  Commit every new change according to A)
-10. Make a pull-request
-
+7.  Make a pull request
+8.  Find someone to do a code review on ``feature/feature\_name-release``.
+    Implement the code review suggestions (once done, redo steps 4 - 6))
 
