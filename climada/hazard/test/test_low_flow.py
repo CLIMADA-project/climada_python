@@ -63,6 +63,19 @@ def init_test_data_clustering():
     df['cons_id'] = np.zeros(len(df), int) - 1
     return df
 
+def init_test_centroids(data):
+    """define centroids for test data:"""
+    centroids = Centroids()
+    grid = np.meshgrid(np.arange(data.lat.min(), data.lat.max()+.5, .5),
+                       np.arange(data.lon.min(), data.lon.max()+.5, .5))
+    lat = list()
+    lon = list()
+    for arrlat, arrlon in zip(list(grid[0]), list(grid[1])):
+        lat += list(arrlat)
+        lon += list(arrlon)
+    centroids.set_lat_lon(np.array(lat), np.array(lon))
+    centroids.set_lat_lon_to_meta()
+    return centroids
 
 class TestLowFlowDummyData(unittest.TestCase):
     """Test for defining low flow event from dummy processed discharge data"""
@@ -97,25 +110,13 @@ class TestLowFlowDummyData(unittest.TestCase):
         target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.data.cluster_id), target_cluster)
 
-    def test_events_from_clusters(self):
+    def test_events_from_clusters_default(self):
         """Test events_from_clusters: creation of events and computation of intensity based on clusters,
         requires: identify_clusters, Centroids, also tests correct intensity sum"""
         haz = LowFlow()
         haz.data = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=1, min_samples=1)
-
-        # define centroids for test data:
-        centroids = Centroids()
-        grid = np.meshgrid(np.arange(haz.data.lat.min(), haz.data.lat.max()+.5, .5),
-                           np.arange(haz.data.lon.min(), haz.data.lon.max()+.5, .5))
-        lat = list()
-        lon = list()
-        for arrlat, arrlon in zip(list(grid[0]), list(grid[1])):
-            lat += list(arrlat)
-            lon += list(arrlon)
-        centroids.set_lat_lon(np.array(lat), np.array(lon))
-        centroids.set_lat_lon_to_meta()
-
+        centroids = init_test_centroids(haz.data)
         haz.events_from_clusters(centroids)
         target_intensity_e1 = [ 0.,  0., 20., 30., 15.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
           0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
@@ -124,6 +125,25 @@ class TestLowFlowDummyData(unittest.TestCase):
         self.assertEqual(haz.intensity.todense().size, 144)
         self.assertEqual(haz.intensity.sum(), 170.)
         self.assertListEqual(list(np.array(haz.intensity.todense()[0])[0]), target_intensity_e1)
+
+
+    def test_events_from_clusters_parameter(self):
+        """Test events_from_clusters: creation of events and computation of intensity based on clusters,
+        requires: identify_clusters, Centroids, also tests correct intensity sum"""
+        haz = LowFlow()
+        haz.data = init_test_data_clustering()
+        # set hazard with parameters so that all data si attributed to one single event:
+        haz.identify_clusters(clus_thres_xy=6, clus_thresh_t=10, min_samples=1)
+        centroids = init_test_centroids(haz.data)
+        # call function to be tested
+        haz.events_from_clusters(centroids)
+        target_intensity_e = [ 0.,  0., 20., 30., 15.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+          0.,  0.,  0.,  0., 33.,  0.,  0.,  0.,  0., 33.,  0.,  0.,  0.,
+          0., 33.,  0.,  0.,  1.,  0.,  0.,  0.,  0.,  0.]
+        self.assertListEqual(list(haz.event_id), [1])
+        self.assertEqual(haz.intensity.todense().size, len(target_intensity_e))
+        self.assertEqual(haz.intensity.sum(), 170.)
+        self.assertListEqual(list(np.array(haz.intensity.todense()[0])[0]), target_intensity_e)
 
 class TestLowFlowNETCDF(unittest.TestCase):
     """Test for defining low flow event from discharge data file"""
