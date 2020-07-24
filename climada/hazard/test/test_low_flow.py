@@ -22,7 +22,7 @@ import os
 import unittest
 import numpy as np
 import pandas as pd
-from climada.hazard.low_flow import LowFlow, unique_clusters
+from climada.hazard.low_flow import LowFlow, unique_clusters, _compute_threshold_grid, FN_STR_VAR
 from climada.util.constants import DATA_DIR
 
 INPUT_DIR = os.path.join(DATA_DIR, 'demo')
@@ -132,6 +132,7 @@ class TestLowFlow(unittest.TestCase):
         self.assertEqual(haz.data.ndays.max(), haz2.data.ndays.max())
         self.assertAlmostEqual(haz.data.ndays.mean(), haz2.data.ndays.mean())
         self.assertAlmostEqual(haz.data.relative_dis.max(), haz2.data.relative_dis.max())
+        self.assertAlmostEqual(0.41278067, haz2.data.relative_dis.max(), places=5)
         self.assertEqual(haz.centroids.lon.min(), haz2.centroids.lon.min())
         self.assertEqual(haz.centroids.lon.max(), haz2.centroids.lon.max())
         self.assertEqual(haz.centroids.lat.min(), haz2.centroids.lat.min())
@@ -155,8 +156,29 @@ class TestLowFlow(unittest.TestCase):
         for event in range(haz.intensity.shape[0]):
             self.assertGreaterEqual(haz.intensity[event, :].nnz, 10)
 
+class TestDischargeDataHandling(unittest.TestCase):
+    """test functions in low_flow and required for class LowFlow reading and 
+    processing ISIMIP input data with variable discharge (dis)"""
+
+    def test_compute_threshold_grid(self):
+        """test computation of percentile and mean on grid and masking of area"""
+        perc_data, mean_data = _compute_threshold_grid(5, (2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
+                            'historical', 'histsoc', FN_STR_DEMO, None,
+                            ['2001_2005'], mask_threshold=None)
+        perc_data_mask, mean_data_mask = _compute_threshold_grid(5, (2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
+                            'historical', 'histsoc', FN_STR_DEMO, None,
+                            ['2001_2005'], mask_threshold=('mean', 1500))
+        self.assertLess(np.sum(mean_data_mask.dis>0).data.max(), np.sum(mean_data.dis>0).data.max())
+        self.assertEqual(np.sum(mean_data.dis>0).data.max(), 417)
+        self.assertEqual(np.sum(mean_data_mask.dis>0).data.max(), 10)
+        self.assertEqual(np.sum(perc_data.dis>0).data.max(), 392)
+        self.assertEqual(np.sum(perc_data_mask.dis>0).data.max(), 10)
+        self.assertListEqual(list(perc_data_mask.lon.data), list(perc_data.lon.data))
+        self.assertEqual(len(perc_data_mask.lon.data), 27)
+        self.assertEqual(max(perc_data_mask.lon.data), 8.25)
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLowFlow)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDischargeDataHandling))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

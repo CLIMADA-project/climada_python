@@ -25,13 +25,13 @@ __all__ = ['LowFlow']
 import logging
 import os
 import copy
-import numba
-import cftime
 import itertools
 import datetime as dt
+import cftime
 import xarray as xr
 import geopandas as gpd
 import numpy as np
+import numba
 
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import BallTree
@@ -84,6 +84,7 @@ FN_STR_VAR = 'co2_dis_global_daily'  # FileName STRing depending on VARiable
 # (according to ISIMIP filenaming)
 
 
+
 # list of year chunks: multiple files are combined
 YEARCHUNKS = dict()
 # historical:
@@ -104,9 +105,9 @@ YEARCHUNKS[SCENARIO[3]] = list()
 for i in np.arange(1970, 2010, 10):
     YEARCHUNKS[SCENARIO[3]].append('%i_%i' % (i + 1, i + 10))
 
-REFERENCE_YEARRANGE = [1971, 2005]
+REFERENCE_YEARRANGE = (1971, 2005)
 
-TARGET_YEARRANGE = [2001, 2005]
+TARGET_YEARRANGE = (2001, 2005)
 
 BBOX = [-180, -85, 180, 85]  # [Lon min, lat min, lon max, lat max]
 
@@ -131,13 +132,13 @@ class LowFlow(Hazard):
         else:
             self.pool = None
 
-    def set_from_nc(self, input_dir=None, centroids=None, countries=[], reg=None,
+    def set_from_nc(self, input_dir=None, centroids=None, countries=None, reg=None,
                     bbox=None, percentile=2.5, min_intensity=1, min_number_cells=1,
                     min_days_per_month=1, yearrange=TARGET_YEARRANGE,
                     yearrange_ref=REFERENCE_YEARRANGE, gh_model=GH_MODEL[0], cl_model=CL_MODEL[0],
                     scenario=SCENARIO[0], scenario_ref=SCENARIO[0], soc=SOC[0],
                     soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False,
-                    yearchunks='default'):
+                    yearchunks='default', mask_threshold=('mean', 1)):
         """Wrapper to fill hazard from nc_dis file from ISIMIP
         Parameters:
             input_dir (string): path to input data directory
@@ -182,6 +183,13 @@ class LowFlow(Hazard):
                 (relative discharge compared to the long term)
             yearchunks: list of year chunks corresponding to each nc flow file. If set to
                 'default', uses the chunking corresponding to the scenario.
+            mask_threshold: tuple with threshold value [1] for criterion [0] for mask:
+                Threshold below which the grid is masked out. e.g.:
+                ('mean', 1.) --> grid cells with a mean discharge below 1 are ignored
+                ('percentile', .3) --> grid cells with a value of the computed percentile discharge
+                values below 0.3 are ignored. default: ('mean', 1}). Set to None for
+                no threshold.
+                Provide a list of tuples for multiple thresholds.
         raises:
             NameError
         """
@@ -206,7 +214,7 @@ class LowFlow(Hazard):
         self.data, centroids_import = _data_preprocessing_percentile(
             percentile, yearrange, yearrange_ref, input_dir, gh_model, cl_model,
             scenario, scenario_ref, soc, soc_ref, fn_str_var, bbox, min_days_per_month,
-            keep_dis_data, yearchunks)
+            keep_dis_data, yearchunks, mask_threshold)
 
         if centr_handling == 'full_hazard':
             centroids = centroids_import
@@ -469,7 +477,7 @@ def unique_clusters(data):
     data.loc[data.c_lat_dt_month == -1, 'c_lat_dt_month'] = np.nan
     data.loc[data.c_lon_dt_month == -1, 'c_lon_dt_month'] = np.nan
 
-    cc = 0  # event id counter
+    idc = 0  # event id counter
     current = 0
     for c_lat_lon in data.c_lat_lon.unique():
         if np.isnan(c_lat_lon):
@@ -477,8 +485,8 @@ def unique_clusters(data):
         else:
             if len(data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique()) == 1 \
                     and -1 in data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique():
-                cc += 1
-                current = cc
+                idc += 1
+                current = idc
             else:
                 current = max(data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'].unique())
             data.loc[data.c_lat_lon == c_lat_lon, 'cluster_id'] = current
@@ -499,38 +507,61 @@ def unique_clusters(data):
 def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
                                    input_dir, gh_model, cl_model, scenario,
                                    scenario_ref, soc, soc_ref, fn_str_var, bbox,
-                                   min_days_per_month, keep_dis_data, yearchunks):
+                                   min_days_per_month, keep_dis_data, yearchunks,
+                                   mask_threshold):
     """load data and reference data and calculate monthly percentiles
     then extract intensity based on days below threshold
     returns geopandas dataframe
 
     Returns
     -------
-    df : DataFrame
+    dataf : DataFrame
         preprocessed data with days below threshold per grid cell and month
     centroids : Centroids instance
         regular grid centroid with same resolution as input data
     """
-    data = _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model,
-                                scenario, soc, fn_str_var, bbox, yearchunks)
-    threshold_grid = _compute_threshold_grid(percentile, yearrange_ref,
-                                             input_dir, gh_model, cl_model,
-                                             scenario_ref, soc_ref, fn_str_var, bbox, yearchunks)
-    data = _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, keep_dis_data)
-    df = _xarray_to_geopandas(data)
-    df = df.sort_values(['lat', 'lon', 'dtime'], ascending=[True, True, True])
-    centroids = _init_centroids(data, centr_res_factor=1)
-    return df.reset_index(drop=True), centroids
+
+    threshold_grid, mean_ref = _compute_threshold_grid(percentile, yearrange_ref,
+                                                       input_dir, gh_model, cl_model,
+                                                       scenario_ref, soc_ref,
+                                                       fn_str_var, bbox,
+                                                       yearchunks,
+                                                       mask_threshold=mask_threshold)
+    first_file = True
+    if yearchunks == 'default':
+        yearchunks = YEARCHUNKS[scenario]
+    # loop over yearchunks
+    # (for memory reasons: only loading one file with daily data per step,
+    # combining data after conversion to monthly data )
+    for yearchunk in yearchunks:
+        # skip if file is not required, i.e. not in yearrange:
+        if int(yearchunk[0:4]) <= yearrange[1] and int(yearchunk[-4:]) >= yearrange[0]:
+            data_chunk = _read_and_combine_nc(
+                (max(yearrange[0], int(yearchunk[0:4])),
+                 min(yearrange[-1], int(yearchunk[-4:]))),
+                input_dir, gh_model, cl_model,
+                scenario, soc, fn_str_var, bbox, [yearchunk])
+            data_chunk = _days_below_threshold_per_month(data_chunk, threshold_grid, mean_ref,
+                                                         min_days_per_month, keep_dis_data)
+            if first_file:
+                dataf = _xarray_to_geopandas(data_chunk)
+                first_file = False
+            else:
+                dataf = dataf.append(_xarray_to_geopandas(data_chunk))
+    centroids = _init_centroids(data_chunk, centr_res_factor=1)
+    del data_chunk
+    dataf = dataf.sort_values(['lat', 'lon', 'dtime'], ascending=[True, True, True])
+    return dataf.reset_index(drop=True), centroids
 
 
-def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model,
-                         scenario, soc, fn_str_var, bbox, yearchunks, fn=FILENAME_NC):
+def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
+                         soc, fn_str_var, bbox, yearchunks, fname_nc=FILENAME_NC):
     """import and combine data from nc files, return as xarray"""
 
     first_file = True
     if yearchunks == 'default':
         yearchunks = YEARCHUNKS[scenario]
-    for _, yearchunk in enumerate(yearchunks):
+    for yearchunk in yearchunks:
         # skip if file is not required, i.e. not in yearrange:
         if int(yearchunk[0:4]) > yearrange[1] or int(yearchunk[-4:]) < yearrange[0]:
             continue
@@ -539,11 +570,11 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model,
         else:
             bias_correction = 'ewembi'
 
-        filename = os.path.join(input_dir, fn % (gh_model, cl_model, bias_correction, scenario,
-                                                 soc, fn_str_var, yearchunk))
+        filename = os.path.join(input_dir, fname_nc % (gh_model, cl_model,
+                                                       bias_correction, scenario,
+                                                       soc, fn_str_var, yearchunk))
         if not os.path.isfile(filename):
             LOGGER.error('Netcdf file not found: %s', filename)
-            FileNotFoundError
         if first_file:
             data = _read_single_nc(filename, yearrange, bbox)
             first_file = False
@@ -553,7 +584,6 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model,
     # set negative discharge values to zero (debugging of input data):
     data.dis.values[data.dis.values < 0] = 0
     return data
-
 
 def _read_single_nc(filename, yearrange, bbox):
     """import data from single nc file, return as xarray"""
@@ -578,16 +608,39 @@ def _read_single_nc(filename, yearrange, bbox):
         data['time'] = datetimeindex
     return data
 
-
 def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_model,
-                            scenario, soc, fn_str_var, bbox, yearchunks):
-    """returns the x-th percentile for every pixel over a given
-    time horizon (based on daily data) [all-year round percentiles!]"""
+                            scenario, soc, fn_str_var, bbox, yearchunks,
+                            mask_threshold=None):
+    """given model run and year range specification, this function
+    returns the x-th percentile for every pixel over a given
+    time horizon (based on daily data) [all-year round percentiles!],
+    as well as the mean at each grid cell.
+
+    Optional parameters:
+        mask_threshold (tuple or list), Threshold(s) of below which the
+            grid is masked out. e.g. ('mean', 1.)
+
+    Returns:
+        p_grid (xarray): grid with dis of given percentile (1-timestep)
+        mean_grid (xarray): grid with mean(dis)
+        """
     LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i',
                 percentile, yearrange_ref[0], yearrange_ref[1])
     data = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model,
                                 scenario, soc, fn_str_var, bbox, yearchunks)
-    return data.reduce(np.nanpercentile, dim='time', q=percentile)
+    p_grid = data.reduce(np.nanpercentile, dim='time', q=percentile)
+    mean_grid = data.mean(dim='time')
+    if isinstance(mask_threshold, tuple):
+        mask_threshold = [mask_threshold]
+    if isinstance(mask_threshold, list):
+        for crit in mask_threshold:
+            if 'mean' in crit[0]:
+                p_grid.dis.values[mean_grid.dis.values < crit[1]] = 0
+                mean_grid.dis.values[mean_grid.dis.values < crit[1]] = 0
+            if 'percentile' in crit[0]:
+                p_grid.dis.values[p_grid.dis.values < crit[1]] = 0
+                mean_grid.dis.values[p_grid.dis.values < crit[1]] = 0
+    return p_grid, mean_grid
 
 
 def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir,
@@ -603,7 +656,8 @@ def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir,
     return data.groupby('time.month').reduce(np.nanpercentile, dim='time', q=percentile)
 
 
-def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, keep_dis_data):
+def _days_below_threshold_per_month(data, threshold_grid, mean_ref,
+                                    min_days_per_month, keep_dis_data):
     """returns sum of days below threshold per month (as xarray with monthly data)
 
     if keep_dis_data is True, a DataFrame called 'data' with additional data is saved within
@@ -617,8 +671,8 @@ def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, ke
     """
     # data = data.groupby('time.month')-threshold_grid # outdated
     data_threshold = data - threshold_grid
-    if keep_dis_data:  # ToDo: check if still needed
-        data_low = data.where(data_threshold < 0) / data.mean(dim='time')
+    if keep_dis_data:
+        data_low = data.where(data_threshold < 0) / mean_ref
         data_low = data_low.resample(time='1M').mean()
     data_threshold.dis.values[data_threshold.dis.values >= 0] = 0
     data_threshold.dis.values[data_threshold.dis.values < 0] = 1
@@ -632,16 +686,17 @@ def _days_below_threshold_per_month(data, threshold_grid, min_days_per_month, ke
 
 def _xarray_to_geopandas(data):
     """returns prooessed geopanda dataframe with NaN dropped"""
-    df = data.to_dataframe()
-    df.reset_index(inplace=True)
-    df = df.dropna()
-    df['iter_ev'] = np.ones(len(df), bool)
-    df['cons_id'] = np.zeros(len(df), int) - 1
-    # df['cluster_id'] = np.zeros(len(df), int)
-    # df['clus_id'] = np.zeros(len(df), int) - 1
-    df['dtime'] = df['time'].apply(lambda x: x.toordinal())
-    df['dt_month'] = df['time'].apply(lambda x: x.year * 12 + x.month)
-    return gpd.GeoDataFrame(df, geometry=[Point(x, y) for x, y in zip(df['lon'], df['lat'])])
+    dataf = data.to_dataframe()
+    dataf.reset_index(inplace=True)
+    dataf = dataf.dropna()
+    dataf['iter_ev'] = np.ones(len(dataf), bool)
+    dataf['cons_id'] = np.zeros(len(dataf), int) - 1
+    # dataf['cluster_id'] = np.zeros(len(dataf), int)
+    # dataf['clus_id'] = np.zeros(len(dataf), int) - 1
+    dataf['dtime'] = dataf['time'].apply(lambda x: x.toordinal())
+    dataf['dt_month'] = dataf['time'].apply(lambda x: x.year * 12 + x.month)
+    return gpd.GeoDataFrame(dataf, geometry=[Point(x, y) for x, y in zip(dataf['lon'],
+                                                                         dataf['lat'])])
 
 
 @numba.njit
