@@ -226,7 +226,7 @@ class CropyieldIsimip(Exposures):
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
             for irr_var in irr:
-                filename = os.path.join(hist_mean, 'hist_mean_%s-%s_%i_%i.hdf5' %(\
+                filename = os.path.join(hist_mean, 'hist_mean_%s-%s_%i-%i.hdf5' %(\
                                         crop, irr_var, yearrange[0], yearrange[1])
                                         )
                 hist_mean_dict[irr_var] = (h5py.File(filename, 'r'))['mean'][()]
