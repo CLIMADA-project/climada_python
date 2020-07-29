@@ -24,7 +24,8 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-from climada.hazard.low_flow import LowFlow, unique_clusters, _compute_threshold_grid
+from climada.hazard.low_flow_nopro import LowFlow, unique_clusters, \
+    _compute_threshold_grid, _read_and_combine_nc
 from climada.util.constants import DATA_DIR
 from climada.hazard.centroids import Centroids
 
@@ -231,14 +232,25 @@ class TestDischargeDataHandling(unittest.TestCase):
     """test additiopnal functions in low_flow and required for class LowFlow reading and
     processing ISIMIP input data with variable discharge (dis)"""
 
+    def test_read_and_combine_nc(self):
+        data = _read_and_combine_nc((2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
+                    'historical', 'histsoc', FN_STR_DEMO, None,
+                    ['2001_2005'])
+        self.assertListEqual(list(data.dis.data.shape), [1826, 19, 27])
+        # outside bbox:
+        data = _read_and_combine_nc((2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
+                    'historical', 'histsoc', FN_STR_DEMO, [-180, -90, -170, -70],
+                    ['2001_2005'])
+        self.assertEqual(data.dis.data.size, 0)
+        
     def test_compute_threshold_grid(self):
         """test computation of percentile and mean on grid and masking of area"""
         perc_data, mean_data = _compute_threshold_grid(5, (2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
                             'historical', 'histsoc', FN_STR_DEMO, None,
-                            ['2001_2005'], mask_threshold=None)
+                            ['2001_2005'], mask_threshold=None, keep_dis_data=True)
         perc_data_mask, mean_data_mask = _compute_threshold_grid(5, (2001, 2005), INPUT_DIR, 'h08', 'gfdl-esm2m',
                             'historical', 'histsoc', FN_STR_DEMO, None,
-                            ['2001_2005'], mask_threshold=('mean', 1500))
+                            ['2001_2005'], mask_threshold=('mean', 1500), keep_dis_data=True)
         self.assertLess(np.sum(mean_data_mask.dis>0).data.max(), np.sum(mean_data.dis>0).data.max())
         self.assertEqual(np.sum(mean_data.dis>0).data.max(), 417)
         self.assertEqual(np.sum(mean_data_mask.dis>0).data.max(), 10)

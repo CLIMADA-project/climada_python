@@ -84,7 +84,6 @@ FN_STR_VAR = 'co2_dis_global_daily'  # FileName STRing depending on VARiable
 # (according to ISIMIP filenaming)
 
 
-
 # list of year chunks: multiple files are combined
 YEARCHUNKS = dict()
 # historical:
@@ -111,6 +110,9 @@ TARGET_YEARRANGE = (2001, 2005)
 
 BBOX = [-180, -85, 180, 85]  # [Lon min, lat min, lon max, lat max]
 
+# reducing these two parameters decreases memory load but increases computation time:
+BBOX_WIDTH = 75 # width and height of bboxes for loop in degree lat/lon
+INTENSITY_STEP = 300
 
 class LowFlow(Hazard):
     """Contains water scarcity events.
@@ -223,6 +225,7 @@ class LowFlow(Hazard):
         # sum "dis" (days per month below threshold) per pixel and cluster_id
         # and write to hazard.intensiy
         self.events_from_clusters(centroids)
+
         if min_intensity > 1 or min_number_cells > 1:
             haz_tmp = self.filter_events(min_intensity=min_intensity,
                                          min_number_cells=min_number_cells)
@@ -237,10 +240,10 @@ class LowFlow(Hazard):
             self.fraction = haz_tmp.fraction
             del haz_tmp
         if not keep_dis_data:
-            del self.data
+            self.data = None
         self.set_frequency(yearrange=yearrange)
         self.tag = TagHazard(haz_type=HAZ_TYPE, file_name=\
-                             FILENAME_NC % (gh_model, cl_model, "*", scenario, soc, \
+                            FILENAME_NC % (gh_model, cl_model, "*", scenario, soc, \
                                             fn_str_var, "*_*.nc"), \
                              description='yearrange: %i-%i (%s, %s), reference: %i-%i (%s, %s)' \
                                  %(yearrange[0], yearrange[-1], scenario, soc, \
@@ -248,19 +251,12 @@ class LowFlow(Hazard):
                                    scenario_ref, soc_ref)
                              )
 
-    def events_from_clusters(self, centroids):
-        """init hazard events from clusters"""
-        # intensity = list()
-
-        uni_ev = np.unique(self.data['cluster_id'].values)
-        num_ev = uni_ev.size
-        num_centr = centroids.size
-        res_centr = self._centroids_resolution(centroids)
-
-        # For one event, if more than one points of data dataframe have the
-        # same coordinates, take the sum of days below threshold
-        # of these points (duration as accumulated intensity).
-        tree_centr = BallTree(centroids.coord, metric='chebyshev')
+    def _intensity_loop(self, uni_ev, num_ev, coord, res_centr, num_centr):
+        """Compute and intensity matrix. For each event, if more than one points of data dataframe have the
+        same coordinates, take the sum of days below threshold
+        of these points (duration as accumulated intensity).
+        """
+        tree_centr = BallTree(coord, metric='chebyshev')
         if self.pool:
             chunksize = min(num_ev // self.pool.ncpus, 1000)
             intensity_list = self.pool.map(self._intensity_one_cluster,
@@ -275,6 +271,37 @@ class LowFlow(Hazard):
                 intensity_list.append(
                     self._intensity_one_cluster(self.data, tree_centr, cl_id,
                                                 res_centr, num_centr))
+        stps = list(np.arange(0, len(intensity_list)-1, INTENSITY_STEP)) + [len(intensity_list)]
+        if len(stps) == 1:
+            return sparse.lil_matrix(intensity_list)
+        for idx, stp in enumerate(stps[0:-1]):
+            if not idx:
+                intensity_mat = sparse.lil_matrix(intensity_list[0:stps[1]])
+            else:
+                intensity_mat = sparse.vstack((intensity_mat,
+                                               sparse.lil_matrix(intensity_list[stp:stps[idx+1]])))
+        return intensity_mat
+
+    def _set_dates(self, uni_ev, num_ev):
+        self.date = np.zeros(num_ev, int)
+        self.date_start = np.zeros(num_ev, int)
+        self.date_end = np.zeros(num_ev, int)
+        for ev_idx, ev_id in enumerate(uni_ev):
+            # set event date to date of maximum intensity (ndays)
+            self.date[ev_idx] = self.data[self.data.cluster_id == ev_id]\
+                .groupby('dtime')['ndays'].sum().idxmax()
+            self.date_start[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
+            self.date_end[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.max()
+
+    def events_from_clusters(self, centroids):
+        """init hazard events from clusters"""
+        # intensity = list()
+
+        uni_ev = np.unique(self.data['cluster_id'].values)
+        num_ev = uni_ev.size
+        num_centr = centroids.size
+        res_centr = self._centroids_resolution(centroids)
+
         self.tag = TagHazard(HAZ_TYPE)
         self.units = 'days'  # days below threshold
         self.centroids = centroids
@@ -283,23 +310,16 @@ class LowFlow(Hazard):
         self.event_id = np.sort(self.data.cluster_id.unique())
         self.event_id = self.event_id[self.event_id > 0]
         self.event_name = list(map(str, self.event_id))
-        self.date = np.zeros(num_ev, int)
-        self.date_start = np.zeros(num_ev, int)
-        self.date_end = np.zeros(num_ev, int)
 
-        for ev_idx, ev_id in enumerate(uni_ev):
-            # set event date to date of maximum intensity (ndays)
-            self.date[ev_idx] = self.data[self.data.cluster_id == ev_id]\
-                .groupby('dtime')['ndays'].sum().idxmax()
-            self.date_start[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.min()
-            self.date_end[ev_idx] = self.data[self.data.cluster_id == ev_id].dtime.max()
-        self.orig = np.ones(num_ev, bool)
+        self._set_dates(uni_ev, num_ev)
+
+        self.orig = np.ones(num_ev)
         self.set_frequency()
 
+        self.intensity = self._intensity_loop(uni_ev, num_ev, centroids.coord,
+                                            res_centr, num_centr)
+
         # Following values are defined for each event and centroid
-        self.intensity = sparse.lil_matrix(np.zeros((num_ev, num_centr)))
-        for idx, ev_intensity in enumerate(intensity_list):
-            self.intensity[idx] = ev_intensity
         self.intensity = self.intensity.tocsr()
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
@@ -530,7 +550,8 @@ def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
                                                        scenario_ref, soc_ref,
                                                        fn_str_var, bbox,
                                                        yearchunks,
-                                                       mask_threshold=mask_threshold)
+                                                       mask_threshold=mask_threshold,
+                                                       keep_dis_data=keep_dis_data)
     first_file = True
     if yearchunks == 'default':
         yearchunks = YEARCHUNKS[scenario]
@@ -548,15 +569,14 @@ def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
             data_chunk = _days_below_threshold_per_month(data_chunk, threshold_grid, mean_ref,
                                                          min_days_per_month, keep_dis_data)
             if first_file:
+                centroids = _init_centroids(data_chunk, centr_res_factor=1)
                 dataf = _xarray_to_geopandas(data_chunk)
                 first_file = False
             else:
                 dataf = dataf.append(_xarray_to_geopandas(data_chunk))
-    centroids = _init_centroids(data_chunk, centr_res_factor=1)
     del data_chunk
     dataf = dataf.sort_values(['lat', 'lon', 'dtime'], ascending=[True, True, True])
     return dataf.reset_index(drop=True), centroids
-
 
 def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
                          soc, fn_str_var, bbox, yearchunks, fname_nc=FILENAME_NC):
@@ -612,9 +632,32 @@ def _read_single_nc(filename, yearrange, bbox):
         data['time'] = datetimeindex
     return data
 
+
+def _xarray_reduce(data, fun=None, percentile=None):
+    if fun == 'mean':
+        return data.mean(dim='time')
+    if fun[0] == 'p':
+        return data.reduce(np.nanpercentile, dim='time', q=percentile)
+    return None
+
+def _split_bbox(bbox, width=BBOX_WIDTH):
+    if not bbox:
+        bbox = [-180, -85, 180, 85]
+    lons = [bbox[0]] + \
+        [int(idc) for idc in np.arange(np.ceil(bbox[0]+width-1),
+                                       np.floor(bbox[2]-width+1), width)] + [bbox[2]]
+    lats = [bbox[1]] + \
+        [int(idc) for idc in np.arange(np.ceil(bbox[1]+width-1),
+                                       np.floor(bbox[3]-width+1), width)] + [bbox[3]]
+    bbox_list = list()
+    for ilon, _ in enumerate(lons[:-1]):
+        for ilat, _ in enumerate(lats[:-1]):
+            bbox_list.append([lons[ilon], lats[ilat], lons[ilon+1], lats[ilat+1]])
+    return bbox_list
+
 def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_model,
                             scenario, soc, fn_str_var, bbox, yearchunks,
-                            mask_threshold=None):
+                            mask_threshold=None, keep_dis_data=False):
     """given model run and year range specification, this function
     returns the x-th percentile for every pixel over a given
     time horizon (based on daily data) [all-year round percentiles!],
@@ -630,12 +673,26 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
         """
     LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i',
                 percentile, yearrange_ref[0], yearrange_ref[1])
-    data = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model,
-                                scenario, soc, fn_str_var, bbox, yearchunks)
-    p_grid = data.reduce(np.nanpercentile, dim='time', q=percentile)
-    mean_grid = data.mean(dim='time')
     if isinstance(mask_threshold, tuple):
         mask_threshold = [mask_threshold]
+    bboxes = _split_bbox(bbox)
+    p_grid = []
+    mean_grid = []
+    # loop over coordinate bounding boxes to save memory:
+    for box in bboxes:
+        data = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model,
+                                    scenario, soc, fn_str_var, box, yearchunks)
+        if data.dis.data.size: # only if data is not empty
+            p_grid += [_xarray_reduce(data, fun='p', percentile=percentile)]
+            # only compute mean_grid if required by user or mask_threshold:
+            if keep_dis_data or (mask_threshold and True in ['mean' in x for x in mask_threshold]):
+                mean_grid += [_xarray_reduce(data, fun='mean')]
+
+    del data
+    p_grid = xr.combine_by_coords(p_grid)
+    if mean_grid:
+        mean_grid = xr.combine_by_coords(mean_grid)
+
     if isinstance(mask_threshold, list):
         for crit in mask_threshold:
             if 'mean' in crit[0]:
@@ -644,8 +701,9 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
             if 'percentile' in crit[0]:
                 p_grid.dis.values[p_grid.dis.values < crit[1]] = 0
                 mean_grid.dis.values[p_grid.dis.values < crit[1]] = 0
-    return p_grid, mean_grid
-
+    if keep_dis_data:
+        return p_grid, mean_grid
+    return p_grid, None
 
 def _compute_threshold_grid_per_month(percentile, yearrange_ref, input_dir,
                                       gh_model, cl_model, scenario, soc, fn_str_var, bbox,
@@ -687,7 +745,6 @@ def _days_below_threshold_per_month(data, threshold_grid, mean_ref,
         data_threshold['relative_dis'] = data_low['dis']
     return data_threshold.where(data_threshold['ndays'] > 0)
 
-
 def _xarray_to_geopandas(data):
     """returns prooessed geopanda dataframe with NaN dropped"""
     dataf = data.to_dataframe()
@@ -710,4 +767,4 @@ def _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy, intensity_raw):
         if ind[idx] != -1:
             intensity_cl[0, ind[idx]] = \
                 np.sum(intensity_raw[lat_lon_cpy == index_uni[idx]])
-    return intensity_cl
+    return intensity_cl[0]
