@@ -1,21 +1,15 @@
 """
 This file is part of CLIMADA.
-
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
-
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, version 3.
-
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
-
 ---
-
 Define TropCyclone class.
 """
 
@@ -106,7 +100,6 @@ class TropCyclone(Hazard):
                         model='H08', ignore_distance_to_coast=False,
                         store_windfields=False):
         """Clear and fill with windfields from specified tracks.
-
         Parameters:
             tracks (TCTracks): tracks of events
             centroids (Centroids, optional): Centroids where to model TC.
@@ -121,7 +114,6 @@ class TropCyclone(Hazard):
                 are stored in a sparse matrix of shape
                 (npositions,  ncentroids * 2), that can be reshaped to a full
                 ndarray of shape (npositions, ncentroids, 2). Default: False.
-
         Raises:
             ValueError
         """
@@ -193,7 +185,6 @@ class TropCyclone(Hazard):
                         **kwargs):
         """Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
-
         Parameters:
             track_name (str): name of the track contained in tracks to record
             tracks (TCTracks): tracks
@@ -203,10 +194,8 @@ class TropCyclone(Hazard):
                 pillow with bitrate=500
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
-
         Returns:
             list(TropCyclone), list(np.array)
-
         Raises:
             ValueError
         """
@@ -263,7 +252,6 @@ class TropCyclone(Hazard):
 
     def _set_frequency(self, tracks):
         """Set hazard frequency from tracks data.
-
         Parameters:
             tracks (list of xarray.Dataset)
         """
@@ -278,7 +266,6 @@ class TropCyclone(Hazard):
     def _tc_from_track(self, track, centroids, coastal_idx, model='H08',
                        store_windfields=False):
         """Generate windfield hazard from a single track dataset
-
         Parameters:
             track (xr.Dataset): single tropical cyclone track.
             centroids (Centroids): Centroids instance.
@@ -286,10 +273,8 @@ class TropCyclone(Hazard):
             model (str, optional): Windfield model. Default: H08.
             store_windfields (boolean, optional): If True, store windfields.
                 Default: False.
-
         Raises:
             ValueError, KeyError
-
         Returns:
             TropCyclone
         """
@@ -363,19 +348,18 @@ class TropCyclone(Hazard):
 
 def compute_windfields(track, centroids, model):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
-
     Parameters:
         track (xr.Dataset): track infomation
         centroids (2d np.array): each row is a centroid [lat, lon]
         model (int): Holland model selection according to MODEL_VANG
-
     Returns:
         np.array
     """
-    # shorthands for track data
-    t_lat, t_lon = track.lat.values, track.lon.values
-    t_rad, t_env = track.radius_max_wind.values, track.environmental_pressure.values
-    t_cen, t_tstep = track.central_pressure.values, track.time_step.values
+    # copies of track data
+    t_lat, t_lon, t_tstep, t_rad, t_env, t_cen = [
+        track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
+                                           'environmental_pressure', 'central_pressure']
+    ]
 
     ncentroids = centroids.shape[0]
     npositions = t_lat.shape[0]
@@ -415,7 +399,7 @@ def compute_windfields(track, centroids, model):
     t_cen[pres_exceed_msk] = t_env[pres_exceed_msk]
 
     # extrapolate radius of max wind from pressure if not given
-    t_rad[:] = estimate_rmw(t_rad, t_lat, t_cen) * NM_TO_KM
+    t_rad[:] = estimate_rmw(t_rad, t_cen) * NM_TO_KM
 
     # translational speed of track at every node
     v_trans = _vtrans(t_lat, t_lon, t_tstep)
@@ -447,9 +431,7 @@ def compute_windfields(track, centroids, model):
                              * v_ang_dir[close_centr[1:]]
 
     """Influence of translational speed decreases with distance from eye
-
     The "absorbing factor" is according to the following paper (see Fig. 7):
-
     Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool for
     converting point data from cyclone observations into tracks and wind speed
     profiles in a GIS. UNED/GRID-Geneva. https://unepgrid.ch/en/resource/19B7D302
@@ -468,12 +450,10 @@ def compute_windfields(track, centroids, model):
 
 def _close_centroids(t_lat, t_lon, centroids):
     """Choose centroids within padded rectangular region around track
-
     Parameters:
         t_lat (np.array): latitudinal coordinates of track points
         t_lon (np.array): longitudinal coordinates of track points
         centroids (np.array): coordinates of centroids to check
-
     Returns:
         np.array (mask)
     """
@@ -499,7 +479,6 @@ def _close_centroids(t_lat, t_lon, centroids):
 
 def _vtrans(t_lat, t_lon, t_tstep):
     """Translational vector and velocity at each track node.
-
     Parameters
     ----------
     t_lat : np.array
@@ -508,7 +487,6 @@ def _vtrans(t_lat, t_lon, t_tstep):
         track longitudes
     t_tstep : np.array
         track time steps
-
     Returns
     -------
     v_trans_norm : np.array
@@ -534,21 +512,15 @@ def _vtrans(t_lat, t_lon, t_tstep):
 
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     """Holland's 2008 b-value computation for sustained surface winds
-
     The parameter applies to 1-minute sustained winds at 10 meters above ground.
     It is taken from equation (11) in the following paper:
-
     Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
     Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
-
     For reference, it reads
-
     b_s = -4.4 * 1e-5 * (penv - pcen)^2 + 0.01 * (penv - pcen)
           + 0.03 * (dp/dt) - 0.014 * |lat| + 0.15 * (v_trans)^hol_xx + 1.0
-
     where `dp/dt` is the time derivative of central pressure and `hol_xx` is
     Holland's x parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
-
     Parameters:
         v_trans (float): translational wind (m/s)
         penv (float): environmental pressure (hPa)
@@ -556,7 +528,6 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
         prepcen (float): previous central pressure (hPa)
         lat (float): latitude (degrees)
         tint (float): time step (h)
-
     Returns:
         float
     """
@@ -568,19 +539,15 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
 
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     """Holland symmetric and static wind field (in m/s)
-
     Because recorded winds are less reliable than pressure, recorded wind speeds
     are not used, but 1-min sustained surface winds are estimated from central
     pressure using the formula `v_m = ((b_s / (rho * e)) * (penv - pcen))^0.5`,
     see equation (11) in the following paper:
-
     Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
     Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
-
     Depending on the hol_b parameter, the resulting model is according to
     Holland (1980), which models gradient winds, or Holland (2008), which models
     surface winds at 10 meters above ground.
-
     Parameters:
         d_centr (2d np.array): distance between coastal centroids and track node
         r_max (1d np.array): radius_max_wind along track
@@ -589,7 +556,6 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
         pcen (1d np.array): central pressure along track
         lat (1d np.array): latitude along track
         close_centr (2d np.array): mask
-
     Returns:
         np.array
     """
