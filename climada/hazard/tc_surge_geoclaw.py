@@ -30,11 +30,10 @@ import sys
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
+import matplotlib.colors
+import matplotlib.cm
 import numpy as np
 import pandas as pd
-import rasterio
-import rasterio.windows
-from rasterio.enums import Resampling
 import scipy.sparse as sp
 import xarray as xr
 
@@ -67,6 +66,9 @@ GEOCLAW_WORK_DIR = os.path.join(DATA_DIR, "geoclaw", "runs")
 MON_ZOS_DATA = os.path.join(DATA_DIR, "monthly_zos.nc")
 """NetCDF file containing monthly sea surface height data"""
 
+TOPO_DATA = os.path.join(DATA_DIR, "combined", "combine.vrt")
+"""Raster file containing global topographical elevation data"""
+
 INLAND_MAX_DIST_KM = 50
 """Maximum inland distance of the centroids in km"""
 
@@ -85,8 +87,7 @@ class TCSurgeGeoClaw(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
 
 
-    def set_from_tracks(self, tracks, centroids=None, description='',
-                        ignore_distance_to_coast=False):
+    def set_from_tracks(self, tracks, centroids=None, description=''):
         """Clear and fill with surge inundation from specified tracks.
 
         Parameters:
@@ -94,26 +95,35 @@ class TCSurgeGeoClaw(Hazard):
             centroids (Centroids, optional): Centroids where to model TC.
                 Default: global centroids.
             description (str, optional): description of the events
-            ignore_distance_to_coast (boolean, optional): if True, centroids
-                far from coast are not ignored. Default False
         """
         setup_clawpack()
 
         if centroids is None:
-            centroids = Centroids.from_base_grid(res_as=360, land=True)
+            # compute from given tracks extent
+            pad = CENTR_NODE_MAX_DIST_DEG
+            lons = np.concatenate([t.lon.values for t in tracks.data])
+            lats = np.concatenate([t.lat.values for t in tracks.data])
+            min_lat, max_lat = lats.min() - pad, lats.max() + pad
+            min_lon, max_lon = coord_util.lon_bounds(lons)
+            min_lon, max_lon = min_lon - pad, max_lon + pad
+            t_bounds = (min_lon, min_lat, max_lon, max_lat)
+            res_as = 90
+            res_deg = res_as / 3600
+            lat_dim = np.arange(t_bounds[1] + 0.5 * res_deg, t_bounds[3], res_deg)
+            lon_dim = np.arange(t_bounds[0] + 0.5 * res_deg, t_bounds[2], res_deg)
+            lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
+            centroids = Centroids()
+            centroids.set_lat_lon(lat, lon)
 
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 
-        if ignore_distance_to_coast:
-            # Select centroids with lat < 61
-            coastal_idx = (centroids.lat < 61).nonzero()[0]
-        else:
-            # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-            if not centroids.dist_coast.size:
-                centroids.set_dist_coast()
-            coastal_idx = ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
-                           & (centroids.lat < 61)).nonzero()[0]
+        # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
+        if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
+            centroids.set_dist_coast(signed=True, precomputed=True)
+        coastal_idx = ((centroids.dist_coast < 300)
+                       & (centroids.dist_coast > -INLAND_MAX_DIST_KM * 1000)
+                       & (centroids.lat < 61)).nonzero()[0]
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
@@ -212,8 +222,7 @@ def geoclaw_surge_from_track(track, centroids):
     # events.plot_areas()
 
     LOGGER.info("Preparing %d runs of GeoClaw...", len(events))
-    #FIXME: For testing purposes, only the last event is used!
-    surge_h = [run_geoclaw(track, track_centr, e) for e in list(events)[-1:]]
+    surge_h = [run_geoclaw(track, track_centr, e) for e in events]
 
     # write results to intensity array
     intensity[track_centr_msk] = np.stack(surge_h, axis=0).max(axis=0)
@@ -237,13 +246,14 @@ def run_geoclaw(track, centroids, event):
     runner = GeoclawRunner(track, event['period'][0], event,
                            centroids[event['centroid_mask']])
     runner.run()
-    surge_h[event['centroids_mask']] = runner.surge_h
+    surge_h[event['centroid_mask']] = runner.surge_h
     return surge_h
 
 
 class GeoclawRunner():
     """"Wrapper for work directory setup and running of GeoClaw simulations"""
     def __init__(self, track, time_offset, areas, centroids):
+        LOGGER.info("Running GeoClaw to determine surge on %d centroids", centroids.shape[0])
         self.track = track
         self.areas = areas
         self.centroids = centroids
@@ -415,6 +425,8 @@ include $(CLAW)/clawutil/src/Makefile.common
             regions.append([maxlevel - 1, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
         rundata.refinement_data.speed_tolerance = list(np.arange(1.0, maxlevel))
         rundata.refinement_data.variable_dt_refinement_ratios = True
+        rundata.refinement_data.wave_tolerance = 1.0
+        rundata.refinement_data.deep_depth = 1e3
 
 
     def set_rundata_geodata(self, rundata):
@@ -454,20 +466,23 @@ include $(CLAW)/clawutil/src/Makefile.common
             self.areas['wind_area'],
             self.areas['landfall_area']
         ] + self.areas['surge_areas']
-        resolutions = [360, 90] + [30 for a in self.areas['surge_areas']]
-        for res_secs, bounds in zip(resolutions, areas):
-            xcoords, ycoords, zvalues = load_topography(bounds, res_secs)
+        resolutions = [360, 120] + [30 for a in self.areas['surge_areas']]
+        dems_for_plot = []
+        for res_as, bounds in zip(resolutions, areas):
+            bounds, xcoords, ycoords, zvalues = load_topography(bounds, res_as)
             if 0 in zvalues.shape:
                 LOGGER.warning("Area is ignored because it is too small.")
                 continue
             topo = topotools.Topography()
             topo.set_xyZ(xcoords, ycoords, zvalues)
-            tt3_fname = 'topo_{}s_{}.tt3'.format(res_secs, bounds_to_str(bounds))
+            tt3_fname = 'topo_{}s_{}.tt3'.format(res_as, bounds_to_str(bounds))
             tt3_fname = os.path.join(self.work_dir, tt3_fname)
             topo.write(tt3_fname)
             rundata.topo_data.topofiles.append([3, 1, rundata.amrdata.amr_levels_max,
                                                 rundata.clawdata.t0, rundata.clawdata.tfinal,
                                                 tt3_fname])
+            dems_for_plot.append((bounds, zvalues))
+        # plot_dems(dems_for_plot)
 
 
     def set_rundata_fgmax(self, rundata):
@@ -485,8 +500,8 @@ include $(CLAW)/clawutil/src/Makefile.common
         fgmax_grid.min_level_check = rundata.amrdata.amr_levels_max - 1
         fgmax_grid.arrival_tol = 1.e-2
         fgmax_grid.npts = self.centroids.shape[0]
-        fgmax_grid.X = self.centroids[:, 0]
-        fgmax_grid.Y = self.centroids[:, 1]
+        fgmax_grid.X = self.centroids[:, 1]
+        fgmax_grid.Y = self.centroids[:, 0]
         rundata.fgmax_data.fgmax_grids.append(fgmax_grid)
 
 
@@ -496,11 +511,69 @@ include $(CLAW)/clawutil/src/Makefile.common
         surge_data.wind_forcing = True
         surge_data.drag_law = 1
         surge_data.pressure_forcing = True
-        surge_data.storm_specification_type = 'holland10'
+        surge_data.storm_specification_type = 'holland80'
         surge_data.storm_file = os.path.join(self.work_dir, "track.storm")
         gc_storm = climada_xarray_to_geoclaw_storm(self.track,
                                                    offset=dt64_to_pydt(self.time_offset))
         gc_storm.write(surge_data.storm_file, file_format='geoclaw')
+
+
+def plot_dems(dems):
+    """Plot given DEMs as rasters to one worldmap
+
+    Parameters:
+        dems (list of pairs): pairs (bounds, heights)
+    """
+    total_bounds = (
+        min([bounds[0] for bounds, _ in dems]),
+        min([bounds[1] for bounds, _ in dems]),
+        max([bounds[2] for bounds, _ in dems]),
+        max([bounds[3] for bounds, _ in dems]),
+    )
+    mid_lon = 0.5 * (total_bounds[0] + total_bounds[2])
+    proj = ccrs.PlateCarree(central_longitude=mid_lon)
+    axes = plt.axes(projection=proj)
+    axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
+    axes.set_ylim(total_bounds[1], total_bounds[3])
+    cmap_terrain = [
+        (0, 0, 0),
+        (3, 73, 114),
+        (52, 126, 255),
+        (146, 197, 222),
+        (255, 251, 171),
+        (165, 230, 162),
+        (27, 149, 29),
+        (32, 114, 11),
+        (117, 84, 0),
+    ]
+    cmap_terrain = matplotlib.colors.LinearSegmentedColormap.from_list(
+        "coastal_dem", [tuple(c / 255 for c in rgb) for rgb in cmap_terrain])
+    cnorm_coastal_dem = LinearSegmentedNormalize([-8000, -1000, -10, -5, 0, 5, 10, 100, 1000])
+    for bounds, heights in dems:
+        extent = (bounds[0] - mid_lon, bounds[2] - mid_lon, bounds[1], bounds[3])
+        axes.imshow(heights, extent=extent, transform=proj,
+                    cmap=cmap_terrain, norm=cnorm_coastal_dem, vmin=-8000, vmax=1000)
+    axes.coastlines(resolution='10m', linewidth=0.5)
+    cbar = plt.colorbar(matplotlib.cm.ScalarMappable(cmap=cmap_terrain), ax=axes)
+    cbar.set_ticks(cnorm_coastal_dem.values)
+    cbar.set_ticklabels(cnorm_coastal_dem.vthresh)
+    plt.show()
+
+
+class LinearSegmentedNormalize(matplotlib.colors.Normalize):
+    """Piecewise linear color normalization"""
+    def __init__(self, vthresh):
+        """Initialize normalization
+
+        Parameters:
+            vthresh (list): equally distributed to the interval [0,1]
+        """
+        self.vthresh = vthresh
+        self.values = np.linspace(0, 1, len(self.vthresh))
+        matplotlib.colors.Normalize.__init__(self, vthresh[0], vthresh[1], False)
+
+    def __call__(self, value, clip=None):
+        return np.ma.masked_array(np.interp(value, self.vthresh, self.values))
 
 
 def climada_xarray_to_geoclaw_storm(track, offset=None):
@@ -527,59 +600,86 @@ def climada_xarray_to_geoclaw_storm(track, offset=None):
     return gc_storm
 
 
-def mean_max_sea_level(months, bounds):
+def mean_max_sea_level(months, bounds, path=None):
     """Mean of maxima over affected area in affected months
 
     Parameters:
         months (np.array): each row is a tuple (year, month)
         bounds (tuple): (lon_min, lat_min, lon_max, lat_max)
+        path (str): Path to NetCDF file containing monthly sea level data.
+            Default: 'monthly_zos.nc' in CLIMADA's internal data directory.
 
     Returns:
         float
     """
-    with rasterio.open(MON_ZOS_DATA, "r") as src:
-        # 312 bands from 01/1993 till 12/2018
-        # nodata value is -9.999999990686776 (= -32767.0 * scale_factor)
-        bands = [(m[0] - 1993) * 12 + (m[1] - 1) + 1 for m in months]
-        win = rasterio.windows.from_bounds(*bounds, transform=src.transform)
-        zos = src.read(bands, window=win) * float(src.tags()['zos#scale_factor'])
-    return np.mean([ar.max() for ar in zos])
+    if not path:
+        path = MON_ZOS_DATA
+    lon_coord_names = ["longitude", "lon", "x"]
+    lat_coord_names = ["latitude", "lat", "y"]
+    time_coord_names = ["time", "date", "datetime"]
+    with xr.open_dataset(path) as zos_ds:
+        lon_coord, lat_coord, time_coord = None, None, None
+        for coord in zos_ds.coords:
+            if coord.lower() in lon_coord_names:
+                lon_coord = coord
+            elif coord.lower() in lat_coord_names:
+                lat_coord = coord
+            elif coord.lower() in time_coord_names:
+                time_coord = coord
+        zos_ds = zos_ds.rename({lon_coord: 'lon', lat_coord: 'lat', time_coord: 'time'})
+        zos_ds = zos_ds.sel(time=np.any([(zos_ds.time.dt.year == m[0])
+                                         & (zos_ds.time.dt.month == m[1])
+                                         for m in months], axis=0))
+        zos_ds = zos_ds.sel(lat=(bounds[1] <= zos_ds.lat) & (zos_ds.lat <= bounds[3]),
+                            lon=(bounds[0] <= zos_ds.lon) & (zos_ds.lon <= bounds[2]))
+        zos = zos_ds.zos.values[:]
+    return zos.max(axis=(1, 2)).mean()
 
 
-def load_topography(bounds, res_secs):
+def load_topography(bounds, res_as, path=None):
     """Load topographical elevation data in specified bounds and resolution
+
+    The bounds of the returned topodata are always larger than the requested bounds to make sure
+    that the pixel centers still cover the requested region.
 
     Parameters
     ----------
-
     bounds : tuple
-        Bounds of (lon_min, lat_min, lon_max, lat_max)
-    res_secs (float): Resolution in arc-seconds
+        Bounds (lon_min, lat_min, lon_max, lat_max) of region of interest.
+    res_as : float
+        Resolution in arc-seconds
+    path : str
+        Path to raster file containing elevation data.
+        Default: A hardcoded file in CLIMADA's internal data directory.
 
     Returns
     -------
-        x, y : np.array
-            Longitudinal (x) and latitudinal (y) coordinate axis.
-        Z : np.array
-            Surface elevation relative to EGM96 in meters. The first axis is
-            latitude (increasing), the second is longitude (increasing).
+    bounds : tuple
+        Bounds (lon_min, lat_min, lon_max, lat_max) actually covered by the returned topodata.
+    xcoords, ycoords : np.array
+        Longitudinal (x) and latitudinal (y) coordinate axis.
+    zvalues : np.array
+        Surface elevation relative to EGM96 in meters. The first axis is
+        latitude (increasing), the second is longitude (increasing).
     """
-    LOGGER.info("Prepare topo: %s %s", res_secs, bounds)
-    lon_min, lat_min, lon_max, lat_max = bounds
-    topo_fname = os.path.join(DATA_DIR, "combined", "combine.vrt")
-    with rasterio.open(topo_fname, 'r') as src:
-        # width is resolution of lon, height is res. of lat
-        win = rasterio.windows.from_bounds(*bounds, transform=src.transform)
-        width, height = int(win.width / res_secs), int(win.height / res_secs)
-        zvalues = src.read(1, out_shape=(height, width), window=win,
-                           resampling=Resampling.bilinear)
-    if src.transform[0] < 0:
+    if not path:
+        path = TOPO_DATA
+    LOGGER.info("Load elevation data: %s %s", res_as, bounds)
+    res = res_as / (60 * 60)
+    zvalues, transform = coord_util.read_raster_bounds(path, bounds, res=res, bands=[1])
+    zvalues = zvalues[0]
+    xres, _, xmin, _, yres, ymin = transform[:6]
+    xmax, ymax = xmin + zvalues.shape[1] * xres, ymin + zvalues.shape[0] * yres
+    if xres < 0:
         zvalues = np.flip(zvalues, axis=1)
-    if src.transform[4] < 0:
+        xres, xmin, xmax = -xres, xmax, xmin
+    if yres < 0:
         zvalues = np.flip(zvalues, axis=0)
-    xcoords = np.linspace(lon_min, lon_max, width)
-    ycoords = np.linspace(lat_min, lat_max, height)
-    return xcoords, ycoords, zvalues.astype(np.float64)
+        yres, ymin, ymax = -yres, ymax, ymin
+    bounds = (xmin, ymin, xmax, ymax)
+    xcoords = np.arange(xmin + xres / 2, xmax, xres)
+    ycoords = np.arange(ymin + yres / 2, ymax, yres)
+    return bounds, xcoords, ycoords, zvalues.astype(np.float64)
 
 
 class TCSurgeEvents():
@@ -805,6 +905,7 @@ class TCSurgeEvents():
         axes.scatter(self.track.lon, self.track.lat, s=2)
         plt.show()
 
+
 def plot_bounds(axes, bounds, **kwargs):
     """Plot given bounds as rectangular boundary lines
 
@@ -955,4 +1056,4 @@ def dt64_to_pydt(date):
     result = pd.Series(date).dt.to_pydatetime()
     if isinstance(date, np.datetime64):
         return result[0]
-    return result
+    return list(result)

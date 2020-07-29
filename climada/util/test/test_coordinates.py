@@ -51,6 +51,7 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      pts_to_raster_meta, \
                                      read_raster, \
                                      read_raster_sample, \
+                                     read_raster_bounds, \
                                      read_vector, \
                                      refine_raster_data, \
                                      set_df_geometry_points, \
@@ -611,6 +612,30 @@ class TestRasterIO(unittest.TestCase):
         self.assertAlmostEqual(new_data[7, 7], data[1, 1])
         self.assertAlmostEqual(new_data[1, 2], data[0, 0])
         self.assertAlmostEqual(new_data[3, 3], 0.4)
+
+    def test_bounded_refined_raster(self):
+        """Test reading a raster within specified bounds and at specified resolution"""
+        bounds = (-69.14, 9.99, -69.11, 10.03)
+        z, transform = read_raster_bounds(HAZ_DEMO_FL, bounds, res=0.004)
+
+        # the first dimension corresponds to the raster bands:
+        self.assertEqual(z.shape[0], 1)
+        z = z[0]
+
+        # the signs of stepsizes are retained from the original raster:
+        self.assertLess(transform[4], 0)
+        self.assertGreater(transform[0], 0)
+
+        # the bounds of the returned data are a little larger than the requested bounds:
+        self.assertLess(transform[2], bounds[0])
+        self.assertGreaterEqual(transform[2], bounds[0] - transform[0])
+        self.assertGreater(transform[2] + z.shape[1] * transform[0], bounds[2])
+        self.assertLessEqual(transform[2] + z.shape[1] * transform[0], bounds[2] + transform[0])
+
+        self.assertGreater(transform[5], bounds[3])
+        self.assertLessEqual(transform[5], bounds[3] - transform[4])
+        self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
+        self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
 
 # Execute Tests
 if __name__ == "__main__":

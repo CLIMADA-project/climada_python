@@ -18,36 +18,38 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define functions to handle with coordinates
 """
-import os
+
 import copy
 import logging
-from multiprocessing import cpu_count
 import math
-import numpy as np
-from cartopy.io import shapereader
-import shapely.vectorized
-import shapely.ops
-from shapely.geometry import Polygon, MultiPolygon, Point, box
-from fiona.crs import from_epsg
-from iso3166 import countries as iso_cntry
-import geopandas as gpd
-import rasterio
-import rasterio.warp
-import rasterio.mask
-import rasterio.crs
-import rasterio.features
-import shapefile
-import dask.dataframe as dd
-import pandas as pd
-import scipy.interpolate
+from multiprocessing import cpu_count
+import os
 import zipfile
 
-from climada.util.constants import DEF_CRS, SYSTEM_DIR, ONE_LAT_KM, \
-                                   NATEARTH_CENTROIDS_150AS, \
-                                   NATEARTH_CENTROIDS_360AS, \
-                                   ISIMIP_GPWV3_NATID_150AS, \
-                                   ISIMIP_NATID_TO_ISO, \
-                                   RIVER_FLOOD_REGIONS_CSV
+from cartopy.io import shapereader
+import dask.dataframe as dd
+from fiona.crs import from_epsg
+import geopandas as gpd
+from iso3166 import countries as iso_cntry
+import numpy as np
+import pandas as pd
+import rasterio
+import rasterio.crs
+import rasterio.features
+import rasterio.mask
+import rasterio.warp
+import scipy.interpolate
+from shapely.geometry import Polygon, MultiPolygon, Point, box
+import shapely.ops
+import shapely.vectorized
+import shapefile
+
+from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
+                                    NATEARTH_CENTROIDS_150AS,
+                                    NATEARTH_CENTROIDS_360AS,
+                                    ISIMIP_GPWV3_NATID_150AS,
+                                    ISIMIP_NATID_TO_ISO,
+                                    RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
 from climada.util.constants import DATA_DIR
@@ -100,14 +102,14 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
         rad_lon = np.radians(lon)
     sin_lat, cos_lat = np.sin(rad_lat), np.cos(rad_lat)
     sin_lon, cos_lon = np.sin(rad_lon), np.cos(rad_lon)
-    vn = np.stack((sin_lat * cos_lon, sin_lat * sin_lon, cos_lat), axis=-1)
+    vecn = np.stack((sin_lat * cos_lon, sin_lat * sin_lon, cos_lat), axis=-1)
     if basis:
         vbasis = np.stack((
             cos_lat * cos_lon, cos_lat * sin_lon, -sin_lat,
             -sin_lon, cos_lon, np.zeros_like(cos_lat),
         ), axis=-1).reshape(lat.shape + (2, 3))
-        return vn, vbasis
-    return vn
+        return vecn, vbasis
+    return vecn
 
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon <= 180
@@ -216,11 +218,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
             + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
         dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
         if log:
-            v1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
-            v2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
+            vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
+            vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
             fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (v2[:, None] - scal[..., None] * v1[:, :, None])
+            vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
@@ -317,8 +319,8 @@ def utm_zones(wgs_bounds):
             zones.append((epsg + 100, bounds))
     return zones
 
-def dist_to_coast(coord_lat, lon=None):
-    """Compute distance to coast from input points in meters.
+def dist_to_coast(coord_lat, lon=None, signed=False):
+    """Compute (signed) distance to coast from input points in meters.
 
     Parameters:
         coord_lat (GeoDataFrame or np.array or float):
@@ -330,6 +332,8 @@ def dist_to_coast(coord_lat, lon=None):
         lon (np.array or float, optional):
             - np.array with one dimension containing longitudes in epsg:4326
             - float with a longitude value in epsg:4326
+        signed (bool): If True, distance is signed with positive values off shore and negative
+            values on land. Default: False
 
     Returns:
         np.array
@@ -352,7 +356,7 @@ def dist_to_coast(coord_lat, lon=None):
                 LOGGER.error('Mismatching input coordinates size: %s != %s',
                              lat.size, lon.size)
                 raise ValueError
-        geom = gpd.GeoDataFrame(geometry=list(map(Point, lon, lat)), crs=NE_CRS)
+        geom = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lon, lat), crs=NE_CRS)
 
     pad = 20
     bounds = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
@@ -381,10 +385,12 @@ def dist_to_coast(coord_lat, lon=None):
         utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS)
         utm_coast = utm_coast.to_crs(to_crs).geometry[0]
         dist[zone_mask] = geom[zone_mask].to_crs(to_crs).distance(utm_coast)
+    if signed:
+        dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
     return dist
 
-def dist_to_coast_nasa(lat, lon, highres=False):
-    """Read interpolated distance to coast (in m) from NASA data
+def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
+    """Read interpolated (signed) distance to coast (in m) from NASA data
 
     Note: The NASA raster file is 300 MB and will be downloaded on first run!
 
@@ -393,6 +399,8 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         lon (np.array): longitudes in epsg:4326
         highres (bool, optional): Use full resolution of NASA data (much
             slower). Default: False.
+        signed (bool): If True, distance is signed with positive values off shore and negative
+            values on land. Default: False
 
     Returns:
         np.array
@@ -413,10 +421,12 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         os.remove(path_dwn)
         os.chdir(cwd)
 
-    intermediate_shape = None if highres else (3600, 1800)
+    intermediate_res = None if highres else 0.1
     dist = read_raster_sample(
-        path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0)
-    return 1000 * np.abs(dist)
+        path, lat, lon, intermediate_res=intermediate_res, fill_value=0)
+    if not signed:
+        dist = np.abs(dist)
+    return 1000 * dist
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of all the countries or the provided ones or the points inside
@@ -772,10 +782,17 @@ NATEARTH_AREA_NONISO_NUMERIC = {
 }
 
 def natearth_country_to_int(country):
+    """Integer representation (ISO 3166, if possible) of Natural Earth GeoPandas country row
+
+    Parameters:
+        country (GeoSeries): Row from GeoDataFrame.
+
+    Returns:
+        int
+    """
     if country.ISO_N3 != '-99':
         return int(country.ISO_N3)
-    else:
-        return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
+    return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
 
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
@@ -944,9 +961,11 @@ def equal_crs(crs_one, crs_two):
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
-def _read_raster_reproject(src, src_crs, dst_meta, band=[1], geometry=None, dst_crs=None,
+def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
                            transform=None, resampling=rasterio.warp.Resampling.nearest):
     """Helper function for `read_raster`"""
+    if not band:
+        band = [1]
     if not dst_crs:
         dst_crs = src_crs
     if not transform:
@@ -1009,7 +1028,7 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=[1], geometry=None, dst_
 
     return intensity
 
-def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
+def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 dst_crs=None, transform=None, width=None, height=None,
                 resampling=rasterio.warp.Resampling.nearest):
     """Read raster of bands and set 0 values to the masked ones. Each
@@ -1032,6 +1051,8 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
     Returns:
         dict (meta), np.array (band x coordinates_in_1d)
     """
+    if not band:
+        band = [1]
     LOGGER.info('Reading %s', file_name)
     if os.path.splitext(file_name)[1] == '.gz':
         file_name = '/vsigzip/' + file_name
@@ -1074,17 +1095,68 @@ def read_raster(file_name, band=[1], src_crs=None, window=None, geometry=None,
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
-                       fill_value=None):
+def read_raster_bounds(path, bounds, res=None, bands=None):
+    """Read raster file within given bounds and refine to given resolution
+
+    Makes sure that the extent of pixel centers covers the specified regions
+
+    Parameters
+    ----------
+    path : str
+        Path to raster file to open with rasterio.
+    bounds : tuple
+        (xmin, ymin, xmax, ymax)
+    res : float, optional
+        Resolution of output. Default: Resolution of input raster file.
+    bands : list of int, optional
+        Bands to read from the input raster file. Default: [1]
+
+    Returns
+    -------
+    data : 3d np.array
+        First dimension is for the selected raster bands. Second dimension is y (lat) and third
+        dimension is x (lon).
+    transform : rasterio.Affine
+        Affine transformation defining the output raster data.
+    """
+    if os.path.splitext(path)[1] == '.gz':
+        path = '/vsigzip/' + path
+    if not bands:
+        bands = [1]
+    with rasterio.open(path, 'r') as src:
+        if res:
+            if not isinstance(res, tuple):
+                res = (res, res)
+        else:
+            res = (src.transform[0], src.transform[4])
+        res = (np.abs(res[0]), np.abs(res[1]))
+
+        width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
+        shape = (int(np.ceil(height / res[1]) + 1),
+                 int(np.ceil(width / res[0]) + 1))
+        extra = (0.5 * ((shape[1] - 1) * res[0] - width),
+                 0.5 * ((shape[0] - 1) * res[1] - height))
+        bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
+                  bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
+
+        window = src.window(*bounds)
+        w_transform = src.window_transform(window)
+        transform = rasterio.Affine(np.sign(w_transform[0]) * res[0], 0, w_transform[2],
+                                    0, np.sign(w_transform[4]) * res[1], w_transform[5])
+        data = src.read(bands, out_shape=shape, window=window,
+                        resampling=rasterio.warp.Resampling.bilinear)
+    return data, transform
+
+def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
     """Read point samples from raster file
 
     Parameters:
         path (str): path of the raster file
         lat (np.array): latitudes in file's CRS
-        lon (np.array): latitudes in file's CRS
-        intermediate_shape (tuple, optional): If given, the raster is not read
-            in its original resolution but in the given one. This can increase
-            performance for files of very high resolution
+        lon (np.array): longitudes in file's CRS
+        intermediate_res (float, optional): If given, the raster is not read in its original
+            resolution (0.01 degrees) but in the given one. This can increase performance for
+            files of very high resolution. Should be larger than 0.01!
         method (str, optional): The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
         fill_value (numeric, optional): The value used outside of the raster
@@ -1098,16 +1170,30 @@ def read_raster_sample(path, lat, lon, intermediate_shape=None, method='linear',
         path = '/vsigzip/' + path
 
     with rasterio.open(path, "r") as src:
-        xres, _, xmin, _, yres, ymin = src.transform[:6]
-        data = src.read(1, out_shape=intermediate_shape)
-        xres *= src.width / data.shape[1]
-        yres *= src.height / data.shape[0]
+        if intermediate_res is None:
+            xres, yres = np.abs(src.transform[0]), np.abs(src.transform[4])
+        else:
+            xres = yres = intermediate_res
+        bounds = (lon.min() - 2 * xres, lat.min() - 2 * yres,
+                  lon.max() + 2 * xres, lat.max() + 2 * yres)
+        win = src.window(*bounds).round_offsets(op='ceil').round_shape(op='floor')
+        win_transform = src.window_transform(win)
+        intermediate_shape = None
+        if intermediate_res is not None:
+            win_bounds = src.window_bounds(win)
+            win_width, win_height = win_bounds[2] - win_bounds[0], win_bounds[3] - win_bounds[1]
+            intermediate_shape = (int(np.ceil(win_width / intermediate_res)),
+                                  int(np.ceil(win_height / intermediate_res)))
+        data = src.read(1, out_shape=intermediate_shape, window=win)
         fill_value = src.meta['nodata'] if fill_value is None else fill_value
 
-    transform = rasterio.Affine(xres, 0, xmin, 0, yres, ymin)
+    if intermediate_res is not None:
+        xres, yres = win_width / data.shape[1], win_height / data.shape[0]
+        xres, yres = np.sign(win_transform[0]) * xres, np.sign(win_transform[4]) * yres
+        win_transform = rasterio.Affine(xres, 0, win_transform[2],
+                                        0, yres, win_transform[5])
     fill_value = fill_value if fill_value else 0
-    return interp_raster_data(data, lat, lon, transform, method=method,
-                              fill_value=fill_value)
+    return interp_raster_data(data, lat, lon, win_transform, method=method, fill_value=fill_value)
 
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
@@ -1225,13 +1311,14 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     with rasterio.open(file_name, 'w', **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
-                     scheduler=None):
+def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, scheduler=None):
     """Compute raster matrix and transformation from value column
 
     Parameters:
-        points_df (GeoDataFrame): contains columns latitude, longitude and in
-            val_names
+        points_df (GeoDataFrame): contains columns latitude, longitude and those listed in
+            the parameter `val_names`
+        val_names (lsit of str, optional): The names of columns in `points_df` containing
+            values. The raster will contain one band per column. Default: ['value']
         res (float, optional): resolution of current data in units of latitude
             and longitude, approximated if not provided.
         raster_res (float, optional): desired resolution of the raster
@@ -1242,6 +1329,8 @@ def points_to_raster(points_df, val_names=['value'], res=0.0, raster_res=0.0,
         np.array, affine.Affine
 
     """
+    if not val_names:
+        val_names = ['value']
     if not res:
         res = np.abs(get_resolution(points_df.latitude.values,
                                     points_df.longitude.values)).min()
