@@ -1,21 +1,15 @@
 """
 This file is part of CLIMADA.
-
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
-
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, version 3.
-
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
-
 ---
-
 Define TCTracks: IBTracs reader and tracks manager.
 """
 
@@ -110,7 +104,6 @@ EMANUEL_RMW_CORR_FACTOR = 2.0
 
 class TCTracks():
     """Contains tropical cyclone tracks.
-
     Attributes:
         data (list(xarray.Dataset)): list of tropical cyclone tracks. Each
             track contains following attributes:
@@ -146,7 +139,6 @@ class TCTracks():
 
     def append(self, tracks):
         """Append tracks to current.
-
         Parameters:
             tracks (xarray.Dataset or list(xarray.Dataset)): tracks to append.
         """
@@ -156,11 +148,9 @@ class TCTracks():
 
     def get_track(self, track_name=None):
         """Get track with provided name. Return all tracks if no name provided.
-
         Parameters:
             track_name (str, optional): name or sid (ibtracsID for IBTrACS)
                 of track
-
         Returns:
             xarray.Dataset or [xarray.Dataset]
         """
@@ -185,7 +175,6 @@ class TCTracks():
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
         and radius_max_wind. Checks environmental_pressure > central_pressure.
-
         Parameters:
             provider (str, optional): If specified, enforce use of specific
                 agency, such as "usa", "newdelhi", "bom", "cma", "tokyo".
@@ -329,10 +318,9 @@ class TCTracks():
                 st_ds['poci'] = st_ds.poci.fillna(st_penv)
 
             if estimate_missing:
-                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values,
-                    st_ds.lat.values, st_ds.pres.values)
-                st_ds['roci'][:] = estimate_roci(st_ds.roci.values,
-                    st_ds.pres.values, st_ds.rmw.values)
+                st_ds['rmw'][:] = estimate_rmw(st_ds.rmw.values, st_ds.pres.values)
+                st_ds['roci'][:] = estimate_roci(st_ds.roci.values, st_ds.rmw.values)
+                st_ds['roci'][:] = np.fmax(st_ds.rmw.values, st_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
@@ -365,7 +353,6 @@ class TCTracks():
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file(s).
-
         Parameters:
             file_names (str or list(str)): absolute file name(s) or
                 folder name containing the files to read.
@@ -377,7 +364,6 @@ class TCTracks():
 
     def read_simulations_emanuel(self, file_names, hemisphere='S'):
         """Fill from Kerry Emanuel tracks.
-
         Parameters:
             file_names (str or list(str)): absolute file name(s) or
                 folder name containing the files to read.
@@ -391,7 +377,6 @@ class TCTracks():
 
     def _read_file_emanuel(self, path, hemisphere='S', rmw_corr=False):
         """Append tracks from file containing Kerry Emanuel simulations.
-
         Parameters:
             path (str): absolute path of file to read.
             hemisphere (str, optional): 'S', 'N' or 'both'. Default: 'S'
@@ -505,7 +490,6 @@ class TCTracks():
 
     def read_one_gettelman(self, nc_data, i_track):
         """Fill from Andrew Gettelman tracks.
-
         Parameters:
         nc_data (str): netCDF4.Dataset Objekt
         i_tracks (int): track number
@@ -635,11 +619,9 @@ class TCTracks():
 
     def plot(self, axis=None, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
-
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for LineCollection matplotlib, e.g. alpha=0.5
-
         Returns:
             matplotlib.axes._subplots.AxesSubplot
         """
@@ -700,7 +682,6 @@ class TCTracks():
 
     def write_netcdf(self, folder_name):
         """Write a netcdf file per track with track.sid name in given folder.
-
         Parameters:
             folder_name (str): folder name where to write files
         """
@@ -712,7 +693,6 @@ class TCTracks():
 
     def read_netcdf(self, folder_name):
         """Read all netcdf files contained in folder and fill a track per file.
-
         Parameters:
             folder_name (str): folder name where to write files
         """
@@ -730,10 +710,8 @@ class TCTracks():
     @jit(parallel=True, forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
-
         Parameters:
             track (xr.Dataset): track data
-
         Returns:
             xr.Dataset
         """
@@ -769,7 +747,6 @@ class TCTracks():
 
     def _read_ibtracs_csv_single(self, file_name):
         """Read IBTrACS track file in CSV format.
-
             Parameters:
                 file_name (str): File name of CSV file.
         """
@@ -829,7 +806,6 @@ class TCTracks():
 
 def _calc_land_geom(ens_track):
     """Compute land geometry used for land distance computations.
-
     Returns:
         shapely.geometry.multipolygon.MultiPolygon
     """
@@ -851,7 +827,6 @@ def _calc_land_geom(ens_track):
 
 def _track_land_params(track, land_geom):
     """Compute parameters of land for one track.
-
     Parameters:
         track (xr.Dataset): track values
         land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
@@ -863,10 +838,8 @@ def _track_land_params(track, land_geom):
 def _dist_since_lf(track):
     """Compute the distance to landfall in km point for every point on land.
     Points on water get nan values.
-
     Parameters:
         track (xr.Dataset): tropical cyclone track
-
     Returns:
         np.arrray
     """
@@ -906,11 +879,9 @@ def _dist_since_lf(track):
 def _calc_orig_lf(track, sea_land_idx):
     """Approximate coast coordinates in landfall as the middle point
     before landfall and after.
-
     Parameters:
         track (xr.Dataset): TC track
         sea_land_idx (np.array): array position of sea before landfall
-
     Returns:
         np.array (first column lat and second lon of each landfall coord)
     """
@@ -951,47 +922,50 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
                          + c_pres * cen_pres[msk]
     return v_max
 
-def estimate_roci(roci, cen_pres, rmw):
+def estimate_roci(roci, cen_pres):
     """Replace missing radius values with statistical estimate."""
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
-    rmw = np.where(np.isnan(rmw), -1, rmw)
-    msk = (roci <= 0) & (cen_pres > 0) & (rmw > 0)
-    # ibtracs_fit_param('roci', ['pres', 'rmw'], order=[2, 1], year_range=(1980, 2019))
-    # r^2: 0.2239625797986191
-    c_const, c_rmw, c_pres, c_pres2 = -18245.317, 0.904, 39.164, -0.0208
-    roci[msk] = c_const + c_rmw * rmw[msk] \
-                        + c_pres * cen_pres[msk] \
-                        + c_pres2 * cen_pres[msk]**2
+    msk = (roci <= 0) & (cen_pres > 0)
+    # ibtracs_fit_param('roci', ['pres'],
+    #                   order=[(872, 950, 985, 1005, 1021)],
+    #                   year_range=(1980, 2019))
+    # r^2: 0.9148320406675339
+    pres_l = [872, 950, 985, 1005, 1021]
+    roci_l = [210.711487, 215.897110, 198.261520, 159.589508, 90.900116]
+    roci[msk] = 0
+    for i in range(len(pres_l)):
+        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
+        roci[msk] += roci_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
+                                             - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
     return roci
 
-def estimate_rmw(rmw, lat, cen_pres):
+def estimate_rmw(rmw, cen_pres):
     """Replace missing radius values with statistical estimate."""
     rmw = np.where(np.isnan(rmw), -1, rmw)
-    lat = np.where(np.isnan(lat), -999, lat)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
-    msk = (rmw <= 0) & (lat > -999) & (cen_pres > 0)
-    # ibtracs_fit_param('rmw', ['lat', 'pres'], order=2, year_range=(1980, 2019))
-    # r^2: 0.28089731039419485
-    c_const, c_lat, c_lat2, c_pres, c_pres2 = (5875.162, -0.03465, 0.0146,
-                                               -12.5166, 0.006677)
-    rmw[msk] = c_const + c_lat * lat[msk] \
-                       + c_lat2 * lat[msk]**2 \
-                       + c_pres * cen_pres[msk] \
-                       + c_pres2 * cen_pres[msk]**2
+    msk = (rmw <= 0) & (cen_pres > 0)
+    # ibtracs_fit_param('rmw', ['pres'], order=[(872, 940, 980, 1021)], year_range=(1980, 2019))
+    # r^2: 0.7905970811843872
+    pres_l = [872, 940, 980, 1021]
+    rmw_l = [14.907318, 15.726927, 25.742142, 56.856522]
+    rmw[msk] = 0
+    for i in range(len(pres_l)):
+        slope_0 = 1. / (pres_l[i] - pres_l[i - 1]) if i > 0 else 0
+        slope_1 = 1. / (pres_l[i + 1] - pres_l[i]) if i + 1 < len(pres_l) else 0
+        rmw[msk] += rmw_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l[i] - cen_pres[msk])
+                                           - slope_1 * np.fmax(0, cen_pres[msk] - pres_l[i])))
     return rmw
 
 def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     """Statistically fit an ibtracs parameter to other ibtracs variables
-
     A linear ordinary least squares fit is done using the statsmodels package.
-
     Parameters:
         explained (str): name of explained variable
         explanatory (iterable): names of explanatory variables
         year_range (tuple): first and last year to include in the analysis
         order (int or tuple): the maximal order of the explanatory variables
-
     Returns:
         OLSResults
     """
@@ -1029,37 +1003,42 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
                 .fillna(all_vals.isel(agency=preferred_ix))
         else:
             ds[v] = all_vals.isel(agency=preferred_ix)
-    df = pd.DataFrame({ v: ds[v].values.ravel() for v in variables })
-    df = df.dropna(axis=0, how='any')
+    df = pd.DataFrame({v: ds[v].values.ravel() for v in variables})
+    df = df.dropna(axis=0, how='any').reset_index(drop=True)
+    if 'lat' in explanatory:
+        df['lat'] = df['lat'].abs()
 
     # prepare explanatory variables
     d_explanatory = df[explanatory]
     if isinstance(order, int):
         order = (order,) * len(explanatory)
+    add_const = False
     for ex, max_o in zip(explanatory, order):
         if isinstance(max_o, tuple):
+            if df[ex].min() > max_o[0]:
+                print(f"Minimum data value is {df[ex].min()} > {max_o[0]}.")
+            if df[ex].max() < max_o[-1]:
+                print(f"Maximum data value is {df[ex].max()} < {max_o[-1]}.")
             # piecewise linear with given break points
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
-            msk = (df[ex] <= max_o[0])
-            col = f'{ex}<={max_o[0]}'
-            d_explanatory[col] = 0
-            d_explanatory.loc[msk, col] = df.loc[msk, ex]
             for i in range(len(max_o)):
-                msk = (max_o[i] < df[ex])
-                if i + 1 < len(max_o):
-                    msk &= (df[ex] <= max_o[i + 1])
-                col = f'{ex}>{max_o[i]}'
-                d_explanatory[col] = 0
-                d_explanatory.loc[msk, col] = df.loc[msk, ex]
+                col = f'{ex}{max_o[i]}'
+                slope_0 = 1. / (max_o[i] - max_o[i - 1]) if i > 0 else 0
+                slope_1 = 1. / (max_o[i + 1] - max_o[i]) if i + 1 < len(max_o) else 0
+                d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, max_o[i] - df[ex])
+                                                 - slope_1 * np.fmax(0, df[ex] - max_o[i])))
         elif max_o < 0:
             d_explanatory = d_explanatory.drop(labels=[ex], axis=1)
             for o in range(1, abs(max_o) + 1):
                 d_explanatory[f'{ex}^{-o}'] = df[ex]**(-o)
+            add_const = True
         else:
             for o in range(2, max_o + 1):
                 d_explanatory[f'{ex}^{o}'] = df[ex]**o
+            add_const = True
     d_explained = df[[explained]]
-    d_explanatory['const'] = 1.0
+    if add_const:
+        d_explanatory['const'] = 1.0
 
     # run statistical fit
     sm_results = sm.OLS(d_explained, d_explanatory).fit()
@@ -1084,12 +1063,10 @@ def ibtracs_track_agency(ds):
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
     """Compute maximum wind speed in unit_dest
-
     Parameters:
         wind (np.array): wind
         unit_orig (str): units of wind
         unit_dest (str): units to change wind
-
     Returns:
         double
     """
@@ -1119,7 +1096,6 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
 
 def set_category(max_sus_wind, wind_unit, saffir_scale=None):
     """Add storm category according to saffir-simpson hurricane scale
-
       - -1 tropical depression
       - 0 tropical storm
       - 1 Hurricane category 1
@@ -1127,12 +1103,10 @@ def set_category(max_sus_wind, wind_unit, saffir_scale=None):
       - 3 Hurricane category 3
       - 4 Hurricane category 4
       - 5 Hurricane category 5
-
     Parameters:
         max_sus_wind (np.array): max sustained wind
         wind_unit (str): units of max sustained wind
         saffir_scale (list, optional): Saffir-Simpson scale in same units as wind
-
     Returns:
         double
     """
