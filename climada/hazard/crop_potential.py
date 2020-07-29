@@ -184,6 +184,8 @@ class CropPotential(Hazard):
         self.set_raster([filename], band=id_bands,
                         geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
 
+        self.intensity.data[np.isnan(self.intensity.data)] = 0.0
+        self.intensity.todense()
         self.crop = crop
         self.event_name = event_list
         self.frequency = np.ones(len(self.event_name)) * (1 / len(self.event_name))
@@ -247,8 +249,7 @@ class CropPotential(Hazard):
         idx = np.where(hist_mean != 0)[0]
 
         # initialize new hazard_matrix
-        hazard_matrix = np.empty(self.intensity.shape)
-        hazard_matrix[:, :] = np.nan
+        hazard_matrix = np.zeros(self.intensity.shape)
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
