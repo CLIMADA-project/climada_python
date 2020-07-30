@@ -19,18 +19,18 @@ Unit Tests on LitPop exposures.
 import os
 import numpy as np
 import unittest
-from climada.entity.exposures.cropyield_isimip import CropyieldIsimip
+from climada.entity.exposures.crop_production import CropProduction
 from climada.util.constants import DATA_DIR
 
 INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FILENAME = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
 
-class TestCropyieldIsimip(unittest.TestCase):
+class TestCropProduction(unittest.TestCase):
     """Test Cropyield_Isimip Class methods"""
     def test_load_central_EU(self):
-        """Test defining cropyield_isimip Exposure from complete demo file (Central Europe)"""
-        exp = CropyieldIsimip()
+        """Test defining crop_production Exposure from complete demo file (Central Europe)"""
+        exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t', irr='firr')
@@ -45,8 +45,8 @@ class TestCropyieldIsimip(unittest.TestCase):
         self.assertAlmostEqual(exp.value.max(), 284244.81023404596, places=5)
 
     def test_set_to_usd(self):
-        """Test calculating cropyield_isimip Exposure in [USD / y]"""
-        exp = CropyieldIsimip()
+        """Test calculating crop_production Exposure in [USD / y]"""
+        exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t', irr='firr')
@@ -65,7 +65,7 @@ class TestCropyieldIsimip(unittest.TestCase):
     
     def test_set_to_usd_unnecessary(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
-        exp = CropyieldIsimip()
+        exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', irr='firr')
@@ -80,5 +80,5 @@ class TestCropyieldIsimip(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropyieldIsimip)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropProduction)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
