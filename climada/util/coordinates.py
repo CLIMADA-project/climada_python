@@ -141,18 +141,19 @@ def lon_normalize(lon, center=0.0):
             break
     return lon
 
-def lon_bounds(lon):
-    """Bounds of a set of degree values, respecting the periodicity
+def latlon_bounds(lat, lon):
+    """Bounds of a set of degree values, respecting the periodicity in longitude
 
     Example:
-        >>> lon_bounds(np.array([-179, 175, 178]))
-        (175, 181)
+        >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
+        (175, -2, 181, 5)
 
     Parameters:
+        lat (np.array): Latitudinal coordinates
         lon (np.array): Longitudinal coordinates
 
     Returns:
-        tuple
+        tuple (lon_min, lat_min, lon_max, lat_max)
     """
     lon = lon_normalize(lon)
     lon_uniq = np.unique(lon)
@@ -164,7 +165,7 @@ def lon_bounds(lon):
         lon_min -= 360
     else:
         lon_max += 360
-    return (lon_min, lon_max)
+    return (lon_min, lat.min(), lon_max, lat.max())
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect"):

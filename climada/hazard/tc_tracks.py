@@ -663,13 +663,11 @@ class TCTracks():
             return None
 
         pad = 1
-        lons = np.concatenate([t.lon.values for t in self.data])
-        lats = np.concatenate([t.lat.values for t in self.data])
-        min_lat, max_lat = lats.min() - pad, lats.max() + pad
-        min_lon, max_lon = coord_util.lon_bounds(lons)
-        min_lon, max_lon = min_lon - pad, max_lon + pad
-        mid_lon = 0.5 * (max_lon + min_lon)
-        extent = (min_lon, max_lon, min_lat, max_lat)
+        bounds = coord_util.latlon_bounds(
+            np.concatenate([t.lat.values for t in self.data]),
+            np.concatenate([t.lon.values for t in self.data]))
+        mid_lon = 0.5 * (bounds[0] + bounds[2])
+        extent = (min_lon - pad, max_lon + pad, min_lat - pad, max_lat + pad)
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)

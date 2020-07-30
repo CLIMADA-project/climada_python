@@ -29,9 +29,11 @@ import sys
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import matplotlib.colors
 import matplotlib.cm
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -101,17 +103,14 @@ class TCSurgeGeoClaw(Hazard):
         if centroids is None:
             # compute from given tracks extent
             pad = CENTR_NODE_MAX_DIST_DEG
-            lons = np.concatenate([t.lon.values for t in tracks.data])
-            lats = np.concatenate([t.lat.values for t in tracks.data])
-            min_lat, max_lat = lats.min() - pad, lats.max() + pad
-            min_lon, max_lon = coord_util.lon_bounds(lons)
-            min_lon, max_lon = min_lon - pad, max_lon + pad
-            t_bounds = (min_lon, min_lat, max_lon, max_lat)
-            res_as = 90
-            res_deg = res_as / 3600
-            lat_dim = np.arange(t_bounds[1] + 0.5 * res_deg, t_bounds[3], res_deg)
-            lon_dim = np.arange(t_bounds[0] + 0.5 * res_deg, t_bounds[2], res_deg)
-            lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
+            bounds = coord_util.latlon_bounds(
+                np.concatenate([t.lat.values for t in tracks.data]),
+                np.concatenate([t.lon.values for t in tracks.data]))
+            # resolution defaults to 90 arc-seconds
+            res_deg = 90 / (60 * 60)
+            lat = np.arange(bounds[1] - pad + 0.5 * res_deg, bounds[3] + pad, res_deg)
+            lon = np.arange(bounds[0] - pad + 0.5 * res_deg, bounds[2] + pad, res_deg)
+            lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
             centroids = Centroids()
             centroids.set_lat_lon(lat, lon)
 
@@ -127,11 +126,7 @@ class TCSurgeGeoClaw(Hazard):
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
-        tc_haz = [haz_from_track(track, centroids, coastal_idx)
-                  for track in tracks.data]
-        LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
-        LOGGER.debug('Compute frequency.')
+        self.concatenate([haz_from_track(t, centroids, coastal_idx) for t in tracks.data])
         TropCyclone.frequency_from_tracks(self, tracks.data)
         self.tag.description = description
 
@@ -187,12 +182,8 @@ def geoclaw_surge_from_track(track, centroids):
     intensity = np.zeros(centroids.shape[0])
 
     # normalize longitudes of centroids and track
-    pad = 0.5
-    min_lat, max_lat = track.lat.min() - pad, track.lat.max() + pad
-    min_lon, max_lon = coord_util.lon_bounds(track.lon.values)
-    min_lon, max_lon = min_lon - pad, max_lon + pad
-    track_bounds = (min_lon, min_lat, max_lon, max_lat)
-    mid_lon = 0.5 * (max_lon + min_lon)
+    track_bounds = coord_util.latlon_bounds(track.lat.values, track.lon.values)
+    mid_lon = 0.5 * (track_bounds[0] + track_bounds[2])
     track['lon'][:] = coord_util.lon_normalize(track.lon.values, center=mid_lon)
     centroids[:, 0] = coord_util.lon_normalize(centroids[:, 0], center=mid_lon)
 
@@ -217,42 +208,44 @@ def geoclaw_surge_from_track(track, centroids):
     track['radius_oci'][:] = estimate_roci(track.radius_oci.values, track.central_pressure.values)
     track['radius_oci'][:] = np.fmax(track.radius_max_wind.values, track.radius_oci.values)
 
+    # create work directory
+    work_dir = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + f"-{track.sid}"
+    work_dir = os.path.join(GEOCLAW_WORK_DIR, work_dir)
+    os.makedirs(work_dir, exist_ok=True)
+
     # get landfall events
     events = TCSurgeEvents(track, track_centr)
-    # events.plot_areas()
+    events.plot_areas(path=os.path.join(work_dir, "event_areas.pdf"))
 
-    LOGGER.info("Preparing %d runs of GeoClaw...", len(events))
-    surge_h = [run_geoclaw(track, track_centr, e) for e in events]
+    LOGGER.info("Starting %d runs of GeoClaw...", len(events))
+    surge_h = []
+    for event in events:
+        event_surge_h = np.zeros(track_centr.shape[0])
+        event_track = track.sel(time=event['time_mask_buffered'])
+        runner = GeoclawRunner(work_dir, event_track, event['period'][0], event,
+                               track_centr[event['centroid_mask']])
+        runner.run()
+        event_surge_h[event['centroid_mask']] = runner.surge_h
+        surge_h.append(event_surge_h)
 
     # write results to intensity array
     intensity[track_centr_msk] = np.stack(surge_h, axis=0).max(axis=0)
     return intensity
 
 
-def run_geoclaw(track, centroids, event):
-    """Run geoclaw for the given landfall event, save surge heights on centroids
-
-    Parameters:
-        track (xr.Dataset): Single tropical cyclone track.
-        centroids (np.array): Points for which to record the maximum height of
-            inundation. Each row is a lat-lon point.
-        event (dict): Landfall event (single iterator output from TCSurgeEvents).
-
-    Returns:
-        np.array
-    """
-    surge_h = np.zeros(centroids.shape[0])
-    track = track.sel(time=event['time_mask_buffered'])
-    runner = GeoclawRunner(track, event['period'][0], event,
-                           centroids[event['centroid_mask']])
-    runner.run()
-    surge_h[event['centroid_mask']] = runner.surge_h
-    return surge_h
-
-
 class GeoclawRunner():
     """"Wrapper for work directory setup and running of GeoClaw simulations"""
-    def __init__(self, track, time_offset, areas, centroids):
+    def __init__(self, base_dir, track, time_offset, areas, centroids):
+        """Initialize GeoClaw working directory with ClawPack rundata
+
+        Parameters:
+            base_dir (str): Location where to create the working directory.
+            track (xr.Dataset): Single tropical cyclone track.
+            time_offset (np.datetime64): Usually, time of landfall
+            areas (dict): Landfall event (single iterator output from TCSurgeEvents).
+            centroids (np.array): Points for which to record the maximum height of
+                inundation. Each row is a lat-lon point.
+        """
         LOGGER.info("Running GeoClaw to determine surge on %d centroids", centroids.shape[0])
         self.track = track
         self.areas = areas
@@ -266,10 +259,8 @@ class GeoclawRunner():
                                              self.track.time[-1] - self.time_offset)])
 
         # create work directory
-        self.work_dir = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.work_dir += f"-{self.track.sid}"
-        self.work_dir += dt64_to_pydt(self.time_offset).strftime("-%Y-%m-%d-%H")
-        self.work_dir = os.path.join(GEOCLAW_WORK_DIR, self.work_dir)
+        self.work_dir = os.path.join(
+            base_dir, dt64_to_pydt(self.time_offset).strftime("%Y-%m-%d-%H"))
         os.makedirs(self.work_dir, exist_ok=True)
         LOGGER.info("Init GeoClaw working directory in %s", self.work_dir)
 
@@ -363,21 +354,19 @@ include $(CLAW)/clawutil/src/Makefile.common
         # pylint: disable=import-outside-toplevel
         import clawpack.clawutil.data
         num_dim = 2
-        rundata = clawpack.clawutil.data.ClawRunData("geoclaw", num_dim)
-
-        self.set_rundata_clawdata(rundata)
-        self.set_rundata_amrdata(rundata)
-        self.set_rundata_geodata(rundata)
-        self.set_rundata_fgmax(rundata)
-        self.set_rundata_storm(rundata)
-
+        self.rundata = clawpack.clawutil.data.ClawRunData("geoclaw", num_dim)
+        self.set_rundata_claw()
+        self.set_rundata_amr()
+        self.set_rundata_geo()
+        self.set_rundata_fgmax()
+        self.set_rundata_storm()
         with contextlib.redirect_stdout(None):
-            rundata.write(out_dir=self.work_dir)
+            self.rundata.write(out_dir=self.work_dir)
 
 
-    def set_rundata_clawdata(self, rundata):
+    def set_rundata_claw(self):
         """Set the rundata parameters in the `clawdata` category"""
-        clawdata = rundata.clawdata
+        clawdata = self.rundata.clawdata
         clawdata.verbosity = 1
         clawdata.num_output_times = 0
         clawdata.lower = self.areas['wind_area'][:2]
@@ -398,10 +387,11 @@ include $(CLAW)/clawutil/src/Makefile.common
         clawdata.bc_upper = ['extrap', 'extrap']
 
 
-    def set_rundata_amrdata(self, rundata):
+    def set_rundata_amr(self):
         """Set AMR-related rundata attributes"""
-        clawdata = rundata.clawdata
-        amrdata = rundata.amrdata
+        clawdata = self.rundata.clawdata
+        amrdata = self.rundata.amrdata
+        refinedata = self.rundata.refinement_data
         amrdata.amr_levels_max = 5
         amrdata.refinement_ratios_x = [2, 2, 2, 4]
         amrdata.refinement_ratios_y = amrdata.refinement_ratios_x
@@ -415,32 +405,35 @@ include $(CLAW)/clawutil/src/Makefile.common
         amrdata.regrid_interval = 3
         amrdata.regrid_buffer_width = 2
         amrdata.verbosity_regrid = 0
-        regions = rundata.regiondata.regions
-        t_1, t_2 = rundata.clawdata.t0, rundata.clawdata.tfinal
+        regions = self.rundata.regiondata.regions
+        t_1, t_2 = self.rundata.clawdata.t0, self.rundata.clawdata.tfinal
         maxlevel = amrdata.amr_levels_max
         x_1, y_1, x_2, y_2 = self.areas['landfall_area']
         regions.append([maxlevel - 2, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
         for area in self.areas['surge_areas']:
             x_1, y_1, x_2, y_2 = area
             regions.append([maxlevel - 1, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
-        rundata.refinement_data.speed_tolerance = list(np.arange(1.0, maxlevel))
-        rundata.refinement_data.variable_dt_refinement_ratios = True
-        rundata.refinement_data.wave_tolerance = 1.0
-        rundata.refinement_data.deep_depth = 1e3
+        refinedata.speed_tolerance = list(np.arange(1.0, maxlevel))
+        refinedata.variable_dt_refinement_ratios = True
+        refinedata.wave_tolerance = 1.0
+        refinedata.deep_depth = 1e3
 
 
-    def set_rundata_geodata(self, rundata):
+    def set_rundata_geo(self):
         """Set geo-related rundata attributes"""
         # pylint: disable=import-outside-toplevel
         from clawpack.geoclaw import topotools
 
+        geodata = self.rundata.geo_data
+        topodata = self. rundata.topo_data
+
         # lat-lon coordinate system
-        rundata.geo_data.coordinate_system = 2
+        geodata.coordinate_system = 2
 
         # different friction on land and at sea
-        rundata.geo_data.manning_coefficient = [0.025, 0.050]
-        rundata.geo_data.manning_break = [0.0]
-        rundata.geo_data.dry_tolerance = 1.e-2
+        geodata.manning_coefficient = [0.025, 0.050]
+        geodata.manning_break = [0.0]
+        geodata.dry_tolerance = 1.e-2
 
         # get sea level information for affected months
         months = np.stack((self.track.time.dt.year,
@@ -458,10 +451,10 @@ include $(CLAW)/clawutil/src/Makefile.common
             else:
                 months[-1, 1] += 1
         months = np.unique(months, axis=0)
-        rundata.geo_data.sea_level = mean_max_sea_level(months, self.areas['wind_area'])
+        geodata.sea_level = mean_max_sea_level(months, self.areas['wind_area'])
 
         # load elevation data, resolution depending on area of refinement
-        rundata.topo_data.topofiles = []
+        topodata.topofiles = []
         areas = [
             self.areas['wind_area'],
             self.areas['landfall_area']
@@ -478,36 +471,36 @@ include $(CLAW)/clawutil/src/Makefile.common
             tt3_fname = 'topo_{}s_{}.tt3'.format(res_as, bounds_to_str(bounds))
             tt3_fname = os.path.join(self.work_dir, tt3_fname)
             topo.write(tt3_fname)
-            rundata.topo_data.topofiles.append([3, 1, rundata.amrdata.amr_levels_max,
-                                                rundata.clawdata.t0, rundata.clawdata.tfinal,
-                                                tt3_fname])
+            topodata.topofiles.append([3, 1, self.rundata.amrdata.amr_levels_max,
+                                       self.rundata.clawdata.t0, self.rundata.clawdata.tfinal,
+                                       tt3_fname])
             dems_for_plot.append((bounds, zvalues))
-        # plot_dems(dems_for_plot)
+        plot_dems(dems_for_plot, track=self.track, path=os.path.join(self.work_dir, "dems.pdf"))
 
 
-    def set_rundata_fgmax(self, rundata):
+    def set_rundata_fgmax(self):
         """Set monitoring-related rundata attributes"""
         # pylint: disable=import-outside-toplevel
         from clawpack.geoclaw import fgmax_tools
 
         # monitor max height values on centroids
-        rundata.fgmax_data.num_fgmax_val = 1
+        self.rundata.fgmax_data.num_fgmax_val = 1
         fgmax_grid = fgmax_tools.FGmaxGrid()
         fgmax_grid.point_style = 0
-        fgmax_grid.tstart_max = rundata.clawdata.t0
-        fgmax_grid.tend_max = rundata.clawdata.tfinal
+        fgmax_grid.tstart_max = self.rundata.clawdata.t0
+        fgmax_grid.tend_max = self.rundata.clawdata.tfinal
         fgmax_grid.dt_check = 0
-        fgmax_grid.min_level_check = rundata.amrdata.amr_levels_max - 1
+        fgmax_grid.min_level_check = self.rundata.amrdata.amr_levels_max - 1
         fgmax_grid.arrival_tol = 1.e-2
         fgmax_grid.npts = self.centroids.shape[0]
         fgmax_grid.X = self.centroids[:, 1]
         fgmax_grid.Y = self.centroids[:, 0]
-        rundata.fgmax_data.fgmax_grids.append(fgmax_grid)
+        self.rundata.fgmax_data.fgmax_grids.append(fgmax_grid)
 
 
-    def set_rundata_storm(self, rundata):
+    def set_rundata_storm(self):
         """Set storm-related rundata attributes"""
-        surge_data = rundata.surge_data
+        surge_data = self.rundata.surge_data
         surge_data.wind_forcing = True
         surge_data.drag_law = 1
         surge_data.pressure_forcing = True
@@ -518,12 +511,20 @@ include $(CLAW)/clawutil/src/Makefile.common
         gc_storm.write(surge_data.storm_file, file_format='geoclaw')
 
 
-def plot_dems(dems):
+def plot_dems(dems, track=None, path=None):
     """Plot given DEMs as rasters to one worldmap
 
     Parameters:
         dems (list of pairs): pairs (bounds, heights)
+        path (str or None): If given, save plot in this location. Default: None
+        track (xr.Dataset): If given, overlay the tropical cyclone track. Default: None
     """
+    matplotlib.rc('axes', linewidth=0.5)
+    matplotlib.rc('font', size=7, family='serif')
+    matplotlib.rc('xtick', top=True, direction='out')
+    matplotlib.rc('xtick.major', size=2.5, width=0.5)
+    matplotlib.rc('ytick', right=True, direction='out')
+    matplotlib.rc('ytick.major', size=2.5, width=0.5)
     total_bounds = (
         min([bounds[0] for bounds, _ in dems]),
         min([bounds[1] for bounds, _ in dems]),
@@ -531,10 +532,44 @@ def plot_dems(dems):
         max([bounds[3] for bounds, _ in dems]),
     )
     mid_lon = 0.5 * (total_bounds[0] + total_bounds[2])
+    aspect_ratio = 1.124 * ((total_bounds[2] - total_bounds[0])
+                            / (total_bounds[3] - total_bounds[1]))
+    if aspect_ratio >= 1:
+        figsize = (10, 10 / aspect_ratio)
+    else:
+        figsize = (aspect_ratio * 10, 10)
+    fig = plt.figure(figsize=figsize, dpi=100)
     proj = ccrs.PlateCarree(central_longitude=mid_lon)
-    axes = plt.axes(projection=proj)
+    axes = fig.add_subplot(111, projection=proj)
+    axes.outline_patch.set_linewidth(0.5)
     axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
     axes.set_ylim(total_bounds[1], total_bounds[3])
+    cmap, cnorm = colormap_coastal_dem(axes=axes)
+    for bounds, heights in dems:
+        bounds = (bounds[0] - mid_lon, bounds[1], bounds[2] - mid_lon, bounds[3])
+        axes.imshow(heights, transform=proj, cmap=cmap, norm=cnorm,
+                    extent=(bounds[0], bounds[2], bounds[1], bounds[3]),
+                    vmin=cnorm.values[0], vmax=cnorm.values[-1])
+        plot_bounds(axes, bounds, color='k', linewidth=0.5)
+    axes.coastlines(resolution='10m', linewidth=0.5)
+    if track:
+        axes.plot(track.lon - mid_lon, track.lat, color='k', linewidth=0.5)
+    fig.subplots_adjust(left=0.02, bottom=0.01, right=0.89, top=0.99, wspace=0, hspace=0)
+    if path is None:
+        plt.show()
+    else:
+        canvas = FigureCanvasAgg(fig)
+        canvas.print_figure(path)
+        plt.close(fig)
+
+
+def colormap_coastal_dem(axes=None):
+    """Return colormap and normalization for coastal areas of DEMs
+
+    Parameters:
+        axes (matplotlib.axes.Axes, optional): If given, add a colorbar to the right of it.
+            Default: None
+    """
     cmap_terrain = [
         (0, 0, 0),
         (3, 73, 114),
@@ -549,15 +584,14 @@ def plot_dems(dems):
     cmap_terrain = matplotlib.colors.LinearSegmentedColormap.from_list(
         "coastal_dem", [tuple(c / 255 for c in rgb) for rgb in cmap_terrain])
     cnorm_coastal_dem = LinearSegmentedNormalize([-8000, -1000, -10, -5, 0, 5, 10, 100, 1000])
-    for bounds, heights in dems:
-        extent = (bounds[0] - mid_lon, bounds[2] - mid_lon, bounds[1], bounds[3])
-        axes.imshow(heights, extent=extent, transform=proj,
-                    cmap=cmap_terrain, norm=cnorm_coastal_dem, vmin=-8000, vmax=1000)
-    axes.coastlines(resolution='10m', linewidth=0.5)
-    cbar = plt.colorbar(matplotlib.cm.ScalarMappable(cmap=cmap_terrain), ax=axes)
-    cbar.set_ticks(cnorm_coastal_dem.values)
-    cbar.set_ticklabels(cnorm_coastal_dem.vthresh)
-    plt.show()
+    if axes:
+        cbar_ax = inset_axes(axes, width="5%", height="100%",
+                             loc='lower left', bbox_to_anchor=(1.02, 0., 0.5, 1),
+                             bbox_transform=axes.transAxes, borderpad=0)
+        cbar = plt.colorbar(matplotlib.cm.ScalarMappable(cmap=cmap_terrain), cax=cbar_ax)
+        cbar.set_ticks(cnorm_coastal_dem.values)
+        cbar.set_ticklabels(cnorm_coastal_dem.vthresh)
+    return cmap_terrain, cnorm_coastal_dem
 
 
 class LinearSegmentedNormalize(matplotlib.colors.Normalize):
@@ -868,11 +902,17 @@ class TCSurgeEvents():
             self.centroid_masks.append(centroids_mask)
 
 
-    def plot_areas(self):
-        """Plot areas associated with this track's landfall events"""
+    def plot_areas(self, path=None):
+        """Plot areas associated with this track's landfall events
+
+        Parameters:
+            path (str, optional): If given, save the plots to the given location. Default: None
+        """
         mid_lon = 0.5 * (self.track.lon.max() + self.track.lon.min())
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-        axes = plt.gcf().add_axes([0, 0, 1, 1], projection=proj)
+        fig = plt.figure()
+        axes = fig.add_subplot(111, projection=proj)
+        axes.outline_patch.set_linewidth(0.5)
 
         # plot coastlines
         feat = cfeature.OCEAN.with_scale('10m')
@@ -903,7 +943,13 @@ class TCSurgeEvents():
 
         # plot track data points
         axes.scatter(self.track.lon, self.track.lat, s=2)
-        plt.show()
+        fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0, hspace=0)
+        if path is None:
+            plt.show()
+        else:
+            canvas = FigureCanvasAgg(fig)
+            canvas.print_figure(path)
+            plt.close(fig)
 
 
 def plot_bounds(axes, bounds, **kwargs):
