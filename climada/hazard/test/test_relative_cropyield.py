@@ -21,18 +21,18 @@ Test crop potential module.
 import os
 import unittest
 import numpy as np
-from climada.hazard.crop_potential import CropPotential
+from climada.hazard.relative_cropyield import RelativeCropyield
 from climada.util.constants import DATA_DIR
 
 INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
 
 
-class TestCropPotential(unittest.TestCase):
+class TestRelativeCropyield(unittest.TestCase):
     """Test for defining crop potential event"""
     def test_load_EU_all(self):
         """Test defining crop potential hazard from complete demo file (Central Europe)"""
-        haz = CropPotential()
+        haz = RelativeCropyield()
         haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005),
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
@@ -48,7 +48,7 @@ class TestCropPotential(unittest.TestCase):
 
     def test_set_rel_yield(self):
         """Test setting intensity to relativ yield"""
-        haz = CropPotential()
+        haz = RelativeCropyield()
         haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
                                 cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
                                 co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
@@ -62,5 +62,5 @@ class TestCropPotential(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCropPotential)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRelativeCropyield)
     unittest.TextTestRunner(verbosity=2).run(TESTS)

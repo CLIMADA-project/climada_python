@@ -20,7 +20,7 @@ Define AgriculturalDrought (AD) class.
 WORK IN PROGRESS
 """
 
-__all__ = ['CropPotential']
+__all__ = ['RelativeCropyield']
 
 import logging
 import os
@@ -43,8 +43,8 @@ from climada.util.constants import DATA_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-HAZ_TYPE = 'CP'
-"""Hazard type acronym for Crop Potential"""
+HAZ_TYPE = 'RC'
+"""Hazard type acronym for Relative Cropyield"""
 
 # crop model names as in ISIMIP-filenames
 AG_MODEL = ['gepic',
@@ -103,8 +103,8 @@ INT_DEF = 'Yearly Yield'
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
-class CropPotential(Hazard):
-    """Agricultural climate risk: Crop potentia (relative to historical mean);
+class RelativeCropyield(Hazard):
+    """Agricultural climate risk: Relative Cropyield (relative to historical mean);
     Each year corresponds to one hazard event;
     Based on modelled crop yield, from ISIMIP (www.isimip.org, required input data).
 
@@ -470,7 +470,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     #   yield-crop-irr _ fn_str_var _ startyear _ endyear . nc
     #e.g. gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_
     #   global_annual_1861_2005.nc
-    cp_zero = CropPotential()
+    cp_zero = RelativeCropyield()
     cp_zero.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
                                 ag_model=(items[0])[0], cl_model=(items[0])[1],
                                 scenario=(items[0])[3], soc=(items[0])[4], co2=(items[0])[5],
@@ -496,7 +496,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
         # historic file
         crop_irr = (((items[i])[6]).split('-'))[1] + '-' + (((items[i])[6]).split('-'))[2]
 
-        cp_his = CropPotential()
+        cp_his = RelativeCropyield()
         cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
                                    ag_model=(items[i])[0], cl_model=(items[i])[1],
                                    scenario=(items[i])[3], soc=(items[i])[4],
@@ -518,7 +518,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
         for j, _ in enumerate(scenario_list):
             yearrange_fut = np.array([(YEARCHUNKS[scenario_list[j]])['startyear'],
                                       (YEARCHUNKS[scenario_list[j]])['endyear']])
-            cp_fut = CropPotential()
+            cp_fut = RelativeCropyield()
             cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
                                        ag_model=(items[i])[0], cl_model=(items[i])[1],
                                        scenario=scenario_list[j], soc=(items[i])[4],
