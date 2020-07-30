@@ -160,6 +160,8 @@ class TCTracks():
 
     def get_track(self, track_name=None):
         """Get track with provided name. Return all tracks if no name provided.
+        Returns the first matching track based on the assumption that no other
+        track with the same name or sid exists in the set.
 
         Parameters:
             track_name (str, optional): name or sid (ibtracsID for IBTrACS)
@@ -181,6 +183,23 @@ class TCTracks():
 
         LOGGER.info('No track with name or sid %s found.', track_name)
         return []
+
+    def subset(self, filterdict, use_regex=False):
+        """Subset tracks based on attributes. Currently only uses exact matches.
+        Returns a new instance.
+
+        Parameters:
+            filterdict (dict): Of the form {'sid': 'pattern', ...}. Although
+                this is not an ordered dict, presumably the filter of greatest
+                magnitude should come first.
+        """
+        out = self.__class__(self.pool)
+        out.data = self.data
+
+        for key, pattern in filterdict.items():
+            out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
+
+        return out
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
                             year_range=None, basin=None, estimate_missing=False,
