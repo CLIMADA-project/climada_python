@@ -184,7 +184,7 @@ class TCTracks():
         LOGGER.info('No track with name or sid %s found.', track_name)
         return []
 
-    def subset(self, filterdict, use_regex=False):
+    def subset(self, filterdict):
         """Subset tracks based on attributes. Currently only uses exact matches.
         Returns a new instance.
 
