@@ -58,7 +58,7 @@ def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     d_lat = lats1 - lats2
     return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
 
-def interpol_index(centroids, coordinates, method=METHOD[0], \
+def interpol_index(centroids, coordinates, method=METHOD[0],
                    distance=DIST_DEF[1], threshold=THRESHOLD):
     """Returns for each coordinate the centroids indexes used for
     interpolation.
@@ -85,7 +85,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0], \
         # haversine formula. This is done with a Ball tree.
         interp = index_nn_haversine(centroids, coordinates, threshold)
     else:
-        LOGGER.error('Interpolation using %s with distance %s is not '\
+        LOGGER.error('Interpolation using %s with distance %s is not '
                      'supported.', method, distance)
         interp = np.array([])
     return interp
@@ -131,8 +131,8 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
         assigned[inv == icoord] = min_idx
 
     if num_warn:
-        LOGGER.warning('Distance to closest centroid is greater than %s' \
-            'km for %s coordinates.', threshold, num_warn)
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
 
     return assigned
 
@@ -159,17 +159,17 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
                             return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
-    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, \
-                                return_distance=True, dualtree=True, \
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1,
+                                return_distance=True, dualtree=True,
                                 breadth_first=False)
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist*EARTH_RADIUS_KM > threshold)
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
     if num_warn:
-        LOGGER.warning('Distance to closest centroid is greater than %s' \
-            'km for %s coordinates.', threshold, num_warn)
-        assigned[dist*EARTH_RADIUS_KM > threshold] = -1
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])

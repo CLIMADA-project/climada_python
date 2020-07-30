@@ -108,7 +108,7 @@ class TestGetFileNames(unittest.TestCase):
         tmp_files = os.listdir(file_name)
         tmp_files = [os.path.join(file_name, f) for f in tmp_files]
         tmp_files = [f for f in tmp_files if not os.path.isdir(f)
-                and not os.path.basename(os.path.normpath(f)).startswith('.')]
+                     and not os.path.basename(os.path.normpath(f)).startswith('.')]
 
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))
@@ -126,13 +126,18 @@ class TestExtension(unittest.TestCase):
         """Test not compressed"""
         file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd'
         self.assertEqual('.grd', get_extension(file_name)[1])
-        self.assertEqual('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1', get_extension(file_name)[0])
+        self.assertEqual(
+            '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1',
+            get_extension(file_name)[0])
 
     def test_get_extension_two_pass(self):
         """Test compressed"""
-        file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd.gz'
+        file_name = '/Users/aznarsig/Documents/Python/climada_python' \
+                    '/data/demo/SC22000_VE__M1.grd.gz'
         self.assertEqual('.grd.gz', get_extension(file_name)[1])
-        self.assertEqual('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1', get_extension(file_name)[0])
+        self.assertEqual(
+            '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1',
+            get_extension(file_name)[0])
 
 # Execute Tests
 if __name__ == "__main__":

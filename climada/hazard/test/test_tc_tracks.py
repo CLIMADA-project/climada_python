@@ -38,6 +38,7 @@ TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
 TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
 
+
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
@@ -65,7 +66,7 @@ class TestIBTracs(unittest.TestCase):
         """read_ibtracs_netcdf"""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
-        penv_ref = np.ones(97)*1010
+        penv_ref = np.ones(97) * 1010
         penv_ref[26] = 1011
         penv_ref[27] = 1012
         penv_ref[28] = 1013
@@ -126,7 +127,7 @@ class TestIBTracs(unittest.TestCase):
         """Read several TCs."""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
-                               year_range=(1915, 1916), basin='WP')
+                                     year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
 
         tc_track = tc.TCTracks()
@@ -143,7 +144,7 @@ class TestIBTracs(unittest.TestCase):
         """Check estimate_missing option"""
         tc_try = tc.TCTracks()
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
-                                  estimate_missing=True)
+                                   estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013.61584, 5)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008.63837, 5)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1014.1515, 4)
@@ -263,6 +264,13 @@ class TestFuncs(unittest.TestCase):
         tc_track.append(tc_track_bis)
         self.assertIsInstance(tc_track.get_track(), list)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
+
+    def test_subset(self):
+        """Test subset."""
+        storms = ['1988169N14259', '2002073S16161', '2002143S07157']
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id=storms)
+        self.assertEqual(tc_track.subset({'basin': 'SP'}).size, 2)
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
@@ -403,35 +411,20 @@ class TestFuncs(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
-        track['on_land'] = ('time', coord_on_land(track.lat.values,
-             track.lon.values))
+        track['on_land'] = ('time', coord_on_land(track.lat.values, track.lon.values))
         track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
 
-        msk = track.on_land == False
+        msk = ~track.on_land
         self.assertTrue(np.all(np.isnan(track.dist_since_lf.values[msk])))
         self.assertEqual(track.dist_since_lf.values[msk].size, 38)
 
-        self.assertTrue(track.dist_since_lf.values[-1] >
-                        dist_to_coast(track.lat.values[-1], track.lon.values[-1])/1000)
+        self.assertGreater(track.dist_since_lf.values[-1],
+                           dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall
         dist_on_land = track.dist_since_lf.values[track.on_land]
         self.assertTrue(np.all(np.diff(dist_on_land)[1:] > 0))
-
-    def test_calc_orig_lf(self):
-        """Test _calc_orig_lf for andrew tropical cyclone."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        track = tc_track.get_track()
-        track['on_land'] = ('time', coord_on_land(track.lat.values,
-             track.lon.values))
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]
-        orig_lf = tc._calc_orig_lf(track, sea_land_idx)
-
-        self.assertEqual(orig_lf.shape, (sea_land_idx.size, 2))
-        self.assertTrue(np.array_equal(orig_lf[0], np.array([25.5, -80.25])))
-        self.assertTrue(np.array_equal(orig_lf[1], np.array([29.65, -91.5])))
 
     def test_category_pass(self):
         """Test category computation."""
@@ -523,6 +516,7 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(rad_max_wind[191], 56.10776504, places=5)
         self.assertAlmostEqual(rad_max_wind[192], 57.84814530, places=5)
         self.assertAlmostEqual(rad_max_wind[200], 70.00942075, places=5)
+
 
 # Execute Tests
 if __name__ == "__main__":

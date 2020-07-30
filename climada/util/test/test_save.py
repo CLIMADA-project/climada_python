@@ -46,7 +46,7 @@ class TestSave(unittest.TestCase):
         with self.assertLogs('climada.util.save', level='INFO') as cm:
             save(file_name, ent)
         self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
-        self.assertTrue((file_name in cm.output[0]) or \
+        self.assertTrue((file_name in cm.output[0]) or
                         (file_name in cm.output[1]))
 
     def test_load_pass(self):

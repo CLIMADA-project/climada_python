@@ -64,7 +64,7 @@ class GDP2Asset(Exposures):
             raise NameError
 
         if not os.path.exists(path):
-            LOGGER.error('Invalid path ' + path)
+            LOGGER.error('Invalid path %s', path)
             raise NameError
         try:
 
@@ -82,11 +82,10 @@ class GDP2Asset(Exposures):
                 tag.description += ("{} GDP2Asset \n").\
                     format(countries[cntr_ind])
             Exposures.__init__(self, gpd.GeoDataFrame(
-                        pd.concat(gdp2a_list, ignore_index=True)))
+                pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
-            LOGGER.error('Exposure countries: ' + str(countries) + ' or reg ' +
-                         str(reg) + ' could not be set, check ISO3 or' +
-                         ' reference year ' + str(ref_year))
+            LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
+                         ' reference year %s', countries, reg, ref_year)
             raise KeyError
         self.tag = tag
         self.ref_year = ref_year
@@ -120,8 +119,7 @@ class GDP2Asset(Exposures):
         natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-        lat, lon = get_region_gridpoints(countries=[natID], iso=False,
-            basemap="isimip")
+        lat, lon = get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)
@@ -154,13 +152,12 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp_lat = gdp_file.lat.data
         time = gdp_file.time.dt.year
     except OSError:
-        LOGGER.error('Problems while reading ,' + path +
-                     ' check exposure_file specifications')
+        LOGGER.error('Problems while reading %s check exposure_file specifications', path)
         raise OSError
     try:
         year_index = np.where(time == ref_year)[0][0]
     except IndexError:
-        LOGGER.error('No data available for year ' + str(ref_year))
+        LOGGER.error('No data available for year %s', ref_year)
         raise KeyError
     conv_lon = asset_converter.lon.data
     conv_lat = asset_converter.lat.data
@@ -176,7 +173,7 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         asset = sp.interpolate.interpn((gdp_lat, gdp_lon),
                                        np.nan_to_num(asset),
                                        (shp_exposures[:, 0],
-                                       shp_exposures[:, 1]),
+                                        shp_exposures[:, 1]),
                                        method='nearest',
                                        bounds_error=False,
                                        fill_value=None)
@@ -184,7 +181,7 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         conv_factors = sp.interpolate.interpn((conv_lat, conv_lon),
                                               np.nan_to_num(conv_factors),
                                               (shp_exposures[:, 0],
-                                              shp_exposures[:, 1]),
+                                               shp_exposures[:, 1]),
                                               method='nearest',
                                               bounds_error=False,
                                               fill_value=None)
@@ -192,21 +189,21 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp = sp.interpolate.interpn((gdp_lat, gdp_lon),
                                      np.nan_to_num(gdp),
                                      (shp_exposures[:, 0],
-                                     shp_exposures[:, 1]),
+                                      shp_exposures[:, 1]),
                                      method='nearest',
                                      bounds_error=False,
                                      fill_value=None)
-        asset = gdp*conv_factors
+        asset = gdp * conv_factors
 
     return asset
 
 
 def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
 
-    if (max(gdp_lat)+0.5 < max(shp_exposures[:, 0])) or\
-           (max(gdp_lon)+0.5 < max(shp_exposures[:, 1])) or\
-           (min(gdp_lat)-0.5 > min(shp_exposures[:, 0])) or\
-           (min(gdp_lon)-0.5 > min(shp_exposures[:, 1])):
+    if (max(gdp_lat) + 0.5 < max(shp_exposures[:, 0])) or\
+           (max(gdp_lon) + 0.5 < max(shp_exposures[:, 1])) or\
+           (min(gdp_lat) - 0.5 > min(shp_exposures[:, 0])) or\
+           (min(gdp_lon) - 0.5 > min(shp_exposures[:, 1])):
 
         LOGGER.error('Asset Data does not match selected country')
         raise IOError

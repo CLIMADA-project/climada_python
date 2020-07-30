@@ -61,7 +61,7 @@ class IFTropCyclone(ImpactFunc):
         if v_half <= v_thresh:
             LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
             raise ValueError
-        if  v_thresh < 0 or v_half < 0:
+        if v_thresh < 0 or v_half < 0:
             LOGGER.error('Negative shape parameter.')
             raise ValueError
         if scale > 1 or scale <= 0:
@@ -84,8 +84,8 @@ class IFSTropCyclone(ImpactFuncSet):
     def __init__(self):
         ImpactFuncSet.__init__(self)
 
-    def set_calibrated_regional_IFs(self, calibration_approach='TDR', q=.5, \
-                                   input_file_path=None, version=1):
+    def set_calibrated_regional_IFs(self, calibration_approach='TDR', q=.5,
+                                    input_file_path=None, version=1):
         """ initiate TC wind impact functions based on Eberenz et al. (2020)
 
         Optional Parameters:
@@ -120,18 +120,18 @@ class IFSTropCyclone(ImpactFuncSet):
             calibration_approach = 'TDR1.0'
         # load calibration results depending on approach:
         if isinstance(input_file_path, str):
-            df_calib_results = pd.read_csv(input_file_path,\
+            df_calib_results = pd.read_csv(input_file_path,
                                            encoding="ISO-8859-1", header=0)
         elif isinstance(input_file_path, pd.DataFrame):
             df_calib_results = input_file_path
         else:
-            df_calib_results = pd.read_csv(os.path.join(SYSTEM_DIR,\
-                                 'tc_if_cal_v%02.0f_%s.csv' %(version, \
-                                 calibration_approach)), \
-                                 encoding="ISO-8859-1", header=0)
+            df_calib_results = pd.read_csv(
+                os.path.join(SYSTEM_DIR,
+                             'tc_if_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
+                encoding="ISO-8859-1", header=0)
 
         # define regions and parameters:
-        v_0 = 25.7 # v_threshold based on Emanuel (2011)
+        v_0 = 25.7  # v_threshold based on Emanuel (2011)
         scale = 1.0
 
         regions_short = ['NA1', 'NA2', 'NI', 'OC', 'SI', 'WP1', 'WP2', 'WP3', 'WP4']
@@ -166,7 +166,7 @@ class IFSTropCyclone(ImpactFuncSet):
 
         for idx, region in enumerate(regions_short):
             if_tc = IFTropCyclone()
-            if_tc.set_emanuel_usa(if_id=int(idx+1), v_thresh=v_0, v_half=reg_v_half[region],\
+            if_tc.set_emanuel_usa(if_id=int(idx + 1), v_thresh=v_0, v_half=reg_v_half[region],
                                   scale=scale)
             if_tc.name = regions_long[region]
             self.append(if_tc)
@@ -192,59 +192,59 @@ class IFSTropCyclone(ImpactFuncSet):
         """
         if not region:
             region = 'all'
-        iso3n = {'NA1':   [660, 28, 32, 533, 44, 52, 84, 60, 68, 132, 136,
-                           152, 170, 188, 192, 212, 214, 218, 222, 238, 254,
-                           308, 312, 320, 328, 332, 340, 388, 474, 484, 500,
-                           558, 591, 600, 604, 630, 654, 659, 662, 670, 534,
-                           740, 780, 796, 858, 862, 92, 850], \
-                   'NA2': [124, 840], \
-                   'NI': [4, 51, 31, 48, 50, 64, 262, 232,
-                          231, 268, 356, 364, 368, 376, 400, 398, 414, 417,
-                          422, 462, 496, 104, 524, 512, 586, 634, 682, 706,
-                          144, 760, 762, 795, 800, 784, 860, 887], \
-                   'OC':  [16, 36, 184, 242, 258, 316, 296, 584, 583, 520,
-                           540, 554, 570, 574, 580, 585, 598, 612, 882, 90,
-                           626, 772, 776, 798, 548, 876], \
-                   'SI': [174, 180, 748, 450, 454, 466, 480, 508, 710, 834,
-                          716], \
-                   'WP1': [116, 360, 418, 458, 764, 704], \
-                   'WP2': [608], \
-                   'WP3': [156], \
-                   'WP4': [344, 392, 410, 446, 158], \
-                   'ROW': [8, 12, 20, 24, 10, 40, 112, 56, 204, 535, 70, 72,
-                           74, 76, 86, 96, 100, 854, 108, 120, 140, 148, 162,
-                           166, 178, 191, 531, 196, 203, 384, 208, 818, 226,
-                           233, 234, 246, 250, 260, 266, 270, 276, 288, 292,
-                           300, 304, 831, 324, 624, 334, 336, 348, 352, 372,
-                           833, 380, 832, 404, 408, 983, 428, 426, 430, 434,
-                           438, 440, 442, 470, 478, 175, 498, 492, 499, 504,
-                           516, 528, 562, 566, 807, 578, 275, 616, 620, 642,
-                           643, 646, 638, 652, 663, 666, 674, 678, 686, 688,
-                           690, 694, 702, 703, 705, 239, 728, 724, 729, 744,
-                           752, 756, 768, 788, 792, 804, 826, 581, 732, 894,
-                           248]}
+        iso3n = {'NA1': [660, 28, 32, 533, 44, 52, 84, 60, 68, 132, 136,
+                         152, 170, 188, 192, 212, 214, 218, 222, 238, 254,
+                         308, 312, 320, 328, 332, 340, 388, 474, 484, 500,
+                         558, 591, 600, 604, 630, 654, 659, 662, 670, 534,
+                         740, 780, 796, 858, 862, 92, 850],
+                 'NA2': [124, 840],
+                 'NI': [4, 51, 31, 48, 50, 64, 262, 232,
+                        231, 268, 356, 364, 368, 376, 400, 398, 414, 417,
+                        422, 462, 496, 104, 524, 512, 586, 634, 682, 706,
+                        144, 760, 762, 795, 800, 784, 860, 887],
+                 'OC': [16, 36, 184, 242, 258, 316, 296, 584, 583, 520,
+                        540, 554, 570, 574, 580, 585, 598, 612, 882, 90,
+                        626, 772, 776, 798, 548, 876],
+                 'SI': [174, 180, 748, 450, 454, 466, 480, 508, 710, 834,
+                        716],
+                 'WP1': [116, 360, 418, 458, 764, 704],
+                 'WP2': [608],
+                 'WP3': [156],
+                 'WP4': [344, 392, 410, 446, 158],
+                 'ROW': [8, 12, 20, 24, 10, 40, 112, 56, 204, 535, 70, 72,
+                         74, 76, 86, 96, 100, 854, 108, 120, 140, 148, 162,
+                         166, 178, 191, 531, 196, 203, 384, 208, 818, 226,
+                         233, 234, 246, 250, 260, 266, 270, 276, 288, 292,
+                         300, 304, 831, 324, 624, 334, 336, 348, 352, 372,
+                         833, 380, 832, 404, 408, 983, 428, 426, 430, 434,
+                         438, 440, 442, 470, 478, 175, 498, 492, 499, 504,
+                         516, 528, 562, 566, 807, 578, 275, 616, 620, 642,
+                         643, 646, 638, 652, 663, 666, 674, 678, 686, 688,
+                         690, 694, 702, 703, 705, 239, 728, 724, 729, 744,
+                         752, 756, 768, 788, 792, 804, 826, 581, 732, 894,
+                         248]}
         iso3a = {'NA1': ['AIA', 'ATG', 'ARG', 'ABW', 'BHS', 'BRB', 'BLZ', 'BMU',
                          'BOL', 'CPV', 'CYM', 'CHL', 'COL', 'CRI', 'CUB', 'DMA',
                          'DOM', 'ECU', 'SLV', 'FLK', 'GUF', 'GRD', 'GLP', 'GTM',
                          'GUY', 'HTI', 'HND', 'JAM', 'MTQ', 'MEX', 'MSR', 'NIC',
                          'PAN', 'PRY', 'PER', 'PRI', 'SHN', 'KNA', 'LCA', 'VCT',
-                         'SXM', 'SUR', 'TTO', 'TCA', 'URY', 'VEN', 'VGB', 'VIR'], \
-                 'NA2': ['CAN', 'USA'], \
+                         'SXM', 'SUR', 'TTO', 'TCA', 'URY', 'VEN', 'VGB', 'VIR'],
+                 'NA2': ['CAN', 'USA'],
                  'NI': ['AFG', 'ARM', 'AZE', 'BHR', 'BGD', 'BTN', 'DJI', 'ERI',
                         'ETH', 'GEO', 'IND', 'IRN', 'IRQ', 'ISR', 'JOR', 'KAZ',
                         'KWT', 'KGZ', 'LBN', 'MDV', 'MNG', 'MMR', 'NPL', 'OMN',
                         'PAK', 'QAT', 'SAU', 'SOM', 'LKA', 'SYR', 'TJK', 'TKM',
-                        'UGA', 'ARE', 'UZB', 'YEM'], \
+                        'UGA', 'ARE', 'UZB', 'YEM'],
                  'OC': ['ASM', 'AUS', 'COK', 'FJI', 'PYF', 'GUM', 'KIR', 'MHL',
                         'FSM', 'NRU', 'NCL', 'NZL', 'NIU', 'NFK', 'MNP', 'PLW',
                         'PNG', 'PCN', 'WSM', 'SLB', 'TLS', 'TKL', 'TON', 'TUV',
-                        'VUT', 'WLF'], \
+                        'VUT', 'WLF'],
                  'SI': ['COM', 'COD', 'SWZ', 'MDG', 'MWI', 'MLI', 'MUS', 'MOZ',
-                        'ZAF', 'TZA', 'ZWE'], \
-                 'WP1': ['KHM', 'IDN', 'LAO', 'MYS', 'THA', 'VNM'], \
-                 'WP2': ['PHL'], \
-                 'WP3': ['CHN'], \
-                 'WP4': ['HKG', 'JPN', 'KOR', 'MAC', 'TWN'], \
+                        'ZAF', 'TZA', 'ZWE'],
+                 'WP1': ['KHM', 'IDN', 'LAO', 'MYS', 'THA', 'VNM'],
+                 'WP2': ['PHL'],
+                 'WP3': ['CHN'],
+                 'WP4': ['HKG', 'JPN', 'KOR', 'MAC', 'TWN'],
                  'ROW': ['ALB', 'DZA', 'AND', 'AGO', 'ATA', 'AUT', 'BLR', 'BEL',
                          'BEN', 'BES', 'BIH', 'BWA', 'BVT', 'BRA', 'IOT', 'BRN',
                          'BGR', 'BFA', 'BDI', 'CMR', 'CAF', 'TCD', 'CXR', 'CCK',
@@ -260,8 +260,8 @@ class IFSTropCyclone(ImpactFuncSet):
                          'SVK', 'SVN', 'SGS', 'SSD', 'ESP', 'SDN', 'SJM', 'SWE',
                          'CHE', 'TGO', 'TUN', 'TUR', 'UKR', 'GBR', 'UMI', 'ESH',
                          'ZMB', 'ALA']}
-        if_id = {'NA1': 1, 'NA2': 2, 'NI': 3, 'OC': 4, 'SI': 5, \
-                     'WP1': 6, 'WP2': 7, 'WP3': 8, 'WP4': 9, 'ROW': 10}
+        if_id = {'NA1': 1, 'NA2': 2, 'NI': 3, 'OC': 4, 'SI': 5,
+                 'WP1': 6, 'WP2': 7, 'WP3': 8, 'WP4': 9, 'ROW': 10}
         region_name = dict()
         region_name['NA1'] = 'Caribbean and Mexico'
         region_name['NA2'] = 'USA and Canada'

@@ -29,8 +29,8 @@ _cut_country, fill_econ_indicators, _set_econ_indicators, _fill_admin1_geom, \
 _cut_admin1, _resample_land
 from climada.entity.exposures.nightlight import NOAA_BORDER, NOAA_RESOLUTION_DEG
 
-SHP_FN = shapereader.natural_earth(resolution='10m', \
-    category='cultural', name='admin_0_countries')
+SHP_FN = shapereader.natural_earth(resolution='10m', category='cultural',
+                                   name='admin_0_countries')
 SHP_FILE = shapereader.Reader(SHP_FN)
 
 ADM1_FILE = shapereader.natural_earth(resolution='10m',
@@ -47,8 +47,8 @@ class TestCountryIso(unittest.TestCase):
         iso_name, _ = country_iso_geom(country_name, SHP_FILE)
 
         self.assertEqual(len(iso_name), len(country_name))
-        self.assertTrue('CHE'in iso_name)
-        self.assertTrue('KOS'in iso_name)
+        self.assertTrue('CHE' in iso_name)
+        self.assertTrue('KOS' in iso_name)
         self.assertEqual(iso_name['CHE'][0], 756)
         self.assertEqual(iso_name['CHE'][1], 'Switzerland')
         self.assertIsInstance(iso_name['CHE'][2], shapely.geometry.polygon.Polygon)
@@ -131,9 +131,8 @@ class TestProvinces(unittest.TestCase):
 
     def test_filter_admin1_pass(self):
         """Test _cut_admin1 pass."""
-        lat, lon = np.mgrid[35 : 44 : complex(0, 100),
-                             0 : 4 : complex(0, 102)]
-        nightlight = np.arange(102*100).reshape((102, 100))
+        lat, lon = np.mgrid[35: 44: complex(0, 100), 0: 4: complex(0, 102)]
+        nightlight = np.arange(102 * 100).reshape((102, 100))
 
         coord_nl = np.array([[35, 0.09090909], [0, 0.03960396]])
         on_land = np.zeros((100, 102), bool)
@@ -154,9 +153,9 @@ class TestProvinces(unittest.TestCase):
         self.assertEqual(lat_reg.shape, on_land_reg.shape)
         self.assertTrue(np.array_equal(nightlight[60:82, 4:72], nightlight_reg))
         for coord in zip(lat_reg[on_land_reg], lon_reg[on_land_reg]):
-            self.assertTrue(bcn_geom.contains(shapely.geometry.Point([coord[1],coord[0]])) or
-                            tar_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
-            self.assertTrue(all_geom.contains(shapely.geometry.Point([coord[1],coord[0]])))
+            self.assertTrue(bcn_geom.contains(shapely.geometry.Point([coord[1], coord[0]])) or
+                            tar_geom.contains(shapely.geometry.Point([coord[1], coord[0]])))
+            self.assertTrue(all_geom.contains(shapely.geometry.Point([coord[1], coord[0]])))
 
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
@@ -173,27 +172,27 @@ class TestNightLight(unittest.TestCase):
         nightlight = sparse.csr_matrix(nightlight)
 
         coord_nl = np.empty((2, 2))
-        coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
+        coord_nl[0, :] = [NOAA_BORDER[1] + NOAA_RESOLUTION_DEG,
                           0.2805444221776838]
-        coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
+        coord_nl[1, :] = [NOAA_BORDER[0] + NOAA_RESOLUTION_DEG,
                           0.3603520186853473]
 
         nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, nightlight, coord_nl)
 
-        lat_ref = np.array([[12.9996827 , 12.9996827 , 12.9996827 ],
-                              [13.28022712, 13.28022712, 13.28022712],
-                              [13.56077154, 13.56077154, 13.56077154]])
+        lat_ref = np.array([[12.9996827, 12.9996827, 12.9996827],
+                            [13.28022712, 13.28022712, 13.28022712],
+                            [13.56077154, 13.56077154, 13.56077154]])
         lon_ref = np.array([[-59.99444444, -59.63409243, -59.27374041],
-                              [-59.99444444, -59.63409243, -59.27374041],
-                              [-59.99444444, -59.63409243, -59.27374041]])
+                            [-59.99444444, -59.63409243, -59.27374041],
+                            [-59.99444444, -59.63409243, -59.27374041]])
         on_ref = np.array([[False, False, False],
-                            [False,  True, False],
-                            [False, False, False]])
+                           [False, True, False],
+                           [False, False, False]])
 
         in_lat = (278, 280)
         in_lon = (333, 335)
-        nightlight_ref = nightlight[in_lat[0]:in_lat[1]+1, in_lon[0]:in_lon[1]+1].toarray()
-        nightlight_ref[np.logical_not(on_ref)] = 0.0
+        nightlight_ref = nightlight[in_lat[0]:in_lat[1] + 1, in_lon[0]:in_lon[1] + 1].toarray()
+        nightlight_ref[~on_ref] = 0.0
 
         self.assertTrue(np.allclose(lat_ref, lat_reg))
         self.assertTrue(np.allclose(lon_ref, lon_reg))
@@ -212,35 +211,42 @@ class TestNightLight(unittest.TestCase):
         nightlight = sparse.csr_matrix(nightlight)
 
         coord_nl = np.empty((2, 2))
-        coord_nl[0, :] = [NOAA_BORDER[1]+NOAA_RESOLUTION_DEG,
+        coord_nl[0, :] = [NOAA_BORDER[1] + NOAA_RESOLUTION_DEG,
                           0.2805444221776838]
-        coord_nl[1, :] = [NOAA_BORDER[0]+NOAA_RESOLUTION_DEG,
+        coord_nl[1, :] = [NOAA_BORDER[0] + NOAA_RESOLUTION_DEG,
                           0.3603520186853473]
 
         res_fact = 2.0
         nightlight_reg, lat_reg, lon_reg, on_land = _cut_country(geom, nightlight, coord_nl)
-        nightlight_res, lat_res, lon_res = _resample_land(geom, nightlight_reg, lat_reg, lon_reg, res_fact, on_land)
+        nightlight_res, lat_res, lon_res = _resample_land(geom, nightlight_reg, lat_reg, lon_reg,
+                                                          res_fact, on_land)
 
-        lat_ref = np.array([[12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827 ],
-                              [13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047],
-                              [13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824],
-                              [13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601],
-                              [13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377],
-                              [13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154]])
+        lat_ref = np.array([
+            [12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827, 12.9996827],
+            [13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047, 13.11190047],
+            [13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824, 13.22411824],
+            [13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601, 13.33633601],
+            [13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377, 13.44855377],
+            [13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154, 13.56077154]
+        ])
 
-        lon_ref = np.array([[-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
-                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
-                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
-                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
-                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
-                              [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041]])
+        lon_ref = np.array([
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041],
+            [-59.99444444, -59.85030364, -59.70616283, -59.56202202, -59.41788121, -59.27374041]
+        ])
 
-        on_ref = np.array([[False, False, False, False, False, False],
-                            [False, False, False,  True, False, False],
-                            [False, False, False,  True, False, False],
-                            [False, False, False, False, False, False],
-                            [False, False, False, False, False, False],
-                            [False, False, False, False, False, False]])
+        on_ref = np.array([
+            [False, False, False, False, False, False],
+            [False, False, False, True, False, False],
+            [False, False, False, True, False, False],
+            [False, False, False, False, False, False],
+            [False, False, False, False, False, False],
+            [False, False, False, False, False, False]
+        ])
 
         self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
@@ -262,11 +268,11 @@ class TestEconIndices(unittest.TestCase):
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
-            for i in [0, 1, 2, 3, 5]: # test elements one by one:
-                self.assertEqual(country_isos[country][i], \
+            for i in [0, 1, 2, 3, 5]:  # test elements one by one:
+                self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
-            self.assertAlmostEqual(country_isos[country][4]*1e-6, \
-                                 country_isos_ref[country][4]*1e-6, places=0)
+            self.assertAlmostEqual(country_isos[country][4] * 1e-6,
+                                   country_isos_ref[country][4] * 1e-6, places=0)
 
     def test_fill_econ_indicators_kwargs_pass(self):
         """Test fill_econ_indicators with kwargs inputs."""
@@ -278,9 +284,10 @@ class TestEconIndices(unittest.TestCase):
         inc_grp = {'CHE': 3, 'ZMB': 4}
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], inc_grp['CHE']],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, gdp['ZMB'], inc_grp['ZMB']]
-                           }
+        country_isos_ref = {
+            'CHE': [1, 'Switzerland', 'che_geom', 2015, gdp['CHE'], inc_grp['CHE']],
+            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, gdp['ZMB'], inc_grp['ZMB']]
+        }
         self.assertEqual(country_isos, country_isos_ref)
 
     def test_fill_econ_indicators_na_pass(self):
@@ -289,7 +296,7 @@ class TestEconIndices(unittest.TestCase):
         country_isos = {'CHE': [1, 'Switzerland', 'che_geom'],
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
-        gdp = {'CHE': 1.2*1e20, 'ZMB': ''}
+        gdp = {'CHE': 1.2 * 1e20, 'ZMB': ''}
         inc_grp = {'CHE': '', 'ZMB': 4}
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
@@ -298,11 +305,11 @@ class TestEconIndices(unittest.TestCase):
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
-            for i in [0, 1, 2, 3, 5]: # test elements one by one:
-                self.assertEqual(country_isos[country][i], \
+            for i in [0, 1, 2, 3, 5]:  # test elements one by one:
+                self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
-            self.assertAlmostEqual(country_isos[country][4]*1e-6, \
-                                 country_isos_ref[country][4]*1e-6, places=0)
+            self.assertAlmostEqual(country_isos[country][4] * 1e-6,
+                                   country_isos_ref[country][4] * 1e-6, places=0)
 
 
     def test_set_econ_indicators_pass(self):
@@ -312,7 +319,7 @@ class TestEconIndices(unittest.TestCase):
         inc_grp = 4
         nightlight = _set_econ_indicators(nightlight, gdp, inc_grp, [0, 0, 1])
 
-        self.assertAlmostEqual(nightlight.sum(), gdp*(inc_grp+1), 5)
+        self.assertAlmostEqual(nightlight.sum(), gdp * (inc_grp + 1), 5)
 
 # Execute Tests
 if __name__ == "__main__":

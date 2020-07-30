@@ -131,7 +131,7 @@ class StormEurope(Hazard):
             if new_haz is not None:
                 self.append(new_haz)
 
-        self.event_id = np.arange(1, len(self.event_id)+1)
+        self.event_id = np.arange(1, len(self.event_id) + 1)
         self.frequency = np.divide(
             np.ones_like(self.date),
             (last_year(self.date) - first_year(self.date))
@@ -147,8 +147,9 @@ class StormEurope(Hazard):
         if combine_threshold is not None:
             LOGGER.info('Combining events with small difference in date.')
             difference_date = np.diff(self.date)
-            for event_id_i in self.event_id[np.append(difference_date<=combine_threshold,False)]:
-                event_ids = [event_id_i, event_id_i+1]
+            for event_id_i in self.event_id[
+                    np.append(difference_date <= combine_threshold, False)]:
+                event_ids = [event_id_i, event_id_i + 1]
                 self._combine_events(event_ids)
 
     def _read_one_nc(self, file_name, centroids):
@@ -229,41 +230,43 @@ class StormEurope(Hazard):
 
         return cent
 
-    def _combine_events(self,event_ids):
-        """combine the intensities of two events using max and adjust event_id, event_name, date etc of the hazard
+    def _combine_events(self, event_ids):
+        """combine the intensities of two events using max and adjust event_id, event_name,
+        date etc of the hazard
+
         the event_ids must be consecutive for the event_name field to behave correctly
+
         Parameters:
             event_ids (array): two consecutive event ids
         """
-        select_event_ids = np.isin(self.event_id,event_ids)
+        select_event_ids = np.isin(self.event_id, event_ids)
         select_other_events = np.invert(select_event_ids)
-        intensity_tmp = self.intensity[select_event_ids,:].max(axis=0)
-        self.intensity = self.intensity[select_other_events,:]
-        self.intensity = sparse.vstack([self.intensity,sparse.csr_matrix(intensity_tmp)])
-        self.event_id = np.append(self.event_id[select_other_events],
-                                                        self.event_id.max()+1)
+        intensity_tmp = self.intensity[select_event_ids, :].max(axis=0)
+        self.intensity = self.intensity[select_other_events, :]
+        self.intensity = sparse.vstack([self.intensity, sparse.csr_matrix(intensity_tmp)])
+        self.event_id = np.append(self.event_id[select_other_events], self.event_id.max() + 1)
         self.date = np.append(self.date[select_other_events],
-                                                np.round(self.date[select_event_ids].mean()))
+                              np.round(self.date[select_event_ids].mean()))
         name_2 = self.event_name.pop(np.where(select_event_ids)[0][1])
         name_1 = self.event_name.pop(np.where(select_event_ids)[0][0])
         self.event_name.append(name_1 + '_' + name_2)
-        fraction_tmp = self.fraction[select_event_ids,:].max(axis=0)
-        self.fraction = self.fraction[select_other_events,:]
-        self.fraction = sparse.vstack([self.fraction,sparse.csr_matrix(fraction_tmp)])
+        fraction_tmp = self.fraction[select_event_ids, :].max(axis=0)
+        self.fraction = self.fraction[select_other_events, :]
+        self.fraction = sparse.vstack([self.fraction, sparse.csr_matrix(fraction_tmp)])
 
         self.frequency = np.append(self.frequency[select_other_events],
-                                                self.frequency[select_event_ids].mean())
+                                   self.frequency[select_event_ids].mean())
         self.orig = np.append(self.orig[select_other_events],
-                                                        self.orig[select_event_ids].max())
-        if self.ssi_wisc.size>0:
+                              self.orig[select_event_ids].max())
+        if self.ssi_wisc.size > 0:
             self.ssi_wisc = np.append(self.ssi_wisc[select_other_events],
                                       np.nan)
-        if self.ssi.size>0:
+        if self.ssi.size > 0:
             self.ssi = np.append(self.ssi[select_other_events],
                                  np.nan)
-        if self.ssi_full_area.size>0:
+        if self.ssi_full_area.size > 0:
             self.ssi_full_area = np.append(self.ssi_full_area[select_other_events],
-                                 np.nan)
+                                           np.nan)
         self.check()
 
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
@@ -432,7 +435,7 @@ class StormEurope(Hazard):
                 reg_id = [reg_id]
             sel_cen = np.isin(self.centroids.region_id, reg_id)
 
-        else: # shifting truncates valid centroids
+        else:  # shifting truncates valid centroids
             sel_cen = np.zeros(self.centroids.shape, bool)
             sel_cen[
                 spatial_shift:-spatial_shift,
@@ -457,8 +460,7 @@ class StormEurope(Hazard):
                     sel_cen,
                     spatial_shift,
                     ssi_args,
-                    **kwargs,
-                )
+                    **kwargs)
 
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
@@ -477,7 +479,7 @@ class StormEurope(Hazard):
         new_haz.event_id = base + synth_id
 
         # frequency still based on the historic number of years
-        new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
+        new_haz.frequency = np.divide(np.repeat(self.frequency, N_PROB_EVENTS),
                                       N_PROB_EVENTS)
 
         new_haz.tag = TagHazard(
@@ -529,7 +531,7 @@ class StormEurope(Hazard):
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
-        intensity2d_sqrt = intensity2d.power(1.0/power).todense()
+        intensity2d_sqrt = intensity2d.power(1.0 / power).todense()
         intensity2d_pwr = intensity2d.power(power).todense()
         intensity2d = intensity2d.todense()
 
@@ -549,9 +551,9 @@ class StormEurope(Hazard):
         intensity3d_prob[4] = intensity2d + (scale * intensity2d_pwr)
 
         # 6. minus scaled sqrt and pwr
-        intensity3d_prob[5] = intensity2d \
-                              - (0.5 * scale * intensity2d_pwr) \
-                              - (0.5 * scale * intensity2d_sqrt)
+        intensity3d_prob[5] = (intensity2d
+                               - (0.5 * scale * intensity2d_pwr)
+                               - (0.5 * scale * intensity2d_sqrt))
 
         # spatial shifts
         # northward
