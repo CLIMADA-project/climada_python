@@ -33,7 +33,7 @@ def init_test_data_unique_clusters():
     """creates sandbox test data for 2D cluster IDs for test of identification of
     unique 3D clusters"""
 
-    df = pd.DataFrame(columns=['target_cluster', 'cluster_id', 'c_lat_lon', \
+    df = pd.DataFrame(columns=['target_cluster', 'cluster_id', 'c_lat_lon',
                                'c_lat_dt_month', 'c_lon_dt_month'])
 
     df.c_lon_dt_month = np.array([1, 1, 1, 1, 2, 2, 3, 4, 5, 4, 4, 5, 6, -1, -1])
@@ -47,7 +47,7 @@ def init_test_data_clustering():
     """creates sandbox test data for monthly days below threshold data
     for testing clustering"""
 
-    df = pd.DataFrame(columns=['lat', 'lon', 'dis', \
+    df = pd.DataFrame(columns=['lat', 'lon', 'dis',
                                'dt_month', 'target_cluster'])
 
     df.lat = np.array([-0, -0, -.5, -.5, -1, -.5, -1, -0, -.5, -1, -1, -1.5, -2.5])

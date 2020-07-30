@@ -39,8 +39,8 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(centroids.coord[0][0], 21)
         self.assertEqual(centroids.coord[0][1], -84)
-        self.assertEqual(centroids.coord[n_centroids-1][0], 30)
-        self.assertEqual(centroids.coord[n_centroids-1][1], -75)
+        self.assertEqual(centroids.coord[n_centroids - 1][0], 30)
+        self.assertEqual(centroids.coord[n_centroids - 1][1], -75)
 
     def test_mat_global_pass(self):
         """Test read GLB_CENTROIDS_MAT"""
@@ -60,8 +60,8 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord.shape[1], 2)
         self.assertEqual(centroids.coord[0][0], -25.95)
         self.assertEqual(centroids.coord[0][1], 32.57)
-        self.assertEqual(centroids.coord[n_centroids-1][0], -24.7)
-        self.assertEqual(centroids.coord[n_centroids-1][1], 33.88)
+        self.assertEqual(centroids.coord[n_centroids - 1][0], -24.7)
+        self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
 
 
 # Execute Tests

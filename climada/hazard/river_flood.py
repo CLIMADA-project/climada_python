@@ -98,10 +98,10 @@ class RiverFlood(Hazard):
             LOGGER.error('No flood-fraction-path set')
             raise NameError
         if not os.path.exists(dph_path):
-            LOGGER.error('Invalid flood-file path ' + dph_path)
+            LOGGER.error('Invalid flood-file path %s', dph_path)
             raise NameError
         if not os.path.exists(frc_path):
-            LOGGER.error('Invalid flood-file path ' + frc_path)
+            LOGGER.error('Invalid flood-file path %s', frc_path)
             raise NameError
 
         with xr.open_dataset(dph_path) as flood_dph:
@@ -114,8 +114,7 @@ class RiverFlood(Hazard):
             # centroids as points
             if ISINatIDGrid:
 
-                dest_centroids, isos, natID = RiverFlood._select_exact_area(
-                    countries, reg)
+                dest_centroids = RiverFlood._select_exact_area(countries, reg)[0]
                 meta_centroids = copy.copy(dest_centroids)
                 meta_centroids.set_lat_lon_to_meta()
 
@@ -130,8 +129,8 @@ class RiverFlood(Hazard):
                 y_i = ((dest_centroids.lat - self.centroids.meta['transform'][5]) /
                        self.centroids.meta['transform'][4]).astype(int)
 
-                fraction = self.fraction[:, y_i*self.centroids.meta['width'] + x_i]
-                intensity = self.intensity[:, y_i*self.centroids.meta['width'] + x_i]
+                fraction = self.fraction[:, y_i * self.centroids.meta['width'] + x_i]
+                intensity = self.intensity[:, y_i * self.centroids.meta['width'] + x_i]
 
                 self.centroids = dest_centroids
                 self.intensity = sp.sparse.csr_matrix(intensity)
@@ -189,8 +188,8 @@ class RiverFlood(Hazard):
                    metafrc['transform'][0]).astype(int)
             y_i = ((centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
-            fraction = fraction[:, y_i*metafrc['width'] + x_i]
-            intensity = intensity[:, y_i*metaint['width'] + x_i]
+            fraction = fraction[:, y_i * metafrc['width'] + x_i]
+            intensity = intensity[:, y_i * metaint['width'] + x_i]
             self.centroids = centroids
             self.intensity = sp.sparse.csr_matrix(intensity)
             self.fraction = sp.sparse.csr_matrix(fraction)
@@ -209,9 +208,9 @@ class RiverFlood(Hazard):
 
         with xr.open_dataset(dph_path) as flood_dph:
             self.date = np.array([dt.datetime(flood_dph.time[i].dt.year,
-                                 flood_dph.time[i].dt.month,
-                                 flood_dph.time[i].dt.day).toordinal()
-                                 for i in event_index])
+                                              flood_dph.time[i].dt.month,
+                                              flood_dph.time[i].dt.day).toordinal()
+                                  for i in event_index])
 
     def _select_event(self, time, years):
         """
@@ -228,7 +227,7 @@ class RiverFlood(Hazard):
         event_names = pd.to_datetime(time).year
         event_index = np.where(np.isin(event_names, years))[0]
         if len(event_index) == 0:
-            LOGGER.error('No events found for selected ' + str(years))
+            LOGGER.error('No events found for selected %s', years)
             raise AttributeError
         self.event_name = list(map(str, pd.to_datetime(time[event_index])))
         return event_index
@@ -242,7 +241,7 @@ class RiverFlood(Hazard):
             NameError
         """
         if not os.path.exists(fld_trend_path):
-            LOGGER.error('Invalid ReturnLevel-file path ' + fld_trend_path)
+            LOGGER.error('Invalid ReturnLevel-file path %s', fld_trend_path)
             raise NameError
         else:
             metafrc, trend_data = read_raster(fld_trend_path, band=[1])
@@ -251,7 +250,7 @@ class RiverFlood(Hazard):
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
 
-        trend = trend_data[:, y_i*metafrc['width'] + x_i]
+        trend = trend_data[:, y_i * metafrc['width'] + x_i]
 
         if dis == 'pos':
             dis_map = np.greater(trend, 0)
@@ -277,7 +276,7 @@ class RiverFlood(Hazard):
         """
 
         if not os.path.exists(frc_path):
-            LOGGER.error('Invalid ReturnLevel-file path ' + frc_path)
+            LOGGER.error('Invalid ReturnLevel-file path %s', frc_path)
             raise NameError
         else:
             metafrc, fraction = read_raster(frc_path, band=[1])
@@ -285,7 +284,7 @@ class RiverFlood(Hazard):
                    metafrc['transform'][0]).astype(int)
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
                    metafrc['transform'][4]).astype(int)
-            fraction = fraction[:, y_i*metafrc['width'] + x_i]
+            fraction = fraction[:, y_i * metafrc['width'] + x_i]
             new_fraction = np.array(np.subtract(self.fraction.todense(),
                                                 fraction))
             new_fraction = new_fraction.clip(0)

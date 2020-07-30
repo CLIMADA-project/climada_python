@@ -33,7 +33,7 @@ from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
-DATA_FOLDER = os.path.join(os.path.dirname(__file__) , 'data')
+DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
@@ -195,21 +195,21 @@ class TestCalc(unittest.TestCase):
         # impact.at_event == EDS.damage in MATLAB
         self.assertEqual(num_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
-        self.assertEqual(0, impact.at_event[int(num_events/2)])
+        self.assertEqual(0, impact.at_event[int(num_events / 2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
         self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
-        self.assertEqual(0, impact.at_event[num_events-1])
+        self.assertEqual(0, impact.at_event[num_events - 1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, \
-                               impact.eai_exp[int(num_exp/2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08, \
-                                          impact.eai_exp[int(num_exp/2)]))
-        self.assertAlmostEqual(1.066837260150042e+08, \
-                               impact.eai_exp[num_exp-1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08, \
-                                          impact.eai_exp[int(num_exp-1)]))
+        self.assertAlmostEqual(1.373490457046383e+08,
+                               impact.eai_exp[int(num_exp / 2)], 6)
+        self.assertTrue(np.isclose(1.373490457046383e+08,
+                                   impact.eai_exp[int(num_exp / 2)]))
+        self.assertAlmostEqual(1.066837260150042e+08,
+                               impact.eai_exp[num_exp - 1], 6)
+        self.assertTrue(np.isclose(1.066837260150042e+08,
+                                   impact.eai_exp[int(num_exp - 1)]))
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
@@ -218,7 +218,7 @@ class TestCalc(unittest.TestCase):
 
     def test_calc_imp_mat_pass(self):
         """Test save imp_mat"""
-         # Read default entity values
+        # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
@@ -236,17 +236,21 @@ class TestCalc(unittest.TestCase):
         impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
         self.assertTrue(isinstance(impact.imp_mat, sparse.csr_matrix))
         self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
-            ent.exposures.value.size))
+                                                ent.exposures.value.size))
         self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
-            impact.at_event))
-        self.assertTrue(np.allclose(np.array(np.sum(np.multiply(impact.imp_mat.toarray(),
-            impact.frequency.reshape(-1, 1)), axis=0)).reshape(-1), impact.eai_exp))
+                                    impact.at_event))
+        self.assertTrue(
+            np.allclose(
+                np.array(np.sum(np.multiply(impact.imp_mat.toarray(),
+                                            impact.frequency.reshape(-1, 1)),
+                                axis=0)).reshape(-1),
+                impact.eai_exp))
 
     def test_calc_if_pass(self):
         """Execute when no if_HAZ present, but only if_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
-        ent.exposures.rename(columns={'if_TC':'if_'}, inplace=True)
+        ent.exposures.rename(columns={'if_TC': 'if_'}, inplace=True)
         ent.check()
 
         # Read default hazard file
@@ -263,21 +267,21 @@ class TestCalc(unittest.TestCase):
         # impact.at_event == EDS.damage in MATLAB
         self.assertEqual(num_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
-        self.assertEqual(0, impact.at_event[int(num_events/2)])
+        self.assertEqual(0, impact.at_event[int(num_events / 2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
         self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
-        self.assertEqual(0, impact.at_event[num_events-1])
+        self.assertEqual(0, impact.at_event[num_events - 1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, \
-                               impact.eai_exp[int(num_exp/2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08, \
-                                          impact.eai_exp[int(num_exp/2)]))
-        self.assertAlmostEqual(1.066837260150042e+08, \
-                               impact.eai_exp[num_exp-1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08, \
-                                          impact.eai_exp[int(num_exp-1)]))
+        self.assertAlmostEqual(1.373490457046383e+08,
+                               impact.eai_exp[int(num_exp / 2)], 6)
+        self.assertTrue(np.isclose(1.373490457046383e+08,
+                                   impact.eai_exp[int(num_exp / 2)]))
+        self.assertAlmostEqual(1.066837260150042e+08,
+                               impact.eai_exp[num_exp - 1], 6)
+        self.assertTrue(np.isclose(1.066837260150042e+08,
+                                   impact.eai_exp[int(num_exp - 1)]))
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
@@ -303,7 +307,7 @@ class TestImpactYearSet(unittest.TestCase):
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
         imp.unit = 'USD'
-        imp.date = np.array([732801, 716160, 718313, 712468, 732802, \
+        imp.date = np.array([732801, 716160, 718313, 712468, 732802,
                              729285, 732931, 715419, 722404, 718351])
 
         iys_all = imp.calc_impact_year_set()
@@ -311,21 +315,21 @@ class TestImpactYearSet(unittest.TestCase):
         iys_all_yr = imp.calc_impact_year_set(year_range=(1975, 2000))
         iys_yr = imp.calc_impact_year_set(all_years=False, year_range=[1975, 2000])
         iys_all_yr_1940 = imp.calc_impact_year_set(all_years=True, year_range=[1940, 2000])
-        self.assertEqual(np.around(sum([iys[year] for year in iys])), \
+        self.assertEqual(np.around(sum([iys[year] for year in iys])),
                          np.around(sum(imp.at_event)))
-        self.assertEqual(sum([iys[year] for year in iys]), \
+        self.assertEqual(sum([iys[year] for year in iys]),
                          sum([iys_all[year] for year in iys_all]))
         self.assertEqual(len(iys), 7)
         self.assertEqual(len(iys_all), 57)
         self.assertIn(1951 and 1959 and 2007, iys_all)
-        self.assertTrue(iys_all[1959]>0)
+        self.assertTrue(iys_all[1959] > 0)
         self.assertAlmostEqual(3598980534.468811, iys_all[2007])
         self.assertEqual(iys[1978], iys_all[1978])
         self.assertAlmostEqual(iys[1951], imp.at_event[3])
         # year range (yr):
         self.assertEqual(len(iys_yr), 2)
         self.assertEqual(len(iys_all_yr), 26)
-        self.assertEqual(sum([iys_yr[year] for year in iys_yr]), \
+        self.assertEqual(sum([iys_yr[year] for year in iys_yr]),
                          sum([iys_all_yr[year] for year in iys_all_yr]))
         self.assertIn(1997 and 1978, iys_yr)
         self.assertFalse(2007 in iys_yr)
@@ -353,7 +357,7 @@ class TestIO(unittest.TestCase):
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
                          'if_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
-        imp_write.event_name = ['event_'+str(num) for num in imp_write.event_id]
+        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
         imp_write.coord_exp = np.zeros((num_exp, 2))
         imp_write.coord_exp[:, 0] = 1.5
@@ -379,8 +383,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(0, len([i for i, j in
-            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertEqual(
+            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
 
     def test_write_read_exp_test(self):
         """Test result against reference value"""
@@ -392,7 +396,7 @@ class TestIO(unittest.TestCase):
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
                          'if_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
-        imp_write.event_name = ['event_'+str(num) for num in imp_write.event_id]
+        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
         imp_write.coord_exp = np.zeros((num_exp, 2))
         imp_write.coord_exp[:, 0] = 1.5
@@ -418,8 +422,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(0, len([i for i, j in
-            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertEqual(
+            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
         self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_read_excel_pass(self):
@@ -448,8 +452,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(0, len([i for i, j in
-            zip(imp_write.event_name, imp_read.event_name) if i != j]))
+        self.assertEqual(
+            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
         self.assertIsInstance(imp_read.crs, dict)
 
     def test_write_imp_mat(self):
@@ -457,24 +461,25 @@ class TestIO(unittest.TestCase):
         impact = Impact()
         impact.imp_mat = np.zeros((5, 4))
         impact.imp_mat[0, :] = np.arange(4)
-        impact.imp_mat[1, :] = np.arange(4)*2
-        impact.imp_mat[2, :] = np.arange(4)*3
-        impact.imp_mat[3, :] = np.arange(4)*4
-        impact.imp_mat[4, :] = np.arange(4)*5
+        impact.imp_mat[1, :] = np.arange(4) * 2
+        impact.imp_mat[2, :] = np.arange(4) * 3
+        impact.imp_mat[3, :] = np.arange(4) * 4
+        impact.imp_mat[4, :] = np.arange(4) * 5
         impact.imp_mat = sparse.csr_matrix(impact.imp_mat)
 
         file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
         impact.write_sparse_csr(file_name)
-        read_imp_mat = Impact().read_sparse_csr(file_name+'.npz')
+        read_imp_mat = Impact().read_sparse_csr(file_name + '.npz')
         for irow in range(5):
-            self.assertTrue(np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
-                np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
+            self.assertTrue(
+                np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
+                               np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
 
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
     def test_local_exceedance_imp_pass(self):
         """Test calc local impacts per return period"""
-         # Read default entity values
+        # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
@@ -492,7 +497,7 @@ class TestRPmatrix(unittest.TestCase):
         impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
 
         self.assertTrue(isinstance(impact_rp, np.ndarray))
-        self.assertEqual(impact_rp.size, 2*ent.exposures.value.size)
+        self.assertEqual(impact_rp.size, 2 * ent.exposures.value.size)
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
@@ -509,16 +514,16 @@ class TestRiskTrans(unittest.TestCase):
         imp.crs = DEF_CRS
         imp.eai_exp = np.array([1, 2])
         imp.at_event = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 15])
-        imp.frequency = np.ones(10)/5
+        imp.frequency = np.ones(10) / 5
         imp.tot_value = 10
         imp.aai_agg = 100
         imp.unit = 'USD'
-        imp.imp_mat = []
+        imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
         new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
         self.assertEqual(new_imp.unit, imp.unit)
         self.assertEqual(new_imp.tot_value, imp.tot_value)
-        self.assertEqual(new_imp.imp_mat, imp.imp_mat)
+        self.assertTrue((new_imp.imp_mat == imp.imp_mat).toarray().all())
         self.assertEqual(new_imp.event_name, imp.event_name)
         self.assertTrue(np.allclose(new_imp.event_id, imp.event_id))
         self.assertTrue(np.allclose(new_imp.date, imp.date))
@@ -530,7 +535,7 @@ class TestRiskTrans(unittest.TestCase):
 
         self.assertEqual(imp_rt.unit, imp.unit)
         self.assertEqual(imp_rt.tot_value, imp.tot_value)
-        self.assertEqual(imp_rt.imp_mat, imp.imp_mat)
+        self.assertTrue((imp_rt.imp_mat == imp.imp_mat).toarray().all())
         self.assertEqual(imp_rt.event_name, imp.event_name)
         self.assertTrue(np.allclose(imp_rt.event_id, imp.event_id))
         self.assertTrue(np.allclose(imp_rt.date, imp.date))

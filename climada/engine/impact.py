@@ -82,7 +82,7 @@ class Impact():
         self.tot_value = 0
         self.aai_agg = 0
         self.unit = ''
-        self.imp_mat = []
+        self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.
@@ -101,7 +101,7 @@ class Impact():
         # Calculate exceedence frequency
         exceed_freq = np.cumsum(self.frequency[sort_idxs])
         # Set return period and imact exceeding frequency
-        ifc.return_per = 1/exceed_freq[::-1]
+        ifc.return_per = 1 / exceed_freq[::-1]
         ifc.impact = self.at_event[sort_idxs][::-1]
         ifc.unit = self.unit
         ifc.label = 'Exceedance frequency curve'
@@ -171,8 +171,7 @@ class Impact():
         self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where(np.logical_and(exposures.value > 0, \
-                           exposures[assign_haz] >= 0))[0]
+        exp_idx = np.where((exposures.value > 0) & (exposures[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
@@ -187,7 +186,7 @@ class Impact():
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
         if if_haz not in exposures:
-            LOGGER.info('Missing exposures impact functions for hazard %s. ' +\
+            LOGGER.info('Missing exposures impact functions for hazard %s. '
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
 
@@ -207,19 +206,19 @@ class Impact():
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
-            exp_step = int(CONFIG['global']['max_matrix_size']/num_events)
+            exp_step = int(CONFIG['global']['max_matrix_size'] / num_events)
             if not exp_step:
                 LOGGER.error('Increase max_matrix_size configuration parameter'
                              ' to > %s', str(num_events))
                 raise ValueError
             # separte in chunks
             chk = -1
-            for chk in range(int(exp_iimp.size/exp_step)):
-                self._exp_impact( \
-                    exp_idx[exp_iimp[chk*exp_step:(chk+1)*exp_step]],\
+            for chk in range(int(exp_iimp.size / exp_step)):
+                self._exp_impact(
+                    exp_idx[exp_iimp[chk * exp_step:(chk + 1) * exp_step]],
                     exposures, hazard, imp_fun, insure_flag)
-            self._exp_impact(exp_idx[exp_iimp[(chk+1)*exp_step:]],\
-                exposures, hazard, imp_fun, insure_flag)
+            self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],
+                             exposures, hazard, imp_fun, insure_flag)
 
         if not tot_exp:
             LOGGER.warning('No impact functions match the exposures.')
@@ -248,7 +247,7 @@ class Impact():
             # next values are no longer valid
             new_imp.eai_exp = np.array([])
             new_imp.coord_exp = np.array([])
-            new_imp.imp_mat = []
+            new_imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
             # insurance layer metrics
             risk_transfer = copy.deepcopy(new_imp)
             risk_transfer.at_event = imp_layer
@@ -310,7 +309,7 @@ class Impact():
         return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
-                                 raster_f=lambda x: np.log10((np.fmax(x+1, 1))),
+                                 raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                                  label='value (log10)', axis=None, **kwargs):
         """Plot raster expected annual impact of each exposure.
 
@@ -387,10 +386,8 @@ class Impact():
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
 
@@ -426,10 +423,8 @@ class Impact():
         Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact' \
+        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
 
@@ -530,15 +525,15 @@ class Impact():
                               for date in self.date])
         if orig_year.size == 0 and len(year_range) == 0:
             return dict()
-        if orig_year.size==0 or (len(year_range)>0 and all_years):
-            years = np.arange(min(year_range), max(year_range)+1)
+        if orig_year.size == 0 or (len(year_range) > 0 and all_years):
+            years = np.arange(min(year_range), max(year_range) + 1)
         elif all_years:
-            years = np.arange(min(orig_year), max(orig_year)+1)
+            years = np.arange(min(orig_year), max(orig_year) + 1)
         else:
             years = np.array(sorted(np.unique(orig_year)))
-        if not len(year_range)==0:
-            years = years[years>=min(year_range)]
-            years = years[years<=max(year_range)]
+        if not len(year_range) == 0:
+            years = years[years >= min(year_range)]
+            years = years[years <= max(year_range)]
 
         year_set = dict()
 
@@ -561,25 +556,25 @@ class Impact():
         try:
             self.imp_mat.shape[1]
         except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'\
+            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size']/self.imp_mat.shape[0])
+        cen_step = int(CONFIG['global']['max_matrix_size'] / self.imp_mat.shape[0])
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'\
+            LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.imp_mat.shape[0]))
             raise ValueError
         # separte in chunks
         chk = -1
-        for chk in range(int(num_cen/cen_step)):
-            self._loc_return_imp(np.array(return_periods), \
-                self.imp_mat[:, chk*cen_step:(chk+1)*cen_step].toarray(), \
-                imp_stats[:, chk*cen_step:(chk+1)*cen_step])
-        self._loc_return_imp(np.array(return_periods), \
-            self.imp_mat[:, (chk+1)*cen_step:].toarray(), \
-            imp_stats[:, (chk+1)*cen_step:])
+        for chk in range(int(num_cen / cen_step)):
+            self._loc_return_imp(np.array(return_periods),
+                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
+        self._loc_return_imp(np.array(return_periods),
+                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
+                             imp_stats[:, (chk + 1) * cen_step:])
 
         return imp_stats
 
@@ -601,15 +596,15 @@ class Impact():
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats == []:
-            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'\
+            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             raise ValueError
         if log10_scale:
             if np.min(imp_stats) < 0:
-                imp_stats_log = np.log10(abs(imp_stats)+1)
+                imp_stats_log = np.log10(abs(imp_stats) + 1)
                 colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
             elif np.min(imp_stats) < 1:
-                imp_stats_log = np.log10(imp_stats+1)
+                imp_stats_log = np.log10(imp_stats + 1)
                 colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
             else:
                 imp_stats_log = np.log10(imp_stats)
@@ -620,8 +615,8 @@ class Impact():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp, \
-            colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
+                                        colbar_name, title, smooth=smooth, axes=axis, **kwargs)
 
         return axis, imp_stats
 
@@ -751,7 +746,7 @@ class Impact():
             imp_tmp.coord_exp = imp_tmp.coord_exp[save_exp, :]
             imp_tmp.eai_exp = imp_arr[save_exp]
             imp_list.append(imp_tmp)
-            exp_list.append(np.logical_not(save_exp))
+            exp_list.append(~save_exp)
 
         v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
@@ -760,15 +755,15 @@ class Impact():
             args_exp['vmin'] = exp.value.values.min()
 
         if 'vmin' not in args_imp:
-            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list \
-                if imp.eai_exp.size]).min()
+            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
+                                         if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
             args_exp['vmax'] = exp.value.values.max()
 
         if 'vmax' not in args_imp:
-            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list \
-                if imp.eai_exp.size]).max()
+            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
+                                         if imp.eai_exp.size]).max()
 
         if 'cmap' not in args_exp:
             args_exp['cmap'] = 'winter_r'
@@ -829,6 +824,7 @@ class Impact():
         # sorted impacts
         sort_pos = np.argsort(imp, axis=0)[::-1, :]
         columns = np.ones(imp.shape, int)
+        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
         columns *= np.arange(columns.shape[1])
         imp_sort = imp[sort_pos, columns]
         # cummulative frequency at sorted intensity
@@ -873,12 +869,12 @@ class Impact():
             self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
             impact = sparse.coo_matrix(impact)
         else:
-            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum( \
+            self.eai_exp[exp_iimp] += np.squeeze(np.asarray(np.sum(
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
         self.tot_value += np.sum(exposures.value.values[exp_iimp])
-        if not isinstance(self.imp_mat, list):
+        if isinstance(self.imp_mat, tuple):
             row_ind, col_ind = impact.nonzero()
             self.imp_mat[0].extend(list(impact.data))
             self.imp_mat[1][0].extend(list(row_ind))
@@ -903,7 +899,7 @@ class Impact():
             event_id(int): id of the event
         """
         impact_csr_exp = Exposures()
-        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id-1, :]
+        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
         impact_csr_exp['latitude'] = self.coord_exp[:, 0]
         impact_csr_exp['longitude'] = self.coord_exp[:, 1]
         impact_csr_exp.crs = self.crs
@@ -938,9 +934,8 @@ class Impact():
                 pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
         except ValueError:
             pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
-        imp_fit = np.polyval(pol_coef, np.log(1/return_periods))
-        wrong_inten = np.logical_and(return_periods > np.max(1/freq_cen), \
-                np.isnan(imp_fit))
+        imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
+        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(imp_fit)
         imp_fit[wrong_inten] = 0.
 
         return imp_fit

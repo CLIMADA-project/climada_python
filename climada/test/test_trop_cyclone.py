@@ -40,15 +40,19 @@ class TestClimateSce(unittest.TestCase):
         tc.basin[3] = 'NO'
         tc.category = np.array([2, 0, 4, 1])
         tc.event_id = np.arange(4)
-        tc.frequency = np.ones(4)*0.5
+        tc.frequency = np.ones(4) * 0.5
 
         tc_cc = tc.set_climate_scenario_knu(ref_year=2050, rcp_scenario=45)
         self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
         self.assertTrue(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
-        self.assertFalse(np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
-        self.assertFalse(np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
+        self.assertFalse(
+            np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
+        self.assertFalse(
+            np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
         self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
-        self.assertEqual(tc_cc.tag.description, 'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.')
+        self.assertEqual(
+            tc_cc.tag.description,
+            'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.')
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestClimateSce)
