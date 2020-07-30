@@ -253,7 +253,7 @@ class CropPotential(Hazard):
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
-            hazard_matrix[event, idx] = self.intensity[event, idx] / hist_mean[idx]
+            hazard_matrix[event, idx] = (self.intensity[event, idx] / hist_mean[idx])-1
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
@@ -306,7 +306,7 @@ class CropPotential(Hazard):
                 axes = self.plot_intensity(event=event, axis=axis, cmap='YlGn', vmin=0, vmax=10,
                                            **kwargs)
             elif self.intensity_def == 'Relative Yield':
-                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=2,
+                axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=-1, vmax=1,
                                            **kwargs)
             elif self.intensity_def == 'Percentile':
                 axes = self.plot_intensity(event=event, axis=axis, cmap='RdBu', vmin=0, vmax=1,

@@ -32,12 +32,12 @@ class IFCropPotential(ImpactFunc):
         #self.continent = ''
 
     def set_relativeyield(self):
-        """Impact functions defining the impact as (intensity-1)"""
+        """Impact functions defining the impact as intensity"""
         self.haz_type = 'CP'
         self.id = 1
         self.name = 'Crop Potential ISIMIP'
         self.intensity_unit = ''
-        self.intensity = np.arange(0, 11)
-        self.mdr = (self.intensity - 1)
-        self.mdd = (self.intensity - 1)
+        self.intensity = np.arange(-1, 10)
+        self.mdr = (self.intensity)
+        self.mdd = (self.intensity)
         self.paa = np.ones(len(self.intensity))

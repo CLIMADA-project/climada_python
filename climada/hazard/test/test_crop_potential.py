@@ -56,9 +56,9 @@ class TestCropPotential(unittest.TestCase):
         haz.set_rel_yield_to_int(hist_mean)
         self.assertAlmostEqual(np.max(hist_mean), 8.098413, places=5)
         self.assertEqual(haz.intensity.shape, (5, 1092))
-        self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 4.0, places=5)
-        self.assertAlmostEqual(haz.intensity.max, 4.0, places=5)
-        self.assertAlmostEqual(haz.intensity.min, 0.0, places=5)
+        self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 3.0, places=5)
+        self.assertAlmostEqual(haz.intensity.max, 3.0, places=5)
+        self.assertAlmostEqual(haz.intensity.min, -1.0, places=5)
 
 # Execute Tests
 if __name__ == "__main__":
