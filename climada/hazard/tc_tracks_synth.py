@@ -51,6 +51,8 @@ def calc_random_walk(tracks,
     Be careful when changing ens_amp and max_angle and test changes of the
     parameter values before application.
 
+    The object is mutated in-place.
+
     Parameters:
         tracks (TCTracks): See `climada.hazard.tc_tracks`.
         ens_size (int, optional): number of ensemble members per track.
@@ -77,10 +79,6 @@ def calc_random_walk(tracks,
             Default: configuration file
         decay (bool, optional): compute land decay in probabilistic tracks.
             Default: True
-
-
-    Returns:
-        List of xarray.Dataset instances representing cyclones
     """
     LOGGER.info('Computing %s synthetic tracks.', ens_size * tracks.size)
 
@@ -125,7 +123,6 @@ def calc_random_walk(tracks,
         else:
             LOGGER.error('No historical tracks contained. '
                          'Historical tracks are needed for land decay.')
-    return tracks.data
 
 
 @jit(parallel=True)
