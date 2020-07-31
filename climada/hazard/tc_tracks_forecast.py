@@ -107,7 +107,7 @@ class TCForecast(TCTracks):
                 pass
 
     @staticmethod
-    def fetch_bufr_ftp(target_dir=None):
+    def fetch_bufr_ftp(target_dir=None, remote_dir=None):
         """
         Fetch and read latest ECMWF TC track predictions from the FTP
         dissemination server. If target_dir is set, the files get downloaded
@@ -117,7 +117,9 @@ class TCForecast(TCTracks):
         Parameters:
             target_dir (str): An existing directory to write the files to. If
                 None, the files get returned as tempfiles.
-            close_files (bool): Should the returned files be closed?
+            remote_dir (str, optional): If set, search this ftp folder for
+                forecast files; defaults to the latest. Format:
+                yyyymmddhhmmss, e.g. 20200730120000
 
         Returns:
             [str] or [filelike]
@@ -125,9 +127,12 @@ class TCForecast(TCTracks):
         con = ftplib.FTP(host=ECMWF_FTP, user=ECMWF_USER, passwd=ECMWF_PASS)
 
         try:
-            folders = con.nlst()
-            folders.sort(reverse=True)
-            con.cwd(folders[0])  # latest folder
+            if remote_dir is None:
+                folders = con.nlst()
+                folders.sort(reverse=True)
+                con.cwd(folders[0])  # latest folder
+            else:
+                con.cwd(remote_dir)
 
             remotefiles = fnmatch.filter(con.nlst(), '*tropical_cyclone*')
             localfiles = []
