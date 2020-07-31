@@ -26,13 +26,15 @@ import numpy as np
 from climada.hazard.tc_tracks_forecast import TCForecast
 
 TEST_BUFR_FILES = [
-    os.path.join(os.path.dirname(__file__), 'data', i) for i in 
-        ['tracks_22S_HEROLD_2020031912.det.bufr4', 
-         'tracks_22S_HEROLD_2020031912.eps.bufr4']
+    os.path.join(os.path.dirname(__file__), 'data', i) for i in [
+        'tracks_22S_HEROLD_2020031912.det.bufr4',
+        'tracks_22S_HEROLD_2020031912.eps.bufr4',
+    ]
 ]
 """TC tracks in four BUFR formats as provided by ECMWF. Sourced from
 https://confluence.ecmwf.int/display/FCST/New+Tropical+Cyclone+Wind+Radii+product
 """
+
 
 class TestECMWF(unittest.TestCase):
     """Test reading of BUFR TC track forecasts"""
@@ -60,6 +62,7 @@ class TestECMWF(unittest.TestCase):
         self.assertEqual(forecast.data[0].forecast_time,
                          np.datetime64('2020-03-19T12:00:00.000000'))
         self.assertEqual(forecast.data[1].is_ensemble, True)
+
 
 # Execute Tests
 if __name__ == "__main__":
