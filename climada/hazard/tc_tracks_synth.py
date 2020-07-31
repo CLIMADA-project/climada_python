@@ -29,6 +29,7 @@ from numba import jit
 import numpy as np
 
 from climada.util.config import CONFIG
+import climada.util.coordinates
 import climada.hazard.tc_tracks
 
 LOGGER = logging.getLogger(__name__)
@@ -76,6 +77,10 @@ def calc_random_walk(tracks,
             Default: configuration file
         decay (bool, optional): compute land decay in probabilistic tracks.
             Default: True
+
+
+    Returns:
+        Copy of TCTracks object with data replaced by random walks.
     """
     LOGGER.info('Computing %s synthetic tracks.', ens_size * tracks.size)
 
@@ -100,22 +105,27 @@ def calc_random_walk(tracks,
         new_ens = [_one_rnd_walk(track, ens_size, ens_amp0, ens_amp,
                                  max_angle, rand)
                    for track, rand in zip(tracks.data, random_vec)]
-    new_ens = sum(new_ens, [])
+
+    tracks.data = sum(new_ens, [])
+
     if decay:
-        hist_tracks = [track for track in new_ens if track.orig_event_flag]
+        hist_tracks = [track for track in tracks.data if track.orig_event_flag]
         if hist_tracks:
             try:
-                land_geom = climada.hazard.tc_tracks.land_within_tracks_bounds(new_ens)
+                extent = tracks.get_extent()
+                land_geom = climada.util.coordinates.get_land_geometry(
+                    extent=extent, resolution=10
+                )
                 v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom,
                                                 pool=tracks.pool)
-                new_ens = _apply_land_decay(new_ens, v_rel, p_rel, land_geom,
-                                            pool=tracks.pool)
+                tracks.data = _apply_land_decay(tracks.data, v_rel, p_rel,
+                                                land_geom, pool=tracks.pool)
             except ValueError:
                 LOGGER.info('No land decay coefficients could be applied.')
         else:
             LOGGER.error('No historical tracks contained. '
                          'Historical tracks are needed for land decay.')
-    return new_ens
+    return tracks.data
 
 
 @jit(parallel=True)
