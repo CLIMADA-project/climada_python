@@ -179,6 +179,11 @@ class TestLowFlowNETCDF(unittest.TestCase):
         self.assertEqual(haz.intensity.shape, (66, 513))
         self.assertEqual(haz.event_id.size, 66)
         self.assertEqual(haz.intensity.max(), 46.0)
+        self.assertEqual(haz.intensity[17, 443], 3)
+        self.assertEqual(haz.intensity[17, 444], 0)
+        self.assertEqual(np.sum(haz.intensity[0]), 5243)
+        self.assertAlmostEqual(haz.intensity[2].todense().mean(), 0.19883040935672514)
+        self.assertEqual(haz.intensity[2].todense().max(), 19)
         self.assertEqual(haz.data.cluster_id.unique().size, haz.event_id.size)
         self.assertEqual(haz.date[2], 731519)
         self.assertEqual(haz.date_start[2], 731396)
@@ -189,8 +194,7 @@ class TestLowFlowNETCDF(unittest.TestCase):
             self.assertLessEqual(date, date_end)
 
     def test_combine_nc(self, haz=haz):
-        """test if the hazard is the same if defined from combining chunked data files"""
-
+        """test if the hazard is the same when defined from combining chunked data files"""
         haz2 = LowFlow()
         haz2.set_from_nc(input_dir=INPUT_DIR, percentile=2.5,
                          yearrange=(2001, 2005), yearrange_ref=(2001, 2005),
