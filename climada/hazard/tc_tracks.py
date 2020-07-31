@@ -636,7 +636,8 @@ class TCTracks():
                     time_step_h)
 
         if land_params:
-            land_geom = land_within_tracks_bounds(self.data)
+            extent = self.get_extent()
+            land_geom = coord_util.get_land_geometry(extent, resolution=10)
         else:
             land_geom = None
 
@@ -662,6 +663,31 @@ class TCTracks():
         """Get longitude from coord array"""
         return len(self.data)
 
+    def get_extent(self, deg_buffer=0.1):
+        """Get extent as (min_lon, max_lon, min_lat, max_lat) tuple.
+
+        Parameters:
+            deg_buffer (float): A buffer to add around the bounding box
+        """
+        min_lat = np.min([np.min(track.lat.values) for track in self.data])
+        min_lat = max(min_lat - deg_buffer, -90)
+
+        max_lat = np.max([np.max(track.lat.values) for track in self.data])
+        max_lat = min(max_lat + deg_buffer, 90)
+
+        min_lon = np.min([np.min(track.lon.values) for track in self.data])
+        min_lon = max(min_lon - deg_buffer, -180)
+
+        max_lon = np.max([np.max(track.lon.values) for track in self.data])
+        max_lon = min(max_lon + deg_buffer, 180)
+
+        return (min_lon, max_lon, min_lat, max_lat)
+
+    @property
+    def extent(self):
+        """Exact extent of trackset as tuple, no buffer."""
+        return self.get_extent(deg_buffer=0.0)
+
     def plot(self, axis=None, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
@@ -681,6 +707,7 @@ class TCTracks():
             LOGGER.info('No tracks to plot')
             return None
 
+        # TODO make use of TCTracks.get_extent()
         pad = 1
         lons = np.concatenate([t.lon.values for t in self.data])
         lats = np.concatenate([t.lat.values for t in self.data])
@@ -855,31 +882,6 @@ class TCTracks():
 
         self.data.append(tr_ds)
 
-
-def land_within_tracks_bounds(tracks):
-    """Compute land geometry used for land distance computations.
-
-    Parameters:
-        tracks (list of xr.Dataset): tropical cyclone tracks
-
-    Returns:
-        shapely.geometry.multipolygon.MultiPolygon
-    """
-    deg_buffer = 0.1
-    min_lat = np.min([np.min(track.lat.values) for track in tracks])
-    min_lat = max(min_lat - deg_buffer, -90)
-
-    max_lat = np.max([np.max(track.lat.values) for track in tracks])
-    max_lat = min(max_lat + deg_buffer, 90)
-
-    min_lon = np.min([np.min(track.lon.values) for track in tracks])
-    min_lon = max(min_lon - deg_buffer, -180)
-
-    max_lon = np.max([np.max(track.lon.values) for track in tracks])
-    max_lon = min(max_lon + deg_buffer, 180)
-
-    return coord_util.get_land_geometry(
-        extent=(min_lon, max_lon, min_lat, max_lat), resolution=10)
 
 def track_land_params(track, land_geom):
     """Compute parameters of land for one track.

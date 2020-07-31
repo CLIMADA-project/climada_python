@@ -27,6 +27,7 @@ import xarray as xr
 
 import climada.hazard.tc_tracks as tc
 import climada.hazard.tc_tracks_synth as tc_synth
+import climada.util.coordinates
 from climada.util.constants import TC_ANDREW_FL
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -38,7 +39,10 @@ class TestDecay(unittest.TestCase):
         """Test _apply_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        extent = tc_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         tc.track_land_params(tc_track.data[0], land_geom)
         tc_track.data[0]['orig_event_flag'] = False
         tc_ref = tc_track.data[0].copy()
@@ -77,7 +81,10 @@ class TestDecay(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
-        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        extent = tc_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         tc.track_land_params(tc_track.data[0], land_geom)
         tc_synth._apply_land_decay(tc_track.data, v_rel, p_rel, land_geom,
                                    s_rel=True, check_plot=False)
@@ -167,7 +174,10 @@ class TestDecay(unittest.TestCase):
         """Test _calc_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        extent = tc_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         tc.track_land_params(tc_track.data[0], land_geom)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
             tc_synth._calc_land_decay(tc_track.data, land_geom)
@@ -177,7 +187,10 @@ class TestDecay(unittest.TestCase):
         """Test _calc_land_decay with environmental pressure function."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        extent = tc_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         tc.track_land_params(tc_track.data[0], land_geom)
         v_rel, p_rel = tc_synth._calc_land_decay(tc_track.data, land_geom)
 
@@ -197,7 +210,10 @@ class TestDecay(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
-        land_geom = tc.land_within_tracks_bounds(tc_track.data)
+        extent = tc_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         tc.track_land_params(tc_track.data[0], land_geom)
         v_lf, p_lf, x_val = tc_synth._decay_values(tc_track.data[0], land_geom, s_rel)
 
@@ -330,7 +346,12 @@ class TestDecay(unittest.TestCase):
         track_gen.attrs['orig_event_flag'] = False
 
         cp_ref = np.array([1012., 1012.])
-        land_geom = tc.land_within_tracks_bounds([track_gen])
+        single_track = tc.TCTracks()
+        single_track.data = [track_gen]
+        extent = single_track.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
         track_res = tc_synth._apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
         self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
 
