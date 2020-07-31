@@ -80,7 +80,7 @@ def calc_random_walk(tracks,
 
 
     Returns:
-        Copy of TCTracks object with data replaced by random walks.
+        List of xarray.Dataset instances representing cyclones
     """
     LOGGER.info('Computing %s synthetic tracks.', ens_size * tracks.size)
 
