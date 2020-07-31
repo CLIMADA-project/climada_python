@@ -77,7 +77,7 @@ class TCForecast(TCTracks):
                 - is_ensemble (bool)
     """
 
-    def fetch_ecmwf(self, path=None):
+    def fetch_ecmwf(self, path=None, files=None):
         """
         Fetch and read latest ECMWF TC track predictions from the FTP
         dissemination server into instance. Use path argument to use local
@@ -88,9 +88,9 @@ class TCForecast(TCTracks):
                 path to a single BUFR TC track file, or a folder containing
                 only such files, or a globbing pattern.
         """
-        if path is None:
+        if path is None and files is None:
             files = self.fetch_bufr_ftp()
-        else:
+        elif files is None:
             files = get_file_names(path)
 
         for i, file in enumerate(files, 1):
