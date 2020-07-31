@@ -707,15 +707,8 @@ class TCTracks():
             LOGGER.info('No tracks to plot')
             return None
 
-        # TODO make use of TCTracks.get_extent()
-        pad = 1
-        lons = np.concatenate([t.lon.values for t in self.data])
-        lats = np.concatenate([t.lat.values for t in self.data])
-        min_lat, max_lat = lats.min() - pad, lats.max() + pad
-        min_lon, max_lon = coord_util.lon_bounds(lons)
-        min_lon, max_lon = min_lon - pad, max_lon + pad
-        mid_lon = 0.5 * (max_lon + min_lon)
-        extent = (min_lon, max_lon, min_lat, max_lat)
+        extent = self.get_extent(deg_buffer=1)
+        mid_lon = 0.5 * (extent[1] + extent[0])
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
