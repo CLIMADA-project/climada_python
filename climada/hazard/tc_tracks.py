@@ -656,7 +656,7 @@ class TCTracks():
 
     def calc_random_walk(self, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        self.data = climada.hazard.tc_tracks_synth.calc_random_walk(self, **kwargs)
+        climada.hazard.tc_tracks_synth.calc_random_walk(self, **kwargs)
 
     @property
     def size(self):
