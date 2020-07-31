@@ -160,6 +160,8 @@ class TCTracks():
 
     def get_track(self, track_name=None):
         """Get track with provided name. Return all tracks if no name provided.
+        Returns the first matching track based on the assumption that no other
+        track with the same name or sid exists in the set.
 
         Parameters:
             track_name (str, optional): name or sid (ibtracsID for IBTrACS)
@@ -181,6 +183,23 @@ class TCTracks():
 
         LOGGER.info('No track with name or sid %s found.', track_name)
         return []
+
+    def subset(self, filterdict):
+        """Subset tracks based on attributes. Currently only uses exact matches.
+        Returns a new instance.
+
+        Parameters:
+            filterdict (dict): Of the form {'sid': 'pattern', ...}. Although
+                this is not an ordered dict, presumably the filter of greatest
+                magnitude should come first.
+        """
+        out = self.__class__(self.pool)
+        out.data = self.data
+
+        for key, pattern in filterdict.items():
+            out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
+
+        return out
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
                             year_range=None, basin=None, estimate_missing=False,
@@ -617,7 +636,8 @@ class TCTracks():
                     time_step_h)
 
         if land_params:
-            land_geom = land_within_tracks_bounds(self.data)
+            extent = self.get_extent()
+            land_geom = coord_util.get_land_geometry(extent, resolution=10)
         else:
             land_geom = None
 
@@ -636,12 +656,48 @@ class TCTracks():
 
     def calc_random_walk(self, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        self.data = climada.hazard.tc_tracks_synth.calc_random_walk(self, **kwargs)
+        climada.hazard.tc_tracks_synth.calc_random_walk(self, **kwargs)
 
     @property
     def size(self):
         """Get longitude from coord array"""
         return len(self.data)
+
+    def get_bounds(self, deg_buffer=0.1):
+        """Get bounds as (lon_min, lat_min, lon_max, lat_max) tuple.
+
+        Parameters:
+            deg_buffer (float): A buffer to add around the bounding box
+
+        Returns:
+            tuple
+        """
+        bounds = coord_util.latlon_bounds(
+            np.concatenate([t.lat.values for t in self.data]),
+            np.concatenate([t.lon.values for t in self.data]))
+        return bounds
+
+    @property
+    def bounds(self):
+        """Exact bounds of trackset as tuple, no buffer."""
+        return self.get_bounds(deg_buffer=0.0)
+
+    def get_extent(self, deg_buffer=0.1):
+        """Get extent as (lon_min, lon_max, lat_min, lat_max) tuple.
+
+        Parameters:
+            deg_buffer (float): A buffer to add around the bounding box
+
+        Returns:
+            tuple
+        """
+        bounds = self.get_bounds(deg_buffer=deg_buffer)
+        return (bounds[0], bounds[2], bounds[1], bounds[3])
+
+    @property
+    def extent(self):
+        """Exact extent of trackset as tuple, no buffer."""
+        return self.get_extent(deg_buffer=0.0)
 
     def plot(self, axis=None, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -662,12 +718,8 @@ class TCTracks():
             LOGGER.info('No tracks to plot')
             return None
 
-        pad = 1
-        bounds = coord_util.latlon_bounds(
-            np.concatenate([t.lat.values for t in self.data]),
-            np.concatenate([t.lon.values for t in self.data]))
-        mid_lon = 0.5 * (bounds[0] + bounds[2])
-        extent = (bounds[0] - pad, bounds[2] + pad, bounds[1] - pad, bounds[3] + pad)
+        extent = self.get_extent(deg_buffer=1)
+        mid_lon = 0.5 * (extent[1] + extent[0])
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
@@ -834,31 +886,6 @@ class TCTracks():
 
         self.data.append(tr_ds)
 
-
-def land_within_tracks_bounds(tracks):
-    """Compute land geometry used for land distance computations.
-
-    Parameters:
-        tracks (list of xr.Dataset): tropical cyclone tracks
-
-    Returns:
-        shapely.geometry.multipolygon.MultiPolygon
-    """
-    deg_buffer = 0.1
-    min_lat = np.min([np.min(track.lat.values) for track in tracks])
-    min_lat = max(min_lat - deg_buffer, -90)
-
-    max_lat = np.max([np.max(track.lat.values) for track in tracks])
-    max_lat = min(max_lat + deg_buffer, 90)
-
-    min_lon = np.min([np.min(track.lon.values) for track in tracks])
-    min_lon = max(min_lon - deg_buffer, -180)
-
-    max_lon = np.max([np.max(track.lon.values) for track in tracks])
-    max_lon = min(max_lon + deg_buffer, 180)
-
-    return coord_util.get_land_geometry(
-        extent=(min_lon, max_lon, min_lat, max_lat), resolution=10)
 
 def track_land_params(track, land_geom):
     """Compute parameters of land for one track.

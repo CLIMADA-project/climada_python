@@ -45,15 +45,15 @@ ECMWF_USER = 'wmo'
 ECMWF_PASS = 'essential'
 
 BASINS = {
-    'W' : 'W - North West Pacific',
-    'C' : 'C - North Central Pacific',
-    'E' : 'E - North East Pacific',
-    'P' : 'P - South Pacific',
-    'L' : 'L - North Atlantic',
-    'A' : 'A - Arabian Sea (North Indian Ocean)',
-    'B' : 'B - Bay of Bengal (North Indian Ocean)',
-    'U' : 'U - Australia',
-    'S' : 'S - South-West Indian Ocean'
+    'W': 'W - North West Pacific',
+    'C': 'C - North Central Pacific',
+    'E': 'E - North East Pacific',
+    'P': 'P - South Pacific',
+    'L': 'L - North Atlantic',
+    'A': 'A - Arabian Sea (North Indian Ocean)',
+    'B': 'B - Bay of Bengal (North Indian Ocean)',
+    'U': 'U - Australia',
+    'S': 'S - South-West Indian Ocean'
 }
 """Gleaned from the ECMWF wiki at
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
@@ -65,6 +65,7 @@ SIG_CENTRE = 1
 
 LOGGER = logging.getLogger(__name__)
 
+
 class TCForecast(TCTracks):
     """An extension of the TCTracks construct adapted to forecast tracks
     obtained from numerical weather prediction runs.
@@ -75,46 +76,50 @@ class TCForecast(TCTracks):
                 - ensemble_member (int)
                 - is_ensemble (bool)
     """
-    def fetch_ecmwf(self, path=None):
+
+    def fetch_ecmwf(self, path=None, files=None):
         """
         Fetch and read latest ECMWF TC track predictions from the FTP
-        dissemination server into instance. Use path argument to use local files
-        instead.
+        dissemination server into instance. Use path argument to use local
+        files instead.
 
         Parameters:
             path (str, list(str)): A location in the filesystem. Either a
-                path to a single BUFR TC track file, or a folder containing only
-                such files, or a globbing pattern.
+                path to a single BUFR TC track file, or a folder containing
+                only such files, or a globbing pattern.
         """
-        if path is None:
+        if path is None and files is None:
             files = self.fetch_bufr_ftp()
-        else:
+        elif files is None:
             files = get_file_names(path)
 
         for i, file in enumerate(files, 1):
             try:
-                file.seek(0) # reset cursor if opened file instance
+                file.seek(0)  # reset cursor if opened file instance
             except AttributeError:
                 pass
 
             self.read_one_bufr_tc(file, id_no=i)
 
             try:
-                file.close() # discard if tempfile
+                file.close()  # discard if tempfile
             except AttributeError:
                 pass
 
     @staticmethod
-    def fetch_bufr_ftp(target_dir=None):
+    def fetch_bufr_ftp(target_dir=None, remote_dir=None):
         """
-        Fetch and read latest ECMWF TC track predictions from the FTP dissemination
-        server. If target_dir is set, the files get downloaded persistently to the
-        given location. A list of opened file-like objects gets returned.
+        Fetch and read latest ECMWF TC track predictions from the FTP
+        dissemination server. If target_dir is set, the files get downloaded
+        persistently to the given location. A list of opened file-like objects
+        gets returned.
 
         Parameters:
-            target_dir (str): An existing directory to write the files to. If None,
-                the files get returned as tempfiles.
-            close_files (bool): Should the returned files be closed?
+            target_dir (str): An existing directory to write the files to. If
+                None, the files get returned as tempfiles.
+            remote_dir (str, optional): If set, search this ftp folder for
+                forecast files; defaults to the latest. Format:
+                yyyymmddhhmmss, e.g. 20200730120000
 
         Returns:
             [str] or [filelike]
@@ -122,9 +127,12 @@ class TCForecast(TCTracks):
         con = ftplib.FTP(host=ECMWF_FTP, user=ECMWF_USER, passwd=ECMWF_PASS)
 
         try:
-            folders = con.nlst()
-            folders.sort(reverse=True)
-            con.cwd(folders[0]) # latest folder
+            if remote_dir is None:
+                folders = con.nlst()
+                folders.sort(reverse=True)
+                con.cwd(folders[0])  # latest folder
+            else:
+                con.cwd(remote_dir)
 
             remotefiles = fnmatch.filter(con.nlst(), '*tropical_cyclone*')
             localfiles = []
@@ -279,7 +287,7 @@ class TCForecast(TCTracks):
                 # according to specs always num-num-letter
                 track.attrs['basin'] = BASINS[sid[2]]
 
-                saffir_scale = np.array([18, 33, 43, 50, 59, 71, 1000]) # in m/s
+                saffir_scale = np.array([18, 33, 43, 50, 59, 71, 1000])  # in m/s
                 track.attrs['category'] = set_category(
                     max_sus_wind=track.max_sustained_wind.values,
                     wind_unit=track.max_sustained_wind_unit,
@@ -292,8 +300,8 @@ class TCForecast(TCTracks):
 
     @staticmethod
     def _find_delayed_replicator(descriptors):
-        """The current bufr tc tracks only use one delayed replicator, enclosing
-        all forecast values. This finds it.
+        """The current bufr tc tracks only use one delayed replicator,
+        enclosing all forecast values. This finds it.
 
         Parameters:
             bufr_message: An in-memory pybufrkit BUFR message
