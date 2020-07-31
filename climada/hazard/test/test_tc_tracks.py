@@ -38,6 +38,7 @@ TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
 TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
 
+
 class TestIBTracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
@@ -263,6 +264,13 @@ class TestFuncs(unittest.TestCase):
         tc_track.append(tc_track_bis)
         self.assertIsInstance(tc_track.get_track(), list)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
+
+    def test_subset(self):
+        """Test subset."""
+        storms = ['1988169N14259', '2002073S16161', '2002143S07157']
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id=storms)
+        self.assertEqual(tc_track.subset({'basin': 'SP'}).size, 2)
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
@@ -508,6 +516,7 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(rad_max_wind[191], 56.10776504, places=5)
         self.assertAlmostEqual(rad_max_wind[192], 57.84814530, places=5)
         self.assertAlmostEqual(rad_max_wind[200], 70.00942075, places=5)
+
 
 # Execute Tests
 if __name__ == "__main__":
