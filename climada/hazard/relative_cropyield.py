@@ -46,61 +46,63 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'RC'
 """Hazard type acronym for Relative Cropyield"""
 
-# crop model names as in ISIMIP-filenames
 AG_MODEL = ['gepic',
             'lpjml',
             'pepic'
             ]
+"""crop model names as in ISIMIP-filenames"""
 
-# climate model names as in ISIMIP-filenames
 CL_MODEL = ['gfdl-esm2m',
             'hadgem2-es',
             'ipsl-cm5a-lr',
             'miroc5'
             ]
+"""climate model names as in ISIMIP-filenames"""
 
-# climate scenario names as in ISIMIP-filenames
 SCENARIO = ['historical',
             'rcp60'
             ]
+"""climate scenario names as in ISIMIP-filenames"""
 
-# socio-economic forcing settings as in ISIMIP-filenames
 SOC = ['2005soc',
        'histsoc'
        ]
+"""socio-economic forcing settings as in ISIMIP-filenames"""
 
-# CO2 forcing settings as in ISIMIP-filenames
 CO2 = ['co2',
        '2005co2'
        ]
-# crop types as in ISIMIP-filenames
+"""CO2 forcing settings as in ISIMIP-filenames"""
+
 CROP = ['whe',
         'mai',
         'soy',
         'ric'
        ]
+"""crop types as in ISIMIP-filenames"""
 
-# non-irrigated/irrigated as in ISIMIP-filenames
 IRR = ['noirr',
        'irr']
+"""non-irrigated/irrigated as in ISIMIP-filenames"""
 
 FN_STR_VAR = 'global_annual'
+"""filename of ISIMIP output constant part"""
 
-# start and end years per senario as in ISIMIP-filenames
 YEARCHUNKS = dict()
+"""start and end years per senario as in ISIMIP-filenames"""
 YEARCHUNKS[SCENARIO[0]] = dict()
 YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
 YEARCHUNKS[SCENARIO[1]] = dict()
 YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
 
-# geographical bounding box in decimal degrees (lon from -180 to 180)
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
+"""geographical bounding box in decimal degrees (lon from -180 to 180)"""
 
 INT_DEF = 'Yearly Yield'
 
-# default paths for input and output data:
 # ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
+"""default paths for input and output data:"""
 OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 class RelativeCropyield(Hazard):
@@ -157,7 +159,6 @@ class RelativeCropyield(Hazard):
         raises:
             NameError
         """
-
         if input_dir is not None:
             if not os.path.exists(input_dir):
                 LOGGER.warning('Input directory %s does not exist', input_dir)
@@ -166,19 +167,18 @@ class RelativeCropyield(Hazard):
             LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
-
         yearchunk = YEARCHUNKS[scenario]
-        string = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc'
-        filename = os.path.join(input_dir, string % (ag_model, cl_model, scenario, soc, co2, crop,
-                                                     irr, fn_str_var, str(yearchunk['startyear']),
-                                                     str(yearchunk['endyear'])))
+        filename = os.path.join(input_dir,
+                                '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+                                    %(ag_model, cl_model, scenario, soc, co2, crop,
+                                      irr, fn_str_var, str(yearchunk['startyear']),
+                                      str(yearchunk['endyear'])))
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
         # corrected indexes due to the bands in input starting with the index=1
         id_bands = np.arange(yearrange[0] - yearchunk['startyear'] + 1,
                              yearrange[1] - yearchunk['startyear'] + 2).tolist()
-        event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1] + 1))]
 
         # hazard setup: set attributes
         self.set_raster([filename], band=id_bands,
@@ -187,13 +187,13 @@ class RelativeCropyield(Hazard):
         self.intensity.data[np.isnan(self.intensity.data)] = 0.0
         self.intensity.todense()
         self.crop = crop
-        self.event_name = event_list
+        self.event_name = [str(n) for n in range(int(yearrange[0]), int(yearrange[-1] + 1))]
         self.frequency = np.ones(len(self.event_name)) * (1 / len(self.event_name))
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
         self.units = 't / y / ha'
         self.date = np.array(dt.str_to_date(
-            [event_list[n] + '-01-01' for n, _ in enumerate(event_list)]))
+            [event_ + '-01-01' for event_ in self.event_name]))
         self.centroids.set_meta_to_lat_lon()
         self.centroids.region_id = (
             coordinates.coord_on_land(self.centroids.lat, self.centroids.lon)).astype(dtype=int)
@@ -203,13 +203,16 @@ class RelativeCropyield(Hazard):
     def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False,
                   output_dir=OUTPUT_DIR):
         """Calculates mean of the hazard for a given reference time period
-            Parameters:
+
+            Optional Parameters:
                 yearrange (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
+            save (boolean): save mean to file? default: False
+            output_dir (str): path of output directory
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
-                time period for each centroid
+                    time period for each centroid
         """
         time_array = np.array(self.event_name, dtype=int)
         idx_time = np.zeros(2, dtype=int)
@@ -295,11 +298,14 @@ class RelativeCropyield(Hazard):
     def plot_intensity_cp(self, event=None, dif=False, axis=None, **kwargs):
         """Plots intensity with predefined settings depending on the intensity definition
 
-        Parameters:
+        Optional Parameters:
             event (int or str): event_id or event_name
             dif (boolean): variable signilizing whether absolute values or the difference between
                 future and historic are plotted (False: his/fut values; True: difference = fut-his)
             axis (geoaxes): axes to plot on
+
+        Returns:
+            axes (geoaxes)
         """
         if not dif:
             if self.intensity_def == 'Yearly Yield':
@@ -324,21 +330,24 @@ class RelativeCropyield(Hazard):
     def plot_time_series(self, years=None):
         """Plots a time series of intensities (a series of sub plots)
 
+        Optional Parameters:
+            event (int or str): event_id or event_name
+
         Returns:
             figure
         """
 
         if years is None:
-            event_list = self.event_name
+            years = self.event_name
         else:
-            event_list = [str(n) for n in range(years[0], years[1] + 1)]
+            years = [str(n) for n in range(years[0], years[1] + 1)]
 
         self.centroids.set_meta_to_lat_lon()
 
         len_lat = abs(self.centroids.lat[0] - self.centroids.lat[-1]) * (2.5 / 13.5)
         len_lon = abs(self.centroids.lon[0] - self.centroids.lon[-1]) * (5 / 26)
 
-        nr_subplots = len(event_list)
+        nr_subplots = len(years)
 
         if len_lon >= len_lat:
             colums = int(np.floor(np.sqrt(nr_subplots / (len_lon / len_lat))))
@@ -358,11 +367,11 @@ class RelativeCropyield(Hazard):
                                         np.min(self.centroids.lat), np.max(self.centroids.lat)])
 
             if rows == 1:
-                self.plot_intensity_cp(event=event_list[year], axis=axes[colum])
+                self.plot_intensity_cp(event=years[year], axis=axes[colum])
             elif colums == 1:
-                self.plot_intensity_cp(event=event_list[year], axis=axes[row])
+                self.plot_intensity_cp(event=years[year], axis=axes[row])
             else:
-                self.plot_intensity_cp(event=event_list[year], axis=axes[row, colum])
+                self.plot_intensity_cp(event=years[year], axis=axes[row, colum])
 
             if colum <= colums - 2:
                 colum = colum + 1
@@ -428,14 +437,15 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files to the output directory.
 
-        Parameters:
+        Optional Parameters:
         input_dir (string): path to input data directory
         output_dir (string): path to output data directory
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
         returns (str): returned output
-        'filename_list': returns list of filenames only, else returns also list of data
+            default = 'filename_list': returns list of filenames only
+            else returns also list of data
 
     """
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
