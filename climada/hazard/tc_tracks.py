@@ -667,7 +667,7 @@ class TCTracks():
             np.concatenate([t.lat.values for t in self.data]),
             np.concatenate([t.lon.values for t in self.data]))
         mid_lon = 0.5 * (bounds[0] + bounds[2])
-        extent = (min_lon - pad, max_lon + pad, min_lat - pad, max_lat + pad)
+        extent = (bounds[0] - pad, bounds[2] + pad, bounds[1] - pad, bounds[3] + pad)
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)

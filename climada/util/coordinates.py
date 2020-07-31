@@ -155,7 +155,7 @@ def latlon_bounds(lat, lon):
     Returns:
         tuple (lon_min, lat_min, lon_max, lat_max)
     """
-    lon = lon_normalize(lon)
+    lon = lon_normalize(lon.copy())
     lon_uniq = np.unique(lon)
     lon_uniq = np.concatenate([lon_uniq, [360 + lon_uniq[0]]])
     gap_max = np.argmax(np.diff(lon_uniq))
@@ -407,6 +407,7 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
         np.array
     """
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
+    lon = lon_normalize(lon.copy())
 
     zipname = "GMT_intermediate_coast_distance_01d.zip"
     tifname = "GMT_intermediate_coast_distance_01d.tif"
@@ -423,8 +424,12 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
         os.chdir(cwd)
 
     intermediate_res = None if highres else 0.1
-    dist = read_raster_sample(
-        path, lat, lon, intermediate_res=intermediate_res, fill_value=0)
+    west_msk = (lon < 0)
+    dist = np.zeros_like(lat)
+    for msk in [west_msk, ~west_msk]:
+        if np.count_nonzero(msk) > 0:
+            dist[msk] = read_raster_sample(
+                path, lat[msk], lon[msk], intermediate_res=intermediate_res, fill_value=0)
     if not signed:
         dist = np.abs(dist)
     return 1000 * dist
@@ -1124,6 +1129,7 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         path = '/vsigzip/' + path
     if not bands:
         bands = [1]
+    resampling = rasterio.warp.Resampling.bilinear
     with rasterio.open(path, 'r') as src:
         if res:
             if not isinstance(res, tuple):
@@ -1140,12 +1146,28 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
                   bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
 
+        if bounds[0] > 180:
+            bounds = (bounds[0] - 360, bounds[1], bounds[2] - 360, bounds[3])
+
         window = src.window(*bounds)
         w_transform = src.window_transform(window)
         transform = rasterio.Affine(np.sign(w_transform[0]) * res[0], 0, w_transform[2],
                                     0, np.sign(w_transform[4]) * res[1], w_transform[5])
-        data = src.read(bands, out_shape=shape, window=window,
-                        resampling=rasterio.warp.Resampling.bilinear)
+
+        if bounds[2] <= 180:
+            data = src.read(bands, out_shape=shape, window=window,
+                            resampling=resampling)
+        else:
+            # split up at antimeridian
+            bounds_sub = [(bounds[0], bounds[1], 180, bounds[3]),
+                          (-180, bounds[1], bounds[2] - 360, bounds[3])]
+            ratio_left = (bounds_sub[0][2] - bounds_sub[0][0]) / (bounds[2] - bounds[0])
+            shapes_sub = [(shape[0], int(shape[1] * ratio_left))]
+            shapes_sub.append((shape[0], shape[1] - shapes_sub[0][1]))
+            windows_sub = [src.window(*bds) for bds in bounds_sub]
+            data = [src.read(bands, out_shape=shp, window=win, resampling=resampling)
+                    for shp, win in zip(shapes_sub, windows_sub)]
+            data = np.concatenate(data, axis=2)
     return data, transform
 
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):

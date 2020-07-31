@@ -185,7 +185,7 @@ def geoclaw_surge_from_track(track, centroids):
     track_bounds = coord_util.latlon_bounds(track.lat.values, track.lon.values)
     mid_lon = 0.5 * (track_bounds[0] + track_bounds[2])
     track['lon'][:] = coord_util.lon_normalize(track.lon.values, center=mid_lon)
-    centroids[:, 0] = coord_util.lon_normalize(centroids[:, 0], center=mid_lon)
+    centroids[:, 1] = coord_util.lon_normalize(centroids[:, 1], center=mid_lon)
 
     # restrict to centroids in rectangular bounding box around track
     track_bounds_pad = np.array(track_bounds)
@@ -198,6 +198,7 @@ def geoclaw_surge_from_track(track, centroids):
     track_centr = centroids[track_centr_msk]
 
     if track_centr.shape[0] == 0:
+        LOGGER.info("No centroids within reach of this storm track.")
         return intensity
 
     # make sure that radius information is available
@@ -214,6 +215,7 @@ def geoclaw_surge_from_track(track, centroids):
     os.makedirs(work_dir, exist_ok=True)
 
     # get landfall events
+    LOGGER.info("Determine georegions and temporal periods of landfall events...")
     events = TCSurgeEvents(track, track_centr)
     events.plot_areas(path=os.path.join(work_dir, "event_areas.pdf"))
 
@@ -664,8 +666,10 @@ def mean_max_sea_level(months, bounds, path=None):
         zos_ds = zos_ds.sel(time=np.any([(zos_ds.time.dt.year == m[0])
                                          & (zos_ds.time.dt.month == m[1])
                                          for m in months], axis=0))
+        zos_lon = coord_util.lon_normalize(zos_ds.lon.values,
+                                           center=0.5 * (bounds[0] + bounds[2]))
         zos_ds = zos_ds.sel(lat=(bounds[1] <= zos_ds.lat) & (zos_ds.lat <= bounds[3]),
-                            lon=(bounds[0] <= zos_ds.lon) & (zos_ds.lon <= bounds[2]))
+                            lon=(bounds[0] <= zos_lon) & (zos_lon <= bounds[2]))
         zos = zos_ds.zos.values[:]
     return zos.max(axis=(1, 2)).mean()
 
@@ -710,6 +714,8 @@ def load_topography(bounds, res_as, path=None):
     if yres < 0:
         zvalues = np.flip(zvalues, axis=0)
         yres, ymin, ymax = -yres, ymax, ymin
+    xmin, xmax = coord_util.lon_normalize(np.array([xmin, xmax]),
+                                          center=0.5 * (bounds[0] + bounds[2]))
     bounds = (xmin, ymin, xmax, ymax)
     xcoords = np.arange(xmin + xres / 2, xmax, xres)
     ycoords = np.arange(ymin + yres / 2, ymax, yres)
@@ -730,26 +736,29 @@ class TCSurgeEvents():
             These are supposed to be coastal points of interest.
         d_centroids (2d np.array): For each eye position, distances to centroids.
         nevents (int): Number of landfall events.
-        periods (list of tuples): For each event, a pair of datetime objects
+        period (list of tuples): For each event, a pair of datetime objects
             indicating beginnig and end of landfall event period.
-        time_masks (list of np.array): For each event, a mask along
+        time_mask (list of np.array): For each event, a mask along
             `track.time` indicating the landfall event period.
-        time_masks_buffered (list of np.array): For each event, a mask along
+        time_mask_buffered (list of np.array): For each event, a mask along
             `track.time` indicating the landfall event period with added buffer
             for storm form-up.
-        wind_areas (list of tuples): For each event, a rectangular box around
+        wind_area (list of tuples): For each event, a rectangular box around
             the geographical area that is affected by storm winds during the
             (buffered) landfall event.
-        landfall_areas (list of tuples): For each event, a rectangular box
+        landfall_area (list of tuples): For each event, a rectangular box
             around the geographical area that is affected by storm surge during
             the landfall event.
         surge_areas (list of list of tuples): For each event, a list of
             tight rectangular boxes around the centroids that will be affected
             by storm surge during the landfall event.
-        centroid_masks (list of np.array): For each event, a mask along first
+        centroid_mask (list of np.array): For each event, a mask along first
             axis of `centroids` indicating which centroids are reachable by
             surge during this landfall event.
     """
+    keys = ['period', 'time_mask', 'time_mask_buffered', 'wind_area',
+            'landfall_area', 'surge_areas', 'centroid_mask']
+
     def __init__(self, track, centroids):
         """Determine temporal periods and geographical regions where the storm
         affects the centroids
@@ -768,27 +777,28 @@ class TCSurgeEvents():
             method="geosphere")[0]
 
         self._set_periods()
-        self.time_masks = [self._period_to_mask(p) for p in self.periods]
-        self.time_masks_buffered = [self._period_to_mask(p, buffer=(0.3, 0.3))
-                                    for p in self.periods]
+        self.time_mask = [self._period_to_mask(p) for p in self.period]
+        self.time_mask_buffered = [self._period_to_mask(p, buffer=(0.3, 0.3))
+                                    for p in self.period]
         self._set_areas()
+        self._remove_harmless_events()
 
 
     def __iter__(self):
         for i_event in range(self.nevents):
-            yield {
-                'period': self.periods[i_event],
-                'time_mask': self.time_masks[i_event],
-                'time_mask_buffered': self.time_masks_buffered[i_event],
-                'wind_area': self.wind_areas[i_event],
-                'landfall_area': self.landfall_areas[i_event],
-                'surge_areas': self.surge_areas[i_event],
-                'centroid_mask': self.centroid_masks[i_event],
-            }
+            yield {key: getattr(self, key)[i_event] for key in self.keys}
 
 
     def __len__(self):
         return self.nevents
+
+
+    def _remove_harmless_events(self):
+        """Remove events without affected areas (surge_areas)"""
+        relevant_idx = [i for i in range(self.nevents) if len(self.surge_areas[i]) > 0]
+        for key in self.keys:
+            setattr(self, key, [getattr(self, key)[i] for i in relevant_idx])
+        self.nevents = len(relevant_idx)
 
 
     def _set_periods(self):
@@ -804,7 +814,7 @@ class TCSurgeEvents():
         mask = (centr_counts > 1) & (self.track.max_sustained_wind > 35)
 
         # convert landfall mask to (clustered) start/end pairs
-        periods = []
+        period = []
         start = end = None
         for i, date in enumerate(self.track.time):
             if start is not None:
@@ -813,16 +823,16 @@ class TCSurgeEvents():
                 exceed_maxlen = (date - end) / np.timedelta64(1, 'h') > 12
                 exceed_maxbreak = (date - start) / np.timedelta64(1, 'h') > 36
                 if exceed_maxlen or exceed_maxbreak:
-                    periods.append((start, end))
+                    period.append((start, end))
                     start = end = None
             if mask[i]:
                 end = date
                 if start is None:
                     start = date
         if start is not None:
-            periods.append((start, end))
-        self.periods = [(s.values[()], e.values[()]) for s, e in periods]
-        self.nevents = len(self.periods)
+            period.append((start, end))
+        self.period = [(s.values[()], e.values[()]) for s, e in period]
+        self.nevents = len(self.period)
 
 
     def _period_to_mask(self, period, buffer=(0.0, 0.0)):
@@ -844,17 +854,18 @@ class TCSurgeEvents():
 
     def _set_areas(self):
         """For each event, determine areas affected by wind and surge"""
-        self.wind_areas = []
-        self.landfall_areas = []
+        self.wind_area = []
+        self.landfall_area = []
         self.surge_areas = []
-        self.centroid_masks = []
-        for i_event, mask_buf in enumerate(self.time_masks_buffered):
+        self.centroid_mask = []
+        for i_event, mask_buf in enumerate(self.time_mask_buffered):
             track = self.track.sel(time=mask_buf)
-            mask = self.time_masks[i_event][mask_buf]
+            mask = self.time_mask[i_event][mask_buf]
+            lf_radii = np.fmax(0.4 * track.radius_oci, 1.6 * track.radius_max_wind).values
 
             # wind area (maximum bounds to consider)
             pad = 0.9 * track.radius_oci / 60
-            self.wind_areas.append((
+            self.wind_area.append((
                 float((track.lon - pad).min()),
                 float((track.lat - pad).min()),
                 float((track.lon + pad).max()),
@@ -862,8 +873,8 @@ class TCSurgeEvents():
             ))
 
             # landfall area
-            pad = 0.4 * track.radius_oci / 60
-            self.landfall_areas.append((
+            pad = lf_radii / 60
+            self.landfall_area.append((
                 float((track.lon - pad)[mask].min()),
                 float((track.lat - pad)[mask].min()),
                 float((track.lon + pad)[mask].max()),
@@ -871,15 +882,15 @@ class TCSurgeEvents():
             ))
 
             # surge areas
-            radii = 0.4 * track.radius_oci.values * NM_TO_KM
+            lf_radii *= NM_TO_KM
             centroids_mask = np.any(
-                self.d_centroids[mask_buf][mask] < radii[mask, None], axis=0)
+                self.d_centroids[mask_buf][mask] < lf_radii[mask, None], axis=0)
             points = self.centroids[centroids_mask, ::-1]
             surge_areas = []
             if points.shape[0] > 0:
                 pt_bounds = list(points.min(axis=0)) + list(points.max(axis=0))
                 pt_size = (pt_bounds[2] - pt_bounds[0]) * (pt_bounds[3] - pt_bounds[1])
-                if pt_size < (2 * radii.max() * KM_TO_DEG)**2:
+                if pt_size < (2 * lf_radii.max() * KM_TO_DEG)**2:
                     small_bounds = [pt_bounds]
                 else:
                     small_bounds, pt_size = boxcover_points_along_axis(points, 3)
@@ -899,7 +910,7 @@ class TCSurgeEvents():
                                    & (bounds[1] <= self.centroids[:, 0])
                                    & (self.centroids[:, 1] <= bounds[2])
                                    & (self.centroids[:, 0] <= bounds[3]))
-            self.centroid_masks.append(centroids_mask)
+            self.centroid_mask.append(centroids_mask)
 
 
     def plot_areas(self, path=None):
@@ -908,41 +919,39 @@ class TCSurgeEvents():
         Parameters:
             path (str, optional): If given, save the plots to the given location. Default: None
         """
-        mid_lon = 0.5 * (self.track.lon.max() + self.track.lon.min())
+        mid_lon = 0.5 * float(self.track.lon.min() + self.track.lon.max())
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
         fig = plt.figure()
         axes = fig.add_subplot(111, projection=proj)
         axes.outline_patch.set_linewidth(0.5)
 
         # plot coastlines
-        feat = cfeature.OCEAN.with_scale('10m')
-        # pylint: disable=protected-access
-        feat._crs = proj
-        axes.add_feature(feat, linewidth=0.1)
+        axes.add_feature(cfeature.OCEAN.with_scale('50m'), linewidth=0.1)
 
         # plot TC track with masks
-        axes.plot(self.track.lon, self.track.lat, color='k', linewidth=0.5)
-        for mask in self.time_masks_buffered:
-            axes.plot(self.track.lon[mask], self.track.lat[mask],
+        axes.plot(self.track.lon - mid_lon, self.track.lat, color='k', linewidth=0.5)
+        for mask in self.time_mask_buffered:
+            axes.plot(self.track.lon[mask] - mid_lon, self.track.lat[mask],
                       color='k', linewidth=1.5)
 
         # plot rectangular areas
         linestep = max(0.5, 1 - 0.1 * self.nevents)
         linew = 1 + linestep * self.nevents
         color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        for i_event, mask in enumerate(self.time_masks):
-            axes.plot(self.track.lon[mask], self.track.lat[mask],
+        for i_event, mask in enumerate(self.time_mask):
+            axes.plot(self.track.lon[mask] - mid_lon, self.track.lat[mask],
                       color=color_cycle[i_event], linewidth=3)
             linew -= linestep
             areas = [
-                self.wind_areas[i_event],
-                self.landfall_areas[i_event],
+                self.wind_area[i_event],
+                self.landfall_area[i_event],
             ] + self.surge_areas[i_event]
             for bounds in areas:
+                bounds = (bounds[0] - mid_lon, bounds[1], bounds[2] - mid_lon, bounds[3])
                 plot_bounds(axes, bounds, color=color_cycle[i_event], linewidth=linew)
 
         # plot track data points
-        axes.scatter(self.track.lon, self.track.lat, s=2)
+        axes.scatter(self.track.lon - mid_lon, self.track.lat, s=2)
         fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0, hspace=0)
         if path is None:
             plt.show()
