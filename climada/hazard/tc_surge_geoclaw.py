@@ -342,7 +342,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         fg_path = os.path.join(outdir, "fgmax0001.txt")
 
         if not os.path.exists(fg_path):
-            LOGGER.error("GeoClaw ended without creating fgmax data!")
+            LOGGER.error("GeoClaw quit without creating fgmax data!")
             raise FileNotFoundError
 
         fgmax_grid = fgmax_tools.FGmaxGrid()
@@ -398,10 +398,10 @@ include $(CLAW)/clawutil/src/Makefile.common
         clawdata = self.rundata.clawdata
         amrdata = self.rundata.amrdata
         refinedata = self.rundata.refinement_data
-        amrdata.amr_levels_max = 5
-        amrdata.refinement_ratios_x = [2, 2, 2, 4]
+        amrdata.refinement_ratios_x = [2, 2, 2, 2, 3]
         amrdata.refinement_ratios_y = amrdata.refinement_ratios_x
         amrdata.refinement_ratios_t = amrdata.refinement_ratios_x
+        amrdata.amr_levels_max = len(amrdata.refinement_ratios_x) + 1
         resolutions = [(clawdata.upper[0] - clawdata.lower[0]) / clawdata.num_cells[0]]
         for fact in amrdata.refinement_ratios_x:
             resolutions.append(resolutions[-1] / fact)
