@@ -219,19 +219,23 @@ def geoclaw_surge_from_track(track, centroids):
     events = TCSurgeEvents(track, track_centr)
     events.plot_areas(path=os.path.join(work_dir, "event_areas.pdf"))
 
-    LOGGER.info("Starting %d runs of GeoClaw...", len(events))
-    surge_h = []
-    for event in events:
-        event_surge_h = np.zeros(track_centr.shape[0])
-        event_track = track.sel(time=event['time_mask_buffered'])
-        runner = GeoclawRunner(work_dir, event_track, event['period'][0], event,
-                               track_centr[event['centroid_mask']])
-        runner.run()
-        event_surge_h[event['centroid_mask']] = runner.surge_h
-        surge_h.append(event_surge_h)
+    if len(events) == 0:
+        LOGGER.info("This storm doesn't affect any coastal areas.")
+    else:
+        LOGGER.info("Starting %d runs of GeoClaw...", len(events))
+        surge_h = []
+        for event in events:
+            event_surge_h = np.zeros(track_centr.shape[0])
+            event_track = track.sel(time=event['time_mask_buffered'])
+            runner = GeoclawRunner(work_dir, event_track, event['period'][0], event,
+                                   track_centr[event['centroid_mask']])
+            runner.run()
+            event_surge_h[event['centroid_mask']] = runner.surge_h
+            surge_h.append(event_surge_h)
 
-    # write results to intensity array
-    intensity[track_centr_msk] = np.stack(surge_h, axis=0).max(axis=0)
+        # write results to intensity array
+        intensity[track_centr_msk] = np.stack(surge_h, axis=0).max(axis=0)
+
     return intensity
 
 
@@ -919,11 +923,17 @@ class TCSurgeEvents():
         Parameters:
             path (str, optional): If given, save the plots to the given location. Default: None
         """
-        mid_lon = 0.5 * float(self.track.lon.min() + self.track.lon.max())
+        t_bounds = (self.track.lon.min(), self.track.lat.min(),
+                    self.track.lon.max(), self.track.lat.max())
+        mid_lon = 0.5 * float(t_bounds[0] + t_bounds[2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
         fig = plt.figure()
         axes = fig.add_subplot(111, projection=proj)
         axes.outline_patch.set_linewidth(0.5)
+        axes.set_xlim(t_bounds[0] - mid_lon - CENTR_NODE_MAX_DIST_DEG,
+                      t_bounds[2] - mid_lon + CENTR_NODE_MAX_DIST_DEG)
+        axes.set_ylim(t_bounds[1] - CENTR_NODE_MAX_DIST_DEG,
+                      t_bounds[3] + CENTR_NODE_MAX_DIST_DEG)
 
         # plot coastlines
         axes.add_feature(cfeature.OCEAN.with_scale('50m'), linewidth=0.1)
