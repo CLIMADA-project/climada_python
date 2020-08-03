@@ -140,8 +140,9 @@ class CropProduction(Exposures):
         """Wrapper to fill exposure from nc_dis file from ISIMIP
         Parameters:
             input_dir (string): path to input data directory
-            filename (string): name of the file to use
-            historic mean (array): historic mean crop production per centroid
+            filename (string): name of the landuse data file to use,
+                e.g. "histsoc_landuse-15crops_annual_1861_2005.nc""
+            hist_mean (str or array): historic mean crop yield per centroid (or path)
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange (int tuple): year range for exposure set
