@@ -252,7 +252,7 @@ class RelativeCropyield(Hazard):
         idx = np.where(hist_mean != 0)[0]
 
         # initialize new hazard_matrix
-        hazard_matrix = np.zeros(self.intensity.shape)
+        hazard_matrix = np.zeros(self.intensity.shape, dtype=np.float32)
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
@@ -261,8 +261,6 @@ class RelativeCropyield(Hazard):
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
         self.units = ''
-        self.intensity.max = np.nanmax(self.intensity.toarray())
-        self.intensity.min = np.nanmin(self.intensity.toarray())
 
         return self
 
