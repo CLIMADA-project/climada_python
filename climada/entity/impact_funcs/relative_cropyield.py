@@ -35,7 +35,7 @@ class IFRelativeCropyield(ImpactFunc):
         """Impact functions defining the impact as intensity"""
         self.haz_type = 'RC'
         self.id = 1
-        self.name = 'CRelative Cropyield ISIMIP'
+        self.name = 'Relative Cropyield ISIMIP'
         self.intensity_unit = ''
         self.intensity = np.arange(-1, 10)
         self.mdr = (self.intensity)
