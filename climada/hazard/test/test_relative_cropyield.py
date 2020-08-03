@@ -38,6 +38,14 @@ class TestRelativeCropyield(unittest.TestCase):
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
 
+        self.assertEqual(haz.crop, 'whe')
+        self.assertEqual(haz.tag.haz_type, 'RC')
+        self.assertIn('lpjml', haz.tag.file_name)
+        self.assertIn('ipsl-cm5a-lr', haz.tag.file_name)
+        self.assertIn('hist', haz.tag.file_name)
+        self.assertIn('2005soc', haz.tag.file_name)
+        self.assertIn('noirr', haz.tag.file_name)
+
         self.assertEqual(haz.centroids.lon.min(), -4.75)
         self.assertEqual(haz.centroids.lon.max(), 15.75)
         self.assertEqual(haz.centroids.lat.min(), 42.25)
@@ -53,12 +61,16 @@ class TestRelativeCropyield(unittest.TestCase):
                                 cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
                                 co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(np.array([2001, 2005]))
+
+        self.assertEqual(haz.intensity_def, 'Yearly Yield')
         haz.set_rel_yield_to_int(hist_mean)
+        self.assertEqual(haz.intensity_def, 'Relative Yield')
+
         self.assertAlmostEqual(np.max(hist_mean), 8.098413, places=5)
         self.assertEqual(haz.intensity.shape, (5, 1092))
         self.assertAlmostEqual(np.nanmax(haz.intensity.toarray()), 3.0, places=5)
-        self.assertAlmostEqual(haz.intensity.max, 3.0, places=5)
-        self.assertAlmostEqual(haz.intensity.min, -1.0, places=5)
+        self.assertAlmostEqual(haz.intensity.max(), 3.0, places=5)
+        self.assertAlmostEqual(haz.intensity.min(), -1.0, places=5)
 
 # Execute Tests
 if __name__ == "__main__":
