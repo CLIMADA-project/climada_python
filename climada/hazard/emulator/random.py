@@ -27,8 +27,7 @@ LOGGER = logging.getLogger(__name__)
 random_state = np.random.RandomState(123456789)
 # random_state = np.random.default_rng(123456789)
 
-def estimate_drop(events, time_col, val_col, norm_period,
-                  norm_fact=None, norm_mean=None):
+def estimate_drop(events, time_col, val_col, norm_period, norm_fact=None, norm_mean=None):
     """Determine fraction of outlying events to be dropped
 
     If the mean intensity of events in the given time period `norm_period`
@@ -66,7 +65,7 @@ def estimate_drop(events, time_col, val_col, norm_period,
         that are to be dropped.
     """
     all_idx = events.index[(events[time_col] >= norm_period[0])
-                         & (events[time_col] <= norm_period[1])]
+                           & (events[time_col] <= norm_period[1])]
     all_mean = events.loc[all_idx, val_col].mean()
     all_std = events.loc[all_idx, val_col].std()
 
@@ -78,7 +77,7 @@ def estimate_drop(events, time_col, val_col, norm_period,
 
     drop_expr = f"intensity {'<' if norm_fact > 1 else '>'} {all_mean}"
     drop_frac = 0.0
-    if 0.98 < norm_fact and norm_fact < 1.02:
+    if 0.98 < norm_fact < 1.02:
         return drop_expr, drop_frac
 
     step_size = 0.5 * np.abs(norm_mean - all_mean) / all_std
@@ -91,7 +90,7 @@ def estimate_drop(events, time_col, val_col, norm_period,
                          .index
         events_sub = events.drop(drop_idx).reset_index(drop=True)
         sub_idx = events_sub.index[(events_sub[time_col] >= norm_period[0])
-                                    & (events_sub[time_col] <= norm_period[1])]
+                                   & (events_sub[time_col] <= norm_period[1])]
         sub_mean = events_sub.loc[sub_idx, val_col].mean()
 
         diff = (norm_mean - sub_mean) / np.abs(norm_mean)
@@ -101,7 +100,8 @@ def estimate_drop(events, time_col, val_col, norm_period,
     drop_frac = min(1.0, drop_frac)
     LOGGER.info("Intensity normalization by subsampling - mean intensity of:\n" \
                 "    simulated events | observed events | simulated events after subsampling\n" \
-               f"    {all_mean:16.4f} | {norm_mean:11.4f}     | {sub_mean:7.4f}")
+                "    %16.4f | %11.4f     | %7.4f",
+                all_mean, norm_mean, sub_mean)
 
     return drop_expr, drop_frac
 
@@ -153,7 +153,7 @@ def draw_poisson_events(poisson, events, val_col, val_accept, drop=None):
         draw_inds = random_state.choice(events_sub.shape[0], draw_size, replace=False)
         draw_mean = events_sub[val_col].iloc[draw_inds].mean()
 
-        if val_accept[0] <= draw_mean and draw_mean <= val_accept[1]:
+        if val_accept[0] <= draw_mean <= val_accept[1]:
             return events_sub.index[draw_inds]
 
         fail_counts += 1

@@ -105,20 +105,20 @@ TC_BASIN_GEOM_SIMPL = {
     'SPE': [[172.0, -60.0, -50.0, 0.0]],
 
     # Western Pacific Basin
-    'WP': [[ 99.0, 180.0, 0.0, 60.0]],
+    'WP': [[99.0, 180.0, 0.0, 60.0]],
     'WPN': [[99.0, 180.0, 20.0, 60.0]],
     'WPS': [[99.0, 180.0, 0.0, 20.0]],
 }
 """Simplified boundaries of TC (sub-)basins (lonmin, lonmax, latmin, latmax)"""
 
 TC_SUBBASINS = {
-    'EP': ['EPW','EPE'],
-    'NA': ['NAN','NAS'],
-    'NI': ['NIW','NIE'],
+    'EP': ['EPW', 'EPE'],
+    'NA': ['NAN', 'NAS'],
+    'NI': ['NIW', 'NIE'],
     'SA': ['SA'],
-    'SI': ['SIW','SIE'],
-    'SP': ['SPW','SPE'],
-    'WP': ['WPN','WPS'],
+    'SI': ['SIW', 'SIE'],
+    'SP': ['SPW', 'SPE'],
+    'WP': ['WPN', 'WPS'],
 }
 """Abbreviated names of TC subbasins for each basin"""
 

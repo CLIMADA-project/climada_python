@@ -87,22 +87,22 @@ class HazardEmulator():
             self.stats = self.stats.drop(labels=self.ci_cols, axis=1)
 
         self.ci_cols = []
-        for ci in climate_indices:
-            ci_name = ci.columns.values.tolist()
+        for cidx in climate_indices:
+            ci_name = cidx.columns.values.tolist()
             ci_name.remove("year")
             ci_name.remove("month")
             self.ci_cols += ci_name
             avg_season = const.PDO_SEASON if "pdo" in ci_name else self.region.season
-            avg = stats.seasonal_average(ci, avg_season)
+            avg = stats.seasonal_average(cidx, avg_season)
             self.stats = pd.merge(self.stats, avg, on="year", how="left", sort=True)
 
         self.fit_info = {}
         for explained in self.explaineds:
-            self.fit_info[explained] = fit.fit_data(self.stats, explained,
-                self.ci_cols, poisson=(explained == 'eventcount'))
+            self.fit_info[explained] = fit.fit_data(
+                self.stats, explained, self.ci_cols, poisson=(explained == 'eventcount'))
 
 
-    def predict_statistics(self, climate_indices=[]):
+    def predict_statistics(self, climate_indices=None):
         """Predict hypothetical hazard statistics according to climate indices
 
         The statistical fit from `calibrate_statistics` is used to predict the frequency and
@@ -123,8 +123,9 @@ class HazardEmulator():
             Otherwise, the internal (within-year) statistics of the data set
             are used to predict frequency and intensity.
         """
-        reuse_indices = (len(climate_indices) == 0)
-        if len(climate_indices) > 0 and len(self.ci_cols) == 0:
+        if not climate_indices:
+            reuse_indices = True
+        elif len(climate_indices) > 0 and len(self.ci_cols) == 0:
             self.calibrate_statistics(climate_indices)
             reuse_indices = True
 
@@ -143,12 +144,12 @@ class HazardEmulator():
         else:
             LOGGER.info("Predicting TCs with new climate index dataset...")
             ci_avg = None
-            for ci in climate_indices:
-                ci_name = ci.columns.values.tolist()
+            for cidx in climate_indices:
+                ci_name = cidx.columns.values.tolist()
                 ci_name.remove("year")
                 ci_name.remove("month")
                 avg_season = const.PDO_SEASON if "pdo" in ci_name else self.region.season
-                avg = stats.seasonal_average(ci, avg_season)
+                avg = stats.seasonal_average(cidx, avg_season)
                 if ci_avg is None:
                     ci_avg = avg
                 else:
@@ -189,10 +190,10 @@ class HazardEmulator():
         if self.stats_pred is None:
             raise Exception("Run `predict_statistics` before making draws!")
 
-        LOGGER.info(f"Drawing {nrealizations} realizations for period "
-                    f"({period[0]}, {period[1]})")
+        LOGGER.info("Drawing %d realizations for period  (%d, %d)",
+                    nrealizations, period[0], period[1])
         year_draws = []
-        for year_no, year in enumerate(range(period[0], period[1] + 1)):
+        for year in range(period[0], period[1] + 1):
             sys.stdout.write(f"\r{period[0]} ... {year} ... {period[1]}")
             sys.stdout.flush()
 
@@ -201,10 +202,8 @@ class HazardEmulator():
             intensity_mean = self.stats_pred.loc[year_idx, 'intensity_mean'].values[0]
             intensity_std = self.stats_pred.loc[year_idx, 'intensity_mean_residuals'].values[0]
             intensity_std = np.clip(np.abs(intensity_std), 0.5, 10)
-            draws = self.pool.draw_realizations(nrealizations,
-                                                freq_poisson,
-                                                intensity_mean,
-                                                intensity_std)
+            draws = self.pool.draw_realizations(nrealizations, freq_poisson,
+                                                intensity_mean, intensity_std)
 
             for real_id, draw in enumerate(draws):
                 draw['year'] = year
@@ -296,8 +295,8 @@ class EventPool():
             intensity_accept = [intensity_mean - intensity_std, intensity_mean + intensity_std]
             drawn = None
             while drawn is None:
-                drawn = random.draw_poisson_events(freq_poisson, self.events,
-                    'intensity', intensity_accept, drop=self.drop)
+                drawn = random.draw_poisson_events(
+                    freq_poisson, self.events, 'intensity', intensity_accept, drop=self.drop)
                 intensity_accept[0] -= 1
                 intensity_accept[1] += 1
             draws.append(self.events.loc[drawn])
