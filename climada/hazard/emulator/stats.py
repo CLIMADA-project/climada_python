@@ -25,8 +25,6 @@ import logging
 import numpy as np
 import pandas as pd
 
-import climada.hazard.emulator.const as const
-
 LOGGER = logging.getLogger(__name__)
 
 def seasonal_average(data, season):
@@ -97,8 +95,8 @@ def seasonal_statistics(events, season):
         events['year'][events['month'] > 6] += 1
     events = events.drop(labels=['month'], axis=1)
 
-    new_cols = ['eventcount', 'intensity_mean', 'intensity_std', 'intensity_max']
-    def collapse(group, new_cols=new_cols):
+    def collapse(group):
+        new_cols = ['eventcount', 'intensity_mean', 'intensity_std', 'intensity_max']
         new_vals = [group['eventcount'].sum(),
                     group['intensity'].mean(),
                     group['intensity'].std(ddof=0),
@@ -132,10 +130,10 @@ def haz_max_events(hazard, min_thresh=0):
     inten = hazard.intensity
     exp_hazards = (inten >= min_thresh).todense()
     exp_hazards = np.where(np.any(exp_hazards, axis=1))[0]
-    LOGGER.info(f"Condensing {inten.shape[0]} hazards to {exp_hazards.size} max events ...")
+    LOGGER.info("Condensing %d hazards to %d max events ...", inten.shape[0], exp_hazards.size)
     inten = inten[exp_hazards]
     inten_max_ids = np.asarray(inten.argmax(axis=1)).ravel()
-    inten_max = inten[range(inten.shape[0]),inten_max_ids].todense()
+    inten_max = inten[range(inten.shape[0]), inten_max_ids].todense()
     dates = hazard.date[exp_hazards]
     dates = [datetime.date.fromordinal(d) for d in dates]
     return pd.DataFrame({

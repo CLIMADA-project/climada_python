@@ -64,7 +64,7 @@ class HazRegion():
 
         if country is not None:
             self.meta['country'] = country
-            if type(country) is not list:
+            if not isinstance(country, list):
                 country = [country]
 
         self.geometry = get_country_geometries(country_names=country, extent=extent)
@@ -135,9 +135,9 @@ class TCRegion(HazRegion):
 
 
     def _determine_tc_basin(self):
-        for basin in const.TC_SUBBASINS.keys():
-            TC_BASIN_GEOM = get_tc_basin_geometry(basin)
-            if all(TC_BASIN_GEOM.contains(self.shape)):
+        for basin in const.TC_SUBBASINS:
+            basin_geom = get_tc_basin_geometry(basin)
+            if all(basin_geom.contains(self.shape)):
                 self.tc_basin = basin
                 break
         if self.tc_basin is None:
@@ -147,7 +147,7 @@ class TCRegion(HazRegion):
             if all(tc_basin_geom.contains(self.shape)):
                 self.tc_basin = tc_basin
                 break
-        LOGGER.info(f"Automatically determined TC basin: {self.tc_basin}")
+        LOGGER.info("Automatically determined TC basin: %s", self.tc_basin)
 
 
 def get_tc_basin_geometry(tc_basin):

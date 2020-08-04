@@ -54,7 +54,7 @@ def fit_data(data, explained, explanatory, poisson=False):
     # for the first run, assume that all variables are significant
     significant = explanatory
     sm_results = []
-    for run in range(2):
+    for _ in range(2):
         # restrict to variables with significant relationship
         d_explanatory = d_explanatory[significant]
 
@@ -87,6 +87,7 @@ def fit_significant(sm_results):
 
 
 def fit_significance(sm_results):
+    """Extract and visualize significance of model parameters"""
     significance = ['***' if el <= 0.01 else \
                     '**' if el <= 0.05 else \
                     '*' if el <= 0.1 else \
