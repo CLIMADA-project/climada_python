@@ -541,7 +541,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
             output_list.append(cp_fut)
             cp_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
-    # calculate mean for each crop-irrigation combination and save as hdf5 in output_dir
+    # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
     for i, _ in enumerate(crop_list):
         mean = np.mean((hist_mean_per_crop[crop_list[i]])['value'], 0)
         mean_filename = 'hist_mean_' + crop_list[i] + '_' + str(yearrange[0]) + \
