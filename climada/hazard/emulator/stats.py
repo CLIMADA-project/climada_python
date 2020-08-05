@@ -52,8 +52,8 @@ def seasonal_average(data, season):
     """
     start, end = season
 
-    if data['month'].unique().size == 1:
-        data = data.drop('month', 1)
+    if data['year'].unique().size == data.shape[0]:
+        data = data.drop(labels=['month'], axis=1)
 
     if "month" not in data.columns:
         return data.iloc[1:] if start > end else data
