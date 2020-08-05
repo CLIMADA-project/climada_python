@@ -25,7 +25,7 @@ import pandas as pd
 import datetime as dt
 
 from climada.hazard.low_flow import LowFlow, unique_clusters, \
-    _compute_threshold_grid, _read_and_combine_nc
+    _compute_threshold_grid, _read_and_combine_nc, _split_bbox
 from climada.util.constants import DATA_DIR
 from climada.hazard.centroids import Centroids
 
@@ -263,6 +263,17 @@ class TestDischargeDataHandling(unittest.TestCase):
         self.assertListEqual(list(perc_data_mask.lon.data), list(perc_data.lon.data))
         self.assertEqual(len(perc_data_mask.lon.data), 27)
         self.assertEqual(max(perc_data_mask.lon.data), 8.25)
+
+    def test_split_bbox(self):
+        """test splitting the bounding box in parts"""
+        bbox = [-180, -60, 180, 75]
+        self.assertListEqual(bbox, _split_bbox(bbox, width=1000)[0])
+
+        bbox = _split_bbox(bbox, width=90)
+        self.assertEqual(4, len(bbox))
+        self.assertListEqual(bbox[1], [-91, -60, -1, 75])
+        self.assertListEqual(bbox[2], [-1, -60, 89, 75])
+
 
 # Execute Tests
 if __name__ == "__main__":
