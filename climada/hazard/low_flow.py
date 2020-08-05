@@ -292,7 +292,7 @@ class LowFlow(Hazard):
         tree_centr = BallTree(coord, metric='chebyshev')
         if self.pool:
             chunksize = min(uni_ev.size // self.pool.ncpus, 1000)
-            intensity_list = self.pool.map(self._intensity_one_cluster,
+            intensity_list = self.pool.map(self._intensity_one_cluster_pool,
                                            itertools.repeat(self.data, uni_ev.size),
                                            itertools.repeat(tree_centr, uni_ev.size),
                                            uni_ev, itertools.repeat(res_centr),
@@ -302,7 +302,7 @@ class LowFlow(Hazard):
             intensity_list = []
             for cl_id in uni_ev:
                 intensity_list.append(
-                    self._intensity_one_cluster(self.data, tree_centr, cl_id,
+                    self._intensity_one_cluster(tree_centr, cl_id,
                                                 res_centr, num_centr))
         stps = list(np.arange(0, len(intensity_list)-1, INTENSITY_STEP)) + [len(intensity_list)]
         if len(stps) == 1:
@@ -489,10 +489,40 @@ class LowFlow(Hazard):
             return (res_centr[0] + res_centr[1]) / 2
         return res_centr[0]
 
-    @staticmethod
-    def _intensity_one_cluster(data, tree_centr, cluster_id, res_centr, num_centr):
+    def _intensity_one_cluster(self, tree_centr, cluster_id, res_centr, num_centr):
         """For a given cluster, fill in an intensity np.array with the summed intensity
         at each centroid.
+
+        Parameters:
+            cluster_id (int): id of the selected cluster
+            res_centr (float): resolution of centroids in degree
+            num_centr (int): number of centroids
+
+        Returns:
+            intensity_cl (np.array): summed intensity of cluster at each centroids
+
+        """
+        LOGGER.debug('Number of days below threshold corresponding to event %s.', str(cluster_id))
+        temp_data = self.data.reindex(
+            index=np.argwhere(np.array(self.data['cluster_id'] == cluster_id)).reshape(-1),
+            columns=['lat', 'lon', 'ndays'])
+        # Identifies the unique (lat,lon) points of the data dataframe -> lat_lon_uni
+        # Set the same index value for each duplicate (lat,lon) points -> lat_lon_cpy
+        lat_lon_uni, lat_lon_cpy = np.unique(temp_data[['lat', 'lon']].values,
+                                             return_inverse=True, axis=0)
+        index_uni = np.unique(lat_lon_cpy, axis=0)
+        # Search closest centroid for each point
+        ind, _ = tree_centr.query_radius(lat_lon_uni, r=res_centr / 2, count_only=False,
+                                         return_distance=True, sort_results=True)
+        ind = np.array([ind_i[0] if ind_i.size else -1 for ind_i in ind])
+        intensity_cl = _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy,
+                                       temp_data['ndays'].values)
+        return intensity_cl
+
+    @staticmethod
+    def _intensity_one_cluster_pool(data, tree_centr, cluster_id, res_centr, num_centr):
+        """For a given cluster, fill in an intensity np.array with the summed intensity
+        at each centroid. Version for self.pool = True
 
         Parameters:
             data (DataFrame)
@@ -508,12 +538,10 @@ class LowFlow(Hazard):
         temp_data = data.reindex(
             index=np.argwhere(np.array(data['cluster_id'] == cluster_id)).reshape(-1),
             columns=['lat', 'lon', 'ndays'])
-        # Identifies the unique (lat,lon) points of the data dataframe -> lat_lon_uni
-        # Set the same index value for each duplicate (lat,lon) points -> lat_lon_cpy
+
         lat_lon_uni, lat_lon_cpy = np.unique(temp_data[['lat', 'lon']].values,
                                              return_inverse=True, axis=0)
         index_uni = np.unique(lat_lon_cpy, axis=0)
-        # Search closest centroid for each point
         ind, _ = tree_centr.query_radius(lat_lon_uni, r=res_centr / 2, count_only=False,
                                          return_distance=True, sort_results=True)
         ind = np.array([ind_i[0] if ind_i.size else -1 for ind_i in ind])
@@ -649,7 +677,6 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
     Returns:
         xarray
     """
-
     first_file = True
     if yearchunks == 'default':
         yearchunks = YEARCHUNKS[scenario]
