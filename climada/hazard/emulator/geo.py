@@ -74,27 +74,32 @@ class HazRegion():
             self.geometry = gpd.overlay(self.geometry, geometry, how="intersection")
 
 
-    def centroids(self, latlon=None):
+    def centroids(self, latlon=None, res_as=360):
         """Return centroids in this region
 
         Parameters
         ----------
-        latlon : pair (lat, lon)
+        latlon : pair (lat, lon), optional
             Latitude and longitude of centroids.
-            If not given, values are taken from CLIMADA's 150 arc-second base grid.
+            If not given, values are taken from CLIMADA's base grid (see `res_as`).
+        res_as : int, optional
+            One of 150 or 360. When `latlon` is not given, choose coordinates from centroids
+            according to CLIMADA's base grid of given resolution in arc-seconds. Default: 360.
 
         Returns
         -------
         centroids : climada.hazard.Centroids object
         """
         if latlon is None:
-            centroids = Centroids.from_base_grid(res_as=150)
+            centroids = Centroids.from_base_grid(res_as=res_as)
             centroids.set_meta_to_lat_lon()
-            latlon = centroids.lat, centroids.lon
-        lat, lon = latlon
+            lat, lon = centroids.lat, centroids.lon
+        else:
+            lat, lon = latlon
+            centroids = Centroids()
+            centroids.set_lat_lon(lat, lon)
         msk = shapely.vectorized.contains(self.shape, lon, lat)
-        centroids = Centroids()
-        centroids.set_lat_lon(lat[msk], lon[msk])
+        centroids = centroids.select(sel_cen=msk)
         centroids.id = np.arange(centroids.lon.shape[0])
         return centroids
 
@@ -128,6 +133,7 @@ class TCRegion(HazRegion):
 
         if self.tc_basin is None:
             self._determine_tc_basin()
+        self.hemisphere = 'S' if const.TC_BASIN_GEOM_SIMPL[self.tc_basin][0][3] <= 0 else 'N'
 
         if season is None:
             season = const.TC_BASIN_SEASONS[self.tc_basin[:2]]

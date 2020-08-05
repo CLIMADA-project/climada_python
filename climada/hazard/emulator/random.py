@@ -98,10 +98,11 @@ def estimate_drop(events, time_col, val_col, norm_period, norm_fact=None, norm_m
         if np.abs(diff) > 0.025:
             drop_frac += step_size
     drop_frac = min(1.0, drop_frac)
-    LOGGER.info("Intensity normalization by subsampling - mean intensity of:\n" \
-                "    simulated events | observed events | simulated events after subsampling\n" \
-                "    %16.4f | %11.4f     | %7.4f",
-                all_mean, norm_mean, sub_mean)
+    LOGGER.info("Results of intensity normalization by subsampling:")
+    LOGGER.info("- drop %d%% of entries satisfying '%s'", int(100 * drop_frac), drop_expr)
+    LOGGER.info("- mean intensity of simulated events before dropping is %.4f", all_mean)
+    LOGGER.info("- mean intensity of simulated events after dropping is %.4f", sub_mean)
+    LOGGER.info("- mean intensity of observed events is %.4f", norm_mean)
 
     return drop_expr, drop_frac
 

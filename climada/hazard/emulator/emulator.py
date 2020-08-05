@@ -123,6 +123,7 @@ class HazardEmulator():
             Otherwise, the internal (within-year) statistics of the data set
             are used to predict frequency and intensity.
         """
+        reuse_indices = False
         if not climate_indices:
             reuse_indices = True
         elif len(climate_indices) > 0 and len(self.ci_cols) == 0:
