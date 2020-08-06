@@ -398,10 +398,10 @@ class CropProduction(Exposures):
         Returns:
             Exposure
         """
-        
+
         # the exposure in t/y is saved as 'value_tonnes'
         self['value_tonnes'] = self['value']
-        
+
         # account for the case of only specifying one year as yearrange
         if len(yearrange) == 1:
             yearrange = np.array([yearrange[0], yearrange[0]])
