@@ -560,18 +560,31 @@ class Centroids():
         sel_cen = geom_wkb.drop_duplicates().index
         return self.select(sel_cen=sel_cen)
 
-    def select(self, reg_id=None, sel_cen=None):
+    def select(self, reg_id=None, extent=None, sel_cen=None):
         """Return Centroids with points in the given reg_id or within mask
 
         Parameters:
             reg_id (int): region to filter according to region_id values
-            sel_cen (np.array): 1-dim mask
+            extent (tuple): Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            sel_cen (np.array): 1-dim mask, overrides reg_id and extent
 
         Returns:
             Centroids
         """
         if sel_cen is None:
-            sel_cen = np.isin(self.region_id, reg_id)
+            if reg_id:
+                sel_reg = np.isin(self.region_id, reg_id)
+            if extent:
+                sel_ext = \
+                    (extent[0] < self.lon) & (extent[1] > self.lon) & \
+                    (extent[2] < self.lat) & (extent[3] > self.lat)
+
+            if extent and reg_id:
+                sel_cen = np.logical_and(sel_reg, sel_ext)
+            elif extent and not reg_id:
+                sel_cen = sel_ext
+            else:
+                sel_cen = sel_reg
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
