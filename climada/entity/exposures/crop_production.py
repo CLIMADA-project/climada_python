@@ -479,7 +479,7 @@ class CropProduction(Exposures):
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH,
                            output_dir=OUTPUT_DIR, bbox=BBOX,
                            yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='t',
-                           returns='filename_list'):
+                           return_data=False):
     """Generates CropProduction exposure sets for all files contained in the
         input directory and saves them as hdf5 files in the output directory
 
@@ -492,8 +492,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        returns (str): returned output
-        'filename_list': returns list of filenames only, else returns also list of data
+        return_data (str): returned output
+            False: returns list of filenames only, True: returns also list of data
 
     Returns:
         filename_list (list): all filenames of saved initiated exposure files
@@ -523,12 +523,12 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         output_list.append(crop_production)
         crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_list[-1]))
 
-    if returns == 'filename_list':
+    if not return_data:
         return filename_list
     return filename_list, output_list
 
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
-                          yearrange=np.array([2008, 2018]), unit='t', returns='all'):
+                          yearrange=np.array([2008, 2018]), unit='t', return_data=True):
     """Normalize the given exposures countrywise with the mean crop production quantity
     documented by the FAO.
 
@@ -541,10 +541,10 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data (default 2008-2018)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        returns (str): returned output
-            'all': country list, ratio = FAO/ISIMIP, normalized exposures, crop production
+        return_data (str): returned output
+            True: returns country list, ratio = FAO/ISIMIP, normalized exposures, crop production
             per country as documented by the FAO and calculated by the ISIMIP dataset
-            else: country list, ratio = FAO/ISIMIP, normalized exposures
+            False: country list, ratio = FAO/ISIMIP, normalized exposures
 
     Returns:
         country_list (list): List of country codes (numerical ISO3)
@@ -614,14 +614,14 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
             exp_firr['value_tonnes'] = exp_firr['value']
             exp_firr.set_to_usd(input_dir=input_dir)
 
-    if returns == 'all':
+    if return_data:
         return country_list, ratio, exp_firr_norm, exp_noirr_norm, \
             fao_crop_production, exp_tot_production
     return country_list, ratio, exp_firr_norm, exp_noirr_norm
 
 def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
                           yearrange=np.array([2008, 2018]),
-                          unit='t', returns='all'):
+                          unit='t', return_data=True):
     """
         Optional Parameters:
         input_dir (str): directory containing exposure input data
@@ -629,11 +629,11 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data (default 2008-2018)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        returns (str): returned output
-            'all': lists containing data for each exposure file. Lists: crops, country list,
+        return_data (str): returned output
+            True: lists containing data for each exposure file. Lists: crops, country list,
             ratio = FAO/ISIMIP, normalized exposures, crop production per country as documented
             by the FAO and calculated by the ISIMIP dataset
-            else: lists containing data for each exposure file. Lists: crops, country list,
+            False: lists containing data for each exposure file. Lists: crops, country list,
             ratio = FAO/ISIMIP, normalized exposures
 
         Returns:
@@ -661,7 +661,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
         exp_firr = CropProduction()
         exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', filename_firr))
 
-        if returns == 'all':
+        if return_data:
             countries, ratio, exp_firr2, exp_noirr2, fao_cp, \
             exp_tot_cp = normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=input_dir,
                                                yearrange=yearrange, unit=unit)
@@ -679,7 +679,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
         exp_firr_norm.append(exp_firr2)
         exp_noirr_norm.append(exp_noirr2)
 
-    if returns == 'all':
+    if return_data:
         return crop_list, countries_list, ratio_list, exp_firr_norm, exp_noirr_norm, \
                 fao_cp_list, exp_tot_cp_list
     return crop_list, countries_list, ratio_list, exp_firr_norm, exp_noirr_norm

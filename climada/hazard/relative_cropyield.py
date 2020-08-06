@@ -431,7 +431,7 @@ class RelativeCropyield(Hazard):
 
 def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
                          yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
-                         returns='filename_list'):
+                         return_data=False):
     """Generates hazard set for all files contained in the input directory and saves them
     as hdf5 files to the output directory.
 
@@ -441,9 +441,9 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
-        returns (str): returned output
-            default = 'filename_list': returns list of filenames only
-            else returns also list of data
+        return_data (str): returned output
+            False: returns list of filenames only
+            True: returns also list of data
 
     """
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
@@ -559,6 +559,6 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
 #                                'lon': cp_his.centroids.lon})
 #        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_list[i]+'.nc')
 
-    if returns == 'filename_list':
+    if not return_data:
         return filename_list
     return filename_list, output_list
