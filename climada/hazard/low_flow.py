@@ -79,8 +79,8 @@ SCENARIO = ['historical',
             'hist']
 """climate scenarios"""
 
-SOC = ['histsoc', # historical
-       '2005soc', # constant at 2005 level
+SOC = ['histsoc',  # historical
+       '2005soc',  # constant at 2005 level
        'rcp26soc',
        'rcp60soc',
        'pressoc']
@@ -236,7 +236,7 @@ class LowFlow(Hazard):
             centr_handling = 'full_hazard'
 
         # read data and call preprocessing routine:
-        self.data, centroids_import = _data_preprocessing_percentile(
+        self.data, centroids_import = data_preprocessing_percentile(
             percentile, yearrange, yearrange_ref, input_dir, gh_model, cl_model,
             scenario, scenario_ref, soc, soc_ref, fn_str_var, bbox, min_days_per_month,
             keep_dis_data, yearchunks, mask_threshold)
@@ -245,8 +245,18 @@ class LowFlow(Hazard):
             centroids = centroids_import
         self.identify_clusters()
 
-        # sum "dis" (days per month below threshold) per pixel and cluster_id
-        # and write to hazard.intensiy
+        self.make_climada_hazard(centroids, min_intensity, min_number_cells,
+                                 yearrange, yearrange_ref, gh_model, cl_model,
+                                 scenario, scenario_ref, soc, soc_ref, fn_str_var, keep_dis_data)
+
+    def make_climada_hazard(self, centroids=None, min_intensity=1, min_number_cells=1,
+                            yearrange=TARGET_YEARRANGE, yearrange_ref=REFERENCE_YEARRANGE,
+                            gh_model=GH_MODEL[0], cl_model=CL_MODEL[0],
+                            scenario=SCENARIO[0], scenario_ref=SCENARIO[0], soc=SOC[0],
+                            soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False):
+        """ Build low flow hazards with events from clustering and centroids and add attributes.
+        """
+        # sum "dis" (days per month below threshold) per pixel and cluster_id and write to hazard.intensity
         self.events_from_clusters(centroids)
 
         if min_intensity > 1 or min_number_cells > 1:
@@ -616,7 +626,7 @@ def unique_clusters(data):
     data.cluster_id = data.cluster_id.astype(int)
     return data
 
-def _data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
+def data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
                                    input_dir, gh_model, cl_model, scenario,
                                    scenario_ref, soc, soc_ref, fn_str_var, bbox,
                                    min_days_per_month, keep_dis_data, yearchunks,
