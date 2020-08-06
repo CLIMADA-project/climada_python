@@ -614,6 +614,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
             exp_firr['value_tonnes'] = exp_firr['value']
             exp_firr.set_to_usd(input_dir=input_dir)
 
+    exp_firr_norm.tag.description = exp_firr_norm.tag.description+' normalized'
+    exp_noirr_norm.tag.description = exp_noirr_norm.tag.description+' normalized'
+
     if return_data:
         return country_list, ratio, exp_firr_norm, exp_noirr_norm, \
             fao_crop_production, exp_tot_production
@@ -671,7 +674,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
             countries, ratio, exp_firr2, \
             exp_noirr2 = normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=input_dir,
                                                yearrange=yearrange, unit=unit,
-                                               returns='reduced')
+                                               return_data=False)
 
         crop_list.append(items_exp[2].split('-')[0])
         countries_list.append(countries)
