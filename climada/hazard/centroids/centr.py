@@ -572,19 +572,12 @@ class Centroids():
             Centroids
         """
         if sel_cen is None:
+            sel_cen = np.ones_like(self.region_id, dtype=bool)
             if reg_id:
-                sel_reg = np.isin(self.region_id, reg_id)
+                sel_cen &= np.isin(self.region_id, reg_id)
             if extent:
-                sel_ext = \
-                    (extent[0] < self.lon) & (extent[1] > self.lon) & \
-                    (extent[2] < self.lat) & (extent[3] > self.lat)
-
-            if extent and reg_id:
-                sel_cen = np.logical_and(sel_reg, sel_ext)
-            elif extent and not reg_id:
-                sel_cen = sel_ext
-            else:
-                sel_cen = sel_reg
+                sel_cen &= ((extent[0] < self.lon) & (extent[1] > self.lon)
+                            & (extent[2] < self.lat) & (extent[3] > self.lat))
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
