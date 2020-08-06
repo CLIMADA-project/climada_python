@@ -418,14 +418,17 @@ class CropProduction(Exposures):
         # create a list of the countries contained in the exposure
         iso3alpha = list()
         for item, _ in enumerate(self.region_id):
-            if (self.region_id[item] == 0) or (self.region_id[item] == -99):
-                iso3alpha.append('No country')
-            elif (self.region_id[item] == 902) or (self.region_id[item] == 910) or \
-            (self.region_id[item] == 914) or (self.region_id[item] == 915):
-                iso3alpha.append('Other country')
-            else:
+            try:
                 iso3alpha.append(iso_cntry.get(self.region_id[item]).alpha3)
+            except KeyError:
+                if (self.region_id[item] == 0) or (self.region_id[item] == -99):
+                    iso3alpha.append('No country')
+                else:
+                    iso3alpha.append('Other country')
         list_countries = np.unique(iso3alpha)
+
+
+
 
         # iterate over all countries that are covered in the exposure, extract the according price
         # and calculate the crop production in USD/y
