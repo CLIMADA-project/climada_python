@@ -305,9 +305,7 @@ class CropProduction(Exposures):
             self.meta = {}
 
         # Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
-        # the exposure in t/y is saved as 'value_tonnes'
         if 'USD' in unit:
-            self['value_tonnes'] = self['value']
             self.set_to_usd(input_dir=input_dir)
         self.check()
 
@@ -400,7 +398,10 @@ class CropProduction(Exposures):
         Returns:
             Exposure
         """
-
+        
+        # the exposure in t/y is saved as 'value_tonnes'
+        self['value_tonnes'] = self['value']
+        
         # account for the case of only specifying one year as yearrange
         if len(yearrange) == 1:
             yearrange = np.array([yearrange[0], yearrange[0]])
