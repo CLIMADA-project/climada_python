@@ -19,7 +19,7 @@ Unit Tests on LitPop exposures.
 import os
 import numpy as np
 import unittest
-from climada.entity.exposures.crop_production import CropProduction
+from climada.entity.exposures.crop_production import CropProduction, normalize_with_fao_cp
 from climada.util.constants import DATA_DIR
 
 INPUT_DIR = os.path.join(DATA_DIR, 'demo')
@@ -78,6 +78,28 @@ class TestCropProduction(unittest.TestCase):
         self.assertEqual(exp.value_unit, 'USD / y')
         self.assertEqual(exp.crop, 'mai')
         self.assertAlmostEqual(exp.value.max(), 51603897.28533253, places=6)
+
+    def test_normalize_with_fao_cp(self):
+        """ Test normalizing of two given exposures countrywise (usually firr + norr)
+        with the mean crop production quantity"""
+        exp = CropProduction()
+        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                          bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
+                                          scenario='flexible', unit='t', irr='firr')
+        country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, exp_tot_production = \
+             normalize_with_fao_cp(exp, exp, input_dir=INPUT_DIR,
+                              yearrange=np.array([2009, 2018]), unit='t', return_data=True)
+        self.assertAlmostEqual(ratio[2], 17.671166854032993)
+        self.assertAlmostEqual(ratio[11], .86250775)
+        self.assertAlmostEqual(fao_crop_production[2], 673416.4)
+        self.assertAlmostEqual(fao_crop_production[11], 160328.7)
+        self.assertAlmostEqual(np.nanmax(exp_firr_norm.value.values), 220735.69212710857)
+        self.assertAlmostEqual(np.nanmax(exp_firr_norm.value.values), np.nanmax(exp_noirr_norm.value.values))
+        self.assertAlmostEqual(np.nanmax(exp.value.values), 284244.81023404596)
+        self.assertAlmostEqual(np.nansum(exp_noirr_norm.value.values) + np.nansum(exp_firr_norm.value.values), np.nansum(fao_crop_production), places=1)
+
+        self.assertListEqual(list(country_list), [0, 40, 56, 70, 191, 203, 208, 250,
+                                                  276, 380, 442, 528, 616, 705, 724, 756, 826])
 
 # Execute Tests
 if __name__ == "__main__":

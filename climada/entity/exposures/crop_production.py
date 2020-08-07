@@ -561,10 +561,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     """
 
     # use the exposure in t/y to normalize with FAO crop production values
-    if (exp_firr.value_unit == 'USD / y') and (exp_noirr.value_unit == 'USD / y'):
-        exp_firr.value = exp_firr.value_tonnes
-        exp_noirr.value = exp_noirr.value_tonnes
-    elif exp_firr.value_unit == 'USD / y':
+    if exp_firr.value_unit == 'USD / y':
         exp_firr.value = exp_firr.value_tonnes
     if exp_noirr.value_unit == 'USD / y':
         exp_noirr.value = exp_noirr.value_tonnes
@@ -585,9 +582,16 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     fao_crop_production = np.zeros(len(country_list))
     ratio = np.ones(len(country_list))
     exp_firr_norm = CropProduction()
-    exp_firr_norm = exp_firr
     exp_noirr_norm = CropProduction()
-    exp_noirr_norm = exp_noirr
+    exp_firr_norm.tag = exp_firr.tag
+    exp_noirr_norm.tag = exp_noirr.tag
+    exp_firr_norm.crop = exp_firr.crop
+    exp_noirr_norm.crop = exp_noirr.crop
+    exp_firr_norm.meta = exp_firr.meta
+    exp_noirr_norm.meta = exp_noirr.meta
+    for col in exp_firr.columns:
+        exp_firr_norm[col] = pd.Series(exp_firr[col].values)
+        exp_noirr_norm[col] = pd.Series(exp_noirr[col].values)
 
     # loop over countries: compute ratio & apply normalization:
     for country, iso_nr in enumerate(country_list):
@@ -609,10 +613,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
         exp_noirr_norm.value[exp_firr.region_id == iso_nr] = ratio[country] * \
         exp_noirr.value[exp_noirr.region_id == iso_nr]
 
-        if unit == 'USD':
-            exp_noirr['value_tonnes'] = exp_noirr['value']
+        if unit == 'USD' or exp_noirr.value_unit == 'USD / y':
             exp_noirr.set_to_usd(input_dir=input_dir)
-            exp_firr['value_tonnes'] = exp_firr['value']
+        if unit == 'USD' or exp_firr.value_unit == 'USD / y':
             exp_firr.set_to_usd(input_dir=input_dir)
 
     exp_firr_norm.tag.description = exp_firr_norm.tag.description+' normalized'
