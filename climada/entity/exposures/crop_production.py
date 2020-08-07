@@ -589,6 +589,12 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     exp_noirr_norm.crop = exp_noirr.crop
     exp_firr_norm.meta = exp_firr.meta
     exp_noirr_norm.meta = exp_noirr.meta
+    exp_firr_norm.value_unit = exp_firr.value_unit
+    exp_noirr_norm.value_unit = exp_noirr.value_unit
+    exp_firr_norm.ref_year = exp_firr.ref_year
+    exp_noirr_norm.ref_year = exp_noirr.ref_year
+    exp_firr_norm.crs = DEF_CRS
+    exp_noirr_norm.crs = DEF_CRS
     for col in exp_firr.columns:
         exp_firr_norm[col] = pd.Series(exp_firr[col].values)
         exp_noirr_norm[col] = pd.Series(exp_noirr[col].values)
