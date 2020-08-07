@@ -57,10 +57,6 @@ class TestIntegr(unittest.TestCase):
 
         exp.set_to_usd(INPUT_DIR)
         exp.assign_centroids(haz, threshold=20)
-        # country_list, ratio,  \
-        # exp_firr_norm, exp_noirr_norm = normalize_with_fao_cp(exp, exp, 
-        #                                                       input_dir=INPUT_DIR, 
-        #                                                       return_data=False)
 
         if_cp = ImpactFuncSet()
         if_def = IFRelativeCropyield()
