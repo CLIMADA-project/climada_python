@@ -21,11 +21,14 @@ Test CentroidsVector and CentroidsRaster classes.
 import os
 import unittest
 
+import numpy as np
+
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
 
 HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+
 
 class TestCentroidsReader(unittest.TestCase):
     """Test read functions Centroids"""
@@ -62,6 +65,23 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[0][1], 32.57)
         self.assertEqual(centroids.coord[n_centroids - 1][0], -24.7)
         self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
+
+    def test_base_grid(self):
+        """ Read new centroids using from_base_grid, then select by extent """
+
+        centroids = Centroids().from_base_grid(land=True, res_as=150)
+
+        count_sandwich = np.sum(centroids.region_id == 239)
+
+        self.assertEqual(centroids.lat.size, 8858035)
+        self.assertEqual(count_sandwich, 321)
+
+        count_sgi = centroids.select(
+            reg_id=239,
+            extent=(-39, -34.7, -55.5, -53.6)  # south georgia island
+        ).size
+
+        self.assertEqual(count_sgi, 296)
 
 
 # Execute Tests
