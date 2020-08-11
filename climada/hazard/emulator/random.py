@@ -75,7 +75,7 @@ def estimate_drop(events, time_col, val_col, norm_period, norm_fact=None, norm_m
     else:
         norm_fact = norm_mean / all_mean
 
-    drop_expr = f"intensity {'<' if norm_fact > 1 else '>'} {all_mean}"
+    drop_expr = f"{val_col} {'<' if norm_fact > 1 else '>'} {all_mean}"
     drop_frac = 0.0
     if 0.98 < norm_fact < 1.02:
         return drop_expr, drop_frac
@@ -129,15 +129,14 @@ def draw_poisson_events(poisson, events, val_col, val_accept, drop=None):
     val_accept : pair of floats
         Acceptable range of draw means.
     drop : pair [expr, frac] or None
-        If given, only events satisfying the pandas query expression `expr` are
-        dropped. `frac` specifies the fraction of these events that is dropped.
+        If given, only events satisfying the pandas query expression `expr` are dropped.
+        `frac` specifies the fraction of these events that is dropped.
 
     Returns
     -------
     draw_idx : Series or None
         Indices into `events`.
-        If no acceptable draw was among the first 10,000 attempts, the return
-        value is None.
+        If no acceptable draw was among the first 10,000 attempts, the return value is None.
     """
     fail_counts = 0
     if drop is not None:
@@ -151,8 +150,10 @@ def draw_poisson_events(poisson, events, val_col, val_accept, drop=None):
             events_sub = events.drop(drop_idx)
 
         draw_size = max(1, random_state.poisson(poisson, 1)[0])
-        draw_inds = random_state.choice(events_sub.shape[0], draw_size, replace=False)
+        draw_inds = random_state.choice(events_sub.shape[0], draw_size,
+                                        replace=(events_sub.shape[0] < 1.2 * draw_size))
         draw_mean = events_sub[val_col].iloc[draw_inds].mean()
+
 
         if val_accept[0] <= draw_mean <= val_accept[1]:
             return events_sub.index[draw_inds]

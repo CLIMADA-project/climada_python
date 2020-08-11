@@ -76,7 +76,7 @@ TC_BASIN_GEOM = {
     'WPN': [[99.0, 180.0, 20.0, 60.0]],
     'WPS': [[99.0, 180.0, 0.0, 20.0]],
 }
-"""Boundaries of TC (sub-)basins (lonmin, lonmax, latmin, latmax)"""
+"""Boundaries of TC (sub-)basins (lon_min, lon_max, lat_min, lat_max)"""
 
 TC_BASIN_GEOM_SIMPL = {
     # Eastern Pacific Basin
@@ -109,7 +109,7 @@ TC_BASIN_GEOM_SIMPL = {
     'WPN': [[99.0, 180.0, 20.0, 60.0]],
     'WPS': [[99.0, 180.0, 0.0, 20.0]],
 }
-"""Simplified boundaries of TC (sub-)basins (lonmin, lonmax, latmin, latmax)"""
+"""Simplified boundaries of TC (sub-)basins (lon_min, lon_max, lat_min, lat_max)"""
 
 TC_SUBBASINS = {
     'EP': ['EPW', 'EPE'],

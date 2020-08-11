@@ -27,7 +27,6 @@ import pandas as pd
 
 import climada.hazard.emulator.const as const
 import climada.hazard.emulator.stats as stats
-import climada.hazard.emulator.fit as fit
 import climada.hazard.emulator.random as random
 
 LOGGER = logging.getLogger(__name__)
@@ -62,8 +61,11 @@ class HazardEmulator():
         """
         self.pool = EventPool(haz_events) if pool is None else pool
         self.region = region
-        self.stats = stats.normalize_seasonal_statistics(haz_events, haz_events_obs,
-                                                         region, freq_norm)
+
+        haz_stats = stats.seasonal_statistics(haz_events, region.season)
+        haz_stats_obs = stats.seasonal_statistics(haz_events_obs, region.season)
+        self.stats = stats.normalize_seasonal_statistics(haz_stats, haz_stats_obs, freq_norm)
+
         self.stats_pred = None
         self.fit_info = None
         self.ci_cols = []
@@ -98,7 +100,7 @@ class HazardEmulator():
 
         self.fit_info = {}
         for explained in self.explaineds:
-            self.fit_info[explained] = fit.fit_data(
+            self.fit_info[explained] = stats.fit_data(
                 self.stats, explained, self.ci_cols, poisson=(explained == 'eventcount'))
 
 
@@ -131,19 +133,19 @@ class HazardEmulator():
             reuse_indices = True
 
         if len(self.ci_cols) == 0:
-            LOGGER.info("Predicting TCs without climate index predictor...")
+            LOGGER.info("Predicting statistics without climate index predictor...")
             self.stats_pred = self.stats[['year', 'intensity_mean', 'eventcount']]
             self.stats_pred["intensity_mean_residuals"] = self.stats["intensity_std"]
             self.stats_pred["events_rediduals"] = 0
         elif reuse_indices:
-            LOGGER.info("Predicting TCs with climate indices from calibration...")
+            LOGGER.info("Predicting statistics with climate indices from calibration...")
             self.stats_pred = self.stats[['year'] + self.ci_cols]
             for explained in self.explaineds:
                 sm_results = self.fit_info[explained][-1]
                 self.stats_pred[explained] = sm_results.fittedvalues
                 self.stats_pred[f"{explained}_residuals"] = sm_results.resid
         else:
-            LOGGER.info("Predicting TCs with new climate index dataset...")
+            LOGGER.info("Predicting statistics with new climate index time series...")
             ci_avg = None
             for cidx in climate_indices:
                 ci_name = cidx.columns.values.tolist()
@@ -163,7 +165,8 @@ class HazardEmulator():
                 explanatory = sm_results.params.index.tolist()
                 haz_stats_pred = sm_results.predict(ci_data[explanatory])
                 self.stats_pred[explained] = haz_stats_pred
-                self.stats_pred[f"{explained}_residuals"] = sm_results.resid.std()
+                # use standard deviation of calibration residuals as "residuals":
+                self.stats_pred[f"{explained}_residuals"] = float(sm_results.resid.std())
 
 
     def draw_realizations(self, nrealizations, period):
