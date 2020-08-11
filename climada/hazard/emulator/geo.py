@@ -43,11 +43,12 @@ class HazRegion():
 
         Parameters
         ----------
-        extent : tuple (min_lon, max_lon, min_lat, max_lat)
-        geometry : GeoPandas DataFrame
-        country :  str or list of str
+        extent : tuple (lon_min, lon_max, lat_min, lat_max), optional
+        geometry : GeoPandas DataFrame, optional
+        country :  str or list of str, optional
             Countries are represented by their ISO 3166-1 alpha-3 identifiers.
-        season : pair of int
+            The keyword "all" chooses all countries (i.e., global land areas).
+        season : pair of int, optional
             First and last month of hazard-specific season within this region
         """
         self._set_geometry(extent=extent, geometry=geometry, country=country)
@@ -61,13 +62,23 @@ class HazRegion():
 
         if extent is not None:
             self.meta['extent'] = extent
+        else:
+            extent = (-180, 180, -90, 90)
+
+        lon_min, lon_max, lat_min, lat_max = extent
+        extent_poly = gpd.GeoSeries(Polygon([
+            (lon_min, lat_min), (lon_min, lat_max), (lon_max, lat_max), (lon_max, lat_min)
+        ]), crs=NE_CRS)
+        self.geometry = gpd.GeoDataFrame({'geometry': extent_poly}, crs=NE_CRS)
 
         if country is not None:
             self.meta['country'] = country
-            if not isinstance(country, list):
+            if country == "all":
+                country = None
+            elif not isinstance(country, list):
                 country = [country]
-
-        self.geometry = get_country_geometries(country_names=country, extent=extent)
+            country_geom = get_country_geometries(country_names=country)
+            self.geometry = gpd.overlay(self.geometry, country_geom, how="intersection")
 
         if geometry is not None:
             self.meta['geometry'] = repr(geometry)
@@ -121,10 +132,11 @@ class TCRegion(HazRegion):
         **kwargs : see HazRegion.__init__
         """
         self._set_geometry(**kwargs)
+        self.tc_basin = None
 
         if tc_basin is not None:
-            df2 = get_tc_basin_geometry(tc_basin)
-            self.geometry = gpd.overlay(self.geometry, df2, how="intersection")
+            tc_basin_geom = get_tc_basin_geometry(tc_basin)
+            self.geometry = gpd.overlay(self.geometry, tc_basin_geom, how="intersection")
             self.meta['tc_basin'] = tc_basin
             self.tc_basin = tc_basin
 
