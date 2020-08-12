@@ -787,9 +787,8 @@ class Centroids():
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
             if not scheduler:
-                self.geometry = GeoSeries(list(zip(self.lon, self.lat)),
+                self.geometry = GeoSeries(map(Point, zip(self.lon, self.lat)),
                                           crs=self.geometry.crs)
-                self.geometry = self.geometry.apply(Point)
             else:
                 import dask.dataframe as dd
                 from multiprocessing import cpu_count
