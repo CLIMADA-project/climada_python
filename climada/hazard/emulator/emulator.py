@@ -80,6 +80,8 @@ class HazardEmulator():
     def calibrate_statistics(self, climate_indices):
         """Statistically fit hazard data to given climate indices
 
+        The internal statistics are truncated to fit the temporal range of the climate indices.
+
         Parameters
         ----------
         climate_indices : list of DataFrames { year, month, ... }
@@ -96,7 +98,8 @@ class HazardEmulator():
             self.ci_cols += ci_name
             avg_season = const.PDO_SEASON if "pdo" in ci_name else self.region.season
             avg = stats.seasonal_average(cidx, avg_season)
-            self.stats = pd.merge(self.stats, avg, on="year", how="left", sort=True)
+            self.stats = pd.merge(self.stats, avg, on="year", how="inner", sort=True)
+        self.stats = self.stats.dropna(axis=0, how="any", subset=self.explaineds + self.ci_cols)
 
         self.fit_info = {}
         for explained in self.explaineds:
