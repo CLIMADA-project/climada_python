@@ -419,11 +419,11 @@ class CropProduction(Exposures):
 
         # create a list of the countries contained in the exposure
         iso3alpha = list()
-        for item, _ in enumerate(self.region_id):
+        for reg_id in self.region_id:
             try:
-                iso3alpha.append(iso_cntry.get(self.region_id[item]).alpha3)
+                iso3alpha.append(iso_cntry.get(reg_id).alpha3)
             except KeyError:
-                if (self.region_id[item] == 0) or (self.region_id[item] == -99):
+                if reg_id in (0, -99):
                     iso3alpha.append('No country')
                 else:
                     iso3alpha.append('Other country')
@@ -435,8 +435,7 @@ class CropProduction(Exposures):
         # iterate over all countries that are covered in the exposure, extract the according price
         # and calculate the crop production in USD/y
         area_price = np.zeros(self.value.size)
-        for item, _ in enumerate(list_countries):
-            country = list_countries[item]
+        for country in list_countries:
             if country != 'No country':
                 if country == 'Other country':
                     price = 0
@@ -512,8 +511,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     # create exposures for all crop-irrigation combinations and save them
     filename_list = list()
     output_list = list()
-    for i, _ in enumerate(filenames):
-        item = filenames[i].split('_')
+    for file in filenames:
+        item = file.split('_')
         crop_production = CropProduction()
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
@@ -665,10 +664,10 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
     fao_cp_list = list()
     exp_tot_cp_list = list()
 
-    for crop, _ in enumerate(filenames_exp):
-        items_exp = filenames_exp[crop].split('_')
+    for file in filenames_exp:
+        items_exp = file.split('_')
         exp_noirr = CropProduction()
-        exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', filenames_exp[crop]))
+        exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', file))
 
         filename_firr = items_exp[0] + '_' + items_exp[1] + '_' + items_exp[2].split('-')[0] +\
         '-' + 'noirr' + '_' + items_exp[3]
