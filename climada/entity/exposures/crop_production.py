@@ -369,7 +369,8 @@ class CropProduction(Exposures):
         combined_exp = np.zeros([self.value.size, len(filenames['subset'])])
         combined_exp[:, 0] = self.value
 
-        # The calculations are repeated for all exposures
+        # The calculations are repeated for all remaining exposures (starting from index 1 as
+        # the first exposure has been saved in combined_exp[:, 0])
         for j in range(1, len(filenames['subset'])):
             self.set_from_single_run(input_dir, filename=filenames['subset'][j],
                                      hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
