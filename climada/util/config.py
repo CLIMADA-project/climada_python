@@ -29,7 +29,6 @@ import sys
 import os
 import json
 import logging
-import shutil
 from pkg_resources import Requirement, resource_filename
 
 from climada.util.constants import SOURCE_DIR

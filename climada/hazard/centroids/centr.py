@@ -20,7 +20,6 @@ Define Centroids class.
 """
 
 import ast
-import shutil
 import copy
 import logging
 import numpy as np
@@ -67,7 +66,6 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
 """Excel variable names"""
 
 LOGGER = logging.getLogger(__name__)
-
 
 class Centroids():
     """Contains raster or vector centroids. Raster data can be set with
