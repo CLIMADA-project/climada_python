@@ -16,14 +16,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Inundation from TC storm surges, modeled using GeoClaw
+Inundation from TC storm surges, modeled using the library GeoClaw
 """
 
 import contextlib
 import datetime as dt
+import importlib
 import logging
 import re
 import os
+import site
 import subprocess
 import sys
 
@@ -65,12 +67,6 @@ CLAWPACK_SRC_DIR = os.path.join(DATA_DIR, "geoclaw", "src")
 GEOCLAW_WORK_DIR = os.path.join(DATA_DIR, "geoclaw", "runs")
 """Base directory for GeoClaw run data"""
 
-MON_ZOS_DATA = os.path.join(DATA_DIR, "monthly_zos.nc")
-"""NetCDF file containing monthly sea surface height data"""
-
-TOPO_DATA = os.path.join(DATA_DIR, "combined", "combine.vrt")
-"""Raster file containing global topographical elevation data"""
-
 INLAND_MAX_DIST_KM = 50
 """Maximum inland distance of the centroids in km"""
 
@@ -83,17 +79,21 @@ MBAR_TO_PA = (1.0 * ureg.mbar).to(ureg.pascal).magnitude
 KM_TO_DEG = 1.0 / (60 * NM_TO_KM)
 """Unit conversion factors"""
 
+
 class TCSurgeGeoClaw(Hazard):
     """TC storm surge heights in m, modeled using GeoClaw"""
     def __init__(self):
         Hazard.__init__(self, HAZ_TYPE)
 
 
-    def set_from_tracks(self, tracks, centroids=None, description=''):
-        """Clear and fill with surge inundation from specified tracks.
+    @staticmethod
+    def from_tc_tracks(tracks, zos_path, topo_path, centroids=None, description=''):
+        """New instance with surge inundation from TCTracks objects.
 
         Parameters:
             tracks (TCTracks): tracks of events
+            zos_path (str): Path to NetCDF file containing gridded monthly sea level data.
+            topo_path (str): Path to raster file containing gridded elevation data.
             centroids (Centroids, optional): Centroids where to model TC.
                 Default: global centroids.
             description (str, optional): description of the events
@@ -126,54 +126,64 @@ class TCSurgeGeoClaw(Hazard):
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
-        self.concatenate([haz_from_track(t, centroids, coastal_idx) for t in tracks.data])
-        TropCyclone.frequency_from_tracks(self, tracks.data)
-        self.tag.description = description
+        haz = TCSurgeGeoClaw()
+        haz.concatenate(
+            [TCSurgeGeoClaw.from_xr_track(t, centroids, coastal_idx, zos_path, topo_path)
+             for t in tracks.data])
+        TropCyclone.frequency_from_tracks(haz, tracks.data)
+        haz.tag.description = description
+        return haz
 
 
-def haz_from_track(track, centroids, coastal_idx):
-    """Generate TC surge hazard from a single track dataset
+    @staticmethod
+    def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path):
+        """Generate TC surge hazard from a single xarray track dataset
 
-    Parameters:
-        track (xr.Dataset): single tropical cyclone track.
-        centroids (Centroids): Centroids instance.
-        coastal_idx (np.array): Indices of centroids close to coast.
+        Parameters:
+            track (xr.Dataset): single tropical cyclone track.
+            centroids (Centroids): Centroids instance.
+            coastal_idx (np.array): Indices of centroids close to coast.
+            zos_path (str): Path to NetCDF file containing gridded monthly sea level data.
+            topo_path (str): Path to raster file containing gridded elevation data.
 
-    Returns:
-        TropCyclone
-    """
-    coastal_centroids = centroids.coord[coastal_idx]
-    intensity = np.zeros(centroids.coord.shape[0])
-    intensity[coastal_idx] = geoclaw_surge_from_track(track, coastal_centroids)
+        Returns:
+            TCSurgeGeoClaw object
+        """
+        coastal_centroids = centroids.coord[coastal_idx]
+        intensity = np.zeros(centroids.coord.shape[0])
+        intensity[coastal_idx] = geoclaw_surge_from_track(track, coastal_centroids,
+                                                          zos_path, topo_path)
 
-    new_haz = TropCyclone()
-    new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
-    new_haz.intensity = sp.csr_matrix(intensity)
-    new_haz.units = 'm'
-    new_haz.centroids = centroids
-    new_haz.event_id = np.array([1])
-    new_haz.frequency = np.array([1])
-    new_haz.event_name = [track.sid]
-    new_haz.fraction = new_haz.intensity.copy()
-    new_haz.fraction.data.fill(1)
-    new_haz.date = np.array([
-        dt.datetime(track.time.dt.year[0],
-                    track.time.dt.month[0],
-                    track.time.dt.day[0]).toordinal()
-    ])
-    new_haz.orig = np.array([track.orig_event_flag])
-    new_haz.category = np.array([track.category])
-    new_haz.basin = [track.basin]
-    return new_haz
+        new_haz = TCSurgeGeoClaw()
+        new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
+        new_haz.intensity = sp.csr_matrix(intensity)
+        new_haz.units = 'm'
+        new_haz.centroids = centroids
+        new_haz.event_id = np.array([1])
+        new_haz.frequency = np.array([1])
+        new_haz.event_name = [track.sid]
+        new_haz.fraction = new_haz.intensity.copy()
+        new_haz.fraction.data.fill(1)
+        new_haz.date = np.array([
+            dt.datetime(track.time.dt.year[0],
+                        track.time.dt.month[0],
+                        track.time.dt.day[0]).toordinal()
+        ])
+        new_haz.orig = np.array([track.orig_event_flag])
+        new_haz.category = np.array([track.category])
+        new_haz.basin = [track.basin]
+        return new_haz
 
 
-def geoclaw_surge_from_track(track, centroids):
+def geoclaw_surge_from_track(track, centroids, zos_path, topo_path):
     """Compute TC surge height on centroids from a single track dataset
 
     Parameters:
         track (xr.Dataset): Single tropical cyclone track.
         centroids (2d np.array): Points for which to record the maximum height
             of inundation. Each row is a lat-lon point.
+        zos_path (str): Path to NetCDF file containing gridded monthly sea level data.
+        topo_path (str): Path to raster file containing gridded elevation data.
 
     Returns:
         np.array
@@ -228,7 +238,7 @@ def geoclaw_surge_from_track(track, centroids):
             event_surge_h = np.zeros(track_centr.shape[0])
             event_track = track.sel(time=event['time_mask_buffered'])
             runner = GeoclawRunner(work_dir, event_track, event['period'][0], event,
-                                   track_centr[event['centroid_mask']])
+                                   track_centr[event['centroid_mask']], zos_path, topo_path)
             runner.run()
             event_surge_h[event['centroid_mask']] = runner.surge_h
             surge_h.append(event_surge_h)
@@ -241,7 +251,8 @@ def geoclaw_surge_from_track(track, centroids):
 
 class GeoclawRunner():
     """"Wrapper for work directory setup and running of GeoClaw simulations"""
-    def __init__(self, base_dir, track, time_offset, areas, centroids):
+
+    def __init__(self, base_dir, track, time_offset, areas, centroids, zos_path, topo_path):
         """Initialize GeoClaw working directory with ClawPack rundata
 
         Parameters:
@@ -251,12 +262,16 @@ class GeoclawRunner():
             areas (dict): Landfall event (single iterator output from TCSurgeEvents).
             centroids (np.array): Points for which to record the maximum height of
                 inundation. Each row is a lat-lon point.
+            zos_path (str): Path to NetCDF file containing gridded monthly sea level data.
+            topo_path (str): Path to raster file containing gridded elevation data.
         """
         LOGGER.info("Running GeoClaw to determine surge on %d centroids", centroids.shape[0])
         self.track = track
         self.areas = areas
         self.centroids = centroids
         self.time_offset = time_offset
+        self.zos_path = zos_path
+        self.topo_path = topo_path
         self.surge_h = np.zeros(centroids.shape[0])
 
         # compute time horizon
@@ -352,7 +367,7 @@ include $(CLAW)/clawutil/src/Makefile.common
             fgmax_grid.read_output(outdir=outdir)
         assert fgmax_grid.point_style == 0
         self.surge_h[:] = fgmax_grid.h
-        self.surge_h[fgmax_grid.arrival_time == fgmax_grid.arrival_time.min()] = 0
+        self.surge_h[fgmax_grid.arrival_time.mask] = 0
 
 
     def write_rundata(self):
@@ -418,7 +433,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         regions.append([maxlevel - 2, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
         for area in self.areas['surge_areas']:
             x_1, y_1, x_2, y_2 = area
-            regions.append([maxlevel - 1, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
+            regions.append([maxlevel, maxlevel, t_1, t_2, x_1, x_2, y_1, y_2])
         refinedata.speed_tolerance = list(np.arange(1.0, maxlevel))
         refinedata.variable_dt_refinement_ratios = True
         refinedata.wave_tolerance = 1.0
@@ -442,8 +457,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         geodata.dry_tolerance = 1.e-2
 
         # get sea level information for affected months
-        months = np.stack((self.track.time.dt.year,
-                           self.track.time.dt.month), axis=-1)
+        months = np.stack((self.track.time.dt.year, self.track.time.dt.month), axis=-1)
         if self.track.time[0].dt.day < 8:
             if months[0, 1] == 1:
                 months[0, 0] -= 1
@@ -457,7 +471,7 @@ include $(CLAW)/clawutil/src/Makefile.common
             else:
                 months[-1, 1] += 1
         months = np.unique(months, axis=0)
-        geodata.sea_level = mean_max_sea_level(months, self.areas['wind_area'])
+        geodata.sea_level = mean_max_sea_level(self.zos_path, months, self.areas['wind_area'])
 
         # load elevation data, resolution depending on area of refinement
         topodata.topofiles = []
@@ -468,7 +482,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         resolutions = [360, 120] + [30 for a in self.areas['surge_areas']]
         dems_for_plot = []
         for res_as, bounds in zip(resolutions, areas):
-            bounds, xcoords, ycoords, zvalues = load_topography(bounds, res_as)
+            bounds, xcoords, ycoords, zvalues = load_topography(self.topo_path, bounds, res_as)
             if 0 in zvalues.shape:
                 LOGGER.warning("Area is ignored because it is too small.")
                 continue
@@ -481,7 +495,8 @@ include $(CLAW)/clawutil/src/Makefile.common
                                        self.rundata.clawdata.t0, self.rundata.clawdata.tfinal,
                                        tt3_fname])
             dems_for_plot.append((bounds, zvalues))
-        plot_dems(dems_for_plot, track=self.track, path=os.path.join(self.work_dir, "dems.pdf"))
+        plot_dems(dems_for_plot, track=self.track, centroids=self.centroids,
+                  path=os.path.join(self.work_dir, "dems.pdf"))
 
 
     def set_rundata_fgmax(self):
@@ -496,7 +511,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         fgmax_grid.tstart_max = self.rundata.clawdata.t0
         fgmax_grid.tend_max = self.rundata.clawdata.tfinal
         fgmax_grid.dt_check = 0
-        fgmax_grid.min_level_check = self.rundata.amrdata.amr_levels_max - 1
+        fgmax_grid.min_level_check = self.rundata.amrdata.amr_levels_max
         fgmax_grid.arrival_tol = 1.e-2
         fgmax_grid.npts = self.centroids.shape[0]
         fgmax_grid.X = self.centroids[:, 1]
@@ -517,13 +532,14 @@ include $(CLAW)/clawutil/src/Makefile.common
         gc_storm.write(surge_data.storm_file, file_format='geoclaw')
 
 
-def plot_dems(dems, track=None, path=None):
+def plot_dems(dems, track=None, path=None, centroids=None):
     """Plot given DEMs as rasters to one worldmap
 
     Parameters:
         dems (list of pairs): pairs (bounds, heights)
         path (str or None): If given, save plot in this location. Default: None
         track (xr.Dataset): If given, overlay the tropical cyclone track. Default: None
+        centroids (np.array): If given, overlay as scatter points. Default: None
     """
     matplotlib.rc('axes', linewidth=0.5)
     matplotlib.rc('font', size=7, family='serif')
@@ -540,11 +556,9 @@ def plot_dems(dems, track=None, path=None):
     mid_lon = 0.5 * (total_bounds[0] + total_bounds[2])
     aspect_ratio = 1.124 * ((total_bounds[2] - total_bounds[0])
                             / (total_bounds[3] - total_bounds[1]))
-    if aspect_ratio >= 1:
-        figsize = (10, 10 / aspect_ratio)
-    else:
-        figsize = (aspect_ratio * 10, 10)
-    fig = plt.figure(figsize=figsize, dpi=100)
+    fig = plt.figure(
+        figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
+        dpi=100)
     proj = ccrs.PlateCarree(central_longitude=mid_lon)
     axes = fig.add_subplot(111, projection=proj)
     axes.outline_patch.set_linewidth(0.5)
@@ -558,8 +572,10 @@ def plot_dems(dems, track=None, path=None):
                     vmin=cnorm.values[0], vmax=cnorm.values[-1])
         plot_bounds(axes, bounds, color='k', linewidth=0.5)
     axes.coastlines(resolution='10m', linewidth=0.5)
-    if track:
+    if track is not None:
         axes.plot(track.lon - mid_lon, track.lat, color='k', linewidth=0.5)
+    if centroids is not None:
+        axes.scatter(centroids[:, 1] - mid_lon, centroids[:, 0], s=0.3)
     fig.subplots_adjust(left=0.02, bottom=0.01, right=0.89, top=0.99, wspace=0, hspace=0)
     if path is None:
         plt.show()
@@ -640,20 +656,17 @@ def climada_xarray_to_geoclaw_storm(track, offset=None):
     return gc_storm
 
 
-def mean_max_sea_level(months, bounds, path=None):
+def mean_max_sea_level(path, months, bounds):
     """Mean of maxima over affected area in affected months
 
     Parameters:
+        path (str): Path to NetCDF file containing monthly sea level data.
         months (np.array): each row is a tuple (year, month)
         bounds (tuple): (lon_min, lat_min, lon_max, lat_max)
-        path (str): Path to NetCDF file containing monthly sea level data.
-            Default: 'monthly_zos.nc' in CLIMADA's internal data directory.
 
     Returns:
         float
     """
-    if not path:
-        path = MON_ZOS_DATA
     lon_coord_names = ["longitude", "lon", "x"]
     lat_coord_names = ["latitude", "lat", "y"]
     time_coord_names = ["time", "date", "datetime"]
@@ -672,13 +685,14 @@ def mean_max_sea_level(months, bounds, path=None):
                                          for m in months], axis=0))
         zos_lon = coord_util.lon_normalize(zos_ds.lon.values,
                                            center=0.5 * (bounds[0] + bounds[2]))
-        zos_ds = zos_ds.sel(lat=(bounds[1] <= zos_ds.lat) & (zos_ds.lat <= bounds[3]),
-                            lon=(bounds[0] <= zos_lon) & (zos_lon <= bounds[2]))
+        mask_lat = (bounds[1] <= zos_ds.lat) & (zos_ds.lat <= bounds[3])
+        mask_lon = (bounds[0] <= zos_lon) & (zos_lon <= bounds[2]) & np.isfinite(zos_ds.lon)
+        zos_ds = zos_ds.where(mask_lat & mask_lon, drop=True)
         zos = zos_ds.zos.values[:]
     return zos.max(axis=(1, 2)).mean()
 
 
-def load_topography(bounds, res_as, path=None):
+def load_topography(path, bounds, res_as):
     """Load topographical elevation data in specified bounds and resolution
 
     The bounds of the returned topodata are always larger than the requested bounds to make sure
@@ -686,13 +700,12 @@ def load_topography(bounds, res_as, path=None):
 
     Parameters
     ----------
+    path : str
+        Path to raster file containing elevation data above reference geoid.
     bounds : tuple
         Bounds (lon_min, lat_min, lon_max, lat_max) of region of interest.
     res_as : float
-        Resolution in arc-seconds
-    path : str
-        Path to raster file containing elevation data.
-        Default: A hardcoded file in CLIMADA's internal data directory.
+        Resolution in arc-seconds.
 
     Returns
     -------
@@ -701,12 +714,10 @@ def load_topography(bounds, res_as, path=None):
     xcoords, ycoords : np.array
         Longitudinal (x) and latitudinal (y) coordinate axis.
     zvalues : np.array
-        Surface elevation relative to EGM96 in meters. The first axis is
+        Surface elevation above reference geoid in meters. The first axis is
         latitude (increasing), the second is longitude (increasing).
     """
-    if not path:
-        path = TOPO_DATA
-    LOGGER.info("Load elevation data: %s %s", res_as, bounds)
+    LOGGER.info("Load elevation data [%s, %s] from %s", res_as, bounds, path)
     res = res_as / (60 * 60)
     zvalues, transform = coord_util.read_raster_bounds(path, bounds, res=res, bands=[1])
     zvalues = zvalues[0]
@@ -783,7 +794,7 @@ class TCSurgeEvents():
         self._set_periods()
         self.time_mask = [self._period_to_mask(p) for p in self.period]
         self.time_mask_buffered = [self._period_to_mask(p, buffer=(0.3, 0.3))
-                                    for p in self.period]
+                                   for p in self.period]
         self._set_areas()
         self._remove_harmless_events()
 
@@ -865,7 +876,7 @@ class TCSurgeEvents():
         for i_event, mask_buf in enumerate(self.time_mask_buffered):
             track = self.track.sel(time=mask_buf)
             mask = self.time_mask[i_event][mask_buf]
-            lf_radii = np.fmax(0.4 * track.radius_oci, 1.6 * track.radius_max_wind).values
+            lf_radii = np.fmax(0.4 * track.radius_oci.values, 1.6 * track.radius_max_wind.values)
 
             # wind area (maximum bounds to consider)
             pad = 0.9 * track.radius_oci / 60
@@ -1076,6 +1087,8 @@ def setup_clawpack(version=CLAWPACK_VERSION):
         pkg = f"git+{CLAWPACK_GIT_URL}@{version}#egg=clawpack-{version}"
         cmd = [sys.executable, "-m", "pip", "install", "--src", src_path, "-e", pkg]
         subprocess.check_call(cmd)
+        importlib.reload(site)
+        importlib.invalidate_caches()
 
     # clawpack.pyclaw disables all loggers; the following lines revert this
     logger_state = {name: logger.disabled
