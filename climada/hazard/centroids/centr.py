@@ -68,9 +68,6 @@ DEF_VAR_EXCEL = {'sheet_name': 'centroids',
 
 LOGGER = logging.getLogger(__name__)
 
-if shutil.which('eio') is None:
-    from climada.util.config import setup_environ
-    setup_environ()
 
 class Centroids():
     """Contains raster or vector centroids. Raster data can be set with
