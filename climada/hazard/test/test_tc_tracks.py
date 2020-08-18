@@ -272,6 +272,18 @@ class TestFuncs(unittest.TestCase):
         tc_track.read_ibtracs_netcdf(storm_id=storms)
         self.assertEqual(tc_track.subset({'basin': 'SP'}).size, 2)
 
+    def test_get_extent(self):
+        """Test extent/bounds attributes."""
+        storms = ['1988169N14259', '2002073S16161', '2002143S07157']
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id=storms)
+        bounds = (153.4752, -23.2000, 258.7132, 17.5166)
+        extent = (bounds[0], bounds[2], bounds[1], bounds[3])
+        bounds_buf = (153.3752, -23.3000, 258.8132, 17.6166)
+        self.assertTrue(np.allclose(tc_track.bounds, bounds))
+        self.assertTrue(np.allclose(tc_track.get_bounds(deg_buffer=0.1), bounds_buf))
+        self.assertTrue(np.allclose(tc_track.extent, extent))
+
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
         tc_track = tc.TCTracks()

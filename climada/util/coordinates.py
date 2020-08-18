@@ -112,7 +112,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     return vecn
 
 def lon_normalize(lon, center=0.0):
-    """ Normalizes degrees such that always -180 < lon <= 180
+    """ Normalizes degrees such that always -180 < lon - center <= 180
 
     The input data is modified in place (!) using the following operations:
 
@@ -141,16 +141,34 @@ def lon_normalize(lon, center=0.0):
             break
     return lon
 
-def latlon_bounds(lat, lon):
+def latlon_bounds(lat, lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
+
+    The longitudinal upper bound may be 180 or larger to make sure that the upper bound is always
+    larger than the lower bound. The lower longitudinal bound will never lie below -180 and it will
+    only assume the value -180 if the specified buffering enforces it.
+
+    Note that, as a consequence of this, the returned bounds do not satisfy the inequality
+    `lon_min <= lon <= lon_max` in general!
+
+    Usually, an application of this function is followed by a renormalization of longitudinal
+    values around the longitudinal middle value:
+
+    >>> bounds = latlon_bounds(lat, lon)
+    >>> lon_mid = 0.5 * (bounds[0] + bounds[2])
+    >>> lon = lon_normalize(lon, center=lon_mid)
+    >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
     Example:
         >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
         (175, -2, 181, 5)
+        >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
+        (174, -3, 182, 6)
 
     Parameters:
         lat (np.array): Latitudinal coordinates
         lon (np.array): Longitudinal coordinates
+        buffer (float, optional): Buffer to add to all sides of the bounding box. Default: 0.0.
 
     Returns:
         tuple (lon_min, lat_min, lon_max, lat_max)
@@ -158,14 +176,26 @@ def latlon_bounds(lat, lon):
     lon = lon_normalize(lon.copy())
     lon_uniq = np.unique(lon)
     lon_uniq = np.concatenate([lon_uniq, [360 + lon_uniq[0]]])
-    gap_max = np.argmax(np.diff(lon_uniq))
-    lon_min = lon_uniq[gap_max + 1]
-    lon_max = lon_uniq[gap_max]
-    if lon_min > 180:
-        lon_min -= 360
+    lon_diff = np.diff(lon_uniq)
+    gap_max = np.argmax(lon_diff)
+    lon_diff_max = lon_diff[gap_max]
+    if lon_diff_max < 2:
+        # looks like the data covers the whole range [-180, 180] rather evenly
+        lon_min = max(lon_uniq[0] - buffer, -180)
+        lon_max = min(lon_uniq[-2] + buffer, 180)
     else:
-        lon_max += 360
-    return (lon_min, lat.min(), lon_max, lat.max())
+        lon_min = lon_uniq[gap_max + 1]
+        lon_max = lon_uniq[gap_max]
+        if lon_min > 180:
+            lon_min -= 360
+        else:
+            lon_max += 360
+        lon_min -= buffer
+        lon_max += buffer
+        if lon_min <= -180:
+            lon_min += 360
+            lon_max += 360
+    return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect"):
@@ -1188,6 +1218,9 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     Returns:
         np.array of same length as lat
     """
+    if lat.size == 0:
+        return np.zeros_like(lat)
+
     LOGGER.info('Sampling from %s', path)
     if os.path.splitext(path)[1] == '.gz':
         path = '/vsigzip/' + path
@@ -1205,10 +1238,14 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         if intermediate_res is not None:
             win_bounds = src.window_bounds(win)
             win_width, win_height = win_bounds[2] - win_bounds[0], win_bounds[3] - win_bounds[1]
-            intermediate_shape = (int(np.ceil(win_width / intermediate_res)),
-                                  int(np.ceil(win_height / intermediate_res)))
-        data = src.read(1, out_shape=intermediate_shape, window=win)
-        fill_value = src.meta['nodata'] if fill_value is None else fill_value
+            intermediate_shape = (int(np.ceil(win_height / intermediate_res)),
+                                  int(np.ceil(win_width / intermediate_res)))
+        data = src.read(1, out_shape=intermediate_shape, boundless=True, window=win)
+        if fill_value is not None:
+            data[data == src.meta['nodata']] = fill_value
+        else:
+            fill_value = src.meta['nodata']
+
 
     if intermediate_res is not None:
         xres, yres = win_width / data.shape[1], win_height / data.shape[0]

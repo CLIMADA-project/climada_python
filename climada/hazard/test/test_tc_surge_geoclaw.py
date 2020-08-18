@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from climada.hazard import TCTracks
+from climada.hazard import Centroids, TCTracks
 from climada.hazard.tc_surge_geoclaw import (boxcover_points_along_axis,
                                              bounds_to_str,
                                              clawpack_info,
@@ -221,16 +221,15 @@ class TestFuncs(unittest.TestCase):
         zvalues = []
         for res_as in resolutions:
             for bnd in bounds:
-                result = load_topography(TOPO_PATH, bnd, res_as)
-                topo_bounds = result[0]
+                topo_bounds, topo = load_topography(TOPO_PATH, bnd, res_as)
                 self.assertLessEqual(topo_bounds[0], bnd[0])
                 self.assertLessEqual(topo_bounds[1], bnd[1])
                 self.assertGreaterEqual(topo_bounds[2], bnd[2])
                 self.assertGreaterEqual(topo_bounds[3], bnd[3])
-                xcoords, ycoords = result[1:3]
+                xcoords, ycoords = topo.x, topo.y
                 self.assertTrue(np.all((xcoords >= topo_bounds[0]) & (xcoords <= topo_bounds[2])))
                 self.assertTrue(np.all((ycoords >= topo_bounds[1]) & (ycoords <= topo_bounds[3])))
-                zvalues.append(result[3])
+                zvalues.append(topo.Z)
             self.assertTrue(np.all(zvalues[-2] == -1000))
             self.assertTrue(np.all(zvalues[-3] == -1000))
             self.assertGreater(zvalues[-1].max(), 100)
@@ -249,7 +248,7 @@ class TestHazardInit(unittest.TestCase):
         """Test TCSurgeGeoClaw basic object properties"""
         # use dummy track that is too weak to actually produce surge
         track = xr.Dataset({
-            'radius_max_wind': ('time', np.full((8,), 10.)),
+            'radius_max_wind': ('time', np.full((8,), 20.)),
             'radius_oci': ('time', np.full((8,), 200.)),
             'max_sustained_wind': ('time', np.full((8,), 30.)),
             'central_pressure': ('time', np.full((8,), 990.)),
@@ -257,8 +256,8 @@ class TestHazardInit(unittest.TestCase):
         }, coords={
             'time': np.arange('2010-02-05', '2010-02-06',
                               np.timedelta64(3, 'h'), dtype='datetime64[h]'),
-            'lat': ('time', np.linspace(-26.3, -21.5, 8)),
-            'lon': ('time', np.linspace(-147.3, -150.6, 8)),
+            'lat': ('time', np.linspace(-26.33, -21.5, 8)),
+            'lon': ('time', np.linspace(-147.27, -150.56, 8)),
         }, attrs={
             'sid': '2010029S12177_test_dummy',
             'name': 'Dummy',
@@ -268,9 +267,28 @@ class TestHazardInit(unittest.TestCase):
         })
         tracks = TCTracks()
         tracks.data = [track, track]
+
+        # first run, with automatic centroids
         haz = TCSurgeGeoClaw.from_tc_tracks(tracks, ZOS_PATH, TOPO_PATH)
         self.assertIsInstance(haz, TCSurgeGeoClaw)
         self.assertEqual(haz.intensity.shape[0], 2)
+        self.assertTrue(np.all(haz.intensity.toarray() == 0))
+
+        # second run, with specified centroids
+        coord = np.array([
+            # points along coastline:
+            [-23.44084378, -149.45562336], [-23.43322580, -149.44678650],
+            [-23.42347479, -149.42088538], [-23.42377951, -149.41418156],
+            [-23.41494266, -149.39742201], [-23.41494266, -149.38919460],
+            [-23.38233772, -149.38949932],
+            # points inland at higher altitude:
+            [-23.37505943, -149.46882493], [-23.36615826, -149.45798872],
+        ])
+        centroids = Centroids()
+        centroids.set_lat_lon(coord[:,0], coord[:,1])
+        haz = TCSurgeGeoClaw.from_tc_tracks(tracks, ZOS_PATH, TOPO_PATH, centroids=centroids)
+        self.assertIsInstance(haz, TCSurgeGeoClaw)
+        self.assertEqual(haz.intensity.shape, (2, coord.shape[0]))
         self.assertTrue(np.all(haz.intensity.toarray() == 0))
 
 

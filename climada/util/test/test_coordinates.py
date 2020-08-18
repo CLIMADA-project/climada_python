@@ -45,7 +45,9 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      get_land_geometry, \
                                      get_resolution, \
                                      grid_is_regular, \
+                                     latlon_bounds, \
                                      latlon_to_geosph_vector, \
+                                     lon_normalize, \
                                      nat_earth_resolution, \
                                      points_to_raster, \
                                      pts_to_raster_meta, \
@@ -58,7 +60,44 @@ from climada.util.coordinates import convert_wgs_to_utm, \
                                      NE_EPSG
 
 class TestFunc(unittest.TestCase):
-    """Test the auxiliary used with plot functions"""
+    """Test auxiliary functions"""
+
+    def test_lon_normalize(self):
+        """Test the longitude normalization function"""
+        data = np.array([-180, 20.1, -30, 190, -350])
+
+        # test in place operation
+        lon_normalize(data)
+        self.assertTrue(np.allclose(data, [180, 20.1, -30, -170, 10]))
+
+        # test with specific center and return value
+        data = lon_normalize(data, center=-170)
+        self.assertTrue(np.allclose(data, [-180, -339.9, -30, -170, 10]))
+
+    def test_latlon_bounds(self):
+        """Test latlon_bounds function"""
+        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 178])
+        bounds = latlon_bounds(lat, lon)
+        self.assertEqual(bounds, (175, -2, 181, 5))
+        bounds = latlon_bounds(lat, lon, buffer=1)
+        self.assertEqual(bounds, (174, -3, 182, 6))
+
+        # buffer exceeding antimeridian
+        lat, lon = np.array([0, -2.1, 5]), np.array([-179.5, -175, -178])
+        bounds = latlon_bounds(lat, lon, buffer=1)
+        self.assertEqual(bounds, (179.5, -3.1, 186, 6))
+
+        # longitude values need to be normalized before they lie between computed bounds:
+        lon_mid = 0.5 * (bounds[0] + bounds[2])
+        lon = lon_normalize(lon, center=lon_mid)
+        self.assertTrue(np.all((bounds[0] <= lon) & (lon <= bounds[2])))
+
+        # data covering almost the whole longitudinal range
+        lat, lon = np.linspace(-90, 90, 180), np.linspace(-180.0, 179, 360)
+        bounds = latlon_bounds(lat, lon)
+        self.assertEqual(bounds, (-179, -90, 180, 90))
+        bounds = latlon_bounds(lat, lon, buffer=1)
+        self.assertEqual(bounds, (-180, -90, 180, 90))
 
     def test_geosph_vector(self):
         """Test conversion from lat/lon to unit vector on geosphere"""
@@ -271,12 +310,16 @@ class TestGetGeodata(unittest.TestCase):
             # South America:
             [-12.497529, -58.849505],
             # Very close to coast of Somalia:
-            [1.96768, 45.23219],
+            [1.96475615, 45.23249055],
         ])
-        dists = [3583.33333333, 1394306.570185499, 630.91307999]
+        dists = [-3000, -1393549.5, 48.77]
+        dists_lowres = [416.66666667, 1393448.09801077, 1191.38205367]
         # Warning: This will download more than 300 MB of data!
-        res = dist_to_coast_nasa(points[:, 0], points[:, 1])
-        for d, r in zip(dists, res):
+        result = dist_to_coast_nasa(points[:, 0], points[:, 1], highres=True, signed=True)
+        result_lowres = dist_to_coast_nasa(points[:, 0], points[:, 1])
+        for d, r in zip(dists, result):
+            self.assertAlmostEqual(d, r)
+        for d, r in zip(dists_lowres, result_lowres):
             self.assertAlmostEqual(d, r)
 
     def test_get_country_geometries_country_pass(self):
@@ -585,11 +628,17 @@ class TestRasterIO(unittest.TestCase):
             [45.3, 21.4, 0.7 * 0.4 * val_1],
             [-20, 0, fill_value],
         ])
-        res = 0.009
+        res = 0.009000000000000341
         lat = 10.42822096697894 - res / 2 - i_j_vals[:, 0] * res
         lon = -69.33714959699981 + res / 2 + i_j_vals[:, 1] * res
-        values = read_raster_sample(HAZ_DEMO_FL, lat, lon,
-                                    fill_value=fill_value)
+        values = read_raster_sample(HAZ_DEMO_FL, lat, lon, fill_value=fill_value)
+        self.assertEqual(values.size, lat.size)
+        for i, val in enumerate(i_j_vals[:, 2]):
+            self.assertAlmostEqual(values[i], val)
+
+        # with explicit intermediate resolution
+        values = read_raster_sample(HAZ_DEMO_FL, lat, lon, fill_value=fill_value,
+                                    intermediate_res=res)
         self.assertEqual(values.size, lat.size)
         for i, val in enumerate(i_j_vals[:, 2]):
             self.assertAlmostEqual(values[i], val)

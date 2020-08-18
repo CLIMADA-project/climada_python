@@ -537,7 +537,7 @@ class Centroids():
         if precomputed:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
-            self.dist_coast = dist_to_coast_nasa(self.lat, self.lon, signed=signed)
+            self.dist_coast = dist_to_coast_nasa(self.lat, self.lon, highres=True, signed=signed)
         else:
             ne_geom = self._ne_crs_geom(scheduler)
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.lat.size))

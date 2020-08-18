@@ -70,6 +70,9 @@ GEOCLAW_WORK_DIR = os.path.join(DATA_DIR, "geoclaw", "runs")
 INLAND_MAX_DIST_KM = 50
 """Maximum inland distance of the centroids in km"""
 
+OFFSHORE_MAX_DIST_KM = 10
+"""Maximum offshore distance of the centroids in km"""
+
 CENTR_NODE_MAX_DIST_DEG = 5.5
 """Maximum distance between centroid and TC track node in degrees"""
 
@@ -101,15 +104,11 @@ class TCSurgeGeoClaw(Hazard):
         setup_clawpack()
 
         if centroids is None:
-            # compute from given tracks extent
-            pad = CENTR_NODE_MAX_DIST_DEG
-            bounds = coord_util.latlon_bounds(
-                np.concatenate([t.lat.values for t in tracks.data]),
-                np.concatenate([t.lon.values for t in tracks.data]))
-            # resolution defaults to 90 arc-seconds
+            # cell-centered grid within padded bounds at 90 arc-seconds resolution
             res_deg = 90 / (60 * 60)
-            lat = np.arange(bounds[1] - pad + 0.5 * res_deg, bounds[3] + pad, res_deg)
-            lon = np.arange(bounds[0] - pad + 0.5 * res_deg, bounds[2] + pad, res_deg)
+            bounds = tracks.get_bounds(deg_buffer=CENTR_NODE_MAX_DIST_DEG)
+            lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
+            lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
             lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
             centroids = Centroids()
             centroids.set_lat_lon(lat, lon)
@@ -120,7 +119,7 @@ class TCSurgeGeoClaw(Hazard):
         # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
         if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
             centroids.set_dist_coast(signed=True, precomputed=True)
-        coastal_idx = ((centroids.dist_coast < 300)
+        coastal_idx = ((centroids.dist_coast < OFFSHORE_MAX_DIST_KM * 1000)
                        & (centroids.dist_coast > -INLAND_MAX_DIST_KM * 1000)
                        & (centroids.lat < 61)).nonzero()[0]
 
@@ -205,6 +204,15 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path):
                        & (centroids[:, 0] < track_bounds_pad[3])
                        & (track_bounds_pad[0] < centroids[:, 1])
                        & (centroids[:, 1] < track_bounds_pad[2]))
+    track_centr_idx = track_centr_msk.nonzero()[0]
+
+    # exclude centroids at too low/high topographic altitude
+    centroids_height = coord_util.read_raster_sample(
+        topo_path, centroids[track_centr_msk, 0], centroids[track_centr_msk, 1],
+        intermediate_res=0.008)
+    track_centr_idx = track_centr_idx[(centroids_height > -10) & (centroids_height < 10)]
+    track_centr_msk.fill(False)
+    track_centr_msk[track_centr_idx] = True
     track_centr = centroids[track_centr_msk]
 
     if track_centr.shape[0] == 0:
@@ -381,7 +389,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         self.set_rundata_geo()
         self.set_rundata_fgmax()
         self.set_rundata_storm()
-        with contextlib.redirect_stdout(None):
+        with contextlib.redirect_stdout(None), backup_loggers():
             self.rundata.write(out_dir=self.work_dir)
 
 
@@ -442,9 +450,6 @@ include $(CLAW)/clawutil/src/Makefile.common
 
     def set_rundata_geo(self):
         """Set geo-related rundata attributes"""
-        # pylint: disable=import-outside-toplevel
-        from clawpack.geoclaw import topotools
-
         geodata = self.rundata.geo_data
         topodata = self. rundata.topo_data
 
@@ -482,19 +487,17 @@ include $(CLAW)/clawutil/src/Makefile.common
         resolutions = [360, 120] + [30 for a in self.areas['surge_areas']]
         dems_for_plot = []
         for res_as, bounds in zip(resolutions, areas):
-            bounds, xcoords, ycoords, zvalues = load_topography(self.topo_path, bounds, res_as)
-            if 0 in zvalues.shape:
+            bounds, topo = load_topography(self.topo_path, bounds, res_as)
+            if 0 in topo.Z.shape:
                 LOGGER.warning("Area is ignored because it is too small.")
                 continue
-            topo = topotools.Topography()
-            topo.set_xyZ(xcoords, ycoords, zvalues)
             tt3_fname = 'topo_{}s_{}.tt3'.format(res_as, bounds_to_str(bounds))
             tt3_fname = os.path.join(self.work_dir, tt3_fname)
             topo.write(tt3_fname)
             topodata.topofiles.append([3, 1, self.rundata.amrdata.amr_levels_max,
                                        self.rundata.clawdata.t0, self.rundata.clawdata.tfinal,
                                        tt3_fname])
-            dems_for_plot.append((bounds, zvalues))
+            dems_for_plot.append((bounds, topo.Z))
         plot_dems(dems_for_plot, track=self.track, centroids=self.centroids,
                   path=os.path.join(self.work_dir, "dems.pdf"))
 
@@ -575,7 +578,7 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     if track is not None:
         axes.plot(track.lon - mid_lon, track.lat, color='k', linewidth=0.5)
     if centroids is not None:
-        axes.scatter(centroids[:, 1] - mid_lon, centroids[:, 0], s=0.3)
+        axes.scatter(centroids[:, 1] - mid_lon, centroids[:, 0], s=0.1, alpha=0.5)
     fig.subplots_adjust(left=0.02, bottom=0.01, right=0.89, top=0.99, wspace=0, hspace=0)
     if path is None:
         plt.show()
@@ -711,12 +714,12 @@ def load_topography(path, bounds, res_as):
     -------
     bounds : tuple
         Bounds (lon_min, lat_min, lon_max, lat_max) actually covered by the returned topodata.
-    xcoords, ycoords : np.array
-        Longitudinal (x) and latitudinal (y) coordinate axis.
-    zvalues : np.array
-        Surface elevation above reference geoid in meters. The first axis is
-        latitude (increasing), the second is longitude (increasing).
+    topo : clawpack.geoclaw.topotools.Topography object
+        The object's x, y and Z attributes contain the loaded topodata.
     """
+    # pylint: disable=import-outside-toplevel
+    from clawpack.geoclaw import topotools
+
     LOGGER.info("Load elevation data [%s, %s] from %s", res_as, bounds, path)
     res = res_as / (60 * 60)
     zvalues, transform = coord_util.read_raster_bounds(path, bounds, res=res, bands=[1])
@@ -734,7 +737,10 @@ def load_topography(path, bounds, res_as):
     bounds = (xmin, ymin, xmax, ymax)
     xcoords = np.arange(xmin + xres / 2, xmax, xres)
     ycoords = np.arange(ymin + yres / 2, ymax, yres)
-    return bounds, xcoords, ycoords, zvalues.astype(np.float64)
+
+    topo = topotools.Topography()
+    topo.set_xyZ(xcoords, ycoords, zvalues.astype(np.float64))
+    return bounds, topo
 
 
 class TCSurgeEvents():
@@ -1090,15 +1096,24 @@ def setup_clawpack(version=CLAWPACK_VERSION):
         importlib.reload(site)
         importlib.invalidate_caches()
 
-    # clawpack.pyclaw disables all loggers; the following lines revert this
-    logger_state = {name: logger.disabled
-                    for name, logger in logging.root.manager.loggerDict.items()
-                    if isinstance(logger, logging.Logger)}
-    # pylint: disable=unused-import,import-outside-toplevel
-    import clawpack.pyclaw
-    for name, logger in logging.root.manager.loggerDict.items():
-        if name in logger_state and not logger_state[name]:
-            logger.disabled = False
+    with backup_loggers():
+        # pylint: disable=unused-import,import-outside-toplevel
+        import clawpack.pyclaw
+
+
+@contextlib.contextmanager
+def backup_loggers():
+    # some modules (such as clawpack.pyclaw) use logging.config.fileConfig which disables all
+    # registered loggers; the following lines revert this
+    try:
+        logger_state = {name: logger.disabled
+                        for name, logger in logging.root.manager.loggerDict.items()
+                        if isinstance(logger, logging.Logger)}
+        yield logger_state
+    finally:
+        for name, logger in logging.root.manager.loggerDict.items():
+            if name in logger_state and not logger_state[name]:
+                logger.disabled = False
 
 
 def bounds_to_str(bounds):

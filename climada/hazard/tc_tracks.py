@@ -670,11 +670,12 @@ class TCTracks():
             deg_buffer (float): A buffer to add around the bounding box
 
         Returns:
-            tuple
+            tuple (lon_min, lat_min, lon_max, lat_max)
         """
         bounds = coord_util.latlon_bounds(
             np.concatenate([t.lat.values for t in self.data]),
-            np.concatenate([t.lon.values for t in self.data]))
+            np.concatenate([t.lon.values for t in self.data]),
+            buffer=deg_buffer)
         return bounds
 
     @property
@@ -689,7 +690,7 @@ class TCTracks():
             deg_buffer (float): A buffer to add around the bounding box
 
         Returns:
-            tuple
+            tuple (lon_min, lon_max, lat_min, lat_max)
         """
         bounds = self.get_bounds(deg_buffer=deg_buffer)
         return (bounds[0], bounds[2], bounds[1], bounds[3])
