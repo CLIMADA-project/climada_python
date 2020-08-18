@@ -692,7 +692,7 @@ def mean_max_sea_level(path, months, bounds):
         mask_lon = (bounds[0] <= zos_lon) & (zos_lon <= bounds[2]) & np.isfinite(zos_ds.lon)
         zos_ds = zos_ds.where(mask_lat & mask_lon, drop=True)
         zos = zos_ds.zos.values[:]
-    return zos.max(axis=(1, 2)).mean()
+    return np.nanmean(np.nanmax(zos, axis=(1, 2)))
 
 
 def load_topography(path, bounds, res_as):
