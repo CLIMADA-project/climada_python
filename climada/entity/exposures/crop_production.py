@@ -436,16 +436,17 @@ class CropProduction(Exposures):
         # and calculate the crop production in USD/y
         area_price = np.zeros(self.value.size)
         for country in list_countries:
-            if country != 'No country':
-                if country == 'Other country':
-                    price = 0
-                else:
-                    idx_price = np.where((np.asarray(fao_country) == country) &
+            idx_country = np.where(np.asarray(iso3alpha) == country)[0]
+            if country == 'Other country':
+                price = 0
+                area_price[idx_country] = self.value[idx_country] * price
+            elif country != 'No country' and country != 'Other country':
+                idx_price = np.where((np.asarray(fao_country) == country) &
                                          (np.asarray(fao['crops']) == \
                                          (CROP_NAME[self.crop])['fao']) &
                                          (fao['year'] >= yearrange[0]) &
                                          (fao['year'] <= yearrange[1]))
-                    price = np.mean(fao['price'][idx_price])
+                price = np.mean(fao['price'][idx_price])
                 # if no price can be determined for a specific yearrange and country, the world
                 # average for that crop (in the specified yearrange) is used
                 if math.isnan(price) or price == 0:
@@ -454,8 +455,8 @@ class CropProduction(Exposures):
                                          (fao['year'] >= yearrange[0]) &
                                          (fao['year'] <= yearrange[1]))
                     price = np.mean(fao['price'][idx_price])
-                idx_country = np.where(np.asarray(iso3alpha) == country)[0]
-                area_price[idx_country] = self.value[idx_country] * price
+                area_price[idx_country] = self.value[idx_country] * price      
+                
 
         self['value'] = area_price
         self.value_unit = 'USD / y'
