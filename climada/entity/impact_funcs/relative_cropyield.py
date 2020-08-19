@@ -37,6 +37,9 @@ class IFRelativeCropyield(ImpactFunc):
         self.id = 1
         self.name = 'Relative Cropyield ISIMIP'
         self.intensity_unit = ''
+        #intensity = 0 when the crop production is equivalent to the historical mean
+        #intensity = -1 for a complete crop failure
+        #intensity = 1 for a crop production surplus of 100%
         self.intensity = np.arange(-1, 10)
         self.mdr = (self.intensity)
         self.mdd = (self.intensity)
