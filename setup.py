@@ -64,7 +64,7 @@ setup(
         'fiona==1.8.4',
         'fsspec>=0.3.6', # < dask
         'gdal==2.3.3', # conda!
-        'geopandas==0.4.1',
+        'geopandas==0.6.1',
         'h5py==2.9.0',
         'haversine==2.1.1',
         'iso3166==1.0',
