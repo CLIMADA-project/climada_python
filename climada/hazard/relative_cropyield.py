@@ -214,12 +214,9 @@ class RelativeCropyield(Hazard):
                 hist_mean(array): contains mean value over the given reference
                     time period for each centroid
         """
-        time_array = np.array(self.event_name, dtype=int)
-        idx_time = np.zeros(2, dtype=int)
-        idx_time[0] = np.where(time_array == yearrange[0])[0]
-        idx_time[1] = np.where(time_array == yearrange[1])[0]
-        mean = np.mean(self.intensity[idx_time[0]:idx_time[1]], 0)
-        hist_mean = np.nan_to_num(np.squeeze(np.asarray(mean)))
+        event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1] + 1))]
+        mean = self.select(event_names=event_list).intensity.mean(axis=0)
+        hist_mean = np.squeeze(np.asarray(mean))
 
         if save:
             # generate output directories if they do not exist yet

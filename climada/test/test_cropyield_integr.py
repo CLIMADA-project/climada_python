@@ -24,7 +24,7 @@ import os
 import numpy as np
 from climada.util.constants import DATA_DIR
 from climada.hazard.relative_cropyield import RelativeCropyield
-from climada.entity.exposures.crop_production import CropProduction, normalize_with_fao_cp
+from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
 
@@ -49,7 +49,7 @@ class TestIntegr(unittest.TestCase):
         hist_mean = haz.calc_mean(yearrange=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
-        
+
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
@@ -66,7 +66,7 @@ class TestIntegr(unittest.TestCase):
 
         impact = Impact()
         impact.calc(exp.loc[exp.region_id == 276], if_cp, haz.select(['2002']), save_mat=True)
-        
+
         exp_manual = exp.value.loc[exp.region_id == 276].values
         impact_manual = haz.select(event_names=['2002'], reg_id=276).intensity.multiply(exp_manual)
         dif = (impact_manual - impact.imp_mat).data
@@ -74,12 +74,12 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual(haz.tag.haz_type, 'RC')
         self.assertEqual(haz.size, 5)
         self.assertEqual(haz.centroids.size, 1092)
-        self.assertAlmostEqual(haz.intensity.mean(), .009134249)
+        self.assertAlmostEqual(haz.intensity.mean(), -2.0489097e-08)
         self.assertAlmostEqual(exp.value.max(), 51603897.28533253)
         self.assertEqual(exp.latitude.values.size, 1092)
         self.assertAlmostEqual(exp.value[3], 0.0)
         self.assertAlmostEqual(exp.value[1077], 324742.31424674374)
-        self.assertAlmostEqual(impact.imp_mat.data[3], -25802.37206534073)
+        self.assertAlmostEqual(impact.imp_mat.data[3], -43304.201305906485)
         self.assertEqual(len(dif), 0)
 
     def test_EU_nan(self):
@@ -93,7 +93,7 @@ class TestIntegr(unittest.TestCase):
         hist_mean = haz.calc_mean(yearrange=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
-        
+
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
@@ -119,8 +119,8 @@ class TestIntegr(unittest.TestCase):
         impact_nan = Impact()
         impact_nan.calc(exp_nan, if_cp, haz, save_mat=True)
         self.assertListEqual(list(impact.at_event), list(impact_nan.at_event))
-        self.assertAlmostEqual(24611.520130281217, impact_nan.aai_agg)
-        self.assertAlmostEqual(24611.520130281217, impact.aai_agg)
+        self.assertAlmostEqual(30.262768130658515, impact_nan.aai_agg)
+        self.assertAlmostEqual(30.262768130658515, impact.aai_agg)
 
 # Execute Tests
 if __name__ == "__main__":
