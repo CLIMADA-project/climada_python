@@ -25,6 +25,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import h5py
+import copy
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
@@ -582,23 +583,8 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
 
     fao_crop_production = np.zeros(len(country_list))
     ratio = np.ones(len(country_list))
-    exp_firr_norm = CropProduction()
-    exp_noirr_norm = CropProduction()
-    exp_firr_norm.tag = exp_firr.tag
-    exp_noirr_norm.tag = exp_noirr.tag
-    exp_firr_norm.crop = exp_firr.crop
-    exp_noirr_norm.crop = exp_noirr.crop
-    exp_firr_norm.meta = exp_firr.meta
-    exp_noirr_norm.meta = exp_noirr.meta
-    exp_firr_norm.value_unit = exp_firr.value_unit
-    exp_noirr_norm.value_unit = exp_noirr.value_unit
-    exp_firr_norm.ref_year = exp_firr.ref_year
-    exp_noirr_norm.ref_year = exp_noirr.ref_year
-    exp_firr_norm.crs = DEF_CRS
-    exp_noirr_norm.crs = DEF_CRS
-    for col in exp_firr.columns:
-        exp_firr_norm[col] = pd.Series(exp_firr[col].values)
-        exp_noirr_norm[col] = pd.Series(exp_noirr[col].values)
+    exp_firr_norm = copy.deepcopy(exp_firr)
+    exp_noirr_norm = copy.deepcopy(exp_noirr)
 
     # loop over countries: compute ratio & apply normalization:
     for country, iso_nr in enumerate(country_list):
