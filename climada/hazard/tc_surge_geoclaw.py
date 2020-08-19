@@ -315,30 +315,31 @@ include $(CLAW)/clawutil/src/Makefile.common
     def run(self):
         """Run GeoClaw script and set `surge_h` attribute"""
         LOGGER.info("Running GeoClaw...")
-        proc = subprocess.Popen(["make", ".output"], cwd=self.work_dir,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self.stdout = ""
-        time_span = self.time_horizon[1] - self.time_horizon[0]
-        last_perc = -100
-        stopped = False
-        for line in proc.stdout:
-            line = line.decode()
-            self.stdout += line
-            line = line.rstrip()
-            error_strings = [
-                "ABORTING CALCULATION",
-                "Stopping calculation",
-            ]
-            if any(err in line for err in error_strings):
-                stopped = True
-            re_m = re.match(r".*t = ([-ED0-9\.\+]+)$", line)
-            if re_m is not None:
-                time = float(re_m.group(1).replace("D", "E"))
-                perc = 100 * (time - self.time_horizon[0]) / time_span
-                if perc - last_perc >= 10:
-                    LOGGER.info("%d%%", perc)
-                    last_perc = perc
-        proc.wait()
+        with subprocess.Popen(["make", ".output"],
+                              cwd=self.work_dir,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT) as proc:
+            time_span = self.time_horizon[1] - self.time_horizon[0]
+            last_perc = -100
+            stopped = False
+            for line in proc.stdout:
+                line = line.decode()
+                self.stdout += line
+                line = line.rstrip()
+                error_strings = [
+                    "ABORTING CALCULATION",
+                    "Stopping calculation",
+                ]
+                if any(err in line for err in error_strings):
+                    stopped = True
+                re_m = re.match(r".*t = ([-ED0-9\.\+]+)$", line)
+                if re_m is not None:
+                    time = float(re_m.group(1).replace("D", "E"))
+                    perc = 100 * (time - self.time_horizon[0]) / time_span
+                    if perc - last_perc >= 10:
+                        LOGGER.info("%d%%", perc)
+                        last_perc = perc
         if proc.returncode != 0 or stopped:
             self.print_stdout()
             LOGGER.error("GeoClaw run failed (see output above).")
