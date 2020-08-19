@@ -29,7 +29,7 @@ from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
-import climada.util.coordinates as co
+import climada.util.coordinates as coord
 from climada.util.constants import DATA_DIR, DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
@@ -205,7 +205,7 @@ class CropProduction(Exposures):
         lon, lat = np.meshgrid(data.lon.values, data.lat.values)
         self['latitude'] = lat.flatten()
         self['longitude'] = lon.flatten()
-        self['region_id'] = co.get_country_code(self.latitude, self.longitude)
+        self['region_id'] = coord.get_country_code(self.latitude, self.longitude)
 
         # The indeces of the yearrange to be extracted are determined
         time_idx = np.array([int(yearrange[0] - yearchunk['startyear']),
@@ -415,7 +415,7 @@ class CropProduction(Exposures):
         fao['year'] = fao['file'].Year.values
         fao['price'] = fao['file'].Value.values
 
-        fao_country = co.country_faocode2iso(getattr(fao['file'], 'Area Code').values)
+        fao_country = coord.country_faocode2iso(getattr(fao['file'], 'Area Code').values)
 
         # create a list of the countries contained in the exposure
         iso3alpha = list()
@@ -577,7 +577,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     fao_values = fao.Value.values
     fao_code = getattr(fao, 'Area Code').values
 
-    fao_country = co.country_iso2faocode(country_list)
+    fao_country = coord.country_iso2faocode(country_list)
 
     fao_crop_production = np.zeros(len(country_list))
     ratio = np.ones(len(country_list))
