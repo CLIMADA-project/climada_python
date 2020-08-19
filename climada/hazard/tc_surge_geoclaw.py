@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Inundation from TC storm surges, modeled using the library GeoClaw
 """
 
+import __main__
 import contextlib
 import datetime as dt
 import importlib
@@ -581,9 +582,9 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     if centroids is not None:
         axes.scatter(centroids[:, 1] - mid_lon, centroids[:, 0], s=0.1, alpha=0.5)
     fig.subplots_adjust(left=0.02, bottom=0.01, right=0.89, top=0.99, wspace=0, hspace=0)
-    if path is None:
+    if path is None or not hasattr(__main__, '__file__'):
         plt.show()
-    else:
+    if path is not None:
         canvas = FigureCanvasAgg(fig)
         canvas.print_figure(path)
         plt.close(fig)
@@ -945,7 +946,10 @@ class TCSurgeEvents():
                     self.track.lon.max(), self.track.lat.max())
         mid_lon = 0.5 * float(t_bounds[0] + t_bounds[2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-        fig = plt.figure()
+        aspect_ratio = 1.124 * (t_bounds[2] - t_bounds[0]) / (t_bounds[3] - t_bounds[1])
+        fig = plt.figure(
+            figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
+            dpi=100)
         axes = fig.add_subplot(111, projection=proj)
         axes.outline_patch.set_linewidth(0.5)
         axes.set_xlim(t_bounds[0] - mid_lon - CENTR_NODE_MAX_DIST_DEG,
@@ -981,9 +985,9 @@ class TCSurgeEvents():
         # plot track data points
         axes.scatter(self.track.lon - mid_lon, self.track.lat, s=2)
         fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0, hspace=0)
-        if path is None:
+        if path is None or not hasattr(__main__, '__file__'):
             plt.show()
-        else:
+        if path is not None:
             canvas = FigureCanvasAgg(fig)
             canvas.print_figure(path)
             plt.close(fig)
