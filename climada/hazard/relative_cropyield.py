@@ -460,8 +460,8 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     file_props = list()
     crop_list = list()
     scenario_list = list()
-    for i, _ in enumerate(filenames):
-        file_prop = filenames[i].split('_')
+    for file in (filenames):
+        file_prop = file.split('_')
         if file_prop[3] == 'historical':
             file_props.append(file_prop)
         elif file_prop[3] not in scenario_list:
@@ -486,9 +486,9 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
 
     # initiate the historic mean for each combination of crop and irrigation type
     hist_mean_per_crop = dict()
-    for i, _ in enumerate(crop_list):
-        hist_mean_per_crop[i] = dict()
-        hist_mean_per_crop[crop_list[i]] = {
+    for idx, crop in enumerate(crop_list):
+        hist_mean_per_crop[idx] = dict()
+        hist_mean_per_crop[crop] = {
             'value': np.zeros([int(len(filenames) / len(crop_list)), len(hist_mean)]),
             'idx': 0,
         }
@@ -497,41 +497,41 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     # and save them as hdf5 file in the output directory
     filename_list = list()
     output_list = list()
-    for i, _ in enumerate(file_props):
+    for file_prop in file_props:
         # historic file
-        crop_irr = (((file_props[i])[6]).split('-'))[1] + '-' + (((file_props[i])[6]).split('-'))[2]
+        crop_irr = (((file_prop)[6]).split('-'))[1] + '-' + (((file_prop)[6]).split('-'))[2]
 
         cp_his = RelativeCropyield()
         cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
-                                   ag_model=(file_props[i])[0], cl_model=(file_props[i])[1],
-                                   scenario=(file_props[i])[3], soc=(file_props[i])[4],
-                                   co2=(file_props[i])[5], crop=(((file_props[i])[6]).split('-'))[1],
-                                   irr=(((file_props[i])[6]).split('-'))[2])
+                                   ag_model=(file_prop)[0], cl_model=(file_prop)[1],
+                                   scenario=(file_prop)[3], soc=(file_prop)[4],
+                                   co2=(file_prop)[5], crop=(((file_prop)[6]).split('-'))[1],
+                                   irr=(((file_prop)[6]).split('-'))[2])
         hist_mean = cp_his.calc_mean()
         cp_his.set_rel_yield_to_int(hist_mean)
         hist_mean_per_crop[crop_irr]['value'][hist_mean_per_crop[crop_irr]['idx'], :] = hist_mean
         hist_mean_per_crop[crop_irr]['idx'] = hist_mean_per_crop[crop_irr]['idx'] + 1
 
-        filename = ('haz' + '_' + (file_props[i])[0] + '_' + (file_props[i])[1] + '_'
-                    + (file_props[i])[3] + '_' + (file_props[i])[4] + '_' + (file_props[i])[5] + '_'
+        filename = ('haz' + '_' + (file_prop)[0] + '_' + (file_prop)[1] + '_'
+                    + (file_prop)[3] + '_' + (file_prop)[4] + '_' + (file_prop)[5] + '_'
                     + crop_irr + '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename)
         output_list.append(cp_his)
         cp_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
         # compute the relative yield for all future scenarios with the corresponding historic mean
-        for j, _ in enumerate(scenario_list):
-            yearrange_fut = np.array([(YEARCHUNKS[scenario_list[j]])['startyear'],
-                                      (YEARCHUNKS[scenario_list[j]])['endyear']])
+        for scenario in scenario_list:
+            yearrange_fut = np.array([(YEARCHUNKS[scenario])['startyear'],
+                                      (YEARCHUNKS[scenario])['endyear']])
             cp_fut = RelativeCropyield()
             cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
-                                       ag_model=(file_props[i])[0], cl_model=(file_props[i])[1],
-                                       scenario=scenario_list[j], soc=(file_props[i])[4],
-                                       co2=(file_props[i])[5], crop=(((file_props[i])[6]).split('-'))[1],
-                                       irr=(((file_props[i])[6]).split('-'))[2])
+                                       ag_model=(file_prop)[0], cl_model=(file_prop)[1],
+                                       scenario=scenario, soc=(file_prop)[4],
+                                       co2=(file_prop)[5], crop=(((file_prop)[6]).split('-'))[1],
+                                       irr=(((file_prop)[6]).split('-'))[2])
             cp_fut.set_rel_yield_to_int(hist_mean)
-            filename = ('haz' + '_' + (file_props[i])[0] + '_' + (file_props[i])[1] + '_'
-                        + scenario_list[j] + '_' + (file_props[i])[4] + '_' + (file_props[i])[5]
+            filename = ('haz' + '_' + (file_prop)[0] + '_' + (file_prop)[1] + '_'
+                        + scenario + '_' + (file_prop)[4] + '_' + (file_prop)[5]
                         + '_' + crop_irr + '_' + str(yearrange_fut[0]) + '-'
                         + str(yearrange_fut[1]) + '.hdf5')
             filename_list.append(filename)
@@ -539,9 +539,9 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
             cp_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
-    for i, _ in enumerate(crop_list):
-        mean = np.mean((hist_mean_per_crop[crop_list[i]])['value'], 0)
-        mean_filename = 'hist_mean_' + crop_list[i] + '_' + str(yearrange[0]) + \
+    for crop in crop_list:
+        mean = np.mean((hist_mean_per_crop[crop])['value'], 0)
+        mean_filename = 'hist_mean_' + crop + '_' + str(yearrange[0]) + \
         '-' + str(yearrange[1]) + '.hdf5'
         filename_list.append(mean_filename)
         output_list.append(mean)
@@ -554,7 +554,7 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
         # save historic mean as netcdf (saves mean, lat and lon as arrays)
 #        mean_file = xr.Dataset({'mean': mean, 'lat': cp_his.centroids.lat, \
 #                                'lon': cp_his.centroids.lon})
-#        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_list[i]+'.nc')
+#        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop+'.nc')
 
     if not return_data:
         return filename_list
