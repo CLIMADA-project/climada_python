@@ -514,14 +514,14 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     filename_list = list()
     output_list = list()
     for file in filenames:
-        item = file.split('_')
+        histmean_prop = file.split('_')
         crop_production = CropProduction()
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
-                                            yearrange=yearrange, crop=((item[2]).split('-'))[0],
-                                            irr=((item[2]).split('-'))[1], unit=unit)
-        filename_list.append(('crop_production_' + ((item[2]).split('-'))[0] + '-'
-                              + (((item[2]).split('-'))[1]).split('.')[0] + '_'
+                                            yearrange=yearrange, crop=((histmean_prop[2]).split('-'))[0],
+                                            irr=((histmean_prop[2]).split('-'))[1], unit=unit)
+        filename_list.append(('crop_production_' + ((histmean_prop[2]).split('-'))[0] + '-'
+                              + (((histmean_prop[2]).split('-'))[1]).split('.')[0] + '_'
                               + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5'))
         output_list.append(crop_production)
         crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_list[-1]))
