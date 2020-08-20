@@ -456,8 +456,8 @@ class CropProduction(Exposures):
                                          (fao['year'] >= yearrange[0]) &
                                          (fao['year'] <= yearrange[1]))
                     price = np.mean(fao['price'][idx_price])
-                area_price[idx_country] = self.value[idx_country] * price      
-                
+                area_price[idx_country] = self.value[idx_country] * price
+
 
         self['value'] = area_price
         self.value_unit = 'USD / y'
@@ -637,7 +637,17 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
             ratio = FAO/ISIMIP, normalized exposures
 
         Returns:
-            c.f. normalize_with_fao_cp
+            crop_list (list): List of crops
+            country_list (list): List of country codes (numerical ISO3)
+            ratio (list): List of ratio of FAO crop production and aggregated exposure
+                for each country
+            exp_firr_norm (list): List of normalized CropProduction Exposures (full irrigation)
+            exp_noirr_norm (list): List of normalize CropProduction Exposures (no irrigation)
+
+        Returns (optional):
+            fao_crop_production (list): FAO crop production value per country
+            exp_tot_production(list): Exposure crop production value per country
+                (before normalization)
     """
     filenames_exp = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
                      (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
