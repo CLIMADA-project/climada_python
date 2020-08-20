@@ -457,16 +457,16 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     # generate lists of splitted historical filenames (in order to differentiate betweeen
     # the used ag_model, cl_model, crop, etc.); list of the future scenarios; list
     # of all crop-irr combinations
-    items = list()
+    file_props = list()
     crop_list = list()
     scenario_list = list()
     for i, _ in enumerate(filenames):
-        item = filenames[i].split('_')
-        if item[3] == 'historical':
-            items.append(item)
-        elif item[3] not in scenario_list:
-            scenario_list.append(item[3])
-        crop_irr = ((item[6]).split('-'))[1] + '-' + ((item[6]).split('-'))[2]
+        file_prop = filenames[i].split('_')
+        if file_prop[3] == 'historical':
+            file_props.append(file_prop)
+        elif file_prop[3] not in scenario_list:
+            scenario_list.append(file_prop[3])
+        crop_irr = ((file_prop[6]).split('-'))[1] + '-' + ((file_prop[6]).split('-'))[2]
         if crop_irr not in crop_list:
             crop_list.append(crop_irr)
 
@@ -477,10 +477,10 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     #   global_annual_1861_2005.nc
     cp_zero = RelativeCropyield()
     cp_zero.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
-                                ag_model=(items[0])[0], cl_model=(items[0])[1],
-                                scenario=(items[0])[3], soc=(items[0])[4], co2=(items[0])[5],
-                                crop=(((items[0])[6]).split('-'))[1],
-                                irr=(((items[0])[6]).split('-'))[2])
+                                ag_model=(file_props[0])[0], cl_model=(file_props[0])[1],
+                                scenario=(file_props[0])[3], soc=(file_props[0])[4], co2=(file_props[0])[5],
+                                crop=(((file_props[0])[6]).split('-'))[1],
+                                irr=(((file_props[0])[6]).split('-'))[2])
     hist_mean = cp_zero.calc_mean()
     cp_zero.set_rel_yield_to_int(hist_mean)
 
@@ -497,23 +497,23 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     # and save them as hdf5 file in the output directory
     filename_list = list()
     output_list = list()
-    for i, _ in enumerate(items):
+    for i, _ in enumerate(file_props):
         # historic file
-        crop_irr = (((items[i])[6]).split('-'))[1] + '-' + (((items[i])[6]).split('-'))[2]
+        crop_irr = (((file_props[i])[6]).split('-'))[1] + '-' + (((file_props[i])[6]).split('-'))[2]
 
         cp_his = RelativeCropyield()
         cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
-                                   ag_model=(items[i])[0], cl_model=(items[i])[1],
-                                   scenario=(items[i])[3], soc=(items[i])[4],
-                                   co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1],
-                                   irr=(((items[i])[6]).split('-'))[2])
+                                   ag_model=(file_props[i])[0], cl_model=(file_props[i])[1],
+                                   scenario=(file_props[i])[3], soc=(file_props[i])[4],
+                                   co2=(file_props[i])[5], crop=(((file_props[i])[6]).split('-'))[1],
+                                   irr=(((file_props[i])[6]).split('-'))[2])
         hist_mean = cp_his.calc_mean()
         cp_his.set_rel_yield_to_int(hist_mean)
         hist_mean_per_crop[crop_irr]['value'][hist_mean_per_crop[crop_irr]['idx'], :] = hist_mean
         hist_mean_per_crop[crop_irr]['idx'] = hist_mean_per_crop[crop_irr]['idx'] + 1
 
-        filename = ('haz' + '_' + (items[i])[0] + '_' + (items[i])[1] + '_'
-                    + (items[i])[3] + '_' + (items[i])[4] + '_' + (items[i])[5] + '_'
+        filename = ('haz' + '_' + (file_props[i])[0] + '_' + (file_props[i])[1] + '_'
+                    + (file_props[i])[3] + '_' + (file_props[i])[4] + '_' + (file_props[i])[5] + '_'
                     + crop_irr + '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename)
         output_list.append(cp_his)
@@ -525,13 +525,13 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
                                       (YEARCHUNKS[scenario_list[j]])['endyear']])
             cp_fut = RelativeCropyield()
             cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
-                                       ag_model=(items[i])[0], cl_model=(items[i])[1],
-                                       scenario=scenario_list[j], soc=(items[i])[4],
-                                       co2=(items[i])[5], crop=(((items[i])[6]).split('-'))[1],
-                                       irr=(((items[i])[6]).split('-'))[2])
+                                       ag_model=(file_props[i])[0], cl_model=(file_props[i])[1],
+                                       scenario=scenario_list[j], soc=(file_props[i])[4],
+                                       co2=(file_props[i])[5], crop=(((file_props[i])[6]).split('-'))[1],
+                                       irr=(((file_props[i])[6]).split('-'))[2])
             cp_fut.set_rel_yield_to_int(hist_mean)
-            filename = ('haz' + '_' + (items[i])[0] + '_' + (items[i])[1] + '_'
-                        + scenario_list[j] + '_' + (items[i])[4] + '_' + (items[i])[5]
+            filename = ('haz' + '_' + (file_props[i])[0] + '_' + (file_props[i])[1] + '_'
+                        + scenario_list[j] + '_' + (file_props[i])[4] + '_' + (file_props[i])[5]
                         + '_' + crop_irr + '_' + str(yearrange_fut[0]) + '-'
                         + str(yearrange_fut[1]) + '.hdf5')
             filename_list.append(filename)
