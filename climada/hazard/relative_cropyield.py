@@ -322,7 +322,7 @@ class RelativeCropyield(Hazard):
 
         return axes
 
-    def plot_time_series(self, years=None):
+    def plot_time_series(self, event=None):
         """Plots a time series of intensities (a series of sub plots)
 
         Optional Parameters:
@@ -332,17 +332,17 @@ class RelativeCropyield(Hazard):
             figure
         """
 
-        if years is None:
-            years = self.event_name
+        if event is None:
+            event = self.event_name
         else:
-            years = [str(n) for n in range(years[0], years[1] + 1)]
+            event = [str(n) for n in range(event[0], event[1] + 1)]
 
         self.centroids.set_meta_to_lat_lon()
 
         len_lat = abs(self.centroids.lat[0] - self.centroids.lat[-1]) * (2.5 / 13.5)
         len_lon = abs(self.centroids.lon[0] - self.centroids.lon[-1]) * (5 / 26)
 
-        nr_subplots = len(years)
+        nr_subplots = len(event)
 
         if len_lon >= len_lat:
             colums = int(np.floor(np.sqrt(nr_subplots / (len_lon / len_lat))))
@@ -362,11 +362,11 @@ class RelativeCropyield(Hazard):
                                         np.min(self.centroids.lat), np.max(self.centroids.lat)])
 
             if rows == 1:
-                self.plot_intensity_cp(event=years[year], axis=axes[colum])
+                self.plot_intensity_cp(event=event[year], axis=axes[colum])
             elif colums == 1:
-                self.plot_intensity_cp(event=years[year], axis=axes[row])
+                self.plot_intensity_cp(event=event[year], axis=axes[row])
             else:
-                self.plot_intensity_cp(event=years[year], axis=axes[row, colum])
+                self.plot_intensity_cp(event=event[year], axis=axes[row, colum])
 
             if colum <= colums - 2:
                 colum = colum + 1
