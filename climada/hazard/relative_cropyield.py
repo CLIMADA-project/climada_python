@@ -462,15 +462,6 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     crop_list = list()
     scenario_list = list()
     for file in filenames:
-        #file_prop = file.split('_')
-        # if file_prop[3] == 'historical':
-        #     file_props.append([file_prop])
-        # elif file_prop[3] not in scenario_list:
-        #     scenario_list.append(file_prop[3])
-        # crop_irr = ((file_prop[6]).split('-'))[1] + '-' + ((file_prop[6]).split('-'))[2]
-        # if crop_irr not in crop_list:
-        #     crop_list.append(crop_irr)
-
         ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _ = file.split('_')
         _, crop, irr = crop_prop.split('-')
         if scenario == 'historical':
