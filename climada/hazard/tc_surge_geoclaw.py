@@ -1097,7 +1097,12 @@ def setup_clawpack(version=CLAWPACK_VERSION):
         src_path = CLAWPACK_SRC_DIR
         pkg = f"git+{CLAWPACK_GIT_URL}@{version}#egg=clawpack-{version}"
         cmd = [sys.executable, "-m", "pip", "install", "--src", src_path, "-e", pkg]
-        subprocess.check_call(cmd)
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as exc:
+            logging.error("pip install failed with return code %d. stdout: %s",
+                          exc.returncode, exc.output)
+            raise exc
         importlib.reload(site)
         importlib.invalidate_caches()
 
