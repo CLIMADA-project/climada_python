@@ -249,6 +249,8 @@ class TCTracks():
             if not isinstance(storm_id, list):
                 storm_id = [storm_id]
             match &= ibtracs_ds.sid.isin([i.encode() for i in storm_id])
+            if np.count_nonzero(match) == 0:
+                LOGGER.info('No tracks with given IDs %s.', storm_id)
         else:
             year_range = year_range if year_range else (1980, 2018)
         if year_range:
@@ -260,6 +262,12 @@ class TCTracks():
             match &= (ibtracs_ds.basin[:, 0] == basin.encode())
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
+
+        if np.count_nonzero(match) == 0:
+            LOGGER.info('There are no tracks matching the specified requirements.')
+            self.data = []
+            return
+
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
         valid_st = ibtracs_ds.valid_t.any(dim="date_time")

@@ -102,6 +102,8 @@ class TCSurgeGeoClaw(Hazard):
                 Default: global centroids.
             description (str, optional): description of the events
         """
+        if tracks.size == 0:
+            raise ValueError("The given TCTracks object doesn't contain any tracks.")
         setup_clawpack()
 
         if centroids is None:
