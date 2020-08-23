@@ -46,7 +46,8 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'RC'
 """Hazard type acronym for Relative Cropyield"""
 
-AG_MODEL = ['gepic',
+AG_MODEL = ['clm-crop',
+            'gepic',
             'lpjml',
             'pepic'
             ]
