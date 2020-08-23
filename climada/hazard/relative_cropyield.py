@@ -129,7 +129,7 @@ class RelativeCropyield(Hazard):
         self.crop = CROP[0]
         self.intensity_def = INT_DEF
 
-    def set_from_single_run(self, input_dir=None, bbox=BBOX,
+    def set_from_single_run(self, input_dir=None, filename=None, bbox=BBOX,
                             yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
                             ag_model=AG_MODEL[0], cl_model=CL_MODEL[0],
                             scenario=SCENARIO[0], soc=SOC[0], co2=CO2[0],
@@ -168,12 +168,29 @@ class RelativeCropyield(Hazard):
             LOGGER.warning('Input directory %s not set', input_dir)
             raise NameError
 
-        yearchunk = YEARCHUNKS[scenario]
-        filename = os.path.join(input_dir,
-                                '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+
+        # The filename is set or other variables (cl_model, scenario) are extracted of the
+        # specified filename
+        if filename is None:
+            yearchunk = YEARCHUNKS[scenario]
+            filename = os.path.join(input_dir, '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
                                     %(ag_model, cl_model, scenario, soc, co2, crop,
                                       irr, fn_str_var, str(yearchunk['startyear']),
                                       str(yearchunk['endyear'])))
+
+        elif scenario == 'ISIMIP2a':
+            (_, _, _, _, _, _, _, crop, _, _, startyear, endyearnc) = filename.split('_')
+            endyear, _ = endyearnc.split('.')
+            yearchunk = dict()
+            yearchunk = {'yearrange': np.array([int(startyear), int(endyear)]),
+                         'startyear': int(startyear), 'endyear': int(endyear)}
+            filename = os.path.join(input_dir, filename)
+        else:
+            yearchunk = YEARCHUNKS[scenario]
+            filename = os.path.join(input_dir, filename)
+
+
+
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
@@ -282,8 +299,8 @@ class RelativeCropyield(Hazard):
             array = reference_intensity[:, centroid].toarray().reshape(nevents)
             for event in range(nevents):
                 value = self.intensity[event, centroid]
-                hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array, value)
-                                                  / 100)
+                hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array,
+                                                                                value)/100)
 
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Percentile'
