@@ -649,7 +649,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
             exp_tot_production(list): Exposure crop production value per country
                 (before normalization)
     """
-    filenames_exp = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
+    filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
                      (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
                      f.startswith('.') if 'firr' in f]
 
@@ -661,15 +661,15 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
     fao_cp_list = list()
     exp_tot_cp_list = list()
 
-    for file in filenames_exp:
-        items_exp = file.split('_')
-        exp_noirr = CropProduction()
-        exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', file))
-
-        filename_firr = items_exp[0] + '_' + items_exp[1] + '_' + items_exp[2].split('-')[0] +\
-        '-' + 'noirr' + '_' + items_exp[3]
+    for file_firr in filenames_firr:
+        str1, str2, crop_irr, years = file_firr.split('_')
+        crop, irr = crop_irr.split('-')
         exp_firr = CropProduction()
-        exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', filename_firr))
+        exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', file_firr))
+
+        filename_noirr = str1 + '_' + str2 + '_' + crop + '-' + 'noirr' + '_' + years
+        exp_noirr = CropProduction()
+        exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', filename_noirr))
 
         if return_data:
             countries, ratio, exp_firr2, exp_noirr2, fao_cp, \
@@ -683,7 +683,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
                                                yearrange=yearrange, unit=unit,
                                                return_data=False)
 
-        crop_list.append(items_exp[2].split('-')[0])
+        crop_list.append(crop)
         countries_list.append(countries)
         ratio_list.append(ratio)
         exp_firr_norm.append(exp_firr2)
