@@ -73,6 +73,20 @@ class TestRelativeCropyield(unittest.TestCase):
         self.assertAlmostEqual(haz.intensity.max(), 4.0, places=5)
         self.assertAlmostEqual(haz.intensity.min(), -1.0, places=5)
 
+    def test_set_percentile_to_int(self):
+        """Test setting intensity to percentile of the yield"""
+        haz = RelativeCropyield()
+        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
+                                cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
+                                co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
+        haz.set_percentile_to_int()
+        self.assertEqual(haz.intensity_def, 'Percentile')
+
+        self.assertEqual(haz.intensity.shape, (5, 1092))
+        self.assertAlmostEqual(haz.intensity.max(), 1.0, places=5)
+        self.assertAlmostEqual(haz.intensity.min(), 0.2, places=5)
+        self.assertAlmostEqual(haz.intensity.data[10], 0.6, places=5)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRelativeCropyield)
