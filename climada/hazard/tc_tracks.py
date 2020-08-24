@@ -259,7 +259,7 @@ class TCTracks():
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in time range (%s, %s).', *year_range)
         if basin:
-            match &= (ibtracs_ds.basin[:, 0] == basin.encode())
+            match &= (ibtracs_ds.basin == basin.encode()).any(dim='date_time')
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
 
