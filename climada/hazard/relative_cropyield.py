@@ -297,11 +297,8 @@ class RelativeCropyield(Hazard):
         for centroid in range(self.intensity.shape[1]):
             nevents = reference_intensity.shape[0]
             array = reference_intensity[:, centroid].toarray().reshape(nevents)
-            for event in range(nevents):
-                value = self.intensity[event, centroid]
-                hazard_matrix[event, centroid] = (scipy.stats.percentileofscore(array,
-                                                                                value)/100)
-
+            hazard_matrix[:, centroid] = np.array([scipy.stats.percentileofscore(array, event)
+                                                   for event in array])/100
         self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Percentile'
         self.units = ''
