@@ -454,7 +454,11 @@ class Exposures(GeoDataFrame):
         """
         LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
-        store.put('exposures', pd.DataFrame(self))
+        pandas_df = pd.DataFrame(self)
+        for col in pandas_df.columns:
+            if str(pandas_df[col].dtype) == "geometry":
+                pandas_df[col] = np.asarray(self[col])
+        store.put('exposures', pandas_df)
         var_meta = {}
         for var in self._metadata:
             var_meta[var] = getattr(self, var)
