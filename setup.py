@@ -79,7 +79,7 @@ setup(
         'pandas==0.24.2',
         'pandas_datareader==0.7.0',
         'pathos==0.2.3',
-        'pillow==6.2.2', # PIL 7.0 has a conflict with libtiff 4.0 which is necessary for - at least - Windows
+        'pillow==7.1.0',
         'pint==0.9',
         #'pylab', matplotlib
         'pyproj==1.9.6', #
