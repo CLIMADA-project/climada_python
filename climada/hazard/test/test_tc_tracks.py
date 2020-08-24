@@ -133,12 +133,12 @@ class TestIBTracs(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
                                      basin='EP', estimate_missing=False)
-        self.assertEqual(tc_track.size, 32)
+        self.assertEqual(tc_track.size, 34)
 
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
                                      basin='EP', estimate_missing=True)
-        self.assertEqual(tc_track.size, 43)
+        self.assertEqual(tc_track.size, 53)
 
     def test_ibtracs_correct_pass(self):
         """Check estimate_missing option"""
