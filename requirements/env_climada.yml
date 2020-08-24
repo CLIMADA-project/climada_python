@@ -52,7 +52,7 @@ dependencies:
     - nbformat==4.4
     - overpy==0.4
     - pathos==0.2.3
-    - pillow==6.2.2
+    - pillow==7.1.0
     - pint==0.9
     - ppft==1.6.4.9
     - pybufrkit>=0.2.16
