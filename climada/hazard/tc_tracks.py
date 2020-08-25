@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define TCTracks: IBTracs reader and tracks manager.
 """
 
-__all__ = ['SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
+__all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 import os
 import glob
