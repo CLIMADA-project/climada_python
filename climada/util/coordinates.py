@@ -1208,8 +1208,8 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         lat (np.array): latitudes in file's CRS
         lon (np.array): longitudes in file's CRS
         intermediate_res (float, optional): If given, the raster is not read in its original
-            resolution (0.01 degrees) but in the given one. This can increase performance for
-            files of very high resolution. Should be larger than 0.01!
+            resolution but in the given one. This can increase performance for
+            files of very high resolution.
         method (str, optional): The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
         fill_value (numeric, optional): The value used outside of the raster
