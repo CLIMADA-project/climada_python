@@ -163,6 +163,7 @@ class Impact():
         self.date = hazard.date
         self.coord_exp = np.stack([exposures.latitude.values,
                                    exposures.longitude.values], axis=1)
+        self.exposures = exposures # only passing reference
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
@@ -882,9 +883,16 @@ class Impact():
 
     def _build_exp(self):
         eai_exp = Exposures()
+
+        # whacky bug: geom must be set first, otherwise NaNs are introduced
+        try:
+            eai_exp['geometry'] = self.exposures['geometry']
+        except AttributeError:
+            LOGGER.debug('No geometry set in source exposures.')
         eai_exp['value'] = self.eai_exp
         eai_exp['latitude'] = self.coord_exp[:, 0]
         eai_exp['longitude'] = self.coord_exp[:, 1]
+
         eai_exp.crs = self.crs
         eai_exp.value_unit = self.unit
         eai_exp.ref_year = 0
@@ -899,9 +907,15 @@ class Impact():
             event_id(int): id of the event
         """
         impact_csr_exp = Exposures()
+
+        try:
+            impact_csr_exp['geometry'] = self.exposures['geometry']
+        except AttributeError:
+            LOGGER.debug('No geometry set in source exposures.')
         impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
         impact_csr_exp['latitude'] = self.coord_exp[:, 0]
         impact_csr_exp['longitude'] = self.coord_exp[:, 1]
+
         impact_csr_exp.crs = self.crs
         impact_csr_exp.value_unit = self.unit
         impact_csr_exp.ref_year = 0
