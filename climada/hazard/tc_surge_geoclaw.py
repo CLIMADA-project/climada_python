@@ -17,6 +17,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 
 Inundation from TC storm surges, modeled using the library GeoClaw
+
+This module requires a Fortran compiler (such as gfortran) to run!
 """
 
 import __main__
@@ -1104,6 +1106,8 @@ def setup_clawpack(version=CLAWPACK_VERSION):
         except subprocess.CalledProcessError as exc:
             logging.error("pip install failed with return code %d. stdout: %s",
                           exc.returncode, exc.output)
+            logging.error("Make sure that a Fortran compiler (e.g. gfortran) is available on "
+                          "your machine before using tc_surge_geoclaw!")
             raise exc
         importlib.reload(site)
         importlib.invalidate_caches()
