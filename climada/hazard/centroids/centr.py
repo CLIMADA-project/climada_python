@@ -32,9 +32,7 @@ from geopandas import GeoSeries
 from shapely.geometry.point import Point
 
 import climada.util.plot as u_plot
-from climada.util.constants import DEF_CRS, ONE_LAT_KM, \
-                                   NATEARTH_CENTROIDS_150AS, \
-                                   NATEARTH_CENTROIDS_360AS
+from climada.util.constants import DEF_CRS, ONE_LAT_KM, NATEARTH_CENTROIDS
 import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import dist_to_coast, get_resolution, \
                                      coord_on_land, pts_to_raster_meta, \
@@ -144,7 +142,7 @@ class Centroids():
             and np.allclose(self.lon, centr.lon)
 
     @staticmethod
-    def from_base_grid(land=False, res_as=360):
+    def from_base_grid(land=False, res_as=360, base_file=None):
         """Initialize from base grid data provided with CLIMADA
 
         Parameters:
@@ -154,11 +152,10 @@ class Centroids():
                 150, 360). Default: 360.
         """
         centroids = Centroids()
-        base_file = NATEARTH_CENTROIDS_360AS
-        if res_as == 150:
-            base_file = NATEARTH_CENTROIDS_150AS
-        elif res_as != 360:
-            raise ValueError("No base grid for resolution %s", str(res_as))
+
+        if base_file is None:
+            base_file = NATEARTH_CENTROIDS[res_as]
+
         centroids.read_hdf5(base_file)
         if land:
             land_reg_ids = list(range(1, 1000))
@@ -821,13 +818,20 @@ class Centroids():
         return result
 
 
-def generate_nat_earth_centroids(res_as=360):
+def generate_nat_earth_centroids(res_as=360, path=None, dist_coast=False):
     """For reproducibility, this is the function that generates the centroids
-        files `NATEARTH_CENTROIDS_*AS`. These files are provided with CLIMADA
+        files in `NATEARTH_CENTROIDS`. These files are provided with CLIMADA
         so that this function should never be called!
 
     Parameters:
         res_as (int): Resolution of file in arc-seconds. Default: 360.
+        path (str, optional): If set, write resulting hdf5 file here instead of
+            the default location.
+        dist_coast (bool): Should the distance to coast be read from a NASA
+            dataset? (see util.coordinates.dist_to_coast_nasa)
+            The 360as data include this distance by default, whereas the 150as
+            data by do not (thereby requiring the expensive computation to be
+            done locally).
     """
     if res_as not in [150, 360]:
         raise ValueError("Only 150 and 360 arc-seconds are supported!")
@@ -845,8 +849,9 @@ def generate_nat_earth_centroids(res_as=360):
     cen.lat = np.array([])
     cen.lon = np.array([])
 
-    path = NATEARTH_CENTROIDS_150AS
-    if res_as == 360:
-        path = NATEARTH_CENTROIDS_360AS
+    if path is None:
+        path = NATEARTH_CENTROIDS[res_as]
+
+    if dist_coast:
         cen.dist_coast = np.float16(dist_to_coast_nasa(lat, lon))
     cen.write_hdf5(path)

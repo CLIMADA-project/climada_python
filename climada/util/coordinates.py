@@ -43,8 +43,7 @@ import scipy.interpolate
 import zipfile
 
 from climada.util.constants import DEF_CRS, SYSTEM_DIR, ONE_LAT_KM, \
-                                   NATEARTH_CENTROIDS_150AS, \
-                                   NATEARTH_CENTROIDS_360AS, \
+                                   NATEARTH_CENTROIDS, \
                                    ISIMIP_GPWV3_NATID_150AS, \
                                    ISIMIP_NATID_TO_ISO, \
                                    RIVER_FLOOD_REGIONS_CSV
@@ -399,6 +398,7 @@ def dist_to_coast_nasa(lat, lon, highres=False):
     """
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
 
+    # TODO move URL to config
     zipname = "GMT_intermediate_coast_distance_01d.zip"
     tifname = "GMT_intermediate_coast_distance_01d.tif"
     url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
@@ -413,7 +413,11 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         os.remove(path_dwn)
         os.chdir(cwd)
 
-    intermediate_shape = None if highres else (3600, 1800)
+    if highres:
+        intermediate_shape = None
+    else:
+        intermediate_shape = (lat.size, lon.size)
+
     dist = read_raster_sample(
         path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0)
     return 1000 * np.abs(dist)
@@ -584,7 +588,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     regions : list, optional
         Region IDs.
     resolution : float, optional
-        Resolution in arc-seconds. Default: 150.
+        Resolution in arc-seconds, either 150 (default) or 360.
     iso : bool, optional
         If True, assume that countries are given by their ISO 3166-1 alpha-3
         codes (instead of the internal NatID). Default: True.
@@ -608,9 +612,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         regions = []
 
     if basemap == "natearth":
-        base_file = NATEARTH_CENTROIDS_150AS
-        if resolution >= 360:
-            base_file = NATEARTH_CENTROIDS_360AS
+        base_file = NATEARTH_CENTROIDS[resolution]
         hdf5_f = hdf5.read(base_file)
         meta = hdf5_f['meta']
         grid_shape = (meta['height'][0], meta['width'][0])
@@ -795,7 +797,7 @@ def get_country_code(lat, lon, gridded=False):
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     LOGGER.info('Setting region_id %s points.', str(lat.size))
     if gridded:
-        base_file = hdf5.read(NATEARTH_CENTROIDS_150AS)
+        base_file = hdf5.read(NATEARTH_CENTROIDS[150])
         meta, region_id = base_file['meta'], base_file['region_id']
         transform = rasterio.Affine(*meta['transform'])
         region_id = region_id.reshape(meta['height'][0], meta['width'][0])
