@@ -382,7 +382,7 @@ def dist_to_coast(coord_lat, lon=None):
         dist[zone_mask] = geom[zone_mask].to_crs(to_crs).distance(utm_coast)
     return dist
 
-def dist_to_coast_nasa(lat, lon, highres=False):
+def dist_to_coast_nasa(lat, lon, highres=False, intermediate_shape=None):
     """Read interpolated distance to coast (in m) from NASA data
 
     Note: The NASA raster file is 300 MB and will be downloaded on first run!
@@ -392,6 +392,9 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         lon (np.array): longitudes in epsg:4326
         highres (bool, optional): Use full resolution of NASA data (much
             slower). Default: False.
+        intermediate_shape (tuple of ints, optional): Size to resample to;
+            passed on to read_raster_sample. If highres=True, that takes
+            precedence.
 
     Returns:
         np.array
@@ -413,13 +416,12 @@ def dist_to_coast_nasa(lat, lon, highres=False):
         os.remove(path_dwn)
         os.chdir(cwd)
 
-    if highres:
-        intermediate_shape = None
-    else:
+    if not highres and intermediate_shape is None:
         intermediate_shape = (lat.size, lon.size)
 
     dist = read_raster_sample(
-        path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0)
+        path, lat, lon, intermediate_shape=intermediate_shape, fill_value=0
+    )
     return 1000 * np.abs(dist)
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):

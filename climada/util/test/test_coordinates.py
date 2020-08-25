@@ -274,7 +274,8 @@ class TestGetGeodata(unittest.TestCase):
         ])
         dists = [3583.33333333, 1394306.570185499, 630.91307999]
         # Warning: This will download more than 300 MB of data!
-        res = dist_to_coast_nasa(points[:, 0], points[:, 1])
+        res = dist_to_coast_nasa(points[:, 0], points[:, 1],
+                intermediate_shape=(3600, 1800))
         for d, r in zip(dists, res):
             self.assertAlmostEqual(d, r)
 
