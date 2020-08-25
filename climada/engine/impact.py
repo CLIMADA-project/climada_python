@@ -540,7 +540,7 @@ class Impact():
             coords['event_id'] = self.event_id
             dims = ['event_id', 'latitude', 'longitude']
         else:
-            data = self.rasterize(meta = self.exposures.meta, **kwargs)
+            data = self.rasterize(**kwargs)
             dims = ['latitude', 'longitude']
 
         if attrs is None:
@@ -963,7 +963,7 @@ class Impact():
         # whacky bug: geom must be set first, otherwise NaNs are introduced
         try:
             eai_exp['geometry'] = self.exposures['geometry']
-        except AttributeError:
+        except KeyError:
             LOGGER.debug('No geometry set in source exposures.')
         eai_exp['value'] = self.eai_exp
         eai_exp['latitude'] = self.coord_exp[:, 0]
@@ -986,7 +986,7 @@ class Impact():
 
         try:
             impact_csr_exp['geometry'] = self.exposures['geometry']
-        except AttributeError:
+        except KeyError:
             LOGGER.debug('No geometry set in source exposures.')
         impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
         impact_csr_exp['latitude'] = self.coord_exp[:, 0]
