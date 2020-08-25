@@ -30,6 +30,8 @@ import datetime as dt
 from itertools import zip_longest
 import numpy as np
 from scipy import sparse
+import xarray as xr
+import rasterio
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
@@ -44,6 +46,7 @@ from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.constants import DEF_CRS
+from climada.util.coordinates import unique_lat_lon_from_meta
 
 LOGGER = logging.getLogger(__name__)
 
@@ -510,6 +513,79 @@ class Impact():
         LOGGER.info('Writing %s', file_name)
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
+
+    def write_netcdf(self, path=None, attrs=None, with_imp_mat=True, **kwargs):
+        """Write this instance into a (rasterized) netcdf via a DataArray.
+
+        Parameters:
+            path (str, optional): Where to write the resulting netCDF to. If
+                None, the method stands in as a to_dataset
+            attrs (str, optional): Set as an attribute; Dataset.to_netcdf does
+                not handle dimensionless variables properly, so GDAL cannot
+                handle contained projection information. Still worthwhile for
+                human reference though.
+            with_imp_mat (bool): If true, read impact values from imp_mat
+                instead of eai_exp
+        Returns:
+            xarray.DataArray
+        """
+
+        lats, lons = unique_lat_lon_from_meta(self.exposures.meta)
+        coords = {'latitude': lats, 'longitude': lons}
+
+        if with_imp_mat:
+            data = np.ndarray((self.event_id.size, lats.size, lons.size))
+            for i, event_id in enumerate(self.event_id):
+                data[i] = self.rasterize(event_id, **kwargs)
+            coords['event_id'] = self.event_id
+            dims = ['event_id', 'latitude', 'longitude']
+        else:
+            data = self.rasterize(meta = self.exposures.meta, **kwargs)
+            dims = ['latitude', 'longitude']
+
+        if attrs is None:
+            attrs = {
+                'crs': 'EPSG:' + str(self.exposures.meta['crs'].to_epsg())
+            }
+
+        imp_ds = xr.DataArray(data, coords, dims, 'impact', attrs)
+
+        if path:
+            imp_ds.to_netcdf(path)
+
+        return imp_ds
+
+    def rasterize(self, event_id=None, meta=None, drop_zero=True):
+        """Rasterize this impact instance, returning a numpy ndarray with no
+        associated metadata. See to_dataarray for usage example.
+
+        Parameters:
+            event_id (int, optional): If set, use imp_mat values for this event
+            meta (dict, optional): Should contain width, height, transform. If
+                not set, attempt to set it from self.exposures.meta
+            drop_zero (bool): If true (default), don't burn exposure points
+                values if they were not impacted.
+        """
+        if meta is None:
+            meta = self.exposures.meta
+
+        if event_id:
+            gdf = self._build_exp_event(event_id)
+        else:
+            gdf = self._build_exp()
+
+        if drop_zero:
+            gdf['value'].replace(0, np.NaN, inplace=True)
+            gdf.dropna(inplace=True)
+
+        rast = rasterio.features.rasterize(
+            shapes=gdf[['geometry', 'value']].itertuples(index=False),
+            out_shape=(meta['height'], meta['width']),
+            fill=np.NaN,
+            transform=meta['transform'],
+        )
+
+        return rast
 
     def calc_impact_year_set(self, all_years=True, year_range=[]):
         """Calculate yearly impact from impact data.

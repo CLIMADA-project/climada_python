@@ -932,6 +932,23 @@ def raster_to_meshgrid(transform, width, height):
     return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
                        np.arange(ymin + yres / 2, ymax, yres))
 
+
+def unique_lat_lon_from_meta(meta):
+    """Yields a tuple of unique latitudes and longitudes from a meta dict.
+    
+    Parameters:
+        meta (dict): requires width, height, and transform (an Affine object)    
+    """
+    width, height = meta['width'], meta['height']
+
+    min_lon, min_lat = meta['transform'] * (0,0)
+    max_lon, max_lat = meta['transform'] * (width, height)
+    
+    return (
+        np.linspace(min_lat, max_lat, height),
+        np.linspace(min_lon, max_lon, width),
+    )
+
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
