@@ -36,7 +36,9 @@ import tqdm
 import xarray as xr
 
 # climada dependencies
-from climada.hazard.tc_tracks import TCTracks, set_category, DEF_ENV_PRESSURE
+from climada.hazard.tc_tracks import (
+    TCTracks, set_category, DEF_ENV_PRESSURE, CAT_NAMES
+)
 from climada.util.files_handler import get_file_names
 
 # declare constants
@@ -59,6 +61,9 @@ BASINS = {
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
 and Wikipedia at https://en.wikipedia.org/wiki/Invest_(meteorology)
 """
+
+SAFFIR_MS_CAT = np.array([18, 33, 43, 50, 59, 71, 1000])
+"""Saffir-Simpson Hurricane Categories in m/s"""
 
 SIG_CENTRE = 1
 """The BUFR code 008005 significance for 'centre'"""
@@ -86,7 +91,10 @@ class TCForecast(TCTracks):
         Parameters:
             path (str, list(str)): A location in the filesystem. Either a
                 path to a single BUFR TC track file, or a folder containing
-                only such files, or a globbing pattern.
+                only such files, or a globbing pattern. Passed to
+                climada.util.files_handler.get_file_names
+            files (file-like): An explicit list of file objects, bypassing
+                get_file_names
         """
         if path is None and files is None:
             files = self.fetch_bufr_ftp()
@@ -230,22 +238,34 @@ class TCForecast(TCTracks):
             provider = 'BUFR code ' + str(orig_centre)
 
         for i in msg['significance'].subset_indices():
-            sig = np.array(msg['significance'].get_values(i), dtype='int')
-            lat = np.array(msg['latitude'].get_values(i), dtype='float')
-            lon = np.array(msg['longitude'].get_values(i), dtype='float')
-            wnd = np.array(msg['wind_10m'].get_values(i), dtype='float')
-            pre = np.array(msg['pressure'].get_values(i), dtype='float')
-
             name = msg['wmo_longname'].get_values(i)[0].decode().strip()
-            sid = msg['storm_id'].get_values(i)[0].decode().strip()
+            track = self._subset_to_track(
+                msg, i, provider, timestamp_origin, name, id_no
+            )
+            if track is not None:
+                self.append(track)
+            else:
+                LOGGER.debug('Dropping empty track %s, subset %d', name, i)
 
-            timestep_int = np.array(msg['timestamp'].get_values(i)).squeeze()
-            timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
+    @staticmethod
+    def _subset_to_track(msg, index, provider, timestamp_origin, name, id_no):
+        """Subroutine to process one BUFR subset into one xr.Dataset"""
+        sig = np.array(msg['significance'].get_values(index), dtype='int')
+        lat = np.array(msg['latitude'].get_values(index), dtype='float')
+        lon = np.array(msg['longitude'].get_values(index), dtype='float')
+        wnd = np.array(msg['wind_10m'].get_values(index), dtype='float')
+        pre = np.array(msg['pressure'].get_values(index), dtype='float')
 
+        sid = msg['storm_id'].get_values(index)[0].decode().strip()
+
+        timestep_int = np.array(msg['timestamp'].get_values(index)).squeeze()
+        timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
+
+        try:
             track = xr.Dataset(
                 data_vars={
                     'max_sustained_wind': ('time', np.squeeze(wnd)),
-                    'central_pressure': ('time', np.squeeze(pre)),
+                    'central_pressure': ('time', np.squeeze(pre)/100),
                     'ts_int': ('time', timestep_int),
                     'lat': ('time', lat[sig == 1]),
                     'lon': ('time', lon[sig == 1]),
@@ -255,48 +275,54 @@ class TCForecast(TCTracks):
                 },
                 attrs={
                     'max_sustained_wind_unit': 'm/s',
-                    'central_pressure_unit': 'Pa',
+                    'central_pressure_unit': 'mb',
                     'name': name,
                     'sid': sid,
                     'orig_event_flag': False,
                     'data_provider': provider,
-                    'id_no': (int(id_no) + i / 100),
-                    'ensemble_number': msg['ens_number'],
-                    'is_ensemble': msg['ens_type'] != 0,
+                    'id_no': (int(id_no) + index / 100),
+                    'ensemble_number': msg['ens_number'].get_values(index)[0],
+                    'is_ensemble': msg['ens_type'].get_values(index)[0] != 0,
                     'forecast_time': timestamp_origin,
                 }
             )
-
-            track = track.dropna('time')
-
-            if track.sizes['time'] != 0:
-                # can only make latlon coords after dropna
-                track = track.set_coords(['lat', 'lon'])
-                track['time_step'] = track.ts_int - \
-                    track.ts_int.shift({'time': 1}, fill_value=0)
-
-                # TODO use drop_vars after upgrading xarray
-                track = track.drop('ts_int')
-
-                track['radius_max_wind'] = np.full_like(track.time, np.nan,
-                                                        dtype=float)
-                track['environmental_pressure'] = np.full_like(
-                    track.time, DEF_ENV_PRESSURE * 100, dtype=float
+        except ValueError as err:
+            LOGGER.warning(
+                'Could not process track %s subset %d, error: %s',
+                sid, index, err
                 )
+            return None
 
-                # according to specs always num-num-letter
-                track.attrs['basin'] = BASINS[sid[2]]
+        track = track.dropna('time')
 
-                saffir_scale = np.array([18, 33, 43, 50, 59, 71, 1000])  # in m/s
-                track.attrs['category'] = set_category(
-                    max_sus_wind=track.max_sustained_wind.values,
-                    wind_unit=track.max_sustained_wind_unit,
-                    saffir_scale=saffir_scale
-                )
+        if track.sizes['time'] > 0:
+            # can only make latlon coords after dropna
+            track = track.set_coords(['lat', 'lon'])
+            track['time_step'] = track.ts_int - \
+                track.ts_int.shift({'time': 1}, fill_value=0)
 
-                self.append(track)
-            else:
-                LOGGER.warning('Dropping empty track %s, subset %d', track.sid, i)
+            # TODO use drop_vars after upgrading xarray
+            track = track.drop('ts_int')
+
+            track['radius_max_wind'] = np.full_like(track.time, np.nan,
+                                                    dtype=float)
+            track['environmental_pressure'] = np.full_like(
+                track.time, DEF_ENV_PRESSURE, dtype=float
+            )
+
+            # according to specs always num-num-letter
+            track.attrs['basin'] = BASINS[sid[2]]
+
+            cat_name = CAT_NAMES[set_category(
+                max_sus_wind=track.max_sustained_wind.values,
+                wind_unit=track.max_sustained_wind_unit,
+                saffir_scale=SAFFIR_MS_CAT
+            )]
+            track.attrs['category'] = cat_name
+            return track
+        else:
+            return None
+
 
     @staticmethod
     def _find_delayed_replicator(descriptors):
