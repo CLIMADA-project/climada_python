@@ -249,6 +249,8 @@ class TCTracks():
             if not isinstance(storm_id, list):
                 storm_id = [storm_id]
             match &= ibtracs_ds.sid.isin([i.encode() for i in storm_id])
+            if np.count_nonzero(match) == 0:
+                LOGGER.info('No tracks with given IDs %s.', storm_id)
         else:
             year_range = year_range if year_range else (1980, 2018)
         if year_range:
@@ -260,6 +262,12 @@ class TCTracks():
             match &= (ibtracs_ds.basin == basin.encode()).any(dim='date_time')
             if np.count_nonzero(match) == 0:
                 LOGGER.info('No tracks in basin %s.', basin)
+
+        if np.count_nonzero(match) == 0:
+            LOGGER.info('There are no tracks matching the specified requirements.')
+            self.data = []
+            return
+
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
         valid_st = ibtracs_ds.valid_t.any(dim="date_time")
@@ -663,25 +671,37 @@ class TCTracks():
         """Get longitude from coord array"""
         return len(self.data)
 
-    def get_extent(self, deg_buffer=0.1):
-        """Get extent as (min_lon, max_lon, min_lat, max_lat) tuple.
+    def get_bounds(self, deg_buffer=0.1):
+        """Get bounds as (lon_min, lat_min, lon_max, lat_max) tuple.
 
         Parameters:
             deg_buffer (float): A buffer to add around the bounding box
+
+        Returns:
+            tuple (lon_min, lat_min, lon_max, lat_max)
         """
-        min_lat = np.min([np.min(track.lat.values) for track in self.data])
-        min_lat = max(min_lat - deg_buffer, -90)
+        bounds = coord_util.latlon_bounds(
+            np.concatenate([t.lat.values for t in self.data]),
+            np.concatenate([t.lon.values for t in self.data]),
+            buffer=deg_buffer)
+        return bounds
 
-        max_lat = np.max([np.max(track.lat.values) for track in self.data])
-        max_lat = min(max_lat + deg_buffer, 90)
+    @property
+    def bounds(self):
+        """Exact bounds of trackset as tuple, no buffer."""
+        return self.get_bounds(deg_buffer=0.0)
 
-        min_lon = np.min([np.min(track.lon.values) for track in self.data])
-        min_lon = max(min_lon - deg_buffer, -180)
+    def get_extent(self, deg_buffer=0.1):
+        """Get extent as (lon_min, lon_max, lat_min, lat_max) tuple.
 
-        max_lon = np.max([np.max(track.lon.values) for track in self.data])
-        max_lon = min(max_lon + deg_buffer, 180)
+        Parameters:
+            deg_buffer (float): A buffer to add around the bounding box
 
-        return (min_lon, max_lon, min_lat, max_lat)
+        Returns:
+            tuple (lon_min, lon_max, lat_min, lat_max)
+        """
+        bounds = self.get_bounds(deg_buffer=deg_buffer)
+        return (bounds[0], bounds[2], bounds[1], bounds[3])
 
     @property
     def extent(self):
