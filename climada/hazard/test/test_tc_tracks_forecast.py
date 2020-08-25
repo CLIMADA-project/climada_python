@@ -58,7 +58,7 @@ class TestECMWF(unittest.TestCase):
         self.assertEqual(forecast.data[1].sid, '22S')
         self.assertEqual(forecast.data[1].name, 'HEROLD')
         self.assertEqual(forecast.data[0].basin, 'S - South-West Indian Ocean')
-        self.assertEqual(forecast.data[0].category, -1)
+        self.assertEqual(forecast.data[0].category, 'Tropical Depression')
         self.assertEqual(forecast.data[0].forecast_time,
                          np.datetime64('2020-03-19T12:00:00.000000'))
         self.assertEqual(forecast.data[1].is_ensemble, True)
