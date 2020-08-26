@@ -157,6 +157,8 @@ class Centroids():
                 Default: False.
             res_as (int, optional): Base grid resolution in arc-seconds (one of
                 150, 360). Default: 360.
+            base_file (str, optional): If set, read this file instead of one
+                provided with climada.
         """
         centroids = Centroids()
 
@@ -847,13 +849,10 @@ def generate_nat_earth_centroids(res_as=360, path=None, dist_coast=False):
         res_as (int): Resolution of file in arc-seconds. Default: 360.
         path (str, optional): If set, write resulting hdf5 file here instead of
             the default location.
-        dist_coast (bool): Should the distance to coast be read from a NASA
-            dataset? (see util.coordinates.dist_to_coast_nasa)
-            The 360as data include this distance by default, whereas the 150as
-            data by do not (thereby requiring the expensive computation to be
-            done locally).
+        dist_coast (bool): If true, read distance from a NASA dataset
+            (see util.coordinates.dist_to_coast_nasa)
     """
-    if res_as not in [150, 360]:
+    if path is None and res_as not in [150, 360]:
         raise ValueError("Only 150 and 360 arc-seconds are supported!")
 
     res_deg = res_as / 3600
