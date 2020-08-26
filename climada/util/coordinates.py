@@ -1198,8 +1198,7 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
             data = np.concatenate(data, axis=2)
     return data, transform
 
-def read_raster_sample(path, lat, lon, intermediate_res=None, intermediate_shape=None,
-                       method='linear', fill_value=None):
+def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
     """Read point samples from raster file
 
     Parameters:
@@ -1209,8 +1208,6 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, intermediate_shape
         intermediate_res (float, optional): If given, the raster is not read in its original
             resolution but in the given one. This can increase performance for
             files of very high resolution.
-        intermediate_shape (tuple of ints, opt.): Mutually exclusive with intermediate_res;
-            if given, this determines the shape to resample the input to.
         method (str, optional): The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
         fill_value (numeric, optional): The value used outside of the raster
@@ -1219,9 +1216,6 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, intermediate_shape
     Returns:
         np.array of same length as lat
     """
-    if intermediate_res is not None and intermediate_shape is not None:
-        raise ValueError('Cannot set both intermediate_res and intermediate_shape.')
-    
     if lat.size == 0:
         return np.zeros_like(lat)
 
@@ -1238,7 +1232,8 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, intermediate_shape
                   lon.max() + 2 * xres, lat.max() + 2 * yres)
         win = src.window(*bounds).round_offsets(op='ceil').round_shape(op='floor')
         win_transform = src.window_transform(win)
-        if intermediate_shape is None and intermediate_res is not None:
+        intermediate_shape = None
+        if intermediate_res is not None:
             win_bounds = src.window_bounds(win)
             win_width, win_height = win_bounds[2] - win_bounds[0], win_bounds[3] - win_bounds[1]
             intermediate_shape = (int(np.ceil(win_height / intermediate_res)),
