@@ -295,34 +295,33 @@ class TCForecast(TCTracks):
 
         track = track.dropna('time')
 
-        if track.sizes['time'] > 0:
-            # can only make latlon coords after dropna
-            track = track.set_coords(['lat', 'lon'])
-            track['time_step'] = track.ts_int - \
-                track.ts_int.shift({'time': 1}, fill_value=0)
-
-            # TODO use drop_vars after upgrading xarray
-            track = track.drop('ts_int')
-
-            track['radius_max_wind'] = np.full_like(track.time, np.nan,
-                                                    dtype=float)
-            track['environmental_pressure'] = np.full_like(
-                track.time, DEF_ENV_PRESSURE, dtype=float
-            )
-
-            # according to specs always num-num-letter
-            track.attrs['basin'] = BASINS[sid[2]]
-
-            cat_name = CAT_NAMES[set_category(
-                max_sus_wind=track.max_sustained_wind.values,
-                wind_unit=track.max_sustained_wind_unit,
-                saffir_scale=SAFFIR_MS_CAT
-            )]
-            track.attrs['category'] = cat_name
-            return track
-        else:
+        if track.sizes['time'] == 0:
             return None
 
+        # can only make latlon coords after dropna
+        track = track.set_coords(['lat', 'lon'])
+        track['time_step'] = track.ts_int - \
+            track.ts_int.shift({'time': 1}, fill_value=0)
+
+        # TODO use drop_vars after upgrading xarray
+        track = track.drop('ts_int')
+
+        track['radius_max_wind'] = np.full_like(track.time, np.nan,
+                                                dtype=float)
+        track['environmental_pressure'] = np.full_like(
+            track.time, DEF_ENV_PRESSURE, dtype=float
+        )
+
+        # according to specs always num-num-letter
+        track.attrs['basin'] = BASINS[sid[2]]
+
+        cat_name = CAT_NAMES[set_category(
+            max_sus_wind=track.max_sustained_wind.values,
+            wind_unit=track.max_sustained_wind_unit,
+            saffir_scale=SAFFIR_MS_CAT
+        )]
+        track.attrs['category'] = cat_name
+        return track
 
     @staticmethod
     def _find_delayed_replicator(descriptors):
