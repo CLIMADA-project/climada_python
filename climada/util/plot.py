@@ -105,7 +105,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
                              (coord.shape[0], array_im.size))
 
         # Binned image with coastlines
-        extent = _get_borders(coord, buffer, proj)
+        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
         add_shapes(axis)
         if pop_name:
@@ -177,7 +177,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
         # Binned image with coastlines
-        extent = _get_borders(coord, buffer, proj)
+        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
         if shapes:
             add_shapes(axis)
@@ -194,17 +194,16 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         axis.set_title(tit)
     return axes
 
-def geo_im_from_array(array_sub, geo_coord, var_name, title,
-                      proj=ccrs.PlateCarree(), smooth=True, axes=None, **kwargs):
+def geo_im_from_array(array_sub, coord, var_name, title,
+                      proj=None, smooth=True, axes=None, **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
     Parameters:
         array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
             or in  the list) are values at each point in corresponding
             geo_coord that are ploted in one subplot.
-        geo_coord (2d np.array or list(2d np.array)): (lat, lon) for each
-            point in a row. If one provided, the same grid is used for all
-            subplots. Otherwise provide as many as subplots in array_sub.
+        coord (2d np.array): (lat, lon) for each point in a row. The same grid is used for all
+            subplots.
         var_name (str or list(str)): label to be shown in the colorbar. If one
             provided, the same is used for all subplots. Otherwise provide as
             many as subplots in array_sub.
@@ -226,8 +225,13 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
     num_im, list_arr = _get_collection_arrays(array_sub)
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
-    list_coord = to_list(num_im, geo_coord, 'geo_coord')
 
+    is_reg, height, width = grid_is_regular(coord)
+    extent = _get_borders(coord, proj_limits=(-360, 360, -90, 90))
+    mid_lon = 0
+    if not proj:
+        mid_lon = 0.5 * sum(extent[:2])
+        proj = ccrs.PlateCarree(central_longitude=mid_lon)
     if 'vmin' not in kwargs:
         kwargs['vmin'] = np.nanmin(array_sub)
     if 'vmax' not in kwargs:
@@ -239,13 +243,10 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
         axes_iter = np.array([[axes]])
 
     # Generate each subplot
-    for array_im, axis, tit, name, coord in \
-    zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
+    for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
         if coord.shape[0] != array_im.size:
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
-        is_reg, height, width = grid_is_regular(coord)
-        extent = _get_borders(coord, proj=proj)
         if smooth or not is_reg:
             # Create regular grid where to interpolate the array
             grid_x, grid_y = np.mgrid[
@@ -261,16 +262,17 @@ def geo_im_from_array(array_sub, geo_coord, var_name, title,
                 grid_y = np.flip(grid_y)
                 grid_im = np.flip(grid_im, 1)
             grid_im = np.resize(grid_im, (height, width, 1))
+        axis.set_extent((extent[0] - mid_lon, extent[1] - mid_lon,
+                         extent[2], extent[3]), crs=proj)
 
         # Add coastline to axis
-        axis.set_extent((extent), proj)
         add_shapes(axis)
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(
-            axis.pcolormesh(grid_x, grid_y, np.squeeze(grid_im), transform=proj, **kwargs),
-            cax=cbax, orientation='vertical')
+        img = axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(grid_im),
+                              transform=proj, **kwargs)
+        cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title(tit)
 
@@ -429,22 +431,22 @@ def _get_row_col_size(num_sub):
             num_row = int(num_sub / 2) + num_sub % 2
     return num_row, num_col
 
-def _get_borders(geo_coord, buffer=0, proj=ccrs.PlateCarree()):
+def _get_borders(geo_coord, buffer=0, proj_limits=(-180, 180, -90, 90)):
     """Get min and max longitude and min and max latitude (in this order).
 
     Parameters:
         geo_coord (2d np.array): (lat, lon) for each point in a row.
         buffer (float): border to add. Default: 0
-        proj (cartopy.crs projection, optional): geographical projection,
-            PlateCarree default.
+        proj_limits (tuple, optional): limits of geographical projection
+            (lon_min, lon_max, lat_min, lat_max)
 
     Returns:
         np.array
     """
-    min_lon = max(np.min(geo_coord[:, 1]) - buffer, proj.x_limits[0])
-    max_lon = min(np.max(geo_coord[:, 1]) + buffer, proj.x_limits[1])
-    min_lat = max(np.min(geo_coord[:, 0]) - buffer, proj.y_limits[0])
-    max_lat = min(np.max(geo_coord[:, 0]) + buffer, proj.y_limits[1])
+    min_lon = max(np.min(geo_coord[:, 1]) - buffer, proj_limits[0])
+    max_lon = min(np.max(geo_coord[:, 1]) + buffer, proj_limits[1])
+    min_lat = max(np.min(geo_coord[:, 0]) - buffer, proj_limits[2])
+    max_lat = min(np.max(geo_coord[:, 0]) + buffer, proj_limits[3])
     return [min_lon, max_lon, min_lat, max_lat]
 
 def get_transformation(crs_in):
