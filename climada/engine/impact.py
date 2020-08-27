@@ -46,7 +46,6 @@ from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.constants import DEF_CRS
-from climada.util.coordinates import unique_lat_lon_from_meta
 
 LOGGER = logging.getLogger(__name__)
 
@@ -514,61 +513,68 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def write_netcdf(self, path=None, attrs=None, with_imp_mat=True, **kwargs):
-        """Write this instance into a (rasterized) netcdf via a DataArray.
+    def to_rasterized_dataarray(self, meta=None, aggregate=True, drop_zero=True):
+        """Convert this instance into a (rasterized) DataArray.
+
+        The DataArray can be written out using, e.g., DataArray.to_netcdf.
+        Projection information is written to the attrs, but may not be
+        accessible by downstream software; point in case is GDAL, which expects
+        a dimensionless crs variable. This can be remedied by additional
+        processing, using e.g. gdal_translate.
 
         Parameters:
-            path (str, optional): Where to write the resulting netCDF to. If
-                None, the method stands in as a to_dataset
-            attrs (str, optional): Set as an attribute; Dataset.to_netcdf does
-                not handle dimensionless variables properly, so GDAL cannot
-                handle contained projection information. Still worthwhile for
-                human reference though.
-            with_imp_mat (bool): If true, read impact values from imp_mat
-                instead of eai_exp
+            meta (dict, optional): A rasterio style meta dictionary, containing
+                height, width, Affine transform.
+            aggregate (bool, optional): If true, return a 2D (lat/lon) array
+                containing only the (aggregated) expected annual impact. If
+                false, return a 3D (event_id/lat/lon) array. Dependent on
+                Impact.calc(..., save_mat=True).
+            drop_zero (bool, optional): If true (default), don't burn exposure
+                points values if they were not impacted.
+
         Returns:
             xarray.DataArray
-        """
-
-        lats, lons = unique_lat_lon_from_meta(self.exposures.meta)
-        coords = {'latitude': lats, 'longitude': lons}
-
-        if with_imp_mat:
-            data = np.ndarray((self.event_id.size, lats.size, lons.size))
-            for i, event_id in enumerate(self.event_id):
-                data[i] = self.rasterize(event_id, **kwargs)
-            coords['event_id'] = self.event_id
-            dims = ['event_id', 'latitude', 'longitude']
-        else:
-            data = self.rasterize(**kwargs)
-            dims = ['latitude', 'longitude']
-
-        if attrs is None:
-            attrs = {
-                'crs': 'EPSG:' + str(self.exposures.meta['crs'].to_epsg())
-            }
-
-        imp_ds = xr.DataArray(data, coords, dims, 'impact', attrs)
-
-        if path:
-            imp_ds.to_netcdf(path)
-
-        return imp_ds
-
-    def rasterize(self, event_id=None, meta=None, drop_zero=True):
-        """Rasterize this impact instance, returning a numpy ndarray with no
-        associated metadata. See to_dataarray for usage example.
-
-        Parameters:
-            event_id (int, optional): If set, use imp_mat values for this event
-            meta (dict, optional): Should contain width, height, transform. If
-                not set, attempt to set it from self.exposures.meta
-            drop_zero (bool): If true (default), don't burn exposure points
-                values if they were not impacted.
         """
         if meta is None:
             meta = self.exposures.meta
 
+        height, width, transform = (
+            meta['height'], meta['width'], meta['transform']
+        )
+
+        min_lon, min_lat = transform * (0,0)
+        max_lon, max_lat = transform * (width, height)
+
+        lats = np.linspace(min_lat, max_lat, height)
+        lons = np.linspace(min_lon, max_lon, width)
+
+        coords = {'latitude': lats, 'longitude': lons}
+        attrs = {'crs': 'EPSG:' + str(meta['crs'].to_epsg())}
+
+        if aggregate:
+            data = self._rasterize(meta, drop_zero=drop_zero)
+            dims = ['latitude', 'longitude']
+        else:
+            data = np.ndarray((self.event_id.size, lats.size, lons.size))
+            for i, event_id in enumerate(self.event_id):
+                data[i] = self._rasterize(meta, event_id, drop_zero)
+            coords['event_id'] = self.event_id
+            dims = ['event_id', 'latitude', 'longitude']
+
+        return xr.DataArray(data, coords, dims, 'impact', attrs)
+
+    def _rasterize(self, meta, event_id=None, drop_zero=True):
+        """Rasterize this impact instance, returning a numpy ndarray with no
+        associated metadata.
+
+        Parameters:
+            meta (dict): rasterio style meta dict, containing at least width,
+                height, and Affine transform.
+            event_id (int, optional): If set, return impact for this event.
+                Dependent on Impact.calc(..., save_mat=True)
+            drop_zero (bool, optional): If true (default), don't burn exposure
+                points values if they were not impacted.
+        """
         if event_id:
             gdf = self._build_exp_event(event_id)
         else:
@@ -960,7 +966,6 @@ class Impact():
     def _build_exp(self):
         eai_exp = Exposures()
 
-        # whacky bug: geom must be set first, otherwise NaNs are introduced
         try:
             eai_exp['geometry'] = self.exposures['geometry']
         except KeyError:
