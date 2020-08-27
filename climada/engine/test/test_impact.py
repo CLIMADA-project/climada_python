@@ -476,7 +476,7 @@ class TestIO(unittest.TestCase):
                 np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
                                np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
 
-    def test_write_netcdf(self):
+    def test_rasterized_dataarray(self):
         """Test the write_netcdf function - not actually writing anything, just
         constructing the underlying DataArray and checking that.
         """
@@ -502,7 +502,7 @@ class TestIO(unittest.TestCase):
 
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
 
-        ds = imp_write.write_netcdf(with_imp_mat=False, drop_zero=False)
+        ds = imp_write.to_rasterized_dataarray(drop_zero=False)
 
         self.assertEqual(ds.latitude.size, 10)
         self.assertAlmostEqual(
