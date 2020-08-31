@@ -50,27 +50,58 @@ from climada.util.coordinates import NE_CRS
 
 __all__ = ['Centroids']
 
-DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
-               'var_name': {'lat': 'lat',
-                            'lon': 'lon',
-                            'dist_coast': 'distance2coast_km',
-                            'admin0_name': 'admin0_name',
-                            'admin0_iso3': 'admin0_ISO3',
-                            'comment': 'comment',
-                            'region_id': 'NatId'
-                           }
-              }
+DEF_VAR_MAT = {
+    'field_names': ['centroids', 'hazard'],
+    'var_name': {
+        'lat': 'lat',
+        'lon': 'lon',
+        'dist_coast': 'distance2coast_km',
+        'admin0_name': 'admin0_name',
+        'admin0_iso3': 'admin0_ISO3',
+        'comment': 'comment',
+        'region_id': 'NatId'
+    }
+}
 """MATLAB variable names"""
 
-DEF_VAR_EXCEL = {'sheet_name': 'centroids',
-                 'col_name': {'region_id': 'region_id',
-                              'lat': 'latitude',
-                              'lon': 'longitude',
-                             }
-                }
+DEF_VAR_EXCEL = {
+    'sheet_name': 'centroids',
+    'col_name': {
+        'region_id': 'region_id',
+        'lat': 'latitude',
+        'lon': 'longitude',
+    }
+}
 """Excel variable names"""
 
+MAP_GDF = {
+    'area_pixel': {
+        'colname': 'area_pixel',
+        'dtype': np.float,
+    },
+    'dist_coast': {
+        'colname': 'dist_coast',
+        'dtype': np.float,
+    },
+    'region_id':  {
+        'colname': 'region_id',
+        'dtype': np.int,
+    },
+    'on_land':  {
+        'colname': 'on_land',
+        'dtype': np.bool,
+    },
+    'elevation':  {
+        'colname': 'elevation',
+        'dtype': np.float,
+    },
+}
+"""Mapping of GeoDataFrame columns ('colname') to attributes (1st level key)
+along with their numpy dtypes for coercion.
+"""
+
 LOGGER = logging.getLogger(__name__)
+
 
 class Centroids():
     """Contains raster or vector centroids. Raster data can be set with
@@ -170,6 +201,36 @@ class Centroids():
             land_reg_ids = list(range(1, 1000))
             land_reg_ids.remove(10)  # Antarctica
             centroids = centroids.select(reg_id=land_reg_ids)
+        return centroids
+
+    @staticmethod
+    def from_geodataframe(gdf, varmap=None):
+        """Empty centroids instance and populate from GeoDataFrame.
+
+        Parameters:
+            gdf (GeoDataFrame): Where the geom column needs to consist of point
+                features.
+            varmap (dict, optional): A dictionary containing a mapping of
+                DataFrame variables/series to Centroids attributes and their
+                respective numpy dtypes.
+        """
+        if varmap is None:
+            varmap = MAP_GDF
+
+        centroids = Centroids()
+
+        centroids.geometry = gdf.geometry
+        centroids.lat = gdf.geometry.y.to_numpy()
+        centroids.lon = gdf.geometry.x.to_numpy()
+
+        for attr, col in varmap.items():
+            if col['colname'] in gdf:
+                val = gdf[col['colname']].to_numpy(dtype=col['dtype'])
+                setattr(centroids, attr, val)
+
+        if centroids.on_land.size == 0:
+            centroids.on_land = ~np.isnan(centroids.region_id)
+
         return centroids
 
 
