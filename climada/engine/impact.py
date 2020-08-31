@@ -30,6 +30,8 @@ import datetime as dt
 from itertools import zip_longest
 import numpy as np
 from scipy import sparse
+import xarray as xr
+import rasterio
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
@@ -163,6 +165,7 @@ class Impact():
         self.date = hazard.date
         self.coord_exp = np.stack([exposures.latitude.values,
                                    exposures.longitude.values], axis=1)
+        self.exposures = exposures # only passing reference
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.value.size)
@@ -509,6 +512,86 @@ class Impact():
         LOGGER.info('Writing %s', file_name)
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
+
+    def to_rasterized_dataarray(self, meta=None, aggregate=True, drop_zero=True):
+        """Convert this instance into a (rasterized) DataArray.
+
+        The DataArray can be written out using, e.g., DataArray.to_netcdf.
+        Projection information is written to the attrs, but may not be
+        accessible by downstream software; point in case is GDAL, which expects
+        a dimensionless crs variable. This can be remedied by additional
+        processing, using e.g. gdal_translate.
+
+        Parameters:
+            meta (dict, optional): A rasterio style meta dictionary, containing
+                height, width, Affine transform.
+            aggregate (bool, optional): If true, return a 2D (lat/lon) array
+                containing only the (aggregated) expected annual impact. If
+                false, return a 3D (event_id/lat/lon) array. Dependent on
+                Impact.calc(..., save_mat=True).
+            drop_zero (bool, optional): If true (default), don't burn exposure
+                points values if they were not impacted.
+
+        Returns:
+            xarray.DataArray
+        """
+        if meta is None:
+            meta = self.exposures.meta
+
+        height, width, transform = (
+            meta['height'], meta['width'], meta['transform']
+        )
+
+        min_lon, min_lat = transform * (0,0)
+        max_lon, max_lat = transform * (width, height)
+
+        lats = np.linspace(min_lat, max_lat, height)
+        lons = np.linspace(min_lon, max_lon, width)
+
+        coords = {'latitude': lats, 'longitude': lons}
+        attrs = {'crs': 'EPSG:' + str(meta['crs'].to_epsg())}
+
+        if aggregate:
+            data = self._rasterize(meta, drop_zero=drop_zero)
+            dims = ['latitude', 'longitude']
+        else:
+            data = np.ndarray((self.event_id.size, lats.size, lons.size))
+            for i, event_id in enumerate(self.event_id):
+                data[i] = self._rasterize(meta, event_id, drop_zero)
+            coords['event_id'] = self.event_id
+            dims = ['event_id', 'latitude', 'longitude']
+
+        return xr.DataArray(data, coords, dims, 'impact', attrs)
+
+    def _rasterize(self, meta, event_id=None, drop_zero=True):
+        """Rasterize this impact instance, returning a numpy ndarray with no
+        associated metadata.
+
+        Parameters:
+            meta (dict): rasterio style meta dict, containing at least width,
+                height, and Affine transform.
+            event_id (int, optional): If set, return impact for this event.
+                Dependent on Impact.calc(..., save_mat=True)
+            drop_zero (bool, optional): If true (default), don't burn exposure
+                points values if they were not impacted.
+        """
+        if event_id:
+            gdf = self._build_exp_event(event_id)
+        else:
+            gdf = self._build_exp()
+
+        if drop_zero:
+            gdf['value'].replace(0, np.NaN, inplace=True)
+            gdf.dropna(inplace=True)
+
+        rast = rasterio.features.rasterize(
+            shapes=gdf[['geometry', 'value']].itertuples(index=False),
+            out_shape=(meta['height'], meta['width']),
+            fill=np.NaN,
+            transform=meta['transform'],
+        )
+
+        return rast
 
     def calc_impact_year_set(self, all_years=True, year_range=[]):
         """Calculate yearly impact from impact data.
@@ -882,9 +965,15 @@ class Impact():
 
     def _build_exp(self):
         eai_exp = Exposures()
+
+        try:
+            eai_exp['geometry'] = self.exposures['geometry']
+        except KeyError:
+            LOGGER.debug('No geometry set in source exposures.')
         eai_exp['value'] = self.eai_exp
         eai_exp['latitude'] = self.coord_exp[:, 0]
         eai_exp['longitude'] = self.coord_exp[:, 1]
+
         eai_exp.crs = self.crs
         eai_exp.value_unit = self.unit
         eai_exp.ref_year = 0
@@ -899,9 +988,15 @@ class Impact():
             event_id(int): id of the event
         """
         impact_csr_exp = Exposures()
+
+        try:
+            impact_csr_exp['geometry'] = self.exposures['geometry']
+        except KeyError:
+            LOGGER.debug('No geometry set in source exposures.')
         impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
         impact_csr_exp['latitude'] = self.coord_exp[:, 0]
         impact_csr_exp['longitude'] = self.coord_exp[:, 1]
+
         impact_csr_exp.crs = self.crs
         impact_csr_exp.value_unit = self.unit
         impact_csr_exp.ref_year = 0
