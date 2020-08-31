@@ -300,29 +300,31 @@ class LowFlow(Hazard):
             intensity_mat (sparse.lilmatrix): intensity values as sparse matrix
         """
         tree_centr = BallTree(coord, metric='chebyshev')
-        if self.pool:
-            chunksize = min(uni_ev.size // self.pool.ncpus, 1000)
-            intensity_list = self.pool.map(self._intensity_one_cluster_pool,
-                                           itertools.repeat(self.data, uni_ev.size),
-                                           itertools.repeat(tree_centr, uni_ev.size),
-                                           uni_ev, itertools.repeat(res_centr),
-                                           itertools.repeat(num_centr),
-                                           chunksize=chunksize)
-        else:
+        stps = list(np.arange(0, len(uni_ev) - 1, INTENSITY_STEP)) + [len(uni_ev)]
+
+        if len(stps) == 1:
             intensity_list = []
             for cl_id in uni_ev:
                 intensity_list.append(
                     self._intensity_one_cluster(tree_centr, cl_id,
                                                 res_centr, num_centr))
-        stps = list(np.arange(0, len(intensity_list)-1, INTENSITY_STEP)) + [len(intensity_list)]
-        if len(stps) == 1:
-            return sparse.lil_matrix(intensity_list)
+            return sparse.csr_matrix(intensity_list)
+
         for idx, stp in enumerate(stps[0:-1]):
+            intensity_list = []
             if not idx:
-                intensity_mat = sparse.lil_matrix(intensity_list[0:stps[1]])
+                range = uni_ev[0:stps[1]]
             else:
-                intensity_mat = sparse.vstack((intensity_mat,
-                                               sparse.lil_matrix(intensity_list[stp:stps[idx+1]])))
+                range = uni_ev[stp:stps[idx+1]]
+            for cl_id in range:
+                intensity_list.append(
+                    self._intensity_one_cluster(tree_centr, cl_id,
+                                                res_centr, num_centr))
+                if not idx:
+                    intensity_mat = sparse.csr_matrix(intensity_list)
+                else:
+                    intensity_mat = sparse.vstack((intensity_mat,
+                                               sparse.csr_matrix(intensity_list)))
         return intensity_mat
 
     def _set_dates(self, uni_ev):
