@@ -199,8 +199,9 @@ class RelativeCropyield(Hazard):
                              yearrange[1] - yearchunk['startyear'] + 2).tolist()
 
         # hazard setup: set attributes
+        [lonmin, latmin, lonmax, latmax] = bbox
         self.set_raster([filename], band=id_bands,
-                        geometry=list([shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])]))
+                        geometry=list([shapely.geometry.box(lonmin, latmin, lonmax, latmax)]))
 
         self.intensity.data[np.isnan(self.intensity.data)] = 0.0
         self.intensity.todense()
