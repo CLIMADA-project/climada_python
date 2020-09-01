@@ -1,21 +1,15 @@
 """
 This file is part of CLIMADA.
-
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
-
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, version 3.
-
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
-
 ---
-
 Define TCTracks: IBTracs reader and tracks manager.
 """
 
@@ -114,7 +108,6 @@ EMANUEL_RMW_CORR_FACTOR = 2.0
 
 class TCTracks():
     """Contains tropical cyclone tracks.
-
     Attributes:
         data (list(xarray.Dataset)): list of tropical cyclone tracks. Each
             track contains following attributes:
@@ -150,7 +143,6 @@ class TCTracks():
 
     def append(self, tracks):
         """Append tracks to current.
-
         Parameters:
             tracks (xarray.Dataset or list(xarray.Dataset)): tracks to append.
         """
@@ -166,7 +158,6 @@ class TCTracks():
         Parameters:
             track_name (str, optional): name or sid (ibtracsID for IBTrACS)
                 of track
-
         Returns:
             xarray.Dataset or [xarray.Dataset]
         """
@@ -208,7 +199,6 @@ class TCTracks():
         """Fill from raw ibtracs v04. Removes nans in coordinates, central
         pressure and removes repeated times data. Fills nans of environmental_pressure
         and radius_max_wind. Checks environmental_pressure > central_pressure.
-
         Parameters:
             provider (str, optional): If specified, enforce use of specific
                 agency, such as "usa", "newdelhi", "bom", "cma", "tokyo".
@@ -399,7 +389,6 @@ class TCTracks():
 
     def read_processed_ibtracs_csv(self, file_names):
         """Fill from processed ibtracs csv file(s).
-
         Parameters:
             file_names (str or list(str)): absolute file name(s) or
                 folder name containing the files to read.
@@ -411,7 +400,6 @@ class TCTracks():
 
     def read_simulations_emanuel(self, file_names, hemisphere='S'):
         """Fill from Kerry Emanuel tracks.
-
         Parameters:
             file_names (str or list(str)): absolute file name(s) or
                 folder name containing the files to read.
@@ -425,7 +413,6 @@ class TCTracks():
 
     def _read_file_emanuel(self, path, hemisphere='S', rmw_corr=False):
         """Append tracks from file containing Kerry Emanuel simulations.
-
         Parameters:
             path (str): absolute path of file to read.
             hemisphere (str, optional): 'S', 'N' or 'both'. Default: 'S'
@@ -538,7 +525,6 @@ class TCTracks():
 
     def read_one_gettelman(self, nc_data, i_track):
         """Fill from Andrew Gettelman tracks.
-
         Parameters:
         nc_data (str): netCDF4.Dataset Objekt
         i_tracks (int): track number
@@ -710,11 +696,9 @@ class TCTracks():
 
     def plot(self, axis=None, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
-
         Parameters:
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for LineCollection matplotlib, e.g. alpha=0.5
-
         Returns:
             matplotlib.axes._subplots.AxesSubplot
         """
@@ -769,7 +753,6 @@ class TCTracks():
 
     def write_netcdf(self, folder_name):
         """Write a netcdf file per track with track.sid name in given folder.
-
         Parameters:
             folder_name (str): folder name where to write files
         """
@@ -781,7 +764,6 @@ class TCTracks():
 
     def read_netcdf(self, folder_name):
         """Read all netcdf files contained in folder and fill a track per file.
-
         Parameters:
             folder_name (str): folder name where to write files
         """
@@ -799,10 +781,8 @@ class TCTracks():
     @jit(parallel=True, forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
-
         Parameters:
             track (xr.Dataset): track data
-
         Returns:
             xr.Dataset
         """
@@ -838,7 +818,6 @@ class TCTracks():
 
     def _read_ibtracs_csv_single(self, file_name):
         """Read IBTrACS track file in CSV format.
-
             Parameters:
                 file_name (str): File name of CSV file.
         """
@@ -898,7 +877,6 @@ class TCTracks():
 
 def track_land_params(track, land_geom):
     """Compute parameters of land for one track.
-
     Parameters:
         track (xr.Dataset): tropical cyclone track
         land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
@@ -910,10 +888,8 @@ def track_land_params(track, land_geom):
 def _dist_since_lf(track):
     """Compute the distance to landfall in km point for every point on land.
     Points on water get nan values.
-
     Parameters:
         track (xr.Dataset): tropical cyclone track
-
     Returns:
         np.arrray
     """
@@ -1021,15 +997,12 @@ def estimate_rmw(rmw, cen_pres):
 
 def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     """Statistically fit an ibtracs parameter to other ibtracs variables
-
     A linear ordinary least squares fit is done using the statsmodels package.
-
     Parameters:
         explained (str): name of explained variable
         explanatory (iterable): names of explanatory variables
         year_range (tuple): first and last year to include in the analysis
         order (int or tuple): the maximal order of the explanatory variables
-
     Returns:
         OLSResults
     """
@@ -1142,12 +1115,10 @@ def ibtracs_track_agency(ds_sel):
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
     """Compute maximum wind speed in unit_dest
-
     Parameters:
         wind (np.array): wind
         unit_orig (str): units of wind
         unit_dest (str): units to change wind
-
     Returns:
         double
     """
@@ -1177,7 +1148,6 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
 
 def set_category(max_sus_wind, wind_unit, saffir_scale=None):
     """Add storm category according to saffir-simpson hurricane scale
-
       - -1 tropical depression
       - 0 tropical storm
       - 1 Hurricane category 1
@@ -1185,12 +1155,10 @@ def set_category(max_sus_wind, wind_unit, saffir_scale=None):
       - 3 Hurricane category 3
       - 4 Hurricane category 4
       - 5 Hurricane category 5
-
     Parameters:
         max_sus_wind (np.array): max sustained wind
         wind_unit (str): units of max sustained wind
         saffir_scale (list, optional): Saffir-Simpson scale in same units as wind
-
     Returns:
         double
     """
