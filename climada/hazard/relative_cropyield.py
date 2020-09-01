@@ -97,7 +97,7 @@ YEARCHUNKS[SCENARIO[1]] = dict()
 YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
 
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
-"""geographical bounding box in decimal degrees (lon from -180 to 180)"""
+""""Default geographical bounding box of the global agricultural land extent"""
 
 INT_DEF = 'Yearly Yield'
 
