@@ -21,11 +21,11 @@ import os
 from os import listdir
 from os.path import isfile, isdir, join
 import math
+import copy
 import numpy as np
 import xarray as xr
 import pandas as pd
 import h5py
-import copy
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
@@ -182,7 +182,7 @@ class CropProduction(Exposures):
                                                              str(yearchunk['startyear']),
                                                              str(yearchunk['endyear'])))
         elif scenario == 'flexible':
-            _,_,_,_,_,_,startyear,endyearnc = filename.split('_')
+            _, _, _, _, _, _, startyear, endyearnc = filename.split('_')
             endyear = endyearnc.split('.')[0]
             yearchunk = dict()
             yearchunk = {'yearrange': np.array([int(startyear), int(endyear)]),
@@ -190,7 +190,7 @@ class CropProduction(Exposures):
             filename = os.path.join(input_dir, filename)
         else:
             if 'histsoc' or '1860soc' in filename:
-                scenario,_,_,_ = filename.split('_')
+                scenario, _, _, _ = filename.split('_')
             else:
                 scenario, _, _, _, _, _ = filename.split('_')
             yearchunk = YEARCHUNKS[scenario]
@@ -442,10 +442,10 @@ class CropProduction(Exposures):
                 area_price[idx_country] = self.value[idx_country] * price
             elif country != 'No country' and country != 'Other country':
                 idx_price = np.where((np.asarray(fao_country) == country) &
-                                         (np.asarray(fao['crops']) == \
-                                         (CROP_NAME[self.crop])['fao']) &
-                                         (fao['year'] >= yearrange[0]) &
-                                         (fao['year'] <= yearrange[1]))
+                                     (np.asarray(fao['crops']) == \
+                                     (CROP_NAME[self.crop])['fao']) &
+                                     (fao['year'] >= yearrange[0]) &
+                                     (fao['year'] <= yearrange[1]))
                 price = np.mean(fao['price'][idx_price])
                 # if no price can be determined for a specific yearrange and country, the world
                 # average for that crop (in the specified yearrange) is used
@@ -517,7 +517,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         crop_production = CropProduction()
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
-                                            yearrange=yearrange, crop=((histmean_prop[2]).split('-'))[0],
+                                            yearrange=yearrange,
+                                            crop=((histmean_prop[2]).split('-'))[0],
                                             irr=((histmean_prop[2]).split('-'))[1], unit=unit)
         filename_list.append(('crop_production_' + ((histmean_prop[2]).split('-'))[0] + '-'
                               + (((histmean_prop[2]).split('-'))[1]).split('.')[0] + '_'
@@ -649,8 +650,8 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
                 (before normalization)
     """
     filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
-                     (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
-                     f.startswith('.') if 'firr' in f]
+                      (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
+                      f.startswith('.') if 'firr' in f]
 
     crop_list = list()
     countries_list = list()
@@ -662,7 +663,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
 
     for file_firr in filenames_firr:
         str1, str2, crop_irr, years = file_firr.split('_')
-        crop, irr = crop_irr.split('-')
+        crop, _ = crop_irr.split('-')
         exp_firr = CropProduction()
         exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', file_firr))
 
