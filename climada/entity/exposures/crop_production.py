@@ -200,7 +200,8 @@ class CropProduction(Exposures):
 
         # Dataset is opened and data within the bbox extends is extracted
         data_set = xr.open_dataset(filename, decode_times=False)
-        data = data_set.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]))
+        [lonmin, latmin, lonmax, latmax] = bbox
+        data = data_set.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
 
         # The latitude and longitude are set; the region_id is determined
         lon, lat = np.meshgrid(data.lon.values, data.lat.values)
