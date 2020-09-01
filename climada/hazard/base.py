@@ -1,21 +1,15 @@
 """
 This file is part of CLIMADA.
-
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
-
 CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, version 3.
-
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
-
 ---
-
 Define Hazard.
 """
 
@@ -90,7 +84,6 @@ DEF_VAR_MAT = {'field_name': 'hazard',
 class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
-
     Attributes:
         tag (TagHazard): information about the source
         units (str): units of the intensity
@@ -138,22 +131,16 @@ class Hazard():
 
     def __init__(self, haz_type='', pool=None):
         """Initialize values.
-
         Parameters:
             haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
-
         Examples:
             Fill hazard values by hand:
-
             >>> haz = Hazard('TC')
             >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
             >>> ...
-
             Take hazard values from file:
-
             >>> haz = Hazard('TC', HAZ_DEMO_MAT)
             >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
-
         """
         self.tag = TagHazard()
         self.tag.haz_type = haz_type
@@ -186,7 +173,6 @@ class Hazard():
 
     def check(self):
         """Check dimension of attributes.
-
         Raises:
             ValueError
         """
@@ -201,7 +187,6 @@ class Hazard():
         values. File can be partially read using window OR geometry.
         Alternatively, CRS and/or transformation can be set using dst_crs and/or
         (transform, width and height).
-
         Parameters:
             files_intensity (list(str)): file names containing intensity
             files_fraction (list(str)): file names containing fraction
@@ -298,7 +283,6 @@ class Hazard():
                    inten_name=None, frac_name=None, dst_crs=None):
         """Read vector files format supported by fiona. Each intensity name is
         considered an event.
-
         Parameters:
             files_intensity (list(str)): file names containing intensity,
                 default: ['intensity']
@@ -361,7 +345,6 @@ class Hazard():
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
         """Change current raster data to other CRS and/or transformation
-
         Parameters:
             dst_crs (crs, optional): reproject to given crs
             transform (rasterio.Affine): affine transformation to apply
@@ -422,7 +405,6 @@ class Hazard():
 
     def reproject_vector(self, dst_crs, scheduler=None):
         """Change current point data to a a given projection
-
         Parameters:
             dst_crs (crs): reproject to given crs
             scheduler (str, optional): used for dask map_partitions. “threads”,
@@ -442,7 +424,6 @@ class Hazard():
 
     def vector_to_raster(self, scheduler=None):
         """Change current point data to a raster with same resolution
-
         Parameters:
             scheduler (str, optional): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
@@ -466,13 +447,11 @@ class Hazard():
 
     def read_mat(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
-
         Parameters:
             file_name (str): absolute file name
             description (str, optional): description of the data
             var_names (dict, default): name of the variables in the file,
                 default: DEF_VAR_MAT constant
-
         Raises:
             KeyError
         """
@@ -499,7 +478,6 @@ class Hazard():
 
     def read_excel(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
-
         Parameters:
             file_name (str): absolute file name
             description (str, optional): description of the data
@@ -507,7 +485,6 @@ class Hazard():
                 in the file
             var_names (dict, default): name of the variables in the file,
                 default: DEF_VAR_EXCEL constant
-
         Raises:
             KeyError
         """
@@ -529,7 +506,6 @@ class Hazard():
     def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events within provided date and/or (historical or synthetical)
         and/or region. Frequency of the events may need to be recomputed!
-
         Parameters:
             event_names (list(str), optional): names of event
             date (tuple(str or int), optional): (initial date, final date) in
@@ -541,7 +517,6 @@ class Hazard():
             reset_frequency (boolean): change frequency of events proportional to
                 difference between first and last year (old and new)
                 default = False
-
         Returns:
             Hazard or children
         """
@@ -619,10 +594,8 @@ class Hazard():
 
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
-
         Parameters:
             return_periods (np.array): return periods to consider
-
         Returns:
             np.array
         """
@@ -661,14 +634,12 @@ class Hazard():
                           smooth=True, axis=None, **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
-
         Parameters:
             return_periods (tuple(int), optional): return periods to consider
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
-
         Returns:
             matplotlib.axes._subplots.AxesSubplot,
             np.ndarray (return_periods.size x num_centroids)
@@ -687,7 +658,6 @@ class Hazard():
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
-
         Parameters:
             event (int or str, optional): If event > 0, plot intensities of
                 event with id = event. If event = 0, plot maximum intensity in
@@ -704,10 +674,8 @@ class Hazard():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
-
         Returns:
             matplotlib.axes._subplots.AxesSubplot
-
         Raises:
             ValueError
         """
@@ -729,7 +697,6 @@ class Hazard():
     def plot_fraction(self, event=None, centr=None, smooth=True, axis=None,
                       **kwargs):
         """Plot fraction values for a selected event or centroid.
-
         Parameters:
             event (int or str, optional): If event > 0, plot fraction of event
                 with id = event. If event = 0, plot maximum fraction in each
@@ -746,10 +713,8 @@ class Hazard():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
-
         Returns:
             matplotlib.axes._subplots.AxesSubplot
-
         Raises:
             ValueError
         """
@@ -777,10 +742,8 @@ class Hazard():
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same
         name.
-
         Parameters:
             event_name (str): Event name
-
         Returns:
             np.array(int)
         """
@@ -793,13 +756,10 @@ class Hazard():
 
     def get_event_name(self, event_id):
         """Get the name of an event id.
-
         Parameters:
             event_id (int): id of the event
-
         Returns:
             str
-
         Raises:
             ValueError
         """
@@ -813,10 +773,8 @@ class Hazard():
     def get_event_date(self, event=None):
         """Return list of date strings for given event or for all events,
         if no event provided.
-
         Parameters:
             event (str or int, optional): event name or id.
-
         Returns:
             list(str)
         """
@@ -834,10 +792,8 @@ class Hazard():
 
     def calc_year_set(self):
         """From the dates of the original events, get number yearly events.
-
         Returns:
             dict: key are years, values array with event_ids of that year
-
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date[self.orig]])
@@ -848,10 +804,8 @@ class Hazard():
 
     def append(self, hazard):
         """Append events and centroids in hazard.
-
         Parameters:
             hazard (Hazard): Hazard instance to append to current
-
         Raises:
             ValueError
         """
@@ -940,7 +894,6 @@ class Hazard():
 
     def write_raster(self, file_name, intensity=True):
         """Write intensity or fraction as GeoTIFF file. Each band is an event
-
         Parameters:
             file_name (str): file name to write in tif format
             intensity (bool): if True, write intensity, otherwise write fraction
@@ -967,7 +920,6 @@ class Hazard():
 
     def write_hdf5(self, file_name, todense=False):
         """Write hazard in hdf5 format.
-
         Parameters:
             file_name (str): file name to write, with h5 format
         """
@@ -1006,7 +958,6 @@ class Hazard():
 
     def read_hdf5(self, file_name):
         """Read hazard in hdf5 format.
-
         Parameters:
             file_name (str): file name to read, with h5 format
         """
@@ -1041,7 +992,6 @@ class Hazard():
 
     def concatenate(self, haz_src, append=False):
         """Concatenate events of several hazards
-
         Parameters:
             haz_src (list): Hazard instances with same centroids and units
             append (bool): If True, append the concatenated hazards to this
@@ -1088,7 +1038,6 @@ class Hazard():
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
         """Plot an event of the input matrix.
-
         Parameters:
             event_id (int or np.array(int)): If event_id > 0, plot mat_var of
                 event with id = event_id. If event_id = 0, plot maximum
@@ -1099,7 +1048,6 @@ class Hazard():
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
-
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
@@ -1137,7 +1085,6 @@ class Hazard():
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
-
         Parameters:
             centr_id (int): If centr_id > 0, plot mat_var
                 of all events at centroid with id = centr_id. If centr_id = 0,
@@ -1149,7 +1096,6 @@ class Hazard():
             col_name (sparse matrix): Colorbar label
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for plot matplotlib function
-
         Returns:
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
@@ -1190,11 +1136,9 @@ class Hazard():
 
     def _loc_return_inten(self, return_periods, inten, exc_inten):
         """Compute local exceedence intensity for given return period.
-
         Parameters:
             return_periods (np.array): return periods to consider
             cen_pos (int): centroid position
-
         Returns:
             np.array
         """
@@ -1217,7 +1161,6 @@ class Hazard():
         """Check that all attributes but centroids contain consistent data.
         Put default date, event_name and orig if not provided. Check not
         repeated events (i.e. with same date and name)
-
         Raises:
             ValueError
         """
@@ -1245,13 +1188,11 @@ class Hazard():
     def _cen_return_inten(inten, freq, inten_th, return_periods):
         """From ordered intensity and cummulative frequency at centroid, get
         exceedance intensity at input return periods.
-
         Parameters:
             inten (np.array): sorted intensity at centroid
             freq (np.array): cummulative frequency at centroid
             inten_th (float): intensity threshold
             return_periods (np.array): return periods
-
         Returns:
             np.array
         """
