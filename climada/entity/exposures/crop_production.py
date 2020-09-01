@@ -182,19 +182,17 @@ class CropProduction(Exposures):
                                                              str(yearchunk['startyear']),
                                                              str(yearchunk['endyear'])))
         elif scenario == 'flexible':
-            items = filename.split('_')
+            _,_,_,_,_,_,startyear,endyearnc = filename.split('_')
+            endyear = endyearnc.split('.')[0]
             yearchunk = dict()
-            yearchunk = {'yearrange': np.array([int(items[6]), int(items[7].split('.')[0])]),
-                         'startyear': int(items[6]), 'endyear': int(items[7].split('.')[0])}
+            yearchunk = {'yearrange': np.array([int(startyear), int(endyear)]),
+                         'startyear': int(startyear), 'endyear': int(endyear)}
             filename = os.path.join(input_dir, filename)
         else:
-            items = filename.split('_')
             if 'histsoc' or '1860soc' in filename:
-                cl_model = None
-                scenario = items[0]
+                scenario,_,_,_ = filename.split('_')
             else:
-                cl_model = items[0]
-                scenario = items[1]
+                scenario, _, _, _, _, _ = filename.split('_')
             yearchunk = YEARCHUNKS[scenario]
             filename = os.path.join(input_dir, filename)
 
