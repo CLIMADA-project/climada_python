@@ -74,32 +74,6 @@ DEF_VAR_EXCEL = {
 }
 """Excel variable names"""
 
-MAP_GDF = {
-    'area_pixel': {
-        'colname': 'area_pixel',
-        'dtype': np.float,
-    },
-    'dist_coast': {
-        'colname': 'dist_coast',
-        'dtype': np.float,
-    },
-    'region_id':  {
-        'colname': 'region_id',
-        'dtype': np.int,
-    },
-    'on_land':  {
-        'colname': 'on_land',
-        'dtype': np.bool,
-    },
-    'elevation':  {
-        'colname': 'elevation',
-        'dtype': np.float,
-    },
-}
-"""Mapping of GeoDataFrame columns ('colname') to attributes (1st level key)
-along with their numpy dtypes for coercion.
-"""
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -204,32 +178,36 @@ class Centroids():
         return centroids
 
     @staticmethod
-    def from_geodataframe(gdf, varmap=None):
-        """Empty centroids instance and populate from GeoDataFrame.
+    def from_geodataframe(gdf):
+        """Create centroids instance from GeoDataFrame. All columns beside the
+        geometry (or geom) column will be translated using pd.Series.to_numpy,
+        so the Series dtype will be respected.
+
+        >>> gdf = geopandas.read_file('centroids.shp')
+        >>> gdf.region_id = gdf.region_id.astype(int)  # type coercion
+        >>> centroids = Centroids.from_geodataframe(gdf)
 
         Parameters:
-            gdf (GeoDataFrame): Where the geom column needs to consist of point
-                features.
-            varmap (dict, optional): A dictionary containing a mapping of
-                DataFrame variables/series to Centroids attributes and their
-                respective numpy dtypes.
+            gdf (GeoDataFrame): Where the geometry column needs to consist of
+                point features.
         """
-        if varmap is None:
-            varmap = MAP_GDF
-
         centroids = Centroids()
 
         centroids.geometry = gdf.geometry
         centroids.lat = gdf.geometry.y.to_numpy()
         centroids.lon = gdf.geometry.x.to_numpy()
 
-        for attr, col in varmap.items():
-            if col['colname'] in gdf:
-                val = gdf[col['colname']].to_numpy(dtype=col['dtype'])
-                setattr(centroids, attr, val)
+        for col in gdf.columns:
+            if 'geom' in col:  # matches both 'geom' and 'geometry' columns
+                continue
+            val = gdf[col].to_numpy()
+            setattr(centroids, col, val)
 
         if centroids.on_land.size == 0:
-            centroids.on_land = ~np.isnan(centroids.region_id)
+            try:
+                centroids.on_land = ~np.isnan(centroids.region_id)
+            except KeyError:
+                pass
 
         return centroids
 
