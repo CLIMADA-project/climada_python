@@ -22,7 +22,6 @@ import os
 import unittest
 import numpy as np
 from scipy import sparse
-import rasterio
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -475,40 +474,6 @@ class TestIO(unittest.TestCase):
             self.assertTrue(
                 np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
                                np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
-
-    def test_rasterized_dataarray(self):
-        """Test the write_netcdf function - not actually writing anything, just
-        constructing the underlying DataArray and checking that.
-        """
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
-        ent.exposures.set_geometry_points()
-        ent.exposures.meta = {
-            'width': 10,
-            'height': 10,
-            'crs': rasterio.crs.CRS.from_epsg(4326),
-            'transform': rasterio.Affine(
-                0.1, 0, -81,
-                0, -0.1, 27
-            )
-        }
-        ent.check()
-
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
-
-        imp_write = Impact()
-        ent.exposures.assign_centroids(hazard)
-
-        imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
-
-        ds = imp_write.to_rasterized_dataarray(drop_zero=False)
-
-        self.assertEqual(ds.latitude.size, 10)
-        self.assertAlmostEqual(
-            np.nanmean(ds.data), 127068679.5979244
-        )
-
 
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
