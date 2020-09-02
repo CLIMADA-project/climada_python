@@ -109,8 +109,8 @@ class TCSurgeGeoClaw(Hazard):
         setup_clawpack()
 
         if centroids is None:
-            # cell-centered grid within padded bounds at 90 arc-seconds resolution
-            res_deg = 90 / (60 * 60)
+            # cell-centered grid within padded bounds at 30 arc-seconds resolution
+            res_deg = 30 / (60 * 60)
             bounds = tracks.get_bounds(deg_buffer=CENTR_NODE_MAX_DIST_DEG)
             lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
             lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
