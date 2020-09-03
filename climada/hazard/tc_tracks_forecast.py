@@ -137,6 +137,7 @@ class TCForecast(TCTracks):
         try:
             if remote_dir is None:
                 folders = con.nlst()
+                folders = [f for f in folders if f.isdigit()]
                 folders.sort(reverse=True)
                 con.cwd(folders[0])  # latest folder
             else:
