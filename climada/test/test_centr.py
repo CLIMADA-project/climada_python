@@ -97,7 +97,10 @@ class TestCentroidsReader(unittest.TestCase):
         centroids.check()
 
         self.assertEqual(centroids.geometry.size, 45)
+        self.assertEqual(centroids.lon[0], 32.57)
+        self.assertEqual(centroids.lat[0], -25.95)
         self.assertEqual(centroids.elevation.size, 45)
+        self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
         self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
 
