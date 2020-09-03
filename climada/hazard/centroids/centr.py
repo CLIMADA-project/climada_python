@@ -50,27 +50,32 @@ from climada.util.coordinates import NE_CRS
 
 __all__ = ['Centroids']
 
-DEF_VAR_MAT = {'field_names': ['centroids', 'hazard'],
-               'var_name': {'lat': 'lat',
-                            'lon': 'lon',
-                            'dist_coast': 'distance2coast_km',
-                            'admin0_name': 'admin0_name',
-                            'admin0_iso3': 'admin0_ISO3',
-                            'comment': 'comment',
-                            'region_id': 'NatId'
-                           }
-              }
+DEF_VAR_MAT = {
+    'field_names': ['centroids', 'hazard'],
+    'var_name': {
+        'lat': 'lat',
+        'lon': 'lon',
+        'dist_coast': 'distance2coast_km',
+        'admin0_name': 'admin0_name',
+        'admin0_iso3': 'admin0_ISO3',
+        'comment': 'comment',
+        'region_id': 'NatId'
+    }
+}
 """MATLAB variable names"""
 
-DEF_VAR_EXCEL = {'sheet_name': 'centroids',
-                 'col_name': {'region_id': 'region_id',
-                              'lat': 'latitude',
-                              'lon': 'longitude',
-                             }
-                }
+DEF_VAR_EXCEL = {
+    'sheet_name': 'centroids',
+    'col_name': {
+        'region_id': 'region_id',
+        'lat': 'latitude',
+        'lon': 'longitude',
+    }
+}
 """Excel variable names"""
 
 LOGGER = logging.getLogger(__name__)
+
 
 class Centroids():
     """Contains raster or vector centroids. Raster data can be set with
@@ -170,6 +175,40 @@ class Centroids():
             land_reg_ids = list(range(1, 1000))
             land_reg_ids.remove(10)  # Antarctica
             centroids = centroids.select(reg_id=land_reg_ids)
+        return centroids
+
+    @staticmethod
+    def from_geodataframe(gdf):
+        """Create centroids instance from GeoDataFrame. All columns beside the
+        geometry (or geom) column will be translated using pd.Series.to_numpy,
+        so the Series dtype will be respected.
+
+        >>> gdf = geopandas.read_file('centroids.shp')
+        >>> gdf.region_id = gdf.region_id.astype(int)  # type coercion
+        >>> centroids = Centroids.from_geodataframe(gdf)
+
+        Parameters:
+            gdf (GeoDataFrame): Where the geometry column needs to consist of
+                point features.
+        """
+        centroids = Centroids()
+
+        centroids.geometry = gdf.geometry
+        centroids.lat = gdf.geometry.y.to_numpy()
+        centroids.lon = gdf.geometry.x.to_numpy()
+
+        for col in gdf.columns:
+            if 'geom' in col:  # matches both 'geom' and 'geometry' columns
+                continue
+            val = gdf[col].to_numpy()
+            setattr(centroids, col, val)
+
+        if centroids.on_land.size == 0:
+            try:
+                centroids.on_land = ~np.isnan(centroids.region_id)
+            except KeyError:
+                pass
+
         return centroids
 
 
