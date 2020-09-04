@@ -183,13 +183,18 @@ class Centroids():
         geometry (or geom) column will be translated using pd.Series.to_numpy,
         so the Series dtype will be respected.
 
+        If the GDF includes a region_id column, but no on_land column, then
+        on_land=True is inferred for those centroids that have a set region_id.
+        lat and lon columns will be ignored. The geometry column can also have
+        the alias geom.
+
         >>> gdf = geopandas.read_file('centroids.shp')
         >>> gdf.region_id = gdf.region_id.astype(int)  # type coercion
         >>> centroids = Centroids.from_geodataframe(gdf)
 
         Parameters:
             gdf (GeoDataFrame): Where the geometry column needs to consist of
-                point features.
+                point features. See above for details on processing.
         """
         centroids = Centroids()
 
@@ -198,7 +203,8 @@ class Centroids():
         centroids.lon = gdf.geometry.x.to_numpy()
 
         for col in gdf.columns:
-            if 'geom' in col:  # matches both 'geom' and 'geometry' columns
+            if 'geom' in col or col == 'lat' or col == 'lon':
+                # matches both 'geom' and 'geometry' columns
                 continue
             val = gdf[col].to_numpy()
             setattr(centroids, col, val)
