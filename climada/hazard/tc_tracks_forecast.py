@@ -102,8 +102,8 @@ class TCForecast(TCTracks):
         elif files is None:
             files = get_file_names(path)
 
-        for i, file in tqdm(enumerate(files, 1), desc='Processing',
-                            unit=' files'):
+        for i, file in tqdm.tqdm(enumerate(files, 1), desc='Processing',
+                                 unit=' files'):
             try:
                 file.seek(0)  # reset cursor if opened file instance
             except AttributeError:
