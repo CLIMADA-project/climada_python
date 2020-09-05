@@ -31,6 +31,7 @@ import tempfile
 
 # additional libraries
 import numpy as np
+import pandas as pd
 import pybufrkit
 import tqdm
 import xarray as xr
@@ -136,14 +137,19 @@ class TCForecast(TCTracks):
 
         try:
             if remote_dir is None:
-                folders = con.nlst()
-                folders = [f for f in folders if f.isdigit()]
-                folders.sort(reverse=True)
-                con.cwd(folders[0])  # latest folder
-            else:
-                con.cwd(remote_dir)
+                remote = pd.Series(con.nlst)
+                remote = remote[remote.str.contains('120000|000000$')]
+                remote = remote.sort_values(ascending=False)
+                remote_dir = remote.iloc[0]
+
+            con.cwd(remote_dir)
 
             remotefiles = fnmatch.filter(con.nlst(), '*tropical_cyclone*')
+            if len(remotefiles) == 0:
+                msg = 'No tracks found at ftp://{}/{}'
+                msg.format(ECMWF_FTP, remote_dir)
+                raise FileNotFoundError(msg)
+
             localfiles = []
 
             LOGGER.info('Fetching BUFR tracks:')
