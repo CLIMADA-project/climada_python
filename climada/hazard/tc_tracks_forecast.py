@@ -102,7 +102,8 @@ class TCForecast(TCTracks):
         elif files is None:
             files = get_file_names(path)
 
-        for i, file in enumerate(files, 1):
+        for i, file in tqdm(enumerate(files, 1), desc='Processing',
+                            unit=' files'):
             try:
                 file.seek(0)  # reset cursor if opened file instance
             except AttributeError:
@@ -137,7 +138,7 @@ class TCForecast(TCTracks):
 
         try:
             if remote_dir is None:
-                remote = pd.Series(con.nlst)
+                remote = pd.Series(con.nlst())
                 remote = remote[remote.str.contains('120000|000000$')]
                 remote = remote.sort_values(ascending=False)
                 remote_dir = remote.iloc[0]
@@ -153,7 +154,7 @@ class TCForecast(TCTracks):
             localfiles = []
 
             LOGGER.info('Fetching BUFR tracks:')
-            for rfile in tqdm.tqdm(remotefiles, unit='files'):
+            for rfile in tqdm.tqdm(remotefiles, desc='Download', unit=' files'):
                 if target_dir:
                     lfile = open(os.path.join(target_dir, rfile), 'w+b')
                 else:
