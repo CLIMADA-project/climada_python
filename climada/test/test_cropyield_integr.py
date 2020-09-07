@@ -23,7 +23,7 @@ import unittest
 import os
 import numpy as np
 from climada.util.constants import DATA_DIR
-from climada.hazard.relative_cropyield import RelativeCropyield
+from climada.hazard.relative_cropyield import RelativeCropyield, init_hazard_set, calc_his_haz
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
@@ -53,7 +53,7 @@ class TestIntegr(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', irr='firr')
+                                              scenario='flexible', unit='t', crop='whe', irr='firr')
 
         exp.set_to_usd(INPUT_DIR)
         exp.assign_centroids(haz, threshold=20)
@@ -75,11 +75,11 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual(haz.size, 5)
         self.assertEqual(haz.centroids.size, 1092)
         self.assertAlmostEqual(haz.intensity.mean(), -2.0489097e-08)
-        self.assertAlmostEqual(exp.value.max(), 51603897.28533253)
+        self.assertAlmostEqual(exp.value.max(), 53074789.755290434)
         self.assertEqual(exp.latitude.values.size, 1092)
         self.assertAlmostEqual(exp.value[3], 0.0)
-        self.assertAlmostEqual(exp.value[1077], 324742.31424674374)
-        self.assertAlmostEqual(impact.imp_mat.data[3], -43304.201305906485)
+        self.assertAlmostEqual(exp.value[1077], 405026.6857207429)
+        self.assertAlmostEqual(impact.imp_mat.data[3], -176102.5359452465 )
         self.assertEqual(len(dif), 0)
 
     def test_EU_nan(self):
@@ -97,7 +97,7 @@ class TestIntegr(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', irr='firr')
+                                              scenario='flexible', unit='t', crop='whe', irr='firr')
         exp.assign_centroids(haz, threshold=20)
 
         if_cp = ImpactFuncSet()
@@ -112,16 +112,37 @@ class TestIntegr(unittest.TestCase):
         exp_nan = CropProduction()
         exp_nan.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=[0, 42, 10, 52], yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', irr='firr')
+                                              scenario='flexible', unit='t', crop='whe', irr='firr')
         exp_nan.value[exp_nan.value==0] = np.nan
         exp_nan.assign_centroids(haz, threshold=20)
 
         impact_nan = Impact()
         impact_nan.calc(exp_nan, if_cp, haz, save_mat=True)
         self.assertListEqual(list(impact.at_event), list(impact_nan.at_event))
-        self.assertAlmostEqual(30.262768130658515, impact_nan.aai_agg)
-        self.assertAlmostEqual(30.262768130658515, impact.aai_agg)
+        self.assertAlmostEqual(12.056545220060798, impact_nan.aai_agg)
+        self.assertAlmostEqual(12.056545220060798 , impact.aai_agg)
 
+    # def test_generate_full_haz_set(self):
+    #     """Test creation of full hazard set"""
+    #     filename_list = list()
+    #     output_list = list()
+    #     bbox = [-5, 42, 16, 55]
+    #     filenames = ['lpjml_ipsl-cm5a-lr_ewembi_historical_2005soc_co2_yield-whe-noirr_annual_FR_DE_DEMO_1861_2005.nc']
+    #     (his_file_list, file_props, hist_mean_per_crop, 
+    #       scenario_list, crop_list) = init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=bbox, 
+    #                                                   isimip_run = 'test_file', yearrange_his=(2001, 2005))
+    #     yearrange_mean = np.array([2001,2005])
+    #     for his_file in his_file_list:
+    #         haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, 
+    #                                                    bbox=bbox, yearrange_mean=yearrange_mean)
+
+    #         hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
+    #             hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
+    #         hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
+
+    #     filename_list.append(filename)
+    #     output_list.append(haz_his)
+                                                      
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIntegr)

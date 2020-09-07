@@ -44,65 +44,41 @@ DEF_HAZ_TYPE = 'RC'
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
 """Default geographical bounding box"""
 
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5'
-            ]
-"""climate model names as in ISIMIP-filenames"""
+
+#ISIMIP input data specific global variables
+YEARCHUNKS = dict()
+"""start and end years per senario as in ISIMIP-filenames"""
+# two types of 1860soc (1661-2299 not implemented)
+YEARCHUNKS['1860soc'] = dict()
+YEARCHUNKS['1860soc'] = {'yearrange': np.array([1800, 1860]), 'startyear': 1661, 'endyear': 1860}
+YEARCHUNKS['histsoc'] = dict()
+YEARCHUNKS['histsoc'] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
+YEARCHUNKS['2005soc'] = dict()
+YEARCHUNKS['2005soc'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2299}
+YEARCHUNKS['rcp26soc'] = dict()
+YEARCHUNKS['rcp26soc'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
+YEARCHUNKS['rcp60soc'] = dict()
+YEARCHUNKS['rcp60soc'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
+YEARCHUNKS['2100rcp26soc'] = dict()
+YEARCHUNKS['2100rcp26soc'] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100,
+                              'endyear': 2299}
 
 FN_STR_VAR = 'landuse-15crops_annual'
 """fix filename part in input data"""
 
-SCENARIO = ['1860soc',
-            'histsoc',
-            '2005soc',
-            'rcp26soc',
-            'rcp60soc',
-            '2100rcp26soc']
-"""climate scenario names as in ISIMIP-filenames"""
-
-YEARCHUNKS = dict()
-"""start and end years per senario as in ISIMIP-filenames"""
-# two types of 1860soc (1661-2299 not implemented)
-YEARCHUNKS[SCENARIO[0]] = dict()
-YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1800, 1860]), 'startyear': 1661, 'endyear': 1860}
-YEARCHUNKS[SCENARIO[1]] = dict()
-YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
-YEARCHUNKS[SCENARIO[2]] = dict()
-YEARCHUNKS[SCENARIO[2]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2299}
-YEARCHUNKS[SCENARIO[3]] = dict()
-YEARCHUNKS[SCENARIO[3]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
-YEARCHUNKS[SCENARIO[4]] = dict()
-YEARCHUNKS[SCENARIO[4]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
-YEARCHUNKS[SCENARIO[5]] = dict()
-YEARCHUNKS[SCENARIO[5]] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100, 'endyear': 2299}
-
-YEARS_FAO = np.array([2000, 2018])
-"""Default years from FAO used"""
-
-CROP = ['mai',
-        'ric',
-        'whe',
-        'soy'
-       ]
-"""crop types"""
-
 CROP_NAME = dict()
 """mapping of crop names"""
-CROP_NAME[CROP[0]] = {'input': 'maize', 'fao': 'Maize', 'print': 'Maize'}
-CROP_NAME[CROP[1]] = {'input': 'rice', 'fao': 'Rice, paddy', 'print': 'Rice'}
-CROP_NAME[CROP[2]] = {'input': 'temperate_cereals', 'fao': 'Wheat', 'print': 'Wheat'}
-CROP_NAME[CROP[3]] = {'input': 'oil_crops_soybean', 'fao': 'Soybeans', 'print': 'Soybeans'}
+CROP_NAME['mai'] = {'input': 'maize', 'fao': 'Maize', 'print': 'Maize'}
+CROP_NAME['ric'] = {'input': 'rice', 'fao': 'Rice, paddy', 'print': 'Rice'}
+CROP_NAME['whe'] = {'input': 'temperate_cereals', 'fao': 'Wheat', 'print': 'Wheat'}
+CROP_NAME['soy'] = {'input': 'oil_crops_soybean', 'fao': 'Soybeans', 'print': 'Soybeans'}
 
-IRR = ['combined', 'noirr', 'firr']
-"""non-irrigated/irrigated as in ISIMIP-filenames"""
 
 IRR_NAME = dict()
 """mapping of irrigation parameter long names"""
-IRR_NAME[IRR[0]] = {'name': 'combined'}
-IRR_NAME[IRR[1]] = {'name': 'rainfed'}
-IRR_NAME[IRR[2]] = {'name': 'irrigated'}
+IRR_NAME['combined'] = {'name': 'combined'}
+IRR_NAME['noirr'] = {'name': 'rainfed'}
+IRR_NAME['firr'] = {'name': 'irrigated'}
 
 # default:
 #   deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
@@ -115,6 +91,9 @@ IRR_NAME[IRR[2]] = {'name': 'irrigated'}
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Exposure')
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
+
+YEARS_FAO = np.array([2000, 2018])
+"""Default years from FAO used"""
 
 # default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
 # by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
@@ -134,8 +113,8 @@ class CropProduction(Exposures):
         return CropProduction
 
     def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH,
-                            bbox=BBOX, yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'],
-                            cl_model=None, scenario=SCENARIO[1], crop=CROP[0], irr=IRR[0],
+                            bbox=BBOX, yearrange=(YEARCHUNKS['histsoc'])['yearrange'],
+                            cl_model=None, scenario='histsoc', crop=None, irr=None,
                             unit='USD', fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill exposure from nc_dis file from ISIMIP
@@ -149,10 +128,9 @@ class CropProduction(Exposures):
             yearrange (int tuple): year range for exposure set
                 f.i. (1990, 2010)
             scenario (string): climate change and socio economic scenario
-                f.i. 'histsoc' or 'rcp60soc'
-            cl_model (string): abbrev. climate model (only when landuse data
-            is future projection)
-                f.i. 'gfdl-esm2m' etc.
+                f.i. '1860soc', 'histsoc', '2005soc', 'rcp26soc','rcp60soc','2100rcp26soc'
+            cl_model (string): abbrev. climate model (only for future projections of lu data)
+                f.i. 'gfdl-esm2m', 'hadgem2-es', 'ipsl-cm5a-lr','miroc5'
             crop (string): crop type
                 f.i. 'mai', 'ric', 'whe', 'soy'
             irr (string): irrigation type
@@ -222,7 +200,7 @@ class CropProduction(Exposures):
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
         if irr == 'combined':
-            irr = [IRR[1], IRR[2]] # ['noirr', 'firr']
+            irr = ['irr', 'noirr']
         else:
             irr = [irr]
         area_crop = dict()
@@ -312,8 +290,8 @@ class CropProduction(Exposures):
         return self
 
     def set_mean_of_several_models(self, input_dir=INPUT_DIR, hist_mean=HIST_MEAN_PATH, bbox=BBOX,
-                                   yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'],
-                                   cl_model=None, scenario=None, crop=CROP[0], irr=IRR[0],
+                                   yearrange=(YEARCHUNKS['histsoc'])['yearrange'],
+                                   cl_model=None, scenario=None, crop=None, irr=None,
                                    unit='USD', fn_str_var=FN_STR_VAR):
         """Wrapper to fill exposure from several nc_dis files from ISIMIP
 
@@ -480,7 +458,7 @@ class CropProduction(Exposures):
 
 def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH,
                            output_dir=OUTPUT_DIR, bbox=BBOX,
-                           yearrange=(YEARCHUNKS[SCENARIO[1]])['yearrange'], unit='t',
+                           yearrange=(YEARCHUNKS['histsoc'])['yearrange'], unit='t',
                            return_data=False):
     """Generates CropProduction exposure sets for all files contained in the
         input directory and saves them as hdf5 files in the output directory
