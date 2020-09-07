@@ -8,3 +8,6 @@
 * Use pythonic loops, list comprehensions etc.
 * Make sure the unit test are testing all the relevant parts of the code
 * Check the docstring (is everything clearly explained, are the default values given an clear)
+
+* Did the code writer perform a static code analysis? Does the code respect Pep8?
+* Did the code writer perform a profiling and checked that there are no obviously ineficient (computation time-wise and memore-wise) parts in the code?
