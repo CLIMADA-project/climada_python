@@ -41,9 +41,9 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertTrue(ent.region_id.min() == 756)
-        self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(np.int(ent.value.sum().round()) == 3356544363676)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
+        self.assertEqual(np.int(ent.value.sum().round()), 3356545986884)
         self.assertIn('LitPop for Switzerland at 300 as, year=2016', ent.tag.description)
         self.assertIn('financial mode=income_group', ent.tag.description)
         self.assertIn('GPW-year=2015', ent.tag.description)
@@ -72,9 +72,9 @@ class TestLitPopExposure(unittest.TestCase):
                             fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
-        self.assertTrue(ent.region_id.min() == 756)
-        self.assertTrue(ent.region_id.max() == 756)
-        self.assertTrue(np.int((1000 * ent.value.sum()).round()) == 1000)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
+        self.assertEqual(np.int((1000 * ent.value.sum()).round()), 1000)
 
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
@@ -85,9 +85,9 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, reference_year=2016, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
-        self.assertTrue(ent.region_id.min() == 740)
-        self.assertTrue(ent.region_id.max() == 740)
-        self.assertTrue(np.int(ent.value.sum().round()) == 2331978807)
+        self.assertEqual(ent.region_id.min(), 740)
+        self.assertEqual(ent.region_id.max(), 740)
+        self.assertEqual(np.int(ent.value.sum().round()), 2304662017)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
@@ -105,8 +105,8 @@ class TestLitPopExposure(unittest.TestCase):
                             conserve_cntrytotal=cons, calc_admin1=adm1)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertTrue(np.around(ent.value.sum(), 0) == np.around(comparison_total_val, 0))
-        self.assertTrue(np.int(ent.value.sum().round()) == 2225855032776)
+        self.assertEqual(np.around(ent.value.sum(), 0), np.around(comparison_total_val, 0))
+        self.assertEqual(np.int(ent.value.sum().round()), 2225854927260)
 
     def test_switzerland300_pc2013_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital:"""
@@ -122,8 +122,8 @@ class TestLitPopExposure(unittest.TestCase):
                             reference_year=ref_year, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertTrue(ent.value.sum() == comparison_total_val)
-        self.assertTrue(np.int(ent.value.sum().round()) == 2296358085749)
+        self.assertEqual(ent.value.sum(), comparison_total_val)
+        self.assertEqual(np.int(ent.value.sum().round()), 2296358085749)
 
 class TestFunctionIntegration(unittest.TestCase):
     """Test the integration of major functions within the LitPop module"""
@@ -135,7 +135,8 @@ class TestFunctionIntegration(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertTrue(117.91666666666666 and 22.08333333333333 in min(all_coords))
+        self.assertTrue(22.08333333333333 in min(all_coords)) 
+        self.assertTrue(117.91666666666666 in min(all_coords))
         litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
         self.assertEqual(len(litpop_data), 25)
         self.assertIn(max(litpop_data), [544316890, 594091108.0, 594091108])
@@ -166,7 +167,7 @@ class TestFunctionIntegration(unittest.TestCase):
                                       list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0,
                                       check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
-        self.assertAlmostEqual(max(litpop_curr), 80313641015.12299, places=2)
+        self.assertAlmostEqual(max(litpop_curr), 80313679854.39496, places=2)
 
     def test_gpw_import(self):
         """test import of population data (Gridded Population of the World GWP)
@@ -191,8 +192,8 @@ class TestValidation(unittest.TestCase):
             checking Pearson correlation coefficient and RMSF"""
         rho = lp.admin1_validation('CHE', ['LitPop', 'Lit5'], [[1, 1], [5, 0]],
                                    res_arcsec=30, check_plot=False)[0]
-        self.assertTrue(np.int(round(rho[0] * 1e12)) == 945416798729)
-        self.assertTrue(np.int(round(rho[-1] * 1e12)) == 3246081648798)
+        self.assertEqual(np.int(round(rho[0] * 1e12)), 945416798729)
+        self.assertEqual(np.int(round(rho[-1] * 1e12)), 3246081648798)
 
 class TestSetAdmin1(unittest.TestCase):
     """Test adding name and ID of Admin1-region to exposure"""
