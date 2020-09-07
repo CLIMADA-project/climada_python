@@ -33,7 +33,7 @@ class TestCropProduction(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
-                                      scenario='flexible', unit='t', irr='firr')
+                                      scenario='flexible', unit='t', crop = 'mai', irr='firr')
 
         self.assertEqual(exp.longitude.min(), -4.75)
         self.assertEqual(exp.longitude.max(), 15.75)
@@ -49,7 +49,7 @@ class TestCropProduction(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
-                                      scenario='flexible', unit='t', irr='firr')
+                                      scenario='flexible', unit='t', crop = 'mai', irr='firr')
         exp.set_to_usd(INPUT_DIR)
         self.assertEqual(exp.longitude.min(), -4.75)
         self.assertEqual(exp.longitude.max(), 15.75)
@@ -69,7 +69,7 @@ class TestCropProduction(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
-                                      scenario='flexible', irr='firr')
+                                      scenario='flexible', crop = 'mai', irr='firr')
         self.assertEqual(exp.longitude.min(), -4.75)
         self.assertEqual(exp.longitude.max(), 15.75)
         self.assertEqual(exp.latitude.min(), 42.25)
@@ -85,7 +85,7 @@ class TestCropProduction(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                           bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
-                                          scenario='flexible', unit='t', irr='firr')
+                                          scenario='flexible', crop = 'mai', unit='t', irr='firr')
         country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, exp_tot_production = \
              normalize_with_fao_cp(exp, exp, input_dir=INPUT_DIR,
                               yearrange=np.array([2009, 2018]), unit='t', return_data=True)

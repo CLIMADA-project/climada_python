@@ -47,50 +47,18 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'RC'
 """Hazard type acronym for Relative Cropyield"""
 
-AG_MODEL = ['clm-crop',
-            'gepic',
-            'lpjml',
-            'pepic'
-            ]
-"""crop model names as in ISIMIP-filenames"""
+INT_DEF = 'Yearly Yield'
 
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5'
-            ]
-"""climate model names as in ISIMIP-filenames"""
+BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
+""""Default geographical bounding box of the global agricultural land extent"""
 
-SCENARIO = ['ISIMIP2a',
-            'historical',
-            'rcp60'
-            ]
-"""climate scenario names as in ISIMIP-filenames"""
+# ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
+INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
+"""default paths for input and output data:"""
+OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
-SOC = ['2005soc',
-       'histsoc'
-       ]
-"""socio-economic forcing settings as in ISIMIP-filenames"""
 
-CO2 = ['co2',
-       '2005co2'
-       ]
-"""CO2 forcing settings as in ISIMIP-filenames"""
-
-CROP = ['whe',
-        'mai',
-        'soy',
-        'ric'
-       ]
-"""crop types as in ISIMIP-filenames"""
-
-IRR = ['noirr',
-       'irr']
-"""non-irrigated/irrigated as in ISIMIP-filenames"""
-
-FN_STR_VAR = 'global_annual'
-"""filename of ISIMIP output constant part"""
-
+#ISIMIP input data specific global variables
 YEARCHUNKS = dict()
 """start and end years per senario as in ISIMIP-filenames"""
 YEARCHUNKS['ISIMIP2a'] = dict()
@@ -103,15 +71,9 @@ YEARCHUNKS['rcp60'] = dict()
 YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
                        'endyear': 2099}
 
-BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
-""""Default geographical bounding box of the global agricultural land extent"""
+FN_STR_VAR = 'global_annual'
+"""filename of ISIMIP output constant part"""
 
-INT_DEF = 'Yearly Yield'
-
-# ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
-INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
-"""default paths for input and output data:"""
-OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 class RelativeCropyield(Hazard):
     """Agricultural climate risk: Relative Cropyield (relative to historical mean);
@@ -133,14 +95,13 @@ class RelativeCropyield(Hazard):
         else:
             self.pool = None
 
-        self.crop = CROP[0]
+        self.crop = ''
         self.intensity_def = INT_DEF
 
     def set_from_single_run(self, input_dir=None, filename=None, bbox=BBOX,
                             yearrange=(YEARCHUNKS['historical'])['yearrange'],
-                            ag_model=AG_MODEL[0], cl_model=CL_MODEL[0],
-                            scenario='historical', soc=SOC[0], co2=CO2[0],
-                            crop=CROP[0], irr=IRR[0], fn_str_var=FN_STR_VAR):
+                            ag_model=None, cl_model=None, scenario='historical',
+                            soc=None, co2=None, crop=None, irr=None, fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill hazard from nc_dis file from ISIMIP
         Parameters:
@@ -149,11 +110,11 @@ class RelativeCropyield(Hazard):
                 [lon min, lat min, lon max, lat max]
             yearrange (int tuple): year range for hazard set, f.i. (1976, 2005)
             ag_model (str): abbrev. agricultural model (only when input_dir is selected)
-                f.i. 'gepic' etc.
+                f.i. 'clm-crop', 'gepic','lpjml','pepic'
             cl_model (str): abbrev. climate model (only when input_dir is selected)
-                f.i. 'gfdl-esm2m' etc.
+                f.i. ['gfdl-esm2m', 'hadgem2-es','ipsl-cm5a-lr','miroc5'
             scenario (str): climate change scenario (only when input_dir is selected)
-                f.i. 'historical' or 'rcp60'
+                f.i. 'historical' or 'rcp60' or 'ISIMIP2a'
             soc (str): socio-economic trajectory (only when input_dir is selected)
                 f.i. '2005soc' or 'histsoc'
             co2 (str): CO2 forcing scenario (only when input_dir is selected)
