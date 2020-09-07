@@ -25,7 +25,6 @@ __all__ = ['LowFlow']
 import logging
 import os
 import copy
-import itertools
 import datetime as dt
 import cftime
 import xarray as xr
@@ -256,7 +255,8 @@ class LowFlow(Hazard):
                             soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False):
         """ Build low flow hazards with events from clustering and centroids and add attributes.
         """
-        # sum "dis" (days per month below threshold) per pixel and cluster_id and write to hazard.intensity
+        # sum "dis" (days per month below threshold) per pixel and
+        # cluster_id and write to hazard.intensity
         self.events_from_clusters(centroids)
 
         if min_intensity > 1 or min_number_cells > 1:
@@ -313,10 +313,10 @@ class LowFlow(Hazard):
         for idx, stp in enumerate(stps[0:-1]):
             intensity_list = []
             if not idx:
-                range = uni_ev[0:stps[1]]
+                stp_range = uni_ev[0:stps[1]]
             else:
-                range = uni_ev[stp:stps[idx+1]]
-            for cl_id in range:
+                stp_range = uni_ev[stp:stps[idx+1]]
+            for cl_id in stp_range:
                 intensity_list.append(
                     self._intensity_one_cluster(tree_centr, cl_id,
                                                 res_centr, num_centr))
@@ -507,6 +507,7 @@ class LowFlow(Hazard):
 
         Parameters:
             cluster_id (int): id of the selected cluster
+            tree_centr (object) BallTree instance created from centroids' coordinates
             res_centr (float): resolution of centroids in degree
             num_centr (int): number of centroids
 
@@ -538,6 +539,7 @@ class LowFlow(Hazard):
 
         Parameters:
             data (DataFrame)
+            tree_centr (object) BallTree instance created from centroids' coordinates
             cluster_id (int): id of the selected cluster
             res_centr (float): resolution of centroids in degree
             num_centr (int): number of centroids
@@ -566,6 +568,8 @@ def _init_centroids(data_x, centr_res_factor=1):
 
     Parameters:
         data_x (xarray): dataset obtained from ISIMIP netcdf
+
+    Optional Parameters:
         centr_res_factor (float): the factor applied to voluntarly decrease/increase
             the centroids resolution
 
@@ -594,7 +598,7 @@ def unique_clusters(data):
         data (pandas.DataFrame): contains monthly gridded data of days below threshold
 
     Returns:
-        pandas.DataFrame
+        data (pandas.DataFrame): As input with new values in column cluster_id
     """
     data.cluster_id = np.zeros(len(data.c_lat_lon)) - 1
 
@@ -687,7 +691,7 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         c.f. parameters in LowFlow.set_from_nc()
 
     Returns:
-        xarray
+        data (xarray)
     """
     first_file = True
     if yearchunks == 'default':
@@ -726,7 +730,7 @@ def _read_single_nc(filename, yearrange, bbox):
             [lon_min, lat_min, lon_max, lat_max]
 
     Returns:
-        xarray
+        data (xarray)
     """
     data = xr.open_dataset(filename)
     try:
@@ -751,7 +755,7 @@ def _read_single_nc(filename, yearrange, bbox):
 
 
 def _xarray_reduce(data, fun=None, percentile=None):
-    """reduce xarray
+    """wrapper function to reduce xarray along time axis
 
     Parameters:
         data (xarray)
@@ -868,7 +872,6 @@ def _days_below_threshold_per_month(data, threshold_grid, mean_ref,
 
     Returns:
         xarray
-
     """
     # data = data.groupby('time.month')-threshold_grid # outdated
     data_threshold = data - threshold_grid
@@ -885,7 +888,14 @@ def _days_below_threshold_per_month(data, threshold_grid, mean_ref,
     return data_threshold.where(data_threshold['ndays'] > 0)
 
 def _xarray_to_geopandas(data):
-    """returns prooessed geopanda dataframe with NaN dropped"""
+    """create GeoDataFrame from xarray with NaN values dropped
+
+    Parameters:
+        data (xarray): data as xarray object
+
+    Returns:
+        data (GeoDataFrame)."""
+
     dataf = data.to_dataframe()
     dataf.reset_index(inplace=True)
     dataf = dataf.dropna()
