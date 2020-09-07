@@ -23,14 +23,12 @@ __all__ = [
     'CONFIG',
     'setup_logging',
     'setup_conf_user',
-    'setup_environ'
 ]
 
 import sys
 import os
 import json
 import logging
-import shutil
 from pkg_resources import Requirement, resource_filename
 
 from climada.util.constants import SOURCE_DIR
@@ -126,20 +124,3 @@ def setup_conf_user():
             CONFIG['cost_benefit'] = userconfig['cost_benefit']
 
         check_conf()
-
-def setup_environ():
-    """Parse binary environment and correct if necessary"""
-    if shutil.which('eio') is None:
-        # correct binary path
-        os.environ['PATH'] = os.environ['PATH'].replace(';', ':')
-        env_cpy = os.environ['PATH']
-        first_dot = env_cpy.find(':')
-        while first_dot >= 0:
-            if not os.path.isdir(env_cpy[:first_dot]):
-                os.environ['PATH'] = os.environ['PATH'].replace(env_cpy[:first_dot + 1], '')
-            env_cpy = env_cpy[first_dot + 1:]
-            first_dot = env_cpy.find(':')
-        # add environment bin path
-        if CONFIG['config']['env_name'] not in os.environ['PATH']:
-            os.environ['PATH'] = os.environ['PATH'].replace(
-                'conda3/bin', 'conda3/envs/' + CONFIG['config']['env_name'] + '/bin')

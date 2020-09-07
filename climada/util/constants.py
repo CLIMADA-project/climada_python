@@ -31,8 +31,7 @@ __all__ = ['SOURCE_DIR',
            'GLB_CENTROIDS_MAT',
            'GLB_CENTROIDS_NC',
            'ISIMIP_GPWV3_NATID_150AS',
-           'NATEARTH_CENTROIDS_150AS',
-           'NATEARTH_CENTROIDS_360AS',
+           'NATEARTH_CENTROIDS',
            'DEMO_GDP2ASSET',
            'RIVER_FLOOD_REGIONS_CSV',
            'TC_ANDREW_FL',
@@ -76,16 +75,14 @@ GLB_CENTROIDS_NC = ISIMIP_GPWV3_NATID_150AS
 GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
 """Global centroids"""
 
-NATEARTH_CENTROIDS_150AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_150as.hdf5')
+NATEARTH_CENTROIDS = {
+    150: os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_150as.hdf5'),
+    360: os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_360as.hdf5'),
+}
 """
-Global centroids at 150 arc-seconds resolution,
-including region ids from Natural Earth.
-"""
-
-NATEARTH_CENTROIDS_360AS = os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_360as.hdf5')
-"""
-Global centroids at 360 arc-seconds resolution,
-including region ids from Natural Earth and distance to coast from NASA.
+Global centroids at XXX arc-seconds resolution,
+including region ids from Natural Earth. The 360 AS file includes distance to
+coast from NASA.
 """
 
 ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')

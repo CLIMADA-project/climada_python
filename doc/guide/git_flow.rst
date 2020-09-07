@@ -3,7 +3,7 @@
 Git Flow
 ========
 
-In general, our policy and naming of branches follow the conventions of 
+In general, our policy and naming of branches follow broadly the conventions of 
 `git flow <https://jeffkreeftmeijer.com/git-flow/>`_.
 
 Philosophy
@@ -44,19 +44,17 @@ Branches
 
 The branching system is adapted for the scientific setting from
 
-+------------+--------------------+------------+---------------+
-| Branches   | Purpose            | Code       | Longevity     |
-+============+====================+============+===============+
-| Master     | Releases           | Stable     | Infinite      |
-+------------+--------------------+------------+---------------+
-| Develop    | Between releases   | Reviewed   | Infinite      |
-+------------+--------------------+------------+---------------+
-| Comments   | Cosmetic changes   | Stable     | Infinite      |
-+------------+--------------------+------------+---------------+
-| Hotfix     | Bug fixes          | Reviewed   | Infinite      |
-+------------+--------------------+------------+---------------+
-| Feature    | Development        | Anything   | Max. 1 year   |
-+------------+--------------------+------------+---------------+
++-------------+--------------------+------------+---------------+
+| Branches    | Purpose            | Code       | Longevity     |
++=============+====================+============+===============+
+| Master      | Releases           | Stable     | Infinite      |
++-------------+--------------------+------------+---------------+
+| Develop     | Between releases   | Reviewed   | Infinite      |
++-------------+--------------------+------------+---------------+
+| Feature/    | Scientific Dev.    | Anything   | Max. 1 year   |
++-------------+--------------------+------------+---------------+
+| Feature/Fix-| Minor changes      | Anything   | few days      |
++-------------+--------------------+------------+---------------+
 
 -  The ``master`` branch is used for the quarterly releases of stable code.
 
@@ -65,16 +63,14 @@ The branching system is adapted for the scientific setting from
 
 -  Development is done in feature branches.
 
--  Cosmetic fixes (comments etc.) are done in a comment branch.
-
--  Bug fixes are done in a Hotfix branch.
-
 -  Feature branches are used for any CLIMADA development. Note that a
    feature branch should not live forever and should contribute to the
    ``develop`` branch. Hence, try to merge your working code for each
    release, or every second release at least. Ideally, a branch is
    cleaned after max. one year and then archived.
-
+   
+-  Small fixes, bugs, code updates, improvements etc. are done as feature branches and should use a clear prefix such as 'Fix-'. These branches are thought of to be short lived, but still require a review! After the review, these branches are usually deleted.
+ 
 -  Code for a scientific project/paper (i.e. CLIMADA application, not
    development) is not pushed to this repository. A minimal working
    example should be pushed to the climada\_papers repository.
@@ -110,10 +106,14 @@ Don'ts
 Creating feature branches
 -------------------------
 
-Before starting a new feature branch, present a 2-3 mins plan at the
+Before/After starting a new scientific feature branch, present a 2-3 mins plan at the
 bi-weekly developers meeting.
 
 Naming convention: feature/my\_feature\_name
+
+For small features (fixes, improvements,...), use a clear prefix such as 'Fix-'.
+
+Naming convention: feature/Fix-my\_feature\_name
 
 How to use GIT for CLIMADA
 ==========================
@@ -206,7 +206,7 @@ C) Merge develop into your branch (regularly/when develop changes)
 8. resolve all conflicts if there are any
 9. ``git push origin feature/feature_name`` if this is the first time you're pushing to the remote repository. Or just ``git push`` if the branch already exists there.
 
-D) Prepare to merge into develop (ideally before every release
+D) Prepare to merge into develop (ideally before every release)
 
 1.  ``git fetch –all``
 2.  ``git checkout feature/feature_name``
