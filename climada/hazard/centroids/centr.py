@@ -199,14 +199,14 @@ class Centroids():
         centroids = Centroids()
 
         centroids.geometry = gdf.geometry
-        centroids.lat = gdf.geometry.y.to_numpy()
-        centroids.lon = gdf.geometry.x.to_numpy()
+        centroids.lat = gdf.geometry.y.to_numpy(copy=True)
+        centroids.lon = gdf.geometry.x.to_numpy(copy=True)
 
         for col in gdf.columns:
             if 'geom' in col or col == 'lat' or col == 'lon':
                 # matches both 'geom' and 'geometry' columns
                 continue
-            val = gdf[col].to_numpy()
+            val = gdf[col].to_numpy(copy=True)
             setattr(centroids, col, val)
 
         if centroids.on_land.size == 0:
