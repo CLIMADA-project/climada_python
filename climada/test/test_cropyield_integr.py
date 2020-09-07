@@ -46,7 +46,7 @@ class TestIntegr(unittest.TestCase):
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
-        hist_mean = haz.calc_mean(yearrange=(2001, 2005))
+        hist_mean = haz.calc_mean(yearrange_mean=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
 
@@ -90,7 +90,7 @@ class TestIntegr(unittest.TestCase):
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
-        hist_mean = haz.calc_mean(yearrange=(2001, 2005))
+        hist_mean = haz.calc_mean(yearrange_mean=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
 
