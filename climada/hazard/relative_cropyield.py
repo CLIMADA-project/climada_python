@@ -60,7 +60,8 @@ CL_MODEL = ['gfdl-esm2m',
             ]
 """climate model names as in ISIMIP-filenames"""
 
-SCENARIO = ['historical',
+SCENARIO = ['ISIMIP2a',
+            'historical',
             'rcp60'
             ]
 """climate scenario names as in ISIMIP-filenames"""
@@ -91,10 +92,15 @@ FN_STR_VAR = 'global_annual'
 
 YEARCHUNKS = dict()
 """start and end years per senario as in ISIMIP-filenames"""
-YEARCHUNKS[SCENARIO[0]] = dict()
-YEARCHUNKS[SCENARIO[0]] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861, 'endyear': 2005}
-YEARCHUNKS[SCENARIO[1]] = dict()
-YEARCHUNKS[SCENARIO[1]] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006, 'endyear': 2099}
+YEARCHUNKS['ISIMIP2a'] = dict()
+YEARCHUNKS['ISIMIP2a'] = {'yearrange': np.array([1980, 1999]), 'startyear': 1980,
+                          'endyear': 1999, 'yearrange_mean': np.array([1980, 1999])}
+YEARCHUNKS['historical'] = dict()
+YEARCHUNKS['historical'] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
+                            'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+YEARCHUNKS['rcp60'] = dict()
+YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+                       'endyear': 2099}
 
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
 """"Default geographical bounding box of the global agricultural land extent"""
@@ -130,9 +136,9 @@ class RelativeCropyield(Hazard):
         self.intensity_def = INT_DEF
 
     def set_from_single_run(self, input_dir=None, filename=None, bbox=BBOX,
-                            yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
+                            yearrange=(YEARCHUNKS['historical'])['yearrange'],
                             ag_model=AG_MODEL[0], cl_model=CL_MODEL[0],
-                            scenario=SCENARIO[0], soc=SOC[0], co2=CO2[0],
+                            scenario='historical', soc=SOC[0], co2=CO2[0],
                             crop=CROP[0], irr=IRR[0], fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill hazard from nc_dis file from ISIMIP
@@ -219,12 +225,12 @@ class RelativeCropyield(Hazard):
         self.check()
         return self
 
-    def calc_mean(self, yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'], save=False,
-                  output_dir=OUTPUT_DIR):
+    def calc_mean(self, yearrange_mean=(YEARCHUNKS['historical'])['yearrange_mean'],
+                  save=False, output_dir=OUTPUT_DIR):
         """Calculates mean of the hazard for a given reference time period
 
             Optional Parameters:
-                yearrange (array): time period used to calculate the mean intensity
+            yearrange_mean (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
             save (boolean): save mean to file? default: False
             output_dir (str): path of output directory
@@ -233,7 +239,8 @@ class RelativeCropyield(Hazard):
                 hist_mean(array): contains mean value over the given reference
                     time period for each centroid
         """
-        event_list = [str(n) for n in range(int(yearrange[0]), int(yearrange[1] + 1))]
+        startyear, endyear = yearrange_mean
+        event_list = [str(n) for n in range(int(startyear), int(endyear + 1))]
         mean = self.select(event_names=event_list).intensity.mean(axis=0)
         hist_mean = np.squeeze(np.asarray(mean))
 
@@ -245,8 +252,8 @@ class RelativeCropyield(Hazard):
             if not os.path.exists(mean_dir):
                 os.mkdir(mean_dir)
             # save mean_file
-            mean_file = h5py.File(mean_dir + 'hist_mean_' + self.crop + '_' + str(yearrange[0]) +
-                                  '-' + str(yearrange[1]) + '.hdf5', 'w')
+            mean_file = h5py.File(mean_dir + 'hist_mean_' + self.crop + '_' + str(startyear) +
+                                  '-' + str(endyear) + '.hdf5', 'w')
             mean_file.create_dataset('mean', data=hist_mean)
             mean_file.create_dataset('lat', data=self.centroids.lat)
             mean_file.create_dataset('lon', data=self.centroids.lon)
@@ -442,25 +449,36 @@ class RelativeCropyield(Hazard):
         return axes
 
 
-def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
-                         yearrange=(YEARCHUNKS[SCENARIO[0]])['yearrange'],
-                         return_data=False):
-    """Generates hazard set for all files contained in the input directory and saves them
-    as hdf5 files to the output directory.
+def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
+                             isimip_run='ISIMIP2b', yearrange_his=None, yearrange_mean=None,
+                             return_data=False, save=True):
+
+    """Wrapper to generate full hazard set and save it to output directory.
 
         Optional Parameters:
-        input_dir (string): path to input data directory
-        output_dir (string): path to output data directory
-        bbox (list of four floats): bounding box:
-            [lon min, lat min, lon max, lat max]
-        yearrange (int tuple): year range for hazard set, f.i. (2001, 2005)
-        return_data (str): returned output
-            False: returns list of filenames only
-            True: returns also list of data
+            input_dir (string): path to input data directory
+            output_dir (string): path to output data directory
+            bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+            isimip_run (string): name of the ISIMIP run (ISIMIP2a or ISIMIP2b)
+            yearrange_his (int tuple): year range for the historical hazard sets
+            yearrange_mean (int tuple): year range for the historical mean
+            return_data (boolean): returned output
+                False: returns list of filenames only
+                True: returns also list of data
+            save (boolean): save output data to output_dir
+
+        Return:
+            filename_list (list): list of filenames
+
+        Optional Return:
+            output_list (list): list of generated output data (hazards and historical mean)
 
     """
+
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
                  f.startswith('.')]
+
 
     # generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
@@ -470,23 +488,135 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     if not os.path.exists(os.path.join(output_dir, 'Hist_mean')):
         os.mkdir(os.path.join(output_dir, 'Hist_mean'))
 
-    # generate lists of splitted historical filenames (in order to differentiate betweeen
-    # the used ag_model, cl_model, crop, etc.); list of the future scenarios; list
-    # of all crop-irr combinations
+    filename_list = list()
+    output_list = list()
+
+    (his_file_list, file_props, hist_mean_per_crop,
+     scenario_list, crop_list) = init_hazard_set(filenames, input_dir, bbox, isimip_run,
+                                                 yearrange_his)
+
+    if yearrange_mean is None:
+        yearrange_mean = (YEARCHUNKS[(file_props[his_file_list[0]])['scenario']])['yearrange_mean']
+
+    for his_file in his_file_list:
+        haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir, bbox,
+                                                    yearrange_mean)
+        # save the historic mean depending on the crop-irrigation combination
+        # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
+        # ensure that all files are assigned to the corresponding crop-irr combination
+        hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][
+            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
+        hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
+
+        filename_list.append(filename)
+        output_list.append(haz_his)
+
+
+        if isimip_run == 'ISIMIP2b':
+            # compute the relative yield for all future scenarios with the corresponding
+            # historic mean
+            for scenario in scenario_list:
+                haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                                                 input_dir, bbox)
+                filename_list.append(filename)
+                output_list.append(haz_fut)
+
+    # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
+    for crop_irr in crop_list:
+        mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
+        mean_filename = ('hist_mean_' + crop_irr + '_' + str(yearrange_mean[0]) +'-' +
+                         str(yearrange_mean[1]) + '.hdf5')
+        filename_list.append(mean_filename)
+        output_list.append(mean)
+
+    if save:
+        for idx, filename in enumerate(filename_list):
+            if 'haz' in filename:
+                output_list[idx].select(reg_id=1).write_hdf5(os.path.join(output_dir,
+                                                                          'Hazard', filename))
+            elif 'mean' in filename:
+                mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', filename), 'w')
+                mean_file.create_dataset('mean', data=output_list[idx])
+                mean_file.create_dataset('lat', data=haz_his.centroids.lat)
+                mean_file.create_dataset('lon', data=haz_his.centroids.lon)
+                mean_file.close()
+                # save historic mean as netcdf (saves mean, lat and lon as arrays)
+                # mean_file = xr.Dataset({'mean': mean, 'lat': haz_his.centroids.lat, \
+                #                         'lon': haz_his.centroids.lon})
+                # mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_irr+'.nc')
+
+    if not return_data:
+        return filename_list
+    return filename_list, output_list
+
+def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
+                    yearrange_his=None):
+
+    """Initialize fulll hazard set.
+
+        Parameters:
+            filenames (list): list of filenames
+            input_dir (string): path to input data directory
+            bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+            isimip_run (string): name of the ISIMIP run (ISIMIP2a or ISIMIP2b)
+            yearrange_his (int tuple): year range for the historical hazard sets
+
+        Return:
+            his_file_list (list): list of historical input hazard files
+            file_props (dict): file properties of all historical input hazard files
+            hist_mean_per_crop (dict): empty dictonary to save hist_mean values for each
+                crop-irr combination
+            scenario_list (list): list of all future scenarios
+            crop_list (list): list of all crop-irr combinations
+
+    """
+
+    crop_list = list()
     file_props = dict()
     his_file_list = list()
-    crop_list = list()
     scenario_list = list()
+
+
+
     for file in filenames:
-        ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _ = file.split('_')
-        _, crop, irr = crop_prop.split('-')
-        if scenario == 'historical':
+        if isimip_run == 'ISIMIP2b':
+            ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _ = file.split('_')
+            _, crop, irr = crop_prop.split('-')
+            if 'historical' in file:
+                his_file_list.append(file)
+                if yearrange_his is None:
+                    yearrange_his = (YEARCHUNKS[scenario])['yearrange']
+                startyear, endyear = yearrange_his
+                file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'soc':soc,
+                                    'scenario': scenario, 'co2':co2, 'crop': crop, 'irr': irr,
+                                    'startyear': startyear, 'endyear': endyear,
+                                    'crop_irr': crop+'-'+irr}
+            elif scenario not in scenario_list:
+                scenario_list.append(scenario)
+
+        elif isimip_run == 'ISIMIP2a':
+            (ag_model, cl_model, biasco, scenario, harm, irr, _, crop, _, _,
+             startyear, endyearnc) = file.split('_')
+            endyear, _ = endyearnc.split('.')
+            if yearrange_his is not None:
+                startyear, endyear = (YEARCHUNKS[scenario])['yearrange']
+
             file_props[file] = dict()
-            file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'scenario': scenario,
-                                'soc':soc, 'co2':co2, 'crop': crop, 'irr': irr}
+            file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'scenario': 'ISIMIP2a',
+                                'bc':biasco, 'harm':harm, 'crop': crop, 'irr': irr,
+                                'crop_irr': crop+'-'+irr, 'startyear': int(startyear),
+                                'endyear': int(endyear)}
             his_file_list.append(file)
-        elif scenario not in scenario_list:
-            scenario_list.append(scenario)
+        elif isimip_run == 'test_file':
+            ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _, _, _ = file.split('_')
+            _, crop, irr = crop_prop.split('-')
+            his_file_list.append(file)
+            startyear, endyear = yearrange_his
+            file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'soc':soc,
+                                'scenario': scenario, 'co2':co2, 'crop': crop, 'irr': irr,
+                                'startyear': startyear, 'endyear': endyear,
+                                'crop_irr': crop+'-'+irr}
 
         crop_irr = crop + '-' + irr
         if crop_irr not in crop_list:
@@ -497,100 +627,115 @@ def init_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
     #   yield-crop-irr _ fn_str_var _ startyear _ endyear . nc
     #e.g. gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_
     #   global_annual_1861_2005.nc
-    dummy_file = his_file_list[0]
-    cp_dummy = RelativeCropyield()
-    cp_dummy.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
-                                 ag_model=(file_props[dummy_file])['ag_model'],
-                                 cl_model=(file_props[dummy_file])['cl_model'],
-                                 scenario=(file_props[dummy_file])['scenario'],
-                                 soc=(file_props[dummy_file])['soc'],
-                                 co2=(file_props[dummy_file])['co2'],
-                                 crop=(file_props[dummy_file])['crop'],
-                                 irr=(file_props[dummy_file])['irr'])
-    hist_mean = cp_dummy.calc_mean()
-    cp_dummy.set_rel_yield_to_int(hist_mean)
+    haz_dummy = RelativeCropyield()
+    haz_dummy.set_from_single_run(input_dir=input_dir, filename=his_file_list[0], bbox=bbox,
+                                  scenario=(file_props[his_file_list[0]])['scenario'],
+                                  yearrange=np.array([(file_props[his_file_list[0]])['startyear'],
+                                                      (file_props[his_file_list[0]])['endyear']]))
 
     # initiate the historic mean for each combination of crop and irrigation type
+    # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
+    # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
     for crop_irr in crop_list:
         hist_mean_per_crop[crop_irr] = dict()
         hist_mean_per_crop[crop_irr] = {
-            'value': np.zeros([int(len(filenames) / len(crop_list)), len(hist_mean)]),
-            'idx': 0,
-        }
+            'value': np.zeros([int(len(his_file_list) / len(crop_list)),
+                               haz_dummy.intensity.shape[1]]),
+            'idx': 0}
 
-    # calculate hazard as relative yield for all historic files and related future scenarios
-    # and save them as hdf5 file in the output directory
-    filename_list = list()
-    output_list = list()
-    for his_file in his_file_list:
-        # historic file
-        crop_irr = (file_props[his_file])['crop'] + '-' + (file_props[his_file])['irr']
+    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_list
+    # if isimip_run == 'ISIMIP2a':
+    #     return crop_list, his_file_list, yearrange_list, hist_mean_per_crop, file_props
+    # return crop_list, his_file_list, scenario_list, hist_mean_per_crop, file_props
 
-        cp_his = RelativeCropyield()
-        cp_his.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange,
-                                   ag_model=(file_props[his_file])['ag_model'],
-                                   cl_model=(file_props[his_file])['cl_model'],
-                                   scenario=(file_props[his_file])['scenario'],
-                                   soc=(file_props[his_file])['soc'],
-                                   co2=(file_props[his_file])['co2'],
-                                   crop=(file_props[his_file])['crop'],
-                                   irr=(file_props[his_file])['irr'])
+def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
+                 yearrange_mean=None):
 
-        hist_mean = cp_his.calc_mean()
-        cp_his.set_rel_yield_to_int(hist_mean)
-        hist_mean_per_crop[crop_irr]['value'][hist_mean_per_crop[crop_irr]['idx'], :] = hist_mean
-        hist_mean_per_crop[crop_irr]['idx'] = hist_mean_per_crop[crop_irr]['idx'] + 1
+    """Create historical hazard and calculate historical mean.
 
+        Parameters:
+            his_file (string): file name of historical input hazard file
+            file_props (dict): file properties of all historical input hazard files
+            input_dir (string): path to input data directory
+            bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+            yearrange_mean (int tuple): year range for the historical mean
+                default: 1976 - 2005
+
+
+        Return:
+            haz_his (RelativeCropyield): historical hazard
+            filename (string): name to save historical hazard
+            hist_mean (array): historical mean of the historical hazard
+
+    """
+
+
+    haz_his = RelativeCropyield()
+    haz_his.set_from_single_run(input_dir=input_dir, filename=his_file, bbox=bbox,
+                                scenario=(file_props[his_file])['scenario'],
+                                yearrange=np.array([(file_props[his_file])['startyear'],
+                                                    (file_props[his_file])['endyear']]))
+
+    hist_mean = haz_his.calc_mean(yearrange_mean)
+    haz_his.set_rel_yield_to_int(hist_mean)
+
+    crop_irr = (file_props[his_file])['crop'] + '-' + (file_props[his_file])['irr']
+    if (file_props[his_file])['scenario'] == 'ISIMIP2a':
+        filename = ('haz' + '_' + (file_props[his_file])['ag_model'] + '_' +
+                    (file_props[his_file])['cl_model'] +'_' + (file_props[his_file])['bc'] +
+                    '_' + (file_props[his_file])['harm'] + '_' + crop_irr + '_' +
+                    str((file_props[his_file])['startyear']) + '-' +
+                    str((file_props[his_file])['endyear']) + '.hdf5')
+    else:
         filename = ('haz' + '_' + (file_props[his_file])['ag_model'] + '_' +
                     (file_props[his_file])['cl_model'] + '_' + (file_props[his_file])['scenario'] +
                     '_' + (file_props[his_file])['soc'] + '_' + (file_props[his_file])['co2'] +
-                    '_' + crop_irr + '_' + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
-        filename_list.append(filename)
-        output_list.append(cp_his)
-        cp_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
+                    '_' + crop_irr + '_' + str((file_props[his_file])['startyear']) + '-' +
+                    str((file_props[his_file])['endyear']) + '.hdf5')
 
-        # compute the relative yield for all future scenarios with the corresponding historic mean
-        for scenario in scenario_list:
-            yearrange_fut = np.array([(YEARCHUNKS[scenario])['startyear'],
-                                      (YEARCHUNKS[scenario])['endyear']])
-            cp_fut = RelativeCropyield()
-            cp_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
-                                       ag_model=(file_props[his_file])['ag_model'],
-                                       cl_model=(file_props[his_file])['cl_model'],
-                                       scenario=scenario,
-                                       soc=(file_props[his_file])['soc'],
-                                       co2=(file_props[his_file])['co2'],
-                                       crop=(file_props[his_file])['crop'],
-                                       irr=(file_props[his_file])['irr'])
-            cp_fut.set_rel_yield_to_int(hist_mean)
-            filename = ('haz' + '_' + (file_props[his_file])['ag_model'] + '_' +
-                        (file_props[his_file])['cl_model'] + '_' + scenario + '_' +
-                        (file_props[his_file])['soc'] + '_' + (file_props[his_file])['co2'] +
-                        '_' + crop_irr + '_' + str(yearrange_fut[0]) + '-' +
-                        str(yearrange_fut[1]) + '.hdf5')
-            filename_list.append(filename)
-            output_list.append(cp_fut)
-            cp_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
-    # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
-    for crop_irr in crop_list:
-        mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
-        mean_filename = 'hist_mean_' + crop_irr + '_' + str(yearrange[0]) + \
-        '-' + str(yearrange[1]) + '.hdf5'
-        filename_list.append(mean_filename)
-        output_list.append(mean)
-        mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', mean_filename), 'w')
-        mean_file.create_dataset('mean', data=mean)
-        mean_file.create_dataset('lat', data=cp_his.centroids.lat)
-        mean_file.create_dataset('lon', data=cp_his.centroids.lon)
-        mean_file.close()
+    return haz_his, filename, hist_mean
 
-        # save historic mean as netcdf (saves mean, lat and lon as arrays)
-#        mean_file = xr.Dataset({'mean': mean, 'lat': cp_his.centroids.lat, \
-#                                'lon': cp_his.centroids.lon})
-#        mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_irr+'.nc')
+def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX):
 
-    if not return_data:
-        return filename_list
-    return filename_list, output_list
+    """Create future hazard.
+
+        Parameters:
+            his_file (string): file name of historical input hazard file
+            scenario (string): future scenario, e.g. rcp60
+            file_props (dict): file properties of all historical input hazard files
+            hist_mean (array): historical mean of the historical hazard for the same model
+                combination and crop-irr cobination
+            input_dir (string): path to input data directory
+            bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+
+        Return:
+            haz_fut (RelativeCropyield): future hazard
+            filename (string): name to save historical hazard
+
+
+    """
+
+    yearrange_fut = np.array([(YEARCHUNKS[scenario])['startyear'],
+                              (YEARCHUNKS[scenario])['endyear']])
+    startyear, endyear = yearrange_fut
+    haz_fut = RelativeCropyield()
+    haz_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
+                                ag_model=(file_props[his_file])['ag_model'],
+                                cl_model=(file_props[his_file])['cl_model'],
+                                scenario=scenario,
+                                soc=(file_props[his_file])['soc'],
+                                co2=(file_props[his_file])['co2'],
+                                crop=(file_props[his_file])['crop'],
+                                irr=(file_props[his_file])['irr'])
+    haz_fut.set_rel_yield_to_int(hist_mean)
+    filename = ('haz' + '_' + (file_props[his_file])['ag_model'] + '_' +
+                (file_props[his_file])['cl_model'] + '_' + scenario + '_' +
+                (file_props[his_file])['soc'] + '_' + (file_props[his_file])['co2'] +
+                '_' + (file_props[his_file])['crop'] + '-' + (file_props[his_file])['irr']+ '_' +
+                str(startyear) + '-' + str(endyear) + '.hdf5')
+
+    return haz_fut, filename
