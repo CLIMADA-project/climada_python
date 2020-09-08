@@ -207,8 +207,9 @@ class StormEurope(Hazard):
         return new_haz
 
 
-    def read_icon_grib(self, run_date, model_name='icon-eu-eps',
-                       description=None, delete_raw_data=True):
+    def read_icon_grib(self, run_date, event_date=None,
+                       model_name='icon-eu-eps', description=None, 
+                       delete_raw_data=True):
         """Clear instance and download and read dwd icon weather forecast 
         footprints into it. One event is one full day in UCT. Current setup 
         works for runs starting at 00H and 12H. Otherwise the aggregation is 
@@ -218,6 +219,8 @@ class StormEurope(Hazard):
         Parameters:
             run_date (datetime): The starting timepoint of the forecast run 
                 of the icon model
+            event_date (datetime, optional): one day within the forecast
+                period, only this day (00H-24H) will be included in the hazard
             model_name (str,optional): select the name of the icon model to
                 be downloaded. Must match the url string 
                 (see _download_icon_grib for further info)
@@ -251,10 +254,16 @@ class StormEurope(Hazard):
         if not (run_date.hour == 0 or run_date.hour == 12):
             LOGGER.warn('The event definition is inaccuratly implemented for '
                         'starting times, which are not 00H or 12H.')
-        time_covered_step = stacked['valid_time'].diff('valid_time')
-        time_covered_day = time_covered_step.groupby('valid_time.day').sum()
-        days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
-        stacked2 = stacked.groupby('valid_time.day').max().sel(day=days_to_consider)
+        if event_date:
+            stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('valid_time.day').max()
+            considered_dates = np.datetime64(event_date)
+        else:
+            time_covered_step = stacked['valid_time'].diff('valid_time')
+            time_covered_day = time_covered_step.groupby('valid_time.day').sum()
+            days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
+            stacked2 = stacked.groupby('valid_time.day').max().sel(day=days_to_consider)
+            unique_dates = stacked['valid_time'].groupby('valid_time.day').min()
+            considered_dates = unique_dates.sel(day=days_to_consider).values
         stacked3 = stacked2.stack(intensity=('day', 'number'))
         stacked3 = stacked3.where(stacked3 > self.intensity_thres)
         stacked3 = stacked3.fillna(0)
@@ -270,8 +279,7 @@ class StormEurope(Hazard):
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
         self.orig[(stacked3.number == 1).values] = True
-        unique_dates = stacked['valid_time'].groupby('valid_time.day').min()
-        considered_dates = unique_dates.sel(day=days_to_consider).values
+        
         self.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             stacked.number.size
