@@ -155,7 +155,7 @@ class RelativeCropyield(Hazard):
         elif scenario == 'test_file':
             yearchunk = dict()
             yearchunk = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
-                            'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+                         'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
             ag_model, cl_model, _, _, soc, co2, crop_prop, _, _, _, _, _, _ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
