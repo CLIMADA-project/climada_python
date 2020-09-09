@@ -152,6 +152,13 @@ class RelativeCropyield(Hazard):
             yearchunk = {'yearrange': np.array([int(startyear), int(endyear)]),
                          'startyear': int(startyear), 'endyear': int(endyear)}
             filename = os.path.join(input_dir, filename)
+        elif scenario == 'test_file':
+            yearchunk = dict()
+            yearchunk = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
+                            'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+            ag_model, cl_model, _, _, soc, co2, crop_prop, _, _, _, _, _, _ = filename.split('_')
+            _, crop, irr = crop_prop.split('-')
+            filename = os.path.join(input_dir, filename)
         else:
             yearchunk = YEARCHUNKS[scenario]
             (_, _, _, _, _, _, crop_irr, _, _, _, _) = filename.split('_')
@@ -572,12 +579,12 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
                                 'endyear': int(endyear)}
             his_file_list.append(file)
         elif isimip_run == 'test_file':
-            ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _, _, _ = file.split('_')
+            ag_model, cl_model, _, _, soc, co2, crop_prop, _, _, _, _, _, _ = file.split('_')
             _, crop, irr = crop_prop.split('-')
             his_file_list.append(file)
             startyear, endyear = yearrange_his
             file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'soc':soc,
-                                'scenario': scenario, 'co2':co2, 'crop': crop, 'irr': irr,
+                                'scenario': 'test_file', 'co2':co2, 'crop': crop, 'irr': irr,
                                 'startyear': startyear, 'endyear': endyear,
                                 'crop_irr': crop+'-'+irr}
 
@@ -601,10 +608,10 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
     for crop_irr in crop_list:
+        amount_crop_irr = sum(crop_irr in s for s in his_file_list)
         hist_mean_per_crop[crop_irr] = dict()
         hist_mean_per_crop[crop_irr] = {
-            'value': np.zeros([int(len(his_file_list) / len(crop_list)),
-                               haz_dummy.intensity.shape[1]]),
+            'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
             'idx': 0}
 
     return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_list
