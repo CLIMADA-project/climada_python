@@ -130,10 +130,10 @@ class RelativeCropyield(Hazard):
         """
         if input_dir is not None:
             if not os.path.exists(input_dir):
-                LOGGER.warning('Input directory %s does not exist', input_dir)
+                LOGGER.error('Input directory %s does not exist', input_dir)
                 raise NameError
         else:
-            LOGGER.warning('Input directory %s not set', input_dir)
+            LOGGER.error('Input directory %s not set', input_dir)
             raise NameError
 
 
@@ -155,6 +155,8 @@ class RelativeCropyield(Hazard):
             filename = os.path.join(input_dir, filename)
         else:
             yearchunk = YEARCHUNKS[scenario]
+            (_, _, _, _, _, _, crop_irr, _, _, _, _) = filename.split('_')
+            _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
 
 
@@ -238,11 +240,13 @@ class RelativeCropyield(Hazard):
 
         # initialize new hazard_matrix
         hazard_matrix = copy.deepcopy(self.intensity)
+        #hazard_matrix = np.zeros(self.intensity.shape, dtype=np.float32)
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
             hazard_matrix[event, idx] = (self.intensity[event, idx] / hist_mean[idx])-1
 
+        #self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity = hazard_matrix
         self.intensity_def = 'Relative Yield'
         self.units = ''
@@ -611,8 +615,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     #     return crop_list, his_file_list, yearrange_list, hist_mean_per_crop, file_props
     # return crop_list, his_file_list, scenario_list, hist_mean_per_crop, file_props
 
-def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
-                 yearrange_mean=None):
+def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange_mean=None):
 
     """Create historical hazard and calculate historical mean.
 
