@@ -51,62 +51,28 @@ FILENAME_NC = '%s_%s_%s_%s_%s_%s_%s.nc'
 """structure of ISIMIP discharge output data taking the following strings:
     %(gh_model, cl_model, scenario, soc, fn_str_var, yearrange)"""
 
-GH_MODEL = ['H08',
-            'CLM45',
-            'ORCHIDEE',
-            'LPJmL',
-            'WaterGAP2',
-            'JULES-W1',
-            'MATSIRO'
-            ]
-"""available gridded hydrological models"""
-
-CL_MODEL = ['gfdl-esm2m',
-            'hadgem2-es',
-            'ipsl-cm5a-lr',
-            'miroc5',
-            'gswp3',
-            'wfdei',
-            'princeton',
-            'watch',
-            ]
-"""climate forcings: available global gridded climate models / re-analysis data"""
-
-SCENARIO = ['historical',
-            'rcp26',
-            'rcp60',
-            'hist']
-"""climate scenarios"""
-
-SOC = ['histsoc',  # historical
-       '2005soc',  # constant at 2005 level
-       'rcp26soc',
-       'rcp60soc',
-       'pressoc']
-"""socio-economic parameter sets of model runs"""
-
 FN_STR_VAR = 'co2_dis_global_daily'  # FileName STRing depending on VARiable
 """constant part of discharge output file (according to ISIMIP filenaming)"""
 
 YEARCHUNKS = dict()
 """list of year chunks: multiple files are combined"""
 
-YEARCHUNKS[SCENARIO[0]] = list()
+YEARCHUNKS['historical'] = list()
 """historical year chunks ISIMIP 2b"""
 for i in np.arange(1860, 2000, 10):
-    YEARCHUNKS[SCENARIO[0]].append('%i_%i' % (i + 1, i + 10))
-YEARCHUNKS[SCENARIO[0]].append('2001_2005')
+    YEARCHUNKS['historical'].append('%i_%i' % (i + 1, i + 10))
+YEARCHUNKS['historical'].append('2001_2005')
 
-YEARCHUNKS[SCENARIO[3]] = list()
+YEARCHUNKS['hist'] = list()
 """historical year chunks ISIMIP 2a"""
 for i in np.arange(1970, 2010, 10):
-    YEARCHUNKS[SCENARIO[3]].append('%i_%i' % (i + 1, i + 10))
+    YEARCHUNKS['hist'].append('%i_%i' % (i + 1, i + 10))
 
-YEARCHUNKS[SCENARIO[1]] = ['2006_2010']
+YEARCHUNKS['rcp26'] = ['2006_2010']
 for i in np.arange(2010, 2090, 10):
-    YEARCHUNKS[SCENARIO[1]].append('%i_%i' % (i + 1, i + 10))
-YEARCHUNKS[SCENARIO[1]].append('2091_2099')
-YEARCHUNKS[SCENARIO[2]] = YEARCHUNKS[SCENARIO[1]]
+    YEARCHUNKS['rcp26'].append('%i_%i' % (i + 1, i + 10))
+YEARCHUNKS['rcp26'].append('2091_2099')
+YEARCHUNKS['rcp60'] = YEARCHUNKS['rcp26']
 """future year chunks"""
 
 REFERENCE_YEARRANGE = (1971, 2005)
@@ -159,11 +125,12 @@ class LowFlow(Hazard):
     def set_from_nc(self, input_dir=None, centroids=None, countries=None, reg=None,
                     bbox=None, percentile=2.5, min_intensity=1, min_number_cells=1,
                     min_days_per_month=1, yearrange=TARGET_YEARRANGE,
-                    yearrange_ref=REFERENCE_YEARRANGE, gh_model=GH_MODEL[0], cl_model=CL_MODEL[0],
-                    scenario=SCENARIO[0], scenario_ref=SCENARIO[0], soc=SOC[0],
-                    soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False,
+                    yearrange_ref=REFERENCE_YEARRANGE, gh_model=None, cl_model=None,
+                    scenario='historical', scenario_ref='historical', soc='histsoc',
+                    soc_ref='histsoc', fn_str_var=FN_STR_VAR, keep_dis_data=False,
                     yearchunks='default', mask_threshold=('mean', 1)):
         """Wrapper to fill hazard from nc_dis file from ISIMIP
+
         Parameters:
             input_dir (string): path to input data directory
             centroids (Centroids): centroids
@@ -189,16 +156,21 @@ class LowFlow(Hazard):
             yearrange_ref (int tuple): year range for reference (threshold),
                 f.i. (1971, 2000)
             gh_model (str): abbrev. hydrological model (only when input_dir is selected)
-                f.i. 'h08' etc.
+                f.i. 'H08', 'CLM45', 'ORCHIDEE', 'LPJmL', 'WaterGAP2', 'JULES-W1', 'MATSIRO'
             cl_model (str): abbrev. climate model (only when input_dir is selected)
-                f.i. 'gfdl-esm2m' etc.
+                f.i. 'gfdl-esm2m', 'hadgem2-es', 'ipsl-cm5a-lr', 'miroc5', 'gswp3',
+                'wfdei', 'princeton', 'watch'
             scenario (str): climate change scenario (only when input_dir is selected)
-                f.i. 'historical', 'rcp26', or 'rcp60'
+                f.i. 'historical', 'rcp26', 'rcp60', 'hist'
             scenario_ref (str): climate change scenario for reference
                 (only when input_dir is selected)
             soc (str): socio-economic trajectory (only when input_dir is selected)
-                f.i. 'histsoc', '2005soc', 'rcp26soc', or 'rcp60soc'
-            soc_ref (str): csocio-economic trajectory for reference
+                f.i. 'histsoc',  # historical trajectory
+                     '2005soc',  # constant at 2005 level
+                     'rcp26soc', # RCP6.0 trajectory
+                     'rcp60soc', # RCP6.0 trajectory
+                     'pressoc' # constant at pre-industrial socio-economic level
+            soc_ref (str): csocio-economic trajectory for reference, like soc.
                 (only when input_dir is selected)
             fn_str_var (str): FileName STRing depending on VARiable and
                 ISIMIP simuation round
@@ -250,9 +222,9 @@ class LowFlow(Hazard):
 
     def make_climada_hazard(self, centroids=None, min_intensity=1, min_number_cells=1,
                             yearrange=TARGET_YEARRANGE, yearrange_ref=REFERENCE_YEARRANGE,
-                            gh_model=GH_MODEL[0], cl_model=CL_MODEL[0],
-                            scenario=SCENARIO[0], scenario_ref=SCENARIO[0], soc=SOC[0],
-                            soc_ref=SOC[0], fn_str_var=FN_STR_VAR, keep_dis_data=False):
+                            gh_model=None, cl_model=None,
+                            scenario='historical', scenario_ref='historical', soc='histsoc',
+                            soc_ref='histsoc', fn_str_var=FN_STR_VAR, keep_dis_data=False):
         """ Build low flow hazards with events from clustering and centroids and add attributes.
         """
         # sum "dis" (days per month below threshold) per pixel and
