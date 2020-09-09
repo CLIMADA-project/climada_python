@@ -699,7 +699,8 @@ class Hazard():
                 plot abs(centr)-largest centroid where higher intensities
                 are reached. If tuple with (lat, lon) plot intensity of nearest
                 centroid.
-            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
+                in module `climada.util.plot`)
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
@@ -740,7 +741,8 @@ class Hazard():
                 plot abs(centr)-largest centroid where highest fractions
                 are reached. If tuple with (lat, lon) plot fraction of nearest
                 centroid.
-            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+            smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
+                in module `climada.util.plot`)
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
