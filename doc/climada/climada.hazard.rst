@@ -4,6 +4,7 @@ climada\.hazard package
 .. toctree::
 
     climada.hazard.centroids
+    climada.hazard.emulator
 
 climada\.hazard\.base module
 ----------------------------
@@ -97,6 +98,22 @@ climada\.hazard\.tc\_tracks module
 ----------------------------------
 
 .. automodule:: climada.hazard.tc_tracks
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.tc\_tracks\_forecast module
+--------------------------------------------
+
+.. automodule:: climada.hazard.tc_tracks_forecast
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.tc\_tracks\_synth module
+-----------------------------------------
+
+.. automodule:: climada.hazard.tc_tracks_synth
     :members:
     :undoc-members:
     :show-inheritance:

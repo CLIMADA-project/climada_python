@@ -55,7 +55,7 @@ During the installation process of Miniconda, you are prompted to set the workin
     cd /cluster/work/climate/USERNAME/climada_python
     conda env create -f requirements/env_climada.yml --name climada_env 
 
-(You might need to restart the terminal for the command "conda" to work after installation of miniconda)
+(You might need to restart the terminal for the command "conda" to work after installation of miniconda. Alternatively, execute the command *source activate base* before executing the above comments.)
 
    To include *climada_python* in the environment's path, do the following. In your environments folder, for example /cluster/work/climate/USERNAME/miniconda3/*::
    
