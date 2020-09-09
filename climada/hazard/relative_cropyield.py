@@ -24,7 +24,6 @@ __all__ = ['RelativeCropyield']
 
 import logging
 import os
-import copy
 from os import listdir
 from os.path import isfile, join
 import numpy as np
@@ -239,15 +238,13 @@ class RelativeCropyield(Hazard):
         idx = np.where(hist_mean != 0)[0]
 
         # initialize new hazard_matrix
-        hazard_matrix = copy.deepcopy(self.intensity)
-        #hazard_matrix = np.zeros(self.intensity.shape, dtype=np.float32)
+        hazard_matrix = np.zeros(self.intensity.shape, dtype=np.float32)
 
         # compute relative yield for each event:
         for event in range(len(self.event_id)):
             hazard_matrix[event, idx] = (self.intensity[event, idx] / hist_mean[idx])-1
 
-        #self.intensity = sparse.csr_matrix(hazard_matrix)
-        self.intensity = hazard_matrix
+        self.intensity = sparse.csr_matrix(hazard_matrix)
         self.intensity_def = 'Relative Yield'
         self.units = ''
 
