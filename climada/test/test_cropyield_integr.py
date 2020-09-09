@@ -23,7 +23,8 @@ import unittest
 import os
 import numpy as np
 from climada.util.constants import DATA_DIR
-from climada.hazard.relative_cropyield import RelativeCropyield, init_hazard_set, calc_his_haz
+from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_set, 
+                                               calc_his_haz, calc_fut_haz)
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
@@ -122,26 +123,41 @@ class TestIntegr(unittest.TestCase):
         self.assertAlmostEqual(12.056545220060798, impact_nan.aai_agg)
         self.assertAlmostEqual(12.056545220060798 , impact.aai_agg)
 
-    # def test_generate_full_haz_set(self):
-    #     """Test creation of full hazard set"""
-    #     filename_list = list()
-    #     output_list = list()
-    #     bbox = [-5, 42, 16, 55]
-    #     filenames = ['lpjml_ipsl-cm5a-lr_ewembi_historical_2005soc_co2_yield-whe-noirr_annual_FR_DE_DEMO_1861_2005.nc']
-    #     (his_file_list, file_props, hist_mean_per_crop, 
-    #       scenario_list, crop_list) = init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=bbox, 
-    #                                                   isimip_run = 'test_file', yearrange_his=(2001, 2005))
-    #     yearrange_mean = np.array([2001,2005])
-    #     for his_file in his_file_list:
-    #         haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, 
-    #                                                    bbox=bbox, yearrange_mean=yearrange_mean)
+    def test_hist_mean_of_full_haz_set(self):
+        """Test creation of full hazard set"""
 
-    #         hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
-    #             hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
-    #         hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
+        output_list = list()
+        bbox = [116.25, 38.75,  117.75, 39.75]
+        files_his = ['gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_global_DEMO_TJANJIN_annual_1861_2005.nc',
+                     'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-firr_global_annual_DEMO_TJANJIN_1861_2005.nc',
+                     'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
+        
+        (his_file_list, file_props, hist_mean_per_crop, 
+          scenario_list, crop_list) = init_hazard_set(files_his, input_dir=INPUT_DIR,
+                                                      bbox=bbox, isimip_run = 'test_file', 
+                                                      yearrange_his = np.array([1980,2005]))
+        yearrange_mean = np.array([1980,2005])
+        for his_file in his_file_list:
+            haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, 
+                                                        bbox=bbox, yearrange_mean=yearrange_mean)
 
-    #     filename_list.append(filename)
-    #     output_list.append(haz_his)
+            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
+                hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
+            hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
+        
+        
+        self.assertEqual(np.shape(hist_mean_per_crop['whe-firr']['value'])[0], 1)
+        self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2) 
+        
+        # calculate mean hist_mean for each crop-irrigation
+        for crop_irr in crop_list:
+            mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
+            output_list.append(mean)
+        
+        self.assertEqual('whe-noirr', crop_list[0])
+        self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value']), np.mean(output_list[0]))
+        self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value'][:,1]), output_list[0][1])
+        
                                                       
 # Execute Tests
 if __name__ == "__main__":
