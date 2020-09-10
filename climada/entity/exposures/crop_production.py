@@ -174,10 +174,7 @@ class CropProduction(Exposures):
                          'startyear': int(startyear), 'endyear': int(endyear)}
             filename = os.path.join(input_dir, filename)
         else:
-            if 'histsoc' or '1860soc' in filename:
-                scenario, _, _, _ = filename.split('_')
-            else:
-                scenario, _, _, _, _, _ = filename.split('_')
+            scenario, *rest = filename.split('_')
             yearchunk = YEARCHUNKS[scenario]
             filename = os.path.join(input_dir, filename)
 
