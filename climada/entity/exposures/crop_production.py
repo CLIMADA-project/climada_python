@@ -495,15 +495,13 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     filename_list = list()
     output_list = list()
     for file in filenames:
-        histmean_prop = file.split('_')
+        _, _, crop_irr, *rest = file.split('_')
+        crop, irr = crop_irr.split('-')
         crop_production = CropProduction()
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
-                                            yearrange=yearrange,
-                                            crop=((histmean_prop[2]).split('-'))[0],
-                                            irr=((histmean_prop[2]).split('-'))[1], unit=unit)
-        filename_list.append(('crop_production_' + ((histmean_prop[2]).split('-'))[0] + '-'
-                              + (((histmean_prop[2]).split('-'))[1]).split('.')[0] + '_'
+                                            yearrange=yearrange, crop=crop, irr=irr, unit=unit)
+        filename_list.append(('crop_production_' + crop + '-'+ irr + '_'
                               + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5'))
         output_list.append(crop_production)
         crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_list[-1]))
@@ -526,7 +524,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data (default 2008-2018)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        return_data (str): returned output
+        return_data (boolean): returned output
             True: returns country list, ratio = FAO/ISIMIP, normalized exposures, crop production
             per country as documented by the FAO and calculated by the ISIMIP dataset
             False: country list, ratio = FAO/ISIMIP, normalized exposures
@@ -611,7 +609,7 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data (default 2008-2018)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        return_data (str): returned output
+        return_data (boolean): returned output
             True: lists containing data for each exposure file. Lists: crops, country list,
             ratio = FAO/ISIMIP, normalized exposures, crop production per country as documented
             by the FAO and calculated by the ISIMIP dataset
