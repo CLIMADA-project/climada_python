@@ -501,10 +501,11 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
                                             yearrange=yearrange, crop=crop, irr=irr, unit=unit)
-        filename_list.append(('crop_production_' + crop + '-'+ irr + '_'
-                              + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5'))
+        filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
+                              + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
+        filename_list.append(filename_expo)
         output_list.append(crop_production)
-        crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_list[-1]))
+        crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_expo))
 
     if not return_data:
         return filename_list
