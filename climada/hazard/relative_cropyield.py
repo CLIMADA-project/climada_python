@@ -156,12 +156,12 @@ class RelativeCropyield(Hazard):
             yearchunk = dict()
             yearchunk = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
                          'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
-            ag_model, cl_model, _, _, soc, co2, crop_prop, _, _, _, _, _, _ = filename.split('_')
+            ag_model, cl_model, _, _, soc, co2, crop_prop, *rest = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
         else:
             yearchunk = YEARCHUNKS[scenario]
-            (_, _, _, _, _, _, crop_irr, _, _, _, _) = filename.split('_')
+            (_, _, _, _, _, _, crop_irr, *rest) = filename.split('_')
             _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
 
@@ -551,7 +551,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
 
     for file in filenames:
         if isimip_run == 'ISIMIP2b':
-            ag_model, cl_model, _, scenario, soc, co2, crop_prop, _, _, _, _ = file.split('_')
+            ag_model, cl_model, _, scenario, soc, co2, crop_prop, *rest = file.split('_')
             _, crop, irr = crop_prop.split('-')
             if 'historical' in file:
                 his_file_list.append(file)
@@ -579,7 +579,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
                                 'endyear': int(endyear)}
             his_file_list.append(file)
         elif isimip_run == 'test_file':
-            ag_model, cl_model, _, _, soc, co2, crop_prop, _, _, _, _, _, _ = file.split('_')
+            ag_model, cl_model, _, _, soc, co2, crop_prop, *rest = file.split('_')
             _, crop, irr = crop_prop.split('-')
             his_file_list.append(file)
             startyear, endyear = yearrange_his
