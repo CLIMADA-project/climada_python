@@ -207,6 +207,74 @@ class StormEurope(Hazard):
         return new_haz
 
 
+    def read_cosmoe_file(self, fp_file, event_date, run_date,
+                       model_name='COSMO-2E', description=None):
+        """Clear instance and read MeteoSwiss cosmoe weather forecast 
+        footprint netcdf files into it. One event is one full day in UCT.
+        Works for COSMO-1E and COSMO-2E
+
+        Parameters:
+            fp_file (str): string directing to one netcdf file
+            event_date (datetime, optional): one day within the forecast
+                period, only this day (00H-24H) will be included in the hazard
+            run_date (datetime): The starting timepoint of the forecast run 
+                of the cosmo model
+            model_name (str,optional): select the name of the icon model to
+                be downloaded. Must match the url string 
+                (see _download_icon_grib for further info)
+            description (str, optional): description of the events, defaults
+                to 'cosmo weather forecast'
+        """
+        self.clear()
+        # create centroids
+        self.centroids = self._centroids_from_nc(fp_file)
+        
+        # read intensity from file
+        ncdf = xr.open_dataset(fp_file)
+        if event_date == None:
+            LOGGER.error(('Creation of hazard from the cosmo model ' +
+                          'without event_date is not implemented. ' +
+                          'Please define event_date in read_cosmoe_file or' +
+                          'change the code analogue to read_icon_grib first.'))
+            raise ValueError
+        else:
+            stacked = np.max(ncdf.sel(time=event_date.strftime('%Y-%m-%d')).VMAX_10M, axis=0).stack(intensity=('y_1', 'x_1'))
+        stacked = stacked.where(stacked > self.intensity_thres)
+        stacked = stacked.fillna(0)
+    
+        # fill in values from netCDF
+        self.intensity = sparse.csr_matrix(stacked)
+        self.event_id = ncdf.epsd_1.values+1
+    
+        # fill in default values
+        self.units = 'm/s'
+        self.fraction = self.intensity.copy().tocsr()
+        self.fraction.data.fill(1)
+        self.orig = np.ones_like(self.event_id)*False
+        self.orig[0] = True
+        self.date = np.ones_like(self.event_id) * np.array([datetime64_to_ordinal(ncdf.time.data[0])])
+        self.event_name = [date_i + '_ens' + str(ens_i) 
+                           for date_i, ens_i in zip(
+                                   date_to_str(self.date),
+                                   ncdf.epsd_1.values+1
+                                   )
+                           ]
+        self.frequency = np.divide(
+                np.ones_like(self.event_id),
+                np.max(ncdf.epsd_1.values)+1)
+        if not description:
+            description = (model_name +
+                           ' weather forecast windfield ' +
+                           'for run startet at ' +
+                           run_date.strftime('%Y%m%d%H'))
+    
+        self.tag = TagHazard(
+                HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+                description=description
+            )
+        # close netcdf file
+        ncdf.close()
+
     def read_icon_grib(self, run_date, event_date=None,
                        model_name='icon-eu-eps', description=None, 
                        delete_raw_data=True):
@@ -375,8 +443,15 @@ class StormEurope(Hazard):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
         elif hasattr(ncdf, 'lat_1'):
-            lats = ncdf.lat_1.data
-            lons = ncdf.lon_1.data
+            if (len(ncdf.lon_1.shape)>1 & \
+                (ncdf.lon_1.shape == ncdf.lat_1.shape) \
+                ):
+                lats = ncdf.lat_1.data.flatten()
+                lons = ncdf.lon_1.data.flatten()
+                create_meshgrid = False
+            else:
+                lats = ncdf.lat_1.data
+                lons = ncdf.lon_1.data                
         elif hasattr(ncdf, 'clat'):
             lats = ncdf.clat.data
             lons = ncdf.clon.data
