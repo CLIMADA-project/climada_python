@@ -58,7 +58,7 @@ class TestCropProduction(unittest.TestCase):
         self.assertEqual(exp.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 'USD / y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.value_tonnes[28], 1998.3634803238633)
+        self.assertAlmostEqual(exp.tonnes_per_year[28], 1998.3634803238633)
         self.assertAlmostEqual(exp.value.max(), 51603897.28533253, places=5)
         self.assertAlmostEqual(exp.value.mean(), 907401.9933073953, places=5)
         self.assertEqual(exp.value.min(), 0.0)

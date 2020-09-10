@@ -382,8 +382,8 @@ class CropProduction(Exposures):
             Exposure
         """
 
-        # the exposure in t/y is saved as 'value_tonnes'
-        self['value_tonnes'] = self['value']
+        # the exposure in t/y is saved as 'tonnes_per_year'
+        self['tonnes_per_year'] = self['value']
 
         # account for the case of only specifying one year as yearrange
         if len(yearrange) == 1:
@@ -418,7 +418,7 @@ class CropProduction(Exposures):
         # and calculate the crop production in USD/y
         area_price = np.zeros(self.value.size)
         for country in list_countries:
-            idx_country = np.where(np.asarray(iso3alpha) == country)[0]
+            [idx_country] = np.where(np.asarray(iso3alpha) == country)
             if country == 'Other country':
                 price = 0
                 area_price[idx_country] = self.value[idx_country] * price
@@ -546,9 +546,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
 
     # use the exposure in t/y to normalize with FAO crop production values
     if exp_firr.value_unit == 'USD / y':
-        exp_firr.value = exp_firr.value_tonnes
+        exp_firr.value = exp_firr.tonnes_per_year
     if exp_noirr.value_unit == 'USD / y':
-        exp_noirr.value = exp_noirr.value_tonnes
+        exp_noirr.value = exp_noirr.tonnes_per_year
 
     country_list, countries_firr = exp_firr.aggregate_countries()
     country_list, countries_noirr = exp_noirr.aggregate_countries()
