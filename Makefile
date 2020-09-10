@@ -24,6 +24,10 @@ install_test : ## Test installation was successful
 data_test : ## Test data APIs
 	python test_data_api.py
 
+.PHONY : notebook_test
+notebook_test : ## Test notebooks in doc/tutorial
+	python test_notebooks.py
+
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
 	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
