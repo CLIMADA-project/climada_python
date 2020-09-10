@@ -24,7 +24,7 @@ import os
 import numpy as np
 from climada.util.constants import DATA_DIR
 from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_set, 
-                                               calc_his_haz, calc_fut_haz)
+                                               calc_his_haz)
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
