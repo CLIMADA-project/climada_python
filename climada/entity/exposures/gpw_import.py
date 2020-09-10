@@ -134,7 +134,7 @@ def get_box_gpw(**parameters):
 
     Returns
     -------
-    tile_temp : pandas SparseArray
+    tile_temp : pandas.arrays.SparseArray
         GPW data
     lon : list
         List with longitudinal infomation on the GPW data. Same
@@ -210,7 +210,7 @@ def get_box_gpw(**parameters):
             LOGGER.error('Error: Matrix has an invalid number of dimensions \
                          (more than 2). Could not continue operation.')
             raise TypeError
-        tile_temp = pd.SparseArray(
+        tile_temp = pd.arrays.SparseArray(
             tile_temp.reshape((tile_temp.size,), order='F'),
             fill_value=0)
         del arr1

@@ -178,7 +178,7 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertEqual(len(gpw), 323)
         self.assertIn(np.around(max(gpw)), [103070.0, 137840.0])
         self.assertEqual(type(gpw),
-                         type(pd.SparseArray(data=1, fill_value=0)))
+                         type(pd.arrays.SparseArray(data=1, fill_value=0)))
         self.assertAlmostEqual(lat[0], -27.3164)
         self.assertAlmostEqual(lat[1], 0.083333333)
         self.assertAlmostEqual(lon[0], 30.78291)

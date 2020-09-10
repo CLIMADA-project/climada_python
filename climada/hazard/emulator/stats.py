@@ -144,7 +144,7 @@ def haz_max_events(hazard, min_thresh=0):
     LOGGER.info("Condensing %d hazards to %d max events ...", inten.shape[0], exp_hazards.size)
     inten = inten[exp_hazards]
     inten_max_ids = np.asarray(inten.argmax(axis=1)).ravel()
-    inten_max = inten[range(inten.shape[0]), inten_max_ids].todense()
+    inten_max = inten[range(inten.shape[0]), inten_max_ids]
     dates = hazard.date[exp_hazards]
     dates = [datetime.date.fromordinal(d) for d in dates]
     return pd.DataFrame({

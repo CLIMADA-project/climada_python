@@ -106,7 +106,7 @@ class TestLitPopFunctions(unittest.TestCase):
         curr_shp = lp._get_country_shape(curr_country, 0)
         mask = lp._mask_from_shape(curr_shp, resolution=60)
         self.assertEqual(mask.sp_index.indices.size, 5591)
-        self.assertTrue(mask.values.max())
+        self.assertTrue(mask.sp_values.max())
         self.assertIn(140 and 7663, mask.sp_index.indices)
 
     def test_litpop_box2coords(self):
