@@ -235,7 +235,7 @@ class StormEurope(Hazard):
         file_names = _download_icon_grib(run_date,model_name=model_name)
        
         # create centroids
-        nc_centroids_file = self._get_icon_centroids(model_name)
+        nc_centroids_file = self._get_icon_centroids_file(model_name)
         self.centroids = self._centroids_from_nc(nc_centroids_file)
         
         # read intensity from files
@@ -319,7 +319,7 @@ class StormEurope(Hazard):
 
 
     @staticmethod
-    def _get_icon_centroids(model_name='icon-eu-eps'):
+    def _get_icon_centroids_file(model_name='icon-eu-eps'):
         """ create centroids based on netcdf files provided by dwd, links 
         found here: 
         https://www.dwd.de/DE/leistungen/opendata/neuigkeiten/opendata_dez2018_02.html
