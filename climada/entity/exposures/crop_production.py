@@ -476,7 +476,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
         unit (str): unit in which to return exposure (t/y or USD/y)
-        return_data (str): returned output
+        return_data (boolean): returned output
             False: returns list of filenames only, True: returns also list of data
 
     Returns:
