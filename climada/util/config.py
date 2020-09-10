@@ -43,6 +43,12 @@ def remove_handlers(logger):
         for handler in logger.handlers:
             logger.removeHandler(handler)
 
+
+# suppress FutureWarnings
+from warnings import simplefilter
+simplefilter(action='ignore', category=FutureWarning)
+
+
 LOGGER = logging.getLogger('climada')
 LOGGER.setLevel(logging.DEBUG)
 LOGGER.propagate = False
