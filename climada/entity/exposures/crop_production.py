@@ -103,8 +103,15 @@ OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
 
 class CropProduction(Exposures):
-    """Defines agriculture exposures from ISIMIP input data and
-    FAO crop price data"""
+    """Defines agriculture exposures from ISIMIP input data and FAO crop data
+
+    geopandas GeoDataFrame with metada and columns (pd.Series) defined in
+    Attributes and Exposures.
+
+    Attributes:
+        crop (str): crop type f.i. 'mai', 'ric', 'whe', 'soy'
+
+    """
 
     _metadata = Exposures._metadata + ['crop']
 
