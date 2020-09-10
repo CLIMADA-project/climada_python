@@ -323,6 +323,7 @@ class StormEurope(Hazard):
         """ create centroids based on netcdf files provided by dwd, links 
         found here: 
         https://www.dwd.de/DE/leistungen/opendata/neuigkeiten/opendata_dez2018_02.html
+        https://www.dwd.de/DE/leistungen/opendata/neuigkeiten/opendata_aug2020_01.html
         """
         
         # define url and filename
@@ -331,6 +332,8 @@ class StormEurope(Hazard):
             file_name = 'icon_grid_0028_R02B07_N02.nc.bz2'
         elif model_name=='icon-eu':
             file_name = 'icon_grid_0024_R02B06_G.nc.bz2'
+        elif model_name=='icon-d2-eps' or model_name=='icon-d2':
+            file_name = 'icon_grid_0047_R19B07_L.nc.bz2'
         else:
             LOGGER.error(('Creation of centroids for the icon model ' +
                           model_name + 'is not implemented. Please define ' +
