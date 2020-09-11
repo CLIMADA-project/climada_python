@@ -6,26 +6,28 @@ import sys
 import unittest
 import nbformat
 
-
-ROOT = os.path.abspath(os.path.dirname(__file__))
-NOTEBOOK_DIR = 'doc/tutorial'
+from climada.util.constants import SOURCE_DIR
+NOTEBOOK_DIR = os.path.abspath('doc/tutorial')
 
 
 class NotebookTest(unittest.TestCase):
-'''TestCase for testing the executability of notebooks'''
-    def __init__(self, methodName, notebook=None):
+    '''Generic TestCase for testing the executability of notebooks'''
+
+    def __init__(self, methodName, wd=None, notebook=None):
         super(NotebookTest, self).__init__(methodName)
+        self.wd = wd
         self.notebook = notebook
 
     def test_notebook(self):
-    '''Extracts code cells from the notebook and executes them one by one, using `exec`.
-    Magic lines and help/? calls are eliminated.'''
-        # cd to the top directory (you never know what happens in exec)
-        os.chdir(ROOT)
+        '''Extracts code cells from the notebook and executes them one by one, using `exec`.
+        Magic lines and help/? calls are eliminated.'''
+
+        # cd to the notebook directory
+        os.chdir(self.wd)
         print(f'start testing {self.notebook}')
 
         # read the notebook into a string
-        with open(f'{NOTEBOOK_DIR}/{self.notebook}', encoding='utf8') as nb:
+        with open(self.notebook, encoding='utf8') as nb:
             content = nb.read()
         
         # parse the string with nbformat.reads
@@ -56,18 +58,18 @@ class NotebookTest(unittest.TestCase):
                 ])
                 print(f'failed {self.notebook}')
                 self.fail(failure)
-        
+
         print(f'succeeded {self.notebook}')
 
 
 def main():
     # list notebooks in the NOTEBOOK_DIR
-    notebooks = [f for f in os.listdir(NOTEBOOK_DIR) if os.path.splitext(f)[1] == ('.ipynb')]
+    notebooks = [(NOTEBOOK_DIR, f) for f in os.listdir(NOTEBOOK_DIR) if os.path.splitext(f)[1] == ('.ipynb')]
 
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()
-    for nb in notebooks:
-        suite.addTest(NotebookTest('test_notebook', nb))
+    for (jd,nb) in notebooks:
+        suite.addTest(NotebookTest('test_notebook', jd, nb))
     
     # run the tests depending on the first input argument: None or 'report'. 
     # write xml reports for 'report'
