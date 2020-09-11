@@ -64,7 +64,9 @@ class NotebookTest(unittest.TestCase):
 
 def main():
     # list notebooks in the NOTEBOOK_DIR
-    notebooks = [(NOTEBOOK_DIR, f) for f in os.listdir(NOTEBOOK_DIR) if os.path.splitext(f)[1] == ('.ipynb')]
+    notebooks = [(NOTEBOOK_DIR, f)
+                 for f in sorted(os.listdir(NOTEBOOK_DIR))
+                 if os.path.splitext(f)[1] == ('.ipynb')]
 
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()
