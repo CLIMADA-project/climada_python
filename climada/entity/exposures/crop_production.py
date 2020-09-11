@@ -547,7 +547,10 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
             (before normalization)
     """
 
-    # use the exposure in t/y to normalize with FAO crop production values
+    # if the exposure unit is USD/y temporarily reset the exposure to t/y 
+    # (stored in tonnes_per_year) in order to normalize with FAO crop production 
+    # values and then apply set_to_USD() for the normalized exposure to restore the 
+    # initial exposure unit
     if exp_firr.value_unit == 'USD / y':
         exp_firr.value = exp_firr.tonnes_per_year
     if exp_noirr.value_unit == 'USD / y':
