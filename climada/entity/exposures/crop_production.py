@@ -647,12 +647,12 @@ def normalize_several_exp(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR,
     exp_tot_cp_list = list()
 
     for file_firr in filenames_firr:
-        str1, str2, crop_irr, years = file_firr.split('_')
+        _, _, crop_irr, years = file_firr.split('_')
         crop, _ = crop_irr.split('-')
         exp_firr = CropProduction()
         exp_firr.read_hdf5(os.path.join(output_dir, 'Exposure', file_firr))
 
-        filename_noirr = str1 + '_' + str2 + '_' + crop + '-' + 'noirr' + '_' + years
+        filename_noirr = 'crop_production_' + crop + '-' + 'noirr' + '_' + years
         exp_noirr = CropProduction()
         exp_noirr.read_hdf5(os.path.join(output_dir, 'Exposure', filename_noirr))
 
