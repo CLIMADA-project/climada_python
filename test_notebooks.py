@@ -12,7 +12,7 @@ from climada.util.constants import SOURCE_DIR
 NOTEBOOK_DIR = os.path.abspath('doc/tutorial')
 '''The path to the notebook directories.'''
 
-BOUND_TO_FAIL = '# execution of this cell will fail'
+BOUND_TO_FAIL = '# Note: execution of this cell will fail'
 '''Cells containing this line will not be executed in the test'''
 
 
@@ -50,6 +50,7 @@ class NotebookTest(unittest.TestCase):
         # parse the string with nbformat.reads
         cells = nbformat.reads(content, 4)['cells']
         
+        namespace = dict()
         for i, c in enumerate(cells):
             
             # skip markdown cells
@@ -74,12 +75,13 @@ class NotebookTest(unittest.TestCase):
             python_code = "\n".join([ln for ln in c['source'].split("\n") 
                 if not ln.startswith('%')
                 and not ln.startswith('help(')
+                and not ln.startswith('ask_ok(')
                 and not ln.strip().endswith('?')
             ])
 
             # execute the python code
             try:
-                exec(python_code)
+                exec(python_code, namespace)
             
             # report failures
             except Exception as e:
@@ -109,11 +111,14 @@ def main():
     # run the tests depending on the first input argument: None or 'report'. 
     # write xml reports for 'report'
     if sys.argv[1:]:
-        import xmlrunner
         arg = sys.argv[1]
         if arg == 'report':
+            import xmlrunner
             output = os.path.join(SOURCE_DIR, '../tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(suite)
+        else:
+            jd, nb = os.path.split(arg)
+            unittest.TextTestRunner(verbosity=2).run(NotebookTest('test_notebook', jd, nb))
     # with no argument just run the test
     else:
         unittest.TextTestRunner(verbosity=2).run(suite)
