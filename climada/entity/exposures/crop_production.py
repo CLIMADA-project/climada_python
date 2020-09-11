@@ -93,7 +93,7 @@ FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
 
 YEARS_FAO = np.array([2000, 2018])
-"""Default years from FAO used"""
+"""Default years from FAO used (data file contains values for 1991-2018)"""
 
 # default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
 # by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
@@ -373,8 +373,9 @@ class CropProduction(Exposures):
 
         Optional Parameters:
             input_dir (string): directory containing the input (FAO pricing) data
-            yearrange (array): year range for prices, f.i. (2000, 2018)
-                can also be set to a single year
+            yearrange (array): year range for prices, can also be set to a single year
+                Default is set to the arbitrary time range (2000, 2018)
+                The data is available for the years 1991-2018
             crop (str): crop type
                 f.i. 'mai', 'ric', 'whe', 'soy'
 
@@ -514,7 +515,8 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
                           yearrange=np.array([2008, 2018]), unit='t', return_data=True):
     """Normalize the given exposures countrywise with the mean crop production quantity
-    documented by the FAO.
+    documented by the FAO. Refer to the beginning of the script for guidance on where to 
+    download the needed FAO data.
 
     Parameters:
         exp_firr (crop_production): exposure under full irrigation
@@ -523,7 +525,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
     Optional Parameters:
         input_dir (str): directory containing exposure input data
         yearrange (array): the mean crop production in this year range is used to normalize
-            the exposure data (default 2008-2018)
+            the exposure data
+            Default is set to the arbitrary time range (2008, 2018)
+            The data is available for the years 1961-2018
         unit (str): unit in which to return exposure (t/y or USD/y)
         return_data (boolean): returned output
             True: returns country list, ratio = FAO/ISIMIP, normalized exposures, crop production
