@@ -580,9 +580,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
             fao_crop_production[country] = np.mean(fao_values[idx])
 
         # if a country has no values in the exposure (e.g. Cyprus) the FAO average value is used
+        # in this case the ratio is left being 1 (as initiated)
         if exp_tot_production[country] == 0:
             exp_tot_production[country] = fao_crop_production[country]
-        # if a country has no fao value, the ratio is left being 1
         elif fao_crop_production[country] != np.nan and fao_crop_production[country] != 0:
             ratio[country] = fao_crop_production[country] / exp_tot_production[country]
 
