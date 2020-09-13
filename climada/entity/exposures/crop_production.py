@@ -42,7 +42,7 @@ DEF_HAZ_TYPE = 'RC'
 """Default hazard type used in impact functions id."""
 
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
-"""Default geographical bounding box"""
+""""Default geographical bounding box of the total global agricultural land extent"""
 
 
 #ISIMIP input data specific global variables
@@ -105,7 +105,7 @@ OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 class CropProduction(Exposures):
     """Defines agriculture exposures from ISIMIP input data and FAO crop data
 
-    geopandas GeoDataFrame with metada and columns (pd.Series) defined in
+    geopandas GeoDataFrame with metadata and columns (pd.Series) defined in
     Attributes and Exposures.
 
     Attributes:
@@ -174,7 +174,7 @@ class CropProduction(Exposures):
                          'startyear': int(startyear), 'endyear': int(endyear)}
             filename = os.path.join(input_dir, filename)
         else:
-            scenario, *rest = filename.split('_')
+            scenario, *_ = filename.split('_')
             yearchunk = YEARCHUNKS[scenario]
             filename = os.path.join(input_dir, filename)
 
@@ -496,14 +496,14 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
     filename_list = list()
     output_list = list()
     for file in filenames:
-        _, _, crop_irr, *rest = file.split('_')
+        _, _, crop_irr, *_ = file.split('_')
         crop, irr = crop_irr.split('-')
         crop_production = CropProduction()
         crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
                                             yearrange=yearrange, crop=crop, irr=irr, unit=unit)
         filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
-                              + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
+                         + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename_expo)
         output_list.append(crop_production)
         crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_expo))
@@ -515,7 +515,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
                           yearrange=np.array([2008, 2018]), unit='t', return_data=True):
     """Normalize the given exposures countrywise with the mean crop production quantity
-    documented by the FAO. Refer to the beginning of the script for guidance on where to 
+    documented by the FAO. Refer to the beginning of the script for guidance on where to
     download the needed FAO data.
 
     Parameters:
@@ -547,9 +547,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
             (before normalization)
     """
 
-    # if the exposure unit is USD/y temporarily reset the exposure to t/y 
-    # (stored in tonnes_per_year) in order to normalize with FAO crop production 
-    # values and then apply set_to_USD() for the normalized exposure to restore the 
+    # if the exposure unit is USD/y temporarily reset the exposure to t/y
+    # (stored in tonnes_per_year) in order to normalize with FAO crop production
+    # values and then apply set_to_USD() for the normalized exposure to restore the
     # initial exposure unit
     if exp_firr.value_unit == 'USD / y':
         exp_firr.value = exp_firr.tonnes_per_year
@@ -582,7 +582,8 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=INPUT_DIR,
         if len(idx) >= 1:
             fao_crop_production[country] = np.mean(fao_values[idx])
 
-        # if a country has no values in the exposure (e.g. Cyprus) the FAO average value is used
+        # if a country has no values in the exposure (e.g. Cyprus) the exposure value
+        # is set to the FAO average value
         # in this case the ratio is left being 1 (as initiated)
         if exp_tot_production[country] == 0:
             exp_tot_production[country] = fao_crop_production[country]
