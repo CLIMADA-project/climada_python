@@ -37,7 +37,7 @@ import h5py
 
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
-from climada.util import coordinates
+from climada.util import coordinates as coord
 from climada.util.constants import DATA_DIR
 
 
@@ -49,7 +49,7 @@ HAZ_TYPE = 'RC'
 INT_DEF = 'Yearly Yield'
 
 BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
-""""Default geographical bounding box of the global agricultural land extent"""
+""""Default geographical bounding box of the total global agricultural land extent"""
 
 # ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
 INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
@@ -78,9 +78,11 @@ class RelativeCropyield(Hazard):
     """Agricultural climate risk: Relative Cropyield (relative to historical mean);
     Each year corresponds to one hazard event;
     Based on modelled crop yield, from ISIMIP (www.isimip.org, required input data).
+    Attributes as defined in Hazard and the here defined additional attributes.
 
     Attributes:
-        crop_type (str): crop type (e.g. whe for wheat)
+        crop_type (str): crop type ('whe' for wheat, 'mai' for maize, 'soy' for soybeans
+                                    and 'ric' for rice)
         intensity_def (str): intensity defined as:
             'Yearly Yield' [t/(ha*y)], 'Relative Yield', or 'Percentile'
     """
@@ -156,12 +158,12 @@ class RelativeCropyield(Hazard):
             yearchunk = dict()
             yearchunk = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
                          'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
-            ag_model, cl_model, _, _, soc, co2, crop_prop, *rest = filename.split('_')
+            ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
         else:
             yearchunk = YEARCHUNKS[scenario]
-            (_, _, _, _, _, _, crop_irr, *rest) = filename.split('_')
+            (_, _, _, _, _, _, crop_irr, *_) = filename.split('_')
             _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
 
@@ -191,7 +193,7 @@ class RelativeCropyield(Hazard):
             [event_ + '-01-01' for event_ in self.event_name]))
         self.centroids.set_meta_to_lat_lon()
         self.centroids.region_id = (
-            coordinates.coord_on_land(self.centroids.lat, self.centroids.lon)).astype(dtype=int)
+            coord.coord_on_land(self.centroids.lat, self.centroids.lon)).astype(dtype=int)
         self.check()
         return self
 
@@ -242,7 +244,7 @@ class RelativeCropyield(Hazard):
                 hazard with modified intensity [unitless]
         """
         # determine idx of the centroids with a mean yield !=0
-        idx = np.where(hist_mean != 0)[0]
+        [idx] = np.where(hist_mean != 0)
 
         # initialize new hazard_matrix
         hazard_matrix = np.zeros(self.intensity.shape, dtype=np.float32)
@@ -325,6 +327,9 @@ class RelativeCropyield(Hazard):
             figure
         """
 
+        # if no event range is given, all events contained in self are plotted
+        # in the case that a specific range is given as input (event) only the events
+        # within this time range are plotted
         if event is None:
             event = self.event_name
         else:
@@ -332,6 +337,7 @@ class RelativeCropyield(Hazard):
 
         self.centroids.set_meta_to_lat_lon()
 
+        # definition of plot extents
         len_lat = abs(self.centroids.lat[0] - self.centroids.lat[-1]) * (2.5 / 13.5)
         len_lon = abs(self.centroids.lon[0] - self.centroids.lon[-1]) * (5 / 26)
 
@@ -378,7 +384,11 @@ class RelativeCropyield(Hazard):
             axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
             nr_cli_models (int): number of climate models and respectively nr of rows within
                                     the subplot
-            model (int): current model/row to plot
+            model (int): current row to plot - this method can be used in a loop to plot
+                subplots in one figure consisting of several rows of subplots.
+                One row displays the intensity for present and future climate and the difference of
+                the two for one model-combination (ag_model and cl_model)
+
 
         Returns:
             geoaxes
@@ -471,7 +481,7 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
     for his_file in his_file_list:
         haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir, bbox,
                                                     yearrange_mean)
-        # save the historic mean depending on the crop-irrigation combination
+        # save the historical mean depending on the crop-irrigation combination
         # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
         # ensure that all files are assigned to the corresponding crop-irr combination
         hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][
@@ -551,7 +561,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
 
     for file in filenames:
         if isimip_run == 'ISIMIP2b':
-            ag_model, cl_model, _, scenario, soc, co2, crop_prop, *rest = file.split('_')
+            ag_model, cl_model, _, scenario, soc, co2, crop_prop, *_ = file.split('_')
             _, crop, irr = crop_prop.split('-')
             if 'historical' in file:
                 his_file_list.append(file)
@@ -579,7 +589,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
                                 'endyear': int(endyear)}
             his_file_list.append(file)
         elif isimip_run == 'test_file':
-            ag_model, cl_model, _, _, soc, co2, crop_prop, *rest = file.split('_')
+            ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = file.split('_')
             _, crop, irr = crop_prop.split('-')
             his_file_list.append(file)
             startyear, endyear = yearrange_his
