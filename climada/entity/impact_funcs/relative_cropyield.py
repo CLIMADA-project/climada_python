@@ -37,9 +37,11 @@ class IFRelativeCropyield(ImpactFunc):
         self.id = 1
         self.name = 'Relative Cropyield ISIMIP'
         self.intensity_unit = ''
-        #intensity = 0 when the crop production is equivalent to the historical mean
-        #intensity = -1 for a complete crop failure
-        #intensity = 1 for a crop production surplus of 100%
+        # intensity = 0 when the crop production is equivalent to the historical mean
+        # intensity = -1 for a complete crop failure
+        # intensity = 1 for a crop production surplus of 100%
+        # the impact function covers the common stretch of the hazard intensity
+        # CLIMADA interpolates linearly in case of larger intensity values
         self.intensity = np.arange(-1, 10)
         self.mdr = (self.intensity)
         self.mdd = (self.intensity)
