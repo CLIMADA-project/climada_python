@@ -56,17 +56,17 @@ YEARCHUNKS = dict()
 YEARCHUNKS['historical'] = list()
 """historical year chunks ISIMIP 2b"""
 for i in np.arange(1860, 2000, 10):
-    YEARCHUNKS['historical'].append('%i_%i' % (i + 1, i + 10))
+    YEARCHUNKS['historical'].append(f'{i+1}_{i+10}')
 YEARCHUNKS['historical'].append('2001_2005')
 
 YEARCHUNKS['hist'] = list()
 """historical year chunks ISIMIP 2a"""
 for i in np.arange(1970, 2010, 10):
-    YEARCHUNKS['hist'].append('%i_%i' % (i + 1, i + 10))
+    YEARCHUNKS['hist'].append(f'{i+1}_{i+10}')
 
 YEARCHUNKS['rcp26'] = ['2006_2010']
 for i in np.arange(2010, 2090, 10):
-    YEARCHUNKS['rcp26'].append('%i_%i' % (i + 1, i + 10))
+    YEARCHUNKS['rcp26'].append(f'{i+1}_{i+10}')
 YEARCHUNKS['rcp26'].append('2091_2099')
 YEARCHUNKS['rcp60'] = YEARCHUNKS['rcp26']
 """future year chunks"""
