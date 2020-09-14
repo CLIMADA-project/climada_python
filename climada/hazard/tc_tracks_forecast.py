@@ -31,6 +31,7 @@ import tempfile
 
 # additional libraries
 import numpy as np
+import pandas as pd
 import pybufrkit
 import tqdm
 import xarray as xr
@@ -101,7 +102,8 @@ class TCForecast(TCTracks):
         elif files is None:
             files = get_file_names(path)
 
-        for i, file in enumerate(files, 1):
+        for i, file in tqdm.tqdm(enumerate(files, 1), desc='Processing',
+                                 unit='files', total=len(files)):
             try:
                 file.seek(0)  # reset cursor if opened file instance
             except AttributeError:
@@ -136,17 +138,23 @@ class TCForecast(TCTracks):
 
         try:
             if remote_dir is None:
-                folders = con.nlst()
-                folders.sort(reverse=True)
-                con.cwd(folders[0])  # latest folder
-            else:
-                con.cwd(remote_dir)
+                remote = pd.Series(con.nlst())
+                remote = remote[remote.str.contains('120000|000000$')]
+                remote = remote.sort_values(ascending=False)
+                remote_dir = remote.iloc[0]
+
+            con.cwd(remote_dir)
 
             remotefiles = fnmatch.filter(con.nlst(), '*tropical_cyclone*')
+            if len(remotefiles) == 0:
+                msg = 'No tracks found at ftp://{}/{}'
+                msg.format(ECMWF_FTP, remote_dir)
+                raise FileNotFoundError(msg)
+
             localfiles = []
 
             LOGGER.info('Fetching BUFR tracks:')
-            for rfile in tqdm.tqdm(remotefiles, unit='files'):
+            for rfile in tqdm.tqdm(remotefiles, desc='Download', unit=' files'):
                 if target_dir:
                     lfile = open(os.path.join(target_dir, rfile), 'w+b')
                 else:
