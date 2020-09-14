@@ -270,11 +270,8 @@ class LowFlow(Hazard):
         stps = list(np.arange(0, len(uni_ev) - 1, INTENSITY_STEP)) + [len(uni_ev)]
 
         if len(stps) == 1:
-            intensity_list = []
-            for cl_id in uni_ev:
-                intensity_list.append(
-                    self._intensity_one_cluster(tree_centr, cl_id,
-                                                res_centr, num_centr))
+            intensity_list = [self._intensity_one_cluster(tree_centr, cl_id, res_centr, num_centr)
+                  for cl_id in uni_ev]
             return sparse.csr_matrix(intensity_list)
 
         for idx, stp in enumerate(stps[0:-1]):
