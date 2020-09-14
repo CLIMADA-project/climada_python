@@ -276,10 +276,7 @@ class LowFlow(Hazard):
 
         for idx, stp in enumerate(stps[0:-1]):
             intensity_list = []
-            if not idx:
-                stp_range = uni_ev[0:stps[1]]
-            else:
-                stp_range = uni_ev[stp:stps[idx+1]]
+            stp_range = uni_ev[stp:stps[idx+1]] if idx else uni_ev[0:stps[1]]
             for cl_id in stp_range:
                 intensity_list.append(
                     self._intensity_one_cluster(tree_centr, cl_id,
