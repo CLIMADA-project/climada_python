@@ -77,13 +77,13 @@ REFERENCE_YEARRANGE = (1971, 2005)
 TARGET_YEARRANGE = (2001, 2005)
 """default year range of hazard"""
 
-BBOX = [-180, -85, 180, 85]
+BBOX = (-180, -85, 180, 85)
 """default geographical bounding box: [lon_min, lat_min, lon_max, lat_max]"""
 
 # reducing these two parameters decreases memory load but increases computation time:
 BBOX_WIDTH = 75
 """default width and height of geographical bounding boxes for loop in degree lat/lon.
-i.e. the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
+i.e., the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
 (avoid memory usage spike)"""
 INTENSITY_STEP = 300
 """max. number of events to be written to hazard.intensity matrix at once
@@ -136,8 +136,8 @@ class LowFlow(Hazard):
             reg (list of regions): can be set with region code if whole areas
                 are considered (if not None, countries and centroids
                 are ignored) [not yet implemented]
-            bbox (list of four floats): bounding box:
-                [lon min, lat min, lon max, lat max]
+            bbox (tuple of four floats): bounding box:
+                (lon min, lat min, lon max, lat max)
             percentile (float): percentile used to compute threshold,
                 0.0 < percentile < 100.0
             min_intensity (int): minimum intensity (nr of days) in an event event;
@@ -258,7 +258,7 @@ class LowFlow(Hazard):
         of these points (duration as accumulated intensity).
 
         Parameters:
-            uni_ev (list): list of unique cluster IDs
+            uni_ev (list of str): list of unique cluster IDs
             coord (list): Coordinates as in Centroids.coord
             res_centr (float): Geographical resolution of centroids
             num_centroids (int): Number of centroids
@@ -382,7 +382,7 @@ class LowFlow(Hazard):
 
         Parameters:
             data (dataframe): dataset obtained from ISIMIP  data
-            cluster_vars (tuple): pair of dimensions for 2D clustering,
+            cluster_vars (tuple pf str): pair of dimensions for 2D clustering,
                 e.g. ('lat', 'dt_month')
             res_data (float): input data grid resolution in degrees
             clus_thres_xy (int): clustering distance threshold in space
@@ -631,7 +631,7 @@ def data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
     # (for memory reasons: only loading one file with daily data per step,
     # combining data after conversion to monthly data )
     for yearchunk in yearchunks:
-        # skip if file is not required, i.e. not in yearrange:
+        # skip if file is not required, i.e., not in yearrange:
         if int(yearchunk[0:4]) <= yearrange[1] and int(yearchunk[-4:]) >= yearrange[0]:
             data_chunk = _read_and_combine_nc(
                 (max(yearrange[0], int(yearchunk[0:4])),
@@ -664,7 +664,7 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
     if yearchunks == 'default':
         yearchunks = YEARCHUNKS[scenario]
     for yearchunk in yearchunks:
-        # skip if file is not required, i.e. not in yearrange:
+        # skip if file is not required, i.e., not in yearrange:
         if int(yearchunk[0:4]) > yearrange[1] or int(yearchunk[-4:]) < yearrange[0]:
             continue
         if scenario == 'hist':
@@ -691,10 +691,10 @@ def _read_single_nc(filename, yearrange, bbox):
     """Import data from single nc file, return as xarray
 
     Parameters:
-        filename (str or Path): full path of input netcdf file
+        filename (str or pathlib.Path): full path of input netcdf file
         yearrange: (tuple): year range to be extracted from file
-        bbox (list): geographical bounding box in the form:
-            [lon_min, lat_min, lon_max, lat_max]
+        bbox (tuple of float): geographical bounding box in the form:
+            (lon_min, lat_min, lon_max, lat_max)
 
     Returns:
         data (xarray)
@@ -745,18 +745,18 @@ def _split_bbox(bbox, width=BBOX_WIDTH):
     """split bounding box into squares, return new set of bounding boxes
 
     Parameters:
-        bbox (list): geographical bounding box in the form:
-            [lon_min, lat_min, lon_max, lat_max]
+        bbox (tuple of float): geographical bounding box in the form:
+            (lon_min, lat_min, lon_max, lat_max)
 
     Optional Parameters:
         width (float): width and height of geographical bounding boxes for loop in degree lat/lon.
-        i.e. the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
+        i.e., the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
 
     Returns:
         bbox_list (list): list of bounding boxes of the same format as bbox
     """
     if not bbox:
-        bbox = [-180, -85, 180, 85]
+        bbox = (-180, -85, 180, 85)
     lons = [bbox[0]] + \
         [int(idc) for idc in np.arange(np.ceil(bbox[0]+width-1),
                                        np.floor(bbox[2]-width+1), width)] + [bbox[2]]
@@ -868,8 +868,6 @@ def _xarray_to_geopandas(data):
     dataf = dataf.dropna()
     dataf['iter_ev'] = np.ones(len(dataf), bool)
     dataf['cons_id'] = np.zeros(len(dataf), int) - 1
-    # dataf['cluster_id'] = np.zeros(len(dataf), int)
-    # dataf['clus_id'] = np.zeros(len(dataf), int) - 1
     dataf['dtime'] = dataf['time'].apply(lambda x: x.toordinal())
     dataf['dt_month'] = dataf['time'].apply(lambda x: x.year * 12 + x.month)
     return gpd.GeoDataFrame(dataf, geometry=[Point(x, y) for x, y in zip(dataf['lon'],
