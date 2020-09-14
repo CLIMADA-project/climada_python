@@ -14,7 +14,7 @@ Define impact functions for AgriculturalDroughts.
 """
 
 
-__all__ = ['IFCropPotential']
+__all__ = ['IFRelativeCropyield']
 
 import logging
 import numpy as np
@@ -22,22 +22,27 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFCropPotential(ImpactFunc):
+class IFRelativeCropyield(ImpactFunc):
     """Impact functions for agricultural droughts."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'CP'
+        self.haz_type = 'RC'
         self.intensity_unit = ''
         #self.continent = ''
 
     def set_relativeyield(self):
-        """Impact functions defining the impact as (intensity-1)"""
-        self.haz_type = 'CP'
+        """Impact functions defining the impact as intensity"""
+        self.haz_type = 'RC'
         self.id = 1
-        self.name = 'Crop Potential ISIMIP'
+        self.name = 'Relative Cropyield ISIMIP'
         self.intensity_unit = ''
-        self.intensity = np.arange(0, 11)
-        self.mdr = (self.intensity - 1)
-        self.mdd = (self.intensity - 1)
+        # intensity = 0 when the crop production is equivalent to the historical mean
+        # intensity = -1 for a complete crop failure
+        # intensity = 1 for a crop production surplus of 100%
+        # the impact function covers the common stretch of the hazard intensity
+        # CLIMADA interpolates linearly in case of larger intensity values
+        self.intensity = np.arange(-1, 10)
+        self.mdr = (self.intensity)
+        self.mdd = (self.intensity)
         self.paa = np.ones(len(self.intensity))
