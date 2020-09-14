@@ -47,10 +47,6 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'LF'
 """Hazard type acronym for Low Flow / Water Scarcity"""
 
-FILENAME_NC = '%s_%s_%s_%s_%s_%s_%s.nc'
-"""structure of ISIMIP discharge output data taking the following strings:
-    %(gh_model, cl_model, scenario, soc, fn_str_var, yearrange)"""
-
 FN_STR_VAR = 'co2_dis_global_daily'  # FileName STRing depending on VARiable
 """constant part of discharge output file (according to ISIMIP filenaming)"""
 
@@ -249,8 +245,7 @@ class LowFlow(Hazard):
             self.data = None
         self.set_frequency(yearrange=yearrange)
         self.tag = TagHazard(haz_type=HAZ_TYPE, file_name=\
-                            FILENAME_NC % (gh_model, cl_model, "*", scenario, soc, \
-                                            fn_str_var, "*_*.nc"), \
+                             f'{gh_model}_{cl_model}_*_{scenario}_{soc}_{fn_str_var}_*.nc', \
                              description='yearrange: %i-%i (%s, %s), reference: %i-%i (%s, %s)' \
                                  %(yearrange[0], yearrange[-1], scenario, soc, \
                                    yearrange_ref[0], yearrange_ref[-1], \
@@ -656,7 +651,7 @@ def data_preprocessing_percentile(percentile, yearrange, yearrange_ref,
     return dataf.reset_index(drop=True), centroids
 
 def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
-                         soc, fn_str_var, bbox, yearchunks, fname_nc=FILENAME_NC):
+                         soc, fn_str_var, bbox, yearchunks):
     """Import and combine data from nc files
 
     Parameters:
@@ -673,13 +668,13 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         if int(yearchunk[0:4]) > yearrange[1] or int(yearchunk[-4:]) < yearrange[0]:
             continue
         if scenario == 'hist':
-            bias_correction = 'nobc'
+            bias_corr = 'nobc'
         else:
-            bias_correction = 'ewembi'
+            bias_corr = 'ewembi'
 
-        filename = os.path.join(input_dir, fname_nc % (gh_model, cl_model,
-                                                       bias_correction, scenario,
-                                                       soc, fn_str_var, yearchunk))
+        filename = os.path.join(input_dir, \
+                                f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc'
+                                )
         if not os.path.isfile(filename):
             LOGGER.error('Netcdf file not found: %s', filename)
         if first_file:
