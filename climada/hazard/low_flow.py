@@ -704,7 +704,8 @@ def _read_single_nc(filename, yearrange, bbox):
         if not bbox:
             return data.sel(time=slice(dt.datetime(yearrange[0], 1, 1),
                                        dt.datetime(yearrange[-1], 12, 31)))
-        return data.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]),
+        lon_min, lat_min, lon_max, lat_max = bbox
+        return data.sel(lon=slice(lon_min, lon_max), lat=slice(lat_max, lat_min),
                         time=slice(dt.datetime(yearrange[0], 1, 1),
                                    dt.datetime(yearrange[-1], 12, 31)))
     except TypeError:
@@ -713,7 +714,8 @@ def _read_single_nc(filename, yearrange, bbox):
             data = data.sel(time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1),
                                        cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
         else:
-            data = data.sel(lon=slice(bbox[0], bbox[2]), lat=slice(bbox[3], bbox[1]),
+            lon_min, lat_min, lon_max, lat_max = bbox
+            data = data.sel(lon=slice(lon_min, lon_max), lat=slice(lat_max, lat_min),
                             time=slice(cftime.DatetimeNoLeap(yearrange[0], 1, 1),
                                        cftime.DatetimeNoLeap(yearrange[-1], 12, 31)))
         datetimeindex = data.indexes['time'].to_datetimeindex()
@@ -756,13 +758,15 @@ def _split_bbox(bbox, width=BBOX_WIDTH):
         bbox_list (list): list of bounding boxes of the same format as bbox
     """
     if not bbox:
-        bbox = (-180, -85, 180, 85)
-    lons = [bbox[0]] + \
-        [int(idc) for idc in np.arange(np.ceil(bbox[0]+width-1),
-                                       np.floor(bbox[2]-width+1), width)] + [bbox[2]]
-    lats = [bbox[1]] + \
-        [int(idc) for idc in np.arange(np.ceil(bbox[1]+width-1),
-                                       np.floor(bbox[3]-width+1), width)] + [bbox[3]]
+        lon_min, lat_min, lon_max, lat_max = (-180, -85, 180, 85)
+    else:
+        lon_min, lat_min, lon_max, lat_max = bbox
+    lons = [lon_min] + \
+        [int(idc) for idc in np.arange(np.ceil(lon_min+width-1),
+                                       np.floor(lon_max-width+1), width)] + [lon_max]
+    lats = [lat_min] + \
+        [int(idc) for idc in np.arange(np.ceil(lat_min+width-1),
+                                       np.floor(lat_max-width+1), width)] + [lat_max]
     bbox_list = list()
     for ilon, _ in enumerate(lons[:-1]):
         for ilat, _ in enumerate(lats[:-1]):
