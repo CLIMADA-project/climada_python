@@ -21,26 +21,28 @@ Define TCTracks: IBTracs reader and tracks manager.
 
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
-import os
-import glob
-import shutil
-import logging
-import warnings
 import datetime as dt
+import glob
 import itertools
-import numpy as np
+import logging
+import os
+import re
+import shutil
+import warnings
+
+import cartopy.crs as ccrs
 import matplotlib.cm as cm_mp
-from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
-import cartopy.crs as ccrs
-import pandas as pd
-import xarray as xr
-from sklearn.neighbors import DistanceMetric
+from matplotlib.lines import Line2D
 import netCDF4 as nc
 from numba import jit
+import numpy as np
+import pandas as pd
 import scipy.io.matlab as matlab
+from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
+import xarray as xr
 
 from climada.util import ureg
 import climada.util.coordinates as coord_util
@@ -122,7 +124,7 @@ class TCTracks():
                 - lat (coords)
                 - lon (coords)
                 - time_step (in hours)
-                - radius_max_wind
+                - radius_max_wind (in nautical miles)
                 - max_sustained_wind
                 - central_pressure
                 - environmental_pressure
@@ -698,6 +700,7 @@ class TCTracks():
             category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
             category = np.argmax(category_test, axis=1) - 1
 
+            # add tracks one by one
             last_perc = 0
             fname = os.path.basename(path)
             for i_track, track_category in zip(chaz_ds.id_no, category):
@@ -728,6 +731,75 @@ class TCTracks():
                     'id_no': i_track.item(),
                     'category': track_category,
                 }))
+
+    def read_simulations_storm(self, path, years=None):
+        """Read track output from STORM simulations
+
+            Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
+            dataset using STORM. Scientific Data 7(1): 40.
+
+        Track data available for download from
+
+            https://doi.org/10.4121/uuid:82c1dc0d-5485-43d8-901a-ce7f26cda35d
+
+        Parameters:
+            path (str): Full path to a txt-file as contained in the `data.zip` archive from
+                the official source linked above.
+            years (list of int, optional): If given, only read the specified "years" from the
+                txt-File. Note that a "year" refers to one ensemble of tracks in the data set that
+                represents one sample year.
+        """
+        self.data = []
+        basins = ["EP", "NA", "NI", "SI", "SP", "WP"]
+        tracks_df = pd.read_csv(path, names=['year', 'time_start', 'tc_num', 'time_delta',
+                                             'basin', 'lat', 'lon', 'pres', 'wind',
+                                             'rmw', 'category', 'landfall', 'dist_to_land'],
+                                converters={
+                                    "time_start": lambda d: dt.datetime(1980, int(float(d)), 1, 0),
+                                    "time_delta": lambda d: dt.timedelta(hours=3 * float(d)),
+                                    "basin": lambda d: basins[int(float(d))],
+                                },
+                                dtype={
+                                    "year": int,
+                                    "tc_num": int,
+                                    "category": int,
+                                })
+
+        # filter specified years
+        if years is not None:
+            tracks_df = tracks_df[np.isin(tracks_df['year'], years)]
+
+        # conversion of units and time
+        tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
+        tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+        tracks_df['time'] = tracks_df['time_start'] + tracks_df['time_delta']
+        tracks_df = tracks_df.drop(
+            labels=['time_start', 'time_delta', 'landfall', 'dist_to_land'], axis=1)
+
+        # add tracks one by one
+        fname = os.path.basename(path)
+        for idx, group in tracks_df.groupby(by=["year", "tc_num"]):
+            track_name = f"{fname}-{idx[0]}-{idx[1]}"
+            self.data.append(xr.Dataset({
+                'time_step': ('time', np.full(group['time'].shape, 3)),
+                'max_sustained_wind': ('time', group['wind'].values),
+                'central_pressure': ('time', group['pres'].values),
+                'radius_max_wind': ('time', group['rmw'].values),
+            }, coords={
+                'time': ('time', group['time'].values),
+                'lat': ('time', group['lat'].values),
+                'lon': ('time', group['lon'].values),
+            }, attrs={
+                'max_sustained_wind_unit': 'kn',
+                'central_pressure_unit': 'mb',
+                'name': track_name,
+                'sid': track_name,
+                'orig_event_flag': True,
+                'data_provider': "STORM",
+                'basin': group['basin'].values[0],
+                'id_no': idx[0] * 1000 + idx[1],
+                'category': group['category'].max(),
+            }))
 
     def equal_timestep(self, time_step_h=1, land_params=False):
         """Generate interpolated track values to time steps of min_time_step.
