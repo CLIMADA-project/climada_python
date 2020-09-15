@@ -121,7 +121,7 @@ class TCTracks():
                 - time (coords)
                 - lat (coords)
                 - lon (coords)
-                - time_step
+                - time_step (in hours)
                 - radius_max_wind
                 - max_sustained_wind
                 - central_pressure
@@ -347,8 +347,8 @@ class TCTracks():
             st_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
             track_ds['time'][:1] = track_ds.time[:1].dt.floor('H')
             if track_ds.time.size > 1:
-                track_ds['time_step'][0] = (track_ds.time[1] - track_ds.time[0]) \
-                                      / np.timedelta64(1, 's')
+                track_ds['time_step'][0] = ((track_ds.time[1] - track_ds.time[0])
+                                            / np.timedelta64(1, 'h'))
 
             with warnings.catch_warnings():
                 # See https://github.com/pydata/xarray/issues/4167
@@ -635,6 +635,99 @@ class TCTracks():
                        'id_no': i_track,
                        'category': set_category(wind, 'kn')}
         self.data.append(tr_ds)
+
+    def read_simulations_chaz(self, file_names, year_range=None):
+        """Read track output from CHAZ simulations
+
+            Lee, C.-Y., Tippett, M.K., Sobel, A.H., Camargo, S.J. (2018): An Environmentally
+            Forced Tropical Cyclone Hazard Model. J Adv Model Earth Sy 10(1): 223–241.
+
+        Parameters:
+            file_names (str or list(str)): absolute file name(s) or folder name containing the
+                files to read.
+            year_range (tuple, optional): (min_year, max_year). Filer by year, if given.
+        """
+        self.data = []
+        for path in get_file_names(file_names):
+            LOGGER.info('Reading %s.', path)
+            chaz_ds = xr.open_dataset(path)
+            chaz_ds.time.attrs["units"] = "days since 1950-1-1"
+            chaz_ds = xr.decode_cf(chaz_ds)
+            chaz_ds['id_no'] = chaz_ds.stormID * 1000 + chaz_ds.ensembleNum
+            for v in ['time', 'longitude', 'latitude']:
+                chaz_ds[v] = chaz_ds[v].expand_dims(ensembleNum=chaz_ds.ensembleNum)
+            chaz_ds = chaz_ds.stack(id=("ensembleNum", "stormID"))
+            years_uniq = np.unique(chaz_ds.time.dt.year)
+            LOGGER.info("File contains %s tracks (at most %s nodes each), "
+                        "representing %s years (%s-%s).",
+                        chaz_ds.id_no.size, chaz_ds.lifelength.size,
+                        years_uniq.size, years_uniq[0], years_uniq[-1])
+
+            # filter by year range if given
+            if year_range:
+                match = ((chaz_ds.time.dt.year >= year_range[0])
+                         & (chaz_ds.time.dt.year <= year_range[1])).sel(lifelength=0)
+                if np.count_nonzero(match) == 0:
+                    LOGGER.info('No tracks in time range (%s, %s).', *year_range)
+                    self.data = []
+                    continue
+                chaz_ds = chaz_ds.sel(id=match)
+
+            # remove invalid tracks from selection
+            chaz_ds['valid_t'] = chaz_ds.time.notnull() & chaz_ds.Mwspd.notnull()
+            valid_st = chaz_ds.valid_t.any(dim="lifelength")
+            invalid_st = np.nonzero(~valid_st.data)[0]
+            if invalid_st.size > 0:
+                LOGGER.info('No valid Mwspd values found for %d out of %d storm tracks.',
+                            invalid_st.size, valid_st.size)
+                chaz_ds = chaz_ds.sel(id=valid_st)
+
+            # estimate central pressure from location and max wind
+            chaz_ds['pres'] = xr.full_like(chaz_ds.Mwspd, -1, dtype=float)
+            chaz_ds['pres'][:] = _estimate_pressure(
+                chaz_ds.pres, chaz_ds.latitude, chaz_ds.longitude, chaz_ds.Mwspd)
+
+            # compute time stepsizes
+            chaz_ds['time_step'] = xr.zeros_like(chaz_ds.time, dtype=float)
+            chaz_ds['time_step'][1:, :] = (chaz_ds.time.diff(dim="lifelength")
+                                            / np.timedelta64(1, 'h'))
+            chaz_ds['time_step'][0, :] = chaz_ds.time_step[1, :]
+
+            # determine Saffir-Simpson category
+            max_wind = chaz_ds.Mwspd.max(dim="lifelength").data.ravel()
+            category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
+            category = np.argmax(category_test, axis=1) - 1
+
+            last_perc = 0
+            fname = os.path.basename(path)
+            for i_track, track_category in zip(chaz_ds.id_no, category):
+                perc = 100 * len(self.data) / chaz_ds.id_no.size
+                if perc - last_perc >= 10:
+                    LOGGER.info("Progress: %d%%", perc)
+                    last_perc = perc
+                track_ds = chaz_ds.sel(id=i_track.id.item())
+                track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
+                ensemble_num, storm_id = i_track.id.item()
+                track_name = f"{fname}-{storm_id}-{ensemble_num}"
+                self.data.append(xr.Dataset({
+                    'time_step': ('time', track_ds.time_step),
+                    'max_sustained_wind': ('time', track_ds.Mwspd.data),
+                    'central_pressure': ('time', track_ds.pres.data),
+                }, coords={
+                    'time': track_ds.time.dt.round('s').data,
+                    'lat': ('time', track_ds.latitude.data),
+                    'lon': ('time', track_ds.longitude.data),
+                }, attrs={
+                    'max_sustained_wind_unit': 'kn',
+                    'central_pressure_unit': 'mb',
+                    'name': track_name,
+                    'sid': track_name,
+                    'orig_event_flag': True,
+                    'data_provider': "CHAZ",
+                    'basin': "global",
+                    'id_no': i_track.item(),
+                    'category': track_category,
+                }))
 
     def equal_timestep(self, time_step_h=1, land_params=False):
         """Generate interpolated track values to time steps of min_time_step.
