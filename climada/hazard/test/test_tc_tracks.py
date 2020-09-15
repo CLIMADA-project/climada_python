@@ -38,6 +38,7 @@ TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
 TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
 TEST_TRACK_CHAZ = os.path.join(DATA_DIR, 'chaz_test_tracks.nc')
+TEST_TRACK_STORM = os.path.join(DATA_DIR, 'storm_test_tracks.txt')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -287,6 +288,35 @@ class TestIO(unittest.TestCase):
         tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1950, 1955))
         self.assertEqual(len(tc_track.data), 0)
 
+    def test_read_simulations_storm(self):
+        """Test reading NetCDF output from STORM simulations"""
+        tc_track = tc.TCTracks()
+
+        tc_track.read_simulations_storm(TEST_TRACK_STORM)
+        self.assertEqual(len(tc_track.data), 6)
+        self.assertEqual(tc_track.data[0].time.size, 15)
+        self.assertEqual(tc_track.data[0].lon[3], 245.3)
+        self.assertEqual(tc_track.data[0].lat[4], 11.9)
+        self.assertEqual(tc_track.data[0].time_step[3], 3)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[2], 37.127429805615556)
+        self.assertEqual(tc_track.data[0].radius_max_wind[5], 19.07407454551836)
+        self.assertEqual(tc_track.data[0].central_pressure[1], 999.4)
+        self.assertTrue(np.all(tc_track.data[0].time.dt.year == 1980))
+        self.assertEqual(tc_track.data[0].time.dt.month[2].item(), 6)
+        self.assertEqual(tc_track.data[0].time.dt.day[3].item(), 1)
+        self.assertEqual(tc_track.data[0].max_sustained_wind_unit, 'kn')
+        self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
+        self.assertEqual(tc_track.data[0].sid, 'storm_test_tracks.txt-0-0')
+        self.assertEqual(tc_track.data[0].name, 'storm_test_tracks.txt-0-0')
+        self.assertTrue(np.all([d.basin == 'EP' for d in tc_track.data]))
+        self.assertEqual(tc_track.data[4].category, 0)
+        self.assertEqual(tc_track.data[3].category, 1)
+
+        tc_track.read_simulations_storm(TEST_TRACK_STORM, years=[0, 2])
+        self.assertEqual(len(tc_track.data), 4)
+
+        tc_track.read_simulations_storm(TEST_TRACK_STORM, years=[7])
+        self.assertEqual(len(tc_track.data), 0)
 
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
