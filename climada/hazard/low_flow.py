@@ -252,14 +252,14 @@ class LowFlow(Hazard):
                                           f'({scenario_ref}, {soc_ref})'
                              )
 
-    def _intensity_loop(self, uni_ev, coord, res_centr, num_centr):
+    def _intensity_loop(self, uniq_ev, coord, res_centr, num_centr):
         """Compute intensity and populate intensity matrix.
         For each event, if more than one points of
         data have the same coordinates, take the sum of days below threshold
         of these points (duration as accumulated intensity).
 
         Parameters:
-            uni_ev (list of str): list of unique cluster IDs
+            uniq_ev (list of str): list of unique cluster IDs
             coord (list): Coordinates as in Centroids.coord
             res_centr (float): Geographical resolution of centroids
             num_centroids (int): Number of centroids
@@ -269,14 +269,14 @@ class LowFlow(Hazard):
         """
         tree_centr = BallTree(coord, metric='chebyshev')
         # steps: list of steps to be written to intensity matrix at once:
-        steps = list(np.arange(0, len(uni_ev) - 1, INTENSITY_STEP)) + [len(uni_ev)]
+        steps = list(np.arange(0, len(uniq_ev) - 1, INTENSITY_STEP)) + [len(uniq_ev)]
         if len(steps) == 1:
             intensity_list = [self._intensity_one_cluster(tree_centr, cl_id, res_centr, num_centr)
-                  for cl_id in uni_ev]
+                  for cl_id in uniq_ev]
             return sparse.csr_matrix(intensity_list)
         # step_range: list of tuples containing the unique IDs to be written to
         # the intensity matrix in one step
-        step_range = [tuple(uni_ev[stp:steps[idx+1]]) for idx, stp in enumerate(steps[0:-1])]
+        step_range = [tuple(uniq_ev[stp:steps[idx+1]]) for idx, stp in enumerate(steps[0:-1])]
         for idx, stp in enumerate(step_range):
             intensity_list = []
             for cl_id in stp:
@@ -289,17 +289,17 @@ class LowFlow(Hazard):
                                                sparse.csr_matrix(intensity_list)))
         return intensity_mat
 
-    def _set_dates(self, uni_ev):
+    def _set_dates(self, uniq_ev):
         """Set dates of maximum intensity (date) as well as start and end dates
         per event
 
         Parameters:
-            uni_ev (list): list of unique cluster IDs
+            uniq_ev (list): list of unique cluster IDs
         """
-        self.date = np.zeros(uni_ev.size, int)
-        self.date_start = np.zeros(uni_ev.size, int)
-        self.date_end = np.zeros(uni_ev.size, int)
-        for ev_idx, ev_id in enumerate(uni_ev):
+        self.date = np.zeros(uniq_ev.size, int)
+        self.date_start = np.zeros(uniq_ev.size, int)
+        self.date_end = np.zeros(uniq_ev.size, int)
+        for ev_idx, ev_id in enumerate(uniq_ev):
             # set event date to date of maximum intensity (ndays)
             self.date[ev_idx] = self.data[self.data.cluster_id == ev_id]\
                 .groupby('dtime')['ndays'].sum().idxmax()
@@ -313,7 +313,7 @@ class LowFlow(Hazard):
             centroids (Centroids)"""
         # intensity = list()
 
-        uni_ev = np.unique(self.data['cluster_id'].values)
+        uniq_ev = np.unique(self.data['cluster_id'].values)
         num_centr = centroids.size
         res_centr = self._centroids_resolution(centroids)
 
@@ -326,12 +326,12 @@ class LowFlow(Hazard):
         self.event_id = self.event_id[self.event_id > 0]
         self.event_name = list(map(str, self.event_id))
 
-        self._set_dates(uni_ev)
+        self._set_dates(uniq_ev)
 
-        self.orig = np.ones(uni_ev.size)
+        self.orig = np.ones(uniq_ev.size)
         self.set_frequency()
 
-        self.intensity = self._intensity_loop(uni_ev, centroids.coord, res_centr, num_centr)
+        self.intensity = self._intensity_loop(uniq_ev, centroids.coord, res_centr, num_centr)
 
         # Following values are defined for each event and centroid
         self.intensity = self.intensity.tocsr()
