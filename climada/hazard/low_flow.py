@@ -85,7 +85,7 @@ BBOX_WIDTH = 75
 """default width and height of geographical bounding boxes for loop in degree lat/lon.
 i.e., the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
 (avoid memory usage spike)"""
-INTENSITY_STEP = 300
+INTENSITY_STEP = 300 # 300
 """max. number of events to be written to hazard.intensity matrix at once
 (avoid memory usage spike)"""
 
@@ -267,24 +267,24 @@ class LowFlow(Hazard):
             intensity_mat (sparse.lilmatrix): intensity values as sparse matrix
         """
         tree_centr = BallTree(coord, metric='chebyshev')
-        stps = list(np.arange(0, len(uni_ev) - 1, INTENSITY_STEP)) + [len(uni_ev)]
-
-        if len(stps) == 1:
+        # steps: list of steps to be written to intensity matrix at once:
+        steps = list(np.arange(0, len(uni_ev) - 1, INTENSITY_STEP)) + [len(uni_ev)]
+        if len(steps) == 1:
             intensity_list = [self._intensity_one_cluster(tree_centr, cl_id, res_centr, num_centr)
                   for cl_id in uni_ev]
             return sparse.csr_matrix(intensity_list)
-
-        for idx, stp in enumerate(stps[0:-1]):
+        # step_range: list of tuples containing the unique IDs to be written to
+        # the intensity matrix in one step
+        step_range = [tuple(uni_ev[stp:steps[idx+1]]) for idx, stp in enumerate(steps[0:-1])]
+        for idx, stp in enumerate(step_range):
             intensity_list = []
-            stp_range = uni_ev[stp:stps[idx+1]] if idx else uni_ev[0:stps[1]]
-            for cl_id in stp_range:
+            for cl_id in stp:
                 intensity_list.append(
-                    self._intensity_one_cluster(tree_centr, cl_id,
-                                                res_centr, num_centr))
-                if not idx:
-                    intensity_mat = sparse.csr_matrix(intensity_list)
-                else:
-                    intensity_mat = sparse.vstack((intensity_mat,
+                 self._intensity_one_cluster(tree_centr, cl_id, res_centr, num_centr))
+            if not idx:
+                intensity_mat = sparse.lil_matrix(intensity_list)
+            else:
+                intensity_mat = sparse.vstack((intensity_mat,
                                                sparse.csr_matrix(intensity_list)))
         return intensity_mat
 
