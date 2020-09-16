@@ -741,7 +741,8 @@ def _xarray_reduce(data_xarray, fun=None, percentile=None):
 
 def _split_bbox(bbox, width=BBOX_WIDTH):
     """split bounding box into squares, return new set of bounding boxes
-
+    Note: Could this function be a candidate for climada.util in the future?
+    
     Parameters:
         bbox (tuple of float): geographical bounding box in the form:
             (lon_min, lat_min, lon_max, lat_max)
@@ -857,6 +858,7 @@ def _days_below_threshold_per_month(data_xarray, threshold_grid, mean_ref,
 
 def _xarray_to_geopandas(data_xarray):
     """create GeoDataFrame from xarray with NaN values dropped
+    Note: Could this function be a candidate for climada.util in the future?
 
     Parameters:
         data_xarray (xarray): data as xarray object
