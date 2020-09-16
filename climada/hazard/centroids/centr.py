@@ -178,10 +178,20 @@ class Centroids():
         return centroids
 
     @staticmethod
-    def from_geodataframe(gdf):
-        """Create centroids instance from GeoDataFrame. All columns beside the
-        geometry (or geom) column will be translated using pd.Series.to_numpy,
-        so the Series dtype will be respected.
+    def from_geodataframe(gdf, geometry_alias='geom'):
+        """Create Centroids instance from GeoDataFrame. The geometry, lat, and
+        lon attributes are set from the GeoDataFrame.geometry attribute, while
+        the columns are copied as attributes to the Centroids object in
+        the form of numpy.ndarrays using pandas.Series.to_numpy. The Series
+        dtype will thus be respected.
+
+        Columns named lat or lon are ignored, as they would overwrite the
+        coordinates extracted from the point features. If the geometry
+        attribute bears an alias, it can be dropped by setting the
+        geometry_alias parameter.
+
+        If the GDF includes a region_id column, but no on_land column, then
+        on_land=True is inferred for those centroids that have a set region_id.
 
         >>> gdf = geopandas.read_file('centroids.shp')
         >>> gdf.region_id = gdf.region_id.astype(int)  # type coercion
@@ -189,18 +199,20 @@ class Centroids():
 
         Parameters:
             gdf (GeoDataFrame): Where the geometry column needs to consist of
-                point features.
+                point features. See above for details on processing.
+            geometry_alias (str, opt): Alternate name for the geometry column;
+                dropped to avoid duplicate assignment.
         """
         centroids = Centroids()
 
         centroids.geometry = gdf.geometry
-        centroids.lat = gdf.geometry.y.to_numpy()
-        centroids.lon = gdf.geometry.x.to_numpy()
+        centroids.lat = gdf.geometry.y.to_numpy(copy=True)
+        centroids.lon = gdf.geometry.x.to_numpy(copy=True)
 
         for col in gdf.columns:
-            if 'geom' in col:  # matches both 'geom' and 'geometry' columns
-                continue
-            val = gdf[col].to_numpy()
+            if col in [geometry_alias, 'geometry', 'lat', 'lon']:
+                continue  # skip these, because they're already set above
+            val = gdf[col].to_numpy(copy=True)
             setattr(centroids, col, val)
 
         if centroids.on_land.size == 0:

@@ -24,10 +24,8 @@ import unittest
 import numpy as np
 import h5py
 
+from climada.util.constants import HAZ_DEMO_MAT
 import climada.util.hdf5_handler as hdf5
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_short_name.mat')
 
 class TestFunc(unittest.TestCase):
     """Test the auxiliary functions used to retrieve variables from HDF5"""
@@ -36,7 +34,7 @@ class TestFunc(unittest.TestCase):
         """Check function to get a string from input integer array"""
 
         # Load input
-        contents = hdf5.read(HAZ_TEST_MAT)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # Convert several strings
         str_date = hdf5.get_string(contents['hazard']['date'])
@@ -60,7 +58,7 @@ class TestFunc(unittest.TestCase):
         to build a sparse matrix from the read HDF5 variable"""
 
         # Load input
-        contents = hdf5.read(HAZ_TEST_MAT)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # get matrix size
         mat_shape = (len(contents['hazard']['event_ID']),
@@ -82,16 +80,16 @@ class TestFunc(unittest.TestCase):
 
     def test_get_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        file = h5py.File(HAZ_TEST_MAT, 'r')
+        file = h5py.File(HAZ_DEMO_MAT, 'r')
         var = file['hazard']['name'][0][0]
-        res = hdf5.get_str_from_ref(HAZ_TEST_MAT, var)
+        res = hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
         self.assertEqual('NNN_1185101', res)
 
     def test_get_list_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        file = h5py.File(HAZ_TEST_MAT, 'r')
+        file = h5py.File(HAZ_DEMO_MAT, 'r')
         var = file['hazard']['name']
-        var_list = hdf5.get_list_str_from_ref(HAZ_TEST_MAT, var)
+        var_list = hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
         self.assertEqual('NNN_1185101', var_list[0])
         self.assertEqual('NNN_1185101_gen1', var_list[1])
         self.assertEqual('NNN_1185101_gen2', var_list[2])
@@ -103,7 +101,7 @@ class TestReader(unittest.TestCase):
         """Checking result against matlab atl_prob.mat file"""
 
         # Load input
-        contents = hdf5.read(HAZ_TEST_MAT)
+        contents = hdf5.read(HAZ_DEMO_MAT)
 
         # Check read contents
         self.assertEqual(1, len(contents))
@@ -157,7 +155,7 @@ class TestReader(unittest.TestCase):
 
         # Load input
         refs = True
-        contents = hdf5.read(HAZ_TEST_MAT, refs)
+        contents = hdf5.read(HAZ_DEMO_MAT, refs)
 
         # Check read contents
         self.assertEqual(2, len(contents))
