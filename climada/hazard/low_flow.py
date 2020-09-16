@@ -253,7 +253,8 @@ class LowFlow(Hazard):
                              )
 
     def _intensity_loop(self, uni_ev, coord, res_centr, num_centr):
-        """Compute and intensity matrix. For each event, if more than one points of
+        """Compute intensity and populate intensity matrix.
+        For each event, if more than one points of
         data have the same coordinates, take the sum of days below threshold
         of these points (duration as accumulated intensity).
 
