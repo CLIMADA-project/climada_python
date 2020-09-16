@@ -75,10 +75,10 @@ REFERENCE_YEARRANGE = (1971, 2005)
 """default year range used to compute threshold (base line reference)"""
 
 TARGET_YEARRANGE = (2001, 2005)
-"""default year range of hazard"""
+"""arbitrary default, i.e. default year range of historical low flow hazard 2001-2005"""
 
 BBOX = (-180, -85, 180, 85)
-"""default geographical bounding box: [lon_min, lat_min, lon_max, lat_max]"""
+"""default quasi-global geographical bounding box: [lon_min, lat_min, lon_max, lat_max]"""
 
 # reducing these two parameters decreases memory load but increases computation time:
 BBOX_WIDTH = 75
@@ -246,10 +246,10 @@ class LowFlow(Hazard):
         self.set_frequency(yearrange=yearrange)
         self.tag = TagHazard(haz_type=HAZ_TYPE, file_name=\
                              f'{gh_model}_{cl_model}_*_{scenario}_{soc}_{fn_str_var}_*.nc', \
-                             description='yearrange: %i-%i (%s, %s), reference: %i-%i (%s, %s)' \
-                                 %(yearrange[0], yearrange[-1], scenario, soc, \
-                                   yearrange_ref[0], yearrange_ref[-1], \
-                                   scenario_ref, soc_ref)
+                             description= f'yearrange: {yearrange[0]}-{yearrange[0]} ' +\
+                                          f'({scenario}, {soc}), ' +\
+                                          f'reference: {yearrange_ref[0]}-{yearrange_ref[0]} ' +\
+                                          f'({scenario_ref}, {soc_ref})'
                              )
 
     def _intensity_loop(self, uni_ev, coord, res_centr, num_centr):
