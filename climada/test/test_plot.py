@@ -42,6 +42,10 @@ class TestPlotter(unittest.TestCase):
         """Generate all possible plots of the hazard intensity."""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_DEMO_MAT)
+        hazard.event_name = [""] * hazard.event_id.size
+        hazard.event_name[35] = "NNN_1185106_gen5"
+        hazard.event_name[3898] = "NNN_1190604_gen8"
+        hazard.event_name[5488] = "NNN_1192804_gen8"
         myax = hazard.plot_intensity(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', myax.get_title())
 
@@ -73,6 +77,9 @@ class TestPlotter(unittest.TestCase):
         """Generate all possible plots of the hazard fraction."""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_DEMO_MAT)
+        hazard.event_name = [""] * hazard.event_id.size
+        hazard.event_name[35] = "NNN_1185106_gen5"
+        hazard.event_name[11897] = "GORDON_gen7"
         myax = hazard.plot_fraction(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', myax.get_title())
 

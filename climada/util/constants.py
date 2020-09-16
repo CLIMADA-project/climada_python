@@ -105,10 +105,9 @@ HAZ_DEMO_FLDFRC = os.path.join(
     DATA_DIR, 'demo', 'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
 """NetCDF4 Flood fraction from isimip simulations"""
 
-HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob.mat')
+HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob_nonames.mat')
 """
-Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over
-Florida with 100 centroids.
+Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids.
 """
 
 HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1990_2004.h5')
