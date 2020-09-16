@@ -47,7 +47,7 @@ The branching system is adapted for the scientific setting from
 +-------------+--------------------+------------+---------------+
 | Branches    | Purpose            | Code       | Longevity     |
 +=============+====================+============+===============+
-| Master      | Releases           | Stable     | Infinite      |
+| Main      | Releases           | Stable     | Infinite      |
 +-------------+--------------------+------------+---------------+
 | Develop     | Between releases   | Reviewed   | Infinite      |
 +-------------+--------------------+------------+---------------+
