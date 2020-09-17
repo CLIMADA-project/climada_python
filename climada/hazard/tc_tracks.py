@@ -647,7 +647,7 @@ class TCTracks():
         Parameters:
             file_names (str or list(str)): absolute file name(s) or folder name containing the
                 files to read.
-            year_range (tuple, optional): (min_year, max_year). Filer by year, if given.
+            year_range (tuple, optional): (min_year, max_year). Filter by year, if given.
         """
         self.data = []
         for path in get_file_names(file_names):
@@ -712,10 +712,14 @@ class TCTracks():
                 track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
                 ensemble_num, storm_id = i_track.id.item()
                 track_name = f"{fname}-{storm_id}-{ensemble_num}"
+                rmw = np.full_like(track_ds.pres.data, np.nan)
+                env_pressure = np.full_like(track_ds.pres.data, DEF_ENV_PRESSURE)
                 self.data.append(xr.Dataset({
                     'time_step': ('time', track_ds.time_step),
                     'max_sustained_wind': ('time', track_ds.Mwspd.data),
                     'central_pressure': ('time', track_ds.pres.data),
+                    'radius_max_wind': ('time', rmw),
+                    'environmental_pressure': ('time', env_pressure),
                 }, coords={
                     'time': track_ds.time.dt.round('s').data,
                     'lat': ('time', track_ds.latitude.data),
@@ -780,11 +784,17 @@ class TCTracks():
         fname = os.path.basename(path)
         for idx, group in tracks_df.groupby(by=["year", "tc_num"]):
             track_name = f"{fname}-{idx[0]}-{idx[1]}"
+            basin = group['basin'].values[0]
+            env_pressure = DEF_ENV_PRESSURE
+            if basin in BASIN_ENV_PRESSURE:
+                env_pressure = BASIN_ENV_PRESSURE[basin]
+            env_pressure = np.full_like(group['pres'].values, env_pressure)
             self.data.append(xr.Dataset({
                 'time_step': ('time', np.full(group['time'].shape, 3)),
                 'max_sustained_wind': ('time', group['wind'].values),
                 'central_pressure': ('time', group['pres'].values),
                 'radius_max_wind': ('time', group['rmw'].values),
+                'environmental_pressure': ('time', env_pressure),
             }, coords={
                 'time': ('time', group['time'].values),
                 'lat': ('time', group['lat'].values),
@@ -796,7 +806,7 @@ class TCTracks():
                 'sid': track_name,
                 'orig_event_flag': True,
                 'data_provider': "STORM",
-                'basin': group['basin'].values[0],
+                'basin': basin,
                 'id_no': idx[0] * 1000 + idx[1],
                 'category': group['category'].max(),
             }))
