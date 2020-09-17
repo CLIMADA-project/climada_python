@@ -13,6 +13,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import os
 import time
+import logging
 from functools import partial
 
 #matplotlib.use('Qt5Agg', force=True)
@@ -562,10 +563,14 @@ def _get_midpoints(highValueArea):
         High_Value_Area_gdf.loc[index, "Midpoint"] = \
         High_Value_Area_gdf.loc[index, "geometry"].centroid.wkt
         s = shape(High_Value_Area_gdf.loc[index, "geometry"])
+        # turn warnings off, otherwise Future and Deprecation warnings are flooding the logs
+        logging.captureWarnings(True)
         proj = partial(pyproj.transform, pyproj.Proj(init='epsg:4326'),
                        pyproj.Proj(init='epsg:3857'))
         High_Value_Area_gdf.loc[index, "projected_area"] = transform(proj, s).area
-
+        # turn warnings on again
+        logging.captureWarnings(False)
+        
     # change active geometry from polygons to midpoints
     from shapely.wkt import loads
     High_Value_Area_gdf = High_Value_Area_gdf.rename(columns={'geometry': 'geo_polys',
