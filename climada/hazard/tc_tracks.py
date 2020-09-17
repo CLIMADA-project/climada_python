@@ -401,6 +401,8 @@ class TCTracks():
                 'id_no': track_ds.id_no.item(),
                 'category': category[i_track],
             }))
+        if last_perc != 100:
+            LOGGER.info("Progress: 100%")
         self.data = all_tracks
 
     def read_processed_ibtracs_csv(self, file_names):
@@ -654,14 +656,16 @@ class TCTracks():
             LOGGER.info('Reading %s.', path)
             chaz_ds = xr.open_dataset(path)
             chaz_ds.time.attrs["units"] = "days since 1950-1-1"
+            chaz_ds.time.attrs["missing_value"] = chaz_ds.time.min()
             chaz_ds = xr.decode_cf(chaz_ds)
             chaz_ds['id_no'] = chaz_ds.stormID * 1000 + chaz_ds.ensembleNum
             for v in ['time', 'longitude', 'latitude']:
                 chaz_ds[v] = chaz_ds[v].expand_dims(ensembleNum=chaz_ds.ensembleNum)
             chaz_ds = chaz_ds.stack(id=("ensembleNum", "stormID"))
-            years_uniq = np.unique(chaz_ds.time.dt.year)
+            years_uniq = chaz_ds.time.dt.year.data
+            years_uniq = np.unique(years_uniq[~np.isnan(years_uniq)])
             LOGGER.info("File contains %s tracks (at most %s nodes each), "
-                        "representing %s years (%s-%s).",
+                        "representing %s years (%d-%d).",
                         chaz_ds.id_no.size, chaz_ds.lifelength.size,
                         years_uniq.size, years_uniq[0], years_uniq[-1])
 
@@ -735,6 +739,8 @@ class TCTracks():
                     'id_no': i_track.item(),
                     'category': track_category,
                 }))
+            if last_perc != 100:
+                LOGGER.info("Progress: 100%")
 
     def read_simulations_storm(self, path, years=None):
         """Read track output from STORM simulations
@@ -781,8 +787,14 @@ class TCTracks():
             labels=['time_start', 'time_delta', 'landfall', 'dist_to_land'], axis=1)
 
         # add tracks one by one
+        last_perc = 0
         fname = os.path.basename(path)
-        for idx, group in tracks_df.groupby(by=["year", "tc_num"]):
+        groups = tracks_df.groupby(by=["year", "tc_num"])
+        for idx, group in groups:
+            perc = 100 * len(self.data) / len(groups)
+            if perc - last_perc >= 10:
+                LOGGER.info("Progress: %d%%", perc)
+                last_perc = perc
             track_name = f"{fname}-{idx[0]}-{idx[1]}"
             basin = group['basin'].values[0]
             env_pressure = DEF_ENV_PRESSURE
@@ -810,6 +822,8 @@ class TCTracks():
                 'id_no': idx[0] * 1000 + idx[1],
                 'category': group['category'].max(),
             }))
+        if last_perc != 100:
+            LOGGER.info("Progress: 100%")
 
     def equal_timestep(self, time_step_h=1, land_params=False):
         """Generate interpolated track values to time steps of min_time_step.
