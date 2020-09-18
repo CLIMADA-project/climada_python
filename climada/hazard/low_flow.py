@@ -85,29 +85,40 @@ BBOX_WIDTH = 75
 """default width and height of geographical bounding boxes for loop in degree lat/lon.
 i.e., the bounding box is split into square boxes with maximum size BBOX_WIDTH*BBOX_WIDTH
 (avoid memory usage spike)"""
-INTENSITY_STEP = 300 # 300
+INTENSITY_STEP = 300
 """max. number of events to be written to hazard.intensity matrix at once
 (avoid memory usage spike)"""
 
 class LowFlow(Hazard):
-    """Contains water scarcity events.
+    """Contains river low flow events (surface water scarcity).
+    The intensity of the hazard is number of days below a threshold (defined as
+    percentile in reference data). The method set_from_nc can be used to create
+    a LowFlow hazard set populated with data based on gridded hydrological model runs
+    as provided by the ISIMIP project (https://www.isimip.org/), e.g. ISIMIP2a/b.
+    grid cells with a minimum number of days below threshold per month are clustered
+    in space (lat/lon) and time (monthly) to identify and set connected events.
 
     Attributes:
-        date_start (np.array(int)): for every event, the starting date (ordinal)
-            (the Hazard attribute 'date' contains the date of maximum event intensity)
-        date_end (np.array(int)): for every event, the starting date (ordinal)
+        clus_thresh_t (int): maximum time difference in months to be counted as$
+            connected points during clustering, default = 1
+        clus_thresh_xy (int): maximum spatial grid cell distance in number of cells
+            to be counted as connected points during clustering, default = 2
+        min_samples (1): Minimum amount of data points in one cluster to consider as event,
+            default = 1.
+        date_start (np.array(int)): for each event, the date of the first month
+            of the event (ordinal)
+            Note: Hazard attribute 'date' contains the date of maximum event intensity.
+        date_end (np.array(int)): for each event, the date of the last month of
+            the event (ordinal)
+        resolution (float): spatial resoultion of gridded discharge input data in degree lat/lon,
+            default = 0.5°
     """
 
-    clus_thresh_t = 1
-    """Default maximum time difference in months
-    to be counted as connected points during clustering"""
-    clus_thres_xy = 2  # 4
-    """Default maximum grid cell distance (number of grid cells)
-    to be counted as connected points during clustering"""
-    min_samples = 1
-    """Default minimum amount of data points in one cluster to retain the cluster"""
-    resolution = .5
-    """Default spatial resoultion of input data in degree lat/lon"""
+    clus_thresh_t = 1 # Default = 1: months with intensity<min_intensity interrupt event
+    clus_thresh_xy = 2 # Default = 2: allows 1 cell gap and diagonal connection
+    min_samples = 1 # Default = 1: no filtering of small events with this default
+    resolution = .5 # Default = .5: in agreement with resolution of data from ISIMIP 1-3
+
 
     def __init__(self, pool=None):
         """Empty constructor."""
@@ -125,10 +136,15 @@ class LowFlow(Hazard):
                     scenario='historical', scenario_ref='historical', soc='histsoc',
                     soc_ref='histsoc', fn_str_var=FN_STR_VAR, keep_dis_data=False,
                     yearchunks='default', mask_threshold=('mean', 1)):
-        """Wrapper to fill hazard from nc_dis file from ISIMIP
+        """Wrapper to fill hazard from NetCDF file containing variable dis (daily),
+        e.g. as provided from from ISIMIP Water Sectior (Global):
+            https://esg.pik-potsdam.de/search/isimip/
 
         Parameters:
-            input_dir (string): path to input data directory
+            input_dir (string): path to input data directory. In this folder,
+                netCDF files with gridded hydrological model output are required,
+                containing the variable dis (discharge) on a daily temporal resolution
+                as f.i. provided by the ISIMIP project (https://www.isimip.org/)
             centroids (Centroids): centroids
                 (area that is considered, reg and country must be None)
             countries (list of countries ISO3) selection of countries
@@ -185,7 +201,6 @@ class LowFlow(Hazard):
         raises:
             NameError
         """
-        print('GETTING STARTED!')
         if input_dir:
             if not os.path.exists(input_dir):
                 LOGGER.warning('Input directory %s does not exist', input_dir)
@@ -322,7 +337,7 @@ class LowFlow(Hazard):
         self.centroids = centroids
 
         # Following values are defined for each event
-        self.event_id = np.sort(self.lowflow_df.cluster_id.unique())
+        self.event_id = np.sort(uniq_ev)
         self.event_id = self.event_id[self.event_id > 0]
         self.event_name = list(map(str, self.event_id))
 
@@ -338,11 +353,11 @@ class LowFlow(Hazard):
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
 
-    def identify_clusters(self, clus_thres_xy=None, clus_thresh_t=None, min_samples=None):
-        """call clustering functions and set events in hazard
+    def identify_clusters(self, clus_thresh_xy=None, clus_thresh_t=None, min_samples=None):
+        """call clustering functions to identify the clusters inside the dataframe
 
         Optional parameters:
-            clus_thres_xy (int): new value of maximum grid cell distance
+            clus_thresh_xy (int): new value of maximum grid cell distance
                 (number of grid cells) to be counted as connected points during clustering
             clus_thresh_t (int): new value of maximum timse step difference (months)
                 to be counted as connected points during clustering
@@ -353,8 +368,8 @@ class LowFlow(Hazard):
         """
         if min_samples:
             self.min_samples = min_samples
-        if clus_thres_xy:
-            self.clus_thres_xy = clus_thres_xy
+        if clus_thresh_xy:
+            self.clus_thresh_xy = clus_thresh_xy
         if clus_thresh_t:
             self.clus_thresh_t = clus_thresh_t
 
@@ -363,14 +378,14 @@ class LowFlow(Hazard):
         # Compute clus_id: cluster identifier inside cons_id
         for cluster_vars in [('lat', 'lon'), ('lat', 'dt_month'), ('lon', 'dt_month')]:
             self.lowflow_df = self._df_clustering(self.lowflow_df, cluster_vars,
-                                            self.resolution, self.clus_thres_xy,
+                                            self.resolution, self.clus_thresh_xy,
                                             self.clus_thresh_t, self.min_samples)
 
         self.lowflow_df = unique_clusters(self.lowflow_df)
         return self.lowflow_df
 
     @staticmethod
-    def _df_clustering(lowflow_df, cluster_vars, res_data, clus_thres_xy,
+    def _df_clustering(lowflow_df, cluster_vars, res_data, clus_thresh_xy,
                        clus_thres_t, min_samples):
         """Compute 2D clusters and sort lowflow_df with ascending clus_id
         for each combination of the 3 dimensions (lat, lon, dt_month).
@@ -380,7 +395,7 @@ class LowFlow(Hazard):
             cluster_vars (tuple pf str): pair of dimensions for 2D clustering,
                 e.g. ('lat', 'dt_month')
             res_data (float): input data grid resolution in degrees
-            clus_thres_xy (int): clustering distance threshold in space
+            clus_thresh_xy (int): clustering distance threshold in space
             clus_thresh_t (int): clustering distance threshold in time
             min_samples (int): clustering min. number
 
@@ -405,14 +420,14 @@ class LowFlow(Hazard):
             # transform month count in accordance with spatial resolution
             # to achieve same distance between consecutive and geographically
             # neighboring points:
-            data_iter.dt_month = data_iter.dt_month * res_data * clus_thres_xy / clus_thres_t
+            data_iter.dt_month = data_iter.dt_month * res_data * clus_thresh_xy / clus_thres_t
 
         # Loop over slices: For each slice, perform 2D clustering with DBSCAN
         for i_var in data_iter[iter_var].unique():
             temp = np.argwhere(np.array(data_iter[iter_var] == i_var)).reshape(-1, )  # slice
             x_y = data_iter.iloc[temp][[cluster_vars[0], cluster_vars[1]]].values
             x_y_uni, x_y_cpy = np.unique(x_y, return_inverse=True, axis=0)
-            cluster_id = DBSCAN(eps=res_data * clus_thres_xy, min_samples=min_samples). \
+            cluster_id = DBSCAN(eps=res_data * clus_thresh_xy, min_samples=min_samples). \
                 fit(x_y_uni).labels_
             cluster_id = cluster_id[x_y_cpy]
             data_iter[clus_id_var].values[temp] = cluster_id + data_iter[clus_id_var].max() + 1
@@ -475,7 +490,6 @@ class LowFlow(Hazard):
 
         Returns:
             intensity_cl (np.array): summed intensity of cluster at each centroids
-
         """
         LOGGER.debug('Number of days below threshold corresponding to event %s.', str(cluster_id))
         temp_data = self.lowflow_df.reindex(
