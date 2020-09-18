@@ -481,31 +481,35 @@ class TestFuncs(unittest.TestCase):
         cat = tc.set_category(max_sus_wind, max_sus_wind_unit)
         self.assertEqual(4, cat)
 
-    def test_estimate_pres_pass(self):
-        """Test central pressure estimation function."""
-        cen_pres = np.array([
-            -999, -999, -999, -999, -999, -999, -999, -999, -999, 992, -999,
-            -999, 993, -999, -999, 1004
-        ], dtype=float)
-        v_max = np.array([
-            45, 50, 50, 55, 60, 65, 70, 80, 75, 70, 70, 70, 70, 65, 55, 45
-        ], dtype=float)
-        lat = np.array([
-            13.8, 13.9, 14, 14.1, 14.1, 14.1, 14.1, 14.2, 14.2, 14.3, 14.4,
-            14.6, 14.8, 15, 15.1, 15.1
-        ])
-        lon = np.array([
-            -51.1, -52.8, -54.4, -56, -57.3, -58.4, -59.7, -61.1, -62.7, -64.3,
-            -65.8, -67.4, -69.4, -71.4, -73, -74.2
-        ])
+    def test_estimate_params_pass(self):
+        """Test track parameter estimation functions."""
+        cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
+        v_max = np.array([45, np.nan, 50, 55, 0, 60, 75])
+        lat = np.array([13.8, 13.9, 14, 14.1, 14.1, np.nan, -999])
+        lon = np.array([np.nan, -52.8, -54.4, -56, -58.4, -59.7, -61.1])
+        ref_pres = np.array([np.nan, 993, 990.2324, 986.6072, np.nan, 1004, np.nan])
         out_pres = tc._estimate_pressure(cen_pres, lat, lon, v_max)
+        self.assertTrue(np.allclose(ref_pres, out_pres, equal_nan=True))
 
-        ref_res = np.array([
-            993.79445, 990.1726, 990.2324, 986.6072, 982.96575, 979.3176,
-            975.67615, 968.35925, 972.09785, 992., 975.8991, 975.9651, 993.,
-            979.8089, 987.2387, 1004.
-        ])
-        self.assertTrue(np.allclose(ref_res, out_pres))
+        v_max = np.array([45, np.nan, 50, 55, 0, 60, 75])
+        cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
+        lat = np.array([13.8, 13.9, 14, 14.1, 14.1, np.nan, -999])
+        lon = np.array([np.nan, -52.8, -54.4, -56, -58.4, -59.7, -61.1])
+        ref_vmax = np.array([45, 46.38272, 50, 55, np.nan, 60, 75])
+        out_vmax = tc._estimate_vmax(v_max, lat, lon, cen_pres)
+        self.assertTrue(np.allclose(ref_vmax, out_vmax, equal_nan=True))
+
+        roci = np.array([np.nan, -1, 145, 170, 180, 0, -5])
+        cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
+        ref_roci = np.array([np.nan, 182.792715, 145, 170, 180, 161.5231086, np.nan])
+        out_roci = tc.estimate_roci(roci, cen_pres)
+        self.assertTrue(np.allclose(ref_roci, out_roci, equal_nan=True))
+
+        rmw = np.array([17, 33, -1, 25, np.nan, -5, 13])
+        cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
+        ref_rmw = np.array([17, 33, np.nan, 25, np.nan, 43.95543761, 13])
+        out_rmw = tc.estimate_rmw(rmw, cen_pres)
+        self.assertTrue(np.allclose(ref_rmw, out_rmw, equal_nan=True))
 
     def test_estimate_rmw_pass(self):
         """Test estimate_rmw function."""
