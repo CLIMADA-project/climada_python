@@ -139,7 +139,6 @@ class TestIBTracs(unittest.TestCase):
         tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
                                      basin='EP', estimate_missing=True)
         self.assertEqual(tc_track.size, 52)
-        # actually 53, but dataset 46, PAT, is empty
 
     def test_ibtracs_correct_pass(self):
         """Check estimate_missing option"""
