@@ -94,30 +94,30 @@ class TestLowFlowDummyData(unittest.TestCase):
             clustering event from monthly days below threshold data"""
         haz = LowFlow()
         # 1) direct neighbors only (allowing over cross in space):
-        haz.data_df = init_test_data_clustering()
+        haz.lowflow_df = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=1, min_samples=1)
         target_cluster = [1, 2, 1, 2, 2, 1, 1, 3, 3, 1, 3, 1, 4]
-        self.assertListEqual(list(haz.data_df.cluster_id), target_cluster)
+        self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
         # as (1), but allowing 1 month break in between:
-        haz.data_df = init_test_data_clustering()
+        haz.lowflow_df = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=2, min_samples=1)
         target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]
-        self.assertListEqual(list(haz.data_df.cluster_id), target_cluster)
+        self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
         # as (1), but allowing 1 gridcell break in between:
-        haz.data_df = init_test_data_clustering()
+        haz.lowflow_df = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=2., clus_thresh_t=1, min_samples=1)
         target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]
-        self.assertListEqual(list(haz.data_df.cluster_id), target_cluster)
+        self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
     def test_events_from_clusters_default(self):
         """Test events_from_clusters: creation of events and computation of intensity based on clusters,
         requires: identify_clusters, Centroids, also tests correct intensity sum"""
         haz = LowFlow()
-        haz.data_df = init_test_data_clustering()
+        haz.lowflow_df = init_test_data_clustering()
         haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=1, min_samples=1)
-        centroids = init_test_centroids(haz.data_df)
+        centroids = init_test_centroids(haz.lowflow_df)
         haz.events_from_clusters(centroids)
         target_intensity_e1 = [ 0.,  0., 20., 30., 15.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
           0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
@@ -139,10 +139,10 @@ class TestLowFlowDummyData(unittest.TestCase):
         """Test events_from_clusters: creation of events and computation of intensity based on clusters,
         requires: identify_clusters, Centroids, also tests correct intensity sum"""
         haz = LowFlow()
-        haz.data_df = init_test_data_clustering()
+        haz.lowflow_df = init_test_data_clustering()
         # set hazard with parameters so that all data si attributed to one single event:
         haz.identify_clusters(clus_thres_xy=6, clus_thresh_t=10, min_samples=1)
-        centroids = init_test_centroids(haz.data_df)
+        centroids = init_test_centroids(haz.lowflow_df)
         # call function to be tested
         haz.events_from_clusters(centroids)
         target_intensity_e = [ 0.,  0., 20., 30., 15.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
@@ -168,11 +168,11 @@ class TestLowFlowNETCDF(unittest.TestCase):
                     scenario='historical', scenario_ref='historical', soc='histsoc',
                     soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True,
                     yearchunks=['2001_2003'])
-        self.assertEqual(haz.data_df.shape[0], 1073)
-        self.assertEqual(haz.data_df.shape[1], 14)
-        self.assertEqual(haz.data_df.ndays.max(), 28.0)
-        self.assertAlmostEqual(haz.data_df.ndays.mean(), 9.994408201304752)
-        self.assertAlmostEqual(haz.data_df.relative_dis.max(), 0.4480659)
+        self.assertEqual(haz.lowflow_df.shape[0], 1073)
+        self.assertEqual(haz.lowflow_df.shape[1], 14)
+        self.assertEqual(haz.lowflow_df.ndays.max(), 28.0)
+        self.assertAlmostEqual(haz.lowflow_df.ndays.mean(), 9.994408201304752)
+        self.assertAlmostEqual(haz.lowflow_df.relative_dis.max(), 0.4480659)
         self.assertEqual(haz.centroids.lon.min(), -4.75)
         self.assertEqual(haz.centroids.lon.max(), 8.25)
         self.assertEqual(haz.centroids.lat.min(), 42.25)
@@ -184,7 +184,7 @@ class TestLowFlowNETCDF(unittest.TestCase):
         self.assertEqual(haz.intensity[33, :].max(), 2.)
         self.assertEqual(np.sum(haz.intensity[0]), 4006.)
         self.assertAlmostEqual(haz.intensity[2].todense().mean(), 0.03508771929824561)
-        self.assertEqual(haz.data_df.cluster_id.unique().size, haz.event_id.size)
+        self.assertEqual(haz.lowflow_df.cluster_id.unique().size, haz.event_id.size)
         self.assertEqual(haz.date[2], 731488)
         self.assertEqual(haz.date_start[2], 731488)
         self.assertEqual(haz.date_end[2], 731519)
@@ -204,10 +204,10 @@ class TestLowFlowNETCDF(unittest.TestCase):
                          yearchunks=['2001_2003', '2004_2005'])
 
 
-        self.assertEqual(haz.data_df.shape[1], 14)
-        self.assertEqual(haz.data_df.ndays.max(), 31.0)
-        self.assertAlmostEqual(haz.data_df.ndays.mean(), 10.588021778584393)
-        self.assertAlmostEqual(haz.data_df.relative_dis.max(), 0.41278067)
+        self.assertEqual(haz.lowflow_df.shape[1], 14)
+        self.assertEqual(haz.lowflow_df.ndays.max(), 31.0)
+        self.assertAlmostEqual(haz.lowflow_df.ndays.mean(), 10.588021778584393)
+        self.assertAlmostEqual(haz.lowflow_df.relative_dis.max(), 0.41278067)
         self.assertEqual(haz.centroids.lon.min(), -4.75)
         self.assertEqual(haz.centroids.lon.max(), 8.25)
         self.assertEqual(haz.centroids.lat.min(), 42.25)
@@ -220,7 +220,7 @@ class TestLowFlowNETCDF(unittest.TestCase):
         self.assertEqual(np.sum(haz.intensity[0]), 5243)
         self.assertAlmostEqual(haz.intensity[2].todense().mean(), 0.19883040935672514)
         self.assertEqual(haz.intensity[2].todense().max(), 19)
-        self.assertEqual(haz.data_df.cluster_id.unique().size, haz.event_id.size)
+        self.assertEqual(haz.lowflow_df.cluster_id.unique().size, haz.event_id.size)
         self.assertEqual(haz.date[2], 731519)
         self.assertEqual(haz.date_start[2], 731396)
         self.assertEqual(haz.date_end[2], 731519)
@@ -239,7 +239,7 @@ class TestLowFlowNETCDF(unittest.TestCase):
                         scenario='historical', scenario_ref='historical', soc='histsoc',
                         soc_ref='histsoc', fn_str_var=FN_STR_DEMO, keep_dis_data=True,
                         yearchunks=['2001_2003'])
-        self.assertGreaterEqual(haz.data_df.ndays.min(), 10)
+        self.assertGreaterEqual(haz.lowflow_df.ndays.min(), 10)
         self.assertGreaterEqual(haz.intensity[haz.intensity != 0].min(), 10)
         for event in range(haz.intensity.shape[0]):
             self.assertGreaterEqual(haz.intensity[event, :].nnz, 10)
