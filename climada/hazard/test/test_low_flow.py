@@ -95,19 +95,19 @@ class TestLowFlowDummyData(unittest.TestCase):
         haz = LowFlow()
         # 1) direct neighbors only (allowing over cross in space):
         haz.lowflow_df = init_test_data_clustering()
-        haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=1, min_samples=1)
+        haz.identify_clusters(clus_thresh_xy=1.5, clus_thresh_t=1, min_samples=1)
         target_cluster = [1, 2, 1, 2, 2, 1, 1, 3, 3, 1, 3, 1, 4]
         self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
         # as (1), but allowing 1 month break in between:
         haz.lowflow_df = init_test_data_clustering()
-        haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=2, min_samples=1)
+        haz.identify_clusters(clus_thresh_xy=1.5, clus_thresh_t=2, min_samples=1)
         target_cluster = [1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
         # as (1), but allowing 1 gridcell break in between:
         haz.lowflow_df = init_test_data_clustering()
-        haz.identify_clusters(clus_thres_xy=2., clus_thresh_t=1, min_samples=1)
+        haz.identify_clusters(clus_thresh_xy=2., clus_thresh_t=1, min_samples=1)
         target_cluster = [1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 2, 1, 3]
         self.assertListEqual(list(haz.lowflow_df.cluster_id), target_cluster)
 
@@ -116,7 +116,7 @@ class TestLowFlowDummyData(unittest.TestCase):
         requires: identify_clusters, Centroids, also tests correct intensity sum"""
         haz = LowFlow()
         haz.lowflow_df = init_test_data_clustering()
-        haz.identify_clusters(clus_thres_xy=1.5, clus_thresh_t=1, min_samples=1)
+        haz.identify_clusters(clus_thresh_xy=1.5, clus_thresh_t=1, min_samples=1)
         centroids = init_test_centroids(haz.lowflow_df)
         haz.events_from_clusters(centroids)
         target_intensity_e1 = [ 0.,  0., 20., 30., 15.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
@@ -141,7 +141,7 @@ class TestLowFlowDummyData(unittest.TestCase):
         haz = LowFlow()
         haz.lowflow_df = init_test_data_clustering()
         # set hazard with parameters so that all data si attributed to one single event:
-        haz.identify_clusters(clus_thres_xy=6, clus_thresh_t=10, min_samples=1)
+        haz.identify_clusters(clus_thresh_xy=6, clus_thresh_t=10, min_samples=1)
         centroids = init_test_centroids(haz.lowflow_df)
         # call function to be tested
         haz.events_from_clusters(centroids)
