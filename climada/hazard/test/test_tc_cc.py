@@ -38,17 +38,25 @@ class TestKnutson(unittest.TestCase):
             self.assertTrue('function' in crit_val)
         self.assertEqual(criterion[0]['change'], 1.045)
         self.assertEqual(criterion[-1]['change'], 1 - 0.583)
-    
+
     def test_scale_pass(self):
-        """ Test calc_scale_knutson function. """
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2050, rcp_scenario=45), 0.759630751756698)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2070, rcp_scenario=45), 0.958978483788876)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2060, rcp_scenario=60), 0.825572149523299)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2080, rcp_scenario=60), 1.309882943406079)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2090, rcp_scenario=85), 2.635069196605717)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2100, rcp_scenario=85), 2.940055236533517)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2066, rcp_scenario=26), 0.341930203294547)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2078, rcp_scenario=26), 0.312383928930456)
+        """Test calc_scale_knutson function."""
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2050, rcp_scenario=45),
+                               0.759630751756698)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2070, rcp_scenario=45),
+                               0.958978483788876)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2060, rcp_scenario=60),
+                               0.825572149523299)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2080, rcp_scenario=60),
+                               1.309882943406079)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2090, rcp_scenario=85),
+                               2.635069196605717)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2100, rcp_scenario=85),
+                               2.940055236533517)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2066, rcp_scenario=26),
+                               0.341930203294547)
+        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2078, rcp_scenario=26),
+                               0.312383928930456)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestKnutson)

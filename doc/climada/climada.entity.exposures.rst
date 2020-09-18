@@ -17,6 +17,14 @@ climada\.entity\.exposures\.black\_marble module
     :undoc-members:
     :show-inheritance:
 
+climada\.entity\.exposures\.cropyield\_isimip module
+----------------------------------------------------
+
+.. automodule:: climada.entity.exposures.cropyield_isimip
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.entity\.exposures\.gdp\_asset module
 ---------------------------------------------
 

@@ -20,7 +20,7 @@ import pandas as pd
 LOGGER = logging.getLogger(__name__)
 
 def date_to_str(date):
-    """ Compute date string in ISO format from input datetime ordinal int.
+    """Compute date string in ISO format from input datetime ordinal int.
     Parameters:
         date (int or list or np.array): input datetime ordinal
     Returns:
@@ -34,7 +34,7 @@ def date_to_str(date):
 
 
 def str_to_date(date):
-    """ Compute datetime ordinal int from input date string in ISO format.
+    """Compute datetime ordinal int from input date string in ISO format.
     Parameters:
         date (str or list): idate string in ISO format, e.g. '2018-04-06'
     Returns:
@@ -51,7 +51,7 @@ def str_to_date(date):
     return all_date
 
 def datetime64_to_ordinal(datetime):
-    """ Converts from a numpy datetime64 object to an ordinal date.
+    """Converts from a numpy datetime64 object to an ordinal date.
     See https://stackoverflow.com/a/21916253 for the horrible details.
     Parameters:
         datetime (np.datetime64, or list or np.array): date and time
@@ -64,7 +64,7 @@ def datetime64_to_ordinal(datetime):
     return [pd.to_datetime(i_dt.tolist()).toordinal() for i_dt in datetime]
 
 def last_year(ordinal_vector):
-    """ Extract first year from ordinal date
+    """Extract first year from ordinal date
 
     Parameters:
         ordinal_vector (list or np.array): input datetime ordinal
@@ -74,7 +74,7 @@ def last_year(ordinal_vector):
     return dt.date.fromordinal(np.max(ordinal_vector)).year
 
 def first_year(ordinal_vector):
-    """ Extract first year from ordinal date
+    """Extract first year from ordinal date
 
     Parameters:
         ordinal_vector (list or np.array): input datetime ordinal
