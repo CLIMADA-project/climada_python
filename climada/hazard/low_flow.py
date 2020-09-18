@@ -446,14 +446,16 @@ class LowFlow(Hazard):
             Hazard
         """
         haz_tmp = copy.deepcopy(self)
-        haz_tmp.date_tmp = haz_tmp.date
+        haz_tmp.orig_tmp = copy.deepcopy(self.orig)
+        haz_tmp.orig = np.array(np.ones(self.orig.size))
+        # identify events to be filtered out and set haz_tmp.orig to 0.
         for i_event, _ in enumerate(haz_tmp.event_id):
             if np.sum(haz_tmp.intensity[i_event] > 0) < min_number_cells or \
                     np.max(haz_tmp.intensity[i_event]) < min_intensity:
-                haz_tmp.date[i_event] = 2100001
-        haz_tmp = haz_tmp.select(date=(1, 2000000))
-        haz_tmp.date = haz_tmp.date_tmp
-        del haz_tmp.date_tmp
+                haz_tmp.orig[i_event] = 0.
+        haz_tmp = haz_tmp.select(orig=True) # select events with orig == 1
+        haz_tmp.orig = haz_tmp.orig_tmp # reset orig
+        del haz_tmp.orig_tmp
         haz_tmp.event_id = np.arange(1, len(haz_tmp.event_id) + 1).astype(int)
         return haz_tmp
 
