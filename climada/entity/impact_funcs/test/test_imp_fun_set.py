@@ -51,18 +51,18 @@ class TestContainer(unittest.TestCase):
         """Test error is raised when wrong ImpactFunc provided."""
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
-        with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
+        with self.assertLogs('climada.entity.impact_funcs.impact_func_set',
                              level='WARNING') as cm:
             imp_fun.append(vulner_1)
         self.assertIn("Input ImpactFunc's hazard type not set.", cm.output[0])
 
         vulner_1.haz_type = 'TC'
-        with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
+        with self.assertLogs('climada.entity.impact_funcs.impact_func_set',
                              level='WARNING') as cm:
             imp_fun.append(vulner_1)
         self.assertIn("Input ImpactFunc's id not set.", cm.output[0])
 
-        with self.assertLogs('climada.entity.impact_funcs.impact_func_set', 
+        with self.assertLogs('climada.entity.impact_funcs.impact_func_set',
                              level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 imp_fun.append(45)
@@ -207,7 +207,7 @@ class TestContainer(unittest.TestCase):
         """Test size function."""
         imp_fun = ImpactFuncSet()
         self.assertEqual(0, imp_fun.size())
-        
+
         vulner_1 = ImpactFunc()
         vulner_1.haz_type = 'WS'
         vulner_1.id = 56
@@ -249,7 +249,7 @@ class TestContainer(unittest.TestCase):
         self.assertEqual(0, imp_fun.size('TC'))
         self.assertEqual(0, imp_fun.size('TC', 3))
         self.assertEqual(0, imp_fun.size(fun_id=3))
-            
+
     def test_append_pass(self):
         """Test append adds ImpactFunc to ImpactFuncSet correctly."""
         imp_fun = ImpactFuncSet()
@@ -339,7 +339,7 @@ class TestChecker(unittest.TestCase):
 class TestExtend(unittest.TestCase):
     """Check extend function"""
     def test_extend_to_empty_same(self):
-        """Extend ImpactFuncSet to empty one."""     
+        """Extend ImpactFuncSet to empty one."""
         imp_fun = ImpactFuncSet()
         imp_fun_add = ImpactFuncSet()
         vulner_1 = ImpactFunc()
@@ -356,9 +356,9 @@ class TestExtend(unittest.TestCase):
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
         imp_fun_add.append(vulner_3)
-        
+
         imp_fun_add.tag.file_name = 'file1.txt'
-        
+
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
@@ -369,16 +369,16 @@ class TestExtend(unittest.TestCase):
         self.assertEqual(imp_fun.tag.description, imp_fun_add.tag.description)
 
     def test_extend_equal_same(self):
-        """Extend the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""     
+        """Extend the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
         vulner_1.haz_type = 'TC'
         imp_fun.append(vulner_1)
-        
+
         imp_fun_add = ImpactFuncSet()
         imp_fun_add.append(vulner_1)
-        
+
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
@@ -403,7 +403,7 @@ class TestExtend(unittest.TestCase):
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
         imp_fun.append(vulner_3)
-        
+
         imp_fun_add = ImpactFuncSet()
         vulner_1 = ImpactFunc()
         vulner_1.id = 1
@@ -419,20 +419,20 @@ class TestExtend(unittest.TestCase):
         vulner_3.id = 3
         vulner_3.haz_type = 'FL'
         imp_fun_add.append(vulner_3)
-        
+
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
         self.assertEqual(imp_fun.size(), 4)
         self.assertEqual(imp_fun.size('TC'), 2)
         self.assertEqual(imp_fun.size('FL'), 1)
-        self.assertEqual(imp_fun.size('WS'), 1)      
+        self.assertEqual(imp_fun.size('WS'), 1)
 
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
     def test_demo_file_pass(self):
-        """ Read demo excel file"""
+        """Read demo excel file"""
         # Read demo mat file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
@@ -451,10 +451,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
         self.assertEqual(imp_funcs._data[hazard][first_id].name,
                          'Tropical cyclone default')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
@@ -478,10 +478,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
         self.assertEqual(imp_funcs._data[hazard][second_id].name,
                          'TC Building code')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)
@@ -509,7 +509,7 @@ class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
     def test_demo_file_pass(self):
-        """ Read demo excel file"""
+        """Read demo excel file"""
         # Read demo excel file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
@@ -528,10 +528,10 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][first_id].id, 1)
         self.assertEqual(imp_funcs._data[hazard][first_id].name,
                          'Tropical cyclone default')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][first_id].intensity[1], 20)
@@ -555,10 +555,10 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].id, 3)
         self.assertEqual(imp_funcs._data[hazard][second_id].name,
                          'TC Building code')
-        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit, \
+        self.assertEqual(imp_funcs._data[hazard][first_id].intensity_unit,
                          'm/s')
 
-        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape, \
+        self.assertEqual(imp_funcs._data[hazard][second_id].intensity.shape,
                          (9,))
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].intensity[1], 20)
@@ -583,7 +583,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):
-        """ Read template excel file"""
+        """Read template excel file"""
         imp_funcs = ImpactFuncSet()
         imp_funcs.read_excel(ENT_TEMPLATE_XLS)
         # Check some results
@@ -596,12 +596,12 @@ class TestWriter(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
 
     def test_write_read_pass(self):
-        """ Write + read excel file"""
-        
+        """Write + read excel file"""
+
         imp_funcs = ImpactFuncSet()
         imp_funcs.tag.file_name = 'No file name'
         imp_funcs.tag.description = 'test writer'
-        
+
         imp1 = ImpactFunc()
         imp1.id = 1
         imp1.name = 'code 1'
@@ -611,7 +611,7 @@ class TestWriter(unittest.TestCase):
         imp1.mdd = np.arange(100) * 0.5
         imp1.paa = np.ones(100)
         imp_funcs.append(imp1)
-        
+
         imp2 = ImpactFunc()
         imp2.id = 2
         imp2.name = 'code 2'
@@ -644,10 +644,10 @@ class TestWriter(unittest.TestCase):
 
         file_name = os.path.join(CURR_DIR, 'test_write.xlsx')
         imp_funcs.write_excel(file_name)
-        
+
         imp_res = ImpactFuncSet()
         imp_res.read_excel(file_name)
-        
+
         self.assertEqual(imp_res.tag.file_name, file_name)
         self.assertEqual(imp_res.tag.description, '')
 
@@ -664,7 +664,7 @@ class TestWriter(unittest.TestCase):
                     ref_fun = imp4
                 else:
                     self.assertEqual(1, 0)
-                
+
                 self.assertEqual(ref_fun.haz_type, fun.haz_type)
                 self.assertEqual(ref_fun.id, fun.id)
                 self.assertEqual(ref_fun.name, fun.name)

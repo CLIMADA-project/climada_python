@@ -26,13 +26,12 @@ import re
 import gzip
 import pickle
 import logging
-import math
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
 from PIL import Image
-from pint import UnitRegistry
 
+from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
@@ -42,18 +41,19 @@ Image.MAX_IMAGE_PIXELS = 1e9
 LOGGER = logging.getLogger(__name__)
 
 NOAA_SITE = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/"
-""" NOAA's URL used to retrieve nightlight satellite images. """
+"""NOAA's URL used to retrieve nightlight satellite images."""
 
-NOAA_RESOLUTION_DEG = (30*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
-""" NOAA nightlights coordinates resolution in degrees. """
+NOAA_RESOLUTION_DEG = (30 * ureg.arc_second).to(ureg.deg).magnitude
+"""NOAA nightlights coordinates resolution in degrees."""
 
-NASA_RESOLUTION_DEG = (15*UnitRegistry().arc_second).to(UnitRegistry().deg). \
-                       magnitude
-""" NASA nightlights coordinates resolution in degrees. """
+NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
+"""NASA nightlights coordinates resolution in degrees."""
+
+NASA_TILE_SIZE = (21600, 21600)
+"""NASA nightlights tile resolution."""
 
 NOAA_BORDER = (-180, -65, 180, 75)
-""" NOAA nightlights border (min_lon, min_lat, max_lon, max_lat) """
+"""NOAA nightlights border (min_lon, min_lat, max_lon, max_lat)"""
 
 NASA_SITE = 'https://www.nasa.gov/specials/blackmarble/*/tiles/georeferrenced/'
 """NASA nightlight web url."""
@@ -70,7 +70,7 @@ BM_FILENAMES = ['BlackMarble_*_A1_geo_gray.tif',
 """Nightlight NASA files which generate the whole earth when put together."""
 
 def check_required_nl_files(bbox, *coords):
-    """ Determines which of the satellite pictures are necessary for
+    """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
     Parameters:
@@ -90,7 +90,7 @@ def check_required_nl_files(bbox, *coords):
     """
     try:
         if not coords:
-            #check if bbox is valid
+            # check if bbox is valid
             if (np.size(bbox) != 4) or (bbox[0] > bbox[2]) \
             or (bbox[1] > bbox[3]):
                 LOGGER.error('Invalid bounding box supplied.')
@@ -106,29 +106,29 @@ def check_required_nl_files(bbox, *coords):
                 min_lon = bbox
                 min_lat, max_lon, max_lat = coords
     except:
-        raise ValueError('Invalid coordinates supplied. Please either ' + \
-            ' deliver a bounding box or the coordinates defining the ' + \
-            ' bounding box separately.')
+        raise ValueError('Invalid coordinates supplied. Please either '
+                         ' deliver a bounding box or the coordinates defining the '
+                         ' bounding box separately.')
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
     req_files = np.zeros(np.count_nonzero(BM_FILENAMES),)
 
     # determine the staring tile
-    first_tile_lon = min(np.floor((min_lon-(-180))/tile_width), 3) #"normalise" to zero
-    last_tile_lon = min(np.floor((max_lon-(-180))/tile_width), 3)
+    first_tile_lon = min(np.floor((min_lon - (-180)) / tile_width), 3)  # "normalise" to zero
+    last_tile_lon = min(np.floor((max_lon - (-180)) / tile_width), 3)
 
     # Now latitude. The height of all tiles is the same as the height.
     # Note that for this analysis returns an index which follows from North to South oritentation.
-    first_tile_lat = min(np.floor(-(min_lat-(90))/tile_width), 1)
-    last_tile_lat = min(np.floor(-(max_lat-90)/tile_width), 1)
+    first_tile_lat = min(np.floor(-(min_lat - (90)) / tile_width), 1)
+    last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
-    for i_lon in range(0, int(len(req_files)/2)):
+    for i_lon in range(0, int(len(req_files) / 2)):
         if first_tile_lon <= i_lon and last_tile_lon >= i_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
-                req_files[((i_lon))*2] = 1
+                req_files[((i_lon)) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
-                req_files[((i_lon))*2 + 1] = 1
+                req_files[((i_lon)) * 2 + 1] = 1
         else:
             continue
     return req_files
@@ -136,7 +136,7 @@ def check_required_nl_files(bbox, *coords):
 
 def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
                                check_path=SYSTEM_DIR, year=2016):
-    """ Checks if BM Satellite files are avaialbe and returns a vector
+    """Checks if BM Satellite files are avaialbe and returns a vector
     denoting the missing files.
 
     Parameters:
@@ -153,11 +153,11 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     """
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and '+ \
+        LOGGER.warning('The parameter \'required_files\' was too short and '
                        'is ignored.')
     if not path.exists(check_path):
         check_path = SYSTEM_DIR
-        LOGGER.warning('The given path does not exist and is ignored. %s' + \
+        LOGGER.warning('The given path does not exist and is ignored. %s'
                        ' is checked instead.', SYSTEM_DIR)
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
@@ -169,22 +169,21 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
-        LOGGER.debug('Found all required satellite data (' +
-                     str(int(sum(required_files))) + ' files) in folder ' +
-                     check_path)
+        LOGGER.debug('Found all required satellite data (%s files) in folder %s',
+                     int(sum(required_files)), check_path)
     elif sum(files_exist) == 0:
         LOGGER.info('No satellite files found locally in %s', check_path)
     else:
-        LOGGER.debug('Not all satellite files available. Found ' +
-                     str(int(sum(files_exist))) + ' out of ' +
-                     str(int(sum(required_files))) + ' required files in ' +
-                     check_path)
+        LOGGER.debug('Not all satellite files available. '
+                     'Found %d out of %d required files in %s',
+                     int(sum(files_exist)), int(sum(required_files)), check_path)
 
     return (files_exist, check_path)
 
-def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
-    files_exist=np.zeros(len(BM_FILENAMES),), dwnl_path=SYSTEM_DIR, year=2016):
-    """ Attempts to download nightlight files from NASA webpage.
+def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
+                      files_exist=np.zeros(len(BM_FILENAMES),),
+                      dwnl_path=SYSTEM_DIR, year=2016):
+    """Attempts to download nightlight files from NASA webpage.
 
     Parameters:
         req_files (array): Boolean array which indicates the files
@@ -198,20 +197,19 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
     Returns:
         path_str (str): Absolute path to file storage.
     """
-    if (len(req_files) != len(files_exist)) or \
-        (len(req_files) != len(BM_FILENAMES)):
-        raise ValueError('The given arguments are invalid. req_files and ' + \
-            'files_exist must both be as long as there are files to download'+\
-            ' (' + str(len(BM_FILENAMES)) + ').')
+    if (len(req_files) != len(files_exist)) or (len(req_files) != len(BM_FILENAMES)):
+        raise ValueError('The given arguments are invalid. req_files and '
+                         'files_exist must both be as long as there are files to download'
+                         ' (' + str(len(BM_FILENAMES)) + ').')
     if not path.exists(dwnl_path):
         dwnl_path = SYSTEM_DIR
         if not path.exists(dwnl_path):
             raise ValueError('The folder does not exist. Operation aborted.')
         else:
-            LOGGER.warning('The given folder does not exist using the ' + \
-                'Climada data directory instead.')
+            LOGGER.warning('The given folder does not exist using the '
+                           'Climada data directory instead.')
     if np.all(req_files == files_exist):
-        LOGGER.debug('All required files already exist. ' +
+        LOGGER.debug('All required files already exist. '
                      'No downloads necessary.')
         return None
     try:
@@ -232,12 +230,12 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),), \
                     path_str = path.dirname(path_dwn)
     except:
         chdir(curr_wd)
-        raise RuntimeError('Download failed. Please check the network ' + \
-            'connection and whether filenames are still valid.')
+        raise RuntimeError('Download failed. Please check the network '
+                           'connection and whether filenames are still valid.')
     return path_str
 
 def load_nightlight_nasa(bounds, req_files, year):
-    """ Get nightlight from NASA repository that contain input boundary.
+    """Get nightlight from NASA repository that contain input boundary.
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat
@@ -247,109 +245,43 @@ def load_nightlight_nasa(bounds, req_files, year):
     Returns:
         nightlight (sparse.csr_matrix), coord_nl (np.array)
     """
-    coord_nl = np.empty((2, 2))
-    coord_nl[0, :] = [-90+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
-    coord_nl[1, :] = [-180+NASA_RESOLUTION_DEG/2, NASA_RESOLUTION_DEG]
+    coord_min = np.array([-90, -180]) + NASA_RESOLUTION_DEG / 2
+    coord_h = np.full((2,), NASA_RESOLUTION_DEG)
 
-    in_lat = math.floor((bounds[1] - coord_nl[0, 0])/coord_nl[0, 1]), \
-             math.ceil((bounds[3] - coord_nl[0, 0])/coord_nl[0, 1])
-    # Upper (0) or lower (1) latitude range for min and max latitude
-    in_lat_nb = (math.floor(in_lat[0]/21600)+1)%2, \
-                (math.floor(in_lat[1]/21600)+1)%2
+    min_lon, min_lat, max_lon, max_lat = bounds
+    bounds_mat = np.array([[min_lat, min_lon], [max_lat, max_lon]])
+    global_idx = (bounds_mat - coord_min[None]) / coord_h[None]
+    global_idx[0, :] = np.floor(global_idx[0, :])
+    global_idx[1, :] = np.ceil(global_idx[1, :])
+    tile_size = np.array(NASA_TILE_SIZE)
 
-    in_lon = math.floor((bounds[0] - coord_nl[1, 0])/coord_nl[1, 1]), \
-             math.ceil((bounds[2] - coord_nl[1, 0])/coord_nl[1, 1])
-    # 0, 1, 2, 3 longitude range for min and max longitude
-    in_lon_nb = math.floor(in_lon[0]/21600), math.floor(in_lon[1]/21600)
-
-    nightlight = sparse.lil.lil_matrix([])
-    idx_info = [0, -1, False] # idx, prev_idx and row added flag
-    for idx, file in enumerate(BM_FILENAMES):
-        idx_info[0] = idx
-        if not req_files[idx]:
+    nightlight = []
+    for idx, fname in enumerate(BM_FILENAMES):
+        tile_coord = np.array([1 - idx % 2, idx // 2])
+        extent = global_idx - (tile_coord * tile_size)[None]
+        if np.any(extent[1, :] < 0) or np.any(extent[0, :] >= NASA_TILE_SIZE):
+            # this tile does not intersect the specified bounds
             continue
+        extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
 
-        with Image.open(path.join(SYSTEM_DIR, file.replace('*', str(year)))) \
-        as im_nl:
-            cut_nl_nasa(im_nl.getchannel(0), idx_info, nightlight, in_lat, in_lon,
-                        in_lat_nb, in_lon_nb)
+        fname = path.join(SYSTEM_DIR, fname.replace('*', str(year)))
+        with Image.open(fname, "r") as im_nl:
+            im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
+            im_nl = sparse.csc.csc_matrix(im_nl)
+            im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
+            nightlight.append((tile_coord, im_nl))
+    tile_coords = np.array([n[0] for n in nightlight])
+    shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
+    nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
+    nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
 
-        idx_info[1] = idx
+    coord_nl = np.vstack([coord_min, coord_h]).T
+    coord_nl[:, 0] += global_idx[0, :] * coord_h[:]
 
-    coord_nl[0, 0] = coord_nl[0, 0] + in_lat[0]*coord_nl[0, 1]
-    coord_nl[1, 0] = coord_nl[1, 0] + in_lon[0]*coord_nl[1, 1]
-
-    return nightlight.tocsr(), coord_nl
-
-def cut_nl_nasa(aux_nl, idx_info, nightlight, in_lat, in_lon, in_lat_nb,
-                in_lon_nb):
-    """Cut nasa's nightlight image piece (1-8) to bounds and append to final
-    matrix.
-
-    Parameters:
-        aux_nl (PIL.Image): nasa's nightlight part (1-8)
-        idx_info (list): idx (0-7), prev_idx (0-7) and row_added flag (bool).
-        nightlight (sprse.lil_matrix): matrix with nightlight that is expanded
-        in_lat (tuple): min and max latitude indexes in the whole nasa's image
-        in_lon (tuple): min and max longitude indexes in the whole nasa's image
-        in_lat_nb (tuple): for min and max latitude, range where they belong
-            to: upper (0) or lower (1) row of nasa's images.
-        on_lon_nb (tuple): for min and max longitude, range where they belong
-            to: 0, 1, 2 or 3 column of nasa's images.
-    """
-    idx, prev_idx, row_added = idx_info
-
-    aux_nl = sparse.csc.csc_matrix(aux_nl)
-    # flip X axis
-    aux_nl.indices = -aux_nl.indices + aux_nl.shape[0] - 1
-
-    aux_bnd = []
-    # in min lon
-    if int(idx/2) % 4 == in_lon_nb[0]:
-        aux_bnd.append(int(in_lon[0] - (int(idx/2)%4)*21600))
-    else:
-        aux_bnd.append(0)
-
-    # in min lat
-    if idx % 2 == in_lat_nb[0]:
-        aux_bnd.append(in_lat[0] - ((idx+1)%2)*21600)
-    else:
-        aux_bnd.append(0)
-
-    # in max lon
-    if int(idx/2) % 4 == in_lon_nb[1]:
-        aux_bnd.append(int(in_lon[1] - (int(idx/2)%4)*21600) + 1)
-    else:
-        aux_bnd.append(21600)
-
-    # in max lat
-    if idx % 2 == in_lat_nb[1]:
-        aux_bnd.append(in_lat[1] - ((idx+1)%2)*21600 + 1)
-    else:
-        aux_bnd.append(21600)
-
-    if prev_idx == -1:
-        nightlight.resize((aux_bnd[3]-aux_bnd[1], aux_bnd[2]-aux_bnd[0]))
-        nightlight[:, :] = aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
-    elif idx%2 == prev_idx%2 or prev_idx%2 == 1:
-        # append horizontally in first rows e.g 0->2 or 1->2
-        nightlight.resize((nightlight.shape[0],
-                           nightlight.shape[1] + aux_bnd[2]-aux_bnd[0]))
-        nightlight[-aux_bnd[3]+aux_bnd[1]:, -aux_bnd[2]+aux_bnd[0]:] = \
-            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
-    else:
-        # append vertically in firsts rows and columns e.g 0->1 or 2->3
-        if not row_added:
-            old_shape = nightlight.shape
-            nightlight.resize((old_shape[0] + aux_bnd[3] - aux_bnd[1],
-                               old_shape[1]))
-            nightlight[-old_shape[0]:, :] = nightlight[:old_shape[0], :]
-            idx_info[2] = True
-        nightlight[:aux_bnd[3]-aux_bnd[1], -aux_bnd[2]+aux_bnd[0]:] = \
-            aux_nl[aux_bnd[1]:aux_bnd[3], aux_bnd[0]:aux_bnd[2]]
+    return nightlight, coord_nl
 
 def unzip_tif_to_py(file_gz):
-    """ Unzip image file, read it, flip the x axis, save values as pickle
+    """Unzip image file, read it, flip the x axis, save values as pickle
     and remove tif.
 
     Parameters:
@@ -375,7 +307,7 @@ def unzip_tif_to_py(file_gz):
     return file_name, nightlight
 
 def untar_noaa_stable_nightlight(f_tar_ini):
-    """ Move input tar file to SYSTEM_DIR and extract stable light file.
+    """Move input tar file to SYSTEM_DIR and extract stable light file.
     Returns absolute path of stable light file in format tif.gz.
 
     Parameters:
@@ -414,7 +346,7 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     return f_tif_gz
 
 def load_nightlight_noaa(ref_year=2013, sat_name=None):
-    """ Get nightlight luminosites. Nightlight matrix, lat and lon ordered
+    """Get nightlight luminosites. Nightlight matrix, lat and lon ordered
     such that nightlight[1][0] corresponds to lat[1], lon[0] point (the image
     has been flipped).
 
@@ -427,11 +359,11 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         fn_light (str)
     """
     if sat_name is None:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' + \
-            str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' +
+                             str(ref_year) + '*.stable_lights.avg_vis')
     else:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name + \
-            str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name +
+                             str(ref_year) + '*.stable_lights.avg_vis')
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
         fn_light = glob.glob(fn_light + ".p")[0]

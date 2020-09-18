@@ -33,17 +33,17 @@ from climada.util.constants import WS_DEMO_NC
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 class TestReader(unittest.TestCase):
-    """ Test loading functions from the StormEurope class """
+    """Test loading functions from the StormEurope class"""
 
     def test_centroids_from_nc(self):
-        """ Test if centroids can be constructed correctly """
+        """Test if centroids can be constructed correctly"""
         cent = StormEurope._centroids_from_nc(WS_DEMO_NC[0])
 
         self.assertTrue(isinstance(cent, Centroids))
         self.assertEqual(cent.size, 9944)
 
     def test_read_footprints(self):
-        """ Test read_footprints function, using two small test files"""
+        """Test read_footprints function, using two small test files"""
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, description='test_description')
 
@@ -64,7 +64,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
     def test_read_with_ref(self):
-        """ Test read_footprints while passing in a reference raster. """
+        """Test read_footprints while passing in a reference raster."""
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, ref_raster=WS_DEMO_NC[1])
 
@@ -83,12 +83,13 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
     def test_read_with_cent(self):
-        """ Test read_footprints while passing in a Centroids object """
+        """Test read_footprints while passing in a Centroids object"""
         var_names = copy.deepcopy(DEF_VAR_EXCEL)
         var_names['sheet_name'] = 'fp_centroids-test'
         var_names['col_name']['region_id'] = 'iso_n3'
         test_centroids = Centroids()
-        test_centroids.read_excel(os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
+        test_centroids.read_excel(
+            os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
@@ -101,7 +102,7 @@ class TestReader(unittest.TestCase):
         )
 
     def test_set_ssi(self):
-        """ Test set_ssi with both dawkins and wisc_gust methodology. """
+        """Test set_ssi with both dawkins and wisc_gust methodology."""
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC)
 
@@ -124,8 +125,8 @@ class TestReader(unittest.TestCase):
         )
 
     def test_generate_prob_storms(self):
-        """ Test the probabilistic storm generator; calls _hist2prob as well as
-        Centroids.set_region_id() """
+        """Test the probabilistic storm generator; calls _hist2prob as well as
+        Centroids.set_region_id()"""
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC)
         storms_prob = storms.generate_prob_storms()
@@ -138,7 +139,7 @@ class TestReader(unittest.TestCase):
             # but the centroid's location that is decisive
         )
         self.assertEqual(storms_prob.size, 60)
-        self.assertTrue(np.allclose((1/storms_prob.frequency).astype(int), 330))
+        self.assertTrue(np.allclose((1 / storms_prob.frequency).astype(int), 330))
         self.assertAlmostEqual(storms.frequency.sum(),
                                storms_prob.frequency.sum())
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)

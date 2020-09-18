@@ -21,7 +21,7 @@ import numpy as np
 import unittest
 import pandas as pd
 from climada.entity.exposures import gdp_asset as ga
-from climada.util.constants import NAT_REG_ID, DEMO_GDP2ASSET
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEMO_GDP2ASSET
 
 
 class TestGDP2AssetClass(unittest.TestCase):
@@ -48,9 +48,9 @@ class TestGDP2AssetFunctions(unittest.TestCase):
     """Test LitPop Class methods"""
 
     def test_set_one_country(self):
-        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, DEMO_GDP2ASSET)
+        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
-            ga.GDP2Asset._set_one_country('LIE', 2001, DEMO_GDP2ASSET)
+            ga.GDP2Asset._set_one_country('LIE', 2001, path=DEMO_GDP2ASSET)
 
         self.assertAlmostEqual(exp_test.iloc[0, 2], 9.5206968)
         self.assertAlmostEqual(exp_test.iloc[1, 2], 9.5623634)
@@ -101,7 +101,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
 
     def test_fast_if_mapping(self):
 
-        testIDs = pd.read_csv(NAT_REG_ID)
+        testIDs = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[0], 11.0)
         self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[1], 3.0)
 
@@ -137,6 +137,7 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(testAssets[10], 4125847.312198318)
         self.assertAlmostEqual(testAssets[11], 88557558.43543366)
         self.assertAlmostEqual(testAssets[12], 191881403.05181965)
+
 
 
 if __name__ == "__main__":

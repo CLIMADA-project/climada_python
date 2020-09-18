@@ -116,8 +116,8 @@ class TestLitPopFunctions(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertIn(_rnd(117.91666666666666) and _rnd(22.08333333333333),\
-                        _rnd(min(all_coords)))
+        self.assertIn(_rnd(117.91666666666666) and _rnd(22.08333333333333),
+                      _rnd(min(all_coords)))
 
 # Execute Tests
 if __name__ == "__main__":

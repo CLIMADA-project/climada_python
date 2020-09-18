@@ -42,8 +42,8 @@ class TestSetCountry(unittest.TestCase):
         testdata = self.init_testdata()
 
         testdata1, teststr1 = ent._spam_set_country(testdata, name_adm2='municB')
-        testdata2, teststr2 = ent._spam_set_country(testdata, country='AAA', \
-                                                    name_adm1='kantonB', \
+        testdata2, teststr2 = ent._spam_set_country(testdata, country='AAA',
+                                                    name_adm1='kantonB',
                                                     name_adm2='municB')
         self.assert_pd_frame_equal(testdata1, testdata2)
         self.assertEqual(teststr1, ' municB')
@@ -73,7 +73,7 @@ class TestSetCountry(unittest.TestCase):
         ent = SpamAgrar()
         testdata = self.init_testdata()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            testdata1, teststr1 = ent._spam_set_country(testdata, name_adm1='stateC', \
+            testdata1, teststr1 = ent._spam_set_country(testdata, name_adm1='stateC',
                                                         name_adm2='XXX')
         testdata2 = ent._spam_set_country(testdata, name_adm1='stateC')[0]
         self.assertIn('Admin2 not found in data: XXX', cm.output[0])
@@ -82,8 +82,8 @@ class TestSetCountry(unittest.TestCase):
 
     @staticmethod
     def init_testdata():
-        testdata = pd.DataFrame(columns=['iso3', 'dat1', 'dat2', \
-                                         'name_cntr', 'name_adm1', \
+        testdata = pd.DataFrame(columns=['iso3', 'dat1', 'dat2',
+                                         'name_cntr', 'name_adm1',
                                          'name_adm2'])
         testdata.loc[0, 'iso3'] = 'AAA'
         testdata.loc[1, 'iso3'] = 'AAA'
@@ -107,13 +107,13 @@ class TestSetCountry(unittest.TestCase):
 
     @staticmethod
     def assert_pd_frame_equal(df1, df2, **kwds):
-        """ Assert that two dataframes are equal, ignoring ordering of columns"""
+        """Assert that two dataframes are equal, ignoring ordering of columns"""
         from pandas.util.testing import assert_frame_equal
-        return assert_frame_equal(df1.sort_index(axis=1), df2.sort_index(axis=1), \
+        return assert_frame_equal(df1.sort_index(axis=1), df2.sort_index(axis=1),
                                   check_names=True, **kwds)
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSetCountry)
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestXYZ))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestXYZ))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

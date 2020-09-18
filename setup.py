@@ -54,17 +54,17 @@ setup(
     packages=find_packages(where='.'),
 
     install_requires=[
+        'bottleneck==1.3.2',
         'cartopy==0.17.0', # conda!
         'cloudpickle', # install_test
         'contextily==1.0rc2',
         'dask==1.2.2',
         'descartes',
         #'earthengine_api==0.1.210', # ee, conda!
-        'elevation==1.0.6',
         'fiona==1.8.4',
         'fsspec>=0.3.6', # < dask
         'gdal==2.3.3', # conda!
-        'geopandas==0.4.1',
+        'geopandas==0.6.1',
         'h5py==2.9.0',
         'haversine==2.1.1',
         'iso3166==1.0',
@@ -79,7 +79,7 @@ setup(
         'pandas==0.24.2',
         'pandas_datareader==0.7.0',
         'pathos==0.2.3',
-        'pillow==7.0', # PIL
+        'pillow==7.1.0',
         'pint==0.9',
         #'pylab', matplotlib
         'pyproj==1.9.6', #
@@ -91,11 +91,12 @@ setup(
         'scipy==1.2.1', # conda+
         'shapely==1.6.4', #
         'six==1.13.0', #
+        'statsmodels==0.11.1',
         'tables', # < pandas (climada.entity.measures.test.test_base.TestApply)
         'tabulate==0.8.3',
         'toolz', # < dask
         'tqdm==4.31.1',
-        'xarray==0.12.1',
+        'xarray==0.13.0',
         'xlrd', # < pandas
         'xlsxwriter==1.1.7',
         'xmlrunner==1.7.7', # ci tests

@@ -4,14 +4,7 @@ climada\.hazard package
 .. toctree::
 
     climada.hazard.centroids
-
-climada\.hazard\.ag\_drought module
------------------------------------
-
-.. automodule:: climada.hazard.ag_drought
-    :members:
-    :undoc-members:
-    :show-inheritance:
+    climada.hazard.emulator
 
 climada\.hazard\.base module
 ----------------------------
@@ -21,18 +14,18 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.drought module
--------------------------------
+climada\.hazard\.crop\_potential module
+---------------------------------------
 
-.. automodule:: climada.hazard.drought
+.. automodule:: climada.hazard.crop_potential
     :members:
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.flood module
------------------------------
+climada\.hazard\.drought module
+-------------------------------
 
-.. automodule:: climada.hazard.flood
+.. automodule:: climada.hazard.drought
     :members:
     :undoc-members:
     :show-inheritance:
@@ -49,6 +42,22 @@ climada\.hazard\.landslide module
 ---------------------------------
 
 .. automodule:: climada.hazard.landslide
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.low\_flow module
+---------------------------------
+
+.. automodule:: climada.hazard.low_flow
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.river\_flood module
+------------------------------------
+
+.. automodule:: climada.hazard.river_flood
     :members:
     :undoc-members:
     :show-inheritance:
@@ -77,6 +86,14 @@ climada\.hazard\.tc\_clim\_change module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.tc\_rainfield module
+-------------------------------------
+
+.. automodule:: climada.hazard.tc_rainfield
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.hazard\.tc\_tracks module
 ----------------------------------
 
@@ -85,18 +102,26 @@ climada\.hazard\.tc\_tracks module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.trop\_cyclone module
--------------------------------------
+climada\.hazard\.tc\_tracks\_forecast module
+--------------------------------------------
 
-.. automodule:: climada.hazard.trop_cyclone
+.. automodule:: climada.hazard.tc_tracks_forecast
     :members:
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.water\_scarcity module
----------------------------------------
+climada\.hazard\.tc\_tracks\_synth module
+-----------------------------------------
 
-.. automodule:: climada.hazard.water_scarcity
+.. automodule:: climada.hazard.tc_tracks_synth
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.trop\_cyclone module
+-------------------------------------
+
+.. automodule:: climada.hazard.trop_cyclone
     :members:
     :undoc-members:
     :show-inheritance:

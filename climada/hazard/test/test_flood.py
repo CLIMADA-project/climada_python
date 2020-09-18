@@ -21,27 +21,34 @@ Test flood module.
 import unittest
 import datetime as dt
 import numpy as np
-from climada.hazard.flood import RiverFlood
+from climada.hazard.river_flood import RiverFlood
 from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
+from climada.hazard.centroids import Centroids
 
 
 class TestRiverFlood(unittest.TestCase):
     """Test for reading flood event from file"""
+
     def test_wrong_iso3_fail(self):
 
         emptyFlood = RiverFlood()
         with self.assertRaises(KeyError):
-            RiverFlood.select_exact_area(['OYY'])
-        with self.assertRaises(KeyError):
-            RiverFlood.select_window_area(['OYY'])
+            RiverFlood._select_exact_area(['OYY'])
         with self.assertRaises(AttributeError):
-            emptyFlood.set_from_nc(years=[2600])
+            emptyFlood.set_from_nc(years=[2600], dph_path=HAZ_DEMO_FLDDPH,
+                                   frc_path=HAZ_DEMO_FLDFRC)
         with self.assertRaises(KeyError):
-            emptyFlood.set_from_nc(reg=['OYY'])
+            emptyFlood.set_from_nc(reg=['OYY'], dph_path=HAZ_DEMO_FLDDPH,
+                                   frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
 
-    def test_exact_area_selection(self):
-        testCentroids = RiverFlood.select_exact_area(['LIE'])
+    def test_exact_area_selection_country(self):
 
+        testCentroids, isos, natIDs = RiverFlood._select_exact_area(['LIE'])
+
+        self.assertEqual(isos[0], 'LIE')
+        self.assertEqual(natIDs[0], 118)
+
+        self.assertEqual(testCentroids.shape, (5, 3))
         self.assertEqual(testCentroids.lon.shape[0], 13)
         self.assertAlmostEqual(testCentroids.lon[0], 9.5206968)
         self.assertAlmostEqual(testCentroids.lon[1], 9.5623634)
@@ -71,91 +78,273 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[11], 47.2289138)
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
 
-        self.assertEqual(testCentroids.id[0], 0)
-        self.assertEqual(testCentroids.id[5], 5)
-        self.assertEqual(testCentroids.id[12], 12)
+    def test_exact_area_selection_region(self):
 
+        testCentr, isos, natIDs = RiverFlood._select_exact_area(reg=['SWA'])
+
+        self.assertEqual(testCentr.shape, (877, 976))
+        self.assertAlmostEqual(np.min(testCentr.lat), -0.68767620000001, 4)
+        self.assertAlmostEqual(np.max(testCentr.lat), 38.43726119999998, 4)
+        self.assertAlmostEqual(np.min(testCentr.lon), 60.52061519999998, 4)
+        self.assertAlmostEqual(np.max(testCentr.lon), 101.1455501999999, 4)
+        self.assertAlmostEqual(testCentr.lon[10000], 98.27055479999999, 4)
+        self.assertAlmostEqual(testCentr.lat[10000], 11.47897099999998, 4)
+
+    def test_isimip_country_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       countries=['DEU'], ISINatIDGrid=True)
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertAlmostEqual(np.min(rf.centroids.lat), 47.312247000002785, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 55.0622346, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), 5.895702599999964, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 15.020687999996682, 4)
+        self.assertAlmostEqual(rf.centroids.lon[1000], 9.145697399999989, 4)
+        self.assertAlmostEqual(rf.centroids.lat[1000], 47.89557939999999, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 26878))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 10.547529220581055, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 938, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 26878))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 0.9968000054359436, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 1052, 4)
+        return
+
+    def test_isimip_reg_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       reg=['SWA'], ISINatIDGrid=True)
+
+        self.assertEqual(rf.date[0], 730303)
+
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertAlmostEqual(np.min(rf.centroids.lat), -0.687676199985944, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 38.43726119999998, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), 60.52061519999998, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 101.14555019998537, 4)
+        self.assertAlmostEqual(rf.centroids.lon[10000], 98.27055479999999, 4)
+        self.assertAlmostEqual(rf.centroids.lat[10000], 11.478970999999987, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 301181))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 16.69780921936035, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 40613, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 301181))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 1.0, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 126135, 4)
+
+        return
+
+    def test_NATearth_country_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       countries=['DEU'])
+
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 10.547529, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 38380, 4)
+
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 0.9968000054359436, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 38143, 4)
+
+    def test_NATearth_reg_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       reg=['SWA'])
+
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.00, 1)
+
+        self.assertEqual(rf.centroids.shape, (941, 978))
+
+        self.assertEqual(rf.intensity.shape, (1, 920298))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 16.69781, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 480702, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 920298))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 1.0, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 31487, 4)
+
+    def test_global_flood(self):
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC)
+
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertEqual(rf.intensity.shape, (1, 37324800))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 19.276295, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 26190437, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 37324800))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 1.0, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 3341440, 4)
+
+    def test_centroids_flood(self):
+
+        # this is going to go through the meta part
+        rand_centroids = Centroids()
+        lat = np.arange(47, 56, 0.2)
+        lon = np.arange(5, 15, 0.2)
+        lon, lat = np.meshgrid(lon, lat)
+        rand_centroids.set_lat_lon(lat.flatten(), lon.flatten())
+        rf = RiverFlood()
+        rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                       centroids=rand_centroids, ISINatIDGrid=False)
+
+        self.assertEqual(rf.date[0], 730303)
+        self.assertEqual(rf.event_id[0], 0)
+        self.assertEqual(rf.event_name[0], '2000')
+        self.assertEqual(rf.orig[0], False)
+        self.assertAlmostEqual(rf.frequency[0], 1.)
+
+        self.assertEqual(rf.centroids.shape, (45, 50))
+        self.assertAlmostEqual(np.min(rf.centroids.lat), 47.0, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lat), 55.8, 4)
+        self.assertAlmostEqual(np.min(rf.centroids.lon), 5.0, 4)
+        self.assertAlmostEqual(np.max(rf.centroids.lon), 14.8, 4)
+        self.assertAlmostEqual(rf.centroids.lon[90], 13.0, 4)
+        self.assertAlmostEqual(rf.centroids.lat[90], 47.2, 4)
+
+        self.assertEqual(rf.intensity.shape, (1, 2250))
+        self.assertAlmostEqual(np.min(rf.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.intensity), 8.921593, 4)
+        self.assertEqual(np.argmin(rf.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf.intensity), 191, 4)
+
+        self.assertEqual(rf.fraction.shape, (1, 2250))
+        self.assertAlmostEqual(np.min(rf.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf.fraction), 0.92, 4)
+        self.assertEqual(np.argmin(rf.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf.fraction), 1438, 4)
+
+    def test_meta_centroids_flood(self):
+        min_lat, max_lat, min_lon, max_lon = 45.7, 47.8, 7.5, 10.5
+        cent = Centroids()
+        cent.set_raster_from_pnt_bounds((min_lon, min_lat, max_lon, max_lat),
+                                        res=0.05)
+        rf_rast = RiverFlood()
+        rf_rast.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
+                            centroids=cent)
+        self.assertEqual(rf_rast.centroids.shape, (43, 61))
+        self.assertAlmostEqual(np.min(rf_rast.centroids.lat),
+                               45.70000000000012, 4)
+        self.assertAlmostEqual(np.max(rf_rast.centroids.lat), 47.8, 4)
+        self.assertAlmostEqual(np.min(rf_rast.centroids.lon), 7.5, 4)
+        self.assertAlmostEqual(np.max(rf_rast.centroids.lon),
+                               10.49999999999999, 4)
+        self.assertAlmostEqual(rf_rast.centroids.lon[90],
+                               8.949999999999996, 4)
+        self.assertAlmostEqual(rf_rast.centroids.lat[90], 47.75, 4)
+
+        self.assertEqual(rf_rast.intensity.shape, (1, 2623))
+        self.assertAlmostEqual(np.min(rf_rast.intensity), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf_rast.intensity), 5.8037286, 4)
+        self.assertEqual(np.argmin(rf_rast.intensity), 0, 4)
+        self.assertEqual(np.argmax(rf_rast.intensity), 55, 4)
+
+        self.assertEqual(rf_rast.fraction.shape, (1, 2623))
+        self.assertAlmostEqual(np.min(rf_rast.fraction), 0.0, 4)
+        self.assertAlmostEqual(np.max(rf_rast.fraction), 0.4896, 4)
+        self.assertEqual(np.argmin(rf_rast.fraction), 0, 4)
+        self.assertEqual(np.argmax(rf_rast.fraction), 360, 4)
+
+#    def test_regularGrid_centroids_flood(self):
+#        return
+#
     def test_flooded_area(self):
-        dph_path = HAZ_DEMO_FLDDPH
-        frc_path = HAZ_DEMO_FLDFRC
 
         testRFset = RiverFlood()
-        testRFset.set_from_nc(countries=['AFG'], dph_path=dph_path,
-                              frc_path=frc_path)
+        testRFset.set_from_nc(countries=['AFG'], dph_path=HAZ_DEMO_FLDDPH,
+                              frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         years = [2000, 2001, 2002]
         manipulated_dates = [730303, 730669, 731034]
+        testRFaddset = []
         for i in range(len(years)):
             testRFaddset = RiverFlood()
-            testRFaddset.set_from_nc(countries=['AFG'])
-            testRFaddset.date = [manipulated_dates[i]]
+            testRFaddset.set_from_nc(countries=['AFG'],
+                                     dph_path=HAZ_DEMO_FLDDPH,
+                                     frc_path=HAZ_DEMO_FLDFRC,
+                                     ISINatIDGrid=True)
+            testRFaddset.date = np.array([manipulated_dates[i]])
             if i == 0:
                 testRFaddset.event_name = ['2000_2']
             else:
                 testRFaddset.event_name = [str(years[i])]
             testRFset.append(testRFaddset)
 
-        testRFset.set_flooded_area()
+        testRFset.set_flooded_area(save_centr=True)
         self.assertEqual(testRFset.units, 'm')
 
         self.assertEqual(testRFset.fla_event.shape[0], 4)
         self.assertEqual(testRFset.fla_annual.shape[0], 3)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[0]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[0]),
                          32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ev_centr[2]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ev_centr[2]),
                          32610)
 
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[0]),
-                               34400996.45855092)
+                               34400996.45855092, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[0]),
                          32610)
         self.assertAlmostEqual(np.max(testRFset.fla_ann_centr[2]),
-                               17200498.22927546)
+                               17200498.22927546, 3)
         self.assertEqual(np.argmax(testRFset.fla_ann_centr[2]),
                          32610)
 
         self.assertAlmostEqual(testRFset.fla_event[0],
-                               6244242013.5826435, 4)
+                               6244242013.5826435, 3)
         self.assertAlmostEqual(testRFset.fla_annual[0],
                                12488484027.165287, 3)
         self.assertAlmostEqual(testRFset.fla_ann_av,
-                               8325656018.110191, 4)
+                               8325656018.110191, 3)
         self.assertAlmostEqual(testRFset.fla_ev_av,
-                               6244242013.5826435, 4)
-
-    def test_select_model_run(self):
-        testRFModel = RiverFlood()
-        flood_dir = '/home/test/flood/'
-        rf_model = 'LPJmL'
-        cl_model = 'wfdei'
-        prot_std = 'flopros'
-        scenario = 'historical'
-
-        self.assertEqual(testRFModel._select_model_run(flood_dir, rf_model,
-                                                       cl_model,
-                                                       scenario, prot_std)[0],
-                         '/home/test/flood/flddph_LPJmL_wfdei_' +
-                         'flopros_gev_0.1.nc')
-        self.assertEqual(testRFModel._select_model_run(flood_dir, rf_model,
-                                                       cl_model, scenario,
-                                                       prot_std, proj=True)[0],
-                         '/home/test/flood/flddph_LPJmL_wfdei_' +
-                         'historical_flopros_gev_picontrol_2000_0.1.nc')
-
-    def test_set_centroids_from_file(self):
-        testRFCentr = RiverFlood()
-        lon = [1, 2, 3]
-        lat = [1, 2, 3]
-        testRFCentr._set_centroids_from_file(lon, lat)
-        test_centroids_lon = np.array([1, 2, 3, 1, 2, 3, 1, 2, 3])
-        test_centroids_lat = np.array([1, 1, 1, 2, 2, 2, 3, 3, 3])
-        self.assertTrue(np.array_equal(testRFCentr.centroids.lon,
-                                       test_centroids_lon))
-        self.assertTrue(np.array_equal(testRFCentr.centroids.lat,
-                                       test_centroids_lat))
+                               6244242013.5826435, 3)
 
     def test_select_events(self):
         testRFTime = RiverFlood()
@@ -171,20 +360,8 @@ class TestRiverFlood(unittest.TestCase):
         self.assertTrue(np.array_equal(
                         testRFTime._select_event(test_time, years), [0, 3]))
 
-    def test_cut_window(self):
 
-        testRFCut = RiverFlood()
-        centr = RiverFlood.select_window_area(['AUT'])
-        testRFCut.centroids.lon = centr.lon
-        testRFCut.centroids.lat = centr.lat
-        lon = np.arange(7, 20, 0.2)
-        lat = np.arange(40, 50, 0.2)
-        test_window = [[4, 24], [55, 45]]
-        self.assertTrue(np.array_equal(testRFCut._cut_window(lon, lat),
-                                       test_window))
-
-
-#
-# Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    # Execute Tests
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRiverFlood)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
