@@ -226,12 +226,11 @@ class LowFlow(Hazard):
         if centr_handling == 'full_hazard':
             centroids = centroids_import
         self.identify_clusters()
-
-        self.make_climada_hazard(centroids, min_intensity, min_number_cells,
+        self.set_intensity_from_clusters(centroids, min_intensity, min_number_cells,
                                  yearrange, yearrange_ref, gh_model, cl_model,
                                  scenario, scenario_ref, soc, soc_ref, fn_str_var, keep_dis_data)
 
-    def make_climada_hazard(self, centroids=None, min_intensity=1, min_number_cells=1,
+    def set_intensity_from_clusters(self, centroids=None, min_intensity=1, min_number_cells=1,
                             yearrange=TARGET_YEARRANGE, yearrange_ref=REFERENCE_YEARRANGE,
                             gh_model=None, cl_model=None,
                             scenario='historical', scenario_ref='historical', soc='histsoc',
