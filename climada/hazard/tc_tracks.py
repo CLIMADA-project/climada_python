@@ -656,7 +656,7 @@ class TCTracks():
             LOGGER.info('Reading %s.', path)
             chaz_ds = xr.open_dataset(path)
             chaz_ds.time.attrs["units"] = "days since 1950-1-1"
-            chaz_ds.time.attrs["missing_value"] = chaz_ds.time.min()
+            chaz_ds.time.attrs["missing_value"] = -54786.0
             chaz_ds = xr.decode_cf(chaz_ds)
             chaz_ds['id_no'] = chaz_ds.stormID * 1000 + chaz_ds.ensembleNum
             for v in ['time', 'longitude', 'latitude']:
