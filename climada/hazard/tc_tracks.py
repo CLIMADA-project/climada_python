@@ -779,6 +779,9 @@ class TCTracks():
         if years is not None:
             tracks_df = tracks_df[np.isin(tracks_df['year'], years)]
 
+        # a bug in the data causes some storm tracks to be double-listed:
+        tracks_df = tracks_df.drop_duplicates(subset=["year", "tc_num", "time_delta"])
+
         # conversion of units and time
         tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
