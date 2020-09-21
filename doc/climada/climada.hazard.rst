@@ -14,14 +14,6 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.crop\_potential module
----------------------------------------
-
-.. automodule:: climada.hazard.crop_potential
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.drought module
 -------------------------------
 
@@ -50,6 +42,14 @@ climada\.hazard\.low\_flow module
 ---------------------------------
 
 .. automodule:: climada.hazard.low_flow
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.relative\_cropyield module
+-------------------------------------------
+
+.. automodule:: climada.hazard.relative_cropyield
     :members:
     :undoc-members:
     :show-inheritance:

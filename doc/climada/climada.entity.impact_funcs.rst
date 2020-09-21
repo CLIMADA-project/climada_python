@@ -9,14 +9,6 @@ climada\.entity\.impact\_funcs\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.crop\_potential module
-------------------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.crop_potential
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.drought module
 ----------------------------------------------
 
@@ -29,6 +21,14 @@ climada\.entity\.impact\_funcs\.impact\_func\_set module
 --------------------------------------------------------
 
 .. automodule:: climada.entity.impact_funcs.impact_func_set
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.entity\.impact\_funcs\.relative\_cropyield module
+----------------------------------------------------------
+
+.. automodule:: climada.entity.impact_funcs.relative_cropyield
     :members:
     :undoc-members:
     :show-inheritance:
