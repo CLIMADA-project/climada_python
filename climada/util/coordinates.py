@@ -1293,7 +1293,7 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     y_dim = ymin - yres / 2 + yres * np.arange(data.shape[0])
     x_dim = xmin - xres / 2 + xres * np.arange(data.shape[1])
 
-    data = np.float64(data)
+    data = np.array(data, dtype=np.float64)
     data[np.isnan(data)] = fill_value
     return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
                                      method=method, bounds_error=False, fill_value=fill_value)
