@@ -24,6 +24,7 @@ dependencies:
   - pillow=7.2.0
   - pint=0.15
   - pip
+  - conda-forge::proj=7.0.0
   - pytables=3.6.1
   - rasterio=1.1.5
   - scikit-learn=0.23.2
@@ -37,7 +38,6 @@ dependencies:
     - contextily==1.0.0
     - iso3166==1.0.1
     - jupyter
-    - jupyterlab
     - overpy==0.4
     - pathos==0.2.6
     - pybufrkit==0.2.17
