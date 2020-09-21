@@ -21,41 +21,18 @@ Define Landslide class.
 __all__ = ['Landslide']
 
 import logging
-import os
 from scipy import sparse
-import geopandas
+import geopandas as gpd
 import pyproj
-import matplotlib.pyplot as plt
 import rasterio
 from rasterio.windows import Window
 import numpy as np
 from haversine import haversine
 from climada.hazard.base import Hazard
-from climada.util.constants import DATA_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
-
 HAZ_TYPE = 'LS'
-
-
-""" for future: implement a function that downloads COOLR data by command, not manually"""
-# def get_coolr_shp(save_path=os.getcwd()):
-#    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
-#    global landslide catalog (COOLR of NASA) in shape-file format (zip)"""
-
-#   trials didn't work.
-#    url = 'https://maps.nccs.nasa.gov/arcgis/home/item.html?id=ff4478ca84d24766bd79ac186bb60d9c#data'
-#    resp_glc = requests.get(url=url)
-
-#    url = 'https://data.nasa.gov/api/geospatial/h9d8-neg4?method=export&format=Shapefile'
-#    # Timeout error, website is currently not working
-#    LOGGER.info('requesting data from %s', url)
-#    response = requests.get(url=url)
-#    LOGGER.info('downloading content...')
-#    open((save_path+'/global_LS_catalogue'+'.zip'), 'wb').write(response.content)
-#
 
 
 class Landslide(Hazard):
@@ -70,12 +47,14 @@ class Landslide(Hazard):
 
 
     def _get_window_from_coords(self, path_sourcefile, bbox=[]):
-        ###### would fit better into base calss for sub-function of hazard.set_raster()########
-        """get row, column, width and height required for rasterio window function
+        #TODO: decide whether to move this into hazard base as sub-function of hazard.set_raster()
+        """
+        get row, column, width and height required for rasterio window function
         from coordinate values of bounding box
+        
         Parameters:
-            bbox (array): [north, east, south, west]
-            large_file (str): path of file from which window should be read in
+            bbox (list): [north, east, south, west]
+            path_sourcefile (str): path of file from which window should be read in
         Returns:
             window_array (array): corner, width & height for Window() function of rasterio
         """
@@ -99,7 +78,10 @@ class Landslide(Hazard):
 
 
     def _get_raster_meta(self, path_sourcefile, window_array):
-        """get geo-meta data from raster files to set centroids adequately"""
+        #TODO: decide whether to move this into hazard base as sub-function of hazard.set_raster()
+        """
+        get geo-meta data from raster files to set centroids adequately
+        """
         raster = rasterio.open(path_sourcefile, 'r', \
                                window=Window(window_array[0], window_array[1],\
                                                window_array[2], window_array[3]))
@@ -109,9 +91,11 @@ class Landslide(Hazard):
         return pixel_height, pixel_width
 
 
-    def _intensity_binom_to_range(self, max_dist):
-        """Affected neighbourhood' of pixels within certain threshold from ls occurrence
-        can be included (takes long to compute, though).
+    def _incl_affected_surroundings(self, max_dist):
+        """
+        Affected neighbourhood' of points within certain threshold from ls 
+        POINT occurrence
+        
         Parameters:
             max_dist (int): distance in metres (up to max ~1100) until which
                 neighbouring pixels count as affected.
@@ -119,187 +103,159 @@ class Landslide(Hazard):
             intensity (csr matrix): range (0-1) where 0 = no occurrence, 1 = direct
                 occurrence, ]0-1[ = relative distance to pixel with direct occurrence
         """
-        self.intensity = self.intensity.tolil()
-        # find all other pixels within certain distance from corresponding centroid,
-        for i, j in zip(*self.intensity.nonzero()):
-            subset_neighbours = self.centroids.geometry.cx[
-                (self.centroids.coord[j][1]-0.01):(self.centroids.coord[j][1]+0.01),
-                (self.centroids.coord[j][0]-0.01):(self.centroids.coord[j][0]+0.01)
-                ]# 0.01° = 1.11 km approximately
-            for centroid in subset_neighbours:
-                ix = subset_neighbours[subset_neighbours == centroid].index[0]
-                # calculate dist, assign intensity [0-1] linearly until max_dist
-                if haversine(self.centroids.coord[ix], self.centroids.coord[j], unit='m')\
-                <= max_dist:
-                    actual_dist = haversine(
-                        self.centroids.coord[ix],
-                        self.centroids.coord[j], unit='m')
-                    # this step changes sparsity of matrix -->
-                    # converted to lil_matrix, as more efficient
-                    self.intensity[i, ix] = (max_dist-actual_dist)/max_dist
-        self.intensity = self.intensity.tocsr()
+        
+        # TODO: redo this function to incorporate neighbourhood of points!
+        
+        # self.intensity = self.intensity.tolil()
+        # # find all other pixels within certain distance from corresponding centroid,
+        # for i, j in zip(*self.intensity.nonzero()):
+        #     subset_neighbours = self.centroids.geometry.cx[
+        #         (self.centroids.coord[j][1]-0.01):(self.centroids.coord[j][1]+0.01),
+        #         (self.centroids.coord[j][0]-0.01):(self.centroids.coord[j][0]+0.01)
+        #         ]# 0.01° = 1.11 km approximately
+        #     for centroid in subset_neighbours:
+        #         ix = subset_neighbours[subset_neighbours == centroid].index[0]
+        #         # calculate dist, assign intensity [0-1] linearly until max_dist
+        #         if haversine(self.centroids.coord[ix], self.centroids.coord[j], unit='m')\
+        #         <= max_dist:
+        #             actual_dist = haversine(
+        #                 self.centroids.coord[ix],
+        #                 self.centroids.coord[j], unit='m')
+        #             # this step changes sparsity of matrix -->
+        #             # converted to lil_matrix, as more efficient
+        #             self.intensity[i, ix] = (max_dist-actual_dist)/max_dist
+        # self.intensity = self.intensity.tocsr()
 
-    def plot_raw(self, ev_id=1, **kwargs):
-        """ Plot raw LHM data using imshow and without cartopy
 
-        Parameters:
-            ev_id (int, optional): event id. Default: 1.
-            intensity (bool, optional): plot intensity if True, fraction otherwise
-            kwargs (optional): arguments for imshow matplotlib function
-
-        Returns:
-            matplotlib.image.AxesImage
+    def _get_hist_events(self, bbox, path_sourcefile):
         """
-        if not self.centroids.meta:
-            LOGGER.error('No raster data set')
-            raise ValueError
-        try:
-            event_pos = np.where(self.event_id == ev_id)[0][0]
-        except IndexError:
-            LOGGER.error('Wrong event id: %s.', ev_id)
-            raise ValueError from IndexError
-
-        return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
-
-    def plot_events(self, ev_id=1, **kwargs):
-        """ Plot LHM event data using imshow and without cartopy
-
+        load geo-df with landslide event poits from a global landslide (ls)
+        catalog for certain bounding box
+        
         Parameters:
-            ev_id (int, optional): event id. Default: 1.
-            intensity (bool, optional): plot intensity if True, fraction otherwise
-            kwargs (optional): arguments for imshow matplotlib function
-
+            bbox (list): [N, E , S, W] geographic extent of interest
+            path_sourcefile (str): path to shapefile with ls point data
         Returns:
-            matplotlib.image.AxesImage
+            ls_gdf_bbox (gdf): geopandas dataframe with ls points inside bbox
         """
-        if not self.centroids.meta:
-            LOGGER.error('No raster data set')
-            raise ValueError
-        try:
-            event_pos = np.where(self.event_id == ev_id)[0][0]
-        except IndexError:
-            LOGGER.error('Wrong event id: %s.', ev_id)
-            raise ValueError from IndexError
-
-        return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
-
-    def _get_hist_events(self, bbox, coolr_path):
-        """for LS_MODEL[0]: load gdf with landslide event POINTS from
-        global landslide catalog (COOLR of NASA) for bbox of interest"""
 
         try:
-            ls_gdf = geopandas.read_file(coolr_path)
+            ls_gdf = gpd.read_file(path_sourcefile)
         except:
-            raise ValueError("The nasa_global_landslide_catalog_point files could not be found."\
-                             + "The script looked for the files on the following path: {}".format(coolr_path))
+            LOGGER.error('source file not found')
+            raise ValueError
+                            
         ls_gdf_bbox = ls_gdf.cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
         return ls_gdf_bbox
 
-    def set_ls_model_hist(self, bbox, path_sourcefile, check_plots=1):
+    def set_ls_model_hist(self, bbox, path_sourcefile, incl_neighbour=False, 
+                          max_dist=1000, check_plots=1):
         """
-        set LS from historical records documented in the NASA COOLR initiative
+        set landslide (ls) hazard from historical point records, e.g. as 
+        documented by in the NASA COOLR initiative (see tutorial for source)
         
         Parameters:
-            bbox (array): [N, E , S, W] for which LS hazard should be calculated.
-            path_sourcefile (str): path to shapefile with COOLR data, retrieved previously as
-                described in tutorial
+            bbox (list): [N, E , S, W] geographic extent of interest
+            path_sourcefile (str): path to shapefile with ls point data
+            max_dist (int): distance until which neighbouring pixels should count as affected
+                if incl_neighbour = True. Default is 1000m.
         Returns:
-            Landslide() module: LS hazard set, historic
+            Landslide() module: historic LS hazard set
         """
         if not bbox:
             LOGGER.error('Empty bounding box, please set bounds.')
             raise ValueError()
 
         if not path_sourcefile:
-            LOGGER.error('No sourcefile, please specify one containing historic LS points')
+            LOGGER.error('No sourcefile (.shp) with historic LS points given')
             raise ValueError()
 
         ls_gdf_bbox = self._get_hist_events(bbox, path_sourcefile)
 
-        self.centroids.set_lat_lon(ls_gdf_bbox.latitude, ls_gdf_bbox.longitude)
-        n_cen = ls_gdf_bbox.latitude.size # number of centroids
-        n_ev = n_cen
+        self.centroids.set_lat_lon(ls_gdf_bbox.geometry.y, 
+                                   ls_gdf_bbox.geometry.x)
+        
+        n_cen = n_ev = len(ls_gdf_bbox)
 
         self.intensity = sparse.csr_matrix(np.diag(np.diag(np.ones((n_ev, n_cen)))))
         self.units = 'm/m'
         self.event_id = np.arange(n_ev, dtype=int)
         self.orig = np.ones(n_ev, bool)
-        self.date = ls_gdf_bbox.ev_date
+        if hasattr(ls_gdf_bbox, 'ev_date'):
+            self.date = ls_gdf_bbox.ev_date
+        else:
+            LOGGER.info('No event dates set from source')
         self.frequency = np.ones(n_ev)/n_ev
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1)
         self.check()
+        
+        # TODO: incorporate conversion of points to raster within specified distance
+        # if incl_neighbour:
+        #     LOGGER.info('Finding neighbouring pixels...')
+        #     self.centroids.set_meta_to_lat_lon()
+        #     self.centroids.set_geometry_points()
+        #     self._incl_affected_surroundings(max_dist)
+        #     self.check()
+            
 
         if check_plots == 1:
             self.centroids.plot()
         return self
 
-    def set_ls_model_prob(self, bbox, path_sourcefile = [], 
-                          incl_neighbour=False, max_dist=1000, check_plots=1):
+    def set_ls_model_prob(self, bbox, path_sourcefile, check_plots=1):
         """
         Parameters:
-            bbox (array): [N, E , S, W] for which LS hazard should be calculated
-            incl_neighbour (bool): whether to include affected neighbouring pixels
-                with dist <= max_dist. Default is false
-            max_dist (int): distance until which neighbouring pixels should count as affected
-                if incl_neighbour = True. Default is 1000m.
-            path_sourcefile (str):  path to NGI/UNEP file,
-                retrieved previously as descriped in tutorial and stored in climada/data.
+            bbox (array): [N, E , S, W] geographic extent of interest
+            path_sourcefile (str):  path to UNEP landslide hazard file, with 
+                annual occurrence probabilities (see tutorial for retrieval)
+            
         Returns:
-            Landslide() module: probabilistic LS hazard set
+            Landslide() instance: probabilistic LS hazard 
         """
-
-        path_sourcefile = os.path.join(LS_FILE_DIR, 'ls_pr_NGI_UNEP/ls_pr.tif')
         
         if not bbox:
             LOGGER.error('Empty bounding box, please set bounds.')
             raise ValueError()
-
-        window_array = self._get_window_from_coords(path_sourcefile,\
-                                                    bbox)
-        pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
-        self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
-                                        window_array[2], window_array[3]))
-        n_ev = self.intensity.nnz
-        n_cen = self.intensity.shape[1]
-        self.intensity_temp = []
-        for i, prob_val in enumerate(np.squeeze(np.asarray(self.intensity.todense()))):
-            if prob_val:
-                event_intensity = np.zeros(n_cen)
-                event_intensity[i] = 1
-                if self.intensity_temp==[]:
-                    self.intensity_temp = event_intensity
-                else:
-                    self.intensity_temp = sparse.vstack([
-                            sparse.csr_matrix(self.intensity_temp), 
-                            sparse.csr_matrix(event_intensity)])
         
-        self.frequency = self.intensity.data/10e6
-        self.intensity = sparse.csr_matrix(self.intensity_temp.copy())
-        self.fraction = self.intensity.copy()
-        self.event_id = np.arange(n_ev, dtype=int)
-        self.event_name = self.event_id.copy()
-        self.orig = np.ones(n_ev, bool)
+        if not path_sourcefile:
+            LOGGER.error('Empty path to landslide hazard set, please specify.')
+            raise ValueError()
+
+        window_array = self._get_window_from_coords(path_sourcefile,bbox)
+        pixel_height, pixel_width = self._get_raster_meta(path_sourcefile,
+                                                          window_array)
+        
+        # read in hazard set raster (by default stored in self.intensity)
+        self.set_raster([path_sourcefile], 
+                        window=Window(window_array[0], window_array[1],
+                                      window_array[2], window_array[3]))
+        
+        # UNEP / NGI raster file refers to annual frequency * fraction of affected pixel *1 mio
+        # --> correct, such that intensity = 1 wherever nonzero, and fraction accurate
+        # TODO: verify that splitting of intensity & fraction logically consistent & used in impact calc. 
+        self.frequency = np.array([1])
+        self.fraction = self.intensity.copy()/10e6
+        # set intensity to 1 wherever there's non-zero occurrence frequency
+        # TODO: check why intensities < 1 still exist in plot.
+        dense_frac = self.fraction.copy().todense()
+        dense_frac[dense_frac!=0] = 1
+        self.intensity = sparse.csr_matrix(dense_frac)
+
+        # meaningless, such that check() method passes:
         self.date= np.array([])
         self.event_name = []
         
-        self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
-                                                  window_array[3], window_array[2])
-                    
-        LOGGER.info('Generating landslides...')
+        self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], 
+                                                  pixel_height, 
+                                                  pixel_width,
+                                                  window_array[3], 
+                                                  window_array[2])
         self.check()
-
-        if incl_neighbour:
-            LOGGER.info('Finding neighbouring pixels...')
-            self.centroids.set_meta_to_lat_lon()
-            self.centroids.set_geometry_points()
-            self._intensity_binom_to_range(max_dist)
-            self.check()
 
         if check_plots == 1:
             self.plot_intensity(0)
+            self.plot_fraction(0)
 
         return self
 
