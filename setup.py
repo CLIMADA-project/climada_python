@@ -70,7 +70,6 @@ setup(
         'numba==0.51.2',
         'numpy==1.19.1',
         'matplotlib==3.2.2',
-        'matplotlib-base==3.2.2',
         'pandas==1.0.5',
         'pandas-datareader==0.8.1',
         'pillow==7.2.0',
