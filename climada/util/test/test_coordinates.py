@@ -270,7 +270,7 @@ class TestGetGeodata(unittest.TestCase):
         """get_land_geometry with all earth."""
         res = get_land_geometry(resolution=110)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
-        self.assertEqual(res.area, 21496.99098799273)
+        self.assertAlmostEqual(res.area, 21496.99098799273)
 
     def test_on_land_pass(self):
         """check point on land with 1:50.000.000 resolution."""

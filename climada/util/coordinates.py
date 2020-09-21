@@ -1093,40 +1093,48 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
-            src_crs = src.crs if src_crs is None else src_crs
-            if not src_crs:
-                src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
             dst_meta = src.meta.copy()
 
             if dst_crs or transform:
                 LOGGER.debug('Reprojecting ...')
+
+                src_crs = src.crs if src_crs is None else src_crs
+                if not src_crs:
+                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
                                                transform=transform, resampling=resampling)
             else:
-                trans = dst_meta['transform']
                 if geometry:
                     inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
                         inten[inten == dst_meta['nodata']] = 0
+
                 else:
                     masked_array = src.read(band, window=window, masked=True)
                     inten = masked_array.data
                     inten[masked_array.mask] = 0
+
                     if window:
                         trans = rasterio.windows.transform(window, src.transform)
+                    else:
+                        trans = dst_meta['transform']
+
                 dst_meta.update({
                     "height": inten.shape[1],
                     "width": inten.shape[2],
                     "transform": trans,
                 })
+
     if not dst_meta['crs']:
         dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
+
     return dst_meta, intensity.reshape(dst_shape)
 
 def read_raster_bounds(path, bounds, res=None, bands=None):
@@ -1285,7 +1293,7 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     y_dim = ymin - yres / 2 + yres * np.arange(data.shape[0])
     x_dim = xmin - xres / 2 + xres * np.arange(data.shape[1])
 
-    data = np.float64(data)
+    data = np.array(data, dtype=np.float64)
     data[np.isnan(data)] = fill_value
     return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
                                      method=method, bounds_error=False, fill_value=fill_value)
