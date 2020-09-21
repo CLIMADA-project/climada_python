@@ -25,6 +25,7 @@ import os
 import shutil
 import bz2
 import logging
+import requests
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -871,7 +872,12 @@ def _download_icon_grib(run_date,model_name='icon-eu-eps',
             shutil.move(file_name_i, CONFIG['local_data']['save_dir'])
         except ValueError as err:
             LOGGER.error('Error while downloading %s.', file_name_i)
-            raise err
+            request = requests.get(url)
+            if request.status_code == 200:
+                raise FileNotFoundError(('Error while downloading %s.', file_name_i)) from err
+            else:
+                raise err
+            
         
     return file_names
         
