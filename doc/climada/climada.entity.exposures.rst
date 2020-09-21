@@ -17,10 +17,10 @@ climada\.entity\.exposures\.black\_marble module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.cropyield\_isimip module
-----------------------------------------------------
+climada\.entity\.exposures\.crop\_production module
+---------------------------------------------------
 
-.. automodule:: climada.entity.exposures.cropyield_isimip
+.. automodule:: climada.entity.exposures.crop_production
     :members:
     :undoc-members:
     :show-inheritance:
