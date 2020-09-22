@@ -106,7 +106,10 @@ def main():
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()
     for (jd,nb) in notebooks:
-        suite.addTest(NotebookTest('test_notebook', jd, nb))
+        class NBTest(NotebookTest): pass
+        test_name = "_".join(os.path.splitext(nb)[0].split())
+        setattr(NBTest, test_name, NBTest.test_notebook)
+        suite.addTest(NBTest(test_name, jd, nb))
     
     # run the tests depending on the first input argument: None or 'report'. 
     # write xml reports for 'report'
