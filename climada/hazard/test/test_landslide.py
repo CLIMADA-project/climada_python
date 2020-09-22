@@ -46,7 +46,7 @@ class TestLandslideModule(unittest.TestCase):
         """Test function _get_raster_meta"""
         empty_LS = Landslide()
         pixel_width, pixel_height = empty_LS._get_raster_meta(
-            ath_sourcefile = os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
+            path_sourcefile = os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
             window_array = [60, 60, 120, 48])
         self.assertTrue(math.isclose(pixel_width, -0.00833, rel_tol=1e-03))
         self.assertTrue(math.isclose(pixel_height, 0.00833, rel_tol=1e-03))
@@ -68,11 +68,11 @@ class TestLandslideModule(unittest.TestCase):
         self.assertTrue(min(ls_subgdf.geometry.y)>=bbox[2])
         self.assertTrue(min(ls_subgdf.geometry.x)>=bbox[3])
 
-    def test_set_ls_model_hist(self):
-        """ Test function set_ls_model_hist()"""
+    def test_set_ls_hist(self):
+        """ Test function set_ls_hist()"""
         LS_hist = Landslide()
         COOLR_path = os.path.join(TESTDATA_DIR,'test_ls_hist.shp')
-        LS_hist.set_ls_model_hist(bbox=[48, 23, 40, 20], 
+        LS_hist.set_ls_hist(bbox=[48, 23, 40, 20], 
                                   path_sourcefile=COOLR_path, 
                                   check_plots=0)
         self.assertEqual(LS_hist.size, 272)
@@ -81,11 +81,11 @@ class TestLandslideModule(unittest.TestCase):
         self.assertEqual(max(LS_hist.intensity.data),1)
 
         
-    def test_set_ls_model_prob(self):
-        """ Test the function set_LS_model_prob()"""
+    def test_set_ls_prob(self):
+        """ Test the function set_ls_prob()"""
         LS_prob = Landslide()
         
-        LS_prob.set_ls_model_prob(bbox=[46, 11, 45, 8], 
+        LS_prob.set_ls_prob(bbox=[46, 11, 45, 8], 
                                   path_sourcefile=os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
                                   check_plots=0)
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
@@ -98,7 +98,7 @@ class TestLandslideModule(unittest.TestCase):
         # self.assertEqual(LS_prob.centroids.size, 129600)    
         
         # LS_prob_nb = Landslide()
-        # LS_prob_nb.set_ls_model_prob(bbox=[48, 10, 45, 7], 
+        # LS_prob_nb.set_ls_prob(bbox=[48, 10, 45, 7], 
         #                           path_sourcefile=os.path.join(SYSTEM_DIR, 'ls_pr/ls_pr.tif'), 
         #                           incl_neighbour=False, check_plots=0)
         # self.assertEqual(LS_prob_nb.tag.haz_type, 'LS')

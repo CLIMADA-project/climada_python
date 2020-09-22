@@ -27,7 +27,6 @@ import pyproj
 import rasterio
 from rasterio.windows import Window
 import numpy as np
-from haversine import haversine
 from climada.hazard.base import Hazard
 
 LOGGER = logging.getLogger(__name__)
@@ -97,35 +96,16 @@ class Landslide(Hazard):
         POINT occurrence
         
         Parameters:
-            max_dist (int): distance in metres (up to max ~1100) until which
-                neighbouring pixels count as affected.
+            max_dist (int): distance in metres until which
+                surroundings of a shapely.Point count as affected
         Returns:
-            intensity (csr matrix): range (0-1) where 0 = no occurrence, 1 = direct
-                occurrence, ]0-1[ = relative distance to pixel with direct occurrence
+            
         """
-        
         # TODO: redo this function to incorporate neighbourhood of points!
-        
-        # self.intensity = self.intensity.tolil()
-        # # find all other pixels within certain distance from corresponding centroid,
-        # for i, j in zip(*self.intensity.nonzero()):
-        #     subset_neighbours = self.centroids.geometry.cx[
-        #         (self.centroids.coord[j][1]-0.01):(self.centroids.coord[j][1]+0.01),
-        #         (self.centroids.coord[j][0]-0.01):(self.centroids.coord[j][0]+0.01)
-        #         ]# 0.01° = 1.11 km approximately
-        #     for centroid in subset_neighbours:
-        #         ix = subset_neighbours[subset_neighbours == centroid].index[0]
-        #         # calculate dist, assign intensity [0-1] linearly until max_dist
-        #         if haversine(self.centroids.coord[ix], self.centroids.coord[j], unit='m')\
-        #         <= max_dist:
-        #             actual_dist = haversine(
-        #                 self.centroids.coord[ix],
-        #                 self.centroids.coord[j], unit='m')
-        #             # this step changes sparsity of matrix -->
-        #             # converted to lil_matrix, as more efficient
-        #             self.intensity[i, ix] = (max_dist-actual_dist)/max_dist
-        # self.intensity = self.intensity.tocsr()
-
+        self.centroids.set_meta_to_lat_lon()
+        self.centroids.set_geometry_points()
+        buffer_deg = 'tranfo function from metres to degrees given projection'
+        self.centroids.geometry = self.centroids.geometry.buffer(buffer_deg)
 
     def _get_hist_events(self, bbox, path_sourcefile):
         """
@@ -136,19 +116,12 @@ class Landslide(Hazard):
             bbox (list): [N, E , S, W] geographic extent of interest
             path_sourcefile (str): path to shapefile with ls point data
         Returns:
-            ls_gdf_bbox (gdf): geopandas dataframe with ls points inside bbox
+            (gdf): geopandas dataframe with ls points inside bbox
         """
+        return gpd.read_file(path_sourcefile).cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
 
-        try:
-            ls_gdf = gpd.read_file(path_sourcefile)
-        except:
-            LOGGER.error('source file not found')
-            raise ValueError
-                            
-        ls_gdf_bbox = ls_gdf.cx[bbox[3]:bbox[1], bbox[2]:bbox[0]]
-        return ls_gdf_bbox
 
-    def set_ls_model_hist(self, bbox, path_sourcefile, incl_neighbour=False, 
+    def set_ls_hist(self, bbox, path_sourcefile, incl_surrounding=False, 
                           max_dist=1000, check_plots=1):
         """
         set landslide (ls) hazard from historical point records, e.g. as 
@@ -191,19 +164,17 @@ class Landslide(Hazard):
         self.check()
         
         # TODO: incorporate conversion of points to raster within specified distance
-        # if incl_neighbour:
-        #     LOGGER.info('Finding neighbouring pixels...')
-        #     self.centroids.set_meta_to_lat_lon()
-        #     self.centroids.set_geometry_points()
-        #     self._incl_affected_surroundings(max_dist)
-        #     self.check()
-            
+        if incl_surrounding:
+            LOGGER.info('Finding neighbouring pixels...')
+            self._incl_affected_surroundings(max_dist)
+            self.check()      
 
         if check_plots == 1:
             self.centroids.plot()
+            self.plot_intensity(0)
         return self
 
-    def set_ls_model_prob(self, bbox, path_sourcefile, check_plots=1):
+    def set_ls_prob(self, bbox, path_sourcefile, check_plots=1):
         """
         Parameters:
             bbox (array): [N, E , S, W] geographic extent of interest
@@ -258,5 +229,3 @@ class Landslide(Hazard):
             self.plot_fraction(0)
 
         return self
-
-
