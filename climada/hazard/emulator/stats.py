@@ -198,7 +198,7 @@ def normalize_seasonal_statistics(haz_stats, haz_stats_obs, freq_norm):
         idx = haz_stats.index[(haz_stats['year'] >= norm_period[0]) \
                             & (haz_stats['year'] <= norm_period[1])]
         col_data = haz_stats.loc[idx, col]
-        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].fillna(0)
+        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].dropna()
         if col == 'eventcount':
             fact = col_data_obs.sum() / col_data.sum()
         else:
