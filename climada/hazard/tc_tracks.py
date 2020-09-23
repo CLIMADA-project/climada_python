@@ -298,6 +298,10 @@ class TCTracks():
                         .fillna(all_vals.isel(agency=preferred_ix))
                 else:
                     ibtracs_ds[var] = all_vals.isel(agency=preferred_ix)
+        if provider:
+            # enforce use of specified provider's coordinates
+            ibtracs_ds['lat'] = ibtracs_ds[f'{provider}_lat']
+            ibtracs_ds['lon'] = ibtracs_ds[f'{provider}_lon']
         ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
                                  'wind', 'pres', 'rmw', 'roci', 'poci']]
 
