@@ -23,11 +23,9 @@ __all__ = ['Landslide']
 import logging
 from scipy import sparse
 import geopandas as gpd
-import pyproj
-import rasterio
-from rasterio.windows import Window
 import numpy as np
 from climada.hazard.base import Hazard
+import shapely
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,52 +41,6 @@ class Landslide(Hazard):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
         self.tag.haz_type = 'LS'
-
-
-    def _get_window_from_coords(self, path_sourcefile, bbox=[]):
-        #TODO: decide whether to move this into hazard base as sub-function of hazard.set_raster()
-        """
-        get row, column, width and height required for rasterio window function
-        from coordinate values of bounding box
-        
-        Parameters:
-            bbox (list): [north, east, south, west]
-            path_sourcefile (str): path of file from which window should be read in
-        Returns:
-            window_array (array): corner, width & height for Window() function of rasterio
-        """
-        with rasterio.open(path_sourcefile) as src:
-            utm = pyproj.Proj(init='epsg:4326') # Pass CRS of image from rasterio
-            lonlat = pyproj.Proj(init='epsg:4326')
-            lon, lat = (bbox[3], bbox[0])
-            west, north = pyproj.transform(lonlat, utm, lon, lat)
-
-            row, col = src.index(west, north) # spatial --> image coordinates
-
-            lon, lat = (bbox[1], bbox[2])
-            east, south = pyproj.transform(lonlat, utm, lon, lat)
-            row2, col2 = src.index(east, south)
-        width = abs(col2-col)
-        height = abs(row2-row)
-
-        window_array = [col, row, width, height]
-
-        return window_array
-
-
-    def _get_raster_meta(self, path_sourcefile, window_array):
-        #TODO: decide whether to move this into hazard base as sub-function of hazard.set_raster()
-        """
-        get geo-meta data from raster files to set centroids adequately
-        """
-        raster = rasterio.open(path_sourcefile, 'r', \
-                               window=Window(window_array[0], window_array[1],\
-                                               window_array[2], window_array[3]))
-        pixel_width = raster.meta['transform'][0]
-        pixel_height = raster.meta['transform'][4]
-
-        return pixel_height, pixel_width
-
 
     def _incl_affected_surroundings(self, max_dist):
         """
@@ -122,18 +74,27 @@ class Landslide(Hazard):
 
 
     def set_ls_hist(self, bbox, path_sourcefile, incl_surrounding=False, 
-                          max_dist=1000, check_plots=1):
+                          max_dist=100, check_plots=1):
         """
-        set landslide (ls) hazard from historical point records, e.g. as 
-        documented by in the NASA COOLR initiative (see tutorial for source)
+        Set historic landslide (ls) hazard from historical point records, 
+        for example as can be retrieved from the NASA COOLR initiative,
+        which is the largest global ls repository, for a specific geographic
+        extent.
+        Also, include affected surrounding by defining a circular extent around
+        ls points (intensity is binary - 0 marking no ls, 1 marking ls occurrence.
+        See tutorial for details; the global ls catalog from NASA COOLR can be
+        downloaded from 
         
         Parameters:
             bbox (list): [N, E , S, W] geographic extent of interest
-            path_sourcefile (str): path to shapefile with ls point data
-            max_dist (int): distance until which neighbouring pixels should count as affected
-                if incl_neighbour = True. Default is 1000m.
+            path_sourcefile (str): path to shapefile (.shp) with ls point data
+            incl_surrounding (bool): default is False. Whether to include circular
+                surroundings from point hazard as affected area.
+            max_dist (int): distance in metres until which 
+                if incl_neighbour = True. Default is 100m.
         Returns:
-            Landslide() module: historic LS hazard set
+            self (Landslide inst.): instance filled with historic LS hazard set
+                for either point hazards or polygons with specified surrounding extent.
         """
         if not bbox:
             LOGGER.error('Empty bounding box, please set bounds.')
@@ -176,11 +137,32 @@ class Landslide(Hazard):
 
     def set_ls_prob(self, bbox, path_sourcefile, check_plots=1):
         """
+        Set probabilistic annual landslide hazard (fraction, intensity and 
+        frequency) for a defined bounding box.
+        The hazard data for which this function is explicitly written
+        is readily provided by UNEP & the Norwegian Geotechnical Institute 
+        (NGI), and can be downloaded and unzipped from 
+        https://preview.grid.unep.ch/index.php?preview=data&events=landslides&evcat=2&lang=eng 
+        for precipitation-triggered landslide and from
+        https://preview.grid.unep.ch/index.php?preview=data&events=landslides&evcat=1&lang=eng 
+        for earthquake-triggered landslides.
+        Original data is given in expected annual probability and percentage 
+        of pixel of occurrence of a potentially destructive landslide event
+        x 1000000.
+        More details can be found in the landslide tutorial and under above-
+        mentioned links.
+        
+        The data is structured such that intensity takes a binary value (0 - no
+        ls occurrence probability; 1 - ls occurrence probabilty >0) and fraction
+        stores the actual probability * fraction of affected pixel. Frequency 
+        is 1 everywhere, since the data represents annual occurrence probability.
+        
+        Impact functions should hence be in the form of a step function, defining
+        impact for intensity 0 and (near to) 1.
+        
         Parameters:
             bbox (array): [N, E , S, W] geographic extent of interest
-            path_sourcefile (str):  path to UNEP landslide hazard file, with 
-                annual occurrence probabilities (see tutorial for retrieval)
-            
+            path_sourcefile (str):  path to UNEP/NGI landslide hazard file     
         Returns:
             Landslide() instance: probabilistic LS hazard 
         """
@@ -192,37 +174,30 @@ class Landslide(Hazard):
         if not path_sourcefile:
             LOGGER.error('Empty path to landslide hazard set, please specify.')
             raise ValueError()
-
-        window_array = self._get_window_from_coords(path_sourcefile,bbox)
-        pixel_height, pixel_width = self._get_raster_meta(path_sourcefile,
-                                                          window_array)
         
         # read in hazard set raster (by default stored in self.intensity)
         self.set_raster([path_sourcefile], 
-                        window=Window(window_array[0], window_array[1],
-                                      window_array[2], window_array[3]))
+                        geometry=[shapely.geometry.box(*bbox[::-1], ccw=True)])
         
-        # UNEP / NGI raster file refers to annual frequency * fraction of affected pixel *1 mio
-        # --> correct, such that intensity = 1 wherever nonzero, and fraction accurate
-        # TODO: verify that splitting of intensity & fraction logically consistent & used in impact calc. 
+        # specify annual frequency:
         self.frequency = np.array([1])
+        # reassign intensity to self.fraction, correct by factor 1mio, 
         self.fraction = self.intensity.copy()/10e6
-        # set intensity to 1 wherever there's non-zero occurrence frequency
-        # TODO: check why intensities < 1 still exist in plot.
+        # set intensity to 1 wherever there's non-zero fraction
         dense_frac = self.fraction.copy().todense()
         dense_frac[dense_frac!=0] = 1
         self.intensity = sparse.csr_matrix(dense_frac)
-
         # meaningless, such that check() method passes:
         self.date= np.array([])
         self.event_name = []
         
-        self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], 
-                                                  pixel_height, 
-                                                  pixel_width,
-                                                  window_array[3], 
-                                                  window_array[2])
+        self.centroids.set_raster_file(path_sourcefile, 
+                                       geometry=[shapely.geometry.box(*bbox[::-1], ccw=True)])
+        if "unnamed" in self.centroids.crs.wkt:
+            self.centroids.meta['crs'] = {'init': 'epsg:4326', 'no_defs': True}
+        
         self.check()
+        self.centroids.check()
 
         if check_plots == 1:
             self.plot_intensity(0)
