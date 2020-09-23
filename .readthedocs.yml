@@ -1,2 +1,2 @@
 conda:
-    file: requirements/env_doc.yml
+    file: requirements/env_docs.yml
