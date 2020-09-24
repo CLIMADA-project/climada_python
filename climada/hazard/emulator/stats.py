@@ -144,7 +144,7 @@ def haz_max_events(hazard, min_thresh=0):
     LOGGER.info("Condensing %d hazards to %d max events ...", inten.shape[0], exp_hazards.size)
     inten = inten[exp_hazards]
     inten_max_ids = np.asarray(inten.argmax(axis=1)).ravel()
-    inten_max = inten[range(inten.shape[0]), inten_max_ids].todense()
+    inten_max = inten[range(inten.shape[0]), inten_max_ids]
     dates = hazard.date[exp_hazards]
     dates = [datetime.date.fromordinal(d) for d in dates]
     return pd.DataFrame({
@@ -198,7 +198,7 @@ def normalize_seasonal_statistics(haz_stats, haz_stats_obs, freq_norm):
         idx = haz_stats.index[(haz_stats['year'] >= norm_period[0]) \
                             & (haz_stats['year'] <= norm_period[1])]
         col_data = haz_stats.loc[idx, col]
-        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].fillna(0)
+        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].dropna()
         if col == 'eventcount':
             fact = col_data_obs.sum() / col_data.sum()
         else:

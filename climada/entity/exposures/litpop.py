@@ -293,14 +293,14 @@ class LitPop(Exposures):
         Parameters:
             cntry_info (list): [cntry_id, cnytry_name, cntry_geometry,
                 ref_year, gdp, income_group]
-            litpop_data (pandas SparseArray): LitPop data with the value
+            litpop_data (pandas.arrays.SparseArray): LitPop data with the value
                 already distributed.
             lon (array): longitudinal coordinates
             lat (array): latudinal coordinates
             curr_country: name or iso3 ID of country
         """
         lp_ent = LitPop()
-        lp_ent['value'] = litpop_data.values
+        lp_ent['value'] = litpop_data.to_numpy()
         lp_ent['latitude'] = lat
         lp_ent['longitude'] = lon
         try:
@@ -383,7 +383,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
             To get nightlights^3 alone: [3, 0].
             To use population count alone: [0, 1].
     OUTPUT (either one of these lines, depending on option return_coords):
-        litpop_data (pandas SparseArray): A pandas SparseArray containing the
+        litpop_data (pandas.arrays.SparseArray): A pandas SparseArray containing the
             raw, unnormalised LitPop data.
         OR
         litpop_data, lon, lat (tuple): if return_coords=1 a tuple in the
@@ -399,7 +399,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
     # Lit = Lit + 1 if Population is included, c.f. int(exponents[1]>0):
     bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16')
                                              + int(exponents[1] > 0))
-    nightlights = pd.SparseArray(bm_temp, fill_value=int(exponents[1] > 0))
+    nightlights = pd.arrays.SparseArray(bm_temp, fill_value=int(exponents[1] > 0))
     del bm_temp
 
     litpop_data = _LitPop_multiply(nightlights, gpw, exponents=exponents)
@@ -408,6 +408,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
         lon, lat = _litpop_box2coords(cut_bbox, resolution, 0)
         return litpop_data, lon, lat
     return litpop_data
+
 def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
     """
     PURPOSE:
@@ -416,15 +417,15 @@ def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
         Both factors are included to the power of lit_exp / pop_exp to
         change their weight.
     INPUTS:
-        nightlights (dataframe): gridded nightlights data
-        gpw (dataframe): gridded population data
+        nightlights (SparseArray): gridded nightlights data
+        gpw (SparseArray): gridded population data
         exponents (list of two integers): exponents for nightlights and
             population data, default = [1, 1]
     OUTPUT:
         litpop_data (dataframe): gridded resulting LitPop
     """
-    litpop_data = pd.SparseArray(
-        np.multiply(nightlights.values**exponents[0], gpw.values**exponents[1]), fill_value=0)
+    litpop_data = pd.arrays.SparseArray(
+        np.multiply(nightlights.to_numpy()**exponents[0], gpw.to_numpy()**exponents[1]), fill_value=0)
     return litpop_data
 
 def _litpop_box2coords(box, resolution, point_format=0):
@@ -625,7 +626,7 @@ def _shape_cutter(shape, **opt_args):
         incl_coords (list): list of tuples of formate (lon, lat) of points
             inside shape (returned if points_format=1)
         enclave_paths (list): list of detected enclave paths
-        mask (pandas SparseArray): SparseArray which =1 where is point is
+        mask (pandas.arrays.SparseArray): SparseArray with one where point is
             inside shape and zero otherwise. (only returned if return_mask=1)
         if only_geo = 0 (default):
             The shape of type shapefile._Shape
@@ -719,7 +720,7 @@ def _shape_cutter(shape, **opt_args):
         del points2check
     incl_coords = set(incl_coords)
     mask = np.array([(coord in incl_coords) for coord in all_coords])
-    mask = pd.SparseArray(mask, fill_value=0)
+    mask = pd.arrays.SparseArray(mask, fill_value=0)
     lon, lat = zip(*[all_coords[val] for idx, val
                      in enumerate(mask.sp_index.indices)])
     if check_plot == 1:
@@ -753,7 +754,7 @@ def _mask_from_path(path, resolution=30, return_points=1, return_mask=0):
     del curr_bbox
     if curr_points2check == []:
         return None
-    temp_mask = pd.SparseArray(path.contains_points(curr_points2check),
+    temp_mask = pd.arrays.SparseArray(path.contains_points(curr_points2check),
                                fill_value=0)
     points_in = [curr_points2check[val] for idx, val
                  in enumerate(temp_mask.sp_index.indices)]
@@ -813,8 +814,8 @@ def _mask_from_shape(check_shape, **opt_args):
         inside shape (returned if points_format=1)
     enclave_paths : list
         list of detected enclave paths
-    mask : pandas SparseArray
-        SparseArray which =1 where is point is
+    mask : pandas.arrays.SparseArray
+        SparseArray with one where point is
         inside shape and zero otherwise. (only returned if return_mask=1)
     """
     from matplotlib import path
@@ -895,7 +896,7 @@ def _mask_from_shape(check_shape, **opt_args):
         del points2check
     incl_coords = set(incl_coords)
     mask = np.array([(coord in incl_coords) for coord in all_coords])
-    mask = pd.SparseArray(mask, fill_value=0, dtype='bool_')
+    mask = pd.arrays.SparseArray(mask, fill_value=0, dtype='bool_')
 #    plt.figure()
 #    l1, l2 = zip(*[x for n, x in enumerate(all_coords) if mask.values[n]==1])
 #    plt.scatter(l1, l2)
@@ -1225,7 +1226,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
         admin1_info (list): a list which contains information about the admin1
             level of the country (is produced in the .set_country procedure).
             It contains Shape files among others.
-        litpop_data (pandas SparseArray): The raw litpop_data to which the
+        litpop_data (pandas.arrays.SparseArray): The raw litpop_data to which the
             admin1 based value should be assinged.
         coords (list): a list containing all the coordinates of the country in
             the format (lon, lat)
@@ -1235,7 +1236,7 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
         conserve_cntrytotal (boolean): if True, final LitPop is normalized with country value
 
     Returns:
-        litpop_data (pandas SparseArray): The litpop_data the sum of which
+        litpop_data (pandas.arrays.SparseArray): The litpop_data the sum of which
             corresponds to the GDP multiplied by the GDP2Asset conversion
             factor.
     """
@@ -1255,9 +1256,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                     mask_adm1 = _mask_from_shape(adm1_shp[0],
                                                  resolution=resolution,
                                                  points2check=coords)
-                    shr_adm0 = sum(litpop_data.values[mask_adm1.values])
+                    shr_adm0 = sum(litpop_data[mask_adm1])
                 else:
-                    shr_adm0 = sum(litpop_data.values[masks_adm1[idx3].values])
+                    shr_adm0 = sum(litpop_data[masks_adm1[idx3]])
                 temp_adm1['adm0_LitPop_share'].append(shr_adm0)
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())[idx3])
                 # LitPop in the admin1-unit is scaled by ratio of admin
@@ -1269,14 +1270,14 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                     mult = 0
                 if return_data:
                     if not masks_adm1:
-                        litpop_data = pd.SparseArray(
+                        litpop_data = pd.arrays.SparseArray(
                             [val * mult if mask_adm1[idx] == 1 else val
-                             for idx, val in enumerate(litpop_data.values)],
+                             for idx, val in enumerate(litpop_data.to_numpy())],
                             fill_value=0)
                     else:
-                        litpop_data = pd.SparseArray(
+                        litpop_data = pd.arrays.SparseArray(
                             [val * mult if masks_adm1[idx3][idx] == 1 else val
-                             for idx, val in enumerate(litpop_data.values)],
+                             for idx, val in enumerate(litpop_data.to_numpy())],
                             fill_value=0)
         else:
             temp_adm1 = {'mask': [], 'adm0_LitPop_share': [],
@@ -1292,12 +1293,12 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                 else:
                     mask_adm1 = masks_adm1[idx3]
                 temp_adm1['mask'].append(mask_adm1)
-                temp_adm1['LitPop_sum'].append(sum(litpop_data.values[mask_adm1.values]))
-                temp_adm1['adm0_LitPop_share'].append(sum(litpop_data.values[mask_adm1.values])
+                temp_adm1['LitPop_sum'].append(sum(litpop_data[mask_adm1]))
+                temp_adm1['adm0_LitPop_share'].append(sum(litpop_data[mask_adm1])
                                                       / sum_litpop)
             del mask_adm1
             sum_litpop_adm1 = sum([
-                sum(litpop_data.values[temp_adm1['mask'][n1].values])
+                sum(litpop_data[temp_adm1['mask'][n1]])
                 for n1, val in enumerate(gsdp_data.values()) if val is not None
             ])
             admin1_share = sum_litpop_adm1 / sum_litpop
@@ -1307,11 +1308,11 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                                  admin1_info[1][idx2].attributes['name'])
                     mult = (val * admin1_share * (country_info[3] * country_info[4])
                             / temp_adm1['LitPop_sum'][idx2])
-                    temp_mask = temp_adm1['mask'][idx2].values
+                    temp_mask = temp_adm1['mask'][idx2]
                     if return_data:
-                        litpop_data = pd.SparseArray(
+                        litpop_data = pd.arrays.SparseArray(
                             [val1 * mult if temp_mask[idx] == 1 else val1
-                             for idx, val1 in enumerate(litpop_data.values)])
+                             for idx, val1 in enumerate(litpop_data.to_numpy())])
 
                 else:
                     LOGGER.warning('No admin1 data found for %s.',
@@ -1344,40 +1345,37 @@ def _calc_admin0(litpop_data, total_asset_val, gdptoasset_factor):
         the Gloabl Wealth Databook by the Credit Suisse Research Institute.
 
     Parameters:
-        litpop_data (pandas SparseArray): The raw litpop_data to which the
+        litpop_data (pandas.arrays.SparseArray): The raw litpop_data to which the
             admin0 based value should be assinged.
         total_asset_val (scalar): The total asset value of the country.
         gdptoasset_factor (scalar): The factor with which GDP can be converted
             to physical asset value.
 
     Returns:
-        litpop_data (pandas SparseArray): The litpop_data the sum of which
+        litpop_data (pandas.arrays.SparseArray): The litpop_data the sum of which
             corresponds to the GDP multiplied by the GDP2Asset conversion
             factor.
     """
-    litpop_data = _normalise_litpop(litpop_data)
-    litpop_data = pd.SparseArray(litpop_data.values) * total_asset_val * gdptoasset_factor
-    return litpop_data
+    return _normalise_litpop(litpop_data) * total_asset_val * gdptoasset_factor
 
 def _normalise_litpop(litpop_data):
     """Normailses LitPop data, such that its total sum equals to one.
 
     Parameters:
-        litpop_data (pandas SparseArray): The litpop_data which sjould be
+        litpop_data (pandas.arrays.SparseArray): The litpop_data which sjould be
             normalised.
 
     Returns:
-        litpop_data (pandas SparseArray): The litpop_data the sum of which
+        litpop_data (pandas.arrays.SparseArray): The litpop_data the sum of which
             corresponds to one.
     """
-    if isinstance(litpop_data, pd.SparseArray):
-        sum_all = sum(litpop_data.sp_values)
-        litpop_data = pd.SparseArray(litpop_data.values / sum_all)
-    else:
+    if not isinstance(litpop_data, pd.arrays.SparseArray):
         LOGGER.error('LitPop data is not of expected type (Pandas '
                      'SparseArray). Operation aborted.')
         raise TypeError
-    return litpop_data
+
+    sum_all = sum(litpop_data.sp_values)
+    return litpop_data / sum_all
 
 def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
     """Checks whether a bounding box is valid an compatible with the chosen
@@ -1532,7 +1530,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
 
     Returns
     -------
-    nightlight_intensity : pandas SparseArray
+    nightlight_intensity : pandas.arrays.SparseArray
         BM data
     lon : list
         list with longitudinal infomation on the GPW data. Same
@@ -1573,9 +1571,9 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
                 if zoom_factor != 1:
 #                    LOGGER.debug('Resizing image according to chosen '\
 #                                + 'resolution')
-                    arr1[j] = pd.SparseDataFrame(nd.zoom(arr1[j], zoom_factor, order=1))
+                    arr1[j] = to_sparse_dataframe(nd.zoom(arr1[j], zoom_factor, order=1))
                 else:
-                    arr1[j] = pd.SparseDataFrame(arr1[j])
+                    arr1[j] = to_sparse_dataframe(arr1[j])
                 if cut_bbox is not None:
                     arr1[j] = _bm_bbox_cutter(arr1[j], (num_i * 2) + j, cut_bbox, resolution)
                 if file_count == 1:
@@ -1614,7 +1612,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
             nightlight_temp = pd.concat((nightlight_temp, arr1), 1)
         del arr1
     # LOGGER.debug('Reducing to one dimension...')
-    nightlight_intensity = pd.SparseArray(nightlight_temp.values
+    nightlight_intensity = pd.arrays.SparseArray(nightlight_temp.values
                                           .reshape((-1,), order='F'),
                                           dtype='float')
     del nightlight_temp
@@ -1640,7 +1638,7 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
         which file is currenlty being treated (curr_file).
 
     Optional parameters:
-        bm_data (pandas SparseArray or array): Imported BM data in gridded
+        bm_data (pandas.arrays.SparseArray or array): Imported BM data in gridded
             format
         curr_file (integer): the file which is currenlty being imported (out
             of all the eignt BM files) in zero indexing.
@@ -1649,7 +1647,7 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
             being imported.
 
     Returns:
-        bm_data (pandas SparseArray): Cropped BM data
+        bm_data (pandas.arrays.SparseArray): Cropped BM data
     """
     fixed_source_resolution = resolution
     deg_per_pix = 1 / (3600 / fixed_source_resolution)
@@ -1662,7 +1660,7 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
             or minlon > maxlon_tile or maxlon < minlon_tile:
         LOGGER.warning('This tile does not contain any relevant data. \
                        Skipping file.')
-        return pd.SparseDataFrame()
+        return pd.DataFrame()
     bbox_conv = np.array((minlon, minlat, maxlon, maxlat))
     col_min, row_min, col_max, row_max = \
         _litpop_coords_in_glb_grid(bbox_conv, resolution)
@@ -1679,7 +1677,7 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     col_max = min(col_max, maxcol_tile) - (curr_file // 2) * (90) * (3600 / resolution)
 
     if isinstance(bm_data, pd.DataFrame):
-        bm_data = pd.SparseDataFrame(bm_data.loc[row_min:row_max, col_min:col_max].values)
+        bm_data = to_sparse_dataframe(bm_data.loc[row_min:row_max, col_min:col_max].values)
     else:
         row_max = min(row_max + 1, ((maxlat_tile - minlat_tile)
                                     - (deg_per_pix / 2)) * (1 / deg_per_pix))
@@ -1714,7 +1712,7 @@ def _get_box_blackmarble(cut_bbox, **args):
 
     Returns
     -------
-    nightlight_intensity : pandas SparseArray
+    nightlight_intensity : pandas.arrays.SparseArray
         BM data
     lon : list
         list with longitudinal infomation on the GPW data. Same
@@ -1833,9 +1831,9 @@ def admin1_validation(country, methods, exponents, **args):
     bm_temp[nightlights.sp_index.indices] = (np.array(nightlights.sp_values, dtype='uint16'))
     del nightlights
 
-    nightlights0 = pd.SparseArray(bm_temp, fill_value=0)
+    nightlights0 = pd.arrays.SparseArray(bm_temp, fill_value=0)
     nightlights0 = nightlights0[mask.sp_index.indices]
-    nightlights1 = pd.SparseArray(bm_temp + 1, fill_value=1)
+    nightlights1 = pd.arrays.SparseArray(bm_temp + 1, fill_value=1)
     del bm_temp
     nightlights1 = nightlights1[mask.sp_index.indices]
 
@@ -1890,6 +1888,30 @@ def exposure_set_admin1(exposure, res_arcsec):
             mask_adm1 = _mask_from_shape(
                 adm1_shp[0], resolution=res_arcsec,
                 points2check=list(zip(exposure.longitude, exposure.latitude)))
-            exposure.admin1_ID[mask_adm1.values] = adm1_shp[1][3]
-            exposure.admin1[mask_adm1.values] = adm1_shp[1]['name']
+            exposure.admin1_ID[mask_adm1] = adm1_shp[1][3]
+            exposure.admin1[mask_adm1] = adm1_shp[1]['name']
     return exposure
+
+
+def to_sparse_dataframe(ndarr):
+    """Turns a 2-dim ndarray into a DataFrame with little memory footprint.
+
+    Parameters
+    ----------
+    ndarr : numpy.ndarray
+        2 dimensional
+    
+    Returns
+    -------
+    sparse dataframe : pandas.DataFrame
+    """
+
+    # in order to retain the low memory consumption of SparseArrays
+    # it seems to be necessary to build the data frame from a dictionary of columns
+    # and not just a mere list
+    return pd.DataFrame(
+        dict([
+            (i, pd.arrays.SparseArray(ndarr[:,i]))
+            for i in range(ndarr.shape[1])
+        ])
+    )

@@ -47,7 +47,7 @@ The branching system is adapted for the scientific setting from
 +-------------+--------------------+------------+---------------+
 | Branches    | Purpose            | Code       | Longevity     |
 +=============+====================+============+===============+
-| Master      | Releases           | Stable     | Infinite      |
+| Main      | Releases           | Stable     | Infinite      |
 +-------------+--------------------+------------+---------------+
 | Develop     | Between releases   | Reviewed   | Infinite      |
 +-------------+--------------------+------------+---------------+
@@ -195,7 +195,7 @@ B) Push to remote branch (at least once/week, ideally daily)
 
 C) Merge develop into your branch (regularly/when develop changes)
 
-1. ``git fetch –all``
+1. ``git fetch --all``
 2. Make all commit according to A
 3. ``git status`` (verify that there are no tracked files that are
    uncommitted)
@@ -208,7 +208,7 @@ C) Merge develop into your branch (regularly/when develop changes)
 
 D) Prepare to merge into develop (ideally before every release)
 
-1.  ``git fetch –all``
+1.  ``git fetch --all``
 2.  ``git checkout feature/feature_name``
 3.  ``git status`` (see how many commits the branch is behind the
     remote)

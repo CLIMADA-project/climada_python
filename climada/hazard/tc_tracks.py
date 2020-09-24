@@ -298,6 +298,10 @@ class TCTracks():
                         .fillna(all_vals.isel(agency=preferred_ix))
                 else:
                     ibtracs_ds[var] = all_vals.isel(agency=preferred_ix)
+        if provider:
+            # enforce use of specified provider's coordinates
+            ibtracs_ds['lat'] = ibtracs_ds[f'{provider}_lat']
+            ibtracs_ds['lon'] = ibtracs_ds[f'{provider}_lon']
         ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
                                  'wind', 'pres', 'rmw', 'roci', 'poci']]
 
@@ -956,42 +960,104 @@ def _dist_since_lf(track):
     return dist_since_lf
 
 def _estimate_pressure(cen_pres, lat, lon, v_max):
-    """Replace missing pressure values with statistical estimate."""
+    """Replace missing pressure values with statistical estimate.
+
+    In addition to NaNs, negative values and zeros in `cen_pres` are interpreted as missing values.
+
+    See function `ibtracs_fit_param` for more details about the statistical estimation:
+
+    >>> ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2019))
+    >>> r^2: 0.8746154487335112
+
+    Parameters
+    ----------
+    cen_pres : array-like
+        Central pressure values along track in hPa (mbar).
+    lat : array-like
+        Latitudinal coordinates of eye location.
+    lon : array-like
+        Longitudinal coordinates of eye location.
+    v_max : array-like
+        Maximum wind speed along track in knots.
+
+    Returns
+    -------
+    cen_pres_estimated : np.array
+        Estimated central pressure values in hPa (mbar).
+    """
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     v_max = np.where(np.isnan(v_max), -1, v_max)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (cen_pres <= 0) & (v_max > 0) & (lat > -999) & (lon > -999)
-    # ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2019))
-    # r^2: 0.8746154487335112
     c_const, c_lat, c_lon, c_vmax = 1024.392, 0.0620, -0.0335, -0.737
     cen_pres[msk] = c_const + c_lat * lat[msk] \
                             + c_lon * lon[msk] \
                             + c_vmax * v_max[msk]
-    return cen_pres
+    return np.where(cen_pres <= 0, np.nan, cen_pres)
 
 def _estimate_vmax(v_max, lat, lon, cen_pres):
-    """Replace missing wind speed values with statistical estimate."""
+    """Replace missing wind speed values with a statistical estimate.
+
+    In addition to NaNs, negative values and zeros in `v_max` are interpreted as missing values.
+
+    See function `ibtracs_fit_param` for more details about the statistical estimation:
+
+    >>> ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2019))
+    >>> r^2: 0.8717153945288457
+
+    Parameters
+    ----------
+    v_max : array-like
+        Maximum wind speed along track in knots.
+    lat : array-like
+        Latitudinal coordinates of eye location.
+    lon : array-like
+        Longitudinal coordinates of eye location.
+    cen_pres : array-like
+        Central pressure values along track in hPa (mbar).
+
+    Returns
+    -------
+    v_max_estimated : np.array
+        Estimated maximum wind speed values in knots.
+    """
     v_max = np.where(np.isnan(v_max), -1, v_max)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (v_max <= 0) & (cen_pres > 0) & (lat > -999) & (lon > -999)
-    # ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2019))
-    # r^2: 0.8717153945288457
     c_const, c_lat, c_lon, c_pres = 1216.823, 0.0852, -0.0398, -1.182
     v_max[msk] = c_const + c_lat * lat[msk] \
                          + c_lon * lon[msk] \
                          + c_pres * cen_pres[msk]
-    return v_max
+    return np.where(v_max <= 0, np.nan, v_max)
 
 def estimate_roci(roci, cen_pres):
-    """Replace missing radius values with statistical estimate."""
+    """Replace missing radius (ROCI) values with statistical estimate.
+
+    In addition to NaNs, negative values and zeros in `roci` are interpreted as missing values.
+
+    See function `ibtracs_fit_param` for more details about the statistical estimation:
+
+    >>> ibtracs_fit_param('roci', ['pres'],
+    ...                   order=[(872, 950, 985, 1005, 1021)],
+    ...                   year_range=(1980, 2019))
+    >>> r^2: 0.9148320406675339
+
+    Parameters
+    ----------
+    roci : array-like
+        ROCI values along track in km.
+    cen_pres : array-like
+        Central pressure values along track in hPa (mbar).
+
+    Returns
+    -------
+    roci_estimated : np.array
+        Estimated ROCI values in km.
+    """
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     msk = (roci <= 0) & (cen_pres > 0)
-    # ibtracs_fit_param('roci', ['pres'],
-    #                   order=[(872, 950, 985, 1005, 1021)],
-    #                   year_range=(1980, 2019))
-    # r^2: 0.9148320406675339
     pres_l = [872, 950, 985, 1005, 1021]
     roci_l = [210.711487, 215.897110, 198.261520, 159.589508, 90.900116]
     roci[msk] = 0
@@ -1000,15 +1066,33 @@ def estimate_roci(roci, cen_pres):
         slope_1 = 1. / (pres_l[i + 1] - pres_l_i) if i + 1 < len(pres_l) else 0
         roci[msk] += roci_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l_i - cen_pres[msk])
                                              - slope_1 * np.fmax(0, cen_pres[msk] - pres_l_i)))
-    return roci
+    return np.where(roci <= 0, np.nan, roci)
 
 def estimate_rmw(rmw, cen_pres):
-    """Replace missing radius values with statistical estimate."""
+    """Replace missing radius (RMW) values with statistical estimate.
+
+    In addition to NaNs, negative values and zeros in `rmw` are interpreted as missing values.
+
+    See function `ibtracs_fit_param` for more details about the statistical estimation:
+
+    >>> ibtracs_fit_param('rmw', ['pres'], order=[(872, 940, 980, 1021)], year_range=(1980, 2019))
+    >>> r^2: 0.7905970811843872
+
+    Parameters
+    ----------
+    rmw : array-like
+        RMW values along track in km.
+    cen_pres : array-like
+        Central pressure values along track in hPa (mbar).
+
+    Returns
+    -------
+    rmw : np.array
+        Estimated RMW values in km.
+    """
     rmw = np.where(np.isnan(rmw), -1, rmw)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     msk = (rmw <= 0) & (cen_pres > 0)
-    # ibtracs_fit_param('rmw', ['pres'], order=[(872, 940, 980, 1021)], year_range=(1980, 2019))
-    # r^2: 0.7905970811843872
     pres_l = [872, 940, 980, 1021]
     rmw_l = [14.907318, 15.726927, 25.742142, 56.856522]
     rmw[msk] = 0
@@ -1017,7 +1101,7 @@ def estimate_rmw(rmw, cen_pres):
         slope_1 = 1. / (pres_l[i + 1] - pres_l_i) if i + 1 < len(pres_l) else 0
         rmw[msk] += rmw_l[i] * np.fmax(0, (1 - slope_0 * np.fmax(0, pres_l_i - cen_pres[msk])
                                            - slope_1 * np.fmax(0, cen_pres[msk] - pres_l_i)))
-    return rmw
+    return np.where(rmw <= 0, np.nan, rmw)
 
 def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     """Statistically fit an ibtracs parameter to other ibtracs variables
