@@ -162,7 +162,7 @@ class Landslide(Hazard):
         
         Parameters:
             bbox (array): [N, E , S, W] geographic extent of interest
-            path_sourcefile (str):  path to UNEP/NGI landslide hazard file     
+            path_sourcefile (str):  path to UNEP/NGI landslide hazard (.tif) file     
         Returns:
             Landslide() instance: probabilistic LS hazard 
         """
