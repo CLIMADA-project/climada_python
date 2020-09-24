@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from climada.hazard.drought import Drought 
+from climada.hazard.drought import Drought
 
 from climada.entity.impact_funcs.drought import IFDrought
 # from climada.entity import Entity
@@ -10,13 +10,13 @@ from climada.engine import Impact
 from climada.entity.exposures.spam_agrar import SpamAgrar
 import numpy as np
 
-""" Set Area to be analysed"""
+"""Set Area to be analysed"""
 
 
 """Set method for defining intensity between 1 (default): min 2:sum-threshold 3:sum"""
 intensity_definition = 3
 
-""" Initialize default threshold (default: -1)"""
+"""Initialize default threshold (default: -1)"""
 threshold = -1.5
 
 #Threshold and intensity_definition to be defined only if not defalut values are used
@@ -44,13 +44,13 @@ d.set_intensity_def(intensity_definition)
 #d.set_file_name(spei_file_name)
 #d.set_file_url(spei_file_url)
 
-"""Set path if the data are not in 'climada_python\data\system' """
+"""Set path if the data are not in 'climada_python\data\system'"""
 #d.set_file_path(file_path_spei)
 
 """Setup the hazard"""
 new_haz = d.setup()
 
-"""Plot intensity of one year event""" 
+"""Plot intensity of one year event"""
 # new_haz.plot_intensity_drought(event='2003')
 
 """Initialize Impact function"""
@@ -67,7 +67,7 @@ exposure_agrar = SpamAgrar()
 exposure_agrar.init_spam_agrar(country='CHE')
 
 """If intensity def is not default, exposure has to be adapted"""
-"""In case of sum-thr: 'if_DR_sumthr', in case of sum:'if_DR_sum' """
+"""In case of sum-thr: 'if_DR_sumthr', in case of sum:'if_DR_sum'"""
 #exposure_agrar['if_DR_sumthr'] = np.ones(exposure_agrar.shape[0])
 exposure_agrar['if_DR_sum'] = np.ones(exposure_agrar.shape[0])
 

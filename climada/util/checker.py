@@ -19,11 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 module containing functions to check variables properties.
 """
 
-__all__ = ['size',
-           'shape',
-           'array_optional',
-           'array_default'
-          ]
+__all__ = [
+    'size',
+    'shape',
+    'array_optional',
+    'array_default'
+]
 
 import logging
 import numpy as np
@@ -47,14 +48,13 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
     """
     for var_name, var_val in var_dict.items():
         if var_name in var_obl:
-            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) or \
-            isinstance(var_val, list):
-                size(n_size, var_val, name_prefix+var_name)
+            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) \
+               or isinstance(var_val, list):
+                size(n_size, var_val, name_prefix + var_name)
             elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
-                shape(n_row, n_col, var_val, name_prefix+var_name)
-            elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) \
-            and var_val.ndim == 2:
-                shape(n_row, n_col, var_val, name_prefix+var_name)
+                shape(n_row, n_col, var_val, name_prefix + var_name)
+            elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) and var_val.ndim == 2:
+                shape(n_row, n_col, var_val, name_prefix + var_name)
 
 def check_optionals(var_dict, var_opt, name_prefix, n_size):
     """Check size of obligatory variables.
@@ -71,7 +71,7 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
     for var_name, var_val in var_dict.items():
         if var_name in var_opt:
             if isinstance(var_val, (np.ndarray, list)):
-                array_optional(n_size, var_val, name_prefix+var_name)
+                array_optional(n_size, var_val, name_prefix + var_name)
 
 def empty_optional(var, var_name):
     """Check if a data structure is empty."""
@@ -86,7 +86,7 @@ def size(exp_len, var, var_name):
     """
     try:
         if exp_len != len(var):
-            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len, \
+            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len,
                          len(var))
             raise ValueError
     except TypeError:
@@ -101,11 +101,11 @@ def shape(exp_row, exp_col, var, var_name):
     """
     try:
         if exp_row != var.shape[0]:
-            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,\
+            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,
                          var.shape[0])
             raise ValueError
         if exp_col != var.shape[1]:
-            LOGGER.error("Invalid %s column size: %s != %s.", var_name, \
+            LOGGER.error("Invalid %s column size: %s != %s.", var_name,
                          exp_col, var.shape[1])
             raise ValueError
     except TypeError:

@@ -56,7 +56,7 @@ def read(file_name, with_refs=False):
             Exception while reading
         """
     def get_group(group):
-        '''Recursive function to get variables from a group.'''
+        """Recursive function to get variables from a group."""
         contents = {}
         for name, obj in list(group.items()):
             if isinstance(obj, h5py.Dataset):
@@ -86,7 +86,7 @@ def get_string(array):
         Returns:
             string
     """
-    return u''.join(chr(c) for c in array)
+    return u''.join(chr(int(c)) for c in array)
 
 def get_str_from_ref(file_name, var):
     """Form string from a reference HDF5 variable of the given file.
@@ -134,5 +134,5 @@ def get_sparse_csr_mat(mat_dict, shape):
     ('jc' not in mat_dict):
         raise ValueError('Input data is not a sparse matrix.')
 
-    return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'], \
+    return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'],
                               mat_dict['jc']), shape).tocsr()

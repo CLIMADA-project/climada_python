@@ -106,7 +106,7 @@ class TestLitPopFunctions(unittest.TestCase):
         curr_shp = lp._get_country_shape(curr_country, 0)
         mask = lp._mask_from_shape(curr_shp, resolution=60)
         self.assertEqual(mask.sp_index.indices.size, 5591)
-        self.assertTrue(mask.values.max())
+        self.assertTrue(mask.sp_values.max())
         self.assertIn(140 and 7663, mask.sp_index.indices)
 
     def test_litpop_box2coords(self):
@@ -116,8 +116,8 @@ class TestLitPopFunctions(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertIn(_rnd(117.91666666666666) and _rnd(22.08333333333333),\
-                        _rnd(min(all_coords)))
+        self.assertIn(_rnd(117.91666666666666) and _rnd(22.08333333333333),
+                      _rnd(min(all_coords)))
 
 # Execute Tests
 if __name__ == "__main__":

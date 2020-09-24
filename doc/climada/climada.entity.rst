@@ -8,8 +8,8 @@ climada\.entity package
     climada.entity.impact_funcs
     climada.entity.measures
 
-climada\.entity\.entity_def module
-----------------------------------
+climada\.entity\.entity\_def module
+-----------------------------------
 
 .. automodule:: climada.entity.entity_def
     :members:

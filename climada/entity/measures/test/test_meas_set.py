@@ -165,7 +165,7 @@ class TestChecker(unittest.TestCase):
         with self.assertLogs('climada.util.checker', level='ERROR') as cm:
             with self.assertRaises(ValueError):
                 meas.check()
-        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.', \
+        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.',
                          cm.output[0])
 
     def test_check_wrongColor_fail(self):
@@ -234,7 +234,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('Wrong Measure.name: LoLo != LaLa', cm.output[0])
 
     def test_def_color(self):
-        """ Test default grey scale used when no color set """
+        """Test default grey scale used when no color set"""
         meas = MeasureSet()
         act_1 = Measure()
         act_1.name = 'LaLa'
@@ -329,14 +329,14 @@ class TestExtend(unittest.TestCase):
         meas.check()
 
         self.assertEqual(meas.size(), 2)
-        self.assertEqual(meas.get_names(), {'TC': ['Mangrove', 'Anything']} )
+        self.assertEqual(meas.get_names(), {'TC': ['Mangrove', 'Anything']})
         self.assertEqual(meas.get_measure(name=act_1.name)[0].paa_impact, act_11.paa_impact)
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
     def test_demo_file(self):
-        """ Read demo excel file"""
+        """Read demo excel file"""
         meas = MeasureSet()
         description = 'One single file.'
         meas.read_excel(ENT_DEMO_TODAY, description)
@@ -380,7 +380,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(meas.tag.description, description)
 
     def test_template_file_pass(self):
-        """ Read template excel file"""
+        """Read template excel file"""
         meas = MeasureSet()
         meas.read_excel(ENT_TEMPLATE_XLS)
 
@@ -413,7 +413,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.name, name)
         self.assertEqual(act_buil.haz_type, 'TC')
         self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.76, 0.84, 0.60])))
-        self.assertEqual(act_buil.cost,  63968125.00687534)
+        self.assertEqual(act_buil.cost, 63968125.00687534)
 
         self.assertEqual(act_buil.hazard_set, 'nil')
         self.assertEqual(act_buil.hazard_freq_cutoff, 0)
@@ -437,7 +437,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.name, name)
         self.assertEqual(act_buil.haz_type, 'TC')
         self.assertTrue(np.array_equal(act_buil.color_rgb, np.array([0.90, 0.72, 0.72])))
-        self.assertEqual(act_buil.cost,  21000000)
+        self.assertEqual(act_buil.cost, 21000000)
 
         self.assertEqual(act_buil.hazard_set, 'nil')
         self.assertEqual(act_buil.hazard_freq_cutoff, 0)
@@ -527,7 +527,7 @@ class TestWriter(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
 
     def test_write_read_file(self):
-        """ Write and read excel file"""
+        """Write and read excel file"""
 
         act_1 = Measure()
         act_1.name = 'Mangrove'

@@ -46,11 +46,11 @@ class TestSave(unittest.TestCase):
         with self.assertLogs('climada.util.save', level='INFO') as cm:
             save(file_name, ent)
         self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
-        self.assertTrue((file_name in cm.output[0]) or \
+        self.assertTrue((file_name in cm.output[0]) or
                         (file_name in cm.output[1]))
 
     def test_load_pass(self):
-        """ Load previously saved variable """
+        """Load previously saved variable"""
         file_name = 'save_test.pkl'
         ent = {'value': [1, 2, 3]}
         save(file_name, ent)
@@ -60,5 +60,6 @@ class TestSave(unittest.TestCase):
         self.assertTrue(res['value'] == ent['value'])
 
 # Execute Tests
-TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
-unittest.TextTestRunner(verbosity=2).run(TESTS)
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSave)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

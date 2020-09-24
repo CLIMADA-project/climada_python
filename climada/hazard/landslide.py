@@ -38,7 +38,7 @@ class Landslide(Hazard):
     """
 
     def __init__(self):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.tag.haz_type = 'LS'
 

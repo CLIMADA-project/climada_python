@@ -32,7 +32,7 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, \
+DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
                         os.pardir, 'hazard', 'test', 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
 
@@ -52,7 +52,7 @@ class TestApply(unittest.TestCase):
         imp_tc = ImpactFunc()
         imp_tc.haz_type = 'XX'
         imp_tc.id = 1
-        imp_tc.intensity = np.arange(10,100, 10)
+        imp_tc.intensity = np.arange(10, 100, 10)
         imp_tc.intensity[0] = 0.
         imp_tc.intensity[-1] = 100.
         imp_tc.mdd = np.array([0.0, 0.0, 0.021857142857143, 0.035887500000000,
@@ -93,14 +93,14 @@ class TestApply(unittest.TestCase):
 
         self.assertFalse(id(new_haz) == id(haz))
 
-        pos_no_null = np.array([ 6249,  7697,  9134, 13500, 13199,  5944,  9052,  9050,  2429,
-                                5139,  9053,  7102,  4096,  1070,  5948,  1076,  5947,  7432,
-                                5949, 11694,  5484,  6246, 12147,   778,  3326,  7199, 12498,
-                               11698,  6245,  5327,  4819,  8677,  5970,  7101,   779,  3894,
-                                9051,  5976,  3329,  5978,  4282, 11697,  7193,  5351,  7310,
-                                7478,  5489,  5526,  7194,  4283,  7191,  5328,  4812,  5528,
-                                5527,  5488,  7475,  5529,   776,  5758,  4811,  6223,  7479,
-                                7470,  5480,  5325,  7477,  7318,  7317, 11696,  7313, 13165,
+        pos_no_null = np.array([6249, 7697, 9134, 13500, 13199, 5944, 9052, 9050, 2429,
+                                5139, 9053, 7102, 4096, 1070, 5948, 1076, 5947, 7432,
+                                5949, 11694, 5484, 6246, 12147, 778, 3326, 7199, 12498,
+                               11698, 6245, 5327, 4819, 8677, 5970, 7101, 779, 3894,
+                                9051, 5976, 3329, 5978, 4282, 11697, 7193, 5351, 7310,
+                                7478, 5489, 5526, 7194, 4283, 7191, 5328, 4812, 5528,
+                                5527, 5488, 7475, 5529, 776, 5758, 4811, 6223, 7479,
+                                7470, 5480, 5325, 7477, 7318, 7317, 11696, 7313, 13165,
                                 6221])
         all_haz = np.arange(haz.intensity.shape[0])
         all_haz[pos_no_null] = -1
@@ -131,19 +131,19 @@ class TestApply(unittest.TestCase):
 
         self.assertFalse(id(new_haz) == id(haz))
 
-        pos_no_null = np.array([ 6249,  7697,  9134, 13500, 13199,  5944,  9052,  9050,  2429,
-                                5139,  9053,  7102,  4096,  1070,  5948,  1076,  5947,  7432,
-                                5949, 11694,  5484,  6246, 12147,   778,  3326,  7199, 12498,
-                               11698,  6245,  5327,  4819,  8677,  5970,  7101,   779,  3894,
-                                9051,  5976,  3329,  5978,  4282, 11697,  7193,  5351,  7310,
-                                7478,  5489,  5526,  7194,  4283,  7191,  5328,  4812,  5528,
-                                5527,  5488,  7475,  5529,   776,  5758,  4811,  6223,  7479,
-                                7470,  5480,  5325,  7477,  7318,  7317, 11696,  7313, 13165,
+        pos_no_null = np.array([6249, 7697, 9134, 13500, 13199, 5944, 9052, 9050, 2429,
+                                5139, 9053, 7102, 4096, 1070, 5948, 1076, 5947, 7432,
+                                5949, 11694, 5484, 6246, 12147, 778, 3326, 7199, 12498,
+                               11698, 6245, 5327, 4819, 8677, 5970, 7101, 779, 3894,
+                                9051, 5976, 3329, 5978, 4282, 11697, 7193, 5351, 7310,
+                                7478, 5489, 5526, 7194, 4283, 7191, 5328, 4812, 5528,
+                                5527, 5488, 7475, 5529, 776, 5758, 4811, 6223, 7479,
+                                7470, 5480, 5325, 7477, 7318, 7317, 11696, 7313, 13165,
                                 6221])
         all_haz = np.arange(haz.intensity.shape[0])
         all_haz[pos_no_null] = -1
         pos_null = np.argwhere(all_haz > 0).reshape(-1)
-        centr_null = np.unique(exp.centr_[exp.region_id==0])
+        centr_null = np.unique(exp.centr_[exp.region_id == 0])
         for i_ev in pos_null:
             self.assertEqual(new_haz.intensity[i_ev, centr_null].max(), 0)
 
@@ -166,8 +166,8 @@ class TestApply(unittest.TestCase):
         imp_tc.haz_type = 'TC'
         imp_tc.id = 3
         imp_tc.intensity = np.arange(10, 100, 10)
-        imp_tc.mdd = np.arange(10, 100, 10)*2
-        imp_tc.paa = np.arange(10, 100, 10)*2
+        imp_tc.mdd = np.arange(10, 100, 10) * 2
+        imp_tc.paa = np.arange(10, 100, 10) * 2
 
         exp = Exposures()
         exp.read_hdf5(EXP_DEMO_H5)
@@ -180,11 +180,11 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp.value.values, exp.value.values))
         self.assertTrue(np.array_equal(new_exp.latitude.values, exp.latitude.values))
         self.assertTrue(np.array_equal(new_exp.longitude.values, exp.longitude.values))
-        self.assertTrue(np.array_equal(exp[INDICATOR_IF+'TC'].values, np.ones(new_exp.shape[0])))
-        self.assertTrue(np.array_equal(new_exp[INDICATOR_IF+'TC'].values, np.ones(new_exp.shape[0])*3))
+        self.assertTrue(np.array_equal(exp[INDICATOR_IF + 'TC'].values, np.ones(new_exp.shape[0])))
+        self.assertTrue(np.array_equal(new_exp[INDICATOR_IF + 'TC'].values, np.ones(new_exp.shape[0]) * 3))
 
     def test_change_all_hazard_pass(self):
-        """Test _change_all_hazard method """
+        """Test _change_all_hazard method"""
         meas = Measure()
         meas.hazard_set = HAZ_DEMO_H5
 
@@ -204,7 +204,7 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_haz.fraction.data, ref_haz.fraction.data))
 
     def test_change_all_exposures_pass(self):
-        """Test _change_all_exposures method """
+        """Test _change_all_exposures method"""
         meas = Measure()
         meas.exposures_set = EXP_DEMO_H5
 
@@ -256,9 +256,9 @@ class TestApply(unittest.TestCase):
 
         exp = Exposures()
         exp.read_mat(ENT_TEST_MAT)
-        exp.rename(columns={'if_':'if_TC', 'centr_':'centr_TC'}, inplace=True)
+        exp.rename(columns={'if_': 'if_TC', 'centr_': 'centr_TC'}, inplace=True)
         exp['region_id'] = np.ones(exp.shape[0])
-        exp.region_id.values[:exp.shape[0]//2] = 3
+        exp.region_id.values[:exp.shape[0] // 2] = 3
         exp.region_id[0] = 4
         exp.check()
 
@@ -290,19 +290,19 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.value_unit, exp.value_unit)
         self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
         self.assertEqual(res_exp.tag.description, exp.tag.description)
-        self.assertTrue(np.array_equal(res_exp.value.values[exp.shape[0]//2:], new_exp.value.values[:exp.shape[0]//2]))
-        self.assertEqual(res_exp.region_id.values[exp.shape[0]//2], 4)
-        self.assertTrue(np.array_equal(res_exp.region_id.values[exp.shape[0]//2+1:], np.ones(exp.shape[0]//2-1)*3))
-        self.assertTrue(np.array_equal(res_exp.if_TC.values[exp.shape[0]//2:], new_exp.if_TC.values[:exp.shape[0]//2]))
-        self.assertTrue(np.array_equal(res_exp.latitude.values[exp.shape[0]//2:], new_exp.latitude.values[:exp.shape[0]//2]))
-        self.assertTrue(np.array_equal(res_exp.longitude.values[exp.shape[0]//2:], new_exp.longitude.values[:exp.shape[0]//2]))
+        self.assertTrue(np.array_equal(res_exp.value.values[exp.shape[0] // 2:], new_exp.value.values[:exp.shape[0] // 2]))
+        self.assertEqual(res_exp.region_id.values[exp.shape[0] // 2], 4)
+        self.assertTrue(np.array_equal(res_exp.region_id.values[exp.shape[0] // 2 + 1:], np.ones(exp.shape[0] // 2 - 1) * 3))
+        self.assertTrue(np.array_equal(res_exp.if_TC.values[exp.shape[0] // 2:], new_exp.if_TC.values[:exp.shape[0] // 2]))
+        self.assertTrue(np.array_equal(res_exp.latitude.values[exp.shape[0] // 2:], new_exp.latitude.values[:exp.shape[0] // 2]))
+        self.assertTrue(np.array_equal(res_exp.longitude.values[exp.shape[0] // 2:], new_exp.longitude.values[:exp.shape[0] // 2]))
 
         # changed exposures
-        self.assertTrue(np.array_equal(res_exp.value.values[:exp.shape[0]//2], exp.value.values[exp.shape[0]//2:]))
-        self.assertTrue(np.array_equal(res_exp.region_id.values[:exp.shape[0]//2], np.ones(exp.shape[0]//2)))
-        self.assertTrue(np.array_equal(res_exp.if_TC.values[:exp.shape[0]//2], exp.if_TC.values[exp.shape[0]//2:]))
-        self.assertTrue(np.array_equal(res_exp.latitude.values[:exp.shape[0]//2], exp.latitude.values[exp.shape[0]//2:]))
-        self.assertTrue(np.array_equal(res_exp.longitude.values[:exp.shape[0]//2], exp.longitude.values[exp.shape[0]//2:]))
+        self.assertTrue(np.array_equal(res_exp.value.values[:exp.shape[0] // 2], exp.value.values[exp.shape[0] // 2:]))
+        self.assertTrue(np.array_equal(res_exp.region_id.values[:exp.shape[0] // 2], np.ones(exp.shape[0] // 2)))
+        self.assertTrue(np.array_equal(res_exp.if_TC.values[:exp.shape[0] // 2], exp.if_TC.values[exp.shape[0] // 2:]))
+        self.assertTrue(np.array_equal(res_exp.latitude.values[:exp.shape[0] // 2], exp.latitude.values[exp.shape[0] // 2:]))
+        self.assertTrue(np.array_equal(res_exp.longitude.values[:exp.shape[0] // 2], exp.longitude.values[exp.shape[0] // 2:]))
 
         # unchanged impact functions
         self.assertEqual(list(res_ifs.get_func().keys()), [meas.haz_type])
@@ -314,33 +314,33 @@ class TestApply(unittest.TestCase):
                                        imp_set.get_func()[meas.haz_type][3].intensity))
 
         # changed impact functions
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1+IF_ID_FACT].intensity,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].intensity,
                         ref_ifs.get_func()[meas.haz_type][1].intensity))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1+IF_ID_FACT].paa,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].paa,
                         ref_ifs.get_func()[meas.haz_type][1].paa))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1+IF_ID_FACT].mdd,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].mdd,
                         ref_ifs.get_func()[meas.haz_type][1].mdd))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3+IF_ID_FACT].intensity,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].intensity,
                         ref_ifs.get_func()[meas.haz_type][3].intensity))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3+IF_ID_FACT].paa,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].paa,
                         ref_ifs.get_func()[meas.haz_type][3].paa))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3+IF_ID_FACT].mdd,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].mdd,
                         ref_ifs.get_func()[meas.haz_type][3].mdd))
 
         # unchanged hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].todense(),
-                        haz.intensity[:, :36].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].todense(),
-                        haz.intensity[:, 37:46].todense()))
-        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].todense(),
-                        haz.intensity[:, 47:].todense()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, :36].toarray(),
+                        haz.intensity[:, :36].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 37:46].toarray(),
+                        haz.intensity[:, 37:46].toarray()))
+        self.assertTrue(np.array_equal(res_haz.intensity[:, 47:].toarray(),
+                        haz.intensity[:, 47:].toarray()))
 
         # changed hazard
-        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].todense(),
-                        new_haz.intensity[[36, 46]].todense()))
+        self.assertTrue(np.array_equal(res_haz.intensity[[36, 46]].toarray(),
+                        new_haz.intensity[[36, 46]].toarray()))
 
     def test_apply_ref_pass(self):
-        """ Test apply method: apply all measures but insurance """
+        """Test apply method: apply all measures but insurance"""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         hazard.haz_type = 'TC'
@@ -352,7 +352,7 @@ class TestApply(unittest.TestCase):
             meas.haz_type = 'TC'
         entity.check()
 
-        new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures, \
+        new_exp, new_ifs, new_haz = entity.measures.get_measure('TC', 'Mangroves').apply(entity.exposures,
             entity.impact_funcs, hazard)
 
         self.assertTrue(new_exp is entity.exposures)
@@ -378,14 +378,14 @@ class TestApply(unittest.TestCase):
             1.000000000000000])))
 
     def test_calc_impact_pass(self):
-        """ Test calc_impact method: apply all measures but insurance """
+        """Test calc_impact method: apply all measures but insurance"""
 
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
-        entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.measures._data['TC'] = entity.measures._data.pop('XX')
         entity.measures.get_measure(name='Mangroves', haz_type='TC').haz_type = 'TC'
         for meas in entity.measures.get_measure('TC'):
@@ -406,7 +406,7 @@ class TestApply(unittest.TestCase):
         self.assertAlmostEqual(imp.eai_exp[-1], 7.528669956120645e+07)
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e+11)
         self.assertEqual(imp.unit, 'USD')
-        self.assertEqual(imp.imp_mat, [])
+        self.assertEqual(imp.imp_mat.shape, (0, 0))
         self.assertTrue(np.array_equal(imp.event_id, hazard.event_id))
         self.assertTrue(np.array_equal(imp.date, hazard.date))
         self.assertEqual(imp.event_name, hazard.event_name)
@@ -417,14 +417,14 @@ class TestApply(unittest.TestCase):
 
 
     def test_calc_impact_transf_pass(self):
-        """ Test calc_impact method: apply all measures and insurance """
+        """Test calc_impact method: apply all measures and insurance"""
 
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
-        entity.exposures.rename(columns={'if_':'if_TC'}, inplace=True)
+        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.measures._data['TC'] = entity.measures._data.pop('XX')
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
@@ -449,7 +449,7 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(imp.eai_exp, np.array([])))
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e+11)
         self.assertEqual(imp.unit, 'USD')
-        self.assertEqual(imp.imp_mat, [])
+        self.assertEqual(imp.imp_mat.shape, (0, 0))
         self.assertTrue(np.array_equal(imp.event_id, hazard.event_id))
         self.assertTrue(np.array_equal(imp.date, hazard.date))
         self.assertEqual(imp.event_name, hazard.event_name)

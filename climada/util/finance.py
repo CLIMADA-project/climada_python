@@ -44,7 +44,7 @@ LOGGER = logging.getLogger(__name__)
 
 WORLD_BANK_WEALTH_ACC = \
 "https://databank.worldbank.org/data/download/Wealth-Accounts_CSV.zip"
-""" Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
+"""Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
     https://datacatalog.worldbank.org/dataset/wealth-accounting
     Includes variable Produced Capital (NW.PCA.TO)"""
 
@@ -52,26 +52,26 @@ FILE_WORLD_BANK_WEALTH_ACC = "Wealth-AccountsData.csv"
 
 WORLD_BANK_INC_GRP = \
 "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
-""" Income group historical data from World bank."""
+"""Income group historical data from World bank."""
 
-INCOME_GRP_WB_TABLE = {'L' : 1, # low income
-                       'LM': 2, # lower middle income
-                       'UM': 3, # upper middle income
-                       'H' : 4, # high income
-                       '..': np.nan # no data
+INCOME_GRP_WB_TABLE = {'L': 1,  # low income
+                       'LM': 2,  # lower middle income
+                       'UM': 3,  # upper middle income
+                       'H': 4,  # high income
+                       '..': np.nan  # no data
                       }
-""" Meaning of values of world banks' historical table on income groups. """
+"""Meaning of values of world banks' historical table on income groups."""
 
-INCOME_GRP_NE_TABLE = {5: 1, # Low income
-                       4: 2, # Lower middle income
-                       3: 3, # Upper middle income
-                       2: 4, # High income: nonOECD
+INCOME_GRP_NE_TABLE = {5: 1,  # Low income
+                       4: 2,  # Lower middle income
+                       3: 3,  # Upper middle income
+                       2: 4,  # High income: nonOECD
                        1: 4  # High income: OECD
                       }
-""" Meaning of values of natural earth's income groups."""
+"""Meaning of values of natural earth's income groups."""
 
 FILE_GWP_WEALTH2GDP_FACTORS = 'WEALTH2GDP_factors_CRI_2016.csv'
-""" File with wealth-to-GDP factors from the
+"""File with wealth-to-GDP factors from the
 Credit Suisse's Global Wealth Report 2017 (household wealth)"""
 
 def _nat_earth_shp(resolution='10m', category='cultural',
@@ -98,12 +98,12 @@ def net_present_value(years, disc_rates, val_years):
 
     npv = val_years[-1]
     for val, disc in zip(val_years[-2::-1], disc_rates[-2::-1]):
-        npv = val + npv/(1+disc)
+        npv = val + npv / (1 + disc)
 
     return npv
 
 def income_group(cntry_iso, ref_year, shp_file=None):
-    """ Get country's income group from World Bank's data at a given year,
+    """Get country's income group from World Bank's data at a given year,
     or closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -125,7 +125,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
     return close_year, close_val
 
 def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
-    """ Get country's (current value) GDP from World Bank's data at a given year, or
+    """Get country's (current value) GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -162,7 +162,7 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     return close_year, close_val
 
 def world_bank(cntry_iso, ref_year, info_ind):
-    """ Get country's GDP from World Bank's data at a given year, or
+    """Get country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
     Parameters:
@@ -180,14 +180,13 @@ def world_bank(cntry_iso, ref_year, info_ind):
     if info_ind != 'INC_GRP':
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            cntry_gdp = wb.download(indicator=info_ind, \
-                country=cntry_iso, start=1960, end=2030)
+            cntry_gdp = wb.download(indicator=info_ind, country=cntry_iso, start=1960, end=2030)
         years = np.array([int(year) for year in cntry_gdp.index.get_level_values('year')])
-        sort_years = np.abs(years-ref_year).argsort()
+        sort_years = np.abs(years - ref_year).argsort()
         close_val = cntry_gdp.iloc[sort_years].dropna()
         close_year = int(close_val.iloc[0].name[1])
         close_val = float(close_val.iloc[0].values)
-    else: # income group level
+    else:  # income group level
         fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
         dfr_wb = pd.DataFrame()
         try:
@@ -199,20 +198,20 @@ def world_bank(cntry_iso, ref_year, info_ind):
             dfr_wb = dfr_wb.replace(INCOME_GRP_WB_TABLE.keys(),
                                     INCOME_GRP_WB_TABLE.values())
         except (IOError, requests.exceptions.ConnectionError) as err:
-            LOGGER.error('Internet connection failed while downloading ' +
+            LOGGER.error('Internet connection failed while downloading '
                          'historical income groups.')
             raise err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
-        close_val = cntry_dfr.iloc[np.abs( \
-            np.array(cntry_dfr.index[1:])-ref_year).argsort()+1].dropna()
+        close_val = cntry_dfr.iloc[np.abs(
+            np.array(cntry_dfr.index[1:]) - ref_year).argsort() + 1].dropna()
         close_year = close_val.index[0]
         close_val = int(close_val.iloc[0])
 
     return close_year, close_val
 
 def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
-    """ Get country's parameter from natural earth's admin0 shape file.
+    """Get country's parameter from natural earth's admin0 shape file.
 
     Parameters:
         cntry_iso (str): key = ISO alpha_3 country
@@ -252,9 +251,9 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
 
     return close_year, close_val
 
-def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
+def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
                file_name=FILE_GWP_WEALTH2GDP_FACTORS):
-    """ Get country's wealth-to-GDP factor from the
+    """Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
         Missing value: returns NaN.
         Parameters:
@@ -266,33 +265,31 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016, \
             float
     """
     fname = os.path.join(SYSTEM_DIR, file_name)
-    factors_all_countries = pd.read_csv(fname, sep=',', index_col=None, \
-                     header=0, encoding='ISO-8859-1')
+    factors_all_countries = pd.read_csv(fname, sep=',', index_col=None,
+                                        header=0, encoding='ISO-8859-1')
     if ref_year != 2016:
-        LOGGER.warning('Reference year for the factor to convert GDP to '\
-            + 'wealth was set to 2016 because other years have not '\
-            + 'been implemented yet.')
+        LOGGER.warning('Reference year for the factor to convert GDP to '
+                       'wealth was set to 2016 because other years have not '
+                       'been implemented yet.')
         ref_year = 2016
     if non_financial:
         try:
-            val = factors_all_countries\
-                [factors_all_countries.country_iso3 == cntry_iso]\
-                ['NFW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[
+                factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["NFW-to-GDP-ratio"].mean()
     else:
         try:
-            val = factors_all_countries\
-                [factors_all_countries.country_iso3 == cntry_iso]\
-                ['TW-to-GDP-ratio'].values[0]
+            val = factors_all_countries[
+                factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
         except:
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
     val = np.around(val, 5)
     return ref_year, val
 
-def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
+def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
                               no_land=True):
     """
     Download and unzip wealth accounting historical data (1995, 2000, 2005, 2010, 2014)
@@ -347,40 +344,41 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO", \
         LOGGER.error('Downloading World Bank Wealth Accounting Data failed.')
         raise
 
-    data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso) \
-                  & data_wealth['Indicator Code'].\
-                  str.contains(variable_name)].loc[:, '1995':'2014']
+    data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso)
+                              & data_wealth['Indicator Code'].str.contains(variable_name)
+                             ].loc[:, '1995':'2014']
     years = list(map(int, list(data_wealth)))
-    if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name: # if country is not found in data
+    if data_wealth.size == 0 and 'NW.PCA.TO' in variable_name:  # if country is not found in data
         LOGGER.warning('No data available for country. Using non-financial wealth instead')
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        ref_year_fac, fac = wealth2gdp(cntry_iso)
-        return gdp_year, np.around((fac*gdp_val), 1), 0
-    if ref_year in years: # indicator for reference year is available directly
+        fac = wealth2gdp(cntry_iso)[1]
+        return gdp_year, np.around((fac * gdp_val), 1), 0
+    if ref_year in years:  # indicator for reference year is available directly
         result = data_wealth.loc[:, np.str(ref_year)].values[0]
-    elif ref_year > np.min(years) and ref_year < np.max(years): # interpolate
+    elif ref_year > np.min(years) and ref_year < np.max(years):  # interpolate
         result = np.interp(ref_year, years, data_wealth.values[0, :])
-    elif ref_year < np.min(years): # scale proportionally to GDP
+    elif ref_year < np.min(years):  # scale proportionally to GDP
         gdp_year, gdp0_val = gdp(cntry_iso, np.min(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, 0]*gdp_val/gdp0_val
+        result = data_wealth.values[0, 0] * gdp_val / gdp0_val
         ref_year = gdp_year
     else:
         gdp_year, gdp0_val = gdp(cntry_iso, np.max(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, -1]*gdp_val/gdp0_val
+        result = data_wealth.values[0, -1] * gdp_val / gdp0_val
         ref_year = gdp_year
-    if 'NW.PCA.' in variable_name and no_land: # remove value of built-up land from produced capital
-        result = result/1.24
+    if 'NW.PCA.' in variable_name and no_land:
+        # remove value of built-up land from produced capital
+        result = result / 1.24
     return ref_year, np.around(result, 1), 1
 
 def _gdp_twn(ref_year, per_capita=False):
-    """returns GDP for TWN (Republic of China / Taiwan Province of China) based 
+    """returns GDP for TWN (Republic of China / Taiwan Province of China) based
     on a CSV sheet downloaded from the
-    International Monetary Fund (IMF). 
+    International Monetary Fund (IMF).
     The reason for this special treatment is the
     lack of GDP data for TWN in the World Bank data
-    
+
     Data Source:
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/index.aspx
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/weorept.aspx?sy=1980&ey=2024&scsm=1&ssd=1&sic=1&sort=country&ds=.&br=1&pr1.x=42&pr1.y=10&c=528&s=NGDPD%2CNGDP_D%2CNGDPDPC&grp=0&a=
@@ -391,24 +389,23 @@ def _gdp_twn(ref_year, per_capita=False):
     Returns:
         float
     """
-    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), \
-                                   'GDP_TWN_IMF_WEO_data.csv')):
+    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv')):
         LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
         return 0
     if per_capita:
         var_name = 'Gross domestic product per capita, current prices'
     else:
         var_name = 'Gross domestic product, current prices'
-    if ref_year<1980:
+    if ref_year < 1980:
         close_year = 1980
-    elif ref_year>2024:
+    elif ref_year > 2024:
         close_year = 2024
     else:
         close_year = ref_year
-    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), \
-                                   'GDP_TWN_IMF_WEO_data.csv'), \
-                                   index_col=None, header=0)
-    close_val = data.loc[data['Subject Descriptor']==var_name, str(close_year)].values[0]
+    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv'),
+                       index_col=None, header=0)
+    close_val = data.loc[data['Subject Descriptor'] == var_name, str(close_year)].values[0]
     close_val = float(close_val.replace(',', ''))
-    if not per_capita: close_val = close_val*1e9
+    if not per_capita:
+        close_val = close_val * 1e9
     return close_year, close_val
