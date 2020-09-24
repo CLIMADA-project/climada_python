@@ -42,7 +42,7 @@ Install environment with Anaconda
       python -c "import sys; print(sys.executable)"
       --> returns a path, like /Users/XXX/opt/anaconda3/envs/climada_env/bin/python
       
-   Start Anaconda, create a new python_env environment (just click create and enter the name, then press Create) and install latest Spyder in there (currently 4.1.5), start this Spyder, then, after Spyder has started, navigate to Preferences > Python Interpreter > Use the following interpreter and paste the path from above (e.g. /Users/XXX/opt/anaconda3/envs/climada_env/bin/python) into the text box. Start a new IPython console and run tests_install.py
+   Start Anaconda, create a new python_env environment (just click create and enter the name, then press Create) and install latest Spyder in there (currently 4.1.5), start this Spyder, then, after Spyder has started, navigate to Preferences > Python Interpreter > Use the following interpreter and paste the path from above (e.g. /Users/XXX/opt/anaconda3/envs/climada_env/bin/python) into the text box. Start a new IPython console and run ``tests_install.py``.
       
 4. **Run tutorials**: In the *Home* section of Anaconda, with *climada_env* selected, install and launch *jupyter notebook*. A browser window will show up. Navigate to your ``climada_python-x.y.z`` repository and open ``doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
 
