@@ -1,14 +1,6 @@
 climada\.util package
 =====================
 
-climada\.util\.alpha\_shape module
-----------------------------------
-
-.. automodule:: climada.util.alpha_shape
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.util\.checker module
 -----------------------------
 
