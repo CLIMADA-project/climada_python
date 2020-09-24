@@ -22,34 +22,13 @@ Unit test landslide module.
 
 import unittest
 import os
-import math
-from rasterio.windows import Window
+import numpy as np
 from climada.hazard.landslide import Landslide
 
 TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
 
 class TestLandslideModule(unittest.TestCase):     
-    
-    def test_get_window_from_coords(self):
-        """Test function _get_window_from_coords"""
-        empty_LS = Landslide()
-        window_array = empty_LS._get_window_from_coords(
-            path_sourcefile=os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
-            bbox=[45.5,9.5,45.1,8.5])
-        self.assertEqual(window_array[0], 60)
-        self.assertEqual(window_array[1], 60)
-        self.assertEqual(window_array[2], 120)
-        self.assertEqual(window_array[3], 48)
-        
-    def test_get_raster_meta(self):
-        """Test function _get_raster_meta"""
-        empty_LS = Landslide()
-        pixel_width, pixel_height = empty_LS._get_raster_meta(
-            path_sourcefile = os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
-            window_array = [60, 60, 120, 48])
-        self.assertTrue(math.isclose(pixel_width, -0.00833, rel_tol=1e-03))
-        self.assertTrue(math.isclose(pixel_height, 0.00833, rel_tol=1e-03))
              
     def test_incl_affected_surroundings(self):
         #TODO: write test once function is done
@@ -84,34 +63,25 @@ class TestLandslideModule(unittest.TestCase):
     def test_set_ls_prob(self):
         """ Test the function set_ls_prob()"""
         LS_prob = Landslide()
-        
         LS_prob.set_ls_prob(bbox=[46, 11, 45, 8], 
                                   path_sourcefile=os.path.join(TESTDATA_DIR, 'test_ls_prob.tif'), 
                                   check_plots=0)
+
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
-        # self.assertEqual(LS_prob.intensity_prob.shape,(1, 129600))
-        # self.assertEqual(max(LS_prob.intensity.data),1)
-        # self.assertEqual(min(LS_prob.intensity.data),0)
-        # self.assertEqual(LS_prob.intensity.shape,(1, 129600))
-        # self.assertAlmostEqual(max(LS_prob.intensity_prob.data),8.999999999e-05)
-        # self.assertEqual(min(LS_prob.intensity_prob.data),5e-07)
-        # self.assertEqual(LS_prob.centroids.size, 129600)    
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertEqual(max(LS_prob.intensity.data),1)
+        self.assertEqual(min(LS_prob.intensity.data),1)
+        self.assertEqual(LS_prob.intensity.todense().min(),0)
+        self.assertEqual(max(LS_prob.fraction.data),2.1e-05)
+        self.assertEqual(min(LS_prob.fraction.data),5e-07)
+        self.assertEqual(LS_prob.fraction.todense().min(),0)
+        self.assertEqual(LS_prob.frequency, np.array([1]))
         
-        # LS_prob_nb = Landslide()
-        # LS_prob_nb.set_ls_prob(bbox=[48, 10, 45, 7], 
-        #                           path_sourcefile=os.path.join(SYSTEM_DIR, 'ls_pr/ls_pr.tif'), 
-        #                           incl_neighbour=False, check_plots=0)
-        # self.assertEqual(LS_prob_nb.tag.haz_type, 'LS')
-        # self.assertEqual(LS_prob_nb.intensity_prob.shape,(1, 129600))
-        # self.assertEqual(max(LS_prob_nb.intensity.data),1)
-        # self.assertEqual(min(LS_prob_nb.intensity.data),0)
-        # self.assertEqual(LS_prob_nb.intensity.shape,(1, 129600))
-        # self.assertAlmostEqual(max(LS_prob_nb.intensity_prob.data),8.999999999e-05)
-        # self.assertEqual(min(LS_prob_nb.intensity_prob.data),5e-07)
-        # self.assertEqual(LS_prob_nb.centroids.size, 129600) 
+        self.assertEqual(LS_prob.centroids.crs.data, {'init': 'epsg:4326'})
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
         
-        # self.assertTrue(sum(LS_prob.intensity.data)<sum(LS_prob_nb.intensity.data))
-    
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLandslideModule)
     unittest.TextTestRunner(verbosity=2).run(TESTS)           
