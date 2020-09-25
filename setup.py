@@ -54,54 +54,46 @@ setup(
     packages=find_packages(where='.'),
 
     install_requires=[
-        'cartopy==0.17.0', # conda!
-        'cloudpickle', # install_test
-        'contextily==1.0rc2',
-        'dask==1.2.2',
-        'descartes',
-        #'earthengine_api==0.1.210', # ee, conda!
-        'elevation==1.0.6',
-        'fiona=1.8.4',
-        'fsspec>=0.3.6', # < dask
-        'gdal==2.3.3', # conda!
-        'geopandas==0.4.1',
-        'h5py==2.9.0',
-        'haversine==2.1.1',
-        'iso3166==1.0',
-        'kealib==1.4.7', # < fiona
-        'matplotlib==3.1.1', #
-        'mercantile',
-        #'mpl_toolkits', matplotlib
-        'netCDF4==1.4.2', # conda!
-        'numba==0.43.1', # conda!
-        'numpy==1.16.3', # conda+
+        'bottleneck==1.3.2',
+        'cartopy==0.18.0',
+        'cfgrib==0.9.7.7',
+        'cython==0.29.21',
+        'dask==2.25.0',
+        'fiona==1.8.13.post1',
+        'gdal==3.0.4',
+        'geopandas==0.6.1',
+        'h5py==2.10.0',
+        'haversine==2.3.0',
+        'nbconvert==5.6.1',
+        'nbformat==5.0.7',
+        'netcdf4==1.5.4',
+        'numba==0.51.2',
+        'numpy==1.19.1',
+        'matplotlib==3.2.2',
+        'pandas==1.0.5',
+        'pandas-datareader==0.8.1',
+        'pillow==7.2.0',
+        'pint==0.15',
+        'proj==7.0.0',
+        'tables==3.6.1',
+        'rasterio==1.1.5',
+        'scikit-learn==0.23.2',
+        'statsmodels==0.11.1',
+        'tabulate==0.8.7',
+        'tqdm==4.48.2',
+        'xarray==0.13.0',
+        'xlrd==1.2.0',
+        'xlsxwriter==1.3.3',
+        
+        'contextily==1.0.0',
+        'iso3166==1.0.1',
         'overpy==0.4',
-        'pandas==0.24.2',
-        'pandas_datareader==0.7.0',
-        'pathos==0.2.3',
-        'pillow', # PIL
-        'pint==0.9',
-        #'pylab', matplotlib
-        'pyproj==1.9.6', #
-        'pyshp', # shapefile
-        'rasterio==1.0.21',
-        'requests==2.21.0', #
-        'rtree==0.8.3', # < geopandas.overlay
-        'scikit-learn==0.20.3', # sklearn
-        'scipy==1.2.1', # conda+
-        'shapely==1.6.4', #
-        'six==1.13.0', #
-        'tables', # < pandas (climada.entity.measures.test.test_base.TestApply)
-        'tabulate==0.8.3',
-        'toolz', # < dask
-        'tqdm==4.31.1',
-        'xarray==0.12.1',
-        'xlrd', # < pandas
-        'xlsxwriter==1.1.7',
-        'xmlrunner==1.7.7', # ci tests
+        'pathos==0.2.6',
+        'pybufrkit==0.2.17',
+        'xmlrunner==1.7.7',
     ],
 
-    package_data={'': extra_files },
+    package_data={'': extra_files},
 
     include_package_data=True
 )

@@ -1,4 +1,4 @@
-[![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_ci)](http://ied-wcr-jenkins.ethz.ch/job/climada_ci/)
+[![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_branches/develop)](http://ied-wcr-jenkins.ethz.ch/job/climada_branches/)
 [![Documentation build status](https://img.shields.io/readthedocs/climada-python.svg?style=flat-square)](https://readthedocs.org/projects/climada-python/builds/)
 ![Jenkins Coverage](https://img.shields.io/jenkins/coverage/cobertura/http/ied-wcr-jenkins.ethz.ch/climada_ci_night.svg)
 
@@ -6,20 +6,20 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backard compatibility (MATLAB).
+This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/stable/guide/install.html).
+CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/latest/guide/install.html).
 
-Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/guide/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
+Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/guide/tutorial.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
 
 Documentation is available on Read the Docs:
 
-* [online (recommended)](https://climada-python.readthedocs.io/en/stable/)
-* [PDF file](https://buildmedia.readthedocs.org/media/pdf/climada-python/stable/climada-python.pdf)
+* [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
+* [PDF file](https://buildmedia.readthedocs.org/media/pdf/climada-python/latest/climada-python.pdf)
 
 ## Citing CLIMADA
 
@@ -33,16 +33,17 @@ Please see all CLIMADA's related scientific publications in our [repository of s
 
 To contribute follow these steps:
 
-1. Fork the project on GitHub (`git clone https://github.com/CLIMADA-project/climada_python.git`).
-2. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
-3. Make well commented and clean commits to the repository. You can make a new branch here if you are modifying more than one part or feature.
-4. Make unit and integration tests on your code, preferably during development.
-5. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
-6. Add your name to the AUTHORS file.
-7. Push the branch to GitHub (`git push origin my-new-feature`).
-8. On GitHub, create a new pull request from the feature branch.
+1. Fork the project on GitHub.
+2. Create a local clone of the develop branch (`git clone https://github.com/YOUR-USERNAME/climada_python.git -b develop`)
+3. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
+4. Make well commented and clean commits to your repository.
+5. Make unit and integration tests on your code, preferably during development.
+6. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
+7. Add your name to the AUTHORS file.
+8. Push the changes to GitHub (`git push origin develop`).
+9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
 
-See our [contribution guidelines](https://climada-python.readthedocs.io/en/stable/guide/developer.html) for more information.
+See our [contribution guidelines](https://climada-python.readthedocs.io/en/latest/guide/developer.html) for more information.
 
 ## Versioning
 

@@ -41,14 +41,14 @@ from climada.util.dates_times import (
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'WS'
-""" Hazard type acronym for Winter Storm """
+"""Hazard type acronym for Winter Storm"""
 
 N_PROB_EVENTS = 5 * 6
-""" Number of events per historic event in probabilistic dataset """
+"""Number of events per historic event in probabilistic dataset"""
 
 
 class StormEurope(Hazard):
-    """ A hazard set containing european winter storm events. Historic storm
+    """A hazard set containing european winter storm events. Historic storm
     events can be downloaded at http://wisc.climate.copernicus.eu/
 
     Attributes:
@@ -60,14 +60,14 @@ class StormEurope(Hazard):
     """
 
     intensity_thres = 14.7
-    """ Intensity threshold for storage in m/s; same as used by WISC SSI
-        calculations. """
+    """Intensity threshold for storage in m/s; same as used by WISC SSI
+        calculations."""
 
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
-    """ Name of the variables that aren't need to compute the impact. """
+    """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self):
-        """ Calls the Hazard init dunder. Sets unit to 'm/s'. """
+        """Calls the Hazard init dunder. Sets unit to 'm/s'."""
         Hazard.__init__(self, HAZ_TYPE)
         self.units = 'm/s'
         self.ssi = np.array([], float)
@@ -78,7 +78,7 @@ class StormEurope(Hazard):
                         ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc',
                         combine_threshold=None):
-        """ Clear instance and read WISC footprints into it. Read Assumes that
+        """Clear instance and read WISC footprints into it. Read Assumes that
         all footprints have the same coordinates as the first file listed/first
         file in dir.
 
@@ -98,9 +98,9 @@ class StormEurope(Hazard):
                 defaults to one duplicate storm present in the WISC set as
                 of 2018-09-10.
             combine_threshold (int, optional): threshold for combining events
-                in number of days. if the difference of the dates (self.date) 
+                in number of days. if the difference of the dates (self.date)
                 of two events is smaller or equal to this threshold, the two
-                events are combined into one. 
+                events are combined into one.
                 Default is None, Advised for WISC is 2
         """
 
@@ -131,7 +131,7 @@ class StormEurope(Hazard):
             if new_haz is not None:
                 self.append(new_haz)
 
-        self.event_id = np.arange(1, len(self.event_id)+1)
+        self.event_id = np.arange(1, len(self.event_id) + 1)
         self.frequency = np.divide(
             np.ones_like(self.date),
             (last_year(self.date) - first_year(self.date))
@@ -143,16 +143,17 @@ class StormEurope(Hazard):
         )
         if description is not None:
             self.tag.description = description
-        
+
         if combine_threshold is not None:
             LOGGER.info('Combining events with small difference in date.')
             difference_date = np.diff(self.date)
-            for event_id_i in self.event_id[np.append(difference_date<=combine_threshold,False)]:
-                event_ids = [event_id_i, event_id_i+1]
+            for event_id_i in self.event_id[
+                    np.append(difference_date <= combine_threshold, False)]:
+                event_ids = [event_id_i, event_id_i + 1]
                 self._combine_events(event_ids)
 
     def _read_one_nc(self, file_name, centroids):
-        """ Read a single WISC footprint. Assumes a time dimension of length 1.
+        """Read a single WISC footprint. Assumes a time dimension of length 1.
         Omits a footprint if another file with the same timestamp has already
         been read.
 
@@ -200,7 +201,7 @@ class StormEurope(Hazard):
 
     @staticmethod
     def _centroids_from_nc(file_name):
-        """ Construct Centroids from the grid described by 'latitude' and
+        """Construct Centroids from the grid described by 'latitude' and
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
@@ -228,47 +229,49 @@ class StormEurope(Hazard):
         cent.set_on_land()
 
         return cent
-    
-    def _combine_events(self,event_ids):
-        """ combine the intensities of two events using max and adjust event_id, event_name, date etc of the hazard
+
+    def _combine_events(self, event_ids):
+        """combine the intensities of two events using max and adjust event_id, event_name,
+        date etc of the hazard
+
         the event_ids must be consecutive for the event_name field to behave correctly
+
         Parameters:
             event_ids (array): two consecutive event ids
         """
-        select_event_ids = np.isin(self.event_id,event_ids)
+        select_event_ids = np.isin(self.event_id, event_ids)
         select_other_events = np.invert(select_event_ids)
-        intensity_tmp = self.intensity[select_event_ids,:].max(axis=0)
-        self.intensity = self.intensity[select_other_events,:]
-        self.intensity = sparse.vstack([self.intensity,sparse.csr_matrix(intensity_tmp)])
-        self.event_id = np.append(self.event_id[select_other_events],
-                                                        self.event_id.max()+1)
+        intensity_tmp = self.intensity[select_event_ids, :].max(axis=0)
+        self.intensity = self.intensity[select_other_events, :]
+        self.intensity = sparse.vstack([self.intensity, sparse.csr_matrix(intensity_tmp)])
+        self.event_id = np.append(self.event_id[select_other_events], self.event_id.max() + 1)
         self.date = np.append(self.date[select_other_events],
-                                                np.round(self.date[select_event_ids].mean()))
+                              np.round(self.date[select_event_ids].mean()))
         name_2 = self.event_name.pop(np.where(select_event_ids)[0][1])
         name_1 = self.event_name.pop(np.where(select_event_ids)[0][0])
         self.event_name.append(name_1 + '_' + name_2)
-        fraction_tmp = self.fraction[select_event_ids,:].max(axis=0)
-        self.fraction = self.fraction[select_other_events,:]
-        self.fraction = sparse.vstack([self.fraction,sparse.csr_matrix(fraction_tmp)])
-    
+        fraction_tmp = self.fraction[select_event_ids, :].max(axis=0)
+        self.fraction = self.fraction[select_other_events, :]
+        self.fraction = sparse.vstack([self.fraction, sparse.csr_matrix(fraction_tmp)])
+
         self.frequency = np.append(self.frequency[select_other_events],
-                                                self.frequency[select_event_ids].mean())
+                                   self.frequency[select_event_ids].mean())
         self.orig = np.append(self.orig[select_other_events],
-                                                        self.orig[select_event_ids].max())
-        if self.ssi_wisc.size>0:
+                              self.orig[select_event_ids].max())
+        if self.ssi_wisc.size > 0:
             self.ssi_wisc = np.append(self.ssi_wisc[select_other_events],
                                       np.nan)
-        if self.ssi.size>0:
+        if self.ssi.size > 0:
             self.ssi = np.append(self.ssi[select_other_events],
                                  np.nan)
-        if self.ssi_full_area.size>0:
+        if self.ssi_full_area.size > 0:
             self.ssi_full_area = np.append(self.ssi_full_area[select_other_events],
-                                 np.nan)
+                                           np.nan)
         self.check()
 
     def calc_ssi(self, method='dawkins', intensity=None, on_land=True,
                  threshold=None, sel_cen=None):
-        """ Calculate the SSI, method must either be 'dawkins' or 'wisc_gust'.
+        """Calculate the SSI, method must either be 'dawkins' or 'wisc_gust'.
 
         'dawkins', after Dawkins et al. (2016),
         doi:10.5194/nhess-16-1999-2016, matches the MATLAB version.
@@ -343,7 +346,7 @@ class StormEurope(Hazard):
         return ssi
 
     def set_ssi(self, **kwargs):
-        """ Wrapper around calc_ssi for setting the self.ssi attribute.
+        """Wrapper around calc_ssi for setting the self.ssi attribute.
 
         Parameters:
             **kwargs: passed on to calc_ssi
@@ -354,7 +357,7 @@ class StormEurope(Hazard):
         self.ssi = self.calc_ssi(**kwargs)
 
     def plot_ssi(self, full_area=False):
-        """ Plot the distribution of SSIs versus their cumulative exceedance
+        """Plot the distribution of SSIs versus their cumulative exceedance
             frequencies, highlighting historical storms in red.
 
         Returns:
@@ -374,7 +377,7 @@ class StormEurope(Hazard):
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
         ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
-        
+
         ssi_hist = ssi_freq.loc[ssi_freq.orig].copy()
         ssi_hist.freq = ssi_hist.freq * self.orig.size / self.orig.sum()
         ssi_hist['freq_cum'] = np.cumsum(ssi_hist.freq)
@@ -394,7 +397,7 @@ class StormEurope(Hazard):
 
     def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
                              **kwargs):
-        """ Generates a new hazard set with one original and 29 probabilistic
+        """Generates a new hazard set with one original and 29 probabilistic
         storms per historic storm. This represents a partial implementation of
         the Monte-Carlo method described in section 2.2 of Schwierz et al.
         (2010), doi:10.1007/s10584-009-9712-1.
@@ -432,7 +435,7 @@ class StormEurope(Hazard):
                 reg_id = [reg_id]
             sel_cen = np.isin(self.centroids.region_id, reg_id)
 
-        else: # shifting truncates valid centroids
+        else:  # shifting truncates valid centroids
             sel_cen = np.zeros(self.centroids.shape, bool)
             sel_cen[
                 spatial_shift:-spatial_shift,
@@ -457,8 +460,7 @@ class StormEurope(Hazard):
                     sel_cen,
                     spatial_shift,
                     ssi_args,
-                    **kwargs,
-                )
+                    **kwargs)
 
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
@@ -477,9 +479,9 @@ class StormEurope(Hazard):
         new_haz.event_id = base + synth_id
 
         # frequency still based on the historic number of years
-        new_haz.frequency = np.divide(np.repeat(self.frequency,N_PROB_EVENTS),
+        new_haz.frequency = np.divide(np.repeat(self.frequency, N_PROB_EVENTS),
                                       N_PROB_EVENTS)
-        
+
         new_haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC probabilistic hazard set according to Schwierz et al.'
@@ -495,24 +497,32 @@ class StormEurope(Hazard):
 
     def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
                    power=1.15, scale=0.0225):
-        """ Internal function, intended to be called from generate_prob_storms.
+        """Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
         it then moves around by spatial_shift gridpoints to the east, west, and
         north.
 
-        Parameters:
-            intensity1d (scipy.sparse.csr_matrix, 1 by n): One historic event
-            sel_cen (np.ndarray(dty=bool)): which centroids to return
-            spatial_shift (int): amount of raster cells to shift by
-            power (float): power to be applied elementwise
-            scale (float): weight of probabilistic component
-            ssi_args (dict): named arguments passed on to calc_ssi
+        Parameters
+        ----------
+        intensity1d : scipy.sparse.csr_matrix, 1 by n
+            One historic event
+        sel_cen : np.ndarray(dtype=bool)
+            which centroids to return
+        spatial_shift : int
+            amount of raster cells to shift by
+        power : float
+            power to be applied elementwise
+        scale : float
+            weight of probabilistic component
+        ssi_args : dict
+            named arguments passed on to calc_ssi
 
-        Returns:
-            intensity (np.array): Synthetic intensities of shape
-                (N_PROB_EVENTS, length(sel_cen))
-            ssi (np.array): SSI per synthetic event according to provided
-                method.
+        Returns
+        -------
+        intensity : np.array
+            Synthetic intensities of shape (N_PROB_EVENTS, length(sel_cen))
+        ssi : np.array
+            SSI per synthetic event according to provided method.
         """
         shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape
 
@@ -521,7 +531,7 @@ class StormEurope(Hazard):
 
         # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
-        intensity2d_sqrt = intensity2d.power(1.0/power).todense()
+        intensity2d_sqrt = intensity2d.power(1.0 / power).todense()
         intensity2d_pwr = intensity2d.power(power).todense()
         intensity2d = intensity2d.todense()
 
@@ -541,9 +551,9 @@ class StormEurope(Hazard):
         intensity3d_prob[4] = intensity2d + (scale * intensity2d_pwr)
 
         # 6. minus scaled sqrt and pwr
-        intensity3d_prob[5] = intensity2d \
-                              - (0.5 * scale * intensity2d_pwr) \
-                              - (0.5 * scale * intensity2d_sqrt)
+        intensity3d_prob[5] = (intensity2d
+                               - (0.5 * scale * intensity2d_pwr)
+                               - (0.5 * scale * intensity2d_sqrt))
 
         # spatial shifts
         # northward

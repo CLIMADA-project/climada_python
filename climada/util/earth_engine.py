@@ -18,23 +18,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Regroup methods to obtain images from Google Earth Engine API
 """
-# This module works only if you have a Google Earth Engine account
-# See tutorial climada_util_earth_engine.ipynb
 
 import logging
 import webbrowser
 
+# This module works only if you have a Google Earth Engine account.
+# That's why `earthengine-api` is not in the CLIMADA requirements.
+# See tutorial: climada_util_earth_engine.ipynb
+# pylint: disable=import-error
 import ee
+
+LOGGER = logging.getLogger(__name__)
 ee.Initialize()
 
 
-
-
-LOGGER = logging.getLogger(__name__)
-
-
 def obtain_image_landsat_composite(landsat_collection, time_range, area):
-    """ Selection of Landsat cloud-free composites in the Earth Engine library
+    """Selection of Landsat cloud-free composites in the Earth Engine library
     See also: https://developers.google.com/earth-engine/landsat
 
     Parameters:
@@ -47,14 +46,14 @@ def obtain_image_landsat_composite(landsat_collection, time_range, area):
      """
     collection = ee.ImageCollection(landsat_collection)
 
-    ## Filter by time range and location
+    # Filter by time range and location
     collection_time = collection.filterDate(time_range[0], time_range[1])
     image_area = collection_time.filterBounds(area)
     image_composite = ee.Algorithms.Landsat.simpleComposite(image_area, 75, 3)
     return image_composite
 
 def obtain_image_median(collection, time_range, area):
-    """ Selection of median from a collection of images in the Earth Engine library
+    """Selection of median from a collection of images in the Earth Engine library
     See also: https://developers.google.com/earth-engine/reducers_image_collection
 
     Parameters:
@@ -67,14 +66,14 @@ def obtain_image_median(collection, time_range, area):
      """
     collection = ee.ImageCollection(collection)
 
-    ## Filter by time range and location
+    # Filter by time range and location
     collection_time = collection.filterDate(time_range[0], time_range[1])
     image_area = collection_time.filterBounds(area)
     image_median = image_area.median()
     return image_median
 
 def obtain_image_sentinel(sentinel_collection, time_range, area):
-    """ Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
+    """Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
     See also: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2
 
     Parameters:
@@ -85,13 +84,12 @@ def obtain_image_sentinel(sentinel_collection, time_range, area):
     Returns:
         sentinel_median (ee.image.Image)
      """
-#First, method to remove cloud from the image
+# First, method to remove cloud from the image
     def maskclouds(image):
         band_qa = image.select('QA60')
         cloud_mask = ee.Number(2).pow(10).int()
         cirrus_mask = ee.Number(2).pow(11).int()
-        mask = band_qa.bitwiseAnd(cloud_mask).eq(0) and(
-            band_qa.bitwiseAnd(cirrus_mask).eq(0))
+        mask = band_qa.bitwiseAnd(cloud_mask).eq(0) and (band_qa.bitwiseAnd(cirrus_mask).eq(0))
         return image.updateMask(mask).divide(10000)
 
     sentinel_filtered = (ee.ImageCollection(sentinel_collection).
@@ -138,10 +136,10 @@ def get_url(name, image, scale, region):
         path (str)
      """
     path = image.getDownloadURL({
-        'name':(name),
+        'name': (name),
         'scale': scale,
-        'region':(region)
-        })
+        'region': (region)
+    })
 
     webbrowser.open_new_tab(path)
     return path

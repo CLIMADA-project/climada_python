@@ -19,20 +19,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define configuration parameters.
 """
 
-__all__ = ['CONFIG',
-           'setup_logging',
-           'setup_conf_user',
-           'setup_environ'
-          ]
+__all__ = [
+    'CONFIG',
+    'setup_logging',
+    'setup_conf_user',
+]
 
 import sys
 import os
 import json
 import logging
-import shutil
 from pkg_resources import Requirement, resource_filename
 
 from climada.util.constants import SOURCE_DIR
+
 
 WORKING_DIR = os.getcwd()
 WINDOWS_END = WORKING_DIR[0:3]
@@ -79,7 +79,7 @@ CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))
 
 DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
 if not os.path.isfile(DEFAULT_PATH):
-    DEFAULT_PATH = resource_filename(Requirement.parse('climada'), \
+    DEFAULT_PATH = resource_filename(Requirement.parse('climada'),
                                      'defaults.conf')
 with open(DEFAULT_PATH) as def_conf:
     LOGGER.debug('Loading default config file: %s', DEFAULT_PATH)
@@ -99,8 +99,8 @@ def setup_conf_user():
     conf_name = 'climada.conf'
     user_file = os.path.abspath(os.path.join(WORKING_DIR, conf_name))
     while not os.path.isfile(user_file) and user_file != UNIX_END + conf_name \
-    and user_file != WINDOWS_END + conf_name:
-        user_file = os.path.abspath(os.path.join(user_file, os.pardir, \
+            and user_file != WINDOWS_END + conf_name:
+        user_file = os.path.abspath(os.path.join(user_file, os.pardir,
                                                  os.pardir, conf_name))
 
     if os.path.isfile(user_file):
@@ -125,20 +125,3 @@ def setup_conf_user():
             CONFIG['cost_benefit'] = userconfig['cost_benefit']
 
         check_conf()
-
-def setup_environ():
-    """ Parse binary environment and correct if necessary """
-    if shutil.which('eio') is None:
-        # correct binary path
-        os.environ['PATH'] = os.environ['PATH'].replace(';', ':')
-        env_cpy = os.environ['PATH']
-        first_dot = env_cpy.find(':')
-        while first_dot >= 0:
-            if not os.path.isdir(env_cpy[:first_dot]):
-                os.environ['PATH'] = os.environ['PATH'].replace(env_cpy[:first_dot+1], '')
-            env_cpy = env_cpy[first_dot+1:]
-            first_dot = env_cpy.find(':')
-        # add environment bin path
-        if CONFIG['config']['env_name'] not in os.environ['PATH']:
-            os.environ['PATH'] = os.environ['PATH'].replace('conda3/bin', \
-                'conda3/envs/' + CONFIG['config']['env_name'] + '/bin')

@@ -39,8 +39,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 def good_exposures():
     """Followng values are defined for each exposure"""
     data = {}
-    data['latitude'] = np.array([ 1, 2, 3])
-    data['longitude'] = np.array([ 2, 3, 4])
+    data['latitude'] = np.array([1, 2, 3])
+    data['longitude'] = np.array([2, 3, 4])
     data['value'] = np.array([1, 2, 3])
     data['deductible'] = np.array([1, 2, 3])
     data[INDICATOR_IF + 'NA'] = np.array([1, 2, 3])
@@ -55,13 +55,13 @@ class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
-        """ Check that assigned attribute is correctly set."""
+        """Check that assigned attribute is correctly set."""
         # Fill with dummy values
         expo = good_exposures()
         expo.check()
         # Fill with dummy values the centroids
         haz = Hazard('TC')
-        haz.centroids.set_lat_lon(np.ones(expo.shape[0]+6), np.ones(expo.shape[0]+6))
+        haz.centroids.set_lat_lon(np.ones(expo.shape[0] + 6), np.ones(expo.shape[0] + 6))
         # assign
         expo.assign_centroids(haz)
 
@@ -69,47 +69,53 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
 
     def test_read_raster_pass(self):
-        """ set_from_raster """
+        """set_from_raster"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(equal_crs(exp.crs, DEF_CRS))
-        self.assertAlmostEqual(exp['latitude'].max(), 10.248220966978932-0.009000000000000341/2)
-        self.assertAlmostEqual(exp['latitude'].min(), 10.248220966978932-0.009000000000000341/2-59*0.009000000000000341)
-        self.assertAlmostEqual(exp['longitude'].min(), -69.2471495969998+0.009000000000000341/2)
-        self.assertAlmostEqual(exp['longitude'].max(), -69.2471495969998+0.009000000000000341/2+49*0.009000000000000341)
-        self.assertEqual(len(exp), 60*50)
+        self.assertAlmostEqual(exp['latitude'].max(),
+                               10.248220966978932 - 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['latitude'].min(),
+                               10.248220966978932 - 0.009000000000000341
+                               / 2 - 59 * 0.009000000000000341)
+        self.assertAlmostEqual(exp['longitude'].min(),
+                               -69.2471495969998 + 0.009000000000000341 / 2)
+        self.assertAlmostEqual(exp['longitude'].max(),
+                               -69.2471495969998 + 0.009000000000000341
+                               / 2 + 49 * 0.009000000000000341)
+        self.assertEqual(len(exp), 60 * 50)
         self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
-        """ Test assign_centroids with raster hazard """
+        """Test assign_centroids with raster hazard"""
         exp = Exposures()
         exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
         exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
         exp.crs = DEF_CRS
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][0], 51)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][1], 100)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000-1)
+        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000 - 1)
         self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
 
 
     def test_assign_raster_same_pass(self):
-        """ Test assign_centroids with raster hazard """
+        """Test assign_centroids with raster hazard"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window= Window(10, 20, 50, 60))
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
                                        np.arange(haz.centroids.size, dtype=int)))
 
 class TestChecker(unittest.TestCase):
-    """Test logs of check function """
+    """Test logs of check function"""
 
     def test_info_logs_pass(self):
         """Wrong exposures definition"""
@@ -128,7 +134,7 @@ class TestChecker(unittest.TestCase):
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo = expo.drop(['longitude'],axis=1)
+        expo = expo.drop(['longitude'], axis=1)
 
         with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
@@ -145,7 +151,7 @@ class TestChecker(unittest.TestCase):
             expo.check()
 
 class TestIO(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
 
     def test_read_template_pass(self):
         """Wrong exposures definition"""
@@ -158,7 +164,7 @@ class TestIO(unittest.TestCase):
         exp_df.check()
 
     def test_io_hdf5_pass(self):
-        """ write and read hdf5 """
+        """write and read hdf5"""
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
         exp_df.set_geometry_points()
         exp_df.check()
@@ -195,7 +201,7 @@ class TestIO(unittest.TestCase):
             self.assertEqual(point_df.y, point_read.y)
 
 class TestAddSea(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = Exposures()
@@ -232,17 +238,18 @@ class TestAddSea(unittest.TestCase):
         on_sea_lat = exp_sea.latitude.values[11:]
         on_sea_lon = exp_sea.longitude.values[11:]
         res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
-        res_on_sea = np.logical_not(res_on_sea)
+        res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
-        self.assertAlmostEqual(dist.pairwise([[exp_sea.longitude.values[-1], \
-            exp_sea.latitude.values[-1]], [exp_sea.longitude.values[-2], \
-            exp_sea.latitude.values[-2]]])[0][1], sea_res_km)
+        self.assertAlmostEqual(dist.pairwise([
+            [exp_sea.longitude.values[-1], exp_sea.latitude.values[-1]],
+            [exp_sea.longitude.values[-2], exp_sea.latitude.values[-2]],
+        ])[0][1], sea_res_km)
 
 
 class TestGeoDFFuncs(unittest.TestCase):
-    """ Check constructor Exposures through DataFrames readers """
+    """Check constructor Exposures through DataFrames readers"""
     def test_copy_pass(self):
         """Test copy function."""
         exp = good_exposures()
@@ -285,7 +292,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.tag.file_name, '')
 
     def test_constructoer_pass(self):
-        """ Test initialization with input GeiDataFrame """
+        """Test initialization with input GeiDataFrame"""
         in_gpd = gpd.GeoDataFrame()
         in_gpd['value'] = np.zeros(10)
         in_gpd.ref_year = 2015

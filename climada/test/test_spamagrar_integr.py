@@ -33,7 +33,7 @@ class TestDefault(unittest.TestCase):
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             ent.init_spam_agrar()
-        ent_select = ent[ent['region_id']==208] # select Denmark only
+        ent_select = ent[ent['region_id'] == 208]  # select Denmark only
         self.assertIn('Lat. range: -55.375 to +71.125.', cm.output[0])
         self.assertIn('Lon. range: -179.125 to +179.958.', cm.output[1])
         self.assertIn("Total V_agg TA global: 1301919384722.2 USD.", cm.output[2])
@@ -74,11 +74,11 @@ class TestOtherVar(unittest.TestCase):
     def test_switzerland_pass(self):
         """Test country CHE for non-default parameters:"""
         country_name = 'CHE'
-        tech = 'TI' # irrigated
-        var = 'H' # harvest area
+        tech = 'TI'  # irrigated
+        var = 'H'  # harvest area
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            ent.init_spam_agrar(country=country_name, spam_variable=var,\
+            ent.init_spam_agrar(country=country_name, spam_variable=var,
                                 spam_technology=tech)
         self.assertIn('Lat. range: +45.875 to +47.792.', cm.output[0])
         self.assertIn('Lon. range: +6.042 to +10.375.', cm.output[1])
@@ -89,11 +89,11 @@ class TestOtherVar(unittest.TestCase):
     def test_ucayali_pass(self):
         """Test admin 2 region Ucayali for non-default parameters:"""
         adm2 = 'Ucayali'
-        tech = 'TA' # all
-        var = 'Y' # yield
+        tech = 'TA'  # all
+        var = 'Y'  # yield
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
-            ent.init_spam_agrar(name_adm2=adm2, spam_variable=var,\
+            ent.init_spam_agrar(name_adm2=adm2, spam_variable=var,
                                 spam_technology=tech)
         self.assertIn('Lat. range: -8.625 to -6.042.', cm.output[0])
         self.assertIn('Lon. range: -76.125 to -74.208.', cm.output[1])
@@ -114,10 +114,10 @@ class TestInvalidInput(unittest.TestCase):
 
     def test_invalid_parameter(self):
         """Invalid techonology or variable input returns error:"""
-        tech = 'XY' # does not exist
+        tech = 'XY'  # does not exist
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='ERROR') as cm:
-            with self.assertRaises(ValueError): 
+            with self.assertRaises(ValueError):
                 ent.init_spam_agrar(spam_technology=tech)
         self.assertIn('Invalid input parameter(s).', cm.output[0])
 

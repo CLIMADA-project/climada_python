@@ -33,8 +33,21 @@ Install environment with Anaconda
 
       conda develop /your/path/to/climada_python-x.y.z/
 
-3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2min).
+3. **Test installation**: Before leaving the *Environments* section of Anaconda, make sure that the climada environment, *climada_env* is selected. Go to the *Home* section of Anaconda and install and launch Spyder (or your preferred editor). Open the file containing all the installation tests, ``tests_install.py`` in ``climada_python-x.y.z`` folder and execute it. If the installation has been successful, an OK will appear at the end (the execution should last less than 2 min).
+   
+   .. note:: Workaround if **Spyder** installation in Anaconda fails for *climada_env*.
 
+      In a terminal window, enter:
+       
+      .. code-block:: bash
+
+         conda activate climada_env 
+         conda install spyder-kernels 
+         python -c "import sys; print(sys.executable)" 
+         --> returns a path, like /Users/XXX/opt/anaconda3/envs/climada_env/bin/python
+       
+      Start Anaconda, create a new python_env environment (just click create and enter the name, then press Create) and install latest Spyder in there (currently 4.1.5), start this Spyder, then, after Spyder has started, navigate to Preferences > Python Interpreter > Use the following interpreter and paste the path from above (e.g. /Users/XXX/opt/anaconda3/envs/climada_env/bin/python) into the text box. Start a new IPython console and run ``tests_install.py``.
+      
 4. **Run tutorials**: In the *Home* section of Anaconda, with *climada_env* selected, install and launch *jupyter notebook*. A browser window will show up. Navigate to your ``climada_python-x.y.z`` repository and open ``doc/tutorial/1_main_climada.ipynb``. This is the tutorial which will guide you through all climada's functionalities. Execute each code cell to see the results, you might also edit the code cells before executing. See :doc:`tutorial` for more information.
 
 Unix and Mac Operating Systems
@@ -84,5 +97,8 @@ FAQs
     pip install library_name
 
   where ``library_name`` is the missing library.
+
+  Another reason may be a recent update of the operating system (macOS).
+  In this case removing and reinstalling Anaconda will be required.
 
 * Conda right problems in macOS Mojave: try the solutions suggested here `https://github.com/conda/conda/issues/8440 <https://github.com/conda/conda/issues/8440>`_. 

@@ -37,49 +37,49 @@ LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'measures',
-               'var_name': {'name' : 'name',
-                            'color' : 'color',
-                            'cost' : 'cost',
-                            'haz_int_a' : 'hazard_intensity_impact_a',
-                            'haz_int_b' : 'hazard_intensity_impact_b',
-                            'haz_frq' : 'hazard_high_frequency_cutoff',
-                            'haz_set' : 'hazard_event_set',
-                            'mdd_a' : 'MDD_impact_a',
-                            'mdd_b' : 'MDD_impact_b',
-                            'paa_a' : 'PAA_impact_a',
-                            'paa_b' : 'PAA_impact_b',
-                            'fun_map' : 'damagefunctions_map',
-                            'exp_set' : 'assets_file',
-                            'exp_reg' : 'Region_ID',
-                            'risk_att' : 'risk_transfer_attachement',
-                            'risk_cov' : 'risk_transfer_cover',
-                            'haz' : 'peril_ID'
+               'var_name': {'name': 'name',
+                            'color': 'color',
+                            'cost': 'cost',
+                            'haz_int_a': 'hazard_intensity_impact_a',
+                            'haz_int_b': 'hazard_intensity_impact_b',
+                            'haz_frq': 'hazard_high_frequency_cutoff',
+                            'haz_set': 'hazard_event_set',
+                            'mdd_a': 'MDD_impact_a',
+                            'mdd_b': 'MDD_impact_b',
+                            'paa_a': 'PAA_impact_a',
+                            'paa_b': 'PAA_impact_b',
+                            'fun_map': 'damagefunctions_map',
+                            'exp_set': 'assets_file',
+                            'exp_reg': 'Region_ID',
+                            'risk_att': 'risk_transfer_attachement',
+                            'risk_cov': 'risk_transfer_cover',
+                            'haz': 'peril_ID'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'measures',
-                 'col_name': {'name' : 'name',
-                              'color' : 'color',
-                              'cost' : 'cost',
-                              'haz_int_a' : 'hazard intensity impact a',
-                              'haz_int_b' : 'hazard intensity impact b',
-                              'haz_frq' : 'hazard high frequency cutoff',
-                              'haz_set' : 'hazard event set',
-                              'mdd_a' : 'MDD impact a',
-                              'mdd_b' : 'MDD impact b',
-                              'paa_a' : 'PAA impact a',
-                              'paa_b' : 'PAA impact b',
-                              'fun_map' : 'damagefunctions map',
-                              'exp_set' : 'assets file',
-                              'exp_reg' : 'Region_ID',
-                              'risk_att' : 'risk transfer attachement',
-                              'risk_cov' : 'risk transfer cover',
-                              'risk_fact' : 'risk transfer cost factor',
-                              'haz' : 'peril_ID'
+                 'col_name': {'name': 'name',
+                              'color': 'color',
+                              'cost': 'cost',
+                              'haz_int_a': 'hazard intensity impact a',
+                              'haz_int_b': 'hazard intensity impact b',
+                              'haz_frq': 'hazard high frequency cutoff',
+                              'haz_set': 'hazard event set',
+                              'mdd_a': 'MDD impact a',
+                              'mdd_b': 'MDD impact b',
+                              'paa_a': 'PAA impact a',
+                              'paa_b': 'PAA impact b',
+                              'fun_map': 'damagefunctions map',
+                              'exp_set': 'assets file',
+                              'exp_reg': 'Region_ID',
+                              'risk_att': 'risk transfer attachement',
+                              'risk_cov': 'risk transfer cover',
+                              'risk_fact': 'risk transfer cost factor',
+                              'haz': 'peril_ID'
                              }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 class MeasureSet():
     """Contains measures of type Measure. Loads from
@@ -118,7 +118,7 @@ class MeasureSet():
     def clear(self):
         """Reinitialize attributes."""
         self.tag = Tag()
-        self._data = dict() # {hazard_type : {name: Measure()}}
+        self._data = dict()  # {hazard_type : {name: Measure()}}
 
     def append(self, meas):
         """Append an Measure. Override if same name and haz_type.
@@ -152,8 +152,8 @@ class MeasureSet():
             try:
                 del self._data[haz_type][name]
             except KeyError:
-                LOGGER.info("No Measure with hazard %s and id %s.", \
-                             haz_type, name)
+                LOGGER.info("No Measure with hazard %s and id %s.",
+                            haz_type, name)
         elif haz_type is not None:
             try:
                 del self._data[haz_type]
@@ -185,7 +185,7 @@ class MeasureSet():
             try:
                 return self._data[haz_type][name]
             except KeyError:
-                LOGGER.info("No Measure with hazard %s and id %s.", \
+                LOGGER.info("No Measure with hazard %s and id %s.",
                             haz_type, name)
                 return list()
         elif haz_type is not None:
@@ -275,11 +275,11 @@ class MeasureSet():
             def_color = plt.cm.get_cmap('Greys', len(meas_dict))
             for i_meas, (name, meas) in enumerate(meas_dict.items()):
                 if (name != meas.name) | (name == ''):
-                    LOGGER.error("Wrong Measure.name: %s != %s.", name, \
+                    LOGGER.error("Wrong Measure.name: %s != %s.", name,
                                  meas.name)
                     raise ValueError
                 if key_haz != meas.haz_type:
-                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",\
+                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",
                                  key_haz, meas.haz_type)
                     raise ValueError
                 # set default color if not set
@@ -333,14 +333,14 @@ class MeasureSet():
                 meas.haz_type = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['haz']][idx][0])
                 meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
-                meas.hazard_set = hdf5.get_str_from_ref(file_name, \
-                    data[var_names['var_name']['haz_set']][idx][0])
+                meas.hazard_set = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['haz_set']][idx][0])
                 try:
-                    meas.hazard_inten_imp = ( \
-                        data[var_names['var_name']['haz_int_a']][idx][0], \
+                    meas.hazard_inten_imp = (
+                        data[var_names['var_name']['haz_int_a']][idx][0],
                         data[var_names['var_name']['haz_int_b']][0][idx])
                 except KeyError:
-                    meas.hazard_inten_imp = ( \
+                    meas.hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
 
                 # different convention of signes followed in MATLAB!
@@ -348,8 +348,8 @@ class MeasureSet():
                                    data[var_names['var_name']['mdd_b']][idx][0])
                 meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
                                    data[var_names['var_name']['paa_b']][idx][0])
-                meas.imp_fun_map = hdf5.get_str_from_ref(file_name, \
-                                   data[var_names['var_name']['fun_map']][idx][0])
+                meas.imp_fun_map = hdf5.get_str_from_ref(
+                    file_name, data[var_names['var_name']['fun_map']][idx][0])
 
                 meas.exposures_set = hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['exp_set']][idx][0])
@@ -396,7 +396,7 @@ class MeasureSet():
                     meas.haz_type = dfr[var_names['col_name']['haz']][idx]
                 except KeyError:
                     pass
-                meas.color_rgb = np.fromstring( \
+                meas.color_rgb = np.fromstring(
                     dfr[var_names['col_name']['color']][idx], dtype=float, sep=' ')
                 meas.cost = dfr[var_names['col_name']['cost']][idx]
 
@@ -404,15 +404,14 @@ class MeasureSet():
                 meas.hazard_set = dfr[var_names['col_name']['haz_set']][idx]
                 # Search for (a, b) values, put a = 1 otherwise
                 try:
-                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],\
+                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],
                                              dfr[var_names['col_name']['haz_int_b']][idx])
                 except KeyError:
                     meas.hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
 
                 try:
                     meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
-                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name'] \
-                                                          ['exp_reg']][idx])
+                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name']['exp_reg']][idx])
                 except KeyError:
                     pass
                 except ValueError:
@@ -444,14 +443,14 @@ class MeasureSet():
             raise var_err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Write excel file following template.
+        """Write excel file following template.
 
         Parameters:
             file_name (str): absolute file name to write
             var_names (dict, optional): name of the variables in the file
         """
         def write_meas(row_ini, imp_ws, xls_data):
-            """ Write one measure """
+            """Write one measure"""
             for icol, col_dat in enumerate(xls_data):
                 imp_ws.write(row_ini, icol, col_dat)
 

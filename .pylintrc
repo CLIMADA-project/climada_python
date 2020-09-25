@@ -3,7 +3,7 @@
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-whitelist=numpy,pathos
+extension-pkg-whitelist=numpy,pathos,scipy
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
@@ -130,7 +130,7 @@ contextmanager-decorators=contextlib.contextmanager
 # List of members which are set dynamically and missed by pylint inference
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
-generated-members=numpy.*,pathos.*
+generated-members=numpy.*,pathos.*,cartopy.*,scipy.*
 
 # Tells whether missing members accessed in mixin class should be ignored. A
 # mixin class is detected if its name ends with "mixin" (case insensitive).
@@ -153,7 +153,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis. It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=numpy,pathos
+ignored-modules=numpy,cartopy,scipy,pathos,xarray.ufuncs,netCDF4,matplotlib.cm
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.

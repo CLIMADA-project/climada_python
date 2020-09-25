@@ -21,11 +21,11 @@ Test TropCyclone class with multiprocess
 
 import os
 import unittest
-from pathos.pools import ProcessPool as Pool
-from scipy import sparse
+# from pathos.pools import ProcessPool as Pool
+# from scipy import sparse
 
-from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.trop_cyclone import TropCyclone
+# from climada.hazard.tc_tracks import TCTracks
+# from climada.hazard.trop_cyclone import TropCyclone
 from climada.hazard.centroids.centr import Centroids
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data')
@@ -35,14 +35,14 @@ CENTR_TEST_BRB = Centroids()
 CENTR_TEST_BRB.read_mat(os.path.join(DATA_DIR, 'centr_brb_test.mat'))
 
 class TestTCParallel(unittest.TestCase):
-    """Test reading and model of TC from IBTrACS files """
+    """Test reading and model of TC from IBTrACS files"""
 #    def test_set_one_file_pass(self):
-#        """ Test set function set_from_tracks with one input."""
+#        """Test set function set_from_tracks with one input."""
 #
 #        pool = Pool()
 #
 #        tc_track = TCTracks(pool)
-#        
+#
 #        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 #        tc_track.calc_random_walk()
 #        tc_track.equal_timestep()
