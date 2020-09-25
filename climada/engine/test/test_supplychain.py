@@ -41,10 +41,10 @@ HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 class TestSupplyChain(unittest.TestCase):
     """Testing the SupplyChain class."""
-    sup = SupplyChain()
-    def test_read_wiod(self, sup):
+    def test_read_wiod(self):
         """Test reading of wiod table with mini-version of
         original table."""
+        sup = SupplyChain()
         sup.read_wiod(file_path=TEST_DATA_DIR, file_name=TEST_WIOD, \
                       rows=112, cols='E:DL', tot_prod_col='DM')
         mainsectors = ['agriculture', 'forestry_fishing', 'manufacturing',\
@@ -82,7 +82,7 @@ class TestSupplyChain(unittest.TestCase):
     # THE ACTUAL EXPOSURE RAW DATA AND USING OTHER DATA FOR TESTING WOULD NOT
     # ACTUALLY TEST ITS FUNCTIONALITY. FOR NOW, TESTING IS NOT IMPLEMENTED DUE
     # TO LENGTHY COMPUTATION TIME.
-    # def test_default_exp(self, sup):
+    # def test_default_exp(self):
     #     """Test method which creates default exposure files, including the
     #     internal methods that are called by the main method to create
     #     the exposures. Note that these can't rely on simplified test data
@@ -163,7 +163,8 @@ class TestSupplyChain(unittest.TestCase):
     #                         (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_*')))]
     #     self.assertEqual(required_files_in_folder, actual_files_in_folder)
         
-    def test_prepare_exposures(self, sup): 
+    def test_prepare_exposures(self):
+        sup = SupplyChain()
         sup.prepare_exposures(files_source=os.path.join(TEST_EXP_DIR, 'pre-preparation'),\
                               files_target=TEST_EXP_DIR, remove_restofw_ctries=False)
         required_files_in_folder = 18
@@ -183,12 +184,14 @@ class TestSupplyChain(unittest.TestCase):
     # the supplychain default global TC hazard - cannot be tested with dummy data.
     # create_default_haz() uses a sequence of climada functions which are tested separately
     # anyway, however.
-    def test_create_default_haz(self, sup):
+    def test_create_default_haz(self):
+        sup = SupplyChain()
         haz = sup.create_default_haz(save_haz=False, file_path=TEST_DATA_DIR, file_name='test_hazard')
         self.assertEqual(len(haz.event_id), len(haz.event_name))
         self.assertEqual(haz.tag.haz_type, 'TC')
     
-    def test_calc_direct_impact(self, sup):
+    def test_calc_direct_impact(self):
+        sup = SupplyChain()
         # Write dummy exposures to test data directory (required to proceed).
         unique_ctries, ind = np.unique(sup.countries_iso3, return_index=True)
         unique_ctries = np.append(unique_ctries[np.argsort(ind)], 'ROW')
@@ -219,7 +222,8 @@ class TestSupplyChain(unittest.TestCase):
         self.assertEqual(np.mean(sup.direct_impact[:,2]), sup.direct_aai_agg[2])
         self.assertEqual(len(sup.direct_impact[0,:]), len(sup.direct_aai_agg))
         
-    def test_calc_indirect_impact(self, sup):
+    def test_calc_indirect_impact(self):
+        sup = SupplyChain()
         # Leontief approach:
         sup.calc_indirect_impact(io_approach='leontief')
         self.assertEqual(np.mean(sup.indirect_impact[:,2]), sup.indirect_aai_agg[2])
@@ -247,7 +251,8 @@ class TestSupplyChain(unittest.TestCase):
         self.assertEqual(np.shape(sup.mriot_data), np.shape(sup.io_data['inverse']))
         self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.direct_impact))
         
-    def test_calc_total_impact(self, sup):
+    def test_calc_total_impact(self):
+        sup = SupplyChain()
         sup.calc_total_impact()
         self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.total_impact))
         self.assertTrue(np.all(sup.indirect_impact+sup.direct_impact == sup.total_impact))
