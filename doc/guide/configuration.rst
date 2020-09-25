@@ -58,4 +58,7 @@ Configuration values can be accessed like this:
 .. code::
 
    from climada.util import config
-   SYSTEM_DATA = config.get("climada.global.data.system")
+   SYSTEM_DATA_DIR = config.get("climada.global.data.system")
+
+   from climada.test import test_config
+   DROUGHT_TEST_DATA_DIR = test_config.get("climada.hazard.drought.data")
