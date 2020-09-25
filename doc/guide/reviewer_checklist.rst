@@ -22,13 +22,14 @@ Reviewer Checklist
    (lists, dictionnaries, ...) as `default values for functions and
    methods <https://stackoverflow.com/questions/1132941/least-astonishment-and-the-mutable-default-argument>`__.
    Do not write: 
-   ``def function(default=[]):
-    	 ...
-    `` 
+   ::
+   	def function(default=[]):
+   	    ... 
    but use
-   ``def function(default=None):
-     	if default is None: default=[]
-	``
+   ::
+   	def function(default=None):
+     	    if default is None: default=[]
+
 -  Use pythonic loops, `list
    comprehensions <https://treyhunner.com/2015/12/python-list-comprehensions-now-in-color/>`__
    etc.
@@ -42,14 +43,17 @@ Reviewer Checklist
    ``@staticmethod`` decorator should only be used if really 
    necessary. Another example, for counting the dictionnary
    ``colors = ['red', 'green', 'red', 'blue', 'green', 'red']``,
-	version
-   ``d = {} for color in colors:
-        d[color] = d.get(color, 0) + 1`` 
+   version
+   ::
+   	d = {}
+	for color in colors:
+            d[color] = d.get(color, 0) + 1 
    is perfectly fine, no need to complicate it to a maybe more pythonic
    version
-   ``d = collections.defaultdict(int)
-     for color in colors:
-          d[color] += 1``.
+   ::
+   	d = collections.defaultdict(int)
+     	for color in colors:
+            d[color] += 1
 
 -  Did the code writer perform a static code analysis? Does the code
    respect Pep8 (see also the `pylint config file <https://github.com/CLIMADA-project/climada_python/blob/main/.pylintrc/>`__)?
