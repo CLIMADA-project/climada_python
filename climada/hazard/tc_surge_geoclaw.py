@@ -61,7 +61,7 @@ HAZ_TYPE = 'TCSurgeGeoClaw'
 CLAWPACK_GIT_URL = "https://github.com/clawpack/clawpack.git"
 """URL of the official Clawpack git repository"""
 
-CLAWPACK_VERSION = "v5.7.0"
+CLAWPACK_VERSION = "v5.7.1"
 """Version or git decorator (tag, branch) of Clawpack to use"""
 
 CLAWPACK_SRC_DIR = os.path.join(DATA_DIR, "geoclaw", "src")

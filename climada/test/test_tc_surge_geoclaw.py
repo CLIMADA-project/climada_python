@@ -25,7 +25,7 @@ import unittest
 import numpy as np
 import xarray as xr
 
-from climada.hazard.tc_surge_geoclaw import geoclaw_surge_from_track
+from climada.hazard.tc_surge_geoclaw import setup_clawpack, geoclaw_surge_from_track
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data')
@@ -64,6 +64,7 @@ class TestGeoclawRun(unittest.TestCase):
             # points inland at higher altitude:
             [-23.37505943, -149.46882493], [-23.36615826, -149.45798872],
         ])
+        setup_clawpack()
         intensity = geoclaw_surge_from_track(track, centroids, ZOS_PATH, TOPO_PATH)
         self.assertEqual(intensity.shape, (centroids.shape[0],))
         self.assertTrue(np.all(intensity[:7] > 0))
