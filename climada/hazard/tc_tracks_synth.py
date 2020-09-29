@@ -166,6 +166,35 @@ def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
     return ens_track
 
 
+def get_bearing_angle(lon, lat):
+    """Compute bearing angle of great circle paths defined by consecutive points
+
+    Returns initial bearing (also called forward azimuth) of the n-1 great circle
+    paths define by n consecutive longitude/latitude points. The bearing is the angle
+    (clockwise from North) which if followed in a straight line along a great-circle
+    arc will take you from the start point to the end point. See also:
+    http://www.movable-type.co.uk/scripts/latlong.html
+    Here, the bearing of each pair of consecutive points is computed.
+
+    Parameters:
+        lon (numpy.ndarray of shape (n,)): longitude coordinates, in degrees
+        lat (numpy.ndarray of shape (n,)): latitude coordinates, in degrees
+
+    Returns:
+        bearing_angle (numpy.ndarray of shape (n-1,), in degrees
+    """
+    lon, lat = map(np.radians, [lon, lat])
+    lat_1 = lat[:-1]
+    lon_1 = lon[:-1]
+    lat_2 = lat[1:]
+    lon_2 = lon[1:]
+    delta_lon = lon_2 - lon_1
+    earth_ang_fix = np.arctan2(np.sin(delta_lon)*np.cos(lat_2),
+                               np.cos(lat_1)*np.sin(lat_2)-np.sin(lat_1)*np.cos(lat_2)*np.cos(delta_lon))
+    return np.degrees(earth_ang_fix)
+
+
+
 def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
                      pool=None):
     """Compute wind and pressure decay coefficients from historical events
