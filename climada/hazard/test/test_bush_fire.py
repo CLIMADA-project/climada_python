@@ -209,7 +209,7 @@ class TestMethodsFirms(unittest.TestCase):
             bf._firms_clustering(firms, 0.375, 15)
             # compute event_id
             BushFire.days_thres = 2
-            bf._firms_event(BushFire.days_thres, firms.cons_id.values, firms.clus_id.values, 
+            bf._firms_event(BushFire.days_thres, firms.cons_id.values, firms.clus_id.values,
                 firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
             i_iter += 1
         self.assertEqual(i_iter, 2)

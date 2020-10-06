@@ -122,7 +122,7 @@ class BushFire(Hazard):
                               firms.clus_id.values, firms.event_id.values,
                               firms.iter_ev.values, firms.datenum.values)
             LOGGER.info('Remaining events to identify: %s.', str(np.argwhere(\
-            firms.iter_ev).size))
+            firms.iter_ev.values).size))
 
         # compute brightness and fill class attributes
         LOGGER.info('Computing intensity of %s events.', np.unique(firms.event_id).size)
@@ -500,7 +500,7 @@ class BushFire(Hazard):
 
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
-        temp_firms = firms.reindex(index=(np.argwhere(firms['event_id'] == ev_id).reshape(-1,)),
+        temp_firms = firms.reindex(index=np.argwhere(firms['event_id'].values == ev_id).ravel(),
                                    columns=['latitude', 'longitude', 'brightness'])
 
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni

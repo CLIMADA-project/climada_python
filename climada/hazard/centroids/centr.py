@@ -30,7 +30,7 @@ import pandas as pd
 from rasterio import Affine
 from rasterio.warp import Resampling, reproject
 import rasterio
-from geopandas import GeoSeries
+import geopandas as gpd
 from shapely.geometry.point import Point
 
 import climada.util.plot as u_plot
@@ -97,7 +97,7 @@ class Centroids():
     def __init__(self):
         """ Initialize to None raster and vector """
         self.meta = dict()
-        self.geometry = GeoSeries()
+        self.geometry = gpd.GeoSeries()
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -185,7 +185,7 @@ class Centroids():
             crs (dict() or rasterio.crs.CRS, optional): CRS. Default: DEF_CRS
         """
         self.__init__()
-        self.lat, self.lon, self.geometry = lat, lon, GeoSeries(crs=crs)
+        self.lat, self.lon, self.geometry = lat, lon, gpd.GeoSeries(crs=crs)
 
     def set_raster_file(self, file_name, band=[1], src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None, width=None,
@@ -605,7 +605,7 @@ class Centroids():
                                      np.arange(uly+yres/2, lry, yres))
         self.lon = x_grid.flatten()
         self.lat = y_grid.flatten()
-        self.geometry = GeoSeries(crs=self.meta['crs'])
+        self.geometry = gpd.GeoSeries(crs=self.meta['crs'])
 
     def plot(self, axis=None, **kwargs):
         """ Plot centroids scatter points over earth.
@@ -647,7 +647,7 @@ class Centroids():
     def empty_geometry_points(self):
         """ Removes points in geometry. Useful when centroids is used in
         multiprocessing function """
-        self.geometry = GeoSeries(crs=self.geometry.crs)
+        self.geometry = gpd.GeoSeries(crs=self.geometry.crs)
 
     def write_hdf5(self, file_data):
         """ Write centroids attributes into hdf5 format.
@@ -775,9 +775,8 @@ class Centroids():
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
             if not scheduler:
-                self.geometry = GeoSeries(list(zip(self.lon, self.lat)),
-                                          crs=self.geometry.crs)
-                self.geometry = self.geometry.apply(Point)
+                self.geometry = gpd.GeoSeries(
+                    gpd.points_from_xy(self.lon, self.lat), crs=self.geometry.crs)
             else:
                 import dask.dataframe as dd
                 from multiprocessing import cpu_count
@@ -809,7 +808,7 @@ class Centroids():
         memo[id(self)] = result
         for key, value in self.__dict__.items():
             if key == 'geometry':
-                setattr(result, key, GeoSeries(crs=self.geometry.crs))
+                setattr(result, key, gpd.GeoSeries(crs=self.geometry.crs))
             else:
                 setattr(result, key, copy.deepcopy(value, memo))
         return result
