@@ -332,7 +332,7 @@ class TCTracks():
                                .astype(float))
         ibtracs_ds['time_step'] = xr.zeros_like(ibtracs_ds.time, dtype=float)
         ibtracs_ds['time_step'][:, 1:] = (ibtracs_ds.time.diff(dim="date_time")
-                                          / np.timedelta64(1, 's'))
+                                          / np.timedelta64(1, 'h'))
         ibtracs_ds['time_step'][:, 0] = ibtracs_ds.time_step[:, 1]
         provider = provider if provider else 'ibtracs'
 
