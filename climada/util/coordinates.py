@@ -33,6 +33,7 @@ import geopandas as gpd
 from iso3166 import countries as iso_cntry
 import numpy as np
 import pandas as pd
+import pyproj
 import rasterio
 import rasterio.crs
 import rasterio.features
@@ -258,6 +259,24 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
     return (dist_km, vtan) if log else dist_km
+
+def deg_from_dist(dist_mtrs):
+    """
+    Compute approximate distance in degrees given distance in metres,
+    assuming perfect sphere approximation of R = 6,371 km and 
+    1 ° of latitude  = 111.12 km
+    
+    Parameters
+    ----------
+    dist_mtrs (int): distance in metres
+    
+    Returns
+    -------
+    distance in degrees
+    
+    """
+    return dist_mtrs / (ONE_LAT_KM*1000)
+
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -1440,6 +1459,38 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         'transform': ras_trans,
     }
     return raster_out, meta
+
+def _get_window_from_coords(path_sourcefile, bbox=[]):
+    """ Given a rasterfile and a bounding box with coordinates, get corresponding
+    row, column, width and height for that snippet in file.
+    Required for rasterio window function 
+    
+    Parameters
+    ----------
+        bbox (list): [north, east, south, west]
+        path_sourcefile (str): path of file from which window should be read in
+    Returns
+    -------
+        window_array (array): corner, width & height for Window() function of 
+            rasterio
+    """
+    with rasterio.open(path_sourcefile) as src:
+        utm = pyproj.Proj(init='epsg:4326') # Pass CRS of image from rasterio
+        lonlat = pyproj.Proj(init='epsg:4326')
+        lon, lat = (bbox[3], bbox[0])
+        west, north = pyproj.transform(lonlat, utm, lon, lat)
+
+        row, col = src.index(west, north) # spatial --> image coordinates
+
+        lon, lat = (bbox[1], bbox[2])
+        east, south = pyproj.transform(lonlat, utm, lon, lat)
+        row2, col2 = src.index(east, south)
+    width = abs(col2-col)
+    height = abs(row2-row)
+
+    window_array = [col, row, width, height]
+
+    return window_array
 
 def set_df_geometry_points(df_val, scheduler=None):
     """Set given geometry to given dataframe using dask if scheduler

@@ -35,12 +35,12 @@ class TestLandslideModule(unittest.TestCase):
         """test function _incl_affected_surroundings()"""
         pass
     
-    def test_get_hist_events(self):
-        """test function _get_hist_events()"""
+    def test_gdf_from_bbox(self):
+        """test function _gdf_from_bbox()"""
         empty_LS = Landslide()
         bbox = [48,23,40,20]
         path_sourcefile = os.path.join(TESTDATA_DIR,'test_ls_hist.shp')
-        ls_subgdf = empty_LS._get_hist_events(bbox, path_sourcefile)
+        ls_subgdf = empty_LS._gdf_from_bbox(bbox, path_sourcefile)
         self.assertEqual(len(ls_subgdf), 272)
         self.assertTrue(max(ls_subgdf.geometry.y)<=bbox[0])
         self.assertTrue(max(ls_subgdf.geometry.x)<=bbox[1])
