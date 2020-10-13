@@ -62,8 +62,14 @@ RES_DATA = 1.0
 WIGGLE = 9
 """ Maximum number of cells where fire can be ignited """
 
-PROP_PROPA = 0.25
+PROP_PROPA = 0.21
 """Probability of fire propagation """
+
+BLURR_STEPS = 4
+""" steps with exponential deay for fire propagation matrix """
+
+MAX_IT_PROPA = 500000
+""" maximum steps for a probabilistic event """
 
 class BushFire(Hazard):
     """Contains bush fire events.
@@ -77,6 +83,25 @@ class BushFire(Hazard):
 
     clus_thres = 15
     """ Clustering factor which multiplies instrument resolution """
+    
+    intensity_type = 'max'
+    """ type of intensity
+        - max -> max radiation at each centroid
+        - days -> number of days with fire at each centroid
+        - cumu -> accumulated intensity at each centroid 
+        - evo -> retrace the evolution of the fire """
+        
+    remove_minor_events = True
+    """ removes FIRMS minor FIRMS events """
+    
+    minor_events_thres = 3
+    """ number of FIRMS entries required to be considered an event """
+    
+    prop_proba = 0.21
+    """ probability of fire propagation """
+    
+    max_it_propa = 500000
+    """ maximum steps for a probabilistic event """
 
     def __init__(self, pool=None):
         """Empty constructor. """
@@ -93,11 +118,11 @@ class BushFire(Hazard):
 
         Parameters:
             csv_firms: csv file of the FIRMS data (https://firms.modaps.eosdis.nasa.gov/download/)
+                        or pd.DataFrame of FIRMS data 
             centr_res_factor (int, optional): resolution factor with respect to
                 the satellite data to use for centroids creation. Default: 1
             centroids (Centroids, optional): centroids in degrees to map data
         """
-        LOGGER.info('Setting up historical events.')
         self.clear()
 
         # read and initialize data
@@ -123,49 +148,17 @@ class BushFire(Hazard):
                               firms.iter_ev.values, firms.datenum.values)
             LOGGER.info('Remaining events to identify: %s.', str(np.argwhere(\
             firms.iter_ev).size))
-
+        
+        # remove minor events
+        if self.remove_minor_events:
+            firms = self._firms_remove_minor_events(firms, self.minor_events_thres)
+            
         # compute brightness and fill class attributes
         LOGGER.info('Computing intensity of %s events.', np.unique(firms.event_id).size)
         self._calc_brightness(firms, centroids, res_centr)
 
-    def set_proba_events(self, ens_size=9, seed=8):
-        """ Generate a set of probabilistic events for each historical event.
-        Execute after set_hist_events. Centroids must be in a grid.
 
-        Parameters:
-            ens_size (int): number of probabilistic events to generate per
-                historical event
-            seed (int, optional): random number generator seed. Default: 8.
-
-        Raises:
-            ValueError
-        """
-        LOGGER.info('Setting up probabilistic events.')
-        if self.pool:
-            chunksize = min(self.size//self.pool.ncpus, 1000)
-            haz_syn = self.pool.map(self._set_proba_one_event, range(self.size),
-                                    itertools.repeat(ens_size, self.size),
-                                    np.arange(seed, seed + self.size),
-                                    chunksize=chunksize)
-            haz = []
-            for haz_i in haz_syn:
-                haz.extend(haz_i)
-        else:
-            haz = []
-            for ev_idx in range(self.size):
-                haz.extend(self._set_proba_one_event(ev_idx, ens_size,
-                                                     seed+ev_idx))
-
-        # problem random num generator in multiprocessing. python 3.7?
-        LOGGER.debug('Append events.')
-        prob_haz = BushFire()
-        prob_haz._append_all(haz)
-        self.append(prob_haz)
-
-        # Update the frequency adter adding the probabilistic events
-        self._set_frequency()
-
-    def hull_burned_area(self, ev_id, alpha=100.87):
+    def hull_burned_area(self, ev_id, alpha=100.87, return_plot=True, info=True):
         """Compute the burned area for a given event.
 
         Parameters:
@@ -204,12 +197,204 @@ class BushFire(Hazard):
 
         concave_hull_m = transform(project, concave_hull)  # apply projection
         area_hull_one_event = concave_hull_m.area/10000
-        LOGGER.info('area: %s ha', area_hull_one_event)
+        if info: LOGGER.info('area: %s ha', area_hull_one_event)
 
         # Plot the polygone around the fire
-        plot_polygon(concave_hull)
-        plt.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
+        if return_plot:
+            plot_polygon(concave_hull)
+            plt.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
         return area_hull_one_event
+    
+    
+    def set_hist_event_year_set(self,  csv_firms, centr_res_factor=1,
+                                centroids=None, hemisphere=None,
+                                year_start=None, year_end=None,
+                                keep_all_events=False):
+        
+        LOGGER.info('Setting up historical events for year set.')
+        self.clear()
+
+        # read and initialize data
+        firms = self._clean_firms_csv(csv_firms)
+        # compute centroids
+        res_data = self._firms_resolution(firms)
+        if not centroids:
+            centroids = self._centroids_creation(firms, res_data, centr_res_factor)
+        else:
+            if not centroids.coord.size:
+                centroids.set_meta_to_lat_lon()
+        # define hemisphere
+        if hemisphere is None:
+            if centroids.lat[0] > 0:
+                hemisphere = 'NHS'
+            elif centroids.lat[0] < 0:
+                hemisphere = 'SHS' 
+
+        # define years
+        years = np.arange(date.fromordinal(firms.datenum.min()).year,
+                          date.fromordinal(firms.datenum.max()).year+1)
+        if year_start is not None:
+            years = np.delete(years, np.argwhere(years < year_start))
+        if year_end is not None:
+            years = np.delete(years, np.argwhere(years > year_end))
+        
+        # make seasons
+        hist_year_sets = []
+
+        for year in years:
+            LOGGER.info('Setting up historical events for year %s.', str(year))
+            firms_temp = self._select_fire_season(firms, year, hemisphere=hemisphere)
+            
+            # calculate year set historic
+            bf_year = BushFire()
+            bf_year.set_hist_events(firms_temp, centroids=centroids)
+            hist_year_sets.append(bf_year)
+              
+        # events per yearset
+        n_events = np.zeros(len(years))
+        for i, bf in enumerate(hist_year_sets):
+            n_events[i] = len(bf.event_id)
+            
+        if keep_all_events:
+            self.hist_year_sets = hist_year_sets
+            
+        # save
+        self.tag = TagHazard(HAZ_TYPE)
+        self.centroids = centroids
+        self.n_events = n_events
+        if self.intensity_type == 'max': self.units = 'K' # Kelvin brightness
+        elif self.intensity_type == 'days': self.units = '# days' # number days
+        elif self.intensity_type == 'cumu': self.units = 'K days' # Integral
+        elif self.intensity_type == 'evo': self.units = 'days since start'
+        
+        
+        # Following values are defined for each event
+        self.event_id = np.arange(1, len(years)+1).astype(int)
+        self.event_name = list(map(str, years))
+        self.date = np.zeros(len(years), int)
+        self.date_end = np.zeros(len(years), int)
+        if hemisphere == 'NHS':
+            for y_idx, year in enumerate(years):
+                self.date[y_idx] = date.toordinal(date(year, 1, 1))
+                self.date_end[y_idx] = date.toordinal(date(year, 12, 31))
+        elif hemisphere == 'SHS':
+            for y_idx, year in enumerate(years):
+                self.date[y_idx] = date.toordinal(date(year, 7, 1))
+                self.date_end[y_idx] = date.toordinal(date(year+1, 6, 30))
+        self.orig = np.ones(len(years), bool)
+        self._set_frequency()
+
+        # Following values are defined for each event and centroid
+        self.intensity = sparse.lil_matrix(np.zeros((len(years), len(centroids.lat))))
+        for idx, bf in enumerate(hist_year_sets):
+            self.intensity[idx] = bf.intensity.max(axis=0)
+        self.intensity = self.intensity.tocsr()
+        self.fraction = self.intensity.copy()
+        self.fraction.data.fill(1.0)
+        
+    def set_probabilistic_event_year_set(self, n_event_years=1,
+                                     n_ignations=None, keep_all_events=False):
+        if n_ignations is None:
+            ign_min = np.min(self.n_events)
+            ign_max = np.max(self.n_events)
+        else:
+            ign_min = n_ignations[0]
+            ign_max = n_ignations[1]
+            
+        prob_year_set = []
+        for i in range(n_event_years):
+            n_ign = np.random.randint(ign_min, ign_max)
+            LOGGER.info('Setting up probabilistic event year with %s events.', str(n_ign))
+            prob_year_set.append(self._set_one_proba_event_year(n_ign, seed=i))
+            
+        if keep_all_events:
+            self.prob_year_set = prob_year_set
+            
+        
+        # Following values are defined for each event
+        new_event_id = np.arange(np.max(self.event_id)+1, np.max(self.event_id)+n_event_years+1)
+        self.event_id = np.concatenate((self.event_id, new_event_id), axis=None)
+        new_event_name = list(map(str, new_event_id))
+        self.event_name = np.append(self.event_name, new_event_name)
+        new_orig = np.zeros(len(new_event_id), bool)
+        self.orig = np.concatenate((self.orig, new_orig))
+        self._set_frequency()
+    
+        # Following values are defined for each event and centroid
+        new_intensity = sparse.lil_matrix((np.zeros([n_event_years, len(self.centroids.lat)])))
+        for idx, bf in enumerate(prob_year_set):
+            new_intensity[idx] = sparse.csr_matrix(bf).max(0)
+        new_intensity = new_intensity.tocsr()
+        
+        self.intensity = sparse.vstack([self.intensity, new_intensity],format='csr')
+        self.fraction = self.intensity.copy()
+        self.fraction.data.fill(1.0)
+        
+        
+    def combine_events(self, event_id_merge=None, remove_rest=False, probabilistic=False):
+        
+        if probabilistic is False:
+            if event_id_merge is not None:
+                # get index of events to merge
+                evt_idx_merge = []
+                for i in event_id_merge:
+                    evt_idx_merge.append(np.argwhere(self.event_id == i).reshape(-1)[0])
+                
+                # get dates
+                date_start = np.min(self.date[evt_idx_merge])
+                date_end = np.max(self.date_end[evt_idx_merge])
+                
+                if remove_rest:
+                    self.intensity = sparse.csr_matrix(np.amax(self.intensity[evt_idx_merge],0))
+                    self.event_id = np.array([np.max(self.event_id)+1])
+                    self.date = [date_start]
+                    self.date_end = [date_end]
+                    self.orig = np.ones(1, bool)
+                    self._set_frequency()
+                    self.fraction = self.intensity.copy()
+                    self.fraction.data.fill(1.0)
+                else:
+                    # merge event & append
+                    self.intensity = sparse.vstack([self.intensity, np.amax(self.intensity[evt_idx_merge],0)],format='csr')
+                    self.event_id = np.append(self.event_id, np.max(self.event_id)+1)
+                    self.date = np.append(self.date, date_start)
+                    self.date_end = np.append(self.date_end, date_end)
+                    self.orig = np.append(self.orig, np.ones(1, bool))
+                    
+                    # remove initial events
+                    self.intensity = self.intensity[np.delete(np.arange(0, self.intensity.get_shape()[0]),evt_idx_merge)]
+                    self.event_id = np.delete(self.event_id,evt_idx_merge)
+                    self.date = np.delete(self.date,evt_idx_merge)
+                    self.date_end = np.delete(self.date_end,evt_idx_merge)
+                    self.orig = np.delete(self.orig,evt_idx_merge)
+                    
+                    self._set_frequency()
+                    self.fraction = self.intensity.copy()
+                    self.fraction.data.fill(1.0)
+                    
+            else:
+                self.intensity = sparse.csr_matrix(np.amax(self.intensity,0))
+                self.event_id = np.array([np.max(self.event_id)+1])
+                self.date = [np.min(self.date)]
+                self.date_end = [np.max(self.date_end)]
+                self.orig = np.ones(1, bool)
+                self._set_frequency()
+                self.fraction = self.intensity.copy()
+                self.fraction.data.fill(1.0)
+            LOGGER.info('The merged event has event_id %s', self.event_id[-1])
+            
+        else:
+            self.intensity = sparse.csr_matrix(np.amax(self.intensity,0))
+            self.event_id = np.array([np.max(self.event_id)+1])
+            #self.date = [np.min(self.date)]
+            #self.date_end = [np.max(self.date_end)]
+            self.orig = np.zeros(1, bool)
+            self._set_frequency()
+            self.fraction = self.intensity.copy()
+            self.fraction.data.fill(1.0)
+        
+
+        
 
     @staticmethod
     def _clean_firms_csv(csv_firms):
@@ -219,12 +404,15 @@ class BushFire(Hazard):
                 nominal and high values)
 
         Parameters:
-            csv_firms: csv file of the FIRMS data
+            csv_firms: csv file of the FIRMS data or pd.DataFrame of FIRMS data 
 
         Returns:
             pd.DataFrame
         """
-        firms = pd.read_csv(csv_firms)
+        if isinstance(csv_firms, pd.DataFrame):
+            firms = csv_firms
+        else:
+            firms = pd.read_csv(csv_firms)
         # Check for the type of instrument (MODIS vs VIIRS)
         # Remove data with low confidence interval
         # Uniformize the name of the birghtness columns between VIIRS and MODIS
@@ -407,7 +595,23 @@ class BushFire(Hazard):
                 fir_iter[fir_ev_id == ev_id] = False
             else:
                 fir_iter[fir_ev_id == ev_id] = True
-
+    
+    @staticmethod
+    def _firms_remove_minor_events(firms, minor_events_thres):
+        # remove events containg fewer FIRMS entries than threshold
+        for i in range(np.unique(firms.event_id).size):
+            if (firms.event_id == i).sum() < minor_events_thres:
+                firms = firms.drop(firms[firms.event_id == i].index)
+        # assign new event IDs
+        event_id_new = 1
+        for i in np.unique(firms.event_id):
+            firms.event_id[firms.event_id == i] = event_id_new
+            event_id_new = event_id_new + 1
+            
+        firms = firms.reset_index()
+                
+        return(firms)
+    
     @staticmethod
     def _centroids_resolution(centroids):
         """ Return resolution of the centroids in their units
@@ -455,17 +659,27 @@ class BushFire(Hazard):
                                         itertools.repeat(tree_centr, num_ev),
                                         uni_ev, itertools.repeat(res_centr),
                                         itertools.repeat(num_centr),
+                                        itertools.repeat(self.intensity_type),
                                         chunksize=chunksize)
         else:
             bright_list = []
             for ev_id in uni_ev:
                 bright_list.append(self._brightness_one_event(firms, tree_centr, \
-                ev_id, res_centr, num_centr))
-
+                ev_id, res_centr, num_centr, self.intensity_type))
+                    
+        bright_list, firms = self._remove_empty_events(bright_list, firms)
+        
+        uni_ev = np.unique(firms['event_id'].values)
+        num_ev = uni_ev.size
+        
         self.tag = TagHazard(HAZ_TYPE)
-        self.units = 'K' # Kelvin units brightness
         self.centroids = centroids
-
+        if self.intensity_type == 'max': self.units = 'K' # Kelvin brightness
+        elif self.intensity_type == 'days': self.units = '# days' # number days
+        elif self.intensity_type == 'cumu': self.units = 'K days' # Integral
+        elif self.intensity_type == 'evo': self.units = 'days since start'
+        
+        
         # Following values are defined for each event
         self.event_id = np.arange(1, num_ev+1).astype(int)
         self.event_name = list(map(str, self.event_id))
@@ -486,7 +700,7 @@ class BushFire(Hazard):
         self.fraction.data.fill(1.0)
 
     @staticmethod
-    def _brightness_one_event(firms, tree_centr, ev_id, res_centr, num_centr):
+    def _brightness_one_event(firms, tree_centr, ev_id, res_centr, num_centr, intensity_type):
         """ For a given event, fill in an intensity np.array with the maximum brightness
         at each centroid.
 
@@ -501,7 +715,7 @@ class BushFire(Hazard):
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
         temp_firms = firms.reindex(index=(np.argwhere(firms['event_id'] == ev_id).reshape(-1,)),
-                                   columns=['latitude', 'longitude', 'brightness'])
+                                   columns=['latitude', 'longitude', 'brightness','datenum'])
 
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni
         # Set the same index value for each duplicate (lat,lon) points -> lat_lon_cpy
@@ -513,30 +727,67 @@ class BushFire(Hazard):
         ind, _ = tree_centr.query_radius(lat_lon_uni, r=res_centr/2, count_only=False,
                                          return_distance=True, sort_results=True)
         ind = np.array([ind_i[0] if ind_i.size else -1 for ind_i in ind])
-        brightness_ev = _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy,
+        
+        if intensity_type == 'max':          
+            brightness_ev = _fill_intensity_max(num_centr, ind, index_uni, lat_lon_cpy,
+                                            temp_firms['brightness'].values)
+        elif intensity_type == 'days':
+            brightness_ev = _fill_intensity_days(num_centr, ind, index_uni, lat_lon_cpy,
+                                            temp_firms['datenum'].values)
+        elif intensity_type == 'cumu':
+            brightness_ev = _fill_intensity_cumu(num_centr, ind, index_uni, lat_lon_cpy,
                                         temp_firms['brightness'].values)
+        elif intensity_type == 'evo':
+            brightness_ev = _fill_intensity_evolution(num_centr, ind, index_uni, lat_lon_cpy,
+                                            temp_firms['datenum'].values)
+            
         return sparse.lil_matrix(brightness_ev)
+    
+    @staticmethod
+    def _remove_empty_events(bright_list, firms):
+        bright_list_nonzero = []
+        event_id_new = 1
+        for i in range(len(bright_list)):
+            if bright_list[i].count_nonzero() > 0:
+                bright_list_nonzero.append(bright_list[i])
+                firms.event_id.values[firms.event_id == i+1] = event_id_new
+                event_id_new = event_id_new + 1
+            else:
+                firms = firms.drop(firms[firms.event_id == i].index)
+                
+        firms = firms.reset_index()
+        LOGGER.info('Returning %s events that impacted the defined centroids.', len(bright_list_nonzero))
+        
+        return bright_list_nonzero, firms
+    
 
-    def _set_proba_one_event(self, ev_idx, ens_size, seed):
+    
+                
+    def _set_one_proba_event_year(self, n_ignations, seed=8):
         """ Generate a set of probabilistic events for a given historical event.
-
+        
         Parameters:
-            ev_idx (int): the selected historical event
-            ens_size (int): number of probabilistic events to generate for a
-                given historical event
-            seed (int): random number generator seed
-
+        ev_idx (int): the selected historical event
+        ens_size (int): number of probabilistic events to generate for a
+            given historical event
+        seed (int): random number generator seed
+        
         Raises:
-            bf_haz (list): list of hazard corresponding to new probabilistic events
-
+        bf_haz (list): list of hazard corresponding to new probabilistic events
+        
         """
         np.random.seed(seed)
-        bf_haz = []
-        for i_ens in range(ens_size):
-            bf_haz.append(self._random_bushfire_one_event(ev_idx, i_ens))
-        return bf_haz
-
-    def _random_bushfire_one_event(self, ev_idx, i_ens):
+        proba_events = sparse.lil_matrix(np.zeros((n_ignations, self.centroids.size)))
+        for i in range(n_ignations):
+            if np.mod(i, 10)==0:
+                LOGGER.info('Created %s events', str(i))                
+            centr_burned = self._run_one_bushfire()
+            proba_events[i, :] = self._set_proba_intensity(centr_burned)
+        
+        
+        return proba_events      
+      
+    def _run_one_bushfire(self):
         """ For a given historical event, select randomly a centroid as
             ignition starting point (plus or minus a wiggle) and check
             that the new fire starting point is located on land.
@@ -562,9 +813,12 @@ class BushFire(Hazard):
         Returns:
             new_haz: Hazard
         """
-        # Calculate area of historical event in m2
-        pos_centr = np.argwhere(self.intensity[ev_idx, :] > 0)[:, 1]
-        area_hist_event = self.centroids.area_pixel[pos_centr].sum()
+        # set fire propagation matrix
+        if not hasattr(self.centroids, 'fire_propa_matrix'):
+            self._set_fire_propa_matrix()
+                
+        # Ignation only at centroids that burned in the past
+        pos_centr = np.argwhere(self.centroids.fire_propa_matrix.reshape(len(self.centroids.lat))==1)[:, 1]
 
         LOGGER.debug('Start ignition.')
         # Random selection of ignition centroid
@@ -572,10 +826,8 @@ class BushFire(Hazard):
             centr = np.random.choice(pos_centr)
             centr_ix = int(centr/self.centroids.shape[1])
             centr_iy = centr%self.centroids.shape[1]
-            centr_ix += np.random.randint(-WIGGLE, WIGGLE+1)
             centr_ix = max(0, centr_ix)
             centr_ix = min(self.centroids.shape[0]-1, centr_ix)
-            centr_iy += np.random.randint(-WIGGLE, WIGGLE+1)
             centr_iy = max(0, centr_iy)
             centr_iy = min(self.centroids.shape[1]-1, centr_iy)
             centr = centr_ix*self.centroids.shape[1] + centr_iy
@@ -587,37 +839,47 @@ class BushFire(Hazard):
         LOGGER.debug('Propagate fire.')
         centr_burned = np.zeros((self.centroids.shape), int)
         centr_burned[centr_ix, centr_iy] = 1
-        area_prob_event = 0
         # Iterate the fire according to the propagation rules
         count_it = 0
-        while area_prob_event - area_hist_event < 0:
+        while np.any(centr_burned==1) and count_it<self.max_it_propa:
             count_it += 1
             # Select randomly one of the already burned centroids
             # and propagate throught its neighborhood
             burned = np.argwhere(centr_burned == 1)
             if len(burned) > 1:
                 centr_ix, centr_iy = burned[np.random.randint(0, len(burned))]
-            if not count_it % 200000:
-                LOGGER.warning('Fire propagation not converging at iteration %s.' +
-                               ' Selecting new ignition point.', count_it)
-                centr = np.random.choice(pos_centr)
-                centr_ix = int(centr/self.centroids.shape[1])
-                centr_iy = centr%self.centroids.shape[1]
-                centr_burned[centr_ix, centr_iy] = 1
+            elif len(burned) == 1:
+                centr_ix, centr_iy = burned[0]
+                
+            if not (count_it % (self.max_it_propa-1)):
+                LOGGER.warning('Fire propagation not converging at iteration %s.',
+                               count_it)
             if 1 <= centr_ix < self.centroids.shape[0]-1 and \
             1 <= centr_iy < self.centroids.shape[1]-1 and \
             self.centroids.on_land[(centr_ix*self.centroids.shape[1] + centr_iy)]:
-                area_prob_event = self._fire_propagation(self.centroids.shape, \
+                centr_burned = self._fire_propagation_on_matrix(self.centroids.shape, \
                     self.centroids.on_land.reshape(self.centroids.shape).astype(int), \
-                    self.centroids.area_pixel, centr_ix, centr_iy, centr_burned, \
-                    np.random.random(500))
+                    self.centroids.fire_propa_matrix, self.prop_proba, \
+                    centr_ix, centr_iy, centr_burned, np.random.random(500))
 
-        return self._event_probabilistic(ev_idx, i_ens, centr_burned)
+        return centr_burned
+
+    def _set_proba_intensity(self, centr_burned):        
+        # The brightness values are chosen randomly at every burned centroids
+        # from the brightness values of the historical event
+        ev_proba_uni = centr_burned.nonzero()[0] * self.centroids.shape[1] + \
+            centr_burned.nonzero()[1]
+        proba_intensity = sparse.lil_matrix(np.zeros((1, self.centroids.size)))
+        for ev_prob in ev_proba_uni:
+            proba_intensity[0, ev_prob] = np.random.choice( \
+                self.intensity.data)
+    
+        return proba_intensity    
 
     @staticmethod
     @numba.njit
-    def _fire_propagation(centr_shape, centr_land, centr_area, centr_ix,
-                          centr_iy, centr_burned, prob_array):
+    def _fire_propagation_on_matrix(centr_shape, centr_land, fire_propa_matrix, prop_proba,
+                              centr_ix, centr_iy, centr_burned, prob_array):
         """ Propagation of the fire in the 8 neighbouring cells around
         (centr_ix, centr_iy) according to propagation rules.
 
@@ -641,63 +903,99 @@ class BushFire(Hazard):
         # Displacements from a centroid to its eight nearest neighbours
         # with a PROP_PROPA and if centroids not already burned
         for i_neig, (delta_x, delta_y) in enumerate(hood):
-            if prob_array[i_neig] <= PROP_PROPA and\
+            if prob_array[i_neig] <= prop_proba*fire_propa_matrix[centr_ix+delta_x, centr_iy+delta_y] and\
             centr_burned[centr_ix+delta_x, centr_iy+delta_y] == 0:
                 burned_one_step[centr_ix+delta_x, centr_iy+delta_y] = 1
 
-        # Check for special case where no new burned centroids is added
-        # Try again the propagation in the 8 neighbouring centroids.
-        while len(burned_one_step.nonzero()[0]) <= 1:
-            for delta_x, delta_y in hood:
-                i_neig += 1
-                if prob_array[i_neig+len(hood)] <= PROP_PROPA:
-                    burned_one_step[centr_ix+delta_x, centr_iy+delta_y] = 1
-
         # Calculate burned area
         centr_burned += burned_one_step * centr_land
-        centr = centr_burned.nonzero()[0] * centr_shape[1] + centr_burned.nonzero()[1]
-        return centr_area[centr].sum()
 
-    def _event_probabilistic(self, ev_idx, i_ens, centr_burned):
-        """ Define synthetic hazard from randomly burned centroids.
-
-        Parameters:
-            ev_idx (int): the selected historical event
-            i_ens (int): number of the generated probabilistic event
-            centr_burned (np.array): array containing burned centroids
-
-        Returns:
-            new_haz (Hazard)
-        """
-        LOGGER.debug('Brightness probabilistic event.')
-
-        # The brightness values are chosen randomly at every burned centroids
-        # from the brightness values of the historical event
-        ev_proba_uni = centr_burned.nonzero()[0] * self.centroids.shape[1] + \
-            centr_burned.nonzero()[1]
-        new_haz = Hazard(HAZ_TYPE)
-        new_haz.intensity = sparse.lil_matrix(np.zeros((1, self.centroids.size)))
-        for ev_prob in ev_proba_uni:
-            new_haz.intensity[0, ev_prob] = np.random.choice( \
-                self.intensity[ev_idx, :].data)
-        new_haz.intensity = new_haz.intensity.tocsr()
-
-        # Hazard
-        new_haz.tag = TagHazard(HAZ_TYPE)
-        new_haz.units = 'K' # Kelvin units brightness
-        new_haz.centroids = self.centroids
-        new_haz.event_id = np.ones(1, int)
-        new_haz.frequency = np.ones(1, float)
-        new_haz.event_name = [str(ev_idx+1) + '_gen' + str(i_ens+1)]
-        new_haz.date = np.array([self.date[ev_idx]], int)
-        new_haz.orig = np.zeros(1, bool)
-
-        # Following values are defined for each event and centroid
-        new_haz.fraction = new_haz.intensity.copy()
-        new_haz.fraction.data.fill(1.0)
-
-        return new_haz
-
+        return centr_burned
+    
+    def _set_fire_propa_matrix(self, n_blurr=BLURR_STEPS):
+        
+        # historically burned centroids
+        hist_burned = np.zeros(self.centroids.lat.shape, dtype=bool)
+        hist_burned = self.intensity.sum(0)>0.
+        self.centroids.hist_burned = hist_burned
+        
+        fire_propa_matrix = hist_burned.reshape(self.centroids.shape).astype(float)
+        blurr_lvl = np.ones(n_blurr)
+        # exponential decay of fire propagation on cell level
+        for i in range(n_blurr):
+            blurr_lvl[i] = 2.**(-i)
+        # Neighbourhood
+        hood = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        
+        # loop over matrix to create blurr around historical fires
+        for blurr in range(n_blurr-1):
+            for i in range(fire_propa_matrix.shape[0]):
+                for j in range(fire_propa_matrix.shape[1]):
+                    if fire_propa_matrix[i,j] == blurr_lvl[blurr]:
+                        for i_neig, (delta_x, delta_y) in enumerate(hood):
+                            try:
+                                if fire_propa_matrix[i+delta_x, j+delta_y] == 0:
+                                    fire_propa_matrix[i+delta_x, j+delta_y] = blurr_lvl[blurr+1]
+                            except IndexError:
+                                pass
+        
+        self.centroids.fire_propa_matrix = fire_propa_matrix
+        
+    def plot_fire_prob_matrix(self):
+        lon = np.reshape(self.centroids.lon, self.centroids.fire_propa_matrix.shape)
+        lat = np.reshape(self.centroids.lat, self.centroids.fire_propa_matrix.shape)
+        plt.contourf(lon, lat, self.centroids.fire_propa_matrix)  
+    
+    @staticmethod
+    def _select_fire_season(firms, year, hemisphere='SHS'):
+        firms['date'] = firms['acq_date'].apply(pd.to_datetime)
+        if hemisphere=='NHS':
+            StartTime = pd.Timestamp(year,1,1)
+            EndTime =  pd.Timestamp(year+1,1,1)
+        elif hemisphere=='SHS':
+            StartTime = pd.Timestamp(year,7,1)
+            EndTime =  pd.Timestamp(year+1,7,1)
+            
+        firms = firms[(firms['date'] > StartTime) & (firms['date'] < EndTime)]
+        firms = firms.drop('date', axis=1)
+        return firms
+        
+    @staticmethod
+    def _set_fire_propa_matrix_from_year_set(year_set, n_blurr=BLURR_STEPS):
+        """ generate fire propagation matrix from historic year sets """
+        
+        hist_burned_year_set = np.zeros([year_set[0].centroids.lat.shape[0], len(year_set)], dtype=bool)
+        hist_burned = np.zeros(year_set[0].centroids.lat.shape[0], dtype=bool)
+        for i in range(len(year_set)):
+            hist_burned_year_set[:,i] = year_set[i].intensity.sum(0)>0.
+        hist_burned = np.sum(hist_burned_year_set,1)>0
+        
+        fire_propa_matrix = hist_burned.reshape(year_set[0].centroids.shape).astype(float)
+        blurr_lvl = np.ones(n_blurr)
+        # exponential decay of fire propagation on cell level
+        for i in range(n_blurr):
+            blurr_lvl[i] = 2.**(-i)
+        # Neighbourhood
+        hood = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        
+        # loop over matrix to create blurr around historical fires
+        for blurr in range(n_blurr-1):
+            for i in range(fire_propa_matrix.shape[0]):
+                for j in range(fire_propa_matrix.shape[1]):
+                    if fire_propa_matrix[i,j] == blurr_lvl[blurr]:
+                        for i_neig, (delta_x, delta_y) in enumerate(hood):
+                            try:
+                                if fire_propa_matrix[i+delta_x, j+delta_y] == 0:
+                                    fire_propa_matrix[i+delta_x, j+delta_y] = blurr_lvl[blurr+1]
+                            except IndexError:
+                                pass
+        centroids = year_set[0].centroids
+        centroids.hist_burned = hist_burned
+        centroids.fire_propa_matrix = fire_propa_matrix
+        
+        return centroids
+    
+    
     def _set_frequency(self):
         """Set hazard frequency from intensity matrix. """
         delta_time = date.fromordinal(int(np.max(self.date))).year - \
@@ -710,10 +1008,42 @@ class BushFire(Hazard):
         self.frequency = np.ones(self.event_id.size) / delta_time / ens_size
 
 @numba.njit
-def _fill_intensity(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
+def _fill_intensity_max(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
     brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
     for idx in range(index_uni.size):
         if ind[idx] != -1:
             brightness_ev[0, ind[idx]] = max(brightness_ev[0, ind[idx]], \
                          np.max(fir_bright[lat_lon_cpy == index_uni[idx]]))
     return brightness_ev
+
+@numba.njit    
+def _fill_intensity_days(num_centr, ind, index_uni, lat_lon_cpy, dates):
+    brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
+    ind_uni = np.unique(ind)
+    for idx in range(ind_uni.size):
+        if ind_uni[idx] != -1:
+            brightness_ev[0, ind_uni[idx]] = \
+                len(np.unique(dates[ind == ind_uni[idx]]))        
+    return brightness_ev
+
+@numba.njit
+def _fill_intensity_cumu(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
+    brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
+    ind_uni = np.unique(ind)
+    for idx in range(ind_uni.size):
+        if ind_uni[idx] != -1:
+            brightness_ev[0, ind_uni[idx]] = \
+                np.sum(fir_bright[ind == ind_uni[idx]])
+    return brightness_ev
+
+@numba.njit
+def _fill_intensity_evolution(num_centr, ind, index_uni, lat_lon_cpy, dates):
+    brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
+    ind_uni = np.unique(ind)
+    day_start = np.min(dates)
+    for idx in range(ind_uni.size):
+        if ind_uni[idx] != -1:
+            brightness_ev[0, ind_uni[idx]] = \
+                (np.min(dates[ind == ind_uni[idx]])-day_start+1)
+    return brightness_ev
+

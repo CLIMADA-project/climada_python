@@ -37,3 +37,23 @@ class IFBushfire(ImpactFunc):
         self.intensity = np.array([295, threshold, threshold, 367])
         self.mdd = np.array([0, 0, 1, 1])
         self.paa = np.array([1, 1, 1, 1])
+        
+    def set_sigmoid(self, int_range=np.arange(295,500,5), sig_mid=320, sig_shape=0.1, sig_max=1.0):
+        self.haz_type = "BF"
+        self.id = 1
+        self.name = "bushfire default"
+        self.intensity_unit = "K"
+        self.intensity = int_range
+        self.mdd = sig_max/(1+np.exp(-sig_shape*(int_range-sig_mid)))
+        self.paa = np.ones(len(int_range))
+        
+    def set_sigmoid_simple(self, i_half=523.8):
+        self.haz_type = "BF"
+        self.id = 1
+        self.name = "bushfire default"
+        self.intensity_unit = "K"
+        self.intensity = np.arange(295,500,5)
+        i_thresh = 295
+        i_n = (self.intensity-i_thresh)/(i_half-i_thresh)
+        self.paa = i_n**3/(1+i_n**3)
+        self.mdd = np.ones(len(self.intensity))
