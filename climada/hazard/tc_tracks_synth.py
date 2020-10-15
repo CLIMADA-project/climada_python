@@ -37,43 +37,49 @@ LOGGER = logging.getLogger(__name__)
 
 def calc_random_walk(tracks,
                      ens_size=9,
-                     ens_amp0=1.5,
-                     ens_amp=0.1,
-                     max_angle=np.pi / 10,
+                     max_shift_ini=0.75,
+                     max_dspeed_rel=0.3,
+                     max_ddir=np.pi / 180,
+                     autocorr_dspeed=0.85,
+                     autocorr_ddir=0.85,
                      seed=CONFIG['trop_cyclone']['random_seed'],
                      decay=True):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of
     tracks is computed for every track contained.
-    Please note that there is a bias towards higher latitudes in the random
-    wiggle. The wiggles are applied for each timestep. Please consider using
-    equal_timestep() for unification before generating synthetic tracks.
-    Be careful when changing ens_amp and max_angle and test changes of the
-    parameter values before application.
+    The track starting point location is perturbed by max_shift_ini. Then, each segment
+    between two consecutive points is perturbed in direction and distance (or
+    translational speed), with a given autocorrelation in both perturbations.
+    Perturbations in track direction and autocorrelations in perturbations are
+    on an hourly basis, and the perturbations in translational speed is relative.
+    Hence, the parameter values are relatively insensitive to the temporal
+    resolution of the tracks. Note however that all tracks should be at the same
+    temporal resolution, which can be achieved using equal_timestep().
+    max_dspeed_rel and autocorr_dspeed control the spread along the track ('what distance
+    does the track run for'), while max_ddir and autocorr_ddir control the spread
+    perpendicular to the track movement ('how does the track diverge in direction').
+    max_dspeed_rel and max_ddir control the amplitude of perturbations at each track
+    timestep but perturbations may tend to compensate each other over time, leading to
+    a similar location at the end of the track, while autocorr_dspeed and autocorr_ddir
+    control how these perturbations persist in time and hence the amplitude of the
+    perturbations towards the end of the track.
 
     The object is mutated in-place.
 
     Parameters:
         tracks (TCTracks): See `climada.hazard.tc_tracks`.
         ens_size (int, optional): number of ensemble members per track.
-            Default 9.
-        ens_amp0 (float, optional): amplitude of max random starting point
-            shift in decimal degree (longitude and latitude). Default: 1.5
-        ens_amp (float, optional): amplitude of random walk wiggles in
-            decimal degree (longitude and latitude). Default: 0.1
-        max_angle (float, optional): maximum angle of variation. Default: pi/10.
-            - max_angle=pi results in undirected random change with
-                no change in direction;
-            - max_angle=0 (or very close to 0) is not recommended. It results
-                in non-random synthetic tracks with constant shift to higher latitudes;
-            - for 0<max_angle<pi/2, the change in latitude is always toward
-                higher latitudes, i.e. poleward,
-            - max_angle=pi/4 results in random angles within one quadrant,
-                also with a poleward bias;
-            - decreasing max_angle starting from pi will gradually increase
-                the spread of the synthetic tracks until they start converging
-                towards the result of max_angle=0 at a certain value (depending
-                on length of timesteps and ens_amp).
+            Default: 9.
+        max_shift_ini (float, optional): amplitude of max random starting point
+            shift in decimal degree (up to +/-max_shift_ini for longitude and latitude). Default: 0.75.
+        max_dspeed_rel (float, optional): amplitude of translation speed
+            perturbation in relative terms (e.g., 0.2 for +/-20%). Default: 0.3.
+        max_ddir (float, optional): amplitude of track direction (bearing angle) perturbation
+            per hour, in radians. Default: pi/180.
+        autocorr_dspeed (float, optional): autocorrelation of translation speed perturbation
+            at a lag of 1 hour. Default: 0.85.
+        autocorr_ddir (float, optional): autocorrelation of translational direction perturbation
+            at a lag of 1 hour. Default: 0.85.
         seed (int, optional): random number generator seed for replicability
             of random walk. Put negative value if you don't want to use it.
             Default: configuration file
@@ -82,26 +88,44 @@ def calc_random_walk(tracks,
     """
     LOGGER.info('Computing %s synthetic tracks.', ens_size * tracks.size)
 
-    if max_angle == 0:
-        LOGGER.warning('max_angle=0 is not recommended. It results in non-random \
-                     synthetic tracks with a constant shift to higher latitudes.')
     if seed >= 0:
         np.random.seed(seed)
 
-    random_vec = [np.random.uniform(size=ens_size * (2 + track.time.size))
-                  for track in tracks.data]
+    # ensure tracks have constant time steps
+    time_step_h = np.unique([np.unique(x['time_step']) for x in tracks.data])
+    if not np.allclose(time_step_h, time_step_h[0]):
+        LOGGER.error('Tracks have different temporal resolution. '
+                     'Please ensure constant time steps by applying equal_timestep beforehand')
+        raise ValueError('Tracks have different temporal resolution.')
+    time_step_h = time_step_h[0]
+
+    # number of random value per synthetic track:
+    # 2*ens_size for starting points
+    # ens_size*(track.time.size-1) for angle and same for translation perturbation
+    # hence sum is ens_size * (2 + 2*(size-1)) = ens_size * 2 * size
+    # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    if autocorr_ddir == 0 and autocorr_dspeed == 0:
+        random_vec = [np.random.uniform(size=ens_size * (2 * track.time.size))
+                      for track in tracks.data]
+    else:
+        random_vec = [np.concatenate((np.random.uniform(size=ens_size * 2),
+                                      _random_uniform_ac(ens_size * (track.time.size - 1),
+                                                         autocorr_ddir, time_step_h),
+                                      _random_uniform_ac(ens_size * (track.time.size - 1),
+                                                         autocorr_dspeed, time_step_h)))
+                      for track in tracks.data]
 
     if tracks.pool:
         chunksize = min(tracks.size // tracks.pool.ncpus, 1000)
         new_ens = tracks.pool.map(_one_rnd_walk, tracks.data,
                                   itertools.repeat(ens_size, tracks.size),
-                                  itertools.repeat(ens_amp0, tracks.size),
-                                  itertools.repeat(ens_amp, tracks.size),
-                                  itertools.repeat(max_angle, tracks.size),
+                                  itertools.repeat(max_shift_ini, tracks.size),
+                                  itertools.repeat(max_dspeed_rel, tracks.size),
+                                  itertools.repeat(max_ddir, tracks.size),
                                   random_vec, chunksize=chunksize)
     else:
-        new_ens = [_one_rnd_walk(track, ens_size, ens_amp0, ens_amp,
-                                 max_angle, rand)
+        new_ens = [_one_rnd_walk(track, ens_size, max_shift_ini,
+                                 max_dspeed_rel, max_ddir, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
     tracks.data = sum(new_ens, [])
@@ -126,7 +150,7 @@ def calc_random_walk(tracks,
 
 
 @jit(parallel=True)
-def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
+def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_vec):
     """Interpolate values of one track.
 
     Parameters:
@@ -137,25 +161,39 @@ def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
     """
     ens_track = list()
     n_dat = track.time.size
-    xy_ini = ens_amp0 * (rnd_vec[:2 * ens_size].reshape((2, ens_size)) - 0.5)
-    tmp_ang = np.cumsum(2 * max_angle * rnd_vec[2 * ens_size:] - max_angle)
-    coord_xy = np.empty((2, ens_size * n_dat))
-    coord_xy[0] = np.cumsum(ens_amp * np.sin(tmp_ang))
-    coord_xy[1] = np.cumsum(ens_amp * np.cos(tmp_ang))
+    n_seg = n_dat - 1
+    xy_ini = max_shift_ini * (2 * rnd_vec[:2 * ens_size].reshape((2, ens_size)) - 1)
+    dt = np.unique(track['time_step'])[0]
 
     ens_track.append(track)
     for i_ens in range(ens_size):
         i_track = track.copy(True)
 
-        d_xy = coord_xy[:, i_ens * n_dat: (i_ens + 1) * n_dat] - \
-            np.expand_dims(coord_xy[:, i_ens * n_dat], axis=1)
-        # change sign of latitude change for southern hemishpere:
-        d_xy = np.sign(track.lat.values[0]) * d_xy
+        # angular perturbation
+        i_start_ang = 2 * ens_size + i_ens * n_seg
+        i_in_ang = (i_start_ang, i_start_ang + track.time.size - 1)
+        ang_pert = dt * np.degrees(max_ddir * (2 * rnd_vec[i_in_ang[0]:i_in_ang[1]] - 1))
+        ang_pert_cum = np.cumsum(ang_pert)
+        bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
+        angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
 
-        d_lat_lon = d_xy + np.expand_dims(xy_ini[:, i_ens], axis=1)
+        # for translational speed perturbation:
+        i_start_trans = 2 * ens_size + ens_size * n_seg + i_ens * n_seg
+        i_in_trans = (i_start_trans, i_start_trans + track.time.size - 1)
+        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_in_trans[0]:i_in_trans[1]] - 1)
 
-        i_track.lon.values = i_track.lon.values + d_lat_lon[0, :]
-        i_track.lat.values = i_track.lat.values + d_lat_lon[1, :]
+        # new lon/lat
+        new_lon = np.zeros_like(i_track.lon.values)
+        new_lat = np.zeros_like(i_track.lat.values)
+        new_lon[0] = i_track.lon.values[0] + xy_ini[0, i_ens]
+        new_lat[0] = i_track.lat.values[0] + xy_ini[1, i_ens]
+        for i in range(0, len(new_lon) - 1):
+            new_lon[i + 1], new_lat[i + 1] = _get_destination_points(new_lon[i], new_lat[i],
+                                                                     bearings[i] + ang_pert_cum[i],
+                                                                     trans_pert[i] * angular_dist[i])
+
+        i_track.lon.values = new_lon
+        i_track.lat.values = new_lat
         i_track.attrs['orig_event_flag'] = False
         i_track.attrs['name'] = i_track.attrs['name'] + '_gen' + str(i_ens + 1)
         i_track.attrs['sid'] = i_track.attrs['sid'] + '_gen' + str(i_ens + 1)
@@ -166,7 +204,80 @@ def _one_rnd_walk(track, ens_size, ens_amp0, ens_amp, max_angle, rnd_vec):
     return ens_track
 
 
-def get_bearing_angle(lon, lat):
+def _random_uniform_ac(n_ts, autocorr, time_step_h):
+    """Generate a series of autocorrelated uniformly distributed random numbers.
+
+    This implements the algorithm described here to derive a uniformly distributed series with specified
+    autocorrelation (here at a lag of 1 hour):
+    https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    Autocorrelation is specified at a lag of 1 hour. To get a time series at a different temporal resolution
+    (time_step_h), an hourly time series is generated and resampled (using linear interpolation) to the target
+    resolution.
+
+    Parameters:
+        n_ts (int): length of the series
+        autocorr: autocorrelation (between -1 and 1)
+
+    Returns:
+        numpy.ndarray of length n
+    """
+    # generate autocorrelated 1-hourly perturbations, so first create hourly time series of perturbations
+    n_ts_hourly_exact = n_ts * time_step_h
+    n_ts_hourly = int(np.ceil(n_ts_hourly_exact))
+    x = np.random.normal(size=n_ts_hourly)
+    theta = np.arccos(autocorr)
+    for i in range(1, len(x)):
+        x[i] = _h_ac(x[i - 1], x[i], theta)
+    # scale x to have magnitude [0,1]
+    x = (x + np.sqrt(3)) / (2 * np.sqrt(3))
+    # resample at target time step
+    x_ts = np.interp(np.arange(start=0, stop=n_ts_hourly_exact, step=time_step_h), np.arange(n_ts_hourly), x)
+    return x_ts
+
+
+@jit(parallel=True)
+def _h_ac(x, y, theta):
+    # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    # Note that the definition of Gamma is not very clear there, but the formulation below does what the text says.
+    # Tests indicated that this works, while the following fails:
+    # gamma = np.abs(np.mod(np.mod(theta, np.pi), np.pi / 2) - np.pi / 4)
+    gamma = np.abs(np.mod(theta, np.pi) - np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
+    # np.abs(dat['theta2'] - np.floor((dat['theta2'] / (np.pi / 2)) + 0.5) * np.pi / 2)
+    return 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
+
+
+@jit(parallel=True)
+def _f_ac(z, theta):
+    """F transform for autocorrelated random uniform series generation
+
+    This is function F defined here:
+    https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    The CDF of Y.
+
+    Parameters:
+        z (float): longitude coordinates, in decimal degrees
+        theta (float): arccos of the autocorrelation
+
+    Returns:
+        float (CDF at z)
+    """
+    c = np.cos(theta)
+    s = np.sin(theta)
+    if z >= np.sqrt(3) * (c + s):
+        res = 1
+    elif z > np.sqrt(3) * (c - s):
+        res = 1 / 12 / np.sin(2 * theta) * (-3 - z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 9 * np.sin(2 * theta))
+    elif z > np.sqrt(3) * (-c + s):
+        res = 1 / 6 * (3 + np.sqrt(3) * z / c)
+    elif z > -np.sqrt(3) * (c + s):
+        res = 1 / 12 / np.sin(2 * theta) * (z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 3 * (1 + np.sin(2 * theta)))
+    else:
+        res = 0
+    return res
+
+
+@jit(parallel=True)
+def _get_bearing_angle(lon, lat):
     """Compute bearing angle of great circle paths defined by consecutive points
 
     Returns initial bearing (also called forward azimuth) of the n-1 great circle
@@ -177,11 +288,11 @@ def get_bearing_angle(lon, lat):
     Here, the bearing of each pair of consecutive points is computed.
 
     Parameters:
-        lon (numpy.ndarray of shape (n,)): longitude coordinates, in degrees
-        lat (numpy.ndarray of shape (n,)): latitude coordinates, in degrees
+        lon (numpy.ndarray of shape (n,)): longitude coordinates, in decimal degrees
+        lat (numpy.ndarray of shape (n,)): latitude coordinates, in decimal degrees
 
     Returns:
-        bearing_angle (numpy.ndarray of shape (n-1,), in degrees
+        bearing_angle (numpy.ndarray of shape (n-1,), in decimal degrees
     """
     lon, lat = map(np.radians, [lon, lat])
     lat_1 = lat[:-1]
@@ -189,10 +300,59 @@ def get_bearing_angle(lon, lat):
     lat_2 = lat[1:]
     lon_2 = lon[1:]
     delta_lon = lon_2 - lon_1
-    earth_ang_fix = np.arctan2(np.sin(delta_lon)*np.cos(lat_2),
-                               np.cos(lat_1)*np.sin(lat_2)-np.sin(lat_1)*np.cos(lat_2)*np.cos(delta_lon))
+    # what to do with the points that don't move? i.e. where lat_2=lat_1 and lon_2=lon_1? The angle does not matter in
+    # that case because angular distance will be 0.
+    earth_ang_fix = np.arctan2(np.sin(delta_lon) * np.cos(lat_2),
+                               np.cos(lat_1) * np.sin(lat_2) - np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon))
     return np.degrees(earth_ang_fix)
 
+
+@jit(parallel=True)
+def _get_angular_distance(lon, lat):
+    """Compute the angular distance of great circle paths defined by consecutive points
+
+    Uses the haversine formulat to get the great circle distance between each pair
+    of consecutive points, in decimal degrees.
+
+    Parameters:
+        lon (numpy.ndarray of shape (n,)): longitude coordinates, in decimal degrees
+        lat (numpy.ndarray of shape (n,)): latitude coordinates, in decimal degrees
+
+    Returns:
+        Angular distance (numpy.ndarray of shape (n-1,), in decimal degrees
+    """
+
+    lon, lat = map(np.radians, [lon, lat])
+    lat_1 = lat[:-1]
+    lat_2 = lat[1:]
+    delta_lon = lon[1:] - lon[:-1]
+    delta_lat = lat_2 - lat_1
+    a = np.sin(delta_lat / 2.0) ** 2 + np.cos(lat_1) * np.cos(lat_2) * np.sin(delta_lon / 2.0) ** 2
+    c = np.degrees(2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a)))
+    return c
+
+
+@jit(parallel=True)
+def _get_destination_points(lon, lat, bearing, angular_distance):
+    """Get coordinates of endpoints starting a given locations with the provided bearing and distance
+
+    Parameters:
+        lon (numpy.ndarray of shape (n,)): longitude coordinates of start location, in decimal degrees
+        lat (numpy.ndarray of shape (n,)): latitude coordinates of start location, in decimal degrees
+        bearing (numpy.ndarray of shape (n,)): bearing (direction Northward, clockwise)
+        angular_distance (numpy.ndarray of shape (n,)): angular distance, in decimal degrees
+
+    Returns:
+        Angular distance (numpy.ndarray of shape (n,), in decimal degrees
+    """
+
+    lon, lat = map(np.radians, [lon, lat])
+    bearing = np.radians(bearing)
+    angular_distance = np.radians(angular_distance)
+    lat_2 = np.arcsin(np.sin(lat) * np.cos(angular_distance) + np.cos(lat) * np.sin(angular_distance) * np.cos(bearing))
+    lon_2 = lon + np.arctan2(np.sin(bearing) * np.sin(angular_distance) * np.cos(lat),
+                             np.cos(angular_distance) - np.sin(lat) * np.sin(lat_2))
+    return np.degrees(lon_2), np.degrees(lat_2)
 
 
 def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
