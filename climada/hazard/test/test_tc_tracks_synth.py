@@ -356,6 +356,26 @@ class TestDecay(unittest.TestCase):
         self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
 
 class TestSynth(unittest.TestCase):
+    def test_angle_funs_pass(self):
+        """Test functions used by random walk code"""
+        bearings = tc_synth._get_bearing_angle([15, 20, 20], [0, 0, 5]).tolist()
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]), np.array([0, 0]))[0], 90.0)
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([20, 20]), np.array([0, 5]))[0], 0.0)
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]), np.array([0, 0.00001]))[0], 45)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]), np.array([0, 0])), 0.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 1]), np.array([0, 0])), 1.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]), np.array([0, 1])), 1.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]), np.array([0, 30])), 41.40962211)
+        pt_north = tc_synth._get_destination_points(0, 0, 0, 1)
+        self.assertAlmostEqual(pt_north[0], 0.0)
+        self.assertAlmostEqual(pt_north[1], 1.0)
+        pt_west = tc_synth._get_destination_points(0, 0, -90, 3)
+        self.assertAlmostEqual(pt_west[0], -3.0)
+        self.assertAlmostEqual(pt_west[1], 0.0)
+        pt_test = tc_synth._get_destination_points(8.523224, 47.371102, 151.14161003, 52.80812463)
+        self.assertAlmostEqual(pt_test[0], 31.144113)
+        self.assertAlmostEqual(pt_test[1], -1.590347)
+
     def test_random_no_landfall_pass(self):
         """Test calc_random_walk with decay and no historical tracks with landfall"""
         tc_track = tc.TCTracks()
@@ -377,31 +397,31 @@ class TestSynth(unittest.TestCase):
         self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
         self.assertEqual(tc_track.data[1].id_no, 1.951239012334010e+12)
         self.assertAlmostEqual(tc_track.data[1].lon[0].values, -25.0448138)
-        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -26.07400903)
-        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -27.09191673)
-        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -28.21366632)
-        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -29.33195465)
-        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -34.6016857)
+        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -25.74350584)
+        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -26.53816584)
+        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -27.70882553)
+        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -28.60215804)
+        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -33.91441471)
 
         self.assertAlmostEqual(tc_track.data[1].lat[0].values, 11.96825841)
-        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 12.35820479)
-        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 12.45465)
-        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 12.5492937)
-        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 12.6333804)
-        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 12.71561952)
+        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 11.53325679)
+        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 11.2794089)
+        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 11.06101848)
+        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 10.87011188)
+        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 10.56160248)
 
         self.assertFalse(tc_track.data[2].orig_event_flag)
         self.assertEqual(tc_track.data[2].name, '1951239N12334_gen2')
         self.assertAlmostEqual(tc_track.data[2].id_no, 1.951239012334020e+12)
         self.assertAlmostEqual(tc_track.data[2].lon[0].values, -25.47658461)
-        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.78978084)
-        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -29.9568406)
-        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -35.30222604)
+        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.07321308)
+        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -28.84362221)
+        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -33.58163207)
 
         self.assertAlmostEqual(tc_track.data[2].lat[0].values, 11.82886685)
-        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 12.26400422)
-        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 12.3454308)
-        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 12.42745488)
+        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 12.48419948)
+        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 12.67466604)
+        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 12.75050471)
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_random_walk."""
@@ -424,6 +444,26 @@ class TestSynth(unittest.TestCase):
         self.assertIn('No historical track of category Hurricane Cat. 5 with '
                       'landfall.', cm.output[6])
 
+    def test_random_walk_identical_pass(self):
+        """Test 0 perturbation leads to identical tracks."""
+        tc_track = tc.TCTracks()
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        ens_size = 2
+        tc_track.calc_random_walk(ens_size=ens_size, max_shift_ini=0, max_dspeed_rel=0, max_ddir=0, decay=False)
+        self.assertTrue(np.all(np.abs((tc_track.data[0].lon.values - tc_track.data[1].lon.values)) < 0.0001))
+        self.assertTrue(np.all(np.abs((tc_track.data[0].lat.values - tc_track.data[1].lat.values)) < 0.0001))
+        self.assertTrue(np.all(np.abs((tc_track.data[0].lon.values - tc_track.data[2].lon.values)) < 0.0001))
+        self.assertTrue(np.all(np.abs((tc_track.data[0].lat.values - tc_track.data[2].lat.values)) < 0.0001))
+        self.assertTrue(np.all(tc_track.data[0].time_step.values - tc_track.data[1].time_step.values == np.timedelta64(0)))
+        self.assertTrue(np.all(tc_track.data[0].radius_max_wind.values - tc_track.data[1].radius_max_wind.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].max_sustained_wind.values - tc_track.data[1].max_sustained_wind.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].central_pressure.values - tc_track.data[1].central_pressure.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].environmental_pressure.values - tc_track.data[1].environmental_pressure.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].time_step.values - tc_track.data[2].time_step.values == np.timedelta64(0)))
+        self.assertTrue(np.all(tc_track.data[0].radius_max_wind.values - tc_track.data[2].radius_max_wind.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].max_sustained_wind.values - tc_track.data[2].max_sustained_wind.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].central_pressure.values - tc_track.data[2].central_pressure.values == 0))
+        self.assertTrue(np.all(tc_track.data[0].environmental_pressure.values - tc_track.data[2].environmental_pressure.values == 0))
 
 # Execute Tests
 if __name__ == "__main__":
