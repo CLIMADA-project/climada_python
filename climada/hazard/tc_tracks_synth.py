@@ -235,7 +235,7 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     return x_ts
 
 
-@jit(parallel=True)
+@jit
 def _h_ac(x, y, theta):
     # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
     # Note that the definition of Gamma is not very clear there, but the formulation below does what the text says.
@@ -246,7 +246,7 @@ def _h_ac(x, y, theta):
     return 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
 
 
-@jit(parallel=True)
+@jit
 def _f_ac(z, theta):
     """F transform for autocorrelated random uniform series generation
 
@@ -276,7 +276,7 @@ def _f_ac(z, theta):
     return res
 
 
-@jit(parallel=True)
+@jit
 def _get_bearing_angle(lon, lat):
     """Compute bearing angle of great circle paths defined by consecutive points
 
@@ -307,7 +307,7 @@ def _get_bearing_angle(lon, lat):
     return np.degrees(earth_ang_fix)
 
 
-@jit(parallel=True)
+@jit
 def _get_angular_distance(lon, lat):
     """Compute the angular distance of great circle paths defined by consecutive points
 
@@ -332,7 +332,7 @@ def _get_angular_distance(lon, lat):
     return c
 
 
-@jit(parallel=True)
+@jit
 def _get_destination_points(lon, lat, bearing, angular_distance):
     """Get coordinates of endpoints starting a given locations with the provided bearing and distance
 
