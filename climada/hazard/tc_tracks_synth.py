@@ -71,7 +71,8 @@ def calc_random_walk(tracks,
         ens_size (int, optional): number of ensemble members per track.
             Default: 9.
         max_shift_ini (float, optional): amplitude of max random starting point
-            shift in decimal degree (up to +/-max_shift_ini for longitude and latitude). Default: 0.75.
+            shift in decimal degree (up to +/-max_shift_ini for longitude and latitude).
+            Default: 0.75.
         max_dspeed_rel (float, optional): amplitude of translation speed
             perturbation in relative terms (e.g., 0.2 for +/-20%). Default: 0.3.
         max_ddir (float, optional): amplitude of track direction (bearing angle) perturbation
@@ -188,9 +189,10 @@ def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_
         new_lon[0] = i_track.lon.values[0] + xy_ini[0, i_ens]
         new_lat[0] = i_track.lat.values[0] + xy_ini[1, i_ens]
         for i in range(0, len(new_lon) - 1):
-            new_lon[i + 1], new_lat[i + 1] = _get_destination_points(new_lon[i], new_lat[i],
-                                                                     bearings[i] + ang_pert_cum[i],
-                                                                     trans_pert[i] * angular_dist[i])
+            new_lon[i + 1], new_lat[i + 1] = \
+                _get_destination_points(new_lon[i], new_lat[i],
+                                        bearings[i] + ang_pert_cum[i],
+                                        trans_pert[i] * angular_dist[i])
 
         i_track.lon.values = new_lon
         i_track.lat.values = new_lat
@@ -207,12 +209,13 @@ def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
     """Generate a series of autocorrelated uniformly distributed random numbers.
 
-    This implements the algorithm described here to derive a uniformly distributed series with specified
-    autocorrelation (here at a lag of 1 hour):
-    https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
-    Autocorrelation is specified at a lag of 1 hour. To get a time series at a different temporal resolution
-    (time_step_h), an hourly time series is generated and resampled (using linear interpolation) to the target
-    resolution.
+    This implements the algorithm described here to derive a uniformly distributed
+    series with specified autocorrelation (here at a lag of 1 hour):
+    https://stats.stackexchange.com/questions/48086/
+        algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    Autocorrelation is specified at a lag of 1 hour. To get a time series at a
+    different temporal resolution (time_step_h), an hourly time series is generated
+    and resampled (using linear interpolation) to the target resolution.
 
     Parameters:
         n_ts (int): length of the series
@@ -221,7 +224,8 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     Returns:
         numpy.ndarray of length n
     """
-    # generate autocorrelated 1-hourly perturbations, so first create hourly time series of perturbations
+    # generate autocorrelated 1-hourly perturbations, so first create hourly
+    #   time series of perturbations
     n_ts_hourly_exact = n_ts * time_step_h
     n_ts_hourly = int(np.ceil(n_ts_hourly_exact))
     x = np.random.normal(size=n_ts_hourly)
@@ -231,17 +235,21 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     # scale x to have magnitude [0,1]
     x = (x + np.sqrt(3)) / (2 * np.sqrt(3))
     # resample at target time step
-    x_ts = np.interp(np.arange(start=0, stop=n_ts_hourly_exact, step=time_step_h), np.arange(n_ts_hourly), x)
+    x_ts = np.interp(np.arange(start=0, stop=n_ts_hourly_exact, step=time_step_h),
+                     np.arange(n_ts_hourly), x)
     return x_ts
 
 
 @jit
 def _h_ac(x, y, theta):
-    # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
-    # Note that the definition of Gamma is not very clear there, but the formulation below does what the text says.
+    # https://stats.stackexchange.com/questions/48086/
+    #   algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    # Note that the definition of Gamma is not very clear there, but the
+    # formulation below does what the text says.
     # Tests indicated that this works, while the following fails:
     # gamma = np.abs(np.mod(np.mod(theta, np.pi), np.pi / 2) - np.pi / 4)
-    gamma = np.abs(np.mod(theta, np.pi) - np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
+    gamma = np.abs(np.mod(theta, np.pi) - \
+                   np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
     # np.abs(dat['theta2'] - np.floor((dat['theta2'] / (np.pi / 2)) + 0.5) * np.pi / 2)
     return 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
 
@@ -266,11 +274,13 @@ def _f_ac(z, theta):
     if z >= np.sqrt(3) * (c + s):
         res = 1
     elif z > np.sqrt(3) * (c - s):
-        res = 1 / 12 / np.sin(2 * theta) * (-3 - z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 9 * np.sin(2 * theta))
+        res = 1 / 12 / np.sin(2 * theta) * \
+              (-3 - z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 9 * np.sin(2 * theta))
     elif z > np.sqrt(3) * (-c + s):
         res = 1 / 6 * (3 + np.sqrt(3) * z / c)
     elif z > -np.sqrt(3) * (c + s):
-        res = 1 / 12 / np.sin(2 * theta) * (z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 3 * (1 + np.sin(2 * theta)))
+        res = 1 / 12 / np.sin(2 * theta) * \
+              (z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 3 * (1 + np.sin(2 * theta)))
     else:
         res = 0
     return res
@@ -300,10 +310,12 @@ def _get_bearing_angle(lon, lat):
     lat_2 = lat[1:]
     lon_2 = lon[1:]
     delta_lon = lon_2 - lon_1
-    # what to do with the points that don't move? i.e. where lat_2=lat_1 and lon_2=lon_1? The angle does not matter in
+    # what to do with the points that don't move?
+    #   i.e. where lat_2=lat_1 and lon_2=lon_1? The angle does not matter in
     # that case because angular distance will be 0.
     earth_ang_fix = np.arctan2(np.sin(delta_lon) * np.cos(lat_2),
-                               np.cos(lat_1) * np.sin(lat_2) - np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon))
+                               np.cos(lat_1) * np.sin(lat_2) - \
+                               np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon))
     return np.degrees(earth_ang_fix)
 
 
@@ -334,11 +346,13 @@ def _get_angular_distance(lon, lat):
 
 @jit
 def _get_destination_points(lon, lat, bearing, angular_distance):
-    """Get coordinates of endpoints starting a given locations with the provided bearing and distance
+    """Get coordinates of endpoints from a given locations with the provided bearing and distance
 
     Parameters:
-        lon (numpy.ndarray of shape (n,)): longitude coordinates of start location, in decimal degrees
-        lat (numpy.ndarray of shape (n,)): latitude coordinates of start location, in decimal degrees
+        lon (numpy.ndarray of shape (n,)): longitude coordinates of start location,
+            in decimal degrees
+        lat (numpy.ndarray of shape (n,)): latitude coordinates of start location,
+            in decimal degrees
         bearing (numpy.ndarray of shape (n,)): bearing (direction Northward, clockwise)
         angular_distance (numpy.ndarray of shape (n,)): angular distance, in decimal degrees
 
@@ -349,7 +363,8 @@ def _get_destination_points(lon, lat, bearing, angular_distance):
     lon, lat = map(np.radians, [lon, lat])
     bearing = np.radians(bearing)
     angular_distance = np.radians(angular_distance)
-    lat_2 = np.arcsin(np.sin(lat) * np.cos(angular_distance) + np.cos(lat) * np.sin(angular_distance) * np.cos(bearing))
+    lat_2 = np.arcsin(np.sin(lat) * np.cos(angular_distance) + np.cos(lat) * \
+                      np.sin(angular_distance) * np.cos(bearing))
     lon_2 = lon + np.arctan2(np.sin(bearing) * np.sin(angular_distance) * np.cos(lat),
                              np.cos(angular_distance) - np.sin(lat) * np.sin(lat_2))
     return np.degrees(lon_2), np.degrees(lat_2)
@@ -667,12 +682,12 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         if land_sea < track.time.size and idx + 1 < sea_land_idx.size:
             rndn = 0.1 * float(np.abs(np.random.normal(size=1) * 5) + 6)
             r_diff = track.central_pressure[land_sea].values - \
-                track.central_pressure[land_sea - 1].values + rndn
+                     track.central_pressure[land_sea - 1].values + rndn
             track.central_pressure[land_sea:sea_land_idx[idx + 1]] += - r_diff
 
             rndn = rndn * 10  # mean value 10
             r_diff = track.max_sustained_wind[land_sea].values - \
-                track.max_sustained_wind[land_sea - 1].values - rndn
+                     track.max_sustained_wind[land_sea - 1].values - rndn
             track.max_sustained_wind[land_sea:sea_land_idx[idx + 1]] += - r_diff
 
     # correct limits
