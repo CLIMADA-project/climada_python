@@ -24,6 +24,7 @@ import unittest
 import xarray as xr
 import numpy as np
 import netCDF4 as nc
+import pandas as pd
 
 import climada.hazard.tc_tracks as tc
 from climada.util import ureg
@@ -266,6 +267,30 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track_G.data[0].name, '0')
         self.assertEqual(tc_track_G.data[0].basin, 'NI - North Indian')
         self.assertEqual(tc_track_G.data[0].category, 0)
+
+    def test_to_geodataframe_points(self):
+        """Conversion of TCTracks to GeoDataFrame using Points.
+        """
+        tc_track = tc.TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+
+        gdf_points = tc_track.to_geodataframe(as_points=True)
+        self.assertIsInstance(gdf_points.unary_union.bounds, tuple)
+        self.assertEqual(gdf_points.size, 418)
+        self.assertAlmostEqual(gdf_points.buffer(3).unary_union.area, 348.79972062947854)
+        self.assertIsInstance(gdf_points.iloc[0].time, pd._libs.tslibs.timestamps.Timestamp)
+
+    def test_to_geodataframe_line(self):
+        """Conversion of TCTracks to GeoDataFrame using LineStrings.
+        """
+        tc_track = tc.TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+
+        gdf_line = tc_track.to_geodataframe()
+        self.assertIsInstance(gdf_line.basin[0], np.float64)
+        self.assertEqual(gdf_line.size, 10)
+        self.assertAlmostEqual(gdf_line.geometry[0].length, 54.0634224372971)
+        self.assertIsInstance(gdf_line.bounds.minx, pd.core.series.Series)
 
 
 class TestFuncs(unittest.TestCase):
