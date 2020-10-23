@@ -805,7 +805,7 @@ class TCTracks():
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
 
-    def to_geodataframe(self, as_points=False, joint=True):
+    def to_geodataframe(self, as_points=False):
         """Transform this TCTracks instance into a GeoDataFrame.
 
         Parameters:
