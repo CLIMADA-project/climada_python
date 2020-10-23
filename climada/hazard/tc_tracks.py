@@ -813,9 +813,6 @@ class TCTracks():
                 geometries. A point is created if a track has length one.
                 If set to false, the geometries are returned as points with an
                 additional timestamp column.
-            joint (bool): If using as_points, return geometries joined to
-                metadata. If set to False, return a tuple of two GeoDataFrames
-                that can be joined on their index.
 
         Returns:
             GeoDataFrame
@@ -840,10 +837,7 @@ class TCTracks():
                 'geometry': [Point(p[0], p[1]) for p in points],
             }).set_index('idx')
 
-            if joint:
-                gdf = gdf.join(gdf_long)
-            else:
-                return gdf, gdf_long
+            gdf = gdf.join(gdf_long)
 
         else:
             # LineString only works with more than one lat/lon pair
