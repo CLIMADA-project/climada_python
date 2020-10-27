@@ -685,7 +685,7 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
+        axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                            colbar_name, title, smooth=smooth,
                                            axes=axis, **kwargs)
         return axis, inten_stats
