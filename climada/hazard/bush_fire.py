@@ -133,7 +133,7 @@ class BushFire(Hazard):
                               firms.clus_id.values, firms.event_id.values,
                               firms.iter_ev.values, firms.datenum.values)
             LOGGER.info('Remaining events to identify: %s.', str(np.argwhere(\
-            firms.iter_ev).size))
+            firms.iter_ev.values).size))
 
         # remove minor events
         if self.remove_minor_events:
