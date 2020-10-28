@@ -21,27 +21,33 @@ Define TCTracks: IBTracs reader and tracks manager.
 
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
-import os
-import glob
-import shutil
-import logging
-import warnings
+# standard libraries
 import datetime as dt
+import glob
 import itertools
-import numpy as np
+import logging
+import os
+import shutil
+import warnings
+
+# additional libraries
+import cartopy.crs as ccrs
+import geopandas as gpd
 import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
-import cartopy.crs as ccrs
-import pandas as pd
-import xarray as xr
-from sklearn.neighbors import DistanceMetric
 import netCDF4 as nc
 from numba import jit
+import numpy as np
+import pandas as pd
 import scipy.io.matlab as matlab
+from shapely.geometry import Point, LineString
+from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
+import xarray as xr
 
+# climada dependencies
 from climada.util import ureg
 import climada.util.coordinates as coord_util
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
@@ -332,7 +338,7 @@ class TCTracks():
                                .astype(float))
         ibtracs_ds['time_step'] = xr.zeros_like(ibtracs_ds.time, dtype=float)
         ibtracs_ds['time_step'][:, 1:] = (ibtracs_ds.time.diff(dim="date_time")
-                                          / np.timedelta64(1, 's'))
+                                          / np.timedelta64(1, 'h'))
         ibtracs_ds['time_step'][:, 0] = ibtracs_ds.time_step[:, 1]
         provider = provider if provider else 'ibtracs'
 
@@ -798,6 +804,50 @@ class TCTracks():
             track = xr.open_dataset(file)
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
+
+    def to_geodataframe(self, as_points=False):
+        """Transform this TCTracks instance into a GeoDataFrame.
+
+        Parameters:
+            as_points (bool): If true, construct LineString or single Point
+                geometries. A point is created if a track has length one.
+                If set to false, the geometries are returned as points with an
+                additional timestamp column.
+
+        Returns:
+            GeoDataFrame
+        """
+        gdf = gpd.GeoDataFrame(
+            [dict(track.attrs) for track in self.data]
+        )
+
+        if as_points:
+            times = np.concatenate([track.time.data for track in self.data])
+            points = np.concatenate([
+                np.c_[track.lon, track.lat] for track in self.data
+            ])
+
+            # repeat each idx according to the number of timesteps
+            lens = [track.time.size for track in self.data]
+            idx = np.repeat(gdf.index.to_numpy(), lens)
+
+            gdf_long = gpd.GeoDataFrame({
+                'idx': idx,
+                'time': times,
+                'geometry': [Point(p[0], p[1]) for p in points],
+            }).set_index('idx')
+
+            gdf = gdf.join(gdf_long)
+
+        else:
+            # LineString only works with more than one lat/lon pair
+            gdf.geometry = gpd.GeoSeries([
+                LineString(np.c_[track.lon, track.lat]) if track.lon.size > 1
+                else Point(track.lon.data, track.lat.data)
+                for track in self.data
+            ])
+
+        return gdf
 
     @staticmethod
     @jit(parallel=True, forceobj=True)
