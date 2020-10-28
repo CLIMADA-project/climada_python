@@ -12,15 +12,6 @@ pipeline {
             source activate climada_env
             pylint -ry climada | tee pylint.log'''
 
-            step([
-                $class: 'WarningsPublisher',
-                parserConfigurations: [[
-                    parserName: 'PyLint',
-                    pattern   : 'pylint.log'
-                ]],
-                unstableTotalHigh: '25',
-                usePreviousBuildAsReference: true
-            ])
           }
         }
 
