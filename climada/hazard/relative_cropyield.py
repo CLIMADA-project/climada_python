@@ -66,8 +66,15 @@ YEARCHUNKS['ISIMIP2a'] = {'yearrange': np.array([1980, 1999]), 'startyear': 1980
 YEARCHUNKS['historical'] = dict()
 YEARCHUNKS['historical'] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
                             'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+
+YEARCHUNKS['rcp26'] = dict()
+YEARCHUNKS['rcp26'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+                       'endyear': 2099} # not yet implemented for RCP2.6 runs from 2100 to 2299.
 YEARCHUNKS['rcp60'] = dict()
 YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+                       'endyear': 2099}
+YEARCHUNKS['rcp85'] = dict()
+YEARCHUNKS['rcp85'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
                        'endyear': 2099}
 
 FN_STR_VAR = 'global_annual'
@@ -389,7 +396,6 @@ class RelativeCropyield(Hazard):
                 One row displays the intensity for present and future climate and the difference of
                 the two for one model-combination (ag_model and cl_model)
 
-
         Returns:
             geoaxes
         """
@@ -453,12 +459,10 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
 
         Optional Return:
             output_list (list): list of generated output data (hazards and historical mean)
-
     """
 
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
                  f.startswith('.')]
-
 
     # generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
@@ -496,10 +500,24 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
             # compute the relative yield for all future scenarios with the corresponding
             # historic mean
             for scenario in scenario_list:
-                haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                # check whether future file exists for given historical file and scenario:
+                file_ = os.path.join(input_dir, '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+                                    %((file_props[his_file])['ag_model'],
+                                      (file_props[his_file])['cl_model'],
+                                      scenario,
+                                      (file_props[his_file])['soc'],
+                                      (file_props[his_file])['co2'],
+                                      (file_props[his_file])['crop'],
+                                      (file_props[his_file])['irr'],
+                                      FN_STR_VAR,
+                                      YEARCHUNKS[scenario]['startyear'],
+                                      YEARCHUNKS[scenario]['endyear'])
+                                )
+                if os.path.isfile(file_): # if true, calculate and save future hazard set:
+                    haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
                                                  input_dir, bbox)
-                filename_list.append(filename)
-                output_list.append(haz_fut)
+                    filename_list.append(filename)
+                    output_list.append(haz_fut)
 
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
     for crop_irr in crop_list:
@@ -532,7 +550,7 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
 def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
                     yearrange_his=None):
 
-    """Initialize fulll hazard set.
+    """Initialize full hazard set.
 
         Parameters:
             filenames (list): list of filenames
