@@ -69,7 +69,12 @@ YEARCHUNKS['historical'] = {'yearrange': np.array([1976, 2005]), 'startyear': 18
 
 YEARCHUNKS['rcp26'] = dict()
 YEARCHUNKS['rcp26'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
-                       'endyear': 2099} # not yet implemented for RCP2.6 runs from 2100 to 2299.
+                       'endyear': 2099}
+
+YEARCHUNKS['rcp26-2'] = dict() # future extended (rcp26, 2100-2299) works for set_from_single_run, 
+                               # but not yet implemented for generate_full_hazard_set
+YEARCHUNKS['rcp26-2'] = {'yearrange': np.array([2100, 2299]), 'startyear': 2006,
+                       'endyear': 2299}
 YEARCHUNKS['rcp60'] = dict()
 YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
                        'endyear': 2099}
@@ -168,14 +173,18 @@ class RelativeCropyield(Hazard):
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
-        else:
+        elif '_%i_%i.nc' %(YEARCHUNKS[scenario]['startyear'], YEARCHUNKS[scenario]['endyear']) in filename:
             yearchunk = YEARCHUNKS[scenario]
             (_, _, _, _, _, _, crop_irr, *_) = filename.split('_')
             _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
-
-
-
+        else: # backup: get yearchunk from filename
+            (_, _, _, _, _, _, crop_irr, _, _, year1, year2) = filename.split('_')
+            yearchunk = {'yearrange': np.array([int(year1), int(year2.split('.')[0])]),
+                         'startyear': int(year1),
+                         'endyear': int(year2.split('.')[0])}
+            _, crop, irr = crop_irr.split('-')
+            filename = os.path.join(input_dir, filename)
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
