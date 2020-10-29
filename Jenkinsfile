@@ -12,6 +12,8 @@ pipeline {
             source activate climada_env
             pylint -ry climada | tee pylint.log'''
 
+            recordIssues tools: [pylint(), 
+            checkStyle(), spotBugs(pattern: 'pylint.log'), ]
           }
         }
 
