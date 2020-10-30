@@ -172,7 +172,8 @@ class RelativeCropyield(Hazard):
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
-        elif '_%i_%i.nc' %(YEARCHUNKS[scenario]['startyear'], YEARCHUNKS[scenario]['endyear']) in filename:
+        elif '_%i_%i.nc' %(YEARCHUNKS[scenario]['startyear'], YEARCHUNKS[scenario]['endyear']) \
+            in filename:
             yearchunk = YEARCHUNKS[scenario]
             (_, _, _, _, _, _, crop_irr, *_) = filename.split('_')
             _, crop, irr = crop_irr.split('-')
@@ -521,9 +522,10 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
                                       YEARCHUNKS[scenario]['startyear'],
                                       YEARCHUNKS[scenario]['endyear'])
 
-                if os.path.isfile(os.path.join(input_dir, fut_file)): # if true, calculate and save future hazard set:
+                if os.path.isfile(os.path.join(input_dir, fut_file)):
+                    # if true, calculate and save future hazard set:
                     haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
-                                                 input_dir, bbox, fut_file=fut_file)
+                                                     input_dir, bbox, fut_file=fut_file)
                     filename_list.append(filename)
                     output_list.append(haz_fut)
                 if scenario == 'rcp26': # also test for extended
@@ -540,9 +542,10 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
                                           YEARCHUNKS['rcp26-2']['startyear'],
                                           YEARCHUNKS['rcp26-2']['endyear'])
 
-                    if os.path.isfile(os.path.join(input_dir, fut_file)): # if true, calculate and save future hazard set:
+                    if os.path.isfile(os.path.join(input_dir, fut_file)):
+                        # if true, calculate and save future hazard set:
                         haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
-                                                     input_dir, bbox, fut_file=fut_file)
+                                                         input_dir, bbox, fut_file=fut_file)
                         filename_list.append(filename)
                         output_list.append(haz_fut)
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
@@ -722,7 +725,8 @@ def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange
 
     return haz_his, filename, hist_mean
 
-def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX, fut_file=None):
+def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
+                 fut_file=None):
 
     """Create future hazard.
 
