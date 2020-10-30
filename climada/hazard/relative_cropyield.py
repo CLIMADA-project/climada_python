@@ -73,7 +73,7 @@ YEARCHUNKS['rcp26'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
 
 YEARCHUNKS['rcp26-2'] = dict()
 YEARCHUNKS['rcp26-2'] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100,
-                       'endyear': 2299}
+                         'endyear': 2299}
 YEARCHUNKS['rcp60'] = dict()
 YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
                        'endyear': 2099}
@@ -662,7 +662,8 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
     for crop_irr in crop_list:
-        amount_crop_irr = sum(crop_irr in s for s in his_file_list)
+        crop, irr = crop_irr.split('-')
+        amount_crop_irr = sum((crop in s) and (irr in s) for s in his_file_list)
         hist_mean_per_crop[crop_irr] = dict()
         hist_mean_per_crop[crop_irr] = {
             'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
