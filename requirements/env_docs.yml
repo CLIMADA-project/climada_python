@@ -253,4 +253,4 @@ dependencies:
     - wcwidth==0.2.5
     - widgetsnbextension==3.5.1
     - xmlrunner==1.7.7
-prefix: /home/climada/miniconda3/envs/climada_env
+    - nbsphinx
