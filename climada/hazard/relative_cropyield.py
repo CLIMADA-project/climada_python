@@ -66,8 +66,19 @@ YEARCHUNKS['ISIMIP2a'] = {'yearrange': np.array([1980, 1999]), 'startyear': 1980
 YEARCHUNKS['historical'] = dict()
 YEARCHUNKS['historical'] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
                             'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+
+YEARCHUNKS['rcp26'] = dict()
+YEARCHUNKS['rcp26'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+                       'endyear': 2099}
+
+YEARCHUNKS['rcp26-2'] = dict()
+YEARCHUNKS['rcp26-2'] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100,
+                         'endyear': 2299}
 YEARCHUNKS['rcp60'] = dict()
 YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+                       'endyear': 2099}
+YEARCHUNKS['rcp85'] = dict()
+YEARCHUNKS['rcp85'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
                        'endyear': 2099}
 
 FN_STR_VAR = 'global_annual'
@@ -161,14 +172,19 @@ class RelativeCropyield(Hazard):
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
-        else:
+        elif '_%i_%i.nc' %(YEARCHUNKS[scenario]['startyear'], YEARCHUNKS[scenario]['endyear']) \
+            in filename:
             yearchunk = YEARCHUNKS[scenario]
             (_, _, _, _, _, _, crop_irr, *_) = filename.split('_')
             _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
-
-
-
+        else: # backup: get yearchunk from filename, e.g., for rcp2.6 extended
+            (_, _, _, _, _, _, crop_irr, _, _, year1, year2) = filename.split('_')
+            yearchunk = {'yearrange': np.array([int(year1), int(year2.split('.')[0])]),
+                         'startyear': int(year1),
+                         'endyear': int(year2.split('.')[0])}
+            _, crop, irr = crop_irr.split('-')
+            filename = os.path.join(input_dir, filename)
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
@@ -389,7 +405,6 @@ class RelativeCropyield(Hazard):
                 One row displays the intensity for present and future climate and the difference of
                 the two for one model-combination (ag_model and cl_model)
 
-
         Returns:
             geoaxes
         """
@@ -453,12 +468,10 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
 
         Optional Return:
             output_list (list): list of generated output data (hazards and historical mean)
-
     """
 
     filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
                  f.startswith('.')]
-
 
     # generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
@@ -496,11 +509,45 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
             # compute the relative yield for all future scenarios with the corresponding
             # historic mean
             for scenario in scenario_list:
-                haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
-                                                 input_dir, bbox)
-                filename_list.append(filename)
-                output_list.append(haz_fut)
+                # check whether future file exists for given historical file and scenario:
+                fut_file = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+                                    %((file_props[his_file])['ag_model'],
+                                      (file_props[his_file])['cl_model'],
+                                      scenario,
+                                      (file_props[his_file])['soc'],
+                                      (file_props[his_file])['co2'],
+                                      (file_props[his_file])['crop'],
+                                      (file_props[his_file])['irr'],
+                                      FN_STR_VAR,
+                                      YEARCHUNKS[scenario]['startyear'],
+                                      YEARCHUNKS[scenario]['endyear'])
 
+                if os.path.isfile(os.path.join(input_dir, fut_file)):
+                    # if true, calculate and save future hazard set:
+                    haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                                                     input_dir, bbox, fut_file=fut_file)
+                    filename_list.append(filename)
+                    output_list.append(haz_fut)
+                if scenario == 'rcp26': # also test for extended
+                    # check whether future file exists for given historical file and scenario:
+                    fut_file = '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+                                        %((file_props[his_file])['ag_model'],
+                                          (file_props[his_file])['cl_model'],
+                                          scenario,
+                                          (file_props[his_file])['soc'],
+                                          (file_props[his_file])['co2'],
+                                          (file_props[his_file])['crop'],
+                                          (file_props[his_file])['irr'],
+                                          FN_STR_VAR,
+                                          YEARCHUNKS['rcp26-2']['startyear'],
+                                          YEARCHUNKS['rcp26-2']['endyear'])
+
+                    if os.path.isfile(os.path.join(input_dir, fut_file)):
+                        # if true, calculate and save future hazard set:
+                        haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                                                         input_dir, bbox, fut_file=fut_file)
+                        filename_list.append(filename)
+                        output_list.append(haz_fut)
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5 in output_dir
     for crop_irr in crop_list:
         mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
@@ -532,7 +579,7 @@ def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BB
 def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
                     yearrange_his=None):
 
-    """Initialize fulll hazard set.
+    """Initialize full hazard set.
 
         Parameters:
             filenames (list): list of filenames
@@ -618,7 +665,8 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
     for crop_irr in crop_list:
-        amount_crop_irr = sum(crop_irr in s for s in his_file_list)
+        crop, irr = crop_irr.split('-')
+        amount_crop_irr = sum((crop in s) and (irr in s) for s in his_file_list)
         hist_mean_per_crop[crop_irr] = dict()
         hist_mean_per_crop[crop_irr] = {
             'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
@@ -677,7 +725,8 @@ def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange
 
     return haz_his, filename, hist_mean
 
-def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX):
+def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
+                 fut_file=None):
 
     """Create future hazard.
 
@@ -687,9 +736,13 @@ def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR,
             file_props (dict): file properties of all historical input hazard files
             hist_mean (array): historical mean of the historical hazard for the same model
                 combination and crop-irr cobination
+
+        Optional Parameters:
             input_dir (string): path to input data directory
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
+            fut_file (string): file name of future input hazard file. If given,
+                prefered over scenario and file_props
 
         Return:
             haz_fut (RelativeCropyield): future hazard
@@ -697,12 +750,16 @@ def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR,
 
 
     """
-
-    yearrange_fut = np.array([(YEARCHUNKS[scenario])['startyear'],
-                              (YEARCHUNKS[scenario])['endyear']])
-    startyear, endyear = yearrange_fut
     haz_fut = RelativeCropyield()
-    haz_fut.set_from_single_run(input_dir=input_dir, bbox=bbox, yearrange=yearrange_fut,
+    if not fut_file:
+        yearrange_fut = (YEARCHUNKS[scenario]['startyear'],
+                         YEARCHUNKS[scenario]['endyear'])
+    else:
+        (_, _, _, _, _, _, _, _, _, year1, year2) = fut_file.split('_')
+        yearrange_fut = (int(year1), int(year2.split('.')[0]))
+    startyear, endyear = yearrange_fut
+    haz_fut.set_from_single_run(input_dir=input_dir, filename=fut_file,
+                                bbox=bbox, yearrange=yearrange_fut,
                                 ag_model=(file_props[his_file])['ag_model'],
                                 cl_model=(file_props[his_file])['cl_model'],
                                 scenario=scenario,
