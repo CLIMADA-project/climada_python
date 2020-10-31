@@ -125,3 +125,116 @@ def setup_conf_user():
             CONFIG['cost_benefit'] = userconfig['cost_benefit']
 
         check_conf()
+
+
+class Object(object):
+    """Convenience Class.
+    An Object is a slow json object like dictonary who's values can be accessed by their names right away.
+    E.g.: `a.b.c.str()` instead of `a['b']['c']`
+    """
+    def __str__(self):
+        # pylint: disable=bare-except,multiple-statements
+        try: return self.str()
+        except: pass
+        try: return str(self.int())
+        except: pass
+        try: return str(self.float())
+        except: pass
+        return '{{{}}}'.format(", ".join([
+            f'{v}' if k == '_val' else f'{k}: {v}'
+            for (k, v) in self.__dict__.items()
+        ]))
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __init__(self, val=None):
+        if val is not None:
+            self._val = val
+
+    def str(self):
+        """
+        Returns
+        -------
+        str
+            the value of this Object if it is a string
+
+        Raises
+        ------
+        Exception
+            if it is not a string
+        """
+        if self._val.__class__ is str:
+            return self._val
+        raise Exception(f"{self._val.__class__}, not string")
+
+    def int(self):
+        """
+        Returns
+        -------
+        int
+            the value of this Object if it is an integer
+
+        Raises
+        ------
+        Exception
+            if it is not an integer
+        """
+        if self._val.__class__ is int:
+            return self._val
+        raise Exception(f"{self._val.__class__}, not int")
+
+    def float(self):
+        """
+        Returns
+        -------
+        float
+            the value of this Object if it is a float
+
+        Raises
+        ------
+        Exception
+            if it is not a float
+        """
+        if self._val.__class__ is float:
+            return self._val
+        raise Exception(f"{self._val.__class__}, not float")
+
+    @classmethod
+    def _objectify_dict(cls, dct):
+        obj = Object()
+        for key, val in dct.items():
+            if val.__class__ is dict:
+                obj.__setattr__(key, cls._objectify_dict(val))
+            elif val.__class__ is list:
+                obj.__setattr__(key, cls._objectify_list(val))
+            else:
+                obj.__setattr__(key, Object(val))
+        return obj
+
+    @classmethod
+    def _objectify_list(cls, lst):
+        lst = list()
+        for item in lst:
+            if item.__class__ is dict:
+                lst.append(cls._objectify_dict(item))
+            elif item.__class__ is list:
+                lst.append(cls._objectify_list(item))
+            else:
+                lst.append(Object(item))
+        return lst
+
+    @classmethod
+    def from_dict(cls, dct):
+        """Creates an Object from a json object like dictionary.
+        Parameters
+        ----------
+        dct : dict
+            keys must be of type str.
+            values can be one of these: int, float, str, dict, list.
+        Returns
+        -------
+        Object
+            contaning the same data as the input parameter `dct`
+        """
+        return cls._objectify_dict(dct)
