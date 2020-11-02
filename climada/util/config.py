@@ -27,6 +27,7 @@ __all__ = [
 
 import sys
 import os
+import re
 import json
 import logging
 from pkg_resources import Requirement, resource_filename
@@ -143,13 +144,13 @@ class Config(object):
         try: return str(self.list())
         except: pass
         return '{{{}}}'.format(", ".join([
-            f'{k}: {v}' for (k, v) in self.__dict__.items()
+            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k=='_root'
         ]))
 
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self, val=None):
+    def __init__(self, val=None, root=None):
         """
         Parameters
         ----------
@@ -159,6 +160,10 @@ class Config(object):
         """
         if val is not None:
             self._val = val
+        if root is None:
+            self._root = self
+        else:
+            self._root = root
 
     def str(self, index=None):
         """
@@ -172,9 +177,20 @@ class Config(object):
         Exception
             if it is not a string
         """
+        def feval(root, cstr):
+            def expand(dct, lst):
+                if len(lst) == 1:
+                    return dct.__getattribute__(lst[0]).str()
+                else:
+                    return expand(dct.__getattribute__(lst[0]), lst[1:])
+            def msub(m):
+                cpath = m.group(1).split('.')
+                return expand(root, cpath)
+            return re.sub(r'{([\w\.]+)}', msub, cstr)
+
         if index is None:
             if self._val.__class__ is str:
-                return self._val
+                return feval(self._root, self._val)
             raise Exception(f"{self._val.__class__}, not str")
         else:
             if self._val.__class__ is list:
@@ -267,32 +283,32 @@ class Config(object):
         raise Exception(f"{self._val.__class__}, not list")
 
     @classmethod
-    def _objectify_dict(cls, dct):
-        obj = Config()
+    def _objectify_dict(cls, dct, root):
+        obj = Config(root=root)
         for key, val in dct.items():
             if val.__class__ is dict:
-                obj.__setattr__(key, cls._objectify_dict(val))
+                obj.__setattr__(key, cls._objectify_dict(val, obj._root))
             elif val.__class__ is list:
-                obj.__setattr__(key, cls._objectify_list(val))
+                obj.__setattr__(key, cls._objectify_list(val, obj._root))
             else:
-                obj.__setattr__(key, Config(val))
+                obj.__setattr__(key, Config(val, root=obj._root))
         return obj
 
     @classmethod
-    def _objectify_list(cls, lst):
+    def _objectify_list(cls, lst, root):
         objs = list()
         for item in lst:
             if item.__class__ is dict:
-                objs.append(cls._objectify_dict(item))
+                objs.append(cls._objectify_dict(item, root))
             elif item.__class__ is list:
-                objs.append(cls._objectify_list(item))
+                objs.append(cls._objectify_list(item, root))
             else:
-                objs.append(Config(item))
-        return Config(objs)
+                objs.append(Config(item, root=root))
+        return Config(objs, root)
 
     @classmethod
     def from_dict(cls, dct):
-        """Creates an Config from a json object like dictionary.
+        """Creates a Config object from a json object like dictionary.
         Parameters
         ----------
         dct : dict
@@ -303,4 +319,4 @@ class Config(object):
         Config
             contaning the same data as the input parameter `dct`
         """
-        return cls._objectify_dict(dct)
+        return cls._objectify_dict(dct, root=None)
