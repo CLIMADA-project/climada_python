@@ -62,9 +62,6 @@ RES_DATA = 1.0
 BLURR_STEPS = 4
 """ steps with exponential deay for fire propagation matrix """
 
-MAX_IT_PROPA = 500000
-""" maximum steps for a probabilistic event """
-
 class BushFire(Hazard):
     """Contains bush fire events.
 
