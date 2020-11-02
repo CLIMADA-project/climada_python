@@ -323,24 +323,26 @@ class StormEurope(Hazard):
         if not (run_date.hour == 0 or run_date.hour == 12):
             LOGGER.warn('The event definition is inaccuratly implemented for '
                         'starting times, which are not 00H or 12H.')
+        
+        stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
         if event_date:
-            stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('valid_time.day').max()
+            stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
             considered_dates = np.datetime64(event_date)
         else:
             time_covered_step = stacked['valid_time'].diff('valid_time')
-            time_covered_day = time_covered_step.groupby('valid_time.day').sum()
+            time_covered_day = time_covered_step.groupby('date').sum()
             days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
-            stacked2 = stacked.groupby('valid_time.day').max().sel(day=days_to_consider)
-            unique_dates = stacked['valid_time'].groupby('valid_time.day').min()
-            considered_dates = unique_dates.sel(day=days_to_consider).values
-        stacked3 = stacked2.stack(intensity=('day', 'number'))
+            stacked2 = stacked.groupby('date').max().sel(date=days_to_consider)
+            unique_dates = stacked['valid_time'].groupby('date').min()
+            considered_dates = unique_dates.sel(date=days_to_consider).values
+        stacked3 = stacked2.stack(intensity=('date', 'number'))
         stacked3 = stacked3.where(stacked3 > self.intensity_thres)
         stacked3 = stacked3.fillna(0)
         
     
         # fill in values from netCDF
         self.intensity = sparse.csr_matrix(stacked3.gust.T)
-        self.event_id = np.arange(stacked3.day.size)+1
+        self.event_id = np.arange(stacked3.date.size)+1
     
         # fill in default values
         self.units = 'm/s'
