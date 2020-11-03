@@ -669,9 +669,10 @@ class TCTracks():
             last_perc = 0
             new_data = []
             for track in self.data:
+                # progress indicator
                 perc = 100 * len(new_data) / len(self.data)
                 if perc - last_perc >= 10:
-                    LOGGER.info("Progress: %d%%", perc)
+                    LOGGER.debug("Progress: %d%%", perc)
                     last_perc = perc
                 new_data.append(
                     self._one_interp_data(track, time_step_h, land_geom))
