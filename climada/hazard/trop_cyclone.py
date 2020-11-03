@@ -307,11 +307,12 @@ class TropCyclone(Hazard):
             raise ValueError
         ncentroids = centroids.coord.shape[0]
         coastal_centr = centroids.coord[coastal_idx]
-        windfields = compute_windfields(track, coastal_centr, mod_id)
+        windfields, reachable_centr_idx = compute_windfields(track, coastal_centr, mod_id)
+        reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
         intensity = np.zeros(ncentroids)
-        intensity[coastal_idx] = np.linalg.norm(windfields, axis=-1)\
-                                                .max(axis=0)
+        intensity[reachable_coastal_centr_idx] = np.linalg.norm(windfields, axis=-1)\
+                                                          .max(axis=0)
         intensity[intensity < self.intensity_thres] = 0
 
         new_haz = TropCyclone()
@@ -319,7 +320,7 @@ class TropCyclone(Hazard):
         new_haz.intensity = sparse.csr_matrix(intensity.reshape(1, -1))
         if store_windfields:
             wf_full = np.zeros((npositions, ncentroids, 2))
-            wf_full[:, coastal_idx, :] = windfields
+            wf_full[:, reachable_coastal_centr_idx, :] = windfields
             new_haz.windfields = [
                 sparse.csr_matrix(wf_full.reshape(npositions, -1))]
         new_haz.units = 'm/s'
@@ -371,13 +372,26 @@ class TropCyclone(Hazard):
 def compute_windfields(track, centroids, model):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
-    Parameters:
-        track (xr.Dataset): track infomation
-        centroids (2d np.array): each row is a centroid [lat, lon]
-        model (int): Holland model selection according to MODEL_VANG
+    In a first step, centroids within reach of the track are determined so that wind fields will
+    only be computed and returned for those centroids.
 
-    Returns:
-        np.array
+    Parameters
+    ----------
+    track : xr.Dataset
+        Track infomation.
+    centroids : 2d np.array
+        Each row is a centroid [lat, lon].
+        Centroids that are not within reach of the track are ignored.
+    model : int
+        Holland model selection according to MODEL_VANG.
+
+    Returns
+    -------
+    windfield : np.array of shape (npositions, nreachable, 2)
+        A directional wind field for each track position on those centroids within reach
+        of the TC track.
+    reachable_centr_idx : np.array of shape (nreachable,)
+        List of indices of input centroids within reach of the TC track.
     """
     # copies of track data
     # Note that max wind records are not used in the Holland wind field models!
@@ -385,13 +399,6 @@ def compute_windfields(track, centroids, model):
         track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
                                            'environmental_pressure', 'central_pressure']
     ]
-
-    ncentroids = centroids.shape[0]
-    npositions = t_lat.shape[0]
-    windfields = np.zeros((npositions, ncentroids, 2))
-
-    if t_lon.size < 2:
-        return windfields
 
     # never use longitudes at -180 degrees or below
     t_lon[t_lon <= -180] += 360
@@ -402,11 +409,20 @@ def compute_windfields(track, centroids, model):
 
     # restrict to centroids in rectangular bounding box around track
     track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
-    track_centr_idx = track_centr_msk.nonzero()[0]
     track_centr = centroids[track_centr_msk]
 
+    nreachable = track_centr.shape[0]
+    npositions = t_lat.shape[0]
+    windfields = np.zeros((npositions, nreachable, 2))
+    [reachable_centr_idx] = track_centr_msk.nonzero()
+
+    # the wind field model requires at least two track positions because translational speed
+    # as well as the change in pressure are required
+    if t_lon.size < 2:
+        return windfields, reachable_centr_idx
+
     if track_centr.shape[0] == 0:
-        return windfields
+        return windfields, reachable_centr_idx
 
     # compute distances and vectors to all centroids
     d_centr, v_centr = [ar[0] for ar in dist_approx(
@@ -417,7 +433,7 @@ def compute_windfields(track, centroids, model):
     # exclude centroids that are too far from or too close to the eye
     close_centr = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-2)
     if not np.any(close_centr):
-        return windfields
+        return windfields, reachable_centr_idx
     v_centr_normed = np.zeros_like(v_centr)
     v_centr_normed[close_centr] = v_centr[close_centr] / d_centr[close_centr, None]
 
@@ -472,8 +488,8 @@ def compute_windfields(track, centroids, model):
     v_full = v_trans[1][1:, None, :] * v_trans_corr[1:, :, None] + v_ang
     v_full[np.isnan(v_full)] = 0
 
-    windfields[1:, track_centr_idx, :] = v_full
-    return windfields
+    windfields[1:, :, :] = v_full
+    return windfields, reachable_centr_idx
 
 def _close_centroids(t_lat, t_lon, centroids):
     """Choose centroids within padded rectangular region around track
