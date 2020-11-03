@@ -128,10 +128,9 @@ def setup_conf_user():
         check_conf()
 
 
-class Config(object):
-    """Convenience Class.
-    A Config object is a slow JSON object like dictonary who's values can be accessed by their names right away.
-    E.g.: `a.b.c.str()` instead of `a['b']['c']`
+class Config():
+    """Convenience Class. A Config object is a slow JSON object like nested dictonary who's values
+    can be accessed by their names right away. E.g.: `a.b.c.str()` instead of `a['b']['c']`
     """
     def __str__(self):
         # pylint: disable=bare-except,multiple-statements
@@ -144,7 +143,7 @@ class Config(object):
         try: return str(self.list())
         except: pass
         return '{{{}}}'.format(", ".join([
-            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k=='_root'
+            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k =='_root'
         ]))
 
     def __repr__(self):
@@ -154,6 +153,10 @@ class Config(object):
         """
         Parameters
         ----------
+        root : Config, optional
+            the top Config object, required for self referencing str objects,
+            if None, it is pointing to self, otherwise it's passed from containing to
+            contained.
         val : [float, int, str, list], optional
             the value of the Config in case it's basic, by default None,
             when a dictionary like object is created
@@ -181,10 +184,9 @@ class Config(object):
             def expand(dct, lst):
                 if len(lst) == 1:
                     return dct.__getattribute__(lst[0]).str()
-                else:
-                    return expand(dct.__getattribute__(lst[0]), lst[1:])
-            def msub(m):
-                cpath = m.group(1).split('.')
+                return expand(dct.__getattribute__(lst[0]), lst[1:])
+            def msub(match):
+                cpath = match.group(1).split('.')
                 return expand(root, cpath)
             return re.sub(r'{([\w\.]+)}', msub, cstr)
 
@@ -192,10 +194,9 @@ class Config(object):
             if self._val.__class__ is str:
                 return feval(self._root, self._val)
             raise Exception(f"{self._val.__class__}, not str")
-        else:
-            if self._val.__class__ is list:
-                return self._val[index].str()
-            raise Exception(f"{self._val.__class__}, not list")
+        if self._val.__class__ is list:
+            return self._val[index].str()
+        raise Exception(f"{self._val.__class__}, not list")
 
     def int(self, index=None):
         """
@@ -213,31 +214,9 @@ class Config(object):
             if self._val.__class__ is int:
                 return self._val
             raise Exception(f"{self._val.__class__}, not int")
-        else:
-            if self._val.__class__ is list:
-                return self._val[index].int()
-            raise Exception(f"{self._val.__class__}, not list")
-
-    def list(self, index=None):
-        """
-        Returns
-        -------
-        int
-            the value of this Config if it is a list
-
-        Raises
-        ------
-        Exception
-            if it is not an list
-        """
-        if index is None:
-            if self._val.__class__ is list:
-                return self._val
-            raise Exception(f"{self._val.__class__}, not list")
-        else:
-            if self._val.__class__ is list:
-                return self._val[index].list()
-            raise Exception(f"{self._val.__class__}, not list")
+        if self._val.__class__ is list:
+            return self._val[index].int()
+        raise Exception(f"{self._val.__class__}, not list")
 
     def float(self, index=None):
         """
@@ -255,10 +234,29 @@ class Config(object):
             if self._val.__class__ is float:
                 return self._val
             raise Exception(f"{self._val.__class__}, not float")
-        else:
+        if self._val.__class__ is list:
+            return self._val[index].float()
+        raise Exception(f"{self._val.__class__}, not list")
+
+    def list(self, index=None):
+        """
+        Returns
+        -------
+        int
+            the value of this Config if it is a list
+
+        Raises
+        ------
+        Exception
+            if it is not an list
+        """
+        if index is None:
             if self._val.__class__ is list:
-                return self._val[index].float()
+                return self._val
             raise Exception(f"{self._val.__class__}, not list")
+        if self._val.__class__ is list:
+            return self._val[index].list()
+        raise Exception(f"{self._val.__class__}, not list")
 
     def get(self, *args):
         """
@@ -275,7 +273,6 @@ class Config(object):
         Exception
             if it is not a list
         """
-        
         if self._val.__class__ is list:
             if len(list(args)) == 1:
                 return self._val[args[0]]
@@ -284,6 +281,7 @@ class Config(object):
 
     @classmethod
     def _objectify_dict(cls, dct, root):
+        # pylint: disable=protected-access
         obj = Config(root=root)
         for key, val in dct.items():
             if val.__class__ is dict:

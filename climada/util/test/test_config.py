@@ -61,6 +61,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(conf.a._root, conf._root)
         self.assertEqual(conf.a.str(), 'https://host/page.domain')
 
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestConfig)
