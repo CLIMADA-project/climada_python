@@ -28,9 +28,8 @@ from datetime import timedelta
 import glob
 from climada.hazard import landslide
 from climada.hazard.landslide import Landslide
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR as LS_FILE_DIR
 
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 
 DATA_DIR_TEST = os.path.join(os.path.dirname(__file__), 'data')
 

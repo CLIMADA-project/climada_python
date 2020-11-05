@@ -38,7 +38,7 @@ from climada.hazard.base import Hazard
 
 from climada.util.files_handler import download_file
 from climada.util.dates_times import datetime64_to_ordinal
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR
 from climada.util.dates_times import str_to_date
 from climada.util.dates_times import date_to_str
 
@@ -50,9 +50,9 @@ DFL_THRESHOLD = -1
 DFL_INTENSITY_DEF = 1
 
 
-SPEI_FILE_URL = r'http://digital.csic.es/bitstream/10261/153475/8'
-SPEI_FILE_DIR = os.path.join(DATA_DIR, 'system')
-SPEI_FILE_NAME = r'spei06.nc'
+SPEI_FILE_URL = 'http://digital.csic.es/bitstream/10261/153475/8'
+SPEI_FILE_DIR = SYSTEM_DIR
+SPEI_FILE_NAME = 'spei06.nc'
 
 
 

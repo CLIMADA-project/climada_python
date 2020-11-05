@@ -38,7 +38,7 @@ import h5py
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
 from climada.util import coordinates as coord
-from climada.util.constants import DATA_DIR
+from climada import CONFIG
 
 
 LOGGER = logging.getLogger(__name__)
@@ -52,9 +52,10 @@ BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
 """"Default geographical bounding box of the total global agricultural land extent"""
 
 # ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
-INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
+DATA_DIR = CONFIG.hazard.relative_cropyield.local_data.dir()
+INPUT_DIR = DATA_DIR.joinpath('Input', 'Hazard')
 """default paths for input and output data:"""
-OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
+OUTPUT_DIR = DATA_DIR.joinpath('Output')
 
 
 #ISIMIP input data specific global variables
