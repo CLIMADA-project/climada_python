@@ -22,22 +22,16 @@ Define configuration parameters.
 __all__ = [
     'CONFIG',
     'setup_logging',
-    'setup_conf_user',
 ]
 
 import sys
-import os
 import re
 import json
 import logging
-from pkg_resources import Requirement, resource_filename
+from pathlib import Path
 
 from climada.util.constants import SOURCE_DIR
 
-
-WORKING_DIR = os.getcwd()
-WINDOWS_END = WORKING_DIR[0:3]
-UNIX_END = '/'
 
 def remove_handlers(logger):
     """Remove logger handlers."""
@@ -55,38 +49,6 @@ CONSOLE = logging.StreamHandler(stream=sys.stdout)
 CONSOLE.setFormatter(FORMATTER)
 LOGGER.addHandler(CONSOLE)
 
-def check_conf():
-    """Check configuration files presence and generate folders if needed."""
-    for key, path in CONFIG['local_data'].items():
-        abspath = path
-        if not os.path.isabs(abspath):
-            abspath = os.path.abspath(os.path.join(WORKING_DIR,
-                                                   os.path.expanduser(path)))
-        if key == "save_dir":
-            def_file = os.path.join(WORKING_DIR, "results")
-        else:
-            LOGGER.error("Configuration option %s not found.", key)
-
-        if path == "":
-            abspath = def_file
-        elif not os.path.exists(abspath) and key != "save_dir":
-            LOGGER.warning('Path %s not found. Default used: %s', abspath,
-                           def_file)
-            abspath = def_file
-
-        CONFIG['local_data'][key] = abspath
-
-CONFIG_DIR = os.path.abspath(os.path.join(SOURCE_DIR, 'conf'))
-
-DEFAULT_PATH = os.path.abspath(os.path.join(CONFIG_DIR, 'defaults.conf'))
-if not os.path.isfile(DEFAULT_PATH):
-    DEFAULT_PATH = resource_filename(Requirement.parse('climada'),
-                                     'defaults.conf')
-with open(DEFAULT_PATH) as def_conf:
-    LOGGER.debug('Loading default config file: %s', DEFAULT_PATH)
-    CONFIG = json.load(def_conf)
-
-check_conf()
 
 def setup_logging(log_level='DEBUG'):
     """Setup logging configuration"""
@@ -94,38 +56,6 @@ def setup_logging(log_level='DEBUG'):
     LOGGER.propagate = False
     LOGGER.setLevel(getattr(logging, log_level))
     LOGGER.addHandler(CONSOLE)
-
-def setup_conf_user():
-    """Setup climada configuration"""
-    conf_name = 'climada.conf'
-    user_file = os.path.abspath(os.path.join(WORKING_DIR, conf_name))
-    while not os.path.isfile(user_file) and user_file != UNIX_END + conf_name \
-            and user_file != WINDOWS_END + conf_name:
-        user_file = os.path.abspath(os.path.join(user_file, os.pardir,
-                                                 os.pardir, conf_name))
-
-    if os.path.isfile(user_file):
-        LOGGER.debug('Loading user config file: %s', user_file)
-
-        with open(user_file) as conf_file:
-            userconfig = json.load(conf_file)
-
-        if 'local_data' in userconfig.keys():
-            CONFIG['local_data'].update(userconfig['local_data'])
-
-        if 'global' in userconfig.keys():
-            CONFIG['global'] = userconfig['global']
-
-        if 'entity' in userconfig.keys():
-            CONFIG['entity'].update(userconfig['entity'])
-
-        if 'trop_cyclone' in userconfig.keys():
-            CONFIG['trop_cyclone'].update(userconfig['trop_cyclone'])
-
-        if 'cost_benefit' in userconfig.keys():
-            CONFIG['cost_benefit'] = userconfig['cost_benefit']
-
-        check_conf()
 
 
 class Config():
@@ -143,7 +73,7 @@ class Config():
         try: return str(self.list())
         except: pass
         return '{{{}}}'.format(", ".join([
-            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k =='_root'
+            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k == '_root'
         ]))
 
     def __repr__(self):
@@ -318,3 +248,54 @@ class Config():
             contaning the same data as the input parameter `dct`
         """
         return cls._objectify_dict(dct, root=None)
+
+
+def _supersede(nested, addendum):
+    for key, val in addendum.items():
+        if nested.get(key).__class__ is dict:
+            if val.__class__ is dict:
+                nested[key] = _supersede(nested[key], val)
+            else:
+                nested[key] = val
+        else:
+            nested[key] = val
+    return nested
+
+
+def _find_in_parents(directory, filename):
+    if Path(directory, filename).is_file():
+        return str(Path(directory, filename))
+    for dirpath in Path(directory).parents:
+        if Path(dirpath, filename).is_file():
+            return str(Path(dirpath, filename))
+    return None
+
+
+def _fetch_conf(directories, config_name):
+    superseding_configs = [
+        _find_in_parents(path, config_name)
+        for path in directories
+    ]
+    conf_dct = dict()
+    for conf_path in superseding_configs:
+        if conf_path is None:
+            continue
+        with open(conf_path) as conf:
+            dct = json.load(conf)
+            conf_dct = _supersede(conf_dct, dct)
+
+    return conf_dct
+
+
+def check_conf(conf):
+    """Check configuration files presence and generate folders if needed."""
+    Path(conf.local_data.save_dir.str()).mkdir(parents=True, exist_ok=True)
+
+
+CONFIG_NAME = 'climada.conf'
+CONFIG = Config.from_dict(_fetch_conf([
+    Path(SOURCE_DIR, 'conf'),  # default config from the climada repository
+    Path.home(),  # home directory
+    Path.cwd(),  # current working directory
+], CONFIG_NAME))
+check_conf(CONFIG)

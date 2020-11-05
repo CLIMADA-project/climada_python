@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test save module.
 """
 import os
-import copy
 import unittest
 
 from climada.util.save import save, load
@@ -28,16 +27,16 @@ from climada.util.config import CONFIG
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 
-IN_CONFIG = copy.copy(CONFIG['local_data']['save_dir'])
+IN_CONFIG = CONFIG.local_data.save_dir.str()
 
 class TestSave(unittest.TestCase):
     """Test save function"""
 
     def setUp(self):
-        CONFIG['local_data']['save_dir'] = DATA_DIR
+        CONFIG.local_data.save_dir._val = DATA_DIR
 
     def tearDown(self):
-        CONFIG['local_data']['save_dir'] = IN_CONFIG
+        CONFIG.local_data.save_dir._val = IN_CONFIG
 
     def test_entity_in_save_dir(self):
         """Returns the same list if its length is correct."""

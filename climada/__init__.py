@@ -19,6 +19,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 climada init
 """
 
-from .util.config import CONFIG, setup_conf_user, setup_logging
-setup_conf_user()
-setup_logging(CONFIG['global']['log_level'])
+from .util.config import CONFIG, setup_logging
+setup_logging(CONFIG.log_level.str())

@@ -640,7 +640,7 @@ class Hazard():
                     return_periods)
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size'] / self.intensity.shape[0])
+        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.intensity.shape[0]))
