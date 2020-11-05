@@ -206,7 +206,7 @@ class Impact():
             # get indices of all the exposures with this impact function
             exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
-            exp_step = int(CONFIG['global']['max_matrix_size'] / num_events)
+            exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
                 LOGGER.error('Increase max_matrix_size configuration parameter'
                              ' to > %s', str(num_events))
@@ -561,7 +561,7 @@ class Impact():
             return []
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size'] / self.imp_mat.shape[0])
+        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.imp_mat.shape[0]))
