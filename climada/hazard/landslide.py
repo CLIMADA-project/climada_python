@@ -36,11 +36,11 @@ import requests
 import numpy as np
 from haversine import haversine
 from climada.hazard.base import Hazard
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
+LS_FILE_DIR = SYSTEM_DIR
 
 HAZ_TYPE = 'LS'
 
