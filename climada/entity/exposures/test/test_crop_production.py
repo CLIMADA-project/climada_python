@@ -20,9 +20,9 @@ import os
 import numpy as np
 import unittest
 from climada.entity.exposures.crop_production import CropProduction, normalize_with_fao_cp
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
+INPUT_DIR = DEMO_DIR
 FILENAME = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
 

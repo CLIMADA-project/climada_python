@@ -31,8 +31,9 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as coord
-from climada.util.constants import DATA_DIR, DEF_CRS
+from climada.util.constants import DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
+from climada import CONFIG
 
 
 logging.root.setLevel(logging.DEBUG)
@@ -88,7 +89,8 @@ IRR_NAME['firr'] = {'name': 'irrigated'}
 #               (http://www.fao.org/faostat/en/#data/PP)
 #   FAO_FILE2: contains production quantity per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/QC)
-INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Exposure')
+DATA_DIR = CONFIG.exposures.crop_production.local_data.dir()
+INPUT_DIR = DATA_DIR.joinpath('Input', 'Exposure')
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
 
@@ -98,8 +100,8 @@ YEARS_FAO = np.array([2000, 2018])
 # default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
 # by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
 # climada_python/data/ISIMIP_crop/Output/hist_mean/
-HIST_MEAN_PATH = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Hist_mean')
-OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
+HIST_MEAN_PATH = DATA_DIR.joinpath('Output', 'Hist_mean')
+OUTPUT_DIR = DATA_DIR.joinpath('Output')
 
 
 class CropProduction(Exposures):

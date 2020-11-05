@@ -1,9 +1,9 @@
-import os
 import sys
+from pathlib import Path
 import unittest
 import matplotlib
 
-from climada.util.constants import SOURCE_DIR
+from climada.util.config import SOURCE_DIR
 
 def find_unit_tests():
     """select unit tests."""
@@ -29,7 +29,7 @@ def main():
     if sys.argv[1:]:
         import xmlrunner
         arg = sys.argv[1]
-        output = os.path.join(SOURCE_DIR, '../tests_xml')
+        output = str(Path(__file__).parent.joinpath('tests_xml'))
         if arg == 'unit':
             xmlrunner.XMLTestRunner(output=output).run(find_unit_tests())
         elif arg == 'integ':
@@ -44,5 +44,5 @@ def main():
 
 if __name__ == '__main__':
     matplotlib.use("Agg")
-    sys.path.append(os.getcwd())
+    sys.path.append(SOURCE_DIR)
     main()

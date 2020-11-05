@@ -21,14 +21,14 @@ Test Impact class.
 import os
 import unittest
 import numpy as np
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR
 
 import climada.engine.impact_data as im_d
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
 EMDAT_TEST_CSV = os.path.join(DATA_FOLDER, 'emdat_testdata_BGD_USA_1970-2017.csv')
 EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.csv')
-EMDAT_2020_CSV_DEMO = os.path.join(DATA_DIR, 'demo', 'demo_emdat_impact_data_2020.csv')
+EMDAT_2020_CSV_DEMO = os.path.join(DEMO_DIR, 'demo_emdat_impact_data_2020.csv')
 
 class TestEmdatImport(unittest.TestCase):
     """Test import of EM-DAT data (as CSV) for impact data analysis"""

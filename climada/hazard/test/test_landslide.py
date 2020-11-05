@@ -28,8 +28,7 @@ from rasterio.windows import Window
 # from climada.hazard import landslide
 from climada.hazard.landslide import Landslide
 import math
-from climada.util.constants import DATA_DIR
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
+from climada.util.constants import SYSTEM_DIR as LS_FILE_DIR
 
 DATA_DIR_TEST = os.path.join(os.path.dirname(__file__), 'data')
 

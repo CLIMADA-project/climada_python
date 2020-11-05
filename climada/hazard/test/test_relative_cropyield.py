@@ -22,9 +22,8 @@ import os
 import unittest
 import numpy as np
 from climada.hazard.relative_cropyield import RelativeCropyield
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR as INPUT_DIR
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
 
 
