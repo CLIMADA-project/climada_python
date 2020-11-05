@@ -195,7 +195,7 @@ class RiverFlood(Hazard):
             self.fraction = sp.sparse.csr_matrix(fraction)
 
         self.units = 'm'
-        self.tag.file_name = dph_path + ';' + frc_path
+        self.tag.file_name = str(dph_path) + ';' + str(frc_path)
         self.event_id = np.arange(self.intensity.shape[0])
         self.event_name = list(map(str, years))
 

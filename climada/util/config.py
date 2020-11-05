@@ -30,8 +30,6 @@ import json
 import logging
 from pathlib import Path
 
-from climada.util.constants import SOURCE_DIR
-
 
 def remove_handlers(logger):
     """Remove logger handlers."""
@@ -209,6 +207,23 @@ class Config():
             return self._val[args[0]].get(*list(args)[1:])
         raise Exception(f"{self._val.__class__}, not list")
 
+    def dir(self, index=None):
+        """Convenience method to get this configuration value as a Path object.
+        If the respective directory does not exist it is created upon the call.
+        Returns
+        -------
+        pathlib.Path
+            the absolute path to the directory of this config's value (if it is a string)
+
+        Raises
+        ------
+        Exception
+            if the value is not a string or if the directory cannot be created
+        """
+        path = Path(self.str(index))
+        path.mkdir(parents=True, exist_ok=True)
+        return path.absolute()
+
     @classmethod
     def _objectify_dict(cls, dct, root):
         # pylint: disable=protected-access
@@ -289,12 +304,13 @@ def _fetch_conf(directories, config_name):
 
 def check_conf(conf):
     """Check configuration files presence and generate folders if needed."""
-    Path(conf.local_data.save_dir.str()).mkdir(parents=True, exist_ok=True)
+    conf.local_data.save_dir.dir()
 
 
+SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
 CONFIG_NAME = 'climada.conf'
 CONFIG = Config.from_dict(_fetch_conf([
-    Path(SOURCE_DIR, 'conf'),  # default config from the climada repository
+    Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository
     Path.home(),  # home directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
