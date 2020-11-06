@@ -270,24 +270,6 @@ class TestMethodsFirms(unittest.TestCase):
         self.assertEqual((bf.intensity[5, :]>0).sum(), 264)
         self.assertEqual((bf.intensity[6, :]>0).sum(), 2)
 
-    def test_random_one_pass(self):
-        """ Test _random_bushfire_one_event """
-        np.random.seed(8)
-        bf = BushFire()
-        bf.centroids = DEF_CENTROIDS[0]
-        bf.date = np.ones(1)
-        rnd_num = np.random.randint(2, size=1000)
-        bf.intensity = sparse.lil_matrix(np.zeros((1, bf.centroids.size)))
-        bf.intensity[0, :1000] = rnd_num
-        bf.intensity[0, np.logical_not(bf.centroids.on_land)] = 0
-        bf.intensity = bf.intensity.tocsr()
-        np.random.seed(8)
-        syn_haz = bf._random_bushfire_one_event(0, 5)
-        self.assertTrue(syn_haz.intensity.data.size >= bf.intensity.data.size)
-        self.assertTrue(syn_haz.centroids.area_pixel.sum() >= bf.centroids.area_pixel.sum())
-        self.assertAlmostEqual(syn_haz.intensity.max(), bf.intensity.max())
-        self.assertAlmostEqual(syn_haz.intensity.min(), bf.intensity.min())
-
     def test_set_frequency_pass(self):
         """ Test _set_frequency """
         bf = BushFire()
