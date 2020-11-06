@@ -135,7 +135,7 @@ class TestOSMlongUnitTests(unittest.TestCase):
                                          rel_tol=0.01))
         print('testing mode nearest neighbour')
         exp_sub_high = OSM._split_exposure_highlow(exp_sub, "nearest", High_Value_Area_gdf)
-        self.assertAlmostEqual(sum(exp_sub_high.value), sum(exp_sub.value), delta=0.1)
+        self.assertTrue(math.isclose(sum(exp_sub_high.value), sum(exp_sub.value), rel_tol=0.1))
 
     def test_assign_values_exposure(self):
         """test _assign_values_exposure within make_osmexposure function"""
