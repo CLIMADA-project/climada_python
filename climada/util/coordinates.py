@@ -252,7 +252,9 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
             fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
+            vtan = -scal[..., None] * vec1[..., None, :]
+            vtan += vec2[:, None]
+            vtan *= fact[..., None]
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
