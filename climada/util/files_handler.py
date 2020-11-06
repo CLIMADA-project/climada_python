@@ -82,8 +82,8 @@ def download_file(url, download_dir=None, overwrite=True):
     if req_file.status_code < 200 or req_file.status_code > 299:
         LOGGER.error('Error loading page %s.', url)
         raise ValueError(f'Error loading page {url}\n'
-            + f' Status: {req_file.status_code}'
-            + f' Content: {req_file.content}')
+                         + f' Status: {req_file.status_code}\n'
+                         + f' Content: {req_file.content}')
 
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
