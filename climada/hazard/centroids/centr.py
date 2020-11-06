@@ -766,7 +766,7 @@ class Centroids():
             file_data (Path, str or h5): if string, path to read data. if h5 object,
                 the datasets will be read from there
         """
-        if isinstance(file_data, str) or isinstance(file_data, Path):
+        if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
             data = h5py.File(file_data, 'r')
         else:

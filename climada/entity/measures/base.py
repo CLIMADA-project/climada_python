@@ -196,7 +196,7 @@ class Measure():
         if isinstance(self.exposures_set, str) and self.exposures_set == NULL_STR:
             return exposures
 
-        if isinstance(self.exposures_set, str) or isinstance(self.exposures_set, Path):
+        if isinstance(self.exposures_set, (str, Path)):
             LOGGER.debug('Setting new exposures %s', self.exposures_set)
             new_exp = Exposures()
             new_exp.read_hdf5(self.exposures_set)
