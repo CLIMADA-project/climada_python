@@ -722,16 +722,18 @@ def mean_max_sea_level(path, months, bounds):
     lon_coord_names = ["longitude", "lon", "x"]
     lat_coord_names = ["latitude", "lat", "y"]
     time_coord_names = ["time", "date", "datetime"]
+    zos_var_names = ["zos", "sla", "ssh", "adt"]
     with xr.open_dataset(path) as zos_ds:
-        lon_coord, lat_coord, time_coord = None, None, None
-        for coord in zos_ds.coords:
-            if coord.lower() in lon_coord_names:
-                lon_coord = coord
-            elif coord.lower() in lat_coord_names:
-                lat_coord = coord
-            elif coord.lower() in time_coord_names:
-                time_coord = coord
-        zos_ds = zos_ds.rename({lon_coord: 'lon', lat_coord: 'lat', time_coord: 'time'})
+        lon_coord = [c for c in zos_ds.coords if c.lower() in lon_coord_names][0]
+        lat_coord = [c for c in zos_ds.coords if c.lower() in lat_coord_names][0]
+        time_coord = [c for c in zos_ds.coords if c.lower() in time_coord_names][0]
+        zos_var = [v for v in zos_ds.variables if v.lower() in zos_var_names][0]
+        zos_ds = zos_ds.rename({
+            lon_coord: 'lon',
+            lat_coord: 'lat',
+            time_coord: 'time',
+            zos_var: 'zos',
+        })
         ds_bounds = (zos_ds.lon.values.min(), zos_ds.lat.values.min(),
                      zos_ds.lon.values.max(), zos_ds.lat.values.max())
         ds_period = (zos_ds.time[0], zos_ds.time[-1])
