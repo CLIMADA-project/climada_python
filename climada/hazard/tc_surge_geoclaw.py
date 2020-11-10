@@ -1021,7 +1021,8 @@ class TCSurgeEvents():
                     self.track.lon.max(), self.track.lat.max())
         mid_lon = 0.5 * float(t_bounds[0] + t_bounds[2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-        aspect_ratio = 1.124 * (t_bounds[2] - t_bounds[0]) / (t_bounds[3] - t_bounds[1])
+        aspect_ratio = 1.124 * ((t_bounds[2] - t_bounds[0] + 2 * CENTR_NODE_MAX_DIST_DEG)
+                                / (t_bounds[3] - t_bounds[1] + 2 * CENTR_NODE_MAX_DIST_DEG))
         fig = plt.figure(
             figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
             dpi=100)
