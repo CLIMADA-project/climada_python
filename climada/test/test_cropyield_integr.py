@@ -23,8 +23,8 @@ import unittest
 import os
 import numpy as np
 from climada.util.constants import DATA_DIR
-from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_set, 
-                                               calc_his_haz)
+from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip, 
+                                               calc_his_haz_isimip)
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
@@ -133,12 +133,12 @@ class TestIntegr(unittest.TestCase):
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
         
         (his_file_list, file_props, hist_mean_per_crop, 
-          scenario_list, crop_list) = init_hazard_set(files_his, input_dir=INPUT_DIR,
+          scenario_list, crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
                                                       bbox=bbox, isimip_run = 'test_file', 
                                                       yearrange_his = np.array([1980,2005]))
         yearrange_mean = np.array([1980,2005])
         for his_file in his_file_list:
-            haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, 
+            haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, 
                                                         bbox=bbox, yearrange_mean=yearrange_mean)
 
             hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 

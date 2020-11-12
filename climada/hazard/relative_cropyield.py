@@ -493,14 +493,14 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     output_list = list()
 
     (his_file_list, file_props, hist_mean_per_crop,
-     scenario_list, crop_list) = init_hazard_set(filenames, input_dir, bbox, isimip_run,
+     scenario_list, crop_list) = init_hazard_sets_isimip(filenames, input_dir, bbox, isimip_run,
                                                  yearrange_his)
 
     if yearrange_mean is None:
         yearrange_mean = (YEARCHUNKS[(file_props[his_file_list[0]])['scenario']])['yearrange_mean']
 
     for his_file in his_file_list:
-        haz_his, filename, hist_mean = calc_his_haz(his_file, file_props, input_dir, bbox,
+        haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir, bbox,
                                                     yearrange_mean)
         # save the historical mean depending on the crop-irrigation combination
         # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
@@ -532,7 +532,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
                 if os.path.isfile(os.path.join(input_dir, fut_file)):
                     # if true, calculate and save future hazard set:
-                    haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                    haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
                                                      input_dir, bbox, fut_file=fut_file)
                     filename_list.append(filename)
                     output_list.append(haz_fut)
@@ -552,7 +552,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
                     if os.path.isfile(os.path.join(input_dir, fut_file)):
                         # if true, calculate and save future hazard set:
-                        haz_fut, filename = calc_fut_haz(his_file, scenario, file_props, hist_mean,
+                        haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
                                                          input_dir, bbox, fut_file=fut_file)
                         filename_list.append(filename)
                         output_list.append(haz_fut)
@@ -584,7 +584,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         return filename_list
     return filename_list, output_list
 
-def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
+def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
                     yearrange_his=None):
 
     """Initialize full hazard set.
@@ -611,8 +611,6 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     file_props = dict()
     his_file_list = list()
     scenario_list = list()
-
-
 
     for file in filenames:
         if isimip_run == 'ISIMIP2b':
@@ -685,7 +683,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     #     return crop_list, his_file_list, yearrange_list, hist_mean_per_crop, file_props
     # return crop_list, his_file_list, scenario_list, hist_mean_per_crop, file_props
 
-def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange_mean=None):
+def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange_mean=None):
 
     """Create historical hazard and calculate historical mean.
 
@@ -698,14 +696,11 @@ def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange
             yearrange_mean (int tuple): year range for the historical mean
                 default: 1976 - 2005
 
-
         Return:
             haz_his (RelativeCropyield): historical hazard
             filename (string): name to save historical hazard
             hist_mean (array): historical mean of the historical hazard
-
     """
-
 
     haz_his = RelativeCropyield()
     haz_his.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file, bbox=bbox,
@@ -733,7 +728,7 @@ def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange
 
     return haz_his, filename, hist_mean
 
-def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
+def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
                  fut_file=None):
 
     """Create future hazard.
@@ -755,9 +750,8 @@ def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR,
         Return:
             haz_fut (RelativeCropyield): future hazard
             filename (string): name to save historical hazard
-
-
     """
+
     haz_fut = RelativeCropyield()
     if not fut_file:
         yearrange_fut = (YEARCHUNKS[scenario]['startyear'],
