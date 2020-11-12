@@ -61,24 +61,24 @@ OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 YEARCHUNKS = dict()
 """start and end years per senario as in ISIMIP-filenames"""
 YEARCHUNKS['ISIMIP2a'] = dict()
-YEARCHUNKS['ISIMIP2a'] = {'yearrange': np.array([1980, 1999]), 'startyear': 1980,
-                          'endyear': 1999, 'yearrange_mean': np.array([1980, 1999])}
+YEARCHUNKS['ISIMIP2a'] = {'yearrange': (1980, 1999), 'startyear': 1980,
+                          'endyear': 1999, 'yearrange_mean': (1980, 1999)}
 YEARCHUNKS['historical'] = dict()
-YEARCHUNKS['historical'] = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
-                            'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
+YEARCHUNKS['historical'] = {'yearrange': (1976, 2005), 'startyear': 1861,
+                            'endyear': 2005, 'yearrange_mean': (1976, 2005)}
 
 YEARCHUNKS['rcp26'] = dict()
-YEARCHUNKS['rcp26'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+YEARCHUNKS['rcp26'] = {'yearrange': (2006, 2099), 'startyear': 2006,
                        'endyear': 2099}
 
 YEARCHUNKS['rcp26-2'] = dict()
-YEARCHUNKS['rcp26-2'] = {'yearrange': np.array([2100, 2299]), 'startyear': 2100,
+YEARCHUNKS['rcp26-2'] = {'yearrange': (2100, 2299), 'startyear': 2100,
                          'endyear': 2299}
 YEARCHUNKS['rcp60'] = dict()
-YEARCHUNKS['rcp60'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+YEARCHUNKS['rcp60'] = {'yearrange': (2006, 2099), 'startyear': 2006,
                        'endyear': 2099}
 YEARCHUNKS['rcp85'] = dict()
-YEARCHUNKS['rcp85'] = {'yearrange': np.array([2006, 2099]), 'startyear': 2006,
+YEARCHUNKS['rcp85'] = {'yearrange': (2006, 2099), 'startyear': 2006,
                        'endyear': 2099}
 
 FN_STR_VAR = 'global_annual'
@@ -111,7 +111,7 @@ class RelativeCropyield(Hazard):
         self.intensity_def = INT_DEF
 
     def set_from_single_run(self, input_dir=None, filename=None, bbox=BBOX,
-                            yearrange=(YEARCHUNKS['historical'])['yearrange'],
+                            yearrange=None,
                             ag_model=None, cl_model=None, scenario='historical',
                             soc=None, co2=None, crop=None, irr=None, fn_str_var=FN_STR_VAR):
 
@@ -148,7 +148,6 @@ class RelativeCropyield(Hazard):
             LOGGER.error('Input directory %s not set', input_dir)
             raise NameError
 
-
         # The filename is set or other variables (cl_model, scenario) are extracted of the
         # specified filename
         if filename is None:
@@ -162,12 +161,12 @@ class RelativeCropyield(Hazard):
             (_, _, _, _, _, _, _, crop, _, _, startyear, endyearnc) = filename.split('_')
             endyear, _ = endyearnc.split('.')
             yearchunk = dict()
-            yearchunk = {'yearrange': np.array([int(startyear), int(endyear)]),
+            yearchunk = {'yearrange': (int(startyear), int(endyear)),
                          'startyear': int(startyear), 'endyear': int(endyear)}
             filename = os.path.join(input_dir, filename)
         elif scenario == 'test_file':
             yearchunk = dict()
-            yearchunk = {'yearrange': np.array([1976, 2005]), 'startyear': 1861,
+            yearchunk = {'yearrange': (1976, 2005), 'startyear': 1861,
                          'endyear': 2005, 'yearrange_mean': np.array([1976, 2005])}
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
@@ -180,11 +179,15 @@ class RelativeCropyield(Hazard):
             filename = os.path.join(input_dir, filename)
         else: # backup: get yearchunk from filename, e.g., for rcp2.6 extended
             (_, _, _, _, _, _, crop_irr, _, _, year1, year2) = filename.split('_')
-            yearchunk = {'yearrange': np.array([int(year1), int(year2.split('.')[0])]),
+            yearchunk = {'yearrange': (int(year1), int(year2.split('.')[0])),
                          'startyear': int(year1),
                          'endyear': int(year2.split('.')[0])}
             _, crop, irr = crop_irr.split('-')
             filename = os.path.join(input_dir, filename)
+
+        # if no yearrange is given, load full range from input file:
+        if yearrange is None or len(yearrange)==0:
+            yearrange = yearchunk['yearrange']
 
         # define indexes of the netcdf-bands to be extracted, and the
         # corresponding event names and dates
