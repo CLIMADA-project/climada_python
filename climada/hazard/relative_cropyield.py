@@ -179,12 +179,6 @@ class RelativeCropyield(Hazard):
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
             filename = os.path.join(input_dir, filename)
-        elif '_%i_%i.nc' %(YEARCHUNKS[scenario]['startyear'], YEARCHUNKS[scenario]['endyear']) \
-            in filename:
-            yearchunk = YEARCHUNKS[scenario]
-            (_, _, _, _, _, _, crop_irr, *_) = filename.split('_')
-            _, crop, irr = crop_irr.split('-')
-            filename = os.path.join(input_dir, filename)
         else: # backup: get yearchunk from filename, e.g., for rcp2.6 extended
             (_, _, _, _, _, _, crop_irr, _, _, year1, year2) = filename.split('_')
             yearchunk = {'yearrange': (int(year1), int(year2.split('.')[0])),
