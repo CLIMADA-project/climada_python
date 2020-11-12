@@ -111,9 +111,9 @@ class RelativeCropyield(Hazard):
         self.intensity_def = INT_DEF
 
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=BBOX,
-                            yearrange=None,
-                            ag_model=None, cl_model=None, scenario='historical',
-                            soc=None, co2=None, crop=None, irr=None, fn_str_var=FN_STR_VAR):
+                            yearrange=None, ag_model=None, cl_model=None, bias_corr=None,
+                            scenario='historical', soc=None, co2=None, crop=None,
+                            irr=None, fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill hazard from crop yield NetCDF file.
         Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
@@ -129,6 +129,8 @@ class RelativeCropyield(Hazard):
                 f.i. 'clm-crop', 'gepic','lpjml','pepic'
             cl_model (str): abbrev. climate model (only when input_dir is selected)
                 f.i. ['gfdl-esm2m', 'hadgem2-es','ipsl-cm5a-lr','miroc5'
+            bias_corr (str): bias correction of climate forcing,
+                f.i. 'ewembi' (ISIMIP2b, default) or 'w5e5' (ISIMIP3b)
             scenario (str): climate change scenario (only when input_dir is selected)
                 f.i. 'historical' or 'rcp60' or 'ISIMIP2a'
             soc (str): socio-economic trajectory (only when input_dir is selected)
@@ -144,6 +146,8 @@ class RelativeCropyield(Hazard):
         raises:
             NameError
         """
+        if scenario is None: scenario = 'historical'
+        if bias_corr is None: bias_corr = 'ewembi'
         if input_dir is not None:
             if not os.path.exists(input_dir):
                 LOGGER.error('Input directory %s does not exist', input_dir)
@@ -156,8 +160,8 @@ class RelativeCropyield(Hazard):
         # specified filename
         if filename is None:
             yearchunk = YEARCHUNKS[scenario]
-            filename = os.path.join(input_dir, '%s_%s_ewembi_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
-                                    %(ag_model, cl_model, scenario, soc, co2, crop,
+            filename = os.path.join(input_dir, '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
+                                    %(ag_model, cl_model, bias_corr, scenario, soc, co2, crop,
                                       irr, fn_str_var, str(yearchunk['startyear']),
                                       str(yearchunk['endyear'])))
 
