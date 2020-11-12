@@ -31,7 +31,7 @@ class TestCropProduction(unittest.TestCase):
     def test_load_central_EU(self):
         """Test defining crop_production Exposure from complete demo file (Central Europe)"""
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t', crop = 'mai', irr='firr')
 
@@ -47,7 +47,7 @@ class TestCropProduction(unittest.TestCase):
     def test_set_to_usd(self):
         """Test calculating crop_production Exposure in [USD / y]"""
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t', crop = 'mai', irr='firr')
         exp.set_to_usd(INPUT_DIR)
@@ -67,7 +67,7 @@ class TestCropProduction(unittest.TestCase):
     def test_set_to_usd_unnecessary(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', crop = 'mai', irr='firr')
         self.assertEqual(exp.longitude.min(), -4.75)
@@ -83,7 +83,7 @@ class TestCropProduction(unittest.TestCase):
         """ Test normalizing of two given exposures countrywise (usually firr + norr)
         with the mean crop production quantity"""
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                           bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                           scenario='flexible', crop = 'mai', unit='t', irr='firr')
         country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, exp_tot_production = \

@@ -110,14 +110,18 @@ class RelativeCropyield(Hazard):
         self.crop = ''
         self.intensity_def = INT_DEF
 
-    def set_from_single_run(self, input_dir=None, filename=None, bbox=BBOX,
+    def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=BBOX,
                             yearrange=None,
                             ag_model=None, cl_model=None, scenario='historical',
                             soc=None, co2=None, crop=None, irr=None, fn_str_var=FN_STR_VAR):
 
-        """Wrapper to fill hazard from nc_dis file from ISIMIP
+        """Wrapper to fill hazard from crop yield NetCDF file.
+        Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
+        for other NetCDF containing gridded crop model output from other sources.
         Parameters:
             input_dir (string): path to input data directory
+            filename (string): name of netcdf file in input_dir. If filename is given,
+                the other parameters specifying the model run are not required!
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange (int tuple): year range for hazard set, f.i. (1976, 2005)
@@ -447,11 +451,12 @@ class RelativeCropyield(Hazard):
         return axes
 
 
-def generate_full_hazard_set(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
+def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
                              isimip_run='ISIMIP2b', yearrange_his=None, yearrange_mean=None,
                              return_data=False, save=True):
 
-    """Wrapper to generate full hazard set and save it to output directory.
+    """Wrapper to generate full hazard set from all ISIMIP-NetCDF files with 
+    crop yield in a given input directory and save it to output directory.
 
         Optional Parameters:
             input_dir (string): path to input data directory
@@ -658,7 +663,7 @@ def init_hazard_set(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMI
     #e.g. gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_
     #   global_annual_1861_2005.nc
     haz_dummy = RelativeCropyield()
-    haz_dummy.set_from_single_run(input_dir=input_dir, filename=his_file_list[0], bbox=bbox,
+    haz_dummy.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file_list[0], bbox=bbox,
                                   scenario=(file_props[his_file_list[0]])['scenario'],
                                   yearrange=np.array([(file_props[his_file_list[0]])['startyear'],
                                                       (file_props[his_file_list[0]])['endyear']]))
@@ -703,7 +708,7 @@ def calc_his_haz(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange
 
 
     haz_his = RelativeCropyield()
-    haz_his.set_from_single_run(input_dir=input_dir, filename=his_file, bbox=bbox,
+    haz_his.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file, bbox=bbox,
                                 scenario=(file_props[his_file])['scenario'],
                                 yearrange=np.array([(file_props[his_file])['startyear'],
                                                     (file_props[his_file])['endyear']]))
@@ -761,7 +766,7 @@ def calc_fut_haz(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR,
         (_, _, _, _, _, _, _, _, _, year1, year2) = fut_file.split('_')
         yearrange_fut = (int(year1), int(year2.split('.')[0]))
     startyear, endyear = yearrange_fut
-    haz_fut.set_from_single_run(input_dir=input_dir, filename=fut_file,
+    haz_fut.set_from_isimip_netcdf(input_dir=input_dir, filename=fut_file,
                                 bbox=bbox, yearrange=yearrange_fut,
                                 ag_model=(file_props[his_file])['ag_model'],
                                 cl_model=(file_props[his_file])['cl_model'],
