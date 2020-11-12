@@ -131,12 +131,12 @@ class TestIntegr(unittest.TestCase):
         files_his = ['gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_global_DEMO_TJANJIN_annual_1861_2005.nc',
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-firr_global_annual_DEMO_TJANJIN_1861_2005.nc',
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
-        
+
         (his_file_list, file_props, hist_mean_per_crop, 
           scenario_list, crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
                                                       bbox=bbox, isimip_run = 'test_file', 
                                                       yearrange_his = np.array([1980,2005]))
-        yearrange_mean = np.array([1980,2005])
+        yearrange_mean = (1980, 2005)
         for his_file in his_file_list:
             haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, 
                                                         bbox=bbox, yearrange_mean=yearrange_mean)
@@ -144,8 +144,7 @@ class TestIntegr(unittest.TestCase):
             hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
                 hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
             hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
-        
-        
+
         self.assertEqual(np.shape(hist_mean_per_crop['whe-firr']['value'])[0], 1)
         self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2) 
         
@@ -153,7 +152,7 @@ class TestIntegr(unittest.TestCase):
         for crop_irr in crop_list:
             mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
             output_list.append(mean)
-        
+
         self.assertEqual('whe-noirr', crop_list[0])
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value']), np.mean(output_list[0]))
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value'][:,1]), output_list[0][1])
