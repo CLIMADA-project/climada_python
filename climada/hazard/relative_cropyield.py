@@ -112,7 +112,7 @@ class RelativeCropyield(Hazard):
 
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=BBOX,
                             yearrange=None, ag_model=None, cl_model=None, bias_corr=None,
-                            scenario='historical', soc=None, co2=None, crop=None,
+                            scenario=None, soc=None, co2=None, crop=None,
                             irr=None, fn_str_var=FN_STR_VAR):
 
         """Wrapper to fill hazard from crop yield NetCDF file.
