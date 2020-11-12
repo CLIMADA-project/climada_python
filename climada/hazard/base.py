@@ -527,23 +527,29 @@ class Hazard():
             raise var_err
 
     def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
-        """Select events within provided date and/or (historical or synthetical)
-        and/or region. Frequency of the events may need to be recomputed!
+        """Select events matching provided criteria
 
-        Parameters:
-            event_names (list(str), optional): names of event
-            date (tuple(str or int), optional): (initial date, final date) in
-                string ISO format ('2011-01-02') or datetime ordinal integer
-            orig (bool, optional): select only historical (True) or only
-                synthetic (False)
-            reg_id (int, optional): region identifier of the centroids's
-                region_id attibute
-            reset_frequency (boolean): change frequency of events proportional to
-                difference between first and last year (old and new)
-                default = False
+        The frequency of events may need to be recomputed (see `reset_frequency`)!
 
-        Returns:
-            Hazard or children
+        Parameters
+        ----------
+        event_names : list of str, optional
+            Names of events.
+        date : array-like of length 2 containing str or int, optional
+            (initial date, final date) in string ISO format ('2011-01-02') or datetime
+            ordinal integer.
+        orig : bool, optional
+            Select only historical (True) or only synthetic (False) events.
+        reg_id : int, optional
+            Region identifier of the centroids' region_id attibute.
+        reset_frequency : bool, optional
+            Change frequency of events proportional to difference between first and last
+            year (old and new). Default: False.
+
+        Returns
+        -------
+        haz : Hazard or None
+            If no event matching the specified criteria is found, None is returned.
         """
         if type(self) is Hazard:
             haz = Hazard(self.tag.haz_type)
@@ -553,8 +559,8 @@ class Hazard():
         sel_cen = np.ones(self.centroids.size, dtype=bool)
 
         # filter events by date
-        if isinstance(date, tuple):
-            date_ini, date_end = date[0], date[1]
+        if date is not None:
+            date_ini, date_end = date
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
@@ -679,7 +685,7 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
+        axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                            colbar_name, title, smooth=smooth,
                                            axes=axis, **kwargs)
         return axis, inten_stats

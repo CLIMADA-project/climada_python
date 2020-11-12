@@ -425,6 +425,28 @@ class TestSelect(unittest.TestCase):
         sel_haz = haz.select(date=(6, 8), orig=False)
         self.assertEqual(sel_haz, None)
 
+    def test_select_date_invalid_pass(self):
+        """Test select with invalid date values"""
+        haz = dummy_hazard()
+
+        # lists and numpy arrays should work just like tuples
+        sel_haz = haz.select(date=['0001-01-02', '0001-01-03'])
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        sel_haz = haz.select(date=np.array([2, 4]))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3, 4])))
+
+        # iterables of length not exactly 2 are invalid
+        with self.assertRaises(ValueError) as context:
+            haz.select(date=(3,))
+        self.assertTrue("not enough values to unpack" in str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            haz.select(date=(1, 2, 3))
+        self.assertTrue("too many values to unpack" in str(context.exception))
+
+        # only strings and numbers are valid
+        with self.assertRaises(TypeError) as context:
+            haz.select(date=({}, {}))
+
     def test_select_reg_id_pass(self):
         """Test select region of centroids."""
         haz = dummy_hazard()
