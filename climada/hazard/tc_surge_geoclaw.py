@@ -600,7 +600,7 @@ def plot_dems(dems, track=None, path=None, centroids=None):
         dpi=100)
     proj = ccrs.PlateCarree(central_longitude=mid_lon)
     axes = fig.add_subplot(111, projection=proj)
-    axes.outline_patch.set_linewidth(0.5)
+    axes.spines['geo'].set_linewidth(0.5)
     axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
     axes.set_ylim(total_bounds[1], total_bounds[3])
     cmap, cnorm = colormap_coastal_dem(axes=axes)
@@ -851,6 +851,8 @@ class TCSurgeEvents():
     """
     keys = ['period', 'time_mask', 'time_mask_buffered', 'wind_area',
             'landfall_area', 'surge_areas', 'centroid_mask']
+    maxlen = 36
+    maxbreak = 12
 
     def __init__(self, track, centroids):
         """Determine temporal periods and geographical regions where the storm
@@ -912,8 +914,8 @@ class TCSurgeEvents():
             if start is not None:
                 # periods cover at most 36 hours and a split will be forced
                 # at breaks of more than 12 hours.
-                exceed_maxlen = (date - end) / np.timedelta64(1, 'h') > 12
-                exceed_maxbreak = (date - start) / np.timedelta64(1, 'h') > 36
+                exceed_maxbreak = (date - end) / np.timedelta64(1, 'h') > self.maxbreak
+                exceed_maxlen = (date - start) / np.timedelta64(1, 'h') > self.maxlen
                 if exceed_maxlen or exceed_maxbreak:
                     period.append((start, end))
                     start = end = None
