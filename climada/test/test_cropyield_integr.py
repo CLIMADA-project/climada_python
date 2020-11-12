@@ -43,7 +43,7 @@ class TestIntegr(unittest.TestCase):
         """test with demo data containing France and Germany"""
         bbox = [-5, 42, 16, 55]
         haz = RelativeCropyield()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
+        haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
@@ -52,7 +52,7 @@ class TestIntegr(unittest.TestCase):
         haz.centroids.set_region_id()
 
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
                                               scenario='flexible', unit='t', crop='whe', irr='firr')
 
@@ -87,7 +87,7 @@ class TestIntegr(unittest.TestCase):
         """Test whether setting the zeros in exp.value to NaN changes the impact"""
         bbox=[0, 42, 10, 52]
         haz = RelativeCropyield()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
+        haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
@@ -96,7 +96,7 @@ class TestIntegr(unittest.TestCase):
         haz.centroids.set_region_id()
 
         exp = CropProduction()
-        exp.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
                                               scenario='flexible', unit='t', crop='whe', irr='firr')
         exp.assign_centroids(haz, threshold=20)
@@ -111,7 +111,7 @@ class TestIntegr(unittest.TestCase):
         impact.calc(exp, if_cp, haz, save_mat=True)
 
         exp_nan = CropProduction()
-        exp_nan.set_from_single_run(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
+        exp_nan.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=[0, 42, 10, 52], yearrange=(2001, 2005),
                                               scenario='flexible', unit='t', crop='whe', irr='firr')
         exp_nan.value[exp_nan.value==0] = np.nan

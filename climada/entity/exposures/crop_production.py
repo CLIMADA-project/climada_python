@@ -119,12 +119,13 @@ class CropProduction(Exposures):
     def _constructor(self):
         return CropProduction
 
-    def set_from_single_run(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH,
+    def set_from_isimip_netcdf(self, input_dir=INPUT_DIR, filename=None, hist_mean=HIST_MEAN_PATH,
                             bbox=BBOX, yearrange=(YEARCHUNKS['histsoc'])['yearrange'],
                             cl_model=None, scenario='histsoc', crop=None, irr=None,
                             unit='USD', fn_str_var=FN_STR_VAR):
 
-        """Wrapper to fill exposure from nc_dis file from ISIMIP
+        """Wrapper to fill exposure from NetCDF file from ISIMIP. Requires historical
+        mean relative cropyield module as additional input.
         Parameters:
             input_dir (string): path to input data directory
             filename (string): name of the landuse data file to use,
@@ -343,7 +344,7 @@ class CropProduction(Exposures):
 
         # The first exposure is calculate to determine its size
         # and initialize the combined exposure
-        self.set_from_single_run(input_dir, filename=filenames['subset'][0],
+        self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][0],
                                  hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
                                  crop=crop, irr=irr,
                                  unit=unit, fn_str_var=fn_str_var)
@@ -354,7 +355,7 @@ class CropProduction(Exposures):
         # The calculations are repeated for all remaining exposures (starting from index 1 as
         # the first exposure has been saved in combined_exp[:, 0])
         for j in range(1, len(filenames['subset'])):
-            self.set_from_single_run(input_dir, filename=filenames['subset'][j],
+            self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][j],
                                      hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
                                      crop=crop, irr=irr, unit=unit)
             combined_exp[:, j] = self.value
@@ -461,12 +462,13 @@ class CropProduction(Exposures):
 
         return list_countries, country_values
 
-def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH,
+def init_full_exp_set_isimip(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIST_MEAN_PATH,
                            output_dir=OUTPUT_DIR, bbox=BBOX,
                            yearrange=(YEARCHUNKS['histsoc'])['yearrange'], unit='t',
                            return_data=False):
     """Generates CropProduction exposure sets for all files contained in the
-        input directory and saves them as hdf5 files in the output directory
+        input directory and saves them as hdf5 files in the output directory.
+        Exposures are aggregated per crop and irrigation type.
 
         Parameters:
         input_dir (string): path to input data directory
@@ -499,7 +501,7 @@ def init_full_exposure_set(input_dir=INPUT_DIR, filename=None, hist_mean_dir=HIS
         _, _, crop_irr, *_ = file.split('_')
         crop, irr = crop_irr.split('-')
         crop_production = CropProduction()
-        crop_production.set_from_single_run(input_dir=input_dir, filename=filename,
+        crop_production.set_from_isimip_netcdf(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
                                             yearrange=yearrange, crop=crop, irr=irr, unit=unit)
         filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
