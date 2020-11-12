@@ -69,7 +69,7 @@ class TestCropProduction(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
-                                      scenario='flexible', crop = 'mai', irr='firr')
+                                      scenario='flexible', crop = 'mai', irr='firr', unit='USD')
         self.assertEqual(exp.longitude.min(), -4.75)
         self.assertEqual(exp.longitude.max(), 15.75)
         self.assertEqual(exp.latitude.min(), 42.25)
