@@ -380,6 +380,7 @@ def compute_windfields(track, centroids, model):
         np.array
     """
     # copies of track data
+    # Note that max wind records are not used in the Holland wind field models!
     t_lat, t_lon, t_tstep, t_rad, t_env, t_cen = [
         track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
                                            'environmental_pressure', 'central_pressure']
@@ -555,8 +556,18 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     b_s = -4.4 * 1e-5 * (penv - pcen)^2 + 0.01 * (penv - pcen)
           + 0.03 * (dp/dt) - 0.014 * |lat| + 0.15 * (v_trans)^hol_xx + 1.0
 
-    where `dp/dt` is the time derivative of central pressure and `hol_xx` is
-    Holland's x parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
+    where `dp/dt` is the time derivative of central pressure and `hol_xx` is Holland's x
+    parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
+
+    The equation for b_s has been fitted statistically using hurricane best track records for
+    central pressure and maximum wind. It therefore performs best in the North Atlantic.
+
+    Furthermore, b_s has been fitted under the assumption of a "cyclostrophic" wind field which
+    means that the influence from Coriolis forces is assumed to be small. This is reasonable close
+    to the radius of maximum wind where the Coriolis term (r*f/2) is small compared to the rest
+    (see `_stat_holland`). More precisely: At the radius of maximum wind speeds, the typical order
+    of the Coriolis term is 1 while wind speed is 50 (which changes away from the
+    radius of maximum winds and as the TC moves away from the equator).
 
     Parameters:
         v_trans (float): translational wind (m/s)
@@ -578,29 +589,44 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     """Holland symmetric and static wind field (in m/s)
 
-    Because recorded winds are less reliable than pressure, recorded wind speeds
-    are not used, but 1-min sustained surface winds are estimated from central
-    pressure using the formula `v_m = ((b_s / (rho * e)) * (penv - pcen))^0.5`,
-    see equation (11) in the following paper:
+    This function applies the gradient wind model expressed in equation (4) (combined with
+    equation (6)) from
 
-    Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
-    Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1
+    Holland, G.J. (1980): An Analytic Model of the Wind and Pressure Profiles in Hurricanes.
+    Monthly Weather Review 108(8): 1212–1218.
 
-    Depending on the hol_b parameter, the resulting model is according to
-    Holland (1980), which models gradient winds, or Holland (2008), which models
-    surface winds at 10 meters above ground.
+    More precisely, this function implements the following equation:
 
-    Parameters:
-        d_centr (2d np.array): distance between coastal centroids and track node
-        r_max (1d np.array): radius_max_wind along track
-        hol_b (1d np.array): Holland's b parameter along track
-        penv (1d np.array): environmental pressure along track
-        pcen (1d np.array): central pressure along track
-        lat (1d np.array): latitude along track
-        close_centr (2d np.array): mask
+    V(r) = sqrt[(B/rho) * (r_max/r)^B * (penv - pcen) * e^(-(r_max/r)^B) + (r*f/2)^2] + (r*f/2)
 
-    Returns:
-        np.array
+    In terms of this function's arguments, B is `hol_b` and r is `d_centr`.
+    The air density rho is assumed to be constant while the Coriolis parameter f is computed
+    from the latitude `lat` using the constant rotation rate of the earth.
+
+    Even though the equation has been derived originally for gradient winds, it can be used for
+    surface winds by adjusting the parameter `hol_b` (see function `_bs_hol08`).
+
+    Parameters
+    ----------
+    d_centr : np.array of shape (nnodes, ncentroids)
+        Distance between centroids and track nodes.
+    r_max : np.array of shape (nnodes,)
+        Radius of maximum winds at each track node.
+    hol_b : np.array of shape (nnodes,)
+        Holland's b parameter at each track node.
+    penv : np.array of shape (nnodes,)
+        Environmental pressure at each track node.
+    pcen : np.array of shape (nnodes,)
+        Central pressure at each track node.
+    lat : np.array of shape (nnodes,)
+        Latitudinal coordinate of each track node.
+    close_centr : np.array of shape (nnodes, ncentroids)
+        Mask indicating for each track node which centroids are within reach of the windfield.
+
+    Returns
+    -------
+    v_ang : np.array (nnodes, ncentroids)
+        Absolute values of wind speeds in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
     r_max, hol_b, lat, penv, pcen, d_centr = [
@@ -612,16 +638,16 @@ def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
     # air density
     rho = 1.15
 
-    # Coriolis force parameter
-    f_val = 2 * 0.0000729 * np.sin(np.radians(np.abs(lat)))
+    # Coriolis parameter with earth rotation rate 7.29e-5
+    f_coriolis = 2 * 0.0000729 * np.sin(np.radians(np.abs(lat)))
 
-    # d_centr is in km, convert to m and apply Coriolis force factor
-    d_centr_mult = 0.5 * 1000 * d_centr * f_val
+    # d_centr is in km, convert to m (factor 1000) and apply Coriolis parameter
+    r_coriolis = 0.5 * 1000 * d_centr * f_coriolis
 
     # the factor 100 is from conversion between mbar and pascal
     r_max_norm = (r_max / d_centr)**hol_b
     sqrt_term = 100 * hol_b / rho * r_max_norm * (penv - pcen) \
-                * np.exp(-r_max_norm) + d_centr_mult**2
+                * np.exp(-r_max_norm) + r_coriolis**2
 
-    v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - d_centr_mult
+    v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
