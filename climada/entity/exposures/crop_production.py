@@ -316,7 +316,7 @@ class CropProduction(Exposures):
 
     def set_mean_of_several_models(self, input_dir=None, hist_mean=None, bbox=BBOX,
                                    yearrange=None, cl_model=None, scenario=None,
-                                   crop=None, irr=None,
+                                   crop=None, irr=None, isimip_version=None,
                                    unit=None, fn_str_var=None):
         """Wrapper to fill exposure from several nc_dis files from ISIMIP
 
@@ -335,6 +335,7 @@ class CropProduction(Exposures):
                 f.i. 'mai', 'ric', 'whe', 'soy'
             irr (string): irrigation type
                 f.i 'rainfed', 'irrigated' or 'combined'= rainfed+irrigated
+            isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
             unit (string): unit of the exposure (per year)
                 f.i 'USD' or 't' (default)
             fn_str_var (string): FileName STRing depending on VARiable and
@@ -342,9 +343,13 @@ class CropProduction(Exposures):
         Returns:
             Exposure
         """
+        if (not isimip_version) or ('ISIMIP2' in isimip_version):
+            isimip_version = 'ISIMIP2'
+        elif 'ISIMIP3' in isimip_version:
+            isimip_version = 'ISIMIP3'
         if not input_dir: input_dir = INPUT_DIR
         if not hist_mean: hist_mean = HIST_MEAN_PATH
-        if yearrange is None: yearrange = YEARCHUNKS['ISIMIP2']['histsoc']['yearrange']
+        if yearrange is None: yearrange = YEARCHUNKS[isimip_version]['histsoc']['yearrange']
         if not unit: unit = 't'
         if not fn_str_var: fn_str_var = FN_STR_VAR
         filenames = dict()
@@ -371,7 +376,7 @@ class CropProduction(Exposures):
         # and initialize the combined exposure
         self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][0],
                                  hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
-                                 crop=crop, irr=irr,
+                                 crop=crop, irr=irr, isimip_version=isimip_version,
                                  unit=unit, fn_str_var=fn_str_var)
 
         combined_exp = np.zeros([self.value.size, len(filenames['subset'])])
@@ -382,7 +387,7 @@ class CropProduction(Exposures):
         for j in range(1, len(filenames['subset'])):
             self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][j],
                                      hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
-                                     crop=crop, irr=irr, unit=unit)
+                                     crop=crop, irr=irr, unit=unit, isimip_version=isimip_version)
             combined_exp[:, j] = self.value
 
         self['value'] = np.mean(combined_exp, 1)
@@ -487,7 +492,7 @@ class CropProduction(Exposures):
 
 def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
                            output_dir=None, bbox=BBOX, yearrange=None, unit=None,
-                           return_data=False):
+                           isimip_version=None, return_data=False):
     """Generates CropProduction exposure sets for all files contained in the
         input directory and saves them as hdf5 files in the output directory.
         Exposures are aggregated per crop and irrigation type.
@@ -500,6 +505,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
+        isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
         unit (str): unit in which to return exposure (t/y or USD/y)
         return_data (boolean): returned output
             False: returns list of filenames only, True: returns also list of data
@@ -508,10 +514,14 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         filename_list (list): all filenames of saved initiated exposure files
         output_list (list): list containing all inisiated Exposure instances
     """
+    if (not isimip_version) or ('ISIMIP2' in isimip_version):
+        isimip_version = 'ISIMIP2'
+    elif 'ISIMIP3' in isimip_version:
+        isimip_version = 'ISIMIP3'
     if not input_dir: input_dir = INPUT_DIR
     if not hist_mean_dir: hist_mean_dir =HIST_MEAN_PATH
     if not output_dir: output_dir = OUTPUT_DIR
-    if yearrange is None: yearrange = YEARCHUNKS['ISIMIP2']['histsoc']['yearrange']
+    if yearrange is None: yearrange = YEARCHUNKS[isimip_version]['histsoc']['yearrange']
     if not unit: unit = 't'
 
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not
@@ -530,6 +540,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         crop_production = CropProduction()
         crop_production.set_from_isimip_netcdf(input_dir=input_dir, filename=filename,
                                             hist_mean=hist_mean_dir, bbox=bbox,
+                                            isimip_version=isimip_version,
                                             yearrange=yearrange, crop=crop, irr=irr, unit=unit)
         filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
                          + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
