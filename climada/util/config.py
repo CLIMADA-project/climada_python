@@ -220,7 +220,7 @@ class Config():
         Exception
             if the value is not a string or if the directory cannot be created
         """
-        path = Path(self.str(index))
+        path = Path(self.str(index)).expanduser()
         path.mkdir(parents=True, exist_ok=True)
         return path.absolute()
 
@@ -311,7 +311,7 @@ SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
 CONFIG_NAME = 'climada.conf'
 CONFIG = Config.from_dict(_fetch_conf([
     Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository
-    Path.home(),  # home directory
+    Path(Path.home(), 'climada', 'conf'),  # ~/climada/conf directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
 check_conf(CONFIG)

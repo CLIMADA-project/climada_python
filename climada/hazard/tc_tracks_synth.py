@@ -40,7 +40,7 @@ def calc_random_walk(tracks,
                      ens_amp0=1.5,
                      ens_amp=0.1,
                      max_angle=np.pi / 10,
-                     seed=CONFIG.trop_cyclone.random_seed.int(),
+                     seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
                      decay=True):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of

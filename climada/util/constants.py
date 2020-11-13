@@ -20,10 +20,13 @@ Define constants.
 """
 
 __all__ = ['SYSTEM_DIR',
+           'DEMO_DIR',
            'HAZ_DEMO_MAT',
+           'HAZ_DEMO_FL',
            'HAZ_DEMO_FLDDPH',
            'HAZ_DEMO_FLDFRC',
            'ENT_TEMPLATE_XLS',
+           'HAZ_TEMPLATE_XLS',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
@@ -37,8 +40,8 @@ __all__ = ['SYSTEM_DIR',
            'EXP_DEMO_H5',
            'WS_DEMO_NC']
 
-# pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
+# pylint: disable=unused-import
 import numpy
 from fiona.crs import from_epsg
 
