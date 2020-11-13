@@ -24,21 +24,18 @@ import os
 import glob
 import shutil
 import logging
-import requests
 import warnings
 import zipfile
+
+import requests
 import numpy as np
 import pandas as pd
+from pandas_datareader import wb
 from cartopy.io import shapereader
 
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 
-# solve version problem in pandas-datareader-0.6.0. see:
-# https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
-# importerror-cannot-import-name-is-list-like
-pd.core.common.is_list_like = pd.api.types.is_list_like
-from pandas_datareader import wb
 
 LOGGER = logging.getLogger(__name__)
 

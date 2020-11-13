@@ -21,6 +21,8 @@ Define constants.
 
 __all__ = ['SYSTEM_DIR',
            'DEMO_DIR',
+           'ENT_DEMO_TODAY',
+           'ENT_DEMO_FUTURE',
            'HAZ_DEMO_MAT',
            'HAZ_DEMO_FL',
            'HAZ_DEMO_FLDDPH',
@@ -40,8 +42,8 @@ __all__ = ['SYSTEM_DIR',
            'EXP_DEMO_H5',
            'WS_DEMO_NC']
 
-# without importing numpy ahead of fiona the debugger may run into an error
 # pylint: disable=unused-import
+# without importing numpy ahead of fiona the debugger may run into an error
 import numpy
 from fiona.crs import from_epsg
 
