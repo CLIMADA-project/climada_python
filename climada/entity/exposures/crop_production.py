@@ -57,6 +57,9 @@ YEARCHUNKS['ISIMIP2']['rcp26soc'] = {'yearrange': (2006, 2099), 'startyear': 200
 YEARCHUNKS['ISIMIP2']['rcp60soc'] = {'yearrange': (2006, 2099), 'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS['ISIMIP2']['2100rcp26soc'] = {'yearrange': (2100, 2299), 'startyear': 2100,
                               'endyear': 2299}
+YEARCHUNKS['ISIMIP3'] = dict()
+YEARCHUNKS['ISIMIP3']['histsoc'] = {'yearrange': (1983, 2013), 'startyear': 1850, 'endyear': 2014}
+YEARCHUNKS['ISIMIP3']['2015soc'] = {'yearrange': (1983, 2013), 'startyear': 1850, 'endyear': 2014}
 
 FN_STR_VAR = 'landuse-15crops_annual'
 """fix filename part in input data"""
@@ -147,7 +150,7 @@ class CropProduction(Exposures):
             Exposure
         """
         if not input_dir: input_dir = INPUT_DIR
-        if not hist_mean: hist_mean = HIST_MEAN_PATH
+        if hist_mean is None: hist_mean = HIST_MEAN_PATH
         if not fn_str_var: fn_str_var = FN_STR_VAR
         if (not isimip_version) or ('ISIMIP2' in isimip_version):
             isimip_version = 'ISIMIP2'
@@ -210,7 +213,7 @@ class CropProduction(Exposures):
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
         if irr == 'combined':
-            irr = ['irr', 'noirr']
+            irr = ['firr', 'noirr']
         else:
             irr = [irr]
         area_crop = dict()
@@ -224,7 +227,17 @@ class CropProduction(Exposures):
 
         # set historic mean, its latitude, and longitude:
         hist_mean_dict = dict()
-        if isdir(hist_mean):
+        # if hist_mean is given as np.ndarray or dict, 
+        # code assumes it contains hist_mean as returned by the hazard crop_potential
+        # however structured in dictionary as hist_mean_dict, with same
+        # bbox extensions as the exposure:
+        if isinstance(hist_mean, dict):
+            hist_mean_dict = hist_mean
+            lat_mean = self.latitude.values
+        elif isinstance(hist_mean, np.ndarray):
+            hist_mean_dict[irr[0]] = hist_mean
+            lat_mean = self.latitude.values
+        elif isdir(hist_mean): # else if hist_mean is given as path to directory
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
             for irr_var in irr:
@@ -234,7 +247,7 @@ class CropProduction(Exposures):
                 hist_mean_dict[irr_var] = (h5py.File(filename, 'r'))['mean'][()]
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
-        elif isfile(os.path.join(input_dir, hist_mean)):
+        elif isfile(os.path.join(input_dir, hist_mean)): # file path
         # Hist_mean, lat_mean and lon_mean are extracted from the given file
             if len(irr) > 1:
                 LOGGER.error('For irr=combined, hist_mean can not be single file. Aborting.')
@@ -243,10 +256,7 @@ class CropProduction(Exposures):
             hist_mean_dict[irr[0]] = hist_mean['mean'][()]
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
-        else:
-        # hist_mean as returned by the hazard crop_potential is used (array format) with same
-        # bbox extensions as the exposure
-            lat_mean = self.latitude.values
+
 
         # The bbox is cut out of the hist_mean data file if needed
         if len(lat_mean) != len(self.latitude.values):
