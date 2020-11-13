@@ -23,3 +23,4 @@ from .impact_func_set import *
 from .trop_cyclone import *
 from .drought import *
 from .crop_potential import *
+from .wildfire import *

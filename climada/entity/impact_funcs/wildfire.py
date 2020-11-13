@@ -13,7 +13,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for BushFires.
 """
 
-__all__ = ['IFBushfire']
+__all__ = ['IFWildFire']
 
 import logging
 import numpy as np
@@ -27,30 +27,30 @@ class IFBushfire(ImpactFunc):
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'BF'
+        self.haz_type = 'WF'
         
-    def set_default(self, threshold):
-        self.haz_type = "BF"
+    def set_step(self, threshold):
+        self.haz_type = "WF"
         self.id = 1
-        self.name = "bushfire default"
+        self.name = "wildfire default"
         self.intensity_unit = "K"
         self.intensity = np.array([295, threshold, threshold, 367])
         self.mdd = np.array([0, 0, 1, 1])
         self.paa = np.array([1, 1, 1, 1])
         
     def set_sigmoid(self, int_range=np.arange(295,500,5), sig_mid=320, sig_shape=0.1, sig_max=1.0):
-        self.haz_type = "BF"
+        self.haz_type = "WF"
         self.id = 1
-        self.name = "bushfire default"
+        self.name = "wildfire default"
         self.intensity_unit = "K"
         self.intensity = int_range
         self.mdd = sig_max/(1+np.exp(-sig_shape*(int_range-sig_mid)))
         self.paa = np.ones(len(int_range))
         
-    def set_sigmoid_simple(self, i_half=523.8):
-        self.haz_type = "BF"
+    def set_default(self, i_half=523.8):
+        self.haz_type = "WF"
         self.id = 1
-        self.name = "bushfire default"
+        self.name = "wildfire default"
         self.intensity_unit = "K"
         self.intensity = np.arange(295,500,5)
         i_thresh = 295
