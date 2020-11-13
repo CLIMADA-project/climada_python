@@ -232,6 +232,9 @@ class CropProduction(Exposures):
         # however structured in dictionary as hist_mean_dict, with same
         # bbox extensions as the exposure:
         if isinstance(hist_mean, dict):
+            if not ('firr' in hist_mean.keys() or 'noirr' in hist_mean.keys()):
+                LOGGER.error('Invalid hist_mean provided: {hist_mean}')
+                raise ValueError('invalid hist_mean.')
             hist_mean_dict = hist_mean
             lat_mean = self.latitude.values
         elif isinstance(hist_mean, np.ndarray):
@@ -256,7 +259,9 @@ class CropProduction(Exposures):
             hist_mean_dict[irr[0]] = hist_mean['mean'][()]
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
-
+        else:
+            LOGGER.error('Invalid hist_mean provided: {hist_mean}')
+            raise ValueError('invalid hist_mean.')
 
         # The bbox is cut out of the hist_mean data file if needed
         if len(lat_mean) != len(self.latitude.values):
