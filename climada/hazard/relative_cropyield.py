@@ -447,7 +447,7 @@ class RelativeCropyield(Hazard):
 
 def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=BBOX,
                              isimip_run=None, yearrange_his=None, yearrange_mean=None,
-                             return_data=False, save=True):
+                             return_data=False, save=True, combine_subcrops=True):
 
     """Wrapper to generate full hazard set from all ISIMIP-NetCDF files with 
     crop yield in a given input directory and save it to output directory.
@@ -464,7 +464,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                 False: returns list of filenames only
                 True: returns also list of data
             save (boolean): save output data to output_dir
-
+            combine_subcrops (boolean): combine coprs: ric=ri1+ri2, whe=swh+wwh
         Return:
             filename_list (list): list of filenames
 
@@ -487,9 +487,14 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     output_list = list()
 
     (his_file_list, file_props, hist_mean_per_crop,
-     scenario_list, crop_list) = init_hazard_sets_isimip(filenames, input_dir, bbox, isimip_run,
-                                                 yearrange_his)
-
+     scenario_list, crop_list, combi_crop_list) = init_hazard_sets_isimip(filenames,
+                                                         input_dir=input_dir,
+                                                         bbox=bbox, isimip_run=isimip_run,
+                                                         yearrange_his=yearrange_his,
+                                                         combine_subcrops=combine_subcrops)
+    print(crop_list)  # TODO remove print
+    print(combi_crop_list)  # TODO remove print
+    print(his_file_list)  # TODO remove print
     if (yearrange_mean is None) and (isimip_run == 'ISIMIP2b'):
         yearrange_mean = YEARCHUNKS[file_props[his_file_list[0]]['scenario']]['yearrange_mean']
     elif (yearrange_mean is None) and (isimip_run == 'ISIMIP3b'):
@@ -503,9 +508,9 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         # save the historical mean depending on the crop-irrigation combination
         # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
         # ensure that all files are assigned to the corresponding crop-irr combination
-        hist_mean_per_crop[file_props[his_file]['crop_irr']]['value'][
-            hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'], :] = hist_mean
-        hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
+        hist_mean_per_crop[file_props[his_file]['combi_crop_irr']]['value'][
+            hist_mean_per_crop[file_props[his_file]['combi_crop_irr']]['idx'], :] = hist_mean
+        hist_mean_per_crop[file_props[his_file]['combi_crop_irr']]['idx'] += 1
 
         filename_list.append(filename)
         output_list.append(haz_his)
@@ -531,7 +536,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                 if os.path.isfile(os.path.join(input_dir, fut_file)):
                     # if true, calculate and save future hazard set:
                     haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
-                                                     input_dir, bbox, fut_file=fut_file)
+                                                     input_dir=input_dir, bbox=bbox, fut_file=fut_file)
                     filename_list.append(filename)
                     output_list.append(haz_fut)
                 if scenario == 'rcp26': # also test for extended
@@ -552,15 +557,15 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                     if os.path.isfile(os.path.join(input_dir, fut_file)):
                         # if true, calculate and save future hazard set:
                         haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
-                                                         input_dir, bbox, fut_file=fut_file)
+                                                         input_dir=input_dir, bbox=bbox, fut_file=fut_file)
                         filename_list.append(filename)
                         output_list.append(haz_fut)
 
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5
     # in output_dir (required for full exposure set preparation):
-    for crop_irr in crop_list:
-        mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
-        mean_filename = ('hist_mean_' + crop_irr + '_' + str(yearrange_mean[0]) +'-' +
+    for combi_crop_irr in combi_crop_list:
+        mean = np.mean((hist_mean_per_crop[combi_crop_irr])['value'], 0)
+        mean_filename = ('hist_mean_' + combi_crop_irr + '_' + str(yearrange_mean[0]) +'-' +
                          str(yearrange_mean[1]) + '.hdf5')
         filename_list.append(mean_filename)
         output_list.append(mean)
@@ -586,16 +591,20 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     return filename_list, output_list
 
 def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
-                    yearrange_his=None):
+                    yearrange_his=None, combine_subcrops=True):
     """Initialize full hazard set.
 
         Parameters:
             filenames (list): list of filenames
+
+        Optional Parameters:
             input_dir (string): path to input data directory
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             isimip_run (string): name of the ISIMIP run (ISIMIP2a or ISIMIP2b)
             yearrange_his (int tuple): year range for the historical hazard sets
+            combine_subcrops (bool): ignore crops ri2 (2nd harvest rice) and wwh (winter wheat)
+                at this step (will be added to ri1 and wwh to form ric and whe later on)
 
         Return:
             his_file_list (list): list of historical input hazard files
@@ -604,18 +613,28 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
                 crop-irr combination
             scenario_list (list): list of all future scenarios
             crop_list (list): list of all crop-irr combinations
+            combi_crop_list (list): list of all crop-irr combinations for combined crops
     """
 
     crop_list = list()
+    combi_crop_list = list()
     file_props = dict()
     his_file_list = list()
     scenario_list = list()
 
     for file in filenames:
-
         if isimip_run in ('ISIMIP2b', 'ISIMIP3b'):
             ag_model, cl_model, bias_corr, scenario, soc, co2, crop_prop, *_ = file.split('_')
             _, crop, irr = crop_prop.split('-')
+            combi_crop = crop
+            if combine_subcrops:
+                if crop in ('ri2', 'wwh'):
+                    # ignore ri2 (2nd harvest rice) and wwh (winter wheat) at this step:
+                    continue
+                if crop == 'ri1':
+                    combi_crop = 'ric'
+                if crop == 'swh':
+                    combi_crop = 'whe'
             if scenario == 'historical':
                 his_file_list.append(file)
                 if (yearrange_his is None) and (isimip_run == 'ISIMIP2b'):
@@ -627,13 +646,16 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
                                     'bias_corr': bias_corr, 'soc': soc,
                                     'scenario': scenario, 'co2':co2, 'crop': crop, 'irr': irr,
                                     'startyear': startyear, 'endyear': endyear,
-                                    'crop_irr': crop+'-'+irr}
+                                    'crop_irr': f'{crop}-{irr}', 'combi_crop': combi_crop,
+                                    'combi_crop_irr': f'{combi_crop}-{irr}'
+                                    }
             elif scenario not in scenario_list:
                 scenario_list.append(scenario)
 
         elif isimip_run == 'ISIMIP2a':
             (ag_model, cl_model, biasco, scenario, harm, irr, _, crop, _, _,
              startyear, endyearnc) = file.split('_')
+            combi_crop = crop
             endyear, _ = endyearnc.split('.')
             if yearrange_his is not None:
                 startyear, endyear = (YEARCHUNKS[scenario])['yearrange']
@@ -641,22 +663,28 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             file_props[file] = dict()
             file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'scenario': 'ISIMIP2a',
                                 'bc':biasco, 'harm':harm, 'crop': crop, 'irr': irr,
-                                'crop_irr': crop+'-'+irr, 'startyear': int(startyear),
-                                'endyear': int(endyear)}
+                                'crop_irr': f'{crop}-{irr}', 'startyear': int(startyear),
+                                'endyear': int(endyear), 'combi_crop': combi_crop,
+                                'combi_crop_irr': f'{combi_crop}-{irr}'}
             his_file_list.append(file)
         elif isimip_run == 'test_file':
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = file.split('_')
             _, crop, irr = crop_prop.split('-')
+            combi_crop = crop
             his_file_list.append(file)
             startyear, endyear = yearrange_his
             file_props[file] = {'ag_model': ag_model, 'cl_model': cl_model, 'soc':soc,
                                 'scenario': 'test_file', 'co2':co2, 'crop': crop, 'irr': irr,
                                 'startyear': startyear, 'endyear': endyear,
-                                'crop_irr': crop+'-'+irr}
+                                'crop_irr': f'{crop}-{irr}', 'combi_crop': combi_crop,
+                                'combi_crop_irr': f'{combi_crop}-{irr}'}
+        else:
+            raise ValueError(f'Invalid value for isimip_run: {isimip_run}')
 
-        crop_irr = crop + '-' + irr
-        if crop_irr not in crop_list:
-            crop_list.append(crop_irr)
+        if f'{crop}-{irr}' not in crop_list:
+            crop_list.append(f'{crop}-{irr}')
+        if f'{combi_crop}-{irr}' not in combi_crop_list:
+            combi_crop_list.append(f'{combi_crop}-{irr}')
 
     # generate hazard using the first file to determine the size of the historic mean
     # file structure: ag_model _ cl_model _ scenario _ soc _ co2 _
@@ -673,20 +701,21 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
     # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
     # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
-    for crop_irr in crop_list:
-        crop, irr = crop_irr.split('-')
+    for i, combi_crop_irr in enumerate(combi_crop_list):
+        crop, irr = crop_list[i].split('-')
         amount_crop_irr = sum((crop in s) and (irr in s) for s in his_file_list)
-        hist_mean_per_crop[crop_irr] = dict()
-        hist_mean_per_crop[crop_irr] = {
+        hist_mean_per_crop[combi_crop_irr] = dict()
+        hist_mean_per_crop[combi_crop_irr] = {
             'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
             'idx': 0}
 
-    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_list
+    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_list, combi_crop_list
     # if isimip_run == 'ISIMIP2a':
     #     return crop_list, his_file_list, yearrange_list, hist_mean_per_crop, file_props
     # return crop_list, his_file_list, scenario_list, hist_mean_per_crop, file_props
 
-def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, yearrange_mean=None):
+def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
+                        yearrange_mean=None):
     """Create historical hazard and calculate historical mean.
 
         Parameters:
@@ -709,13 +738,35 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, ye
                                 scenario=file_props[his_file]['scenario'],
                                 yearrange=np.array([file_props[his_file]['startyear'],
                                                     file_props[his_file]['endyear']]))
-
+    crop = file_props[his_file]['crop']
+    # combine subcrops if crop and combi_crop not the same:
+    if crop != file_props[his_file]['combi_crop']:
+        if crop in ('ri2', 'wwh'):
+            raise ValueError('Invalid subcrop type before combination')
+        elif crop == 'swh': # whe = swh+wwh
+            his_file2 = his_file.replace('_yield-swh-', '_yield-wwh-')
+        elif crop == 'ri1': # ric = ri1+ri2
+            his_file2 = his_file.replace('_yield-ri1-', '_yield-ri2-')
+        else:
+            his_file2 = None
+        if his_file2 and isfile(join(input_dir, his_file2)):
+            haz_his2 = RelativeCropyield()
+            haz_his2.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file2, bbox=bbox,
+                                scenario=file_props[his_file]['scenario'],
+                                yearrange=np.array([file_props[his_file]['startyear'],
+                                                    file_props[his_file]['endyear']]))
+            # sum intensities of subcrops while intensity is still abs. yield:
+            haz_his.intensity = haz_his.intensity + haz_his2.intensity
+            haz_his.crop = file_props[his_file]['combi_crop']
+        else: # not matching sub crop file found
+            print(f'sub crop file not found: {his_file2}')
+            file_props[his_file]['combi_crop'] = file_props[his_file]['crop']
     # hazard intensity is transformed from absolute yield [t / (ha * yr)]
     # to yield relative to historical mean of same run (fractional yield):
     hist_mean = haz_his.calc_mean(yearrange_mean)
     haz_his.set_rel_yield_to_int(hist_mean)
 
-    crop_irr = file_props[his_file]['crop'] + '-' + file_props[his_file]['irr']
+    crop_irr = file_props[his_file]['combi_crop_irr']
     if file_props[his_file]['scenario'] == 'ISIMIP2a':
         filename = ('haz' + '_' + file_props[his_file]['ag_model'] + '_' +
                     file_props[his_file]['cl_model'] +'_' + file_props[his_file]['bc'] +
@@ -728,7 +779,6 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX, ye
                     '_' + file_props[his_file]['soc'] + '_' + file_props[his_file]['co2'] +
                     '_' + crop_irr + '_' + str(file_props[his_file]['startyear']) + '-' +
                     str(file_props[his_file]['endyear']) + '.hdf5')
-
 
     return haz_his, filename, hist_mean
 
@@ -778,10 +828,41 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                                 co2=file_props[his_file]['co2'],
                                 crop=file_props[his_file]['crop'],
                                 irr=file_props[his_file]['irr'])
+
+    crop = file_props[his_file]['crop']
+    # combine subcrops if crop and combi_crop not the same:
+    if crop != file_props[his_file]['combi_crop']:
+        if crop in ('ri2', 'wwh'):
+            raise ValueError('Invalid subcrop type before combination')
+        elif crop == 'swh': # whe = swh+wwh
+            fut_file2 = fut_file.replace('_yield-swh-', '_yield-wwh-')
+        elif crop == 'ri1': # ric = ri1+ri2
+            fut_file2 = fut_file.replace('_yield-ri1-', '_yield-ri2-')
+        else:
+            fut_file2 = None
+        if fut_file2 and isfile(join(input_dir, fut_file2)):
+            haz_fut2 = RelativeCropyield()
+            haz_fut2.set_from_isimip_netcdf(input_dir=input_dir, filename=fut_file2,
+                                bbox=bbox, yearrange=yearrange_fut,
+                                ag_model=file_props[his_file]['ag_model'],
+                                cl_model=file_props[his_file]['cl_model'],
+                                bias_corr=file_props[his_file]['bias_corr'],
+                                scenario=scenario,
+                                soc=file_props[his_file]['soc'],
+                                co2=file_props[his_file]['co2'],
+                                crop=file_props[his_file]['crop'],
+                                irr=file_props[his_file]['irr'])
+            # sum intensities of subcrops while intensity is still abs. yield:
+            haz_fut.intensity = haz_fut.intensity + haz_fut2.intensity
+            haz_fut.crop = file_props[his_file]['combi_crop']
+        else: # not matching sub crop file found
+            print(f'sub crop file not found: {fut_file2}')
+            file_props[his_file]['combi_crop'] = file_props[his_file]['crop']
+
     haz_fut.set_rel_yield_to_int(hist_mean) # set intensity to relative yield
     filename = ('haz' + '_' + file_props[his_file]['ag_model'] + '_' +
                 file_props[his_file]['cl_model'] + '_' + scenario + '_' +
                 file_props[his_file]['soc'] + '_' + file_props[his_file]['co2'] +
-                '_' + file_props[his_file]['crop'] + '-' + file_props[his_file]['irr']+ '_' +
+                '_' + file_props[his_file]['combi_crop'] + '-' + file_props[his_file]['irr']+ '_' +
                 str(startyear) + '-' + str(endyear) + '.hdf5')
     return haz_fut, filename

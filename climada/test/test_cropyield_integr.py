@@ -133,7 +133,7 @@ class TestIntegr(unittest.TestCase):
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
 
         (his_file_list, file_props, hist_mean_per_crop, 
-          scenario_list, crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
+          scenario_list, crop_list, combi_crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
                                                       bbox=bbox, isimip_run = 'test_file', 
                                                       yearrange_his = np.array([1980,2005]))
         yearrange_mean = (1980, 2005)
