@@ -30,6 +30,8 @@ __all__ = ['init']
 
 NGI_UNEP_DIR = SYSTEM_DIR.joinpath('ls_pr_NGI_UNEP')
 NGI_UNEP_DIR.mkdir(parents=True, exist_ok=True)
+GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
+GSDP_DIR.mkdir(parents=True, exist_ok=True)
 REPO_DATA = {
     'data/system': [
         ISIMIP_GPWV3_NATID_150AS,
@@ -53,6 +55,11 @@ REPO_DATA = {
         NGI_UNEP_DIR.joinpath('ls_pr.tfw'),
         NGI_UNEP_DIR.joinpath('ls_pr.tif'),
         NGI_UNEP_DIR.joinpath('ls_pr.xml'),
+    ],
+    'data/system/GSDP': [
+        GSDP_DIR.joinpath(f'{cc}_GDSP.xls')
+        for cc in ['AUS', 'BRA', 'CAN', 'CHE', 'CHN', 'DEU', 'FRA', 'IDN', 'IND', 'JPN', 'MEX',
+                   'TUR', 'USA', 'ZAF']
     ],
     'data/demo': [
         ENT_DEMO_TODAY,
