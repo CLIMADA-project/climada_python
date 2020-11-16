@@ -33,6 +33,7 @@ import shapely.geometry
 from scipy import sparse
 import scipy.stats
 import h5py
+import xarray as xr
 
 
 from climada.hazard.base import Hazard
@@ -48,7 +49,7 @@ HAZ_TYPE = 'RC'
 
 INT_DEF = 'Yearly Yield'
 
-BBOX = np.array([-180, -85, 180, 85])  # [Lon min, lat min, lon max, lat max]
+BBOX = (-180, -85, 180, 85)  # [Lon min, lat min, lon max, lat max]
 """"Default geographical bounding box of the total global agricultural land extent"""
 
 # ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
@@ -105,7 +106,7 @@ class RelativeCropyield(Hazard):
         self.crop = ''
         self.intensity_def = INT_DEF
 
-    def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=BBOX,
+    def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=None,
                             yearrange=None, ag_model=None, cl_model=None, bias_corr=None,
                             scenario=None, soc=None, co2=None, crop=None,
                             irr=None, fn_str_var=FN_STR_VAR):
@@ -143,12 +144,10 @@ class RelativeCropyield(Hazard):
         """
         if scenario is None: scenario = 'historical'
         if bias_corr is None: bias_corr = 'ewembi'
-        if input_dir is not None:
-            if not os.path.exists(input_dir):
-                LOGGER.error('Input directory %s does not exist', input_dir)
-                raise NameError
-        else:
-            LOGGER.error('Input directory %s not set', input_dir)
+        if bbox is None: bbox = BBOX
+        if input_dir is None: input_dir = INPUT_DIR
+        if not os.path.exists(input_dir):
+            LOGGER.error('Input directory %s does not exist', input_dir)
             raise NameError
 
         # The filename is set or other variables (cl_model, scenario) are extracted of the
@@ -472,8 +471,8 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
             output_list (list): list of generated output data (hazards and historical mean)
     """
     if isimip_run is None: isimip_run = 'ISIMIP2b'
-    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
-                 f.startswith('.')]
+    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if
+                 'yield' in f if not f.startswith('.')]
 
     # generate output directories if they do not exist yet
     if not os.path.exists(output_dir):
@@ -512,6 +511,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
         filename_list.append(filename)
         if return_data: output_list.append(haz_his)
+        else: output_list.append(None)
         if save:
             haz_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
@@ -543,6 +543,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                     if save:
                         haz_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
                     if return_data: output_list.append(haz_fut)
+                    else: output_list.append(None)
 
                 if scenario == 'rcp26': # also test for extended
                     # check whether future file exists for given historical file and scenario:
@@ -571,6 +572,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                                                                              'Hazard',
                                                                              filename))
                         if return_data: output_list.append(haz_fut)
+                        else: output_list.append(None)
 
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5
     # in output_dir (required for full exposure set preparation):
@@ -635,12 +637,12 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
                     continue
                 if crop == 'ri1': # first harvest rice 
                     combi_crop = 'ric'
-                    if not isfile(join(input_dir, file.replace('yield-ri1-', 'yield-ri2-'))):
-                        continue # skip ri1 runs without equivalent ri2 run
+                    # if not isfile(join(input_dir, file.replace('yield-ri1-', 'yield-ri2-'))):
+                    #     continue # skip ri1 runs without equivalent ri2 run
                 if crop == 'swh': # spring wheat
                     combi_crop = 'whe'
-                    if not isfile(join(input_dir, file.replace('yield-swh-', 'yield-wwh-'))):
-                        continue # skip swh runs without equivalent wwh run
+                    # if not isfile(join(input_dir, file.replace('yield-swh-', 'yield-wwh-'))):
+                    #     continue # skip swh runs without equivalent wwh run
             if scenario == 'historical':
                 his_file_list.append(file)
                 if (yearrange_his is None) and (isimip_run == 'ISIMIP2b'):
@@ -761,12 +763,20 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                                 scenario=file_props[his_file]['scenario'],
                                 yearrange=np.array([file_props[his_file]['startyear'],
                                                     file_props[his_file]['endyear']]))
+            if crop == 'swh':
+            # mask of winter wheat in spring wheat and vice versa: 
+                whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
+                haz_his.intensity = sparse.csr_matrix(np.multiply(haz_his.intensity.todense(),
+                                                        whe_mask.swh_mask.values.flatten()
+                                                        )
+                                            )
+                haz_his2.intensity = sparse.csr_matrix(np.multiply(haz_his2.intensity.todense(),
+                                                        whe_mask.wwh_mask.values.flatten()
+                                                        )
+                                            )
             # sum intensities of subcrops while intensity is still abs. yield:
             haz_his.intensity = haz_his.intensity + haz_his2.intensity
             haz_his.crop = file_props[his_file]['combi_crop']
-        else: # not matching sub crop file found
-            print(f'sub crop file not found: {his_file2}')
-            file_props[his_file]['combi_crop'] = file_props[his_file]['crop']
     # hazard intensity is transformed from absolute yield [t / (ha * yr)]
     # to yield relative to historical mean of same run (fractional yield):
     hist_mean = haz_his.calc_mean(yearrange_mean)
@@ -858,12 +868,20 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                                 co2=file_props[his_file]['co2'],
                                 crop=file_props[his_file]['crop'],
                                 irr=file_props[his_file]['irr'])
+            if crop == 'swh':
+            # mask of winter wheat in spring wheat and vice versa: 
+                whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
+                haz_fut.intensity = sparse.csr_matrix(np.multiply(haz_fut.intensity.todense(),
+                                                        whe_mask.swh_mask.values.flatten()
+                                                        )
+                                            )
+                haz_fut2.intensity = sparse.csr_matrix(np.multiply(haz_fut2.intensity.todense(),
+                                                        whe_mask.wwh_mask.values.flatten()
+                                                        )
+                                            )
             # sum intensities of subcrops while intensity is still abs. yield:
             haz_fut.intensity = haz_fut.intensity + haz_fut2.intensity
             haz_fut.crop = file_props[his_file]['combi_crop']
-        else: # not matching sub crop file found
-            print(f'sub crop file not found: {fut_file2}')
-            file_props[his_file]['combi_crop'] = file_props[his_file]['crop']
 
     haz_fut.set_rel_yield_to_int(hist_mean) # set intensity to relative yield
     filename = ('haz' + '_' + file_props[his_file]['ag_model'] + '_' +
@@ -872,3 +890,24 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                 '_' + file_props[his_file]['combi_crop'] + '-' + file_props[his_file]['irr']+ '_' +
                 str(startyear) + '-' + str(endyear) + '.hdf5')
     return haz_fut, filename
+
+def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
+    """for ISIMIP3, get masks for spring wheat (swh) and winter wheat (wwh).
+    Required in set_multiple_rc_from_isimip() if isimip_version is ISIMIP3b and
+    combine_crops is True.
+    
+    Optional Parameters:
+        input_dir (str or Path): path to directory containing input file
+        filename (str): name of file
+        bbox (tuple): geogr. bounding box, tuple or array with for elements.
+
+    Returns:
+        whe_mask (xarray)"""
+
+    if input_dir is None: input_dir = INPUT_DIR
+    if filename is None: filename= 'winter_and_spring_wheat_areas_phase3.nc4'
+    if bbox is None: bbox = BBOX
+
+    whe_mask = xr.open_dataset(join (input_dir, filename), decode_times=False)
+    [lonmin, latmin, lonmax, latmax] = bbox
+    return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
