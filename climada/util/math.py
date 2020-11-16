@@ -60,7 +60,7 @@ def sig_dig_list(iterable, n_sig_dig=16):
     """
     return np.vectorize(sig_dig)(iterable, n_sig_dig)
 
-def money_words(values, n_digits=None):
+def money_words(values, n_digits=None, abbreviations=None):
     """
     Converts values to closest common monetary unit (K, M Bn, Tn, ...)
 
@@ -71,6 +71,9 @@ def money_words(values, n_digits=None):
     n_digits : int, optional
         Number of significant digits to return. The default is all digits
         are returned.
+    abbreviations: string, optional
+        Name of the abbreviations for the money 1000s counts
+        (e.g., 'k', 'm', 'bn'). Default is ABBREV.
 
     Returns
     -------
@@ -81,6 +84,9 @@ def money_words(values, n_digits=None):
 
     """
     
+    if abbreviations is None:
+        abbreviations= ABBREV
+    
     exponents = [math.log10(abs(val)) for val in values]
     max_exp = max(exponents)
     min_exp = min(exponents)
@@ -90,14 +96,14 @@ def money_words(values, n_digits=None):
     name = ''
     try:
         idx = int(avg_exp/3)
-        name = ABBREV[idx] 
+        name = abbreviations[idx] 
         if idx == 0:
             mon_val = np.array(values),
             return (mon_val, name)
     except IndexError: 
-        LOGGER.warning(f"The numbers are larger than 1000{ABBREV[-1]}")
-        name = ABBREV[-1]
-        largest_exp = (len(ABBREV)-1) * 3
+        LOGGER.warning(f"The numbers are larger than 1000{abbreviations[-1]}")
+        name = abbreviations[-1]
+        largest_exp = (len(abbreviations)-1) * 3
         mon_val = values / 10**largest_exp
         return (mon_val , name)   
     mon_val = np.array(values) / 10**avg_exp
