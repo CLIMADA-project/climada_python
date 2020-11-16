@@ -44,6 +44,7 @@ from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.constants import DEF_CRS
+import climada.util.dates_times as util_dt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +57,9 @@ class Impact():
             hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
-        date (np.array): date of events
+        date (np.array): date if events as integer date corresponding to the
+            proleptic Gregorian ordinal, where January 1 of year 1 has
+            ordinal 1 (ordinal format of datetime library)
         coord_exp (np.ndarray): exposures coordinates [lat, lon] (in degrees)
         eai_exp (np.array): expected annual impact for each exposure
         at_event (np.array): impact for each hazard event
@@ -510,7 +513,7 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def calc_impact_year_set(self, all_years=True, year_range=[]):
+    def calc_impact_year_set(self, all_years=True, year_range=None):
         """Calculate yearly impact from impact data.
 
         Parameters:
@@ -521,6 +524,9 @@ class Impact():
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
+        if year_range is None:
+            year_range = []
+
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
         if orig_year.size == 0 and len(year_range) == 0:
@@ -939,6 +945,155 @@ class Impact():
         imp_fit[wrong_inten] = 0.
 
         return imp_fit
+
+    @staticmethod
+    def get_per_event_attr(event_obj):
+        """
+        Get the attribute names of a CLIMADA object that are defined per event (as list
+        or matrix)
+
+        Parameters
+        ----------
+        event_obj : object of class with .event_id attribute
+            The object from which attribute names are taken.
+
+        Returns
+        -------
+        per_event_attrs : list[str]
+            List of names of the per event attributes of object
+
+        """
+
+        per_event_attrs = []
+        nb_events = len(event_obj.event_id)
+        # select the attributes from hazard object with a length or a
+        # row-dimension equal to the number of event_ids
+        for attr, value in event_obj.__dict__.items():
+            try:
+                if len(value) == nb_events:
+                    per_event_attrs.append(attr)
+            except TypeError:
+                try:
+                    if nb_events in value.shape:
+                        per_event_attrs.append(attr)
+                except AttributeError:
+                    pass
+        return per_event_attrs
+
+
+    def select(self,
+               event_ids=None, event_names=None, dates=None,
+               coord_exp=None):
+        """
+        Select a subset of events and/or exposure points from the impact.
+        If multiple variables are set, it returns all the impacts matching
+        at least one of the conditions.
+
+        Parameters
+        ----------
+        event_ids : list[int], optional
+            Selection of events by their id. The default is None.
+        event_names : list[str], optional
+            Selection of events by their name. The default is None.
+        dates : tuple(), optional
+            Tuple of dates to select the events in between. The default is None.
+        coord_exp : (np.ndarray), optional]
+            Selection of exposures coordinates [lat, lon] (in degrees)
+            The default is None.
+
+        Raises
+        ------
+        ValueError
+            If the impact matrix is missing, the eai_exp and aai_agg cannot
+            be updated for a selection of events and/or exposures.
+
+        Returns
+        -------
+        imp : Impact()
+            A new impact object with a selection of events and/or exposures
+
+        """
+
+        if self.imp_mat.shape == (0, 0):
+            raise ValueError("The impact matrix is missing. eai_exp and\
+aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
+
+        imp = copy.deepcopy(self)
+        nb_events = imp.event_id.size
+        nb_exp = len(imp.coord_exp)
+        
+        sel_exp = np.arange(nb_exp)
+        # filter exposures
+        if isinstance(coord_exp, np.ndarray):
+            sel_exp = [j
+                       for j, coord in enumerate(imp.coord_exp)
+                       if coord in coord_exp
+                      ]
+
+        # filter events by date
+        if dates is None:
+            sel_dt = np.zeros(nb_events, dtype=bool)
+        else:
+            sel_dt = np.ones(nb_events, dtype=bool)
+            date_ini, date_end = dates
+            if isinstance(date_ini, str):
+                date_ini = util_dt.str_to_date(date_ini)
+                date_end = util_dt.str_to_date(date_end)
+            sel_dt &= (date_ini <= imp.date) & (imp.date <= date_end)
+            if not np.any(sel_dt):
+                LOGGER.info('No impact event in date range %s.', dates)
+                return None     
+        sel_dt = list(np.argwhere(sel_dt).reshape(-1))
+        
+        # filter events by id
+        if isinstance(event_ids, list):
+            sel_id = [list(imp.event_id).index(_id) for _id in event_ids]
+        else:
+            sel_id = []
+
+
+        # filter events by name
+        if isinstance(event_names, list):
+            sel_na= [list(imp.event_name).index(name) for name in event_names]
+        else:
+            sel_na = []
+
+        
+        #select events with machting id, name or date field.
+        sel_ev = [idx for idx in set(sel_dt + sel_id+  sel_na)]
+        
+        #if no date, name or id is set, take all events:
+        if (dates, event_ids, event_names) == (None, None, None):
+            sel_ev = np.arange(nb_events)
+
+        # set attributes according to selection
+        per_event_attr = self.get_per_event_attr(imp)
+        for (attr, value) in imp.__dict__.items():
+            if attr in per_event_attr:
+                if isinstance(value, np.ndarray) and value.ndim == 1 \
+                                                   and value.size > 0:
+                    setattr(imp, attr, value[sel_ev])
+                elif isinstance(value, sparse.csr_matrix):
+                    setattr(imp, attr, value[sel_ev, :][:, sel_exp])
+                elif isinstance(value, list) and value:
+                    setattr(imp, attr, [value[idx] for idx in sel_ev])
+
+        # cast frequency vector into 2d array for sparse matrix multiplication
+        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
+        # .A1 reduce 1d matrix to 1d array
+        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1 
+        imp.aai_agg = imp.eai_exp.sum()
+
+        if len(sel_exp) < nb_exp:
+            imp.coord_exp = imp.coord_exp[sel_exp]
+            # .A1 reduce 1d matrix to 1d array
+            imp.at_event = imp.imp_mat.sum(axis=1).A1
+            imp.tot_value = None
+            LOGGER.warning("The total value cannot be computed for\
+                           a subset of exposures and is set to None")
+
+        return imp
+
 
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
