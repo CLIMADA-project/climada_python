@@ -627,14 +627,18 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             ag_model, cl_model, bias_corr, scenario, soc, co2, crop_prop, *_ = file.split('_')
             _, crop, irr = crop_prop.split('-')
             combi_crop = crop
-            if combine_subcrops:
+            if combine_subcrops: # applies to ISIMIP3b: sum yield for sub crop types
                 if crop in ('ri2', 'wwh'):
-                    # ignore ri2 (2nd harvest rice) and wwh (winter wheat) at this step:
+                    # skip ri2 (2nd harvest rice) and wwh (winter wheat) at this step
                     continue
-                if crop == 'ri1':
+                if crop == 'ri1': # first harvest rice 
                     combi_crop = 'ric'
-                if crop == 'swh':
+                    if not isfile(join(input_dir, file.replace('yield-ri1-', 'yield-ri2-'))):
+                        continue # skip ri1 runs without equivalent ri2 run
+                if crop == 'swh': # spring wheat
                     combi_crop = 'whe'
+                    if not isfile(join(input_dir, file.replace('yield-swh-', 'yield-wwh-'))):
+                        continue # skip swh runs without equivalent wwh run
             if scenario == 'historical':
                 his_file_list.append(file)
                 if (yearrange_his is None) and (isimip_run == 'ISIMIP2b'):
