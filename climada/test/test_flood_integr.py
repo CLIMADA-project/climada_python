@@ -20,10 +20,13 @@ Test flood module.
 """
 import unittest
 from climada.hazard.river_flood import RiverFlood
-from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC, DEMO_GDP2ASSET
+from climada.util.constants import DEMO_GDP2ASSET  # , HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.engine import Impact
+
+HAZ_DEMO_FLDDPH = '/home/insauer/Climada/test_data/flddph_2000_DEMO.nc'
+HAZ_DEMO_FLDFRC = '/home/insauer/Climada/test_data/fldfrc_2000_DEMO.nc'
 
 
 class TestRiverFlood(unittest.TestCase):
