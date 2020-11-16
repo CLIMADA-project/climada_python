@@ -22,11 +22,8 @@ import unittest
 import datetime as dt
 import numpy as np
 from climada.hazard.river_flood import RiverFlood
-#from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
+from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.hazard.centroids import Centroids
-
-HAZ_DEMO_FLDDPH = '/home/insauer/Climada/test_data/flddph_2000_DEMO.nc'
-HAZ_DEMO_FLDFRC = '/home/insauer/Climada/test_data/fldfrc_2000_DEMO.nc'
 
 
 class TestRiverFlood(unittest.TestCase):
