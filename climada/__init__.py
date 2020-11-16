@@ -57,7 +57,7 @@ REPO_DATA = {
         NGI_UNEP_DIR.joinpath('ls_pr.xml'),
     ],
     'data/system/GSDP': [
-        GSDP_DIR.joinpath(f'{cc}_GDSP.xls')
+        GSDP_DIR.joinpath(f'{cc}_GSDP.xls')
         for cc in ['AUS', 'BRA', 'CAN', 'CHE', 'CHN', 'DEU', 'FRA', 'IDN', 'IND', 'JPN', 'MEX',
                    'TUR', 'USA', 'ZAF']
     ],
