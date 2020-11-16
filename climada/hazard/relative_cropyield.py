@@ -492,9 +492,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                                                          bbox=bbox, isimip_run=isimip_run,
                                                          yearrange_his=yearrange_his,
                                                          combine_subcrops=combine_subcrops)
-    print(crop_list)  # TODO remove print
-    print(combi_crop_list)  # TODO remove print
-    print(his_file_list)  # TODO remove print
+
     if (yearrange_mean is None) and (isimip_run == 'ISIMIP2b'):
         yearrange_mean = YEARCHUNKS[file_props[his_file_list[0]]['scenario']]['yearrange_mean']
     elif (yearrange_mean is None) and (isimip_run == 'ISIMIP3b'):
@@ -513,13 +511,17 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         hist_mean_per_crop[file_props[his_file]['combi_crop_irr']]['idx'] += 1
 
         filename_list.append(filename)
-        output_list.append(haz_his)
+        if return_data: output_list.append(haz_his)
+        if save:
+            haz_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
 
         if isimip_run in ('ISIMIP2b', 'ISIMIP3b'):
             # compute the relative yield for all future scenarios with the corresponding
             # historic mean
             for scenario in scenario_list: # loop over all scenarios except historical
                 # check whether future file exists for given historical file and scenario:
+                haz_fut = None
+                filename = None
                 fut_file = '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
                                     %(file_props[his_file]['ag_model'],
                                       file_props[his_file]['cl_model'],
@@ -538,7 +540,10 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                     haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
                                                      input_dir=input_dir, bbox=bbox, fut_file=fut_file)
                     filename_list.append(filename)
-                    output_list.append(haz_fut)
+                    if save:
+                        haz_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
+                    if return_data: output_list.append(haz_fut)
+
                 if scenario == 'rcp26': # also test for extended
                     # check whether future file exists for given historical file and scenario:
                     fut_file = '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
@@ -556,10 +561,16 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
                     if os.path.isfile(os.path.join(input_dir, fut_file)):
                         # if true, calculate and save future hazard set:
-                        haz_fut, filename = calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean,
-                                                         input_dir=input_dir, bbox=bbox, fut_file=fut_file)
+                        haz_fut, filename = calc_fut_haz_isimip(his_file, scenario,
+                                                                file_props, hist_mean,
+                                                                input_dir=input_dir,
+                                                                bbox=bbox, fut_file=fut_file)
                         filename_list.append(filename)
-                        output_list.append(haz_fut)
+                        if save:
+                            haz_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir,
+                                                                             'Hazard',
+                                                                             filename))
+                        if return_data: output_list.append(haz_fut)
 
     # calculate mean hist_mean for each crop-irrigation combination and save as hdf5
     # in output_dir (required for full exposure set preparation):
@@ -570,24 +581,15 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         filename_list.append(mean_filename)
         output_list.append(mean)
 
-    if save:
+    if save: # save hist_mean files to hdf5 file:
         for idx, filename in enumerate(filename_list):
-            if 'haz' in filename:
-                output_list[idx].select(reg_id=1).write_hdf5(os.path.join(output_dir,
-                                                                          'Hazard', filename))
-            elif 'mean' in filename:
+            if 'hist_mean_' in filename:
                 mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', filename), 'w')
                 mean_file.create_dataset('mean', data=output_list[idx])
                 mean_file.create_dataset('lat', data=haz_his.centroids.lat)
                 mean_file.create_dataset('lon', data=haz_his.centroids.lon)
                 mean_file.close()
-                # save historic mean as netcdf (saves mean, lat and lon as arrays)
-                # mean_file = xr.Dataset({'mean': mean, 'lat': haz_his.centroids.lat, \
-                #                         'lon': haz_his.centroids.lon})
-                # mean_file.to_netcdf(mean_dir+'hist_mean_'+crop_irr+'.nc')
 
-    if not return_data:
-        return filename_list
     return filename_list, output_list
 
 def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
@@ -808,7 +810,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
 
         Return:
             haz_fut (RelativeCropyield): future hazard
-            filename (string): name to save historical hazard
+            filename (string): name to save future hazard
     """
     if yearrange_fut is None:
         if isinstance(fut_file, str) and (len(fut_file.split('_')[-2]) == 4):
