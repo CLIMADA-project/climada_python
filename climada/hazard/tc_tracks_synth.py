@@ -177,20 +177,24 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     for i_ens in range(nb_synth_tracks):
         i_track = track.copy(True)
 
-        # angular perturbation
+        # select angular perturbation for that synthetic track
         i_start_ang = 2 * nb_synth_tracks + i_ens * n_seg
         i_end_ang = i_start_ang + track.time.size - 1
+        # scale by maximum perturbation and time step in hour (temporal-resolution independent)
         ang_pert = dt * np.degrees(max_ddirection * (2 * rnd_vec[i_start_ang:i_end_ang] - 1))
         ang_pert_cum = np.cumsum(ang_pert)
+
+        # select translational speed perturbation for that synthetic track
+        i_start_trans = 2 * nb_synth_tracks + nb_synth_tracks * n_seg + i_ens * n_seg
+        i_end_trans = i_start_trans + track.time.size - 1
+        # scale by maximum perturbation and time step in hour (temporal-resolution independent)
+        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_start_trans:i_end_trans] - 1)
+
+        # get bearings and angular distance for the original track
         bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
         angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
 
-        # for translational speed perturbation:
-        i_start_trans = 2 * nb_synth_tracks + nb_synth_tracks * n_seg + i_ens * n_seg
-        i_end_trans = i_start_trans + track.time.size - 1
-        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_start_trans:i_end_trans] - 1)
-
-        # new lon/lat
+        # apply perturbation to lon / lat
         new_lon = np.zeros_like(i_track.lon.values)
         new_lat = np.zeros_like(i_track.lat.values)
         new_lon[0] = i_track.lon.values[0] + xy_ini[0, i_ens]
