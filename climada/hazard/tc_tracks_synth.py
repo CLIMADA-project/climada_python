@@ -45,12 +45,19 @@ def calc_random_walk(tracks,
                      seed=CONFIG['trop_cyclone']['random_seed'],
                      decay=True):
     """
-    Generate synthetic tracks based on directed random walk. An ensemble of
-    tracks is computed for every track contained.
-    The track starting point location is perturbed by max_shift_ini. Then, each segment
-    between two consecutive points is perturbed in direction and distance (or
-    translational speed), with a given autocorrelation in both perturbations.
-    Perturbations in track direction and autocorrelations in perturbations are
+    Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
+    synthetic tracks is computed for every track contained in self.
+    The methodology perturbs the tracks locations, and if decay is True it additionally
+    includes decay of wind speed and central pressure drop after landfall. No other track
+    parameter is perturbed.
+    The track starting point location is perturbed by random uniform values of
+    magnitude up to max_shift_ini in both longitude and latitude. Then, each segment
+    between two consecutive points is perturbed in direction and distance (i.e.,
+    translational speed). These perturbations can be correlated in time, i.e.,
+    the perturbation in direction applied to segment i is correlated with the perturbation
+    in direction applied to segment i-1 (and similarly for the perturbation in translational
+    speed).
+    Perturbations in track direction and temporal auto-correlations in perturbations are
     on an hourly basis, and the perturbations in translational speed is relative.
     Hence, the parameter values are relatively insensitive to the temporal
     resolution of the tracks. Note however that all tracks should be at the same
