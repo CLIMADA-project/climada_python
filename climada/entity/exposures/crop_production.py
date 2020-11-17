@@ -550,11 +550,9 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
                          + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename_expo)
-        output_list.append(crop_production)
         crop_production.write_hdf5(os.path.join(output_dir, 'Exposure', filename_expo))
+        if return_data: output_list.append(crop_production)
 
-    if not return_data:
-        return filename_list
     return filename_list, output_list
 
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
