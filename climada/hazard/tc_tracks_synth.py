@@ -308,10 +308,6 @@ def _h_ac(x, y, theta):
     x_next : float
         Next value in the series.
     """
-    # https://stats.stackexchange.com/questions/48086/
-    #   algorithm-to-produce-autocorrelated-uniformly-distributed-number
-    # Note that the definition of Gamma is not very clear there, but the
-    # formulation below does what the text says.
     gamma = np.abs(np.mod(theta, np.pi) - \
                    np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
     x_next = 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
