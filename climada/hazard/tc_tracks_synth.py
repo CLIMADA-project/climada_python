@@ -39,7 +39,7 @@ def calc_random_walk(tracks,
                      nb_synth_tracks=9,
                      max_shift_ini=0.75,
                      max_dspeed_rel=0.3,
-                     max_ddir=np.pi / 180,
+                     max_ddirection=np.pi / 180,
                      autocorr_dspeed=0.85,
                      autocorr_ddir=0.85,
                      seed=CONFIG['trop_cyclone']['random_seed'],
@@ -63,9 +63,9 @@ def calc_random_walk(tracks,
     resolution of the tracks. Note however that all tracks should be at the same
     temporal resolution, which can be achieved using equal_timestep().
     max_dspeed_rel and autocorr_dspeed control the spread along the track ('what distance
-    does the track run for'), while max_ddir and autocorr_ddir control the spread
+    does the track run for'), while max_ddirection and autocorr_ddir control the spread
     perpendicular to the track movement ('how does the track diverge in direction').
-    max_dspeed_rel and max_ddir control the amplitude of perturbations at each track
+    max_dspeed_rel and max_ddirection control the amplitude of perturbations at each track
     timestep but perturbations may tend to compensate each other over time, leading to
     a similar location at the end of the track, while autocorr_dspeed and autocorr_ddir
     control how these perturbations persist in time and hence the amplitude of the
@@ -82,7 +82,7 @@ def calc_random_walk(tracks,
             Default: 0.75.
         max_dspeed_rel (float, optional): amplitude of translation speed
             perturbation in relative terms (e.g., 0.2 for +/-20%). Default: 0.3.
-        max_ddir (float, optional): amplitude of track direction (bearing angle) perturbation
+        max_ddirection (float, optional): amplitude of track direction (bearing angle) perturbation
             per hour, in radians. Default: pi/180.
         autocorr_dspeed (float, optional): autocorrelation of translation speed perturbation
             at a lag of 1 hour. Default: 0.85.
@@ -129,11 +129,11 @@ def calc_random_walk(tracks,
                                   itertools.repeat(nb_synth_tracks, tracks.size),
                                   itertools.repeat(max_shift_ini, tracks.size),
                                   itertools.repeat(max_dspeed_rel, tracks.size),
-                                  itertools.repeat(max_ddir, tracks.size),
+                                  itertools.repeat(max_ddirection, tracks.size),
                                   random_vec, chunksize=chunksize)
     else:
         new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
-                                 max_dspeed_rel, max_ddir, rand)
+                                 max_dspeed_rel, max_ddirection, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
     tracks.data = sum(new_ens, [])
@@ -158,7 +158,7 @@ def calc_random_walk(tracks,
 
 
 @jit(parallel=True)
-def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddir, rnd_vec):
+def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
     """Interpolate values of one track.
 
     Parameters:
@@ -180,7 +180,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
         # angular perturbation
         i_start_ang = 2 * nb_synth_tracks + i_ens * n_seg
         i_in_ang = (i_start_ang, i_start_ang + track.time.size - 1)
-        ang_pert = dt * np.degrees(max_ddir * (2 * rnd_vec[i_in_ang[0]:i_in_ang[1]] - 1))
+        ang_pert = dt * np.degrees(max_ddirection * (2 * rnd_vec[i_in_ang[0]:i_in_ang[1]] - 1))
         ang_pert_cum = np.cumsum(ang_pert)
         bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
         angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
