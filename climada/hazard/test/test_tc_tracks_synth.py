@@ -456,23 +456,16 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         ens_size = 2
-        tc_track.calc_random_walk(ens_size=ens_size, max_shift_ini=0, max_dspeed_rel=0, max_ddir=0, decay=False)
-        self.assertTrue(np.all(tc_track.data[0].time.values - tc_track.data[1].time.values == np.timedelta64(0)))
-        self.assertTrue(np.all(tc_track.data[0].time.values - tc_track.data[2].time.values == np.timedelta64(0)))
-        self.assertTrue(np.all(np.abs((tc_track.data[0].lon.values - tc_track.data[1].lon.values)) < 0.0001))
-        self.assertTrue(np.all(np.abs((tc_track.data[0].lat.values - tc_track.data[1].lat.values)) < 0.0001))
-        self.assertTrue(np.all(np.abs((tc_track.data[0].lon.values - tc_track.data[2].lon.values)) < 0.0001))
-        self.assertTrue(np.all(np.abs((tc_track.data[0].lat.values - tc_track.data[2].lat.values)) < 0.0001))
-        self.assertTrue(np.all(tc_track.data[0].time_step.values - tc_track.data[1].time_step.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].radius_max_wind.values - tc_track.data[1].radius_max_wind.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].max_sustained_wind.values - tc_track.data[1].max_sustained_wind.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].central_pressure.values - tc_track.data[1].central_pressure.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].environmental_pressure.values - tc_track.data[1].environmental_pressure.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].time_step.values - tc_track.data[2].time_step.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].radius_max_wind.values - tc_track.data[2].radius_max_wind.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].max_sustained_wind.values - tc_track.data[2].max_sustained_wind.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].central_pressure.values - tc_track.data[2].central_pressure.values == 0))
-        self.assertTrue(np.all(tc_track.data[0].environmental_pressure.values - tc_track.data[2].environmental_pressure.values == 0))
+        tc_track.calc_random_walk(ens_size=ens_size,
+                                  max_shift_ini=0, max_dspeed_rel=0, max_ddir=0, decay=False)
+        orig_track = tc_track.data[0]
+        for syn_track in tc_track.data[1:]:
+            np.testing.assert_allclose(orig_track.lon.values, syn_track.lon.values, atol=1e-4)
+            np.testing.assert_allclose(orig_track.lat.values, syn_track.lat.values, atol=1e-4)
+            for varname in ["time", "time_step", "radius_max_wind", "max_sustained_wind",
+                            "central_pressure", "environmental_pressure"]:
+                np.testing.assert_array_equal(orig_track[varname].values,
+                                              syn_track[varname].values)
 
 # Execute Tests
 if __name__ == "__main__":
