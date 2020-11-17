@@ -988,6 +988,16 @@ class Impact():
         Select a subset of events and/or exposure points from the impact.
         If multiple variables are set, it returns all the impacts matching
         at least one of the conditions.
+        
+        Note: the frequencies are NOT adjusted. Method to adjust frequencies
+        and obtain correct eai_exp:
+            1- Select subset of impact according to your choice
+            imp = impact.select(...)
+            2- Adjust manually the frequency of the subset of impact
+            imp.frequency = [...]
+            3- Use select without arguments to select all events and recompute
+            the eai_exp with the updated frequencies.
+            imp = imp.select()
 
         Parameters
         ----------
@@ -1066,7 +1076,9 @@ aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
         if (dates, event_ids, event_names) == (None, None, None):
             sel_ev = np.arange(nb_events)
 
-        # set attributes according to selection
+        # set all attributes that are 'per event', i.e. have a row or a column
+        # of length equal to the number of events (=nb_events), using the 
+        # selection sel_ev.
         per_event_attr = self.get_per_event_attr(imp)
         for (attr, value) in imp.__dict__.items():
             if attr in per_event_attr:
@@ -1077,6 +1089,11 @@ aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
                     setattr(imp, attr, value[sel_ev, :][:, sel_exp])
                 elif isinstance(value, list) and value:
                     setattr(imp, attr, [value[idx] for idx in sel_ev])
+        
+        # Recomputed eai_exp and aai_agg
+        if sel_ev:
+            LOGGER.warning("The eai_exp is computed for the selected subset of\
+events WITHOUT modification of the frequencies.")
 
         # cast frequency vector into 2d array for sparse matrix multiplication
         freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
@@ -1090,7 +1107,7 @@ aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
             imp.at_event = imp.imp_mat.sum(axis=1).A1
             imp.tot_value = None
             LOGGER.warning("The total value cannot be computed for\
-                           a subset of exposures and is set to None")
+a subset of exposures and is set to None")
 
         return imp
 
