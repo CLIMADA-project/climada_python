@@ -666,9 +666,9 @@ class TCTracks():
                                                       land_geom))
             self.data = new_data
 
-    def calc_random_walk(self, ens_size=9, **kwargs):
+    def calc_random_walk(self, nb_synth_tracks=9, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        climada.hazard.tc_tracks_synth.calc_random_walk(self, ens_size=ens_size, **kwargs)
+        climada.hazard.tc_tracks_synth.calc_random_walk(self, nb_synth_tracks=nb_synth_tracks, **kwargs)
 
     @property
     def size(self):
