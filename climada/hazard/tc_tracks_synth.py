@@ -397,7 +397,7 @@ def _get_angular_distance(lon, lat):
     """
     Compute the angular distance of great circle paths defined by consecutive points
 
-    Uses the haversine formulat to get the great circle distance between each pair
+    Uses the haversine formula to get the great circle distance between each pair
     of consecutive points, in decimal degrees.
 
     Parameters
