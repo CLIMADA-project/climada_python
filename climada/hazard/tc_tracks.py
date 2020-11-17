@@ -27,9 +27,6 @@ import glob
 import itertools
 import logging
 import os
-import re
-import shutil
-import warnings
 import shutil
 import warnings
 
@@ -209,6 +206,46 @@ class TCTracks():
             out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
 
         return out
+
+    def tracks_in_exp(self, exposure, buffer=1.0):
+        """
+        Select only the tracks that are in the vincinity (buffer) of an exposure
+        Each each exposure point/geometry is extended to a disc of
+        radius buffer. Each track is converted to a line and extended by a
+        radius buffer.
+
+        Parameters
+        ----------
+        exposure : Exposure
+            Exposure used to selectr tracks
+        buffer : float, optional
+            Size of buffer around exposure (in the units of the exposure.crs)
+            c.f. geopandas.distance.
+            The default is 1.0.
+
+        Returns
+        -------
+        filtered_tracks : climada.hazard.TCTracks()
+            TCTracks object with tracks from tc_tracks intersecting
+            the exposure whitin a buffer distance.
+
+        """
+
+        if buffer <= 0:
+            buffer = 1.0
+            LOGGER.warning(f"buffer={buffer} is invalid. buffer set to 1.0")
+
+        exp_buffer = exposure.buffer(distance=buffer, resolution=0)
+        exp_buffer = exp_buffer.unary_union
+
+        tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
+        select_tracks = tc_tracks_lines.intersects(exp_buffer)
+        tracks_in_exp = [track for j, track in enumerate(self.data) if select_tracks[j]]
+        filtered_tracks= TCTracks()
+        filtered_tracks.append(tracks_in_exp)
+
+        return filtered_tracks
+
 
     def read_ibtracs_netcdf(self, provider=None, storm_id=None,
                             year_range=None, basin=None, estimate_missing=False,
@@ -666,8 +703,8 @@ class TCTracks():
             chaz_ds.time.attrs["missing_value"] = -54786.0
             chaz_ds = xr.decode_cf(chaz_ds)
             chaz_ds['id_no'] = chaz_ds.stormID * 1000 + chaz_ds.ensembleNum
-            for v in ['time', 'longitude', 'latitude']:
-                chaz_ds[v] = chaz_ds[v].expand_dims(ensembleNum=chaz_ds.ensembleNum)
+            for var in ['time', 'longitude', 'latitude']:
+                chaz_ds[var] = chaz_ds[var].expand_dims(ensembleNum=chaz_ds.ensembleNum)
             chaz_ds = chaz_ds.stack(id=("ensembleNum", "stormID"))
             years_uniq = chaz_ds.time.dt.year.data
             years_uniq = np.unique(years_uniq[~np.isnan(years_uniq)])
