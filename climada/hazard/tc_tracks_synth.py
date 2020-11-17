@@ -108,7 +108,7 @@ def calc_random_walk(tracks,
     time_step_h = time_step_h[0]
 
     # number of random value per synthetic track:
-    # 2*nb_synth_tracks for starting points
+    # 2*nb_synth_tracks for starting points (lon, lat)
     # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
     # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
     # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
