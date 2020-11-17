@@ -358,7 +358,6 @@ class TestDecay(unittest.TestCase):
 class TestSynth(unittest.TestCase):
     def test_angle_funs_pass(self):
         """Test functions used by random walk code"""
-        bearings = tc_synth._get_bearing_angle([15, 20, 20], [0, 0, 5]).tolist()
         self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]), np.array([0, 0]))[0], 90.0)
         self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([20, 20]), np.array([0, 5]))[0], 0.0)
         self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]), np.array([0, 0.00001]))[0], 45)
