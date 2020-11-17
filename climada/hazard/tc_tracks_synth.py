@@ -171,7 +171,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     n_dat = track.time.size
     n_seg = n_dat - 1
     xy_ini = max_shift_ini * (2 * rnd_vec[:2 * nb_synth_tracks].reshape((2, nb_synth_tracks)) - 1)
-    dt = np.unique(track['time_step'])[0]
+    [dt] = np.unique(track['time_step'])
 
     ens_track.append(track)
     for i_ens in range(nb_synth_tracks):
