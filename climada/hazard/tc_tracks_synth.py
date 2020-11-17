@@ -36,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def calc_random_walk(tracks,
-                     ens_size=9,
+                     nb_synth_tracks=9,
                      max_shift_ini=0.75,
                      max_dspeed_rel=0.3,
                      max_ddir=np.pi / 180,
@@ -68,7 +68,7 @@ def calc_random_walk(tracks,
 
     Parameters:
         tracks (TCTracks): See `climada.hazard.tc_tracks`.
-        ens_size (int, optional): number of ensemble members per track.
+        nb_synth_tracks (int, optional): number of ensemble members per track.
             Default: 9.
         max_shift_ini (float, optional): amplitude of max random starting point
             shift in decimal degree (up to +/-max_shift_ini for longitude and latitude).
@@ -87,7 +87,7 @@ def calc_random_walk(tracks,
         decay (bool, optional): compute land decay in probabilistic tracks.
             Default: True
     """
-    LOGGER.info('Computing %s synthetic tracks.', ens_size * tracks.size)
+    LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     if seed >= 0:
         np.random.seed(seed)
@@ -101,31 +101,31 @@ def calc_random_walk(tracks,
     time_step_h = time_step_h[0]
 
     # number of random value per synthetic track:
-    # 2*ens_size for starting points
-    # ens_size*(track.time.size-1) for angle and same for translation perturbation
-    # hence sum is ens_size * (2 + 2*(size-1)) = ens_size * 2 * size
+    # 2*nb_synth_tracks for starting points
+    # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
+    # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
     # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
     if autocorr_ddir == 0 and autocorr_dspeed == 0:
-        random_vec = [np.random.uniform(size=ens_size * (2 * track.time.size))
+        random_vec = [np.random.uniform(size=nb_synth_tracks * (2 * track.time.size))
                       for track in tracks.data]
     else:
-        random_vec = [np.concatenate((np.random.uniform(size=ens_size * 2),
-                                      _random_uniform_ac(ens_size * (track.time.size - 1),
+        random_vec = [np.concatenate((np.random.uniform(size=nb_synth_tracks * 2),
+                                      _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
                                                          autocorr_ddir, time_step_h),
-                                      _random_uniform_ac(ens_size * (track.time.size - 1),
+                                      _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
                                                          autocorr_dspeed, time_step_h)))
                       for track in tracks.data]
 
     if tracks.pool:
         chunksize = min(tracks.size // tracks.pool.ncpus, 1000)
         new_ens = tracks.pool.map(_one_rnd_walk, tracks.data,
-                                  itertools.repeat(ens_size, tracks.size),
+                                  itertools.repeat(nb_synth_tracks, tracks.size),
                                   itertools.repeat(max_shift_ini, tracks.size),
                                   itertools.repeat(max_dspeed_rel, tracks.size),
                                   itertools.repeat(max_ddir, tracks.size),
                                   random_vec, chunksize=chunksize)
     else:
-        new_ens = [_one_rnd_walk(track, ens_size, max_shift_ini,
+        new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
                                  max_dspeed_rel, max_ddir, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
@@ -151,7 +151,7 @@ def calc_random_walk(tracks,
 
 
 @jit(parallel=True)
-def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_vec):
+def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddir, rnd_vec):
     """Interpolate values of one track.
 
     Parameters:
@@ -163,15 +163,15 @@ def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_
     ens_track = list()
     n_dat = track.time.size
     n_seg = n_dat - 1
-    xy_ini = max_shift_ini * (2 * rnd_vec[:2 * ens_size].reshape((2, ens_size)) - 1)
+    xy_ini = max_shift_ini * (2 * rnd_vec[:2 * nb_synth_tracks].reshape((2, nb_synth_tracks)) - 1)
     dt = np.unique(track['time_step'])[0]
 
     ens_track.append(track)
-    for i_ens in range(ens_size):
+    for i_ens in range(nb_synth_tracks):
         i_track = track.copy(True)
 
         # angular perturbation
-        i_start_ang = 2 * ens_size + i_ens * n_seg
+        i_start_ang = 2 * nb_synth_tracks + i_ens * n_seg
         i_in_ang = (i_start_ang, i_start_ang + track.time.size - 1)
         ang_pert = dt * np.degrees(max_ddir * (2 * rnd_vec[i_in_ang[0]:i_in_ang[1]] - 1))
         ang_pert_cum = np.cumsum(ang_pert)
@@ -179,7 +179,7 @@ def _one_rnd_walk(track, ens_size, max_shift_ini, max_dspeed_rel, max_ddir, rnd_
         angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
 
         # for translational speed perturbation:
-        i_start_trans = 2 * ens_size + ens_size * n_seg + i_ens * n_seg
+        i_start_trans = 2 * nb_synth_tracks + nb_synth_tracks * n_seg + i_ens * n_seg
         i_in_trans = (i_start_trans, i_start_trans + track.time.size - 1)
         trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_in_trans[0]:i_in_trans[1]] - 1)
 
