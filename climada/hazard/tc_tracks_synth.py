@@ -179,16 +179,16 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
 
         # angular perturbation
         i_start_ang = 2 * nb_synth_tracks + i_ens * n_seg
-        i_in_ang = (i_start_ang, i_start_ang + track.time.size - 1)
-        ang_pert = dt * np.degrees(max_ddirection * (2 * rnd_vec[i_in_ang[0]:i_in_ang[1]] - 1))
+        i_in_ang = i_start_ang:(i_start_ang + track.time.size - 1)
+        ang_pert = dt * np.degrees(max_ddirection * (2 * rnd_vec[i_in_ang] - 1))
         ang_pert_cum = np.cumsum(ang_pert)
         bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
         angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
 
         # for translational speed perturbation:
         i_start_trans = 2 * nb_synth_tracks + nb_synth_tracks * n_seg + i_ens * n_seg
-        i_in_trans = (i_start_trans, i_start_trans + track.time.size - 1)
-        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_in_trans[0]:i_in_trans[1]] - 1)
+        i_in_trans = i_start_trans:(i_start_trans + track.time.size - 1)
+        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_in_trans] - 1)
 
         # new lon/lat
         new_lon = np.zeros_like(i_track.lon.values)
