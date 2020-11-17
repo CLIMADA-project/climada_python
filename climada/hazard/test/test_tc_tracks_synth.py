@@ -358,21 +358,30 @@ class TestDecay(unittest.TestCase):
 class TestSynth(unittest.TestCase):
     def test_angle_funs_pass(self):
         """Test functions used by random walk code"""
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]), np.array([0, 0]))[0], 90.0)
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([20, 20]), np.array([0, 5]))[0], 0.0)
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]), np.array([0, 0.00001]))[0], 45)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]), np.array([0, 0]))[0], 0.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 1]), np.array([0, 0]))[0], 1.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]), np.array([0, 1]))[0], 1.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]), np.array([0, 30]))[0], 41.40962211)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]), np.array([0, 30]))[0], 41.40962211)
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]),
+                                                           np.array([0, 0]))[0], 90.0)
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([20, 20]),
+                                                           np.array([0, 5]))[0], 0.0)
+        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]),
+                                                           np.array([0, 0.00001]))[0], 45)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]),
+                                                              np.array([0, 0]))[0], 0.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 1]),
+                                                              np.array([0, 0]))[0], 1.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]),
+                                                              np.array([0, 1]))[0], 1.0)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]),
+                                                              np.array([0, 30]))[0], 41.40962211)
+        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]),
+                                                              np.array([0, 30]))[0], 41.40962211)
         pt_north = tc_synth._get_destination_points(0, 0, 0, 1)
         self.assertAlmostEqual(pt_north[0], 0.0)
         self.assertAlmostEqual(pt_north[1], 1.0)
         pt_west = tc_synth._get_destination_points(0, 0, -90, 3)
         self.assertAlmostEqual(pt_west[0], -3.0)
         self.assertAlmostEqual(pt_west[1], 0.0)
-        pt_test = tc_synth._get_destination_points(8.523224, 47.371102, 151.14161003, 52.80812463)
+        pt_test = tc_synth._get_destination_points(8.523224, 47.371102,
+                                                   151.14161003, 52.80812463)
         self.assertAlmostEqual(pt_test[0], 31.144113)
         self.assertAlmostEqual(pt_test[1], -1.590347)
 
