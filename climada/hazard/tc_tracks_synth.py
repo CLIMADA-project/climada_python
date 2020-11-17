@@ -47,6 +47,7 @@ def calc_random_walk(tracks,
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
+
     The methodology perturbs the tracks locations, and if decay is True it additionally
     includes decay of wind speed and central pressure drop after landfall. No other track
     parameter is perturbed.
@@ -73,26 +74,32 @@ def calc_random_walk(tracks,
 
     The object is mutated in-place.
 
-    Parameters:
-        tracks (TCTracks): See `climada.hazard.tc_tracks`.
-        nb_synth_tracks (int, optional): number of ensemble members per track.
-            Default: 9.
-        max_shift_ini (float, optional): amplitude of max random starting point
-            shift in decimal degree (up to +/-max_shift_ini for longitude and latitude).
-            Default: 0.75.
-        max_dspeed_rel (float, optional): amplitude of translation speed
-            perturbation in relative terms (e.g., 0.2 for +/-20%). Default: 0.3.
-        max_ddirection (float, optional): amplitude of track direction (bearing angle) perturbation
-            per hour, in radians. Default: pi/180.
-        autocorr_dspeed (float, optional): autocorrelation of translation speed perturbation
-            at a lag of 1 hour. Default: 0.85.
-        autocorr_ddir (float, optional): autocorrelation of translational direction perturbation
-            at a lag of 1 hour. Default: 0.85.
-        seed (int, optional): random number generator seed for replicability
-            of random walk. Put negative value if you don't want to use it.
-            Default: configuration file
-        decay (bool, optional): compute land decay in probabilistic tracks.
-            Default: True
+    Parameters
+    ----------
+    tracks : climada.hazard.TCTracks
+        Tracks data.
+    nb_synth_tracks : int, optional
+        Number of ensemble members per track. Default: 9.
+    max_shift_ini : float, optional
+        Amplitude of max random starting point shift in decimal degree
+        (up to +/-max_shift_ini for longitude and latitude). Default: 0.75.
+    max_dspeed_rel : float, optional
+        Amplitude of translation speed perturbation in relative terms
+        (e.g., 0.2 for +/-20%). Default: 0.3.
+    max_ddirection : float, optional
+        Amplitude of track direction (bearing angle) perturbation
+        per hour, in radians. Default: pi/180.
+    autocorr_dspeed : float, optional
+        Temporal autocorrelation in translation speed perturbation
+        at a lag of 1 hour. Default: 0.85.
+    autocorr_ddir : float, optional
+        Temporal autocorrelation of translational direction perturbation
+        at a lag of 1 hour. Default: 0.85.
+    seed : int, optional
+        Random number generator seed for replicability of random walk.
+        Put negative value if you don't want to use it. Default: configuration file.
+    decay : bool, optional
+        Whether to compute land decay in probabilistic tracks. Default: True.
     """
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
@@ -159,13 +166,31 @@ def calc_random_walk(tracks,
 
 @jit(parallel=True)
 def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
-    """Interpolate values of one track.
+    """
+    Apply random walk to one track.
 
-    Parameters:
-        track (xr.Dataset): track data
+    Parameters
+    ----------
+    track : xr.Dataset
+        Track data.
+    nb_synth_tracks : int, optional
+        Number of ensemble members per track. Default: 9.
+    max_shift_ini : float, optional
+        Amplitude of max random starting point shift in decimal degree
+        (up to +/-max_shift_ini for longitude and latitude). Default: 0.75.
+    max_dspeed_rel : float, optional
+        Amplitude of translation speed perturbation in relative terms
+        (e.g., 0.2 for +/-20%). Default: 0.3.
+    max_ddirection : float, optional
+        Amplitude of track direction (bearing angle) perturbation
+        per hour, in radians. Default: pi/180.
+    rnd_vec : np.ndarray of shape (2 * nb_synth_tracks * track.time.size),)
+        Vector of random perturbations.
 
-    Returns:
-        list(xr.Dataset)
+    Returns
+    -------
+    ens_track : list(xr.Dataset)
+        List of the track and the generated synthetic tracks.
     """
     ens_track = list()
     n_dat = track.time.size
@@ -218,7 +243,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
 
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
-    """Generate a series of autocorrelated uniformly distributed random numbers.
+    """
+    Generate a series of autocorrelated uniformly distributed random numbers.
 
     This implements the algorithm described here to derive a uniformly distributed
     series with specified autocorrelation (here at a lag of 1 hour):
@@ -228,12 +254,20 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     different temporal resolution (time_step_h), an hourly time series is generated
     and resampled (using linear interpolation) to the target resolution.
 
-    Parameters:
-        n_ts (int): length of the series
-        autocorr: autocorrelation (between -1 and 1)
+    Parameters
+    ----------
+    n_ts : int
+        Length of the series.
+    autocorr : float
+        Autocorrelation (between -1 and 1) at hourly time scale.
+    time_step_h : float
+        Temporal resolution of the time series, in hour.
 
-    Returns:
-        numpy.ndarray of length n
+    Returns
+    -------
+    x_ts : numpy.ndarray of shape (n_ts,)
+        n values at time_step_h intervals that are uniformly distributed and with
+            the requested temporal autocorrelation at a scale of 1 hour.
     """
     # generate autocorrelated 1-hourly perturbations, so first create hourly
     #   time series of perturbations
@@ -253,32 +287,58 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
 
 @jit
 def _h_ac(x, y, theta):
+    """
+    Generate next random number from current number for autocorrelated uniform series
+
+    Implements function h defined in:
+    https://stats.stackexchange.com/questions/48086/
+        algorithm-to-produce-autocorrelated-uniformly-distributed-number
+
+    Parameters
+    ----------
+    x : float
+        Previous random number.
+    y : float
+        Random Standard Normal.
+    theta : float
+        arccos of autocorrelation.
+
+    Returns
+    -------
+    x_next : float
+        Next value in the series.
+    """
     # https://stats.stackexchange.com/questions/48086/
     #   algorithm-to-produce-autocorrelated-uniformly-distributed-number
     # Note that the definition of Gamma is not very clear there, but the
     # formulation below does what the text says.
-    # Tests indicated that this works, while the following fails:
-    # gamma = np.abs(np.mod(np.mod(theta, np.pi), np.pi / 2) - np.pi / 4)
     gamma = np.abs(np.mod(theta, np.pi) - \
                    np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
-    # np.abs(dat['theta2'] - np.floor((dat['theta2'] / (np.pi / 2)) + 0.5) * np.pi / 2)
-    return 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
+    x_next = 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
+    return x_next
 
 
 @jit
 def _f_ac(z, theta):
-    """F transform for autocorrelated random uniform series generation
+    """
+    F transform for autocorrelated random uniform series generation
 
-    This is function F defined here:
-    https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
-    The CDF of Y.
+    Implements function F defined in:
+    https://stats.stackexchange.com/questions/48086/
+        algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    i.e., the CDF of Y.
 
-    Parameters:
-        z (float): longitude coordinates, in decimal degrees
-        theta (float): arccos of the autocorrelation
+    Parameters
+    ----------
+    z : float
+        Value.
+    theta : float
+        arccos of autocorrelation.
 
-    Returns:
-        float (CDF at z)
+    Returns
+    -------
+        res : float
+            CDF at value z
     """
     c = np.cos(theta)
     s = np.sin(theta)
@@ -299,7 +359,8 @@ def _f_ac(z, theta):
 
 @jit
 def _get_bearing_angle(lon, lat):
-    """Compute bearing angle of great circle paths defined by consecutive points
+    """
+    Compute bearing angle of great circle paths defined by consecutive points
 
     Returns initial bearing (also called forward azimuth) of the n-1 great circle
     paths define by n consecutive longitude/latitude points. The bearing is the angle
@@ -308,12 +369,17 @@ def _get_bearing_angle(lon, lat):
     http://www.movable-type.co.uk/scripts/latlong.html
     Here, the bearing of each pair of consecutive points is computed.
 
-    Parameters:
-        lon (numpy.ndarray of shape (n,)): longitude coordinates, in decimal degrees
-        lat (numpy.ndarray of shape (n,)): latitude coordinates, in decimal degrees
+    Parameters
+    ----------
+    lon : numpy.ndarray of shape (n,)
+        Longitude coordinates of consecutive point, in decimal degrees.
+    lat : numpy.ndarray of shape (n,)
+        Latitude coordinates of consecutive point, in decimal degrees.
 
-    Returns:
-        bearing_angle (numpy.ndarray of shape (n-1,), in decimal degrees
+    Returns
+    -------
+        earth_ang_fix : numpy.ndarray of shape (n-1,)
+            Bearing angle for each segment, in decimal degrees
     """
     lon, lat = map(np.radians, [lon, lat])
     lat_1 = lat[:-1]
@@ -332,19 +398,24 @@ def _get_bearing_angle(lon, lat):
 
 @jit
 def _get_angular_distance(lon, lat):
-    """Compute the angular distance of great circle paths defined by consecutive points
+    """
+    Compute the angular distance of great circle paths defined by consecutive points
 
     Uses the haversine formulat to get the great circle distance between each pair
     of consecutive points, in decimal degrees.
 
-    Parameters:
-        lon (numpy.ndarray of shape (n,)): longitude coordinates, in decimal degrees
-        lat (numpy.ndarray of shape (n,)): latitude coordinates, in decimal degrees
+    Parameters
+    ----------
+    lon : numpy.ndarray of shape (n,)
+        Longitude coordinates of consecutive point, in decimal degrees.
+    lat : numpy.ndarray of shape (n,)
+        Latitude coordinates of consecutive point, in decimal degrees.
 
-    Returns:
-        Angular distance (numpy.ndarray of shape (n-1,), in decimal degrees
+    Returns
+    -------
+        c : numpy.ndarray of shape (n-1,)
+            Angular distance for each segment, in decimal degrees
     """
-
     lon, lat = map(np.radians, [lon, lat])
     lat_1 = lat[:-1]
     lat_2 = lat[1:]
@@ -357,20 +428,27 @@ def _get_angular_distance(lon, lat):
 
 @jit
 def _get_destination_points(lon, lat, bearing, angular_distance):
-    """Get coordinates of endpoints from a given locations with the provided bearing and distance
-
-    Parameters:
-        lon (numpy.ndarray of shape (n,)): longitude coordinates of start location,
-            in decimal degrees
-        lat (numpy.ndarray of shape (n,)): latitude coordinates of start location,
-            in decimal degrees
-        bearing (numpy.ndarray of shape (n,)): bearing (direction Northward, clockwise)
-        angular_distance (numpy.ndarray of shape (n,)): angular distance, in decimal degrees
-
-    Returns:
-        Angular distance (numpy.ndarray of shape (n,), in decimal degrees
     """
+    Get coordinates of endpoints from a given locations with the provided bearing and distance
 
+    Parameters
+    ----------
+    lon : numpy.ndarray of shape (n,)
+        Longitude coordinates of each starting point, in decimal degrees.
+    lat : numpy.ndarray of shape (n,)
+        Latitude coordinates of each starting point, in decimal degrees.
+    bearing : numpy.ndarray of shape (n,)
+        Bearing to follow for each starting point (direction Northward, clockwise).
+    angular_distance : numpy.ndarray of shape (n,)
+        Angular distance to travel for each starting point, in decimal degrees.
+
+    Returns
+    -------
+        lon_2 : numpy.ndarray of shape (n,)
+            Longitude coordinates of each ending point, in decimal degrees.
+        lat_2 : numpy.ndarray of shape (n,)
+            Latitude coordinates of each ending point, in decimal degrees.
+    """
     lon, lat = map(np.radians, [lon, lat])
     bearing = np.radians(bearing)
     angular_distance = np.radians(angular_distance)
