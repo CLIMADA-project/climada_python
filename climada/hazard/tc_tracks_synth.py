@@ -41,7 +41,7 @@ def calc_perturbed_trajectories(tracks,
                                 max_dspeed_rel=0.3,
                                 max_ddirection=np.pi / 180,
                                 autocorr_dspeed=0.85,
-                                autocorr_ddir=0.85,
+                                autocorr_ddirection=0.85,
                                 seed=CONFIG['trop_cyclone']['random_seed'],
                                 decay=True):
     """
@@ -64,11 +64,11 @@ def calc_perturbed_trajectories(tracks,
     resolution of the tracks. Note however that all tracks should be at the same
     temporal resolution, which can be achieved using equal_timestep().
     max_dspeed_rel and autocorr_dspeed control the spread along the track ('what distance
-    does the track run for'), while max_ddirection and autocorr_ddir control the spread
+    does the track run for'), while max_ddirection and autocorr_ddirection control the spread
     perpendicular to the track movement ('how does the track diverge in direction').
     max_dspeed_rel and max_ddirection control the amplitude of perturbations at each track
     timestep but perturbations may tend to compensate each other over time, leading to
-    a similar location at the end of the track, while autocorr_dspeed and autocorr_ddir
+    a similar location at the end of the track, while autocorr_dspeed and autocorr_ddirection
     control how these perturbations persist in time and hence the amplitude of the
     perturbations towards the end of the track.
 
@@ -92,7 +92,7 @@ def calc_perturbed_trajectories(tracks,
     autocorr_dspeed : float, optional
         Temporal autocorrelation in translation speed perturbation
         at a lag of 1 hour. Default: 0.85.
-    autocorr_ddir : float, optional
+    autocorr_ddirection : float, optional
         Temporal autocorrelation of translational direction perturbation
         at a lag of 1 hour. Default: 0.85.
     seed : int, optional
@@ -119,13 +119,13 @@ def calc_perturbed_trajectories(tracks,
     # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
     # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
     # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
-    if autocorr_ddir == 0 and autocorr_dspeed == 0:
+    if autocorr_ddirection == 0 and autocorr_dspeed == 0:
         random_vec = [np.random.uniform(size=nb_synth_tracks * (2 * track.time.size))
                       for track in tracks.data]
     else:
         random_vec = [np.concatenate((np.random.uniform(size=nb_synth_tracks * 2),
                                       _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
-                                                         autocorr_ddir, time_step_h),
+                                                         autocorr_ddirection, time_step_h),
                                       _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
                                                          autocorr_dspeed, time_step_h)))
                       for track in tracks.data]
