@@ -216,7 +216,12 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
 
         # get bearings and angular distance for the original track
         bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
-        angular_dist = _get_angular_distance(i_track.lon.values, i_track.lat.values)
+        angular_dist = climada.util.coordinates.dist_approx(i_track.lat.values[:-1, None],
+                                                            i_track.lon.values[:-1, None],
+                                                            i_track.lat.values[1:, None],
+                                                            i_track.lon.values[1:, None],
+                                                            method="geosphere",
+                                                            units="degree")[:, 0, 0]
 
         # apply perturbation to lon / lat
         new_lon = np.zeros_like(i_track.lon.values)
@@ -392,36 +397,6 @@ def _get_bearing_angle(lon, lat):
                                np.cos(lat_1) * np.sin(lat_2) - \
                                np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon))
     return np.degrees(earth_ang_fix)
-
-
-@jit
-def _get_angular_distance(lon, lat):
-    """
-    Compute the angular distance of great circle paths defined by consecutive points
-
-    Uses the haversine formula to get the great circle distance between each pair
-    of consecutive points, in decimal degrees.
-
-    Parameters
-    ----------
-    lon : numpy.ndarray of shape (n,)
-        Longitude coordinates of consecutive point, in decimal degrees.
-    lat : numpy.ndarray of shape (n,)
-        Latitude coordinates of consecutive point, in decimal degrees.
-
-    Returns
-    -------
-        c : numpy.ndarray of shape (n-1,)
-            Angular distance for each segment, in decimal degrees
-    """
-    lon, lat = map(np.radians, [lon, lat])
-    lat_1 = lat[:-1]
-    lat_2 = lat[1:]
-    delta_lon = lon[1:] - lon[:-1]
-    delta_lat = lat_2 - lat_1
-    a = np.sin(delta_lat / 2.0) ** 2 + np.cos(lat_1) * np.cos(lat_2) * np.sin(delta_lon / 2.0) ** 2
-    c = np.degrees(2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a)))
-    return c
 
 
 @jit
