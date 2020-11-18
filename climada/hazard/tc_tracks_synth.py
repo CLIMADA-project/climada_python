@@ -377,8 +377,11 @@ def _get_bearing_angle(lon, lat):
             Bearing angle for each segment, in decimal degrees
     """
     lon, lat = map(np.radians, [lon, lat])
+    # Segments between all point (0 -> 1, 1 -> 2, ..., n-1 -> n)
+    # starting points
     lat_1 = lat[:-1]
     lon_1 = lon[:-1]
+    # ending points
     lat_2 = lat[1:]
     lon_2 = lon[1:]
     delta_lon = lon_2 - lon_1
