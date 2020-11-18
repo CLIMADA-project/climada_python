@@ -49,10 +49,10 @@ from fiona.crs import from_epsg
 
 from .config import CONFIG
 
-SYSTEM_DIR = CONFIG.local_data.system.dir()
+SYSTEM_DIR = CONFIG.local_data.system.dir(create=False)
 """Folder containing the data used internally"""
 
-DEMO_DIR = CONFIG.local_data.demo.dir()
+DEMO_DIR = CONFIG.local_data.demo.dir(create=False)
 """Folder containing the data used for tutorials"""
 
 ISIMIP_GPWV3_NATID_150AS = SYSTEM_DIR.joinpath('NatID_grid_0150as.nc')

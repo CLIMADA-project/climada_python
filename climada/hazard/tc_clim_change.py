@@ -19,13 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define climate change scenarios for tropical cycones.
 """
 
-import os
 import numpy as np
 import pandas as pd
 
 from climada.util.constants import SYSTEM_DIR
 
-TOT_RADIATIVE_FORCE = os.path.join(SYSTEM_DIR, 'rcp_db.xls')
+TOT_RADIATIVE_FORCE = SYSTEM_DIR.joinpath('rcp_db.xls')
 """© RCP Database (Version 2.0.5) http://www.iiasa.ac.at/web-apps/tnt/RcpDb.
 generated: 2018-07-04 10:47:59."""
 

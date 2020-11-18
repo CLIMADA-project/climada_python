@@ -170,7 +170,7 @@ class Config():
         """
         Returns
         -------
-        int
+        list
             the value of this Config if it is a list
 
         Raises
@@ -207,9 +207,19 @@ class Config():
             return self._val[args[0]].get(*list(args)[1:])
         raise Exception(f"{self._val.__class__}, not list")
 
-    def dir(self, index=None):
+    def dir(self, index=None, create=True):
         """Convenience method to get this configuration value as a Path object.
-        If the respective directory does not exist it is created upon the call.
+        If the respective directory does not exist it is created upon the call
+        unless the flag `create` is set to False.
+
+        Parameters
+        ----------
+        index: int, optional
+            the index of the item if the addressed Config object is a list
+        create: bool, optional
+            flag to indictate whether the directory is going to be created
+            default: True
+
         Returns
         -------
         pathlib.Path
@@ -221,7 +231,8 @@ class Config():
             if the value is not a string or if the directory cannot be created
         """
         path = Path(self.str(index)).expanduser()
-        path.mkdir(parents=True, exist_ok=True)
+        if create:
+            path.mkdir(parents=True, exist_ok=True)
         return path.absolute()
 
     @classmethod
@@ -302,11 +313,6 @@ def _fetch_conf(directories, config_name):
     return conf_dct
 
 
-def check_conf(conf):
-    """Check configuration files presence and generate folders if needed."""
-    conf.local_data.save_dir.dir()
-
-
 SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
 CONFIG_NAME = 'climada.conf'
 CONFIG = Config.from_dict(_fetch_conf([
@@ -314,4 +320,3 @@ CONFIG = Config.from_dict(_fetch_conf([
     Path(Path.home(), 'climada', 'conf'),  # ~/climada/conf directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
-check_conf(CONFIG)

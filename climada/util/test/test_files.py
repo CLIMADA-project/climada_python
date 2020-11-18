@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test files_handler module.
 """
 
-import os
 import unittest
 from pathlib import Path
 
@@ -92,12 +91,12 @@ class TestGetFileNames(unittest.TestCase):
         file_name = DEMO_DIR
         out = get_file_names(file_name)
         for file in out:
-            self.assertEqual('.', os.path.splitext(file)[1][0])
+            self.assertEqual('.', Path(file).suffix[0])
 
         file_name = DEMO_DIR.parent
         out = get_file_names(file_name)
         for file in out:
-            self.assertNotEqual('', os.path.splitext(file)[1])
+            self.assertNotEqual('', Path(file).suffix)
 
     def test_globbing(self):
         """If input is a glob pattern, return a list of matching visible
@@ -108,8 +107,8 @@ class TestGetFileNames(unittest.TestCase):
 
         tmp_files = os.listdir(file_name)
         tmp_files = [os.path.join(file_name, f) for f in tmp_files]
-        tmp_files = [f for f in tmp_files if not os.path.isdir(f)
-                     and not os.path.basename(os.path.normpath(f)).startswith('.')]
+        tmp_files = [f for f in tmp_files if not Path(f).is_dir()
+                     and not Path(f).name.startswith('.')]
 
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))

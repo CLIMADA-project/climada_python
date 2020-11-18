@@ -29,9 +29,8 @@ __all__ = ['init']
 
 
 NGI_UNEP_DIR = SYSTEM_DIR.joinpath('ls_pr_NGI_UNEP')
-NGI_UNEP_DIR.mkdir(parents=True, exist_ok=True)
 GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
-GSDP_DIR.mkdir(parents=True, exist_ok=True)
+
 REPO_DATA = {
     'data/system': [
         ISIMIP_GPWV3_NATID_150AS,
@@ -88,6 +87,10 @@ REPO_DATA = {
 
 
 def setup_climada_data():
+
+    for dirpath in [DEMO_DIR, SYSTEM_DIR, NGI_UNEP_DIR, GSDP_DIR]:
+        dirpath.mkdir(parents=True, exist_ok=True)
+
     for src_dir, path_list in REPO_DATA.items():
         for path in path_list:
             if not path.exists():

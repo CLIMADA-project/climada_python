@@ -29,6 +29,7 @@ import logging
 import math
 import urllib
 from pathlib import Path
+from climada.util.config import CONFIG
 
 import requests
 from tqdm import tqdm
@@ -68,7 +69,7 @@ def download_file(url, download_dir=None, overwrite=True):
     file_name = url.split('/')[-1]
     if file_name.strip() == '':
         raise ValueError(f"cannot download {url} as a file")
-    download_path = Path.cwd() if download_dir is None else Path(download_dir)
+    download_path = CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
     file_path = download_path.absolute().joinpath(file_name)
     if file_path.exists():
         if not file_path.is_file() or not overwrite:
