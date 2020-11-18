@@ -35,15 +35,15 @@ import climada.hazard.tc_tracks
 LOGGER = logging.getLogger(__name__)
 
 
-def calc_random_walk(tracks,
-                     nb_synth_tracks=9,
-                     max_shift_ini=0.75,
-                     max_dspeed_rel=0.3,
-                     max_ddirection=np.pi / 180,
-                     autocorr_dspeed=0.85,
-                     autocorr_ddir=0.85,
-                     seed=CONFIG['trop_cyclone']['random_seed'],
-                     decay=True):
+def calc_perturbed_trajectories(tracks,
+                                nb_synth_tracks=9,
+                                max_shift_ini=0.75,
+                                max_dspeed_rel=0.3,
+                                max_ddirection=np.pi / 180,
+                                autocorr_dspeed=0.85,
+                                autocorr_ddir=0.85,
+                                seed=CONFIG['trop_cyclone']['random_seed'],
+                                decay=True):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
