@@ -163,14 +163,21 @@ def get_file_names(file_name):
     file_list = list()
 
     for pattern in file_name if isinstance(file_name, list) else [file_name]:
-        if Path(pattern).is_file():
-            file_list.append(str(pattern))
-        elif Path(pattern).is_dir():
+        try:
+            if Path(pattern).is_file():
+                file_list.append(str(pattern))
+            elif Path(pattern).is_dir():
+                file_list.extend([
+                    str(fil) for fil in Path(pattern).iterdir() if fil.is_file()
+                ])
+            else:  # glob pattern
+                file_list.extend([
+                    str(Path(fil)) for fil in glob.glob(pattern)
+                ])
+        except OSError:
             file_list.extend([
-                str(fil) for fil in Path(pattern).iterdir() if fil.is_file()
+                str(Path(fil)) for fil in glob.glob(pattern)
             ])
-        else:  # glob pattern
-            file_list.extend(glob.glob(pattern))
 
     return file_list
 

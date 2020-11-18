@@ -26,6 +26,7 @@ from climada.util.files_handler import to_list, get_file_names, download_file, \
 get_extension
 from climada.util.constants import DEMO_DIR, GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS
 
+
 class TestDownloadUrl(unittest.TestCase):
     """Test download_file function"""
     def test_wrong_url_fail(self):
@@ -36,6 +37,7 @@ class TestDownloadUrl(unittest.TestCase):
                 download_file(url)
         except IOError:
             pass
+
 
 class TestToStrList(unittest.TestCase):
     """Test to_list function"""
@@ -70,6 +72,7 @@ class TestToStrList(unittest.TestCase):
             to_list(num_exp, values, val_name)
         self.assertIn("Provide one or 3 values.", cm.output[0])
 
+
 class TestGetFileNames(unittest.TestCase):
     """Test get_file_names function. Only works with actually existing
         files and directories."""
@@ -103,15 +106,15 @@ class TestGetFileNames(unittest.TestCase):
             files; omit folders.
         """
         file_name = DEMO_DIR
-        out = get_file_names(file_name)
+        out = get_file_names(f'{file_name}/*')
 
-        tmp_files = os.listdir(file_name)
-        tmp_files = [os.path.join(file_name, f) for f in tmp_files]
-        tmp_files = [f for f in tmp_files if not Path(f).is_dir()
-                     and not Path(f).name.startswith('.')]
+        tmp_files = [str(f) 
+                     for f in Path(file_name).iterdir()
+                     if f.is_file() and not f.name.startswith('.')]
 
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))
+
 
 class TestExtension(unittest.TestCase):
     """Test get_extension"""
@@ -138,6 +141,7 @@ class TestExtension(unittest.TestCase):
         self.assertEqual(
             str(Path('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1')),
             get_extension(file_name)[0])
+
 
 # Execute Tests
 if __name__ == "__main__":
