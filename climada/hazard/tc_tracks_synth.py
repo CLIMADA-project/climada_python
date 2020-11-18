@@ -164,7 +164,6 @@ def calc_random_walk(tracks,
                          'Historical tracks are needed for land decay.')
 
 
-@jit(parallel=True)
 def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
     """
     Apply random walk to one track.
