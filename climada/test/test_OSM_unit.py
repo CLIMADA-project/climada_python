@@ -30,50 +30,60 @@ class TestOSMFunctions(unittest.TestCase):
     """Test OSM Class methods"""
 
     def test_osm_api_query(self):
-        """test _osm_api_query within get_features_OSM function """
+        """test _osm_api_query within get_features_OSM function"""
         bbox = [47.2, 8.03, 47.3, 8.07]
         item = 'landuse=forest'
         result_NodesFromWays, result_NodesWaysFromRels = OSM._osm_api_query(item, bbox)
-        self.assertGreater(len(result_NodesFromWays.nodes),0)
-        self.assertGreater(len(result_NodesFromWays.ways),0)
-        self.assertGreater(len(result_NodesWaysFromRels.relations),0)
+        self.assertGreater(len(result_NodesFromWays.nodes), 0)
+        self.assertGreater(len(result_NodesFromWays.ways), 0)
+        self.assertGreater(len(result_NodesWaysFromRels.relations), 0)
 
     def test_format_shape_osm(self):
-        """test _format_shape_osm function within get_features_OSM function: """
-        #define input parameters
+        """test _format_shape_osm function within get_features_OSM function:"""
+        # define input parameters
         bbox = [47.2, 8.03, 47.3, 8.07]
         item = 'landuse=forest'
         result_NodesFromWays, result_NodesWaysFromRels = OSM._osm_api_query(item, bbox)
 
         # Execute function to be tested
-        globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))] = \
+        globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))] = \
         OSM._format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, DATA_DIR)
         # check that shapes were found both from relations and from way/nodes query
-        self.assertGreater(len(globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))]),
-                           len(result_NodesWaysFromRels.relations))
+        self.assertGreater(len(
+            globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))]),
+            len(result_NodesWaysFromRels.relations))
         # check that geometry row exists and contains polygons / multipolygons
-        self.assertEqual(globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))].iloc[0].geometry.type,'Polygon')
-        self.assertEqual(globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))].iloc[-1].geometry.type,'MultiPolygon')
+        self.assertEqual(
+            globals()[
+                str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))
+            ].iloc[0].geometry.type, 'Polygon')
+        self.assertEqual(
+            globals()[
+                str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))
+            ].iloc[-1].geometry.type, 'MultiPolygon')
 
     def test_combine_dfs_osm(self):
-        """test _combine_dfs_osm function within get_features_OSM function: """
+        """test _combine_dfs_osm function within get_features_OSM function:"""
         # define input parameters
-        types = {'landuse=forest','waterway'}
+        types = {'landuse=forest', 'waterway'}
         bbox = [47.2, 8.03, 47.3, 8.07]
         for item in types:
             print(item)
-            result_NodesFromWays, result_NodesWaysFromRels = OSM._osm_api_query(item, bbox) #strictly, this doesnt belong here, but needs to be invoked (tested before)
-            globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))] = \
-            OSM._format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item, DATA_DIR)
+            # strictly, this doesnt belong here, but needs to be invoked (tested before)
+            result_NodesFromWays, result_NodesWaysFromRels = OSM._osm_api_query(item, bbox)
+            globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))] = \
+            OSM._format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels,
+                                  item, DATA_DIR)
         # Execute function
         OSM_features_gdf_combined = \
-            geopandas.GeoDataFrame(pd.DataFrame(columns=['Item', 'Name', 'Type', 'Natural_Type', 'geometry']),
-                 crs='epsg:4326', geometry='geometry')
+            geopandas.GeoDataFrame(
+                pd.DataFrame(columns=['Item', 'Name', 'Type', 'Natural_Type', 'geometry']),
+                crs='epsg:4326', geometry='geometry')
         for item in types:
-            print('adding results from %s ...' %item)
+            print('adding results from %s ...' % item)
             OSM_features_gdf_combined = \
             OSM_features_gdf_combined.append(
-                globals()[str(item)+'_gdf_all_'+str(int(bbox[0]))+'_'+str(int(bbox[1]))],
+                globals()[str(item) + '_gdf_all_' + str(int(bbox[0])) + '_' + str(int(bbox[1]))],
                 ignore_index=True)
         i = 0
         for geom in OSM_features_gdf_combined.geometry:
@@ -85,11 +95,11 @@ class TestOSMFunctions(unittest.TestCase):
 
     def test_makeUnion(self):
         """test makeUnion function within get_highValueArea function"""
-        gdf_all = geopandas.read_file(os.path.join(DATA_DIR,'OSM_features_47_8.shp'))
+        gdf_all = geopandas.read_file(os.path.join(DATA_DIR, 'OSM_features_47_8.shp'))
 
         # Execute function
         Low_Value_Union = OSM._makeUnion(gdf_all)
-        self.assertEqual(Low_Value_Union.type,'MultiPolygon')
+        self.assertEqual(Low_Value_Union.type, 'MultiPolygon')
         self.assertTrue(Low_Value_Union.is_valid)
 
 # this takes too long for unit test (loads CHE LitPop exposure!) Moved to integration test
@@ -125,24 +135,31 @@ class TestOSMFunctions(unittest.TestCase):
     def test_get_midpoints(self):
         """test _get_midpoints within make_osmexposure function"""
         # Define and load parameters:
-        building_path = os.path.join(DATA_DIR,'buildings_47_8.shp')
+        building_path = os.path.join(DATA_DIR, 'buildings_47_8.shp')
 
         building_gdf = OSM._get_midpoints(building_path)
-        self.assertEqual(building_gdf.loc[random.randint(0,len(building_gdf))].geometry.type, 'Point')
-        self.assertGreater(building_gdf.loc[random.randint(0,len(building_gdf))].projected_area, 0)
+        self.assertEqual(building_gdf.loc[random.randint(0, len(building_gdf))].geometry.type,
+                         'Point')
+        self.assertGreater(building_gdf.loc[random.randint(0, len(building_gdf))].projected_area,
+                           0)
 
     def test_assign_values_exposure(self):
         """test _assign_values_exposure within make_osmexposure function"""
         # Define and load parameters:
-        building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR,'buildings_47_8.shp')) # function tested previously
-        mode = 'default'     # mode LitPop takes too long for unit test, since loads entire CH-litpop exposure! moved to integration test
+        # function tested previously
+        building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR, 'buildings_47_8.shp'))
+        # mode LitPop takes too long for unit test, since loads entire CH-litpop exposure!
+        # moved to integration test
+        mode = 'default'
         country = 'CHE'
         # Execute Function
         High_Value_Area_gdf = OSM._assign_values_exposure(building_gdf, mode, country)
-        self.assertGreater(High_Value_Area_gdf.loc[random.randint(0,len(High_Value_Area_gdf))].value,0)
+        self.assertGreater(
+            High_Value_Area_gdf.loc[random.randint(0, len(High_Value_Area_gdf))].value,
+            0)
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestOSMFunctions)
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopClass))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopClass))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

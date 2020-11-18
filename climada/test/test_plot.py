@@ -42,6 +42,10 @@ class TestPlotter(unittest.TestCase):
         """Generate all possible plots of the hazard intensity."""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_DEMO_MAT)
+        hazard.event_name = [""] * hazard.event_id.size
+        hazard.event_name[35] = "NNN_1185106_gen5"
+        hazard.event_name[3898] = "NNN_1190604_gen8"
+        hazard.event_name[5488] = "NNN_1192804_gen8"
         myax = hazard.plot_intensity(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', myax.get_title())
 
@@ -73,6 +77,9 @@ class TestPlotter(unittest.TestCase):
         """Generate all possible plots of the hazard fraction."""
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_DEMO_MAT)
+        hazard.event_name = [""] * hazard.event_id.size
+        hazard.event_name[35] = "NNN_1185106_gen5"
+        hazard.event_name[11897] = "GORDON_gen7"
         myax = hazard.plot_fraction(event=36)
         self.assertIn('Event ID 36: NNN_1185106_gen5', myax.get_title())
 
@@ -91,11 +98,11 @@ class TestPlotter(unittest.TestCase):
         myexp = Exposures(myexp)
         myexp.check()
         myexp.tag.description = 'demo_today'
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('demo_today', myax.get_title())
 
         myexp.tag.description = ''
-        myax= myexp.plot_hexbin()
+        myax = myexp.plot_hexbin()
         self.assertIn('', myax.get_title())
 
     def test_impact_funcs_pass(self):
@@ -104,7 +111,7 @@ class TestPlotter(unittest.TestCase):
         myfuncs.read_excel(ENT_DEMO_TODAY)
         myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
-        self.assertIn('TC 1: Tropical cyclone default', \
+        self.assertIn('TC 1: Tropical cyclone default',
                       myax[0].title.get_text())
         self.assertIn('TC 3: TC Building code', myax[1].title.get_text())
 
@@ -129,13 +136,13 @@ class TestPlotter(unittest.TestCase):
         ifc2.plot(axis=myax)
 
     def test_ctx_osm_pass(self):
-        """ Test basemap function using osm images """
+        """Test basemap function using osm images"""
         myexp = Exposures()
         myexp['latitude'] = np.array([30, 40, 50])
         myexp['longitude'] = np.array([0, 0, 0])
         myexp['value'] = np.array([1, 1, 1])
         myexp.check()
-        
+
         try:
             myexp.plot_basemap(url=ctx.sources.OSM_A)
         except urllib.error.HTTPError:

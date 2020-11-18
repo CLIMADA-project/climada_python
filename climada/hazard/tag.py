@@ -53,8 +53,8 @@ class Tag(object):
         if self.haz_type == '':
             self.haz_type = tag.haz_type
         if tag.haz_type != self.haz_type:
-            LOGGER.error("Hazards of different type can't be appended:"\
-                 + " %s != %s.", self.haz_type, tag.haz_type)
+            LOGGER.error("Hazards of different type can't be appended: %s != %s.",
+                         self.haz_type, tag.haz_type)
             raise ValueError
 
         # add file name if not present in tag
@@ -81,7 +81,7 @@ class Tag(object):
             self.description.extend(to_add)
 
     def join_file_names(self):
-        """ Get a string with the joined file names. """
+        """Get a string with the joined file names."""
         if not isinstance(self.file_name, list):
             join_file = os.path.splitext(os.path.basename(self.file_name))[0]
         else:
@@ -90,7 +90,7 @@ class Tag(object):
         return join_file
 
     def join_descriptions(self):
-        """ Get a string with the joined descriptions. """
+        """Get a string with the joined descriptions."""
         if not isinstance(self.file_name, list):
             join_desc = self.description
         else:

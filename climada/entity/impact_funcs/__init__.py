@@ -24,3 +24,4 @@ from .trop_cyclone import *
 from .drought import *
 from .crop_potential import *
 from .wildfire import *
+from .relative_cropyield import *

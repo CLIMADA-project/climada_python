@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Functions to deal with files.
 """
 
-__all__ = ['to_list',
-           'get_file_names'
-          ]
+__all__ = [
+    'to_list',
+    'get_file_names',
+]
 
 import os
 import glob
@@ -34,9 +35,9 @@ from tqdm import tqdm
 LOGGER = logging.getLogger(__name__)
 
 class DownloadProgressBar(tqdm):
-    """ Class to use progress bar during dowloading """
+    """Class to use progress bar during dowloading"""
     def update_to(self, blocks=1, bsize=1, tsize=None):
-        """ Update progress bar
+        """Update progress bar
 
         Parameters:
             blocks (int, otional): Number of blocks transferred so far [default: 1].
@@ -49,7 +50,7 @@ class DownloadProgressBar(tqdm):
         self.update(blocks * bsize - self.n)
 
 def download_file(url):
-    """ Download file from url in current folder and provide absolute file path
+    """Download file from url in current folder and provide absolute file path
     and name.
 
     Parameters:
@@ -79,13 +80,13 @@ def download_file(url):
     LOGGER.info('Downloading file %s', file_abs_name)
     with open(file_name, 'wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
-                         total=math.ceil(total_size//block_size),
+                         total=math.ceil(total_size // block_size),
                          unit='KB', unit_scale=True):
             file.write(data)
     return file_abs_name
 
 def download_ftp(url, file_name):
-    """ Download file from ftp in current folder.
+    """Download file from ftp in current folder.
 
     Parameters:
         url (str): url containing data to download
@@ -96,11 +97,11 @@ def download_ftp(url, file_name):
     """
     LOGGER.info('Downloading file %s', file_name)
     try:
-        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1, \
+        with DownloadProgressBar(unit='B', unit_scale=True, miniters=1,
                                  desc=url.split('/')[-1]) as prog_bar:
             urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
-    except Exception:
-        raise ValueError
+    except Exception as exc:
+        raise ValueError(f'{exc.__class__} - "{exc}": failed to retrieve {url} into {file_name}')
 
 def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
@@ -129,7 +130,7 @@ def to_list(num_exp, values, val_name):
     return val_list
 
 def get_file_names(file_name):
-    """ Return list of files contained. Supports globbing.
+    """Return list of files contained. Supports globbing.
 
     Parameters:
         file_name (str or list(str)): Either a single string or a list of
@@ -150,7 +151,7 @@ def get_file_names(file_name):
     return file_list
 
 def get_extension(file_name):
-    """ Get file without extension and its extension (e.g. ".nc", ".grd.gz").
+    """Get file without extension and its extension (e.g. ".nc", ".grd.gz").
 
     Parameters:
         file_name (str): file name (with or without path)
@@ -165,7 +166,7 @@ def get_extension(file_name):
     return file_pth, file_ext
 
 def _process_one_file_name(name, file_list):
-    """ Apend to input list the file contained in name
+    """Apend to input list the file contained in name
         Tries globbing if name is neither dir nor file.
     """
     if os.path.isdir(name):

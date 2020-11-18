@@ -30,7 +30,7 @@ class TestReader(unittest.TestCase):
     """Test reader functionality of the ExposuresMat class"""
 
     def test_read_demo_pass(self):
-        """ Read one single excel file"""
+        """Read one single excel file"""
         # Read demo excel file
         expo = Exposures()
         expo.read_mat(ENT_TEST_MAT)
@@ -40,42 +40,42 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.index.shape, (n_expos,))
         self.assertEqual(expo.index[0], 0)
-        self.assertEqual(expo.index[n_expos-1], n_expos-1)
+        self.assertEqual(expo.index[n_expos - 1], n_expos - 1)
 
         self.assertEqual(expo.value.shape, (n_expos,))
         self.assertEqual(expo.value[0], 13927504367.680632)
-        self.assertEqual(expo.value[n_expos-1], 12624818493.687229)
+        self.assertEqual(expo.value[n_expos - 1], 12624818493.687229)
 
         self.assertEqual(expo.deductible.shape, (n_expos,))
         self.assertEqual(expo.deductible[0], 0)
-        self.assertEqual(expo.deductible[n_expos-1], 0)
+        self.assertEqual(expo.deductible[n_expos - 1], 0)
 
         self.assertEqual(expo.cover.shape, (n_expos,))
         self.assertEqual(expo.cover[0], 13927504367.680632)
-        self.assertEqual(expo.cover[n_expos-1], 12624818493.687229)
+        self.assertEqual(expo.cover[n_expos - 1], 12624818493.687229)
 
         self.assertIn('int', str(expo.if_.dtype))
         self.assertEqual(expo.if_.shape, (n_expos,))
         self.assertEqual(expo.if_[0], 1)
-        self.assertEqual(expo.if_[n_expos-1], 1)
+        self.assertEqual(expo.if_[n_expos - 1], 1)
 
         self.assertIn('int', str(expo.category_id.dtype))
         self.assertEqual(expo.category_id.shape, (n_expos,))
         self.assertEqual(expo.category_id[0], 1)
-        self.assertEqual(expo.category_id[n_expos-1], 1)
+        self.assertEqual(expo.category_id[n_expos - 1], 1)
 
         self.assertIn('int', str(expo.centr_.dtype))
         self.assertEqual(expo.centr_.shape, (n_expos,))
         self.assertEqual(expo.centr_[0], 47)
-        self.assertEqual(expo.centr_[n_expos-1], 46)
+        self.assertEqual(expo.centr_[n_expos - 1], 46)
 
         self.assertTrue('region_id' not in expo)
 
         self.assertEqual(expo.latitude.shape, (n_expos,))
         self.assertEqual(expo.latitude[0], 26.93389900000)
-        self.assertEqual(expo.latitude[n_expos-1], 26.34795700000)
+        self.assertEqual(expo.latitude[n_expos - 1], 26.34795700000)
         self.assertEqual(expo.longitude[0], -80.12879900000)
-        self.assertEqual(expo.longitude[n_expos-1], -80.15885500000)
+        self.assertEqual(expo.longitude[n_expos - 1], -80.15885500000)
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')

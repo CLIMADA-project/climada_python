@@ -25,7 +25,7 @@ import logging
 import pandas as pd
 
 from climada.entity.tag import Tag
-from climada.entity.impact_funcs.impact_func_set  import ImpactFuncSet
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.exposures.base import Exposures
@@ -45,7 +45,7 @@ class Entity(object):
     """
 
     def __init__(self):
-        """ Empty initializator """
+        """Empty initializator"""
         self.exposures = Exposures()
         self.disc_rates = DiscRates()
         self.impact_funcs = ImpactFuncSet()
@@ -102,7 +102,7 @@ class Entity(object):
         self.measures.read_excel(file_name, description)
 
     def write_excel(self, file_name):
-        """ Write excel file following template. """
+        """Write excel file following template."""
         self.exposures.to_excel(file_name)
         self.impact_funcs.write_excel(file_name)
         self.measures.write_excel(file_name)

@@ -38,18 +38,18 @@ LOGGER = logging.getLogger(__name__)
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'discount',
-               'var_name': {'year' : 'year',
-                            'disc' : 'discount_rate'
+               'var_name': {'year': 'year',
+                            'disc': 'discount_rate'
                            }
               }
-""" MATLAB variable names """
+"""MATLAB variable names"""
 
 DEF_VAR_EXCEL = {'sheet_name': 'discount',
-                 'col_name': {'year' : 'year',
-                              'disc' : 'discount_rate'
+                 'col_name': {'year': 'year',
+                              'disc': 'discount_rate'
                              }
                 }
-""" Excel variable names """
+"""Excel variable names"""
 
 class DiscRates():
     """Defines discount rates and basic methods. Loads from
@@ -155,14 +155,14 @@ class DiscRates():
         Returns:
             float
         """
-        year_range = np.arange(ini_year, end_year+1)
+        year_range = np.arange(ini_year, end_year + 1)
         if year_range.size != val_years.size:
             LOGGER.error('Wrong size of yearly values.')
             raise ValueError
         sel_disc = self.select(year_range)
         if sel_disc is None:
-            LOGGER.error('No information of discount rates for provided years:'\
-                        ' %s - %s', ini_year, end_year)
+            LOGGER.error('No information of discount rates for provided years:'
+                         ' %s - %s', ini_year, end_year)
             raise ValueError
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)
@@ -183,7 +183,7 @@ class DiscRates():
         axis.set_title('Discount rates')
         axis.set_xlabel('Year')
         axis.set_ylabel('discount rate (%)')
-        axis.plot(self.years, self.rates*100, **kwargs)
+        axis.plot(self.years, self.rates * 100, **kwargs)
         axis.set_xlim((self.years.min(), self.years.max()))
         return axis
 
@@ -234,7 +234,7 @@ class DiscRates():
             raise err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
-        """ Write excel file following template.
+        """Write excel file following template.
 
         Parameters:
             file_name (str): absolute file name to write

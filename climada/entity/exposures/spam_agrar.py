@@ -31,19 +31,19 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'CP'
-""" Default hazard type used in impact functions id."""
+"""Default hazard type used in impact functions id."""
 
 FILENAME_SPAM = 'spam2005V3r2_global'
-""" """
+"""TODO: Add Docstring!"""
 
 FILENAME_CELL5M = 'cell5m_allockey_xy.csv'
-""" """
+"""TODO: Add Docstring!"""
 
 FILENAME_PERMALINKS = 'spam2005V3r2_download_permalinks.csv'
-""" """
+"""TODO: Add Docstring!"""
 
 BUFFER_VAL = -340282306073709652508363335590014353408
-""" Hard coded value which is used for NANs in original data """
+"""Hard coded value which is used for NANs in original data"""
 
 class SpamAgrar(Exposures):
     """Defines agriculture exposures from SPAM
@@ -62,7 +62,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         return SpamAgrar
 
     def init_spam_agrar(self, **parameters):
-        """ initiates agriculture exposure from SPAM data:
+        """initiates agriculture exposure from SPAM data:
 
             https://dataverse.harvard.edu/
             dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
@@ -99,7 +99,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             save_name_adm1 (Boolean): Determines how many aditional data are saved:
                 False: only basics (lat, lon, total value), region_id per country
                 True: like 1 + name of admin1
-                
+
             haz_type (str): hazard type abbreviation, e.g.
                 'DR' for Drought or
                 'CP' for CropPotential
@@ -138,25 +138,25 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         if save_adm1:
             self.name_adm1 = data.loc[:, 'name_adm1'].values
 
-        if spam_v == 'V_agg': # total only (column 7)
+        if spam_v == 'V_agg':  # total only (column 7)
             i_1 = 7
             i_2 = 8
         else:
-            i_1 = 7 # get sum over all crops (columns 7 to 48)
+            i_1 = 7  # get sum over all crops (columns 7 to 48)
             i_2 = 49
         self['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
         self['latitude'] = lat.values
         self['longitude'] = lon.values
-        LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(\
-                    np.min(self.latitude), np.max(self.latitude)))
-        LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(\
-                    np.min(self.longitude), np.max(self.longitude)))
+        LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(
+            np.min(self.latitude), np.max(self.latitude)))
+        LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(
+            np.min(self.longitude), np.max(self.longitude)))
 
         # set region_id (numeric ISO3):
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
             region_id = np.ones(self.value.size, int)\
-                *int(iso_cntry.get(country_id.iloc[0]).numeric)
+                * int(iso_cntry.get(country_id.iloc[0]).numeric)
         else:
             region_id = np.zeros(self.value.size, int)
             for i in range(0, self.value.size):
@@ -164,8 +164,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         self['region_id'] = region_id
         self.ref_year = 2005
         self.tag = Tag()
-        self.tag.description = ("SPAM agrar exposure for variable "\
-            + spam_v + " and technology " + spam_t)
+        self.tag.description = ("SPAM agrar exposure for variable "
+                                + spam_v + " and technology " + spam_t)
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
@@ -183,44 +183,44 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         else:
             self.value_unit = 'USD'
 
-        LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(\
-                    spam_v, spam_t, region, self.value.sum(), self.value_unit))
+        LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(
+            spam_v, spam_t, region, self.value.sum(), self.value_unit))
         self.check()
 
     def _set_if(self, spam_t, haz_type):
-        """ Set impact function id depending on technology."""
+        """Set impact function id depending on technology."""
         # hazard type drought is default.
         iiv = 0
         if spam_t == 'TA':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+1*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 1 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+2*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 2 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+3*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 3 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+4*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 4 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)+5*iiv
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 5 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self[INDICATOR_IF+haz_type] = np.ones(self.value.size, int)
+            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):
-        """ Reads data from SPAM CSV file and cuts out the data for the
+        """Reads data from SPAM CSV file and cuts out the data for the
             according country, admin1, or admin2 (if requested).
 
         Optional parameters:
@@ -249,30 +249,28 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         data_path = parameters.get('data_path', SYSTEM_DIR)
         spam_tech = parameters.get('spam_technology', 'TA')
         spam_var = parameters.get('spam_variable', 'V_agg')
-        fname_short = FILENAME_SPAM+'_'+ spam_var  + '_' + spam_tech + '.csv'
+        fname_short = FILENAME_SPAM + '_' + spam_var + '_' + spam_tech + '.csv'
 
         try:
             fname = os.path.join(data_path, fname_short)
             if not os.path.isfile(fname):
                 try:
-                    self._spam_download_csv(data_path=data_path,\
+                    self._spam_download_csv(data_path=data_path,
                                             spam_variable=spam_var)
                 except:
-                    raise FileExistsError('The file ' + str(fname)\
-                                + ' could not '\
-                                + 'be found. Please download the file '\
-                                + 'first or choose a different folder. '\
-                                + 'The data can be downloaded from '\
-                                + 'https://dataverse.harvard.edu/'\
-                                + 'dataset.xhtml?persistentId=doi:'\
-                                + '10.7910/DVN/DHXBJX')
+                    raise FileExistsError('The file ' + str(fname) + ' could not '
+                                          + 'be found. Please download the file '
+                                          + 'first or choose a different folder. '
+                                          + 'The data can be downloaded from '
+                                          + 'https://dataverse.harvard.edu/'
+                                          + 'dataset.xhtml?persistentId=doi:'
+                                          + '10.7910/DVN/DHXBJX')
             LOGGER.debug('Importing %s', str(fname_short))
 
-            data = pd.read_csv(fname, sep=',', index_col=None, header=0, \
-                             encoding='ISO-8859-1')
+            data = pd.read_csv(fname, sep=',', index_col=None, header=0, encoding='ISO-8859-1')
 
         except:
-            LOGGER.error('Importing the SPAM agriculturer file failed. ' \
+            LOGGER.error('Importing the SPAM agriculturer file failed. '
                          'Operation aborted.')
             raise
         # remove data points with zero crop production: (works only for TA)
@@ -290,24 +288,23 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
             if not os.path.isfile(fname):
                 try:
-                    self._spam_download_csv(data_path=data_path,\
+                    self._spam_download_csv(data_path=data_path,
                                             spam_variable='cell5m')
                 except:
-                    raise FileExistsError('The file ' + str(fname)\
-                                + ' could not '\
-                                + 'be found. Please download the file '\
-                                + 'first or choose a different folder. '\
-                                + 'The data can be downloaded from '\
-                                + 'https://dataverse.harvard.edu/'\
-                                + 'dataset.xhtml?persistentId=doi:'\
-                                + '10.7910/DVN/DHXBJX')
+                    raise FileExistsError('The file ' + str(fname) + ' could not '
+                                          + 'be found. Please download the file '
+                                          + 'first or choose a different folder. '
+                                          + 'The data can be downloaded from '
+                                          + 'https://dataverse.harvard.edu/'
+                                          + 'dataset.xhtml?persistentId=doi:'
+                                          + '10.7910/DVN/DHXBJX')
             # LOGGER.debug('Inporting %s', str(fname))
 
-            concordance_data = pd.read_csv(fname, sep=',', index_col=None, \
+            concordance_data = pd.read_csv(fname, sep=',', index_col=None,
                                            header=0, encoding='ISO-8859-1')
 
-            concordance_data = concordance_data\
-                [concordance_data['alloc_key'].isin(alloc_key_array)]
+            concordance_data = concordance_data[
+                concordance_data['alloc_key'].isin(alloc_key_array)]
 
             concordance_data = concordance_data.sort_values(by=['alloc_key'])
 
@@ -315,7 +312,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             lon = concordance_data.loc[:, 'x']
 
         except:
-            LOGGER.error('Importing the SPAM cell5m mapping file failed. ' \
+            LOGGER.error('Importing the SPAM cell5m mapping file failed. '
                          'Operation aborted.')
             raise
         return lat, lon
@@ -341,12 +338,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         adm1 = parameters.get('name_adm1')
         adm2 = parameters.get('name_adm2')
         signifier = ''
-        if not adm0 is None:
+        if adm0 is not None:
             if data[data.iso3 == adm0].empty:
                 if data[data.name_cntr == adm0].empty:
-                    LOGGER.warning('Country name not found in data: %s', \
-                                   str(adm0) \
-                               + '. Try passing the ISO3-code instead.')
+                    LOGGER.warning('Country name not found in data: %s',
+                                   str(adm0) + '. Try passing the ISO3-code instead.')
                 else:
                     data = data[data.name_cntr == adm0]
                     signifier = signifier + adm0
@@ -354,13 +350,13 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                 data = data[data.iso3 == adm0]
                 signifier = signifier + adm0
 
-        if not adm1 is None:
+        if adm1 is not None:
             if data[data.name_adm1 == adm1].empty:
                 LOGGER.warning('Admin1 not found in data: %s', str(adm1))
             else:
                 data = data[data.name_adm1 == adm1]
                 signifier = signifier + ' ' + adm1
-        if not adm2 is None:
+        if adm2 is not None:
             if data[data.name_adm2 == adm2].empty:
                 LOGGER.warning('Admin2 not found in data: %s', str(adm2))
             else:
@@ -395,8 +391,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             if not os.path.isfile(fname):
                 url1 = 'https://dataverse.harvard.edu/api/access/datafile/:'\
                         + 'persistentId?persistentId=doi:10.7910/DVN/DHXBJX/'
-                permalinks = pd.DataFrame(columns=['A', 'H', \
-                        'P', 'Y', 'V_agg', 'cell5m'])
+                permalinks = pd.DataFrame(columns=['A', 'H', 'P', 'Y', 'V_agg', 'cell5m'])
                 permalinks.loc[0, 'A'] = url1 + 'FS1JO8'
                 permalinks.loc[0, 'H'] = url1 + 'M727TX'
                 permalinks.loc[0, 'P'] = url1 + 'HPUWVA'
@@ -404,7 +399,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
                 permalinks.loc[0, 'V_agg'] = url1 + 'UG0N7K'
                 permalinks.loc[0, 'cell5m'] = url1 + 'H2D3LI'
             else:
-                permalinks = pd.read_csv(fname, sep=',', index_col=None, \
+                permalinks = pd.read_csv(fname, sep=',', index_col=None,
                                          header=0)
                 LOGGER.debug('Importing %s', str(fname))
 

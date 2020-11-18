@@ -45,7 +45,7 @@ LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 HAZ_TYPE = 'LS'
 
 
-""" for future: implement a function that downloads COOLR data by command, not manually"""
+"""for future: implement a function that downloads COOLR data by command, not manually"""
 # def get_coolr_shp(save_path=os.getcwd()):
 #    """for LS_MODEL[0]: download most up-to-date version of historic LS records from
 #    global landslide catalog (COOLR of NASA) in shape-file format (zip)"""
@@ -77,7 +77,7 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
         tiff files (daily) to save_path/LS_nowcast_date.tif
     """
     # the daily one is currently not producing any output
-    if  tif_type == "daily":
+    if tif_type == "daily":
         if starttime > endtime:
             LOGGER.error("Start date must lie before end date. Please change")
             raise ValueError
@@ -93,7 +93,7 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
         data = resp.json()
         tif_url = []
         for item in data['items']:
-            #extract json resonse snippet for tiff download
+            # extract json resonse snippet for tiff download
             tif_url.append(item['action'][1]['using'][2]['url'])
 
         resp_tif = []
@@ -101,11 +101,15 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
             LOGGER.info('requesting %s', url)
             resp_tif.append(requests.get(url=url))
             LOGGER.info('downloading content...')
-            open((save_path+'/LS_nowcast_'+str(url[-12:-4])+'.tif'), 'wb').write(resp_tif[-1].content)
+            with open((save_path + '/LS_nowcast_' + str(url[-12:-4]) + '.tif'), 'wb') as fp:
+                fp.write(resp_tif[-1].content)
 
     elif tif_type == "monthly":
 
-        command_line = 'curl -LO "https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames/9600x5400_16x9_30p/MonthlyClimatology/[01-12]_ClimatologyMonthly_032818_9600x5400.tif"'
+        command_line = ('curl -LO '
+                        '"https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames'
+                        '/9600x5400_16x9_30p/MonthlyClimatology/'
+                        '[01-12]_ClimatologyMonthly_032818_9600x5400.tif"')
         args = shlex.split(command_line)
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
@@ -114,7 +118,7 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
 
 
 def combine_nowcast_tiff(ls_folder_path, search_criteria='LS*.tif', operator="maximum"):
-    """ Function to overlay several tiff files with landslide hazard data either by
+    """Function to overlay several tiff files with landslide hazard data either by
     keeping maximum value per pixel or by summing up all pixel values.
     UPDATE: SOMETIMES WORKS, SOMETIMES NOT, ISSUE SEEMS TO BE WITH THE SHELL=TRUE COMMAND
     Parameters:
@@ -144,13 +148,13 @@ def combine_nowcast_tiff(ls_folder_path, search_criteria='LS*.tif', operator="ma
                 /Users/evelynm/anaconda3/envs/climada_env_new/bin
                 """
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="maximum(A,B)"' \
-                %(combined_layers_path, file, file)
+                % (combined_layers_path, file, file)
                 args = shlex.split(command_line)
             else:
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="maximum(A,B)"'\
-                %(combined_layers_path, combined_layers_path, file)
+                % (combined_layers_path, combined_layers_path, file)
                 args = shlex.split(command_line)
-            i = i+1
+            i = i + 1
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, shell=True)
@@ -161,13 +165,13 @@ def combine_nowcast_tiff(ls_folder_path, search_criteria='LS*.tif', operator="ma
         for file in ls_files:
             if i == 0:
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="A+B"' \
-                %(combined_layers_path, file, file)
+                % (combined_layers_path, file, file)
                 args = shlex.split(command_line)
             else:
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="A+B"' \
-                %(combined_layers_path, combined_layers_path, file)
+                % (combined_layers_path, combined_layers_path, file)
                 args = shlex.split(command_line)
-            i = i+1
+            i = i + 1
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, shell=True)
@@ -180,7 +184,7 @@ class Landslide(Hazard):
     """
 
     def __init__(self):
-        """Empty constructor. """
+        """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.tag.haz_type = 'LS'
 
@@ -196,20 +200,20 @@ class Landslide(Hazard):
             window_array (array): corner, width & height for Window() function of rasterio
         """
         with rasterio.open(path_sourcefile) as src:
-            utm = pyproj.Proj(init='epsg:4326') # Pass CRS of image from rasterio
+            utm = pyproj.Proj(init='epsg:4326')  # Pass CRS of image from rasterio
 
         lonlat = pyproj.Proj(init='epsg:4326')
         lon, lat = (bbox[3], bbox[0])
         west, north = pyproj.transform(lonlat, utm, lon, lat)
 
         # What is the corresponding row and column in our image?
-        row, col = src.index(west, north) # spatial --> image coordinates
+        row, col = src.index(west, north)  # spatial --> image coordinates
 
         lon, lat = (bbox[1], bbox[2])
         east, south = pyproj.transform(lonlat, utm, lon, lat)
         row2, col2 = src.index(east, south)
-        width = abs(col2-col)
-        height = abs(row2-row)
+        width = abs(col2 - col)
+        height = abs(row2 - row)
 
         window_array = [col, row, width, height]
 
@@ -217,9 +221,9 @@ class Landslide(Hazard):
 
     def _get_raster_meta(self, path_sourcefile, window_array):
         """get geo-meta data from raster files to set centroids adequately"""
-        raster = rasterio.open(path_sourcefile, 'r', \
-                               window=Window(window_array[0], window_array[1],\
-                                               window_array[2], window_array[3]))
+        raster = rasterio.open(path_sourcefile, 'r',
+                               window=Window(window_array[0], window_array[1],
+                                             window_array[2], window_array[3]))
         pixel_width = raster.meta['transform'][0]
         pixel_height = raster.meta['transform'][4]
 
@@ -229,27 +233,35 @@ class Landslide(Hazard):
         """convert NASA nowcasting categories into occurrence probabilities:
             highest value category value receives a prob of max_prob, lowest category value
             receives a prob value of 0"""
-        self.intensity_cat = self.intensity.copy() #save prob values
+        self.intensity_cat = self.intensity.copy()  # save prob values
         self.intensity = self.intensity.astype(float)
         self.intensity.data = self.intensity.data.astype(float)
         max_value = float(max(self.intensity_cat.data))
         min_value = float(min(self.intensity_cat.data))
 
         for i, j in zip(*self.intensity.nonzero()):
-            self.intensity[i, j] = float((self.intensity[i, j]-min_value)/\
-                          (max_value-min_value)*max_prob)
+            self.intensity[i, j] = float((self.intensity[i, j] - min_value) /
+                                         (max_value - min_value) * max_prob)
 
 
     def _intensity_prob_to_binom(self, n_years):
         """convert occurrence probabilities in NGI/UNEP landslide hazard map into binary
         occurrences (yes/no) within a given time frame.
-        Parameters:
-            n_years (int): the timespan of the probabilistic simulation in years
-        Returns:
-            intensity_prob (csr matrix): initial probabilities of ls occurrence per year per pixel
-            intensity (csr matrix): binary (0/1) occurrence within pixel"""
 
-        self.intensity_prob = self.intensity.copy() #save prob values
+        Parameters
+        ----------
+        n_years : int
+            the timespan of the probabilistic simulation in years
+
+        Returns
+        -------
+        intensity_prob : csr matrix
+            initial probabilities of ls occurrence per year per pixel
+        intensity : csr matrix
+            binary (0/1) occurrence within pixel
+        """
+
+        self.intensity_prob = self.intensity.copy()  # save prob values
 
         for i, j in zip(*self.intensity.nonzero()):
             if binom.rvs(n=n_years, p=self.intensity[i, j]) >= 1:
@@ -271,9 +283,9 @@ class Landslide(Hazard):
         # find all other pixels within certain distance from corresponding centroid,
         for i, j in zip(*self.intensity.nonzero()):
             subset_neighbours = self.centroids.geometry.cx[
-                (self.centroids.coord[j][1]-0.01):(self.centroids.coord[j][1]+0.01),
-                (self.centroids.coord[j][0]-0.01):(self.centroids.coord[j][0]+0.01)
-                ]# 0.01° = 1.11 km approximately
+                (self.centroids.coord[j][1] - 0.01):(self.centroids.coord[j][1] + 0.01),
+                (self.centroids.coord[j][0] - 0.01):(self.centroids.coord[j][0] + 0.01)
+            ]  # 0.01° = 1.11 km approximately
             for centroid in subset_neighbours:
                 ix = subset_neighbours[subset_neighbours == centroid].index[0]
                 # calculate dist, assign intensity [0-1] linearly until max_dist
@@ -284,11 +296,11 @@ class Landslide(Hazard):
                         self.centroids.coord[j], unit='m')
                     # this step changes sparsity of matrix -->
                     # converted to lil_matrix, as more efficient
-                    self.intensity[i, ix] = (max_dist-actual_dist)/max_dist
+                    self.intensity[i, ix] = (max_dist - actual_dist) / max_dist
         self.intensity = self.intensity.tocsr()
 
     def plot_raw(self, ev_id=1, **kwargs):
-        """ Plot raw LHM data using imshow and without cartopy
+        """Plot raw LHM data using imshow and without cartopy
 
         Parameters:
             ev_id (int, optional): event id. Default: 1.
@@ -307,11 +319,11 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity_prob[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
+        return plt.imshow(self.intensity_prob[event_pos, :].toarray().
+                          reshape(self.centroids.shape), **kwargs)
 
     def plot_events(self, ev_id=1, **kwargs):
-        """ Plot LHM event data using imshow and without cartopy
+        """Plot LHM event data using imshow and without cartopy
 
         Parameters:
             ev_id (int, optional): event id. Default: 1.
@@ -330,8 +342,8 @@ class Landslide(Hazard):
             LOGGER.error('Wrong event id: %s.', ev_id)
             raise ValueError from IndexError
 
-        return plt.imshow(self.intensity[event_pos, :].todense(). \
-                              reshape(self.centroids.shape), **kwargs)
+        return plt.imshow(self.intensity[event_pos, :].toarray().
+                          reshape(self.centroids.shape), **kwargs)
 
     def _get_hist_events(self, bbox, coolr_path):
         """for LS_MODEL[0]: load gdf with landslide event POINTS from
@@ -360,13 +372,13 @@ class Landslide(Hazard):
         ls_gdf_bbox = self._get_hist_events(bbox, path_sourcefile)
 
         self.centroids.set_lat_lon(ls_gdf_bbox.latitude, ls_gdf_bbox.longitude)
-        n_cen = ls_gdf_bbox.latitude.size # number of centroids
+        n_cen = ls_gdf_bbox.latitude.size  # number of centroids
         n_ev = n_cen
         self.intensity = sparse.csr_matrix(np.ones((n_ev, n_cen)))
         self.units = 'm/m'
         self.event_id = np.arange(n_ev, dtype=int)
         self.orig = np.zeros(n_ev, bool)
-        self.frequency = np.ones(n_ev)/n_ev
+        self.frequency = np.ones(n_ev) / n_ev
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1)
         self.check()
@@ -375,9 +387,8 @@ class Landslide(Hazard):
             self.centroids.plot()
         return self
 
-    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", 
-                          path_sourcefile = [], n_years=500,\
-                     incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
+    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", path_sourcefile=[], n_years=500,
+                          incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
             ls_model (str): UNEP_NGI (prob., UNEP/NGI) or NASA (prob., NASA Nowcast)
@@ -392,7 +403,7 @@ class Landslide(Hazard):
             path_sourcefile (str): if ls_model is UNEP_NGI, use  path to NGI/UNEP file,
                 retrieved previously as descriped in tutorial and stored in climada/data.
                 if ls_model is NASA  provide path to combined daily or
-                monthly rasterfile, retrieved and aggregated           
+                monthly rasterfile, retrieved and aggregated
                 previously with landslide.get_nowcast_tiff() and
                 landslide.combine_nowcast_tiff().
         Returns:
@@ -401,18 +412,19 @@ class Landslide(Hazard):
 
         if ls_model == "UNEP_NGI":
             path_sourcefile = os.path.join(LS_FILE_DIR, 'ls_pr_NGI_UNEP/ls_pr.tif')
-            
+
             if not bbox:
                 LOGGER.error('Empty bounding box, please set bounds.')
                 raise ValueError()
 
-            window_array = self._get_window_from_coords(path_sourcefile,\
+            window_array = self._get_window_from_coords(path_sourcefile,
                                                         bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
-            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
-                                            window_array[3], window_array[2]))
-            self.intensity = self.intensity/10e6 #prob values were initially multiplied by 1 mio
-            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
+            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],
+                                                             window_array[3], window_array[2]))
+            # prob values were initially multiplied by 1 mio
+            self.intensity = self.intensity / 10e6
+            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating landslides...')
             self._intensity_prob_to_binom(n_years)
@@ -426,13 +438,13 @@ class Landslide(Hazard):
                 self.check()
 
             if check_plots == 1:
-                fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-                self.plot_raw() 
+                fig1 = plt.subplots(nrows=1, ncols=1)[0]
+                self.plot_raw()
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
-                fig2, ax2 = plt.subplots(nrows=1, ncols=1)
+                fig2 = plt.subplots(nrows=1, ncols=1)[0]
                 self.plot_events()
-                fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
+                fig2.suptitle('Prob. LS Hazard Set n_years = %i' % n_years, fontsize=14)
 
             return self
 
@@ -446,11 +458,11 @@ class Landslide(Hazard):
                 raise ValueError()
             window_array = self._get_window_from_coords(path_sourcefile, bbox)
             pixel_height, pixel_width = self._get_raster_meta(path_sourcefile, window_array)
-            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],\
-                                            window_array[3], window_array[2]))
+            self.set_raster([path_sourcefile], window=Window(window_array[0], window_array[1],
+                                                             window_array[3], window_array[2]))
             LOGGER.info('Setting probability values from categorical landslide hazard levels...')
             self._intensity_cat_to_prob(max_prob)
-            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,\
+            self.centroids.set_raster_from_pix_bounds(bbox[0], bbox[3], pixel_height, pixel_width,
                                                       window_array[3], window_array[2])
             LOGGER.info('Generating binary landslides...')
             self._intensity_prob_to_binom(n_years)
@@ -470,11 +482,11 @@ class Landslide(Hazard):
 
                 fig2, ax2 = plt.subplots(nrows=1, ncols=1)
                 ax2 = self.plot_events()
-                fig2.suptitle('Prob. LS Hazard Set n_years = %i' %n_years, fontsize=14)
+                fig2.suptitle('Prob. LS Hazard Set n_years = %i' % n_years, fontsize=14)
 
             return self
 
         else:
-            LOGGER.error('Specify the LS model to be used for the hazard-set generation as ls_model=str')
+            LOGGER.error('Specify the LS model to be used for the hazard-set '
+                         'generation as ls_model=str')
             raise KeyError
-
