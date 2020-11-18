@@ -12,7 +12,11 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
-ABBREV = ['', 'K', 'M', 'Bn', 'Tn']
+ABBREV = {1:'',
+          1000: 'K',
+          1000000: 'M',
+          1000000000: 'Bn', 
+          1000000000000: 'Tn'}
 
 def sig_dig(x, n_sig_dig = 16):
     """
@@ -60,53 +64,70 @@ def sig_dig_list(iterable, n_sig_dig=16):
     """
     return np.vectorize(sig_dig)(iterable, n_sig_dig)
 
-def money_words(values, n_digits=None, abbreviations=None):
+
+def money_unit(values, n_sig_dig=None, abbreviations=None):
     """
-    Converts values to closest common monetary unit (K, M Bn, Tn, ...)
+    Converts values to closest common monetary unit, default: (K, M Bn, Tn)
 
     Parameters
     ----------
-    values : list(float) or np.ndarray
+    values : float, list(float) or np.ndarray
         Values to be converted
-    n_digits : int, optional
-        Number of significant digits to return. The default is all digits
-        are returned.
-    abbreviations: string, optional
+    n_sig_dig : int, optional
+        Number of significant digits to return.
+        Examples n_sig_di=5: 1.234567 -> 1.2346, 123456.89 -> 123460.0
+        Default: all digits are returned. 
+    abbreviations: dict, optional
         Name of the abbreviations for the money 1000s counts
-        (e.g., 'k', 'm', 'bn'). Default is ABBREV.
+        Default:  
+         {0:'',
+          1000: 'K',
+          1000000: 'M',
+          1000000000: 'Bn', 
+          1000000000000: 'Tn'}
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
-    name : TYPE
-        DESCRIPTION.
+    mon_val : np.ndarray
+        Array of values in monetary unit 
+    name : string
+        Monetary unit
 
     """
+    
+    if not isinstance(values, list):
+        values = [values]
     
     if abbreviations is None:
         abbreviations= ABBREV
     
-    exponents = [math.log10(abs(val)) for val in values]
+    exponents = []
+    for val in values:
+        if val == 0:
+            exponents.append(0)
+            continue
+        exponents.append(math.log10(abs(val)))
+        
     max_exp = max(exponents)
     min_exp = min(exponents)
     
     avg_exp = math.floor((max_exp + min_exp) / 2) #rounded down
+    mil_exp = 3 * math.floor(avg_exp/3)
     
     name = ''
+    thsder = int(10**mil_exp)
+    
     try:
-        idx = int(avg_exp/3)
-        name = abbreviations[idx] 
-        if idx == 0:
-            mon_val = np.array(values),
-            return (mon_val, name)
-    except IndexError: 
-        LOGGER.warning(f"The numbers are larger than 1000{abbreviations[-1]}")
-        name = abbreviations[-1]
-        largest_exp = (len(abbreviations)-1) * 3
-        mon_val = values / 10**largest_exp
-        return (mon_val , name)   
-    mon_val = np.array(values) / 10**avg_exp
+        name = abbreviations[thsder] 
+    except KeyError: 
+        LOGGER.warning(f"Warning: The numbers are larger than \
+{list(abbreviations.keys())[-1]}")
+        thsder, name = list(abbreviations.items())[-1]
+    
+    mon_val = np.array(values) / thsder
+    
+    if n_sig_dig is not None:
+        mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
     
     return (mon_val, name)
-    
+
