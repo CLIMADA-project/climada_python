@@ -364,14 +364,6 @@ class TestSynth(unittest.TestCase):
                                                            np.array([0, 5]))[0], 0.0)
         self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]),
                                                            np.array([0, 0.00001]))[0], 45)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]),
-                                                              np.array([0, 0]))[0], 0.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 1]),
-                                                              np.array([0, 0]))[0], 1.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 0]),
-                                                              np.array([0, 1]))[0], 1.0)
-        self.assertAlmostEqual(tc_synth._get_angular_distance(np.array([0, 30]),
-                                                              np.array([0, 30]))[0], 41.40962211)
         pt_north = tc_synth._get_destination_points(0, 0, 0, 1)
         self.assertAlmostEqual(pt_north[0], 0.0)
         self.assertAlmostEqual(pt_north[1], 1.0)
