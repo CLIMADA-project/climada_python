@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test hdf5_handler module.
 """
 
-import os
 import unittest
 import numpy as np
 import h5py

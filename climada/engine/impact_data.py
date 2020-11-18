@@ -723,7 +723,7 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
 
     Parameters:
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
 
     Optional parameters:
         countries (list of str): country ISO3-codes or names, e.g. ['JAM', 'CUB'].
@@ -778,7 +778,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
 
     Parameters:
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
         hazard_type_climada (str): Hazard type CLIMADA abbreviation,
             i.e. 'TC' for tropical cyclone
 

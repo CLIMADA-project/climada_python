@@ -4,9 +4,9 @@ Created on Fri Jul 13 10:11:45 2018
 
 @author: Dario
 """
-import os
 import logging
 import subprocess
+from pathlib import Path
 
 import gdal
 import pandas as pd
@@ -19,8 +19,7 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
-FOLDER_GPW = os.path.join(SYSTEM_DIR,
-                          'gpw-v4-population-count-rev%02i_%04i_30_sec_tif')
+FOLDER_GPW = SYSTEM_DIR.joinpath('gpw-v4-population-count-rev%02i_%04i_30_sec_tif')
 GPW_VERSIONS = [11, 10, 12, 13]
 # FILENAME_GPW1 = '_30_sec.tif'
 YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
@@ -159,19 +158,19 @@ def get_box_gpw(**parameters):
     zoom_factor = 30 / resolution  # Orignal resolution is arc-seconds
     file_exists = False
     for ver in GPW_VERSIONS:
-        gpw_path = parameters.get('gpw_path', FOLDER_GPW % (ver, year))
-        if not os.path.isdir(gpw_path):
+        gpw_path = Path(parameters.get('gpw_path', FOLDER_GPW % (ver, year)))
+        if not gpw_path.is_dir():
             gpw_path = SYSTEM_DIR
-        fname = os.path.join(gpw_path, FILENAME_GPW % (ver, year))
-        if os.path.isfile(fname):
+        fname = gpw_path.joinpath(FILENAME_GPW % (ver, year))
+        if fname.is_file():
             file_exists = True
             LOGGER.info('GPW Version v4.%2i', ver)
             break
 
     try:
         if not file_exists:
-            if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
-                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')], shell=True)
+            if SYSTEM_DIR.joinpath('GPW_help.pdf').is_file():
+                subprocess.Popen([str(SYSTEM_DIR.joinpath('GPW_help.pdf'))], shell=True)
                 raise FileExistsError('The file ' + str(fname) + ' could not '
                                       + 'be found. Please download the file '
                                       + 'first or choose a different folder. '

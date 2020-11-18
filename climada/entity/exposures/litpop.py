@@ -1038,7 +1038,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
         LOGGER.error("invalid fin_mode")
 
 def _gsdp_read(country_iso3, admin1_shape_data,
-               look_folder=os.path.join(SYSTEM_DIR, 'GSDP')):
+               look_folder=SYSTEM_DIR.joinpath('GSDP')):
     """Retrieves the GSDP data for a certain country. It requires an
         excel file in a subfolder "GSDP" in climadas data folder (or in the
         specified folder). The excel file should bear the name

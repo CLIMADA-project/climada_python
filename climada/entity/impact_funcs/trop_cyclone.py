@@ -21,7 +21,6 @@ Define impact functions for tropical cyclnes .
 
 __all__ = ['IFTropCyclone']
 
-import os
 import logging
 import numpy as np
 import pandas as pd
@@ -126,7 +125,7 @@ class IFSTropCyclone(ImpactFuncSet):
             df_calib_results = input_file_path
         else:
             df_calib_results = pd.read_csv(
-                os.path.join(SYSTEM_DIR,
+                SYSTEM_DIR.joinpath(
                              'tc_if_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
                 encoding="ISO-8859-1", header=0)
 

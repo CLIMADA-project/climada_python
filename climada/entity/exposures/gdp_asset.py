@@ -20,12 +20,12 @@ Define GDPAsset class.
 """
 
 __all__ = ['GDP2Asset']
-import os
+import logging
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy as sp
-import logging
 import geopandas as gpd
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
@@ -36,7 +36,7 @@ LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
 
-CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
+CONVERTER = SYSTEM_DIR.joinpath('GDP2Asset_converter_2.5arcmin.nc')
 
 
 class GDP2Asset(Exposures):
@@ -63,7 +63,7 @@ class GDP2Asset(Exposures):
             LOGGER.error('No path for exposure data set')
             raise NameError
 
-        if not os.path.exists(path):
+        if not Path(path).is_file():
             LOGGER.error('Invalid path %s', path)
             raise NameError
         try:
@@ -86,7 +86,7 @@ class GDP2Asset(Exposures):
         except KeyError:
             LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
                          ' reference year %s', countries, reg, ref_year)
-            raise KeyError
+            raise
         self.tag = tag
         self.ref_year = ref_year
         self.value_unit = 'USD'
