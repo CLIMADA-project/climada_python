@@ -1011,7 +1011,10 @@ class Impact():
         event_names : list[str], optional
             Selection of events by their name. The default is None.
         dates : tuple(), optional
-            Tuple of dates to select the events in between. The default is None.
+            (start-date, end-date), events are selected if they are >= 
+            than start-date and <= than end-date. Dates in same format
+            as impact.date (ordinal format of datetime library)
+            The default is None.
         coord_exp : (np.ndarray), optional]
             Selection of exposures coordinates [lat, lon] (in degrees)
             The default is None.
