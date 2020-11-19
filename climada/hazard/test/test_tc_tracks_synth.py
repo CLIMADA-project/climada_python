@@ -376,21 +376,21 @@ class TestSynth(unittest.TestCase):
         self.assertAlmostEqual(pt_test[1], -1.590347)
 
     def test_random_no_landfall_pass(self):
-        """Test calc_random_walk with decay and no historical tracks with landfall"""
+        """Test calc_perturbed_trajectories with decay and no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
-            tc_track.calc_random_walk()
+            tc_track.calc_perturbed_trajectories()
         self.assertIn('No historical track with landfall.', cm.output[1])
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        ens_size = 2
-        tc_track.calc_random_walk(nb_synth_tracks=ens_size, seed=25, decay=False)
+        nb_synth_tracks = 2
+        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=False)
 
-        self.assertEqual(len(tc_track.data), ens_size + 1)
+        self.assertEqual(len(tc_track.data), nb_synth_tracks + 1)
 
         self.assertFalse(tc_track.data[1].orig_event_flag)
         self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
@@ -423,12 +423,12 @@ class TestSynth(unittest.TestCase):
         self.assertAlmostEqual(tc_track.data[2].lat[8].values, 12.75050471)
 
     def test_random_walk_decay_pass(self):
-        """Test land decay is called from calc_random_walk."""
+        """Test land decay is called from calc_perturbed_trajectories."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        ens_size = 2
+        nb_synth_tracks = 2
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_random_walk(nb_synth_tracks=ens_size, seed=25, decay=True)
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True)
         self.assertIn('No historical track of category Tropical Depression '
                       'with landfall.', cm.output[1])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
@@ -447,8 +447,8 @@ class TestSynth(unittest.TestCase):
         """Test 0 perturbation leads to identical tracks."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
-        ens_size = 2
-        tc_track.calc_random_walk(nb_synth_tracks=ens_size,
+        nb_synth_tracks = 2
+        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks,
                                   max_shift_ini=0, max_dspeed_rel=0, max_ddirection=0, decay=False)
         orig_track = tc_track.data[0]
         for syn_track in tc_track.data[1:]:
