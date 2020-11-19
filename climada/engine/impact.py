@@ -949,8 +949,12 @@ class Impact():
     @staticmethod
     def get_per_event_attr(event_obj):
         """
-        Get the attribute names of a CLIMADA object that are defined per event (as list
-        or matrix)
+        Get the attribute names of a CLIMADA object that are defined
+        per event (as list or matrix)
+        
+        A per event attribute is defined as having one dimension size (length 
+        for 1d-array/list, row or column for 2d-array/matrix) equal to the 
+        number of events (=len(impact.event_id))
 
         Parameters
         ----------
@@ -986,10 +990,11 @@ class Impact():
                coord_exp=None):
         """
         Select a subset of events and/or exposure points from the impact.
-        If multiple variables are set, it returns all the impacts matching
-        at least one of the conditions.
+        If multiple input variables are not None, it returns all the impacts
+        matching at least one of the conditions.
         
-        Note: the frequencies are NOT adjusted. Method to adjust frequencies
+        Note: 
+            the frequencies are NOT adjusted. Method to adjust frequencies
         and obtain correct eai_exp:
             1- Select subset of impact according to your choice
             imp = impact.select(...)
@@ -1019,14 +1024,15 @@ class Impact():
 
         Returns
         -------
-        imp : Impact()
+        imp : climada.engine.Impact()
             A new impact object with a selection of events and/or exposures
 
         """
 
         if self.imp_mat.shape == (0, 0):
-            raise ValueError("The impact matrix is missing. eai_exp and\
-aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
+            raise ValueError("The impact matrix is missing. eai_exp and " +
+                             "aai_agg cannot be computed. Recomputed " + 
+                             "impact.calc with save_mat=True")
 
         imp = copy.deepcopy(self)
         nb_events = imp.event_id.size
@@ -1049,7 +1055,8 @@ aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
             if isinstance(date_ini, str):
                 date_ini = util_dt.str_to_date(date_ini)
                 date_end = util_dt.str_to_date(date_end)
-            sel_dt &= (date_ini <= imp.date) & (imp.date <= date_end)
+            sel_dt &= (date_ini <= imp.date)
+            sel_dt &= (imp.date <= date_end)
             if not np.any(sel_dt):
                 LOGGER.info('No impact event in date range %s.', dates)
                 return None     
@@ -1079,21 +1086,20 @@ aai_agg cannot be computed. Recomputed impact.calc with save_mat=True")
         # set all attributes that are 'per event', i.e. have a row or a column
         # of length equal to the number of events (=nb_events), using the 
         # selection sel_ev.
-        per_event_attr = self.get_per_event_attr(imp)
-        for (attr, value) in imp.__dict__.items():
-            if attr in per_event_attr:
-                if isinstance(value, np.ndarray) and value.ndim == 1 \
-                                                   and value.size > 0:
-                    setattr(imp, attr, value[sel_ev])
-                elif isinstance(value, sparse.csr_matrix):
-                    setattr(imp, attr, value[sel_ev, :][:, sel_exp])
-                elif isinstance(value, list) and value:
-                    setattr(imp, attr, [value[idx] for idx in sel_ev])
+        for attr in self.get_per_event_attr(imp):
+            value = imp.__getattribute__(attr)
+            if isinstance(value, np.ndarray) and value.ndim == 1 \
+                                               and value.size > 0:
+                setattr(imp, attr, value[sel_ev])
+            elif isinstance(value, sparse.csr_matrix):
+                setattr(imp, attr, value[sel_ev, :][:, sel_exp])
+            elif isinstance(value, list) and value:
+                setattr(imp, attr, [value[idx] for idx in sel_ev])
         
         # Recomputed eai_exp and aai_agg
-        if sel_ev:
-            LOGGER.warning("The eai_exp is computed for the selected subset of\
-events WITHOUT modification of the frequencies.")
+        if np.any(sel_ev):
+            LOGGER.warning("The eai_exp is computed for the selected subset " +
+                           "of events WITHOUT modification of the frequencies.")
 
         # cast frequency vector into 2d array for sparse matrix multiplication
         freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
@@ -1106,8 +1112,8 @@ events WITHOUT modification of the frequencies.")
             # .A1 reduce 1d matrix to 1d array
             imp.at_event = imp.imp_mat.sum(axis=1).A1
             imp.tot_value = None
-            LOGGER.warning("The total value cannot be computed for\
-a subset of exposures and is set to None")
+            LOGGER.warning("The total value cannot be computed for "+
+                           "a subset of exposures and is set to None")
 
         return imp
 
