@@ -871,14 +871,17 @@ class TCTracks():
                     self._one_interp_data(track, time_step_h, land_geom))
             self.data = new_data
 
-    def calc_random_walk(self, *args, **kwargs):
+    def calc_random_walk(self, **kwargs):
+        """Deprecated. Use `TCTracks.calc_perturbed_trajectories` instead."""
         LOGGER.warning("The use of TCTracks.calc_random_walk is deprecated."
                        "Use TCTracks.calc_perturbed_trajectories instead.")
-        return self.calc_perturbed_trajectories(self, *args, **kwargs)
+        if kwargs.get('ens_size'):
+            kwargs['nb_synth_tracks'] = kwargs.pop('ens_size')
+        return self.calc_perturbed_trajectories(**kwargs)
 
-    def calc_perturbed_trajectories(self, tracks, **kwargs):
+    def calc_perturbed_trajectories(self, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        climada.hazard.tc_tracks_synth.calc_perturbed_trajectories(tracks, **kwargs)
+        climada.hazard.tc_tracks_synth.calc_perturbed_trajectories(self, **kwargs)
 
     @property
     def size(self):
