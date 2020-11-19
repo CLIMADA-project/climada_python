@@ -197,8 +197,8 @@ def latlon_bounds(lat, lon, buffer=0.0):
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
-                method="equirect"):
-    """Compute approximation of geodistance in km
+                method="equirect", units='km'):
+    """Compute approximation of geodistance in specified units
 
     Parameters
     ----------
@@ -217,15 +217,31 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         * "equirect": equirectangular; very fast, good only at small distances.
         * "geosphere": spherical approximation, slower, but much higher accuracy.
         Default: "equirect".
+    units : str, optional
+        Specify a unit for the distance. One of:
+        * "km": distance in km.
+        * "degree": angular distance in decimal degrees.
+        * "radian": angular distance in radians.
+        Default: "km".
 
     Returns
     -------
     dists : ndarray of floats, shape (nbatch, nx, ny)
-        Approximate distances in km.
+        Approximate distances in specified units.
     vtan : ndarray of floats, shape (nbatch, nx, ny, 2)
         If `log` is True, tangential vectors at first points in local
         lat-lon coordinate system.
     """
+    if units == "km":
+        unit_factor = ONE_LAT_KM
+    elif units == "radian":
+        unit_factor = np.radians(1.0)
+    elif units == "degree":
+        unit_factor = 1
+    else:
+        LOGGER.error('Unknown distance unit: %s', units)
+        raise KeyError
+
     if method == "equirect":
         if normalize:
             lon_normalize(lon1)
@@ -236,9 +252,9 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         fact2 = np.heaviside(-d_lon - 180, 0)
         d_lon -= (fact1 - fact2) * 360
         d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist_km = np.sqrt(d_lon**2 + d_lat**2) * ONE_LAT_KM
+        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
         if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * ONE_LAT_KM
+            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
@@ -246,18 +262,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         # haversine formula:
         hav = np.sin(dlat)**2 \
             + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
-        dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
+        dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
-            fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
+            fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
             vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
-    return (dist_km, vtan) if log else dist_km
+    return (dist, vtan) if log else dist
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
