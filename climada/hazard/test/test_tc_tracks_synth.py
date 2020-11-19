@@ -388,7 +388,7 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
         ens_size = 2
-        tc_track.calc_random_walk(ens_size=ens_size, seed=25, decay=False)
+        tc_track.calc_random_walk(nb_synth_tracks=ens_size, seed=25, decay=False)
 
         self.assertEqual(len(tc_track.data), ens_size + 1)
 
@@ -428,7 +428,7 @@ class TestSynth(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         ens_size = 2
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_random_walk(ens_size=ens_size, seed=25, decay=True)
+            tc_track.calc_random_walk(nb_synth_tracks=ens_size, seed=25, decay=True)
         self.assertIn('No historical track of category Tropical Depression '
                       'with landfall.', cm.output[1])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
@@ -448,8 +448,8 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         ens_size = 2
-        tc_track.calc_random_walk(ens_size=ens_size,
-                                  max_shift_ini=0, max_dspeed_rel=0, max_ddir=0, decay=False)
+        tc_track.calc_random_walk(nb_synth_tracks=ens_size,
+                                  max_shift_ini=0, max_dspeed_rel=0, max_ddirection=0, decay=False)
         orig_track = tc_track.data[0]
         for syn_track in tc_track.data[1:]:
             np.testing.assert_allclose(orig_track.lon.values, syn_track.lon.values, atol=1e-4)

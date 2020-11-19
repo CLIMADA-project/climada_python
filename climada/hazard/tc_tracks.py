@@ -876,11 +876,9 @@ class TCTracks():
                        "Use TCTracks.calc_perturbed_trajectories instead.")
         return self.calc_perturbed_trajectories(self, *args, **kwargs)
 
-    def calc_perturbed_trajectories(self, nb_synth_tracks=9, **kwargs):
+    def calc_perturbed_trajectories(self, tracks, **kwargs):
         """See function in `climada.hazard.tc_tracks_synth`"""
-        climada.hazard.tc_tracks_synth.calc_perturbed_trajectories(self,
-                                                                   nb_synth_tracks=nb_synth_tracks,
-                                                                   **kwargs)
+        climada.hazard.tc_tracks_synth.calc_perturbed_trajectories(tracks, **kwargs)
 
     @property
     def size(self):
