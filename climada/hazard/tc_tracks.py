@@ -520,7 +520,7 @@ class TCTracks():
                     hours[i_track, valid_idx[reference_idx]],)
                 datetimes = [reference_date + dt.timedelta(hours=int(step * i))
                              for i in range(nnodes)]
-            datetimes = np.array(datetimes)
+            datetimes = np.array(datetimes, dtype=np.datetime64)
 
             max_sustained_wind = tc_maxwind[i_track, valid_idx]
             max_sustained_wind_unit = 'kn'
@@ -859,10 +859,16 @@ class TCTracks():
                                       itertools.repeat(land_geom, self.size),
                                       chunksize=chunksize)
         else:
-            new_data = list()
+            last_perc = 0
+            new_data = []
             for track in self.data:
-                new_data.append(self._one_interp_data(track, time_step_h,
-                                                      land_geom))
+                # progress indicator
+                perc = 100 * len(new_data) / len(self.data)
+                if perc - last_perc >= 10:
+                    LOGGER.debug("Progress: %d%%", perc)
+                    last_perc = perc
+                new_data.append(
+                    self._one_interp_data(track, time_step_h, land_geom))
             self.data = new_data
 
     def calc_random_walk(self, **kwargs):

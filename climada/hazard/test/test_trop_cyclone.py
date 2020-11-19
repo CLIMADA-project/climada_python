@@ -156,8 +156,26 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
-class TestModel(unittest.TestCase):
-    """Test modelling of tropical cyclone"""
+class TestWindfieldHelpers(unittest.TestCase):
+    """Test helper functions of TC wind field model"""
+
+    def test_close_centroids_pass(self):
+        """Test _close_centroids function."""
+        t_lat = np.array([0, 0, 0])
+        t_lon = np.array([1, 2, 3])
+        centroids = np.array([[0, 0], [0, 0.9], [-0.9, 1.2], [1, 2.1], [0, 4], [0.5, 3.8]])
+        test_mask = np.array([False, True, True, False, False, True])
+        mask = tc._close_centroids(t_lat, t_lon, centroids, buffer=1)
+        np.testing.assert_equal(mask, test_mask)
+
+        # example where antimeridian is crossed
+        t_lat = np.linspace(-10, 10, 11)
+        t_lon = np.linspace(170, 200, 11)
+        t_lon[t_lon > 180] -= 360
+        centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
+        test_mask = np.array([True, True, True, False, False])
+        mask = tc._close_centroids(t_lat, t_lon, centroids, buffer=5)
+        np.testing.assert_equal(mask, test_mask)
 
     def test_bs_hol08_pass(self):
         """Test _bs_hol08 function. Compare to MATLAB reference."""
@@ -311,6 +329,6 @@ class TestClimateSce(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestModel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
