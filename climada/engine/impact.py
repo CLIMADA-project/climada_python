@@ -1041,13 +1041,12 @@ class Impact():
         nb_events = imp.event_id.size
         nb_exp = len(imp.coord_exp)
         
-        sel_exp = np.arange(nb_exp)
-        # filter exposures
-        if isinstance(coord_exp, np.ndarray):
-            sel_exp = [j
-                       for j, coord in enumerate(imp.coord_exp)
-                       if coord in coord_exp
-                      ]
+        # filter exposures          
+        sel_exp = np.arange(nb_exp) if coord_exp is None else [
+              j
+              for j, coord in enumerate(imp.coord_exp)
+              if coord in coord_exp
+          ]
 
         # filter events by date
         if dates is None:
@@ -1067,17 +1066,13 @@ class Impact():
         sel_dt = list(np.argwhere(mask_dt).reshape(-1))
         
         # filter events by id
-        if isinstance(event_ids, list):
-            sel_id = [list(imp.event_id).index(_id) for _id in event_ids]
-        else:
-            sel_id = []
+        sel_id = [] if event_ids is None else \
+            [list(imp.event_id).index(_id) for _id in event_ids]
 
 
-        # filter events by name
-        if isinstance(event_names, list):
-            sel_na= [list(imp.event_name).index(name) for name in event_names]
-        else:
-            sel_na = []
+        # filter events by name            
+        sel_na = [] if event_names is None else \
+            [list(imp.event_name).index(name) for name in event_names]
 
         
         #select events with machting id, name or date field.
