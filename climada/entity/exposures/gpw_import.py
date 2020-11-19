@@ -6,7 +6,6 @@ Created on Fri Jul 13 10:11:45 2018
 """
 import logging
 import subprocess
-from pathlib import Path
 
 import gdal
 import pandas as pd

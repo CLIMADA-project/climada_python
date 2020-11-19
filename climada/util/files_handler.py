@@ -29,10 +29,11 @@ import logging
 import math
 import urllib
 from pathlib import Path
-from climada.util.config import CONFIG
 
 import requests
 from tqdm import tqdm
+
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
