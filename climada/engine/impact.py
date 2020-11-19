@@ -1051,19 +1051,20 @@ class Impact():
 
         # filter events by date
         if dates is None:
-            sel_dt = np.zeros(nb_events, dtype=bool)
+            mask_dt = np.zeros(nb_events, dtype=bool)
         else:
-            sel_dt = np.ones(nb_events, dtype=bool)
+            mask_dt = np.ones(nb_events, dtype=bool)
             date_ini, date_end = dates
             if isinstance(date_ini, str):
                 date_ini = util_dt.str_to_date(date_ini)
                 date_end = util_dt.str_to_date(date_end)
-            sel_dt &= (date_ini <= imp.date)
-            sel_dt &= (imp.date <= date_end)
-            if not np.any(sel_dt):
+            mask_dt &= (date_ini <= imp.date)
+            mask_dt &= (imp.date <= date_end)
+            if not np.any(mask_dt):
                 LOGGER.info('No impact event in date range %s.', dates)
                 return None     
-        sel_dt = list(np.argwhere(sel_dt).reshape(-1))
+        # Convert bool list to indices list of events selected by dates    
+        sel_dt = list(np.argwhere(mask_dt).reshape(-1))
         
         # filter events by id
         if isinstance(event_ids, list):
