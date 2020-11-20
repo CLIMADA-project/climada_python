@@ -282,8 +282,11 @@ class CropProduction(Exposures):
         # The exposure [t/y] is computed per grid cell as the product of the area covered
         # by a crop [ha] and its yield [t/ha/y]
         self['value'] = np.squeeze(area_crop[irr[0]]*hist_mean_dict[irr[0]][idx_mean])
+        self['value'] = np.nan_to_num(self.value) # replace NaN by 0.0
         for irr_val in irr[1:]: # add other irrigation types if irr=combined
-            self['value'] += np.squeeze(area_crop[irr_val]*hist_mean_dict[irr_val][idx_mean])
+            value_tmp = np.squeeze(area_crop[irr_val]*hist_mean_dict[irr_val][idx_mean])
+            value_tmp = np.nan_to_num(value_tmp) # replace NaN by 0.0
+            self['value'] += value_tmp
         self.tag = Tag()
         if len(irr) > 1:
             irr = 'combined'
