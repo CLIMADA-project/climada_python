@@ -42,7 +42,7 @@ def calc_perturbed_trajectories(tracks,
                                 max_ddirection=np.pi / 180,
                                 autocorr_dspeed=0.85,
                                 autocorr_ddirection=0.85,
-                                seed=CONFIG['trop_cyclone']['random_seed'],
+                                seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
                                 decay=True):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
