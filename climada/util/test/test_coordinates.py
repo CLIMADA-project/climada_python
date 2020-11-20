@@ -32,32 +32,33 @@ from rasterio.warp import Resampling
 from rasterio import Affine
 
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
-from climada.util.coordinates import convert_wgs_to_utm, \
-                                     coord_on_land, \
-                                     dist_approx, \
-                                     dist_to_coast, \
-                                     dist_to_coast_nasa, \
-                                     equal_crs, \
-                                     get_admin1_info, \
-                                     get_coastlines, \
-                                     get_country_code, \
-                                     get_country_geometries, \
-                                     get_land_geometry, \
-                                     get_resolution, \
-                                     grid_is_regular, \
-                                     latlon_bounds, \
-                                     latlon_to_geosph_vector, \
-                                     lon_normalize, \
-                                     nat_earth_resolution, \
-                                     points_to_raster, \
-                                     pts_to_raster_meta, \
-                                     read_raster, \
-                                     read_raster_sample, \
-                                     read_raster_bounds, \
-                                     read_vector, \
-                                     refine_raster_data, \
-                                     set_df_geometry_points, \
-                                     NE_EPSG
+from climada.util.coordinates import (convert_wgs_to_utm,
+                                      coord_on_land,
+                                      dist_approx,
+                                      dist_to_coast,
+                                      dist_to_coast_nasa,
+                                      equal_crs,
+                                      get_admin1_info,
+                                      get_coastlines,
+                                      get_country_code,
+                                      get_country_geometries,
+                                      get_land_geometry,
+                                      get_resolution,
+                                      grid_is_regular,
+                                      latlon_bounds,
+                                      latlon_to_geosph_vector,
+                                      lon_normalize,
+                                      nat_earth_resolution,
+                                      points_to_raster,
+                                      pts_to_raster_meta,
+                                      read_raster,
+                                      read_raster_sample,
+                                      read_raster_bounds,
+                                      read_vector,
+                                      refine_raster_data,
+                                      set_df_geometry_points,
+                                      NE_EPSG,
+                                      ONE_LAT_KM)
 
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
@@ -129,21 +130,41 @@ class TestFunc(unittest.TestCase):
             self.assertAlmostEqual(d[0], cd[0])
             self.assertAlmostEqual(d[1], cd[1])
 
+        for units, factor in zip(["radian", "degree", "km"],
+                                 [np.radians(1.0), 1.0, ONE_LAT_KM]):
+            factor /= ONE_LAT_KM
+            compute_dist = np.stack([
+                dist_approx(data[:, None, 0], data[:, None, 1],
+                            data[:, None, 2], data[:, None, 3],
+                            method="equirect", units=units)[:, 0, 0],
+                dist_approx(data[:, None, 0], data[:, None, 1],
+                            data[:, None, 2], data[:, None, 3],
+                            method="geosphere", units=units)[:, 0, 0],
+            ], axis=-1)
+            self.assertEqual(compute_dist.shape[0], data.shape[0])
+            for d, cd in zip(data[:, 4:], compute_dist):
+                self.assertAlmostEqual(d[0] * factor, cd[0])
+                self.assertAlmostEqual(d[1] * factor, cd[1])
+
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
             [0, 0, 0, 1, 111.12, 111.12],
             [-13, 179, 5, -179, 2011.84774049, 2012.30698122],
         ])
         for i, method in enumerate(["equirect", "geosphere"]):
-            dist, vec = dist_approx(data[:, None, 0], data[:, None, 1],
-                                    data[:, None, 2], data[:, None, 3], log=True, method=method)
-            dist, vec = dist[:, 0, 0], vec[:, 0, 0]
-            self.assertTrue(np.allclose(np.linalg.norm(vec, axis=-1), dist))
-            self.assertTrue(np.allclose(dist, data[:, 4 + i]))
-            # both points on equator (no change in latitude)
-            self.assertAlmostEqual(vec[0, 0], 0)
-            # longitude from 179 to -179 is positive (!) in lon-direction
-            self.assertTrue(np.all(vec[1, :] > 100))
+            for units, factor in zip(["radian", "degree", "km"],
+                                     [np.radians(1.0), 1.0, ONE_LAT_KM]):
+                factor /= ONE_LAT_KM
+                dist, vec = dist_approx(data[:, None, 0], data[:, None, 1],
+                                        data[:, None, 2], data[:, None, 3],
+                                        log=True, method=method, units=units)
+                dist, vec = dist[:, 0, 0], vec[:, 0, 0]
+                np.testing.assert_allclose(np.linalg.norm(vec, axis=-1), dist)
+                np.testing.assert_allclose(dist, data[:, 4 + i] * factor)
+                # both points on equator (no change in latitude)
+                self.assertAlmostEqual(vec[0, 0], 0)
+                # longitude from 179 to -179 is positive (!) in lon-direction
+                np.testing.assert_array_less(100, vec[1, :] / factor)
 
 
     def test_read_vector_pass(self):
