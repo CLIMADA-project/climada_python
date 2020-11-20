@@ -1069,16 +1069,9 @@ class Impact():
                             "the frequencies.")
 
         if np.any(coord_exp):
-            # set all attributes that are 'per coord_exp', i.e. have a dimension
-            # of length equal to the number of exposures (=nb_exp)
-            for attr in get_attributes_with_matching_dimension(imp, [nb_exp]):
-                value = imp.__getattribute__(attr)
-                if isinstance(value, np.ndarray):
-                    setattr(imp, attr, value[sel_exp])
-                elif isinstance(value, sparse.csr_matrix):
-                    setattr(imp, attr, value[:, sel_exp])
-                elif isinstance(value, list) and value:
-                    setattr(imp, attr, [value[idx] for idx in sel_exp])
+            
+            imp.coord_exp = imp.coord_exp[sel_exp]
+            imp.imp_mat = imp.imp_mat[:,sel_exp]
 
             # .A1 reduce 1d matrix to 1d array
             imp.at_event = imp.imp_mat.sum(axis=1).A1
