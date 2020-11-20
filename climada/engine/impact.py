@@ -45,6 +45,7 @@ import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.constants import DEF_CRS
 import climada.util.dates_times as util_dt
+from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
 
@@ -945,45 +946,7 @@ class Impact():
         imp_fit[wrong_inten] = 0.
 
         return imp_fit
-
-    @staticmethod
-    def get_per_event_attr(event_obj):
-        """
-        Get the attribute names of a CLIMADA object that are defined
-        per event (as list or matrix)
-        
-        A per event attribute is defined as having one dimension size (length 
-        for 1d-array/list, row or column for 2d-array/matrix) equal to the 
-        number of events (=len(impact.event_id))
-
-        Parameters
-        ----------
-        event_obj : object of class with .event_id attribute
-            The object from which attribute names are taken.
-
-        Returns
-        -------
-        per_event_attrs : list[str]
-            List of names of the per event attributes of object
-
-        """
-
-        per_event_attrs = []
-        nb_events = len(event_obj.event_id)
-        # select the attributes from hazard object with a length or a
-        # row-dimension equal to the number of event_ids
-        for attr, value in event_obj.__dict__.items():
-            try:
-                if len(value) == nb_events:
-                    per_event_attrs.append(attr)
-            except TypeError:
-                try:
-                    if nb_events in value.shape:
-                        per_event_attrs.append(attr)
-                except AttributeError:
-                    pass
-        return per_event_attrs
-
+    
 
     def select(self,
                event_ids=None, event_names=None, dates=None,
@@ -1085,7 +1048,7 @@ class Impact():
         # set all attributes that are 'per event', i.e. have a row or a column
         # of length equal to the number of events (=nb_events), using the 
         # selection sel_ev.
-        for attr in self.get_per_event_attr(imp):
+        for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
             value = imp.__getattribute__(attr)
             if isinstance(value, np.ndarray) and value.ndim == 1 \
                                                and value.size > 0:
@@ -1100,12 +1063,6 @@ class Impact():
             LOGGER.warning("The eai_exp is computed for the selected subset " +
                            "of events WITHOUT modification of the frequencies.")
 
-        # cast frequency vector into 2d array for sparse matrix multiplication
-        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
-        # .A1 reduce 1d matrix to 1d array
-        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1 
-        imp.aai_agg = imp.eai_exp.sum()
-
         if len(sel_exp) < nb_exp:
             imp.coord_exp = imp.coord_exp[sel_exp]
             # .A1 reduce 1d matrix to 1d array
@@ -1113,6 +1070,12 @@ class Impact():
             imp.tot_value = None
             LOGGER.warning("The total value cannot be computed for "+
                            "a subset of exposures and is set to None")
+            
+        # cast frequency vector into 2d array for sparse matrix multiplication
+        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
+        # .A1 reduce 1d matrix to 1d array
+        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1 
+        imp.aai_agg = imp.eai_exp.sum()
 
         return imp
 
