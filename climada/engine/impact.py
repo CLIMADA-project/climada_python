@@ -1004,8 +1004,12 @@ class Impact():
         nb_events = imp.event_id.size
         nb_exp = len(imp.coord_exp)
         
+        if nb_events == nb_exp:
+            LOGGER.warning("The number of events is equal to the number of "+ 
+                           "exposure points - select impact will likely fail.")
+        
         # filter exposures          
-        sel_exp = np.arange(nb_exp) if coord_exp is None else [
+        sel_exp = [] if coord_exp is None else [
               j
               for j, coord in enumerate(imp.coord_exp)
               if coord in coord_exp
@@ -1024,7 +1028,8 @@ class Impact():
             mask_dt &= (imp.date <= date_end)
             if not np.any(mask_dt):
                 LOGGER.info('No impact event in date range %s.', dates)
-                return None     
+                return None    
+            
         # Convert bool list to indices list of events selected by dates    
         sel_dt = list(np.argwhere(mask_dt).reshape(-1))
         
@@ -1032,39 +1037,49 @@ class Impact():
         sel_id = [] if event_ids is None else \
             [list(imp.event_id).index(_id) for _id in event_ids]
 
-
         # filter events by name            
         sel_na = [] if event_names is None else \
             [list(imp.event_name).index(name) for name in event_names]
 
-        
         #select events with machting id, name or date field.
-        sel_ev = [idx for idx in set(sel_dt + sel_id+  sel_na)]
+        sel_ev = [idx for idx in set(sel_dt + sel_id + sel_na)]
         
-        #if no date, name or id is set, take all events:
-        if (dates, event_ids, event_names) == (None, None, None):
-            sel_ev = np.arange(nb_events)
+        #if no event found matching ids, names or dates, return None
+        if (dates, event_ids, event_names) != (None, None, None)\
+            and not np.any(sel_ev):
+            LOGGER.warning("No events matches the selection. ")
+            return None
 
-        # set all attributes that are 'per event', i.e. have a row or a column
-        # of length equal to the number of events (=nb_events), using the 
-        # selection sel_ev.
-        for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
-            value = imp.__getattribute__(attr)
-            if isinstance(value, np.ndarray) and value.ndim == 1 \
-                                               and value.size > 0:
-                setattr(imp, attr, value[sel_ev])
-            elif isinstance(value, sparse.csr_matrix):
-                setattr(imp, attr, value[sel_ev, :][:, sel_exp])
-            elif isinstance(value, list) and value:
-                setattr(imp, attr, [value[idx] for idx in sel_ev])
-        
-        # Recomputed eai_exp and aai_agg
+        #if there are selected events, filter by events
         if np.any(sel_ev):
-            LOGGER.warning("The eai_exp is computed for the selected subset " +
-                           "of events WITHOUT modification of the frequencies.")
+            # set all attributes that are 'per event', i.e. have a dimension
+            # of length equal to the number of events (=nb_events)
+            for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
+                value = imp.__getattribute__(attr)
+                if isinstance(value, np.ndarray) and value.ndim == 1 \
+                                                   and value.size > 0:
+                    setattr(imp, attr, value[sel_ev])
+                elif isinstance(value, sparse.csr_matrix):
+                    setattr(imp, attr, value[sel_ev, :])
+                elif isinstance(value, list) and value:
+                    setattr(imp, attr, [value[idx] for idx in sel_ev])
+                    
+            LOGGER.warning("The eai_exp is computed for the selected " + 
+                            "subset of events WITHOUT modification of " +
+                            "the frequencies.")
 
-        if len(sel_exp) < nb_exp:
-            imp.coord_exp = imp.coord_exp[sel_exp]
+        if np.any(coord_exp):
+            # set all attributes that are 'per coord_exp', i.e. have a dimension
+            # of length equal to the number of exposures (=nb_exp)
+            for attr in get_attributes_with_matching_dimension(imp, [nb_exp]):
+                value = imp.__getattribute__(attr)
+                if isinstance(value, np.ndarray):
+                    setattr(imp, attr, value[sel_exp])
+                elif isinstance(value, sparse.csr_matrix):
+                    setattr(imp, attr, value[:, sel_exp])
+                elif isinstance(value, list) and value:
+                    setattr(imp, attr, [value[idx] for idx in sel_exp])
+
             # .A1 reduce 1d matrix to 1d array
             imp.at_event = imp.imp_mat.sum(axis=1).A1
             imp.tot_value = None
