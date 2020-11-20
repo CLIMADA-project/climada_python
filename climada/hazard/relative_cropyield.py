@@ -774,6 +774,9 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                                                         whe_mask.wwh_mask.values.flatten()
                                                         )
                                             )
+            # replace NaN by 0.0:
+            haz_his.intensity.data[np.isnan(haz_his.intensity.data)] = 0.0
+            haz_his2.intensity.data[np.isnan(haz_his2.intensity.data)] = 0.0
             # sum intensities of subcrops while intensity is still abs. yield:
             haz_his.intensity = haz_his.intensity + haz_his2.intensity
             haz_his.crop = file_props[his_file]['combi_crop']
@@ -879,6 +882,9 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                                                         whe_mask.wwh_mask.values.flatten()
                                                         )
                                             )
+            # replace NaN by 0.0:
+            haz_fut.intensity.data[np.isnan(haz_fut.intensity.data)] = 0.0
+            haz_fut2.intensity.data[np.isnan(haz_fut2.intensity.data)] = 0.0
             # sum intensities of subcrops while intensity is still abs. yield:
             haz_fut.intensity = haz_fut.intensity + haz_fut2.intensity
             haz_fut.crop = file_props[his_file]['combi_crop']
