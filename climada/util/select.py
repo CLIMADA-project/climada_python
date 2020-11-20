@@ -29,9 +29,9 @@ LOGGER = logging.getLogger(__name__)
 def get_attributes_with_matching_dimension(obj, dims):
     """
     Get the attributes of an object that have len(dims) number
-    of dimensions or more, and all dims are individual parts of the 
+    of dimensions or more, and all dims are individual parts of the
     attribute's shape.
-    
+
 
     Parameters
     ----------
@@ -47,13 +47,13 @@ def get_attributes_with_matching_dimension(obj, dims):
     """
 
     list_of_attrs = []
-    for attr, value in obj.__dict__.items():         
+    for attr, value in obj.__dict__.items():
         try:
-            if isinstance(value, list): 
+            if isinstance(value, list):
                 value = np.array(value)
             if np.isin(dims, value.shape).all():
                 list_of_attrs.append(attr)
         except AttributeError:
             pass
-            
-    return list_of_attrs 
+
+    return list_of_attrs
