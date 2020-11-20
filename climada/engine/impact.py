@@ -1067,6 +1067,11 @@ class Impact():
             LOGGER.warning("The eai_exp is computed for the selected " + 
                             "subset of events WITHOUT modification of " +
                             "the frequencies.")
+            
+        #if no exposure found matching coord_exp, return None
+        if coord_exp != None and not np.any(sel_exp):
+            LOGGER.warning("No exposure coordinates matches the selection. ")
+            return None
 
         if np.any(coord_exp):
             
