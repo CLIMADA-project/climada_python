@@ -65,7 +65,7 @@ def sig_dig_list(iterable, n_sig_dig=16):
     return np.vectorize(sig_dig)(iterable, n_sig_dig)
 
 
-def money_unit(values, n_sig_dig=None, abbreviations=None):
+def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """
     Converts values to closest common monetary unit, default: (K, M Bn, Tn)
 
