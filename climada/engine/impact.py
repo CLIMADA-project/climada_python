@@ -990,7 +990,7 @@ class Impact():
 
         Returns
         -------
-        imp : climada.engine.Impact()
+        imp : climada.engine.Impact
             A new impact object with a selection of events and/or exposures
 
         """
@@ -1046,7 +1046,7 @@ class Impact():
         
         #if no event found matching ids, names or dates, return None
         if (dates, event_ids, event_names) != (None, None, None)\
-            and not np.any(sel_ev):
+            and not sel_ev:
             LOGGER.warning("No events matches the selection. ")
             return None
 
@@ -1069,12 +1069,11 @@ class Impact():
                             "the frequencies.")
             
         #if no exposure found matching coord_exp, return None
-        if coord_exp != None and not np.any(sel_exp):
-            LOGGER.warning("No exposure coordinates matches the selection. ")
-            return None
+        if coord_exp != None:
+            if not np.any(sel_exp):
+                LOGGER.warning("No exposure coordinates matches the selection. ")
+                return None
 
-        if np.any(coord_exp):
-            
             imp.coord_exp = imp.coord_exp[sel_exp]
             imp.imp_mat = imp.imp_mat[:,sel_exp]
 
