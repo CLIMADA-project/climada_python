@@ -43,7 +43,11 @@ MAX_ELEVATION = 10
 """Maximum elevation of the centroids in m"""
 
 DECAY_RATE_M_KM = 0.2
-"""Decay rate of surge in meters per each km"""
+"""Decay rate of surge in meters per each km, see Section 5.2.1 of the following monograph:
+
+Pielke, R.A., Pielke, R.A. (1997): Hurricanes: their nature and impacts on society.
+https://rogerpielkejr.com/2016/10/10/hurricanes-their-nature-and-impacts-on-society/
+"""
 
 
 class TCSurgeBathtub(Hazard):
@@ -92,7 +96,7 @@ class TCSurgeBathtub(Hazard):
 
         # Initialize array at coastal centroids
         inten_surge = wind_haz.intensity.copy()
-        inten_surge[:,(~coastal_msk).nonzero()[0]] = 0
+        inten_surge[:,(~coastal_msk).nonzero()[0]] *= 0
         inten_surge.eliminate_zeros()
 
         # Conversion of wind to surge using the linear wind-surge relationship from
@@ -108,7 +112,11 @@ class TCSurgeBathtub(Hazard):
             dist_coast_km = np.abs(centroids.dist_coast[coastal_idx]) / 1000
             coastal_centroids_h += DECAY_RATE_M_KM * dist_coast_km
         coastal_centroids_h -= add_sea_level_rise
-        inten_surge[:,coastal_idx] -= coastal_centroids_h[None,:]
+
+        # efficient way to subtract from selected columns of sparse csr matrix
+        nz_coastal_cents = inten_surge[:,coastal_idx].nonzero()
+        nz_coastal_cents_inten = (nz_coastal_cents[0], coastal_idx[nz_coastal_cents[1]])
+        inten_surge[nz_coastal_cents_inten] -= coastal_centroids_h[nz_coastal_cents[1]]
 
         # discard negative surge height values
         inten_surge.data = np.fmax(inten_surge.data, 0)
