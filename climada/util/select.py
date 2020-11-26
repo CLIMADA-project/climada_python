@@ -26,7 +26,7 @@ import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-def get_attributes_with_matching_dimension(obj, dims):
+def get_attributes_with_matching_dimension(obj, *dims):
     """
     Get the attributes of an object that have len(dims) number
     of dimensions or more, and all dims are individual parts of the
