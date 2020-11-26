@@ -137,7 +137,7 @@ class TestFuncs(unittest.TestCase):
             'max_sustained_wind': ('time', [10, 10, 40, 40, 40, 40, 10, 40, 40, 40,
                                             10, 10, 10, 40, 40, 40, 40, 40, 10, 10]),
             'central_pressure': ('time', np.full((20,), 970)),
-            'time_step': ('time', np.full((20,), np.timedelta64(6, 'h'))),
+            'time_step': ('time', np.full((20,), 6, dtype=np.float64)),
         }, coords={
             'time': np.arange('2000-01-01T00:00', '2000-01-06T00:00',
                               np.timedelta64(6, 'h'), dtype='datetime64[h]'),
@@ -252,7 +252,7 @@ class TestHazardInit(unittest.TestCase):
             'radius_oci': ('time', np.full((8,), 200.)),
             'max_sustained_wind': ('time', np.full((8,), 30.)),
             'central_pressure': ('time', np.full((8,), 990.)),
-            'time_step': ('time', np.full((8,), np.timedelta64(3, 'h'))),
+            'time_step': ('time', np.full((8,), 3, dtype=np.float64)),
         }, coords={
             'time': np.arange('2010-02-05', '2010-02-06',
                               np.timedelta64(3, 'h'), dtype='datetime64[h]'),

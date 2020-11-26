@@ -44,7 +44,7 @@ class TestGeoclawRun(unittest.TestCase):
             'radius_oci': ('time', [202., 202, 202, 202, 202, 202, 202, 202]),
             'max_sustained_wind': ('time', [105., 97, 90, 85, 80, 72, 65, 66]),
             'central_pressure': ('time', [944., 950, 956, 959, 963, 968, 974, 975]),
-            'time_step': ('time', np.full((8,), np.timedelta64(3, 'h'))),
+            'time_step': ('time', np.full((8,), 3, dtype=np.float64)),
         }, coords={
             'time': np.arange('2010-02-05T09:00', '2010-02-06T09:00',
                               np.timedelta64(3, 'h'), dtype='datetime64[h]'),
