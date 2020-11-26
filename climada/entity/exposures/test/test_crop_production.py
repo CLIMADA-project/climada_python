@@ -62,8 +62,24 @@ class TestCropProduction(unittest.TestCase):
         self.assertAlmostEqual(exp.value.max(), 51603897.28533253, places=5)
         self.assertAlmostEqual(exp.value.mean(), 907401.9933073953, places=5)
         self.assertEqual(exp.value.min(), 0.0)
-        
-    
+
+    def test_set_to_kcal(self):
+        """Test calculating crop_production Exposure in [kcal / y]"""
+        exp = CropProduction()
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                      bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
+                                      scenario='flexible', unit='t', crop = 'mai', irr='firr')
+        max_tonnes = exp.value.max()
+        exp.set_to_kcal()
+
+        self.assertEqual(exp.latitude.min(), 45.25)
+        self.assertEqual(exp.latitude.max(), 49.75)
+        self.assertEqual(exp.value.shape, (300,))
+        self.assertAlmostEqual(exp.value.max(), 365*10*1000*max_tonnes, places=3)
+        self.assertAlmostEqual(exp.value.max(), 874488976392.9623, places=3)
+        self.assertAlmostEqual(exp.value.mean(), 19910311383.52674, places=4)
+        self.assertEqual(exp.value.min(), 0.0)
+
     def test_set_to_usd_unnecessary(self):
         """Test calculating cropyield_isimip Exposure in [USD / y]"""
         exp = CropProduction()

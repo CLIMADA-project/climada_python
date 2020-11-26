@@ -76,11 +76,21 @@ CROP_NAME['ri2'] = {'input': 'rice', 'fao': 'Rice, paddy', 'print': 'Rice 2nd se
 CROP_NAME['swh'] = {'input': 'temperate_cereals', 'fao': 'Wheat', 'print': 'Spring Wheat'}
 CROP_NAME['wwh'] = {'input': 'temperate_cereals', 'fao': 'Wheat', 'print': 'Winter Wheat'}
 
-IRR_NAME = dict()
 """mapping of irrigation parameter long names"""
-IRR_NAME['combined'] = {'name': 'combined'}
-IRR_NAME['noirr'] = {'name': 'rainfed'}
-IRR_NAME['firr'] = {'name': 'irrigated'}
+IRR_NAME = {'combined': {'name': 'combined'},
+            'noirr': {'name': 'rainfed'},
+            'firr': {'name': 'irrigated'},
+            }
+
+"""Conversion factor weight to kcal.
+    Sources:
+        - Nuss and Tanumihardjo, 2010. https://doi.org/10.1111/j.1541-4337.2010.00117.x
+        - USDA Nutrient Database"""
+KCAL_PER_TON = {'mai': 365e4,
+                'ric': 360e4,
+                'whe': 339e4,
+                'soy': 446e4,
+                }
 
 # default:
 #   deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
@@ -147,7 +157,7 @@ class CropProduction(Exposures):
                 f.i 'firr' (full irrigation), 'noirr' (no irrigation) or 'combined'= firr+noirr
             isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
             unit (string): unit of the exposure (per year)
-                f.i 'USD' or 't' (default)
+                f.i 'USD' or 't' (default) or 'kcal'
             fn_str_var (string): FileName STRing depending on VARiable and
                 ISIMIP simuation round
 
@@ -315,9 +325,12 @@ class CropProduction(Exposures):
                            ' has only 1 data point')
             self.meta = {}
 
-        # Method set_to_usd() is called to compute the exposure in USD/y (per centroid)
         if 'USD' in unit:
+            # set_to_usd() is called to compute the exposure in USD/y (country specific)
             self.set_to_usd(input_dir=input_dir)
+        elif 'kcal' in unit:
+            # set_to_kcal() is called to compute the exposure in kcal/y
+            self.set_to_kcal()
         self.check()
 
         return self
@@ -326,7 +339,8 @@ class CropProduction(Exposures):
                                    yearrange=None, cl_model=None, scenario=None,
                                    crop=None, irr=None, isimip_version=None,
                                    unit=None, fn_str_var=None):
-        """Wrapper to fill exposure from several nc_dis files from ISIMIP
+        """Wrapper to fill exposure from several NetCDF files with crop yield data
+        from ISIMIP.
 
         Optional Parameters:
             input_dir (string): path to input data directory
@@ -405,6 +419,19 @@ class CropProduction(Exposures):
 
         return self
 
+    def set_to_kcal(self):
+        """Converts the exposure from tonnes to kcal using conversion factor per crop type.
+
+        Returns:
+            Exposure
+        """
+        if not 't' in self.value_unit:
+            LOGGER.warning('self.unit is neither t nor t / year.')
+        self['tonnes_per_year'] = self['value'].values
+        self.value = self.value * KCAL_PER_TON[self.crop]
+        self.value_unit = 'kcal / y'
+        return self
+
     def set_to_usd(self, input_dir=None, yearrange=None):
         # to do: check api availability?; default yearrange for single year (e.g. 5a)
         """Calculates the exposure in USD using country and year specific data published
@@ -424,7 +451,7 @@ class CropProduction(Exposures):
         if not input_dir: input_dir = INPUT_DIR
         if yearrange is None: yearrange = YEARS_FAO
         # the exposure in t/y is saved as 'tonnes_per_year'
-        self['tonnes_per_year'] = self['value']
+        self['tonnes_per_year'] = self['value'].values
 
         # account for the case of only specifying one year as yearrange
         if len(yearrange) == 1:
@@ -501,7 +528,7 @@ class CropProduction(Exposures):
 def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
                            output_dir=None, bbox=BBOX, yearrange=None, unit=None,
                            isimip_version=None, return_data=False):
-    """Generates CropProduction exposure sets for all files contained in the
+    """Generates CropProduction instances (exposure sets) for all files found in the
         input directory and saves them as hdf5 files in the output directory.
         Exposures are aggregated per crop and irrigation type.
 
@@ -560,9 +587,10 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
 
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
                           yearrange=None, unit=None, return_data=True):
-    """Normalize the given exposures countrywise with the mean crop production quantity
-    documented by the FAO. Refer to the beginning of the script for guidance on where to
-    download the needed FAO data.
+    """Normalize (i.e., bias corrent) the given exposures countrywise with the mean
+    crop production quantity documented by the FAO.
+    Refer to the beginning of the script for guidance on where to download the
+    required cropmporduction data from FAO.Stat.
 
     Parameters:
         exp_firr (crop_production): exposure under full irrigation
@@ -595,13 +623,13 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
     if not input_dir: input_dir = INPUT_DIR
     if yearrange is None: yearrange = (2008, 2018)
     if not unit: unit = 't'
-    # if the exposure unit is USD/y temporarily reset the exposure to t/y
+    # if the exposure unit is USD/y or kcal/y, temporarily reset the exposure to t/y
     # (stored in tonnes_per_year) in order to normalize with FAO crop production
-    # values and then apply set_to_USD() for the normalized exposure to restore the
+    # values and then apply set_to_XXX() for the normalized exposure to restore the
     # initial exposure unit
-    if exp_firr.value_unit == 'USD / y':
+    if exp_firr.value_unit == 'USD / y' or 'kcal' in exp_firr.value_unit:
         exp_firr.value = exp_firr.tonnes_per_year
-    if exp_noirr.value_unit == 'USD / y':
+    if exp_noirr.value_unit == 'USD / y' or 'kcal' in exp_noirr.value_unit:
         exp_noirr.value = exp_noirr.tonnes_per_year
 
     country_list, countries_firr = exp_firr.aggregate_countries()
@@ -645,8 +673,12 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
 
         if unit == 'USD' or exp_noirr.value_unit == 'USD / y':
             exp_noirr.set_to_usd(input_dir=input_dir)
+        elif 'kcal' in unit or 'kcal' in exp_noirr.value_unit:
+            exp_noirr.set_to_kcal()
         if unit == 'USD' or exp_firr.value_unit == 'USD / y':
             exp_firr.set_to_usd(input_dir=input_dir)
+        elif 'kcal' in unit or 'kcal' in exp_firr.value_unit:
+            exp_firr.set_to_kcal()
 
     exp_firr_norm.tag.description = exp_firr_norm.tag.description+' normalized'
     exp_noirr_norm.tag.description = exp_noirr_norm.tag.description+' normalized'
@@ -659,18 +691,20 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
 def normalize_several_exp(input_dir=None, output_dir=None,
                           yearrange=None, unit=None, return_data=True):
     """
+    Multiple exposure sets saved as HDF5 files in input directory are normalized
+    (i.e. bias corrected) against FAO statistics of crop production.
         Optional Parameters:
-        input_dir (str): directory containing exposure input data
-        output_dir (str): directory containing exposure datasets (output of exposure creation)
-        yearrange (array): the mean crop production in this year range is used to normalize
-            the exposure data (default 2008-2018)
-        unit (str): unit in which to return exposure (t/y or USD/y)
-        return_data (boolean): returned output
-            True: lists containing data for each exposure file. Lists: crops, country list,
-            ratio = FAO/ISIMIP, normalized exposures, crop production per country as documented
-            by the FAO and calculated by the ISIMIP dataset
-            False: lists containing data for each exposure file. Lists: crops, country list,
-            ratio = FAO/ISIMIP, normalized exposures
+            input_dir (str): directory containing exposure input data
+            output_dir (str): directory containing exposure datasets (output of exposure creation)
+            yearrange (array): the mean crop production in this year range is used to normalize
+                the exposure data (default 2008-2018)
+            unit (str): unit in which to return exposure (t/y or USD/y)
+            return_data (boolean): returned output
+                True: lists containing data for each exposure file. Lists: crops, country list,
+                    ratio = FAO/ISIMIP, normalized exposures, crop production per country as documented
+                    by the FAO and calculated by the ISIMIP dataset
+                False: lists containing data for each exposure file. Lists: crops, country list,
+                    ratio = FAO/ISIMIP, normalized exposures
 
         Returns:
             crop_list (list): List of crops
@@ -741,9 +775,9 @@ def semilogplot_ratio(crop, countries, ratio, output_dir=OUTPUT_DIR, save=True):
             crop (str): crop to plot
             countries (list): country codes of countries to plot
             ratio (array): ratio = FAO/ISIMIP crop production data of countries to plot
-            output_dir (str): directory to save figure
         Optional Parameters:
             save (boolean): True saves figure, else figure is not saved.
+            output_dir (str): directory to save figure
         Returns:
             fig (plt figure handle)
             axes (plot axes handle)
