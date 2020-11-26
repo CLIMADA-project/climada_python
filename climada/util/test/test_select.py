@@ -44,6 +44,8 @@ class TestGetAttributesDimension_pass(unittest.TestCase):
         list_attrs = get_attributes_with_matching_dimension(dummy, [3])
         self.assertTrue(np.array_equal(list_attrs, ['oneD3', 'twoD3', 'twonp']))
         
+        list_attrs = get_attributes_with_matching_dimension(dummy, [4, 4])
+        self.assertTrue(np.array_equal(list_attrs, ['twoD3', 'twonp']))
         list_attrs = get_attributes_with_matching_dimension(dummy, [3, 4])
         self.assertTrue(np.array_equal(list_attrs, ['twoD3', 'twonp']))
         

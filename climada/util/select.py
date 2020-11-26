@@ -51,7 +51,7 @@ def get_attributes_with_matching_dimension(obj, dims):
         try:
             if isinstance(value, list):
                 value = np.array(value)
-            if np.isin(dims, value.shape).all():
+            if all([dims.count(i) <= value.shape.count(i) for i in set(dims)]):
                 list_of_attrs.append(attr)
         except AttributeError:
             pass
