@@ -71,7 +71,7 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     Parameters
     ----------
-    values : float, list(float) or np.ndarray
+    values : int or float, list(int or float) or np.ndarray(int or float)
         Values to be converted
     n_sig_dig : int, optional
         Number of significant digits to return.
@@ -95,7 +95,7 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     """
     
-    if not isinstance(values, list):
+    if isinstance(values, (int, float)):
         values = [values]
     
     if abbreviations is None:
