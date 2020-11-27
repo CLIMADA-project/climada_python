@@ -37,17 +37,10 @@ HAZ_TYPE = 'TCSurgeBathtub'
 """Hazard type acronym for this module"""
 
 MAX_DIST_COAST = 50
-"""Maximum inland distance of the centroids in km"""
+"""Maximum inland distance of the centroids in km."""
 
 MAX_ELEVATION = 10
-"""Maximum elevation of the centroids in m"""
-
-DECAY_RATE_M_KM = 0.2
-"""Decay rate of surge in meters per each km, see Section 5.2.1 of the following monograph:
-
-Pielke, R.A., Pielke, R.A. (1997): Hurricanes: their nature and impacts on society.
-https://rogerpielkejr.com/2016/10/10/hurricanes-their-nature-and-impacts-on-society/
-"""
+"""Maximum elevation of the centroids in m."""
 
 
 class TCSurgeBathtub(Hazard):
@@ -58,7 +51,7 @@ class TCSurgeBathtub(Hazard):
 
 
     @staticmethod
-    def from_tc_winds(wind_haz, topo_path, inland_decay=True, add_sea_level_rise=0.0):
+    def from_tc_winds(wind_haz, topo_path, inland_decay_rate=0.2, add_sea_level_rise=0.0):
         """Compute tropical cyclone surge from input winds.
 
         Parameters
@@ -67,8 +60,11 @@ class TCSurgeBathtub(Hazard):
             Tropical cyclone wind hazard object.
         topo_path : str
             Path to a raster file containing gridded elevation data.
-        inland_decay : bool, optional
-            Surge decays according to distance from coast. Default: True.
+        inland_decay_rate : float, optional
+            Decay rate of surge when moving inland in meters per km. Set to 0 to deactivate
+            this effect. The default value of 0.2 is taken from Section 5.2.1 of the monograph
+            Pielke and Pielke (1997): Hurricanes: their nature and impacts on society.
+            https://rogerpielkejr.com/2016/10/10/hurricanes-their-nature-and-impacts-on-society/
         add_sea_level_rise : float, optional
             Sea level rise effect in meters to be added to surge height.
         """
@@ -77,7 +73,7 @@ class TCSurgeBathtub(Hazard):
         if not centroids.coord.size:
             centroids.set_meta_to_lat_lon()
 
-        # Select wind-affected centroids which are inside INLAND_MAX_DIST_KM and |lat| < 61
+        # Select wind-affected centroids which are inside MAX_DIST_COAST and |lat| < 61
         if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
             centroids.set_dist_coast(signed=True, precomputed=True)
         coastal_msk = (((wind_haz.intensity > 0).sum(axis=0).A1 > 0)
@@ -85,18 +81,24 @@ class TCSurgeBathtub(Hazard):
                        & (centroids.dist_coast > -MAX_DIST_COAST * 1000)
                        & (np.abs(centroids.lat) < 61))
 
-        # elevation at coastal centroids, exclude high centroids
+        # Load elevation at coastal centroids
         coastal_centroids_h = coord_util.read_raster_sample(
             topo_path, centroids.lat[coastal_msk], centroids.lon[coastal_msk])
+
+        # Update selected coastal centroids to exclude high-lying locations
+        # We only update the previously selected centroids (for which elevation info was obtained)
         elevation_msk = ((coastal_centroids_h >= 0)
                          & (coastal_centroids_h <= MAX_ELEVATION + add_sea_level_rise))
         coastal_msk[coastal_msk] = elevation_msk
+
+        # Elevation data and coastal/non-coastal indices are used later in the code
         coastal_centroids_h = coastal_centroids_h[elevation_msk]
         coastal_idx = coastal_msk.nonzero()[0]
+        noncoastal_idx = (~coastal_msk).nonzero()[0]
 
-        # Initialize array at coastal centroids
+        # Initialize intensity array at coastal centroids
         inten_surge = wind_haz.intensity.copy()
-        inten_surge[:,(~coastal_msk).nonzero()[0]] *= 0
+        inten_surge[:,noncoastal_idx] *= 0
         inten_surge.eliminate_zeros()
 
         # Conversion of wind to surge using the linear wind-surge relationship from
@@ -107,26 +109,26 @@ class TCSurgeBathtub(Hazard):
         #   https://ams.confex.com/ams/pdfpapers/168806.pdf
         inten_surge.data = 0.1023 * np.fmax(inten_surge.data - 26.8224, 0) + 1.8288
 
-        if inland_decay:
-            # add decay according to distance from coast
+        if inland_decay_rate != 0:
+            # Add decay according to distance from coast
             dist_coast_km = np.abs(centroids.dist_coast[coastal_idx]) / 1000
-            coastal_centroids_h += DECAY_RATE_M_KM * dist_coast_km
+            coastal_centroids_h += inland_decay_rate * dist_coast_km
         coastal_centroids_h -= add_sea_level_rise
 
-        # efficient way to subtract from selected columns of sparse csr matrix
+        # Efficient way to subtract from selected columns of sparse csr matrix
         nz_coastal_cents = inten_surge[:,coastal_idx].nonzero()
         nz_coastal_cents_inten = (nz_coastal_cents[0], coastal_idx[nz_coastal_cents[1]])
         inten_surge[nz_coastal_cents_inten] -= coastal_centroids_h[nz_coastal_cents[1]]
 
-        # discard negative surge height values
+        # Discard negative (invalid/unphysical) surge height values
         inten_surge.data = np.fmax(inten_surge.data, 0)
         inten_surge.eliminate_zeros()
 
-        # get fraction of centroid cells on land according to given DEM
+        # Get fraction of (large) centroid cells on land according to the given (high-res) DEM
         fract_surge = sp.csr_matrix(_fraction_on_land(centroids, topo_path))
         fract_surge = sp.csr_matrix(np.ones((inten_surge.shape[0], 1))) * fract_surge
 
-        # set other attributes
+        # Set other attributes
         haz = TCSurgeBathtub()
         haz.centroids = centroids
         haz.units = 'm'
@@ -142,6 +144,10 @@ class TCSurgeBathtub(Hazard):
 
 def _fraction_on_land(centroids, topo_path):
     """Determine fraction of each centroid cell that is on land.
+
+    Typically, the resolution of the provided DEM data set is much higher than the resolution
+    of the centroids so that the centroid cells might be partly above and partly below sea level.
+    This function computes for each centroid cell the fraction of its area that is on land.
 
     Parameters
     ----------
