@@ -995,26 +995,105 @@ class Impact():
 
         """
 
-        if self.imp_mat.shape == (0, 0):
-            raise ValueError("The impact matrix is missing. eai_exp and " +
-                             "aai_agg cannot be computed. Recomputed " + 
-                             "impact.calc with save_mat=True")
-
-        imp = copy.deepcopy(self)
-        nb_events = imp.event_id.size
-        nb_exp = len(imp.coord_exp)
+        nb_events = self.event_id.size
+        nb_exp = len(self.coord_exp)
         
+        if self.imp_mat.shape != (nb_events, nb_exp):
+            raise ValueError("The impact matrix is missing or incomplete. " +
+                             "The eai_exp and aai_agg cannot be computed. " +
+                             "Please recompute impact.calc() with save_mat=True" +
+                             " before using impact.select()")
+            return None
+
+
         if nb_events == nb_exp:
             LOGGER.warning("The number of events is equal to the number of "+ 
-                           "exposure points - select impact will likely fail.")
+                           "exposure points. It is not possible to " 
+                           "differentiate events and exposures attributes. "+
+                           "Please add/remove one event/exposure point. " +
+                           "This is a purely technical limitation of this "+
+                           "method.")
+            return None
         
-        # filter exposures          
-        sel_exp = [] if coord_exp is None else [
-              j
-              for j, coord in enumerate(imp.coord_exp)
-              if coord in coord_exp
-          ]
+        
+        if (dates, event_ids, event_names) != (None, None, None):
+            sel_ev = self._selected_events_idx(self, event_ids, event_names,\
+                                          dates, nb_events)
+        else:
+            self_ev = None
+            
+        if coord_exp != None:
+            sel_exp = self._selected_exposures_idx(self, coord_exp)
+        else:
+            sel_exp = None
+            
+            
+        imp = copy.deepcopy(self)        
+        
+        #apply event selection to impact attributes
+        if sel_ev:
+            # set all attributes that are 'per event', i.e. have a dimension
+            # of length equal to the number of events (=nb_events)
+            for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
+                
+                value = imp.__getattribute__(attr)
+                if isinstance(value, np.ndarray):
+                    if value.ndim == 1:
+                        setattr(imp, attr, value[sel_ev])
+                    else: 
+                        LOGGER.warning("Found a multidimensional numpy array " +
+                            " with one dimension matching the number of events. "+
+                            " But multidimensional numpy arrays are not handled " +
+                            " in impact.select")
+                        
+                elif isinstance(value, sparse.csr_matrix):
+                    setattr(imp, attr, value[sel_ev, :])
+                    
+                elif isinstance(value, list) and value:
+                    setattr(imp, attr, [value[idx] for idx in sel_ev])
+                    
+            LOGGER.info("The eai_exp and aai_agg are computed for the " +
+                    "selected subset of events WITHOUT modification of " +
+                    "the frequencies.")
+        
+        
+        #apply exposure selection to impact attributes
+        if coord_exp:
 
+            imp.coord_exp = imp.coord_exp[sel_exp]
+            imp.imp_mat = imp.imp_mat[:, sel_exp]
+
+            # .A1 reduce 1d matrix to 1d array
+            imp.at_event = imp.imp_mat.sum(axis=1).A1
+            imp.tot_value = None
+            LOGGER.info("The total value cannot be re-computed for a "+
+                           "subset of exposures and is set to None.")
+            
+        # cast frequency vector into 2d array for sparse matrix multiplication
+        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
+        # .A1 reduce 1d matrix to 1d array
+        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1 
+        imp.aai_agg = imp.eai_exp.sum()
+
+        return imp
+    
+    def _selected_exposures_idx(self, coord_exp):
+                 
+        if coord_exp is None:
+            sel_exp = []
+        else:
+            sel_exp =  [
+                j
+                for j, coord in enumerate(self.coord_exp)
+                if coord in coord_exp
+                ]
+            if not sel_exp:
+                LOGGER.warning("No exposure coordinates matches the selection.")
+        
+        return sel_exp
+        
+    def _selected_events_idx(self, event_ids, event_names, dates, nb_events):
+        
         # filter events by date
         if dates is None:
             mask_dt = np.zeros(nb_events, dtype=bool)
@@ -1024,22 +1103,31 @@ class Impact():
             if isinstance(date_ini, str):
                 date_ini = util_dt.str_to_date(date_ini)
                 date_end = util_dt.str_to_date(date_end)
-            mask_dt &= (date_ini <= imp.date)
-            mask_dt &= (imp.date <= date_end)
+            mask_dt &= (date_ini <= self.date)
+            mask_dt &= (self.date <= date_end)
             if not np.any(mask_dt):
-                LOGGER.info('No impact event in date range %s.', dates)
-                return None    
-            
-        # Convert bool list to indices list of events selected by dates    
-        sel_dt = list(np.argwhere(mask_dt).reshape(-1))
+                LOGGER.info('No impact event in given date range %s.', dates) 
+                
+        sel_dt = list(np.argwhere(mask_dt).reshape(-1)) # Convert bool to indices 
         
         # filter events by id
-        sel_id = [] if event_ids is None else \
-            [list(imp.event_id).index(_id) for _id in event_ids]
+        if event_ids is None:
+            sel_id = []
+        else:
+            sel_id = [list(self.event_id).index(_id) for _id in event_ids]
+            if not sel_id:
+                LOGGER.info('No impact event with given ids %s found.',
+                            event_ids)
 
-        # filter events by name            
-        sel_na = [] if event_names is None else \
-            [list(imp.event_name).index(name) for name in event_names]
+        # filter events by name    
+        if event_names is None:
+            sel_na = []
+        else: 
+            sel_na = [list(self.event_name).index(name) for name in event_names]
+            if not sel_na:
+                LOGGER.info('No impact event with given names %s found.',
+                            event_names)
+                
 
         #select events with machting id, name or date field.
         sel_ev = [idx for idx in set(sel_dt + sel_id + sel_na)]
@@ -1047,50 +1135,10 @@ class Impact():
         #if no event found matching ids, names or dates, return None
         if (dates, event_ids, event_names) != (None, None, None)\
             and not sel_ev:
-            LOGGER.warning("No events matches the selection. ")
+            LOGGER.warning("No event matches the selection. ")
             return None
-
-        #if there are selected events, filter by events
-        if np.any(sel_ev):
-            # set all attributes that are 'per event', i.e. have a dimension
-            # of length equal to the number of events (=nb_events)
-            for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
-                value = imp.__getattribute__(attr)
-                if isinstance(value, np.ndarray) and value.ndim == 1 \
-                                                   and value.size > 0:
-                    setattr(imp, attr, value[sel_ev])
-                elif isinstance(value, sparse.csr_matrix):
-                    setattr(imp, attr, value[sel_ev, :])
-                elif isinstance(value, list) and value:
-                    setattr(imp, attr, [value[idx] for idx in sel_ev])
-                    
-            LOGGER.warning("The eai_exp is computed for the selected " + 
-                            "subset of events WITHOUT modification of " +
-                            "the frequencies.")
-            
-        #if no exposure found matching coord_exp, return None
-        if coord_exp != None:
-            if not np.any(sel_exp):
-                LOGGER.warning("No exposure coordinates matches the selection. ")
-                return None
-
-            imp.coord_exp = imp.coord_exp[sel_exp]
-            imp.imp_mat = imp.imp_mat[:,sel_exp]
-
-            # .A1 reduce 1d matrix to 1d array
-            imp.at_event = imp.imp_mat.sum(axis=1).A1
-            imp.tot_value = None
-            LOGGER.warning("The total value cannot be computed for "+
-                           "a subset of exposures and is set to None")
-            
-        # cast frequency vector into 2d array for sparse matrix multiplication
-        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
-        # .A1 reduce 1d matrix to 1d array
-        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1 
-        imp.aai_agg = imp.eai_exp.sum()
-
-        return imp
-
+        
+        return sel_ev
 
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
