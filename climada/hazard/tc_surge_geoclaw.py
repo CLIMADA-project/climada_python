@@ -131,7 +131,7 @@ class TCSurgeGeoClaw(Hazard):
             centroids.set_dist_coast(signed=True, precomputed=True)
         coastal_idx = ((centroids.dist_coast < OFFSHORE_MAX_DIST_KM * 1000)
                        & (centroids.dist_coast > -INLAND_MAX_DIST_KM * 1000)
-                       & (centroids.lat < 61)).nonzero()[0]
+                       & (np.abs(centroids.lat) < 61)).nonzero()[0]
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
