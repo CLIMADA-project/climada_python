@@ -111,7 +111,7 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     max_exp = max(exponents)
     min_exp = min(exponents)
     
-    avg_exp = math.floor((max_exp + min_exp) / 2) #rounded down
+    avg_exp = math.floor((max_exp + min_exp) / 2)  # rounded down
     mil_exp = 3 * math.floor(avg_exp/3)
     
     name = ''
@@ -130,4 +130,3 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
     
     return (mon_val, name)
-
