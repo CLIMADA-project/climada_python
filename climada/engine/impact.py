@@ -1052,6 +1052,9 @@ class Impact():
                 elif isinstance(value, list) and value:
                     setattr(imp, attr, [value[idx] for idx in sel_ev])
                     
+                else:
+                    pass
+                    
             LOGGER.info("The eai_exp and aai_agg are computed for the " +
                     "selected subset of events WITHOUT modification of " +
                     "the frequencies.")
