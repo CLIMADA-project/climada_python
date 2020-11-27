@@ -120,8 +120,7 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     try:
         name = abbreviations[thsder] 
     except KeyError: 
-        LOGGER.warning(f"Warning: The numbers are larger than \
-{list(abbreviations.keys())[-1]}")
+        LOGGER.warning("Warning: The numbers are larger than %s", list(abbreviations.keys())[-1])
         thsder, name = list(abbreviations.items())[-1]
     
     mon_val = np.array(values) / thsder
