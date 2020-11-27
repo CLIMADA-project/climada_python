@@ -26,7 +26,7 @@ import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-def get_attributes_with_matching_dimension(obj, *dims):
+def get_attributes_with_matching_dimension(obj, dims):
     """
     Get the attributes of an object that have len(dims) number
     of dimensions or more, and all dims are individual parts of the
@@ -48,11 +48,15 @@ def get_attributes_with_matching_dimension(obj, *dims):
 
     list_of_attrs = []
     for attr, value in obj.__dict__.items():
+        
         try:
+            
             if isinstance(value, list):
                 value = np.array(value)
+                
             if all([dims.count(i) <= value.shape.count(i) for i in set(dims)]):
                 list_of_attrs.append(attr)
+                
         except AttributeError:
             pass
 

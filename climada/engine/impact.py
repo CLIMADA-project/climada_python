@@ -1017,13 +1017,13 @@ class Impact():
         
         
         if (dates, event_ids, event_names) != (None, None, None):
-            sel_ev = self._selected_events_idx(self, event_ids, event_names,\
+            sel_ev = self._selected_events_idx(event_ids, event_names,\
                                           dates, nb_events)
         else:
-            self_ev = None
+            sel_ev = None
             
-        if coord_exp != None:
-            sel_exp = self._selected_exposures_idx(self, coord_exp)
+        if coord_exp is not None:
+            sel_exp = self._selected_exposures_idx(coord_exp)
         else:
             sel_exp = None
             
@@ -1058,7 +1058,7 @@ class Impact():
         
         
         #apply exposure selection to impact attributes
-        if coord_exp:
+        if sel_exp:
 
             imp.coord_exp = imp.coord_exp[sel_exp]
             imp.imp_mat = imp.imp_mat[:, sel_exp]
