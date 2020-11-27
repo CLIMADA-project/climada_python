@@ -50,18 +50,18 @@ class TestDigits(unittest.TestCase):
             np.array_equal(sig_dig_list(nbs_in, n_sig_dig_wrong), nbs_out)
             )
         
-    def test_money_unit_pass(self):
+    def test_value_to_monetary_unit_pass(self):
         """Test money_unit function"""
         nbs_in = [-1e10, -1e6, -1e2, 0, 1e3, 1e7, 1e11]
         nbs_out = [-10, -1, -100, 0, 1, 10, 100]
         names_out = [ABBREV[1e9], ABBREV[1e6], ABBREV[1], ABBREV[1],
                  ABBREV[1e3], ABBREV[1e6], ABBREV[1e9]]
         for j, (nb_in, nb_out) in enumerate(zip(nbs_in, nbs_out)):
-            money, names = money_unit(nb_in)
+            money, names = value_to_monetary_unit(nb_in)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
             
-    def test_money_unit_sigdig_pass(self):
+    def test_value_to_monetary_unit_sigdig_pass(self):
         """Test money_unit function with significant digits"""
         nbs_in = [-1e10*1.2345, -1e6*1.2345, -1e2*1.2345, 0, 1e3*1.2345,
                   1e7*1.2345, 1e11*1.2345]
@@ -69,22 +69,22 @@ class TestDigits(unittest.TestCase):
         names_out = [ABBREV[1e9], ABBREV[1e6], ABBREV[1], ABBREV[1],
                  ABBREV[1e3], ABBREV[1e6], ABBREV[1e9]]
         for j, (nb_in, nb_out) in enumerate(zip(nbs_in, nbs_out)):
-            money, names = money_unit(nb_in, n_sig_dig=3)
+            money, names = value_to_monetary_unit(nb_in, n_sig_dig=3)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
             
-    def test_money_unit_list_pass(self):
+    def test_value_to_monetary_unit_list_pass(self):
         """Test money_unit function with list of numbers"""
         nbs_in = [-1e10*1.2345, -1e9*1.2345]
         nbs_out = [-12.3, -1.23]
         name_out = ABBREV[1e9]
-        money, name = money_unit(nbs_in, n_sig_dig=3)
+        money, name = value_to_monetary_unit(nbs_in, n_sig_dig=3)
         self.assertTrue(np.array_equal(money, nbs_out))
         self.assertEqual(name, name_out)
         nbs_in = [1e4*1.2345, 1e3*1.2345, 1e2*1.2345]
         nbs_out = [12.3, 1.23, 0.123]
         name_out = ABBREV[1e3]
-        money, name = money_unit(nbs_in, n_sig_dig=3)
+        money, name = value_to_monetary_unit(nbs_in, n_sig_dig=3)
         self.assertTrue(np.array_equal(money, nbs_out))
         self.assertEqual(name, name_out)
 
