@@ -20,7 +20,7 @@ Test of util.math module
 """
 
 
-from climada.util.math import sig_dig, sig_dig_list, money_unit, ABBREV 
+from climada.util.value_representation import sig_dig, sig_dig_list, value_to_monetary_unit, ABBREV 
 import unittest
 import numpy as np
 
