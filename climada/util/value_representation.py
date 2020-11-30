@@ -6,21 +6,23 @@ Created on Mon Nov 16 19:21:42 2020
 @author: ckropf
 """
 
+import logging
 import math
 import numpy as np
-import logging
+
 
 LOGGER = logging.getLogger(__name__)
 
 ABBREV = {1:'',
           1000: 'K',
           1000000: 'M',
-          1000000000: 'Bn', 
+          1000000000: 'Bn',
           1000000000000: 'Tn'}
+
 
 def sig_dig(x, n_sig_dig = 16):
     """
-    Rounds x to n_sig_dig number of significant digits. 
+    Rounds x to n_sig_dig number of significant digits.
     Examples: 1.234567 -> 1.2346, 123456.89 -> 123460.0
 
     Parameters
@@ -42,6 +44,7 @@ def sig_dig(x, n_sig_dig = 16):
     n = math.floor(math.log10(abs(x)) + 1 - n_sig_dig)
     result = np.round(x * 10**(-n)) * 10**n
     return result
+
 
 def sig_dig_list(iterable, n_sig_dig=16):
     """
@@ -76,56 +79,56 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     n_sig_dig : int, optional
         Number of significant digits to return.
         Examples n_sig_di=5: 1.234567 -> 1.2346, 123456.89 -> 123460.0
-        Default: all digits are returned. 
+        Default: all digits are returned.
     abbreviations: dict, optional
         Name of the abbreviations for the money 1000s counts
-        Default:  
+        Default:
          {0:'',
           1000: 'K',
           1000000: 'M',
-          1000000000: 'Bn', 
+          1000000000: 'Bn',
           1000000000000: 'Tn'}
 
     Returns
     -------
     mon_val : np.ndarray
-        Array of values in monetary unit 
+        Array of values in monetary unit
     name : string
         Monetary unit
 
     """
-    
+
     if isinstance(values, (int, float)):
         values = [values]
-    
+
     if abbreviations is None:
         abbreviations= ABBREV
-    
+
     exponents = []
     for val in values:
         if val == 0:
             exponents.append(0)
             continue
         exponents.append(math.log10(abs(val)))
-        
+
     max_exp = max(exponents)
     min_exp = min(exponents)
-    
+
     avg_exp = math.floor((max_exp + min_exp) / 2)  # rounded down
     mil_exp = 3 * math.floor(avg_exp/3)
-    
+
     name = ''
     thsder = int(10**mil_exp)
-    
+
     try:
-        name = abbreviations[thsder] 
-    except KeyError: 
+        name = abbreviations[thsder]
+    except KeyError:
         LOGGER.warning("Warning: The numbers are larger than %s", list(abbreviations.keys())[-1])
         thsder, name = list(abbreviations.items())[-1]
-    
+
     mon_val = np.array(values) / thsder
-    
+
     if n_sig_dig is not None:
         mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
-    
+
     return (mon_val, name)
