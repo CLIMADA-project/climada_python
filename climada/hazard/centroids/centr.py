@@ -45,6 +45,7 @@ from climada.util.coordinates import (coord_on_land,
                                       pts_to_raster_meta,
                                       raster_to_meshgrid,
                                       read_raster,
+                                      read_raster_sample,
                                       read_vector)
 from climada.util.coordinates import NE_CRS
 
@@ -574,16 +575,29 @@ class Centroids():
             LOGGER.error('Pixel area of points can not be computed.')
             raise ValueError
 
-    def set_dist_coast(self, signed=False, precomputed=False, scheduler=None):
-        """Set dist_coast attribute for every pixel or point. Distance to
-        coast is computed in meters.
+    def set_elevation(self, topo_path):
+        """Set elevation attribute for every pixel or point in meters.
 
-        Parameters:
-            signed (bool): If True, use signed distances (positive off shore and negative on
-                 land). Default: False.
-            precomputed (bool): If True, use precomputed distances (from NASA). Default: False.
-            scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        topo_path : str
+            Path to a raster file containing gridded elevation data.
+        """
+        if not self.coord.size:
+            self.set_meta_to_lat_lon()
+        self.elevation = read_raster_sample(topo_path, self.lat, self.lon)
+
+    def set_dist_coast(self, signed=False, precomputed=False, scheduler=None):
+        """Set dist_coast attribute for every pixel or point in meters.
+
+        Parameters
+        ----------
+        signed : bool
+            If True, use signed distances (positive off shore and negative on land). Default: False.
+        precomputed : bool
+            If True, use precomputed distances (from NASA). Default: False.
+        scheduler : str
+            Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
         if precomputed:
             if not self.lat.size or not self.lon.size:

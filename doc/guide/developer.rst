@@ -8,7 +8,9 @@ Contributions are very welcome! Please follow these steps:
 0. **Install** `Git <https://git-scm.com/book/en/v2/Getting-Started-Installing-Git>`_
    and `Anaconda <https://www.anaconda.com/>`_ (or `Miniconda <https://conda.io/miniconda.html>`_).
 
-   Also consider installing Git flow. This is included with `Git for Windows <https://gitforwindows.org/>`_, and has different implementations e.g. `here <https://skoch.github.io/Git-Workflow/>`_ for Windows and Mac
+   Also consider installing Git flow. This is included with `Git for Windows <https://gitforwindows.org/>`_,
+   and has different implementations e.g. `here <https://skoch.github.io/Git-Workflow/>`_ for
+   Windows and Mac.
 
 1. **Clone (or fork)** the project on GitHub
 
@@ -56,19 +58,26 @@ Contributions are very welcome! Please follow these steps:
     # commit the changes
     git commit -m "new functionality of .. implemented"
 
-   Usually you will want a longer commit message than the one-line message above. In this case ``git commit`` will open your terminal's default text editor for a more detailed description. You can also create your commits interactively through your IDE's version control GUI (Spyder/PyCharm/etc).
+   Usually you will want a longer commit message than the one-line message above. In this case
+   ``git commit`` will open your terminal's default text editor for a more detailed description.
+   You can also create your commits interactively through your IDE's version control GUI
+   (Spyder/PyCharm/etc).
 
 
 5. Make unit and integration **tests** on your code, preferably during development:
 
    * Unit tests are located in the ``test`` folder located in same folder as the corresponding
      module. Unit tests should test all methods and functions using fake data if necessary.
-     The whole test suite should run in less than 20 sec. They are all executed `after each push
-     in Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_branches/>`_.
+     The whole test suite should run in less than 20 seconds. A single unit test should finish
+     within 2 seconds. Any test that take longer to run should run as integration test.
+     They are all executed `after each push in Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_branches/>`_.
 
    * Integration tests are located in ``climada/test/``. They test end-to-end methods and
-     functions. Their execution time can be of minutes. They are executed `once a day in
-     Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci_night/>`_.
+     functions. In particular, tests that imply interaction with external resources have to be run
+     as integration tests. Their execution time can be of minutes.
+     They are executed `once a day in Jenkins <http://ied-wcr-jenkins.ethz.ch/job/climada_ci_night/>`_
+     on the develop branch. On feature branches developers are supposed to run integration tests
+     locally (and successfully) before they make a pull request.
 
 6. Make sure your changes are not introducing new test failures.
 
@@ -94,14 +103,17 @@ Contributions are very welcome! Please follow these steps:
 
 10. Merge any updates to ``develop`` into your branch.
 
-   There may have been changes to the remote ``develop`` branch since you created your branch. You can deal with potential conflicts by updating and merging ``develop`` into your branch::
+   There may have been changes to the remote ``develop`` branch since you created your branch. You
+   can deal with potential conflicts by updating and merging ``develop`` into your branch::
 
     git checkout develop
     git pull
     git checkout feature/feature_name
     git merge develop
 
-   Then `resolve any conflicts <https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts>`_. In the case of more complex conflicts, you may want to speak with others who worked on the same code.
+   Then `resolve any conflicts <https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts>`_.
+   In the case of more complex conflicts, you may want to speak with others who worked on the same
+   code.
 
 11. **Push** the branch to GitHub.
 
@@ -113,7 +125,9 @@ Contributions are very welcome! Please follow these steps:
 
       git push
 
-    Only push small bugfixes and comments directly to ``develop`` - most new code should be pushed as a feature branch, which can then be reviewed with a pull request. Only emergency hotfixes are pushed to ``master``.
+    Only push small bugfixes and comments directly to ``develop`` - most new code should be pushed
+    as a feature branch, which can then be reviewed with a pull request. Only emergency hotfixes
+    are pushed to ``master``.
 
 12. Create a pull request.
 
@@ -122,20 +136,33 @@ Contributions are very welcome! Please follow these steps:
 
     To do this,
 
-    - On the `CLIMADA GitHub page <https://github.com/CLIMADA-project/climada_python>`_, navigate to your feature branch. Above the list of files is a summary of the branch and an icon to the right labelled "Pull request".
-    - Choose which branch you want to merge with. This will usually be ``develop``, but may be a feature branch for more complex feature development.
+    - On the `CLIMADA GitHub page <https://github.com/CLIMADA-project/climada_python>`_, navigate 
+      to your feature branch. Above the list of files is a summary of the branch and an icon to
+      the right labelled "Pull request".
+    - Choose which branch you want to merge with. This will usually be ``develop``, but may be a
+      feature branch for more complex feature development.
     - Give your pull request an informative title, like a commit message.
-    - Write a description of the pull request. This can usually be adapted from your branch's commit messages, and should give a high-level summary of the changes, specific points you want the reviewers' input on, and possibly explanations for decisions you've made.
-    - Assign reviewers using the right hand sidebar on the page. Tag anyone who might be interested in reading the code. You should have found someone who is happy to read the whole request and sign it off (this person could also be added to 'Assignees'). A list of potential reviewers can be found in the `WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Developer-Board>`_.
-    - Contact reviewers. GitHub's settings mean that they may not be alerted automatically, so send them a message.
+    - Write a description of the pull request. This can usually be adapted from your branch's
+      commit messages, and should give a high-level summary of the changes, specific points you
+      want the reviewers' input on, and possibly explanations for decisions you've made.
+    - Assign reviewers using the right hand sidebar on the page. Tag anyone who might be interested
+      in reading the code. You should have found someone who is happy to read the whole request and
+      sign it off (this person could also be added to 'Assignees'). A list of potential reviewers
+      can be found in the `WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Developer-Board>`_.
+    - Contact reviewers. GitHub's settings mean that they may not be alerted automatically, so send
+      them a message.
 
 13. Review and merge the pull request.
 
-    For big pull requests, stay in touch with reviewers. When everyone has had the chance to make comments and suggestions, and at least one person has read and approved the whole request, it's ready to be merged.
+    For big pull requests, stay in touch with reviewers. When everyone has had the chance to make
+    comments and suggestions, and at least one person has read and approved the whole request, it's
+    ready to be merged.
 
-    If ``develop`` has been updated during the review process, it may be necessary to resolve merge conflicts again.
+    If ``develop`` has been updated during the review process, it may be necessary to resolve merge
+    conflicts again.
 
-    Merging the pull request is done through the GitHub site. Once it's merged you can delete the feature branch and update your local copy of ``develop`` with ``git pull``.
+    Merging the pull request is done through the GitHub site. Once it's merged you can delete the
+    feature branch and update your local copy of ``develop`` with ``git pull``.
 
 
 
@@ -211,5 +238,6 @@ and optionally others. When closing issues they should get another label for the
 
 Regular Releases
 ----------------
-Regular releases are planned on a quarterly base. Upcoming releases are listed in the `WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Upcoming-Releases>`_.
+Regular releases are planned on a biannual base. Upcoming releases are listed in the
+`WIKI <https://github.com/CLIMADA-project/climada_python/wiki/Upcoming-Releases>`_.
 
