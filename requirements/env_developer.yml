@@ -9,3 +9,4 @@ dependencies:
   - pip
   - pip:
     - coverage==4.5.3
+    - readthedocs-sphinx-ext==2.1.1
