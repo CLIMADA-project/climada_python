@@ -231,9 +231,8 @@ class TCTracks():
 
         """
 
-        if buffer <= 0:
-            buffer = 1.0
-            LOGGER.warning(f"buffer={buffer} is invalid. buffer set to 1.0")
+        if buffer <= 0.0:
+            raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
 
         exp_buffer = exposure.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
