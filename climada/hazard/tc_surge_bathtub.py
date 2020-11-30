@@ -42,6 +42,9 @@ MAX_DIST_COAST = 50
 MAX_ELEVATION = 10
 """Maximum elevation of the centroids in m."""
 
+MAX_LATITUDE = 61
+"""Maximum latitude of potentially affected centroids."""
+
 
 class TCSurgeBathtub(Hazard):
     """TC surge heights in m, a bathtub model with wind-surge relationship and inland decay."""
@@ -76,10 +79,10 @@ class TCSurgeBathtub(Hazard):
         # Select wind-affected centroids which are inside MAX_DIST_COAST and |lat| < 61
         if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
             centroids.set_dist_coast(signed=True, precomputed=True)
-        coastal_msk = (((wind_haz.intensity > 0).sum(axis=0).A1 > 0)
-                       & (centroids.dist_coast < 0)
-                       & (centroids.dist_coast > -MAX_DIST_COAST * 1000)
-                       & (np.abs(centroids.lat) < 61))
+        coastal_msk = (wind_haz.intensity > 0).sum(axis=0).A1 > 0
+        coastal_msk &= (centroids.dist_coast < 0)
+        coastal_msk &= (centroids.dist_coast >= -MAX_DIST_COAST * 1000)
+        coastal_msk &= (np.abs(centroids.lat) <= MAX_LATITUDE)
 
         # Load elevation at coastal centroids
         coastal_centroids_h = coord_util.read_raster_sample(
@@ -87,8 +90,8 @@ class TCSurgeBathtub(Hazard):
 
         # Update selected coastal centroids to exclude high-lying locations
         # We only update the previously selected centroids (for which elevation info was obtained)
-        elevation_msk = ((coastal_centroids_h >= 0)
-                         & (coastal_centroids_h <= MAX_ELEVATION + add_sea_level_rise))
+        elevation_msk = (coastal_centroids_h >= 0)
+        elevation_msk &= (coastal_centroids_h <= MAX_ELEVATION + add_sea_level_rise)
         coastal_msk[coastal_msk] = elevation_msk
 
         # Elevation data and coastal/non-coastal indices are used later in the code
@@ -169,8 +172,9 @@ def _fraction_on_land(centroids, topo_path):
     else:
         shape[0], shape[1], cen_trans = coord_util.pts_to_raster_meta(
             bounds, min(coord_util.get_resolution(centroids.lat, centroids.lon)))
-    bounds += np.array([-.05, -.05, .05, .05])
 
+    read_raster_buffer = 0.5 * max(np.abs(cen_trans[0]), np.abs(cen_trans[4]))
+    bounds += read_raster_buffer * np.array([-1., -1., 1., 1.])
     on_land, dem_trans = coord_util.read_raster_bounds(topo_path, bounds)
     on_land = (on_land > 0).astype(np.float64)
 
