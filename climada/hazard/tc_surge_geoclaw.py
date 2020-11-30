@@ -44,13 +44,9 @@ import pandas as pd
 import scipy.sparse as sp
 import xarray as xr
 
-from climada.hazard.base import Hazard
-from climada.hazard.centroids.centr import Centroids
-from climada.hazard.tag import Tag as TagHazard
+from climada.hazard import Centroids, Hazard, Tag as TagHazard, TropCyclone
 from climada.hazard.tc_tracks import estimate_rmw, estimate_roci
-from climada.hazard.trop_cyclone import TropCyclone
-from climada.util import ureg
-from climada.util.constants import DATA_DIR
+from climada.util import DATA_DIR, ureg
 import climada.util.coordinates as coord_util
 
 LOGGER = logging.getLogger(__name__)
@@ -75,6 +71,9 @@ INLAND_MAX_DIST_KM = 50
 
 OFFSHORE_MAX_DIST_KM = 10
 """Maximum offshore distance of the centroids in km"""
+
+MAX_LATITUDE = 61
+"""Maximum latitude of potentially affected centroids"""
 
 CENTR_NODE_MAX_DIST_DEG = 5.5
 """Maximum distance between centroid and TC track node in degrees"""
@@ -129,9 +128,10 @@ class TCSurgeGeoClaw(Hazard):
         # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
         if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
             centroids.set_dist_coast(signed=True, precomputed=True)
-        coastal_idx = ((centroids.dist_coast < OFFSHORE_MAX_DIST_KM * 1000)
-                       & (centroids.dist_coast > -INLAND_MAX_DIST_KM * 1000)
-                       & (np.abs(centroids.lat) < 61)).nonzero()[0]
+        coastal_msk = (centroids.dist_coast <= OFFSHORE_MAX_DIST_KM * 1000)
+        coastal_msk &= (centroids.dist_coast >= -INLAND_MAX_DIST_KM * 1000)
+        coastal_msk &= (np.abs(centroids.lat) <= MAX_LATITUDE)
+        coastal_idx = coastal_msk.nonzero()[0]
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
@@ -222,10 +222,10 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path):
     track_bounds_pad = np.array(track_bounds)
     track_bounds_pad[:2] -= CENTR_NODE_MAX_DIST_DEG
     track_bounds_pad[2:] += CENTR_NODE_MAX_DIST_DEG
-    track_centr_msk = ((track_bounds_pad[1] < centroids[:, 0])
-                       & (centroids[:, 0] < track_bounds_pad[3])
-                       & (track_bounds_pad[0] < centroids[:, 1])
-                       & (centroids[:, 1] < track_bounds_pad[2]))
+    track_centr_msk = (track_bounds_pad[1] <= centroids[:, 0])
+    track_centr_msk &= (centroids[:, 0] <= track_bounds_pad[3])
+    track_centr_msk &= (track_bounds_pad[0] <= centroids[:, 1])
+    track_centr_msk &= (centroids[:, 1] <= track_bounds_pad[2])
     track_centr_idx = track_centr_msk.nonzero()[0]
 
     # exclude centroids at too low/high topographic altitude
