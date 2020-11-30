@@ -107,12 +107,12 @@ class TestTCSurgeBathtub(unittest.TestCase):
         # check valid range and order of magnitude
         self.assertTrue(np.all((fraction >= 0) & (fraction <= 1)))
         np.testing.assert_array_equal(fraction[dist_coast > 4000], 0)
-        np.testing.assert_array_equal(fraction[dist_coast < -1950], 1)
+        np.testing.assert_array_equal(fraction[dist_coast < -2000], 1)
 
         # check individual known pixel values
         self.assertEqual(fraction[28, 13], 0.0)
-        self.assertEqual(fraction[26, 12], 0.65)
-        self.assertEqual(fraction[26, 13], 0.8)
+        self.assertEqual(fraction[26, 11], 0.0625)
+        self.assertEqual(fraction[26, 12], 0.7)
         self.assertEqual(fraction[23, 14], 1.0)
 
 
