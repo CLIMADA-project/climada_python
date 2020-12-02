@@ -1372,14 +1372,19 @@ def read_vector(file_name, field_name, dst_crs=None):
 def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     """Write raster in GeoTiff format
 
-    Parameters:
-        fle_name (str): file name to write
-        data_matrix (np.array): 2d raster data. Either containing one band,
-            or every row is a band and the column represents the grid in 1d.
-        meta (dict): rasterio meta dictionary containing raster
-            properties: width, height, crs and transform must be present
-            at least (transform needs to contain upper left corner!)
-        dtype (numpy dtype): a numpy dtype
+    Parameters
+    ----------
+    file_name : str
+        File name to write.
+    data_matrix : np.array
+        2d raster data. Either containing one band, or every row is a band and the column
+        represents the grid in 1d.
+    meta : dict
+        rasterio meta dictionary containing raster properties:
+        width, height, crs and transform must be present at least.
+        Include `compress="deflate"` for compressed output.
+    dtype : numpy dtype, optional
+        A numpy dtype. Default: np.float32
     """
     LOGGER.info('Writting %s', file_name)
     if data_matrix.shape != (meta['height'], meta['width']):

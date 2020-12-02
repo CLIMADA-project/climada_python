@@ -19,10 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test coordinates module.
 """
 
+import os
+import unittest
+
 from cartopy.io import shapereader
 from fiona.crs import from_epsg
 import geopandas as gpd
-import unittest
 import numpy as np
 import shapely
 import geopandas
@@ -57,6 +59,7 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       read_vector,
                                       refine_raster_data,
                                       set_df_geometry_points,
+                                      write_raster,
                                       NE_EPSG,
                                       ONE_LAT_KM)
 
@@ -545,6 +548,28 @@ class TestRasterMeta(unittest.TestCase):
         self.assertEqual(meta['width'], 5)
 
 class TestRasterIO(unittest.TestCase):
+    def test_write_raster_pass(self):
+        """Test write_raster function."""
+        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        test_file = os.path.join(data_dir, "test_write_raster.tif")
+        data = np.arange(24).reshape(6, 4).astype(np.float32)
+        meta = {
+            'transform': Affine(0.1, 0, 0, 0, 1, 0),
+            'width': data.shape[1],
+            'height': data.shape[0],
+            'crs': 'epsg:2202',
+            'compress': 'deflate',
+        }
+        write_raster(test_file, data, meta)
+        read_meta, read_data = read_raster(test_file)
+        self.assertEqual(read_meta['transform'], meta['transform'])
+        self.assertEqual(read_meta['width'], meta['width'])
+        self.assertEqual(read_meta['height'], meta['height'])
+        self.assertEqual(read_meta['crs'], meta['crs'])
+        self.assertEqual(read_data.shape, (1, np.prod(data.shape)))
+        np.testing.assert_array_equal(read_data, data.reshape(read_data.shape))
+
     def test_window_raster_pass(self):
         """Test window"""
         meta, inten_ras = read_raster(HAZ_DEMO_FL, window=Window(10, 20, 50.1, 60))
