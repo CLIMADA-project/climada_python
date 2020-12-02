@@ -683,16 +683,20 @@ class TCTracks():
                        'category': set_category(wind, 'kn')}
         self.data.append(tr_ds)
 
-    def read_simulations_chaz(self, file_names, year_range=None):
+    def read_simulations_chaz(self, file_names, year_range=None, ensemble_nums=None):
         """Read track output from CHAZ simulations
 
             Lee, C.-Y., Tippett, M.K., Sobel, A.H., Camargo, S.J. (2018): An Environmentally
             Forced Tropical Cyclone Hazard Model. J Adv Model Earth Sy 10(1): 223–241.
 
-        Parameters:
-            file_names (str or list(str)): absolute file name(s) or folder name containing the
-                files to read.
-            year_range (tuple, optional): (min_year, max_year). Filter by year, if given.
+        Parameters
+        ----------
+        file_names : str or list(str)
+            Absolute file name(s) or folder name containing the files to read.
+        year_range : tuple (min_year, max_year), optional
+            Filter by year, if given.
+        ensemble_nums : list, optional
+            Filter by ensembleNum, if given.
         """
         self.data = []
         for path in get_file_names(file_names):
@@ -722,6 +726,15 @@ class TCTracks():
                     continue
                 chaz_ds = chaz_ds.sel(id=match)
 
+            # filter by ensembleNum if given
+            if ensemble_nums is not None:
+                match = np.isin(chaz_ds.ensembleNum.values, ensemble_nums)
+                if np.count_nonzero(match) == 0:
+                    LOGGER.info('No tracks with specified ensemble numbers.')
+                    self.data = []
+                    continue
+                chaz_ds = chaz_ds.sel(id=match)
+
             # remove invalid tracks from selection
             chaz_ds['valid_t'] = chaz_ds.time.notnull() & chaz_ds.Mwspd.notnull()
             valid_st = chaz_ds.valid_t.any(dim="lifelength")
@@ -745,42 +758,44 @@ class TCTracks():
             # determine Saffir-Simpson category
             max_wind = chaz_ds.Mwspd.max(dim="lifelength").data.ravel()
             category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
-            category = np.argmax(category_test, axis=1) - 1
+            chaz_ds['category'] = ("id", np.argmax(category_test, axis=1) - 1)
+
+            fname = os.path.basename(path)
+            chaz_ds.time[:] = chaz_ds.time.dt.round('s').data
+            chaz_ds['radius_max_wind'] = xr.full_like(chaz_ds.pres, np.nan)
+            chaz_ds['environmental_pressure'] = xr.full_like(chaz_ds.pres, DEF_ENV_PRESSURE)
+            chaz_ds["track_name"] = ("id", [f"{fname}-{track_id.item()[1]}-{track_id.item()[0]}"
+                                            for track_id in chaz_ds.id])
 
             # add tracks one by one
             last_perc = 0
-            fname = os.path.basename(path)
-            for i_track, track_category in zip(chaz_ds.id_no, category):
+            for i_track in chaz_ds.id_no:
                 perc = 100 * len(self.data) / chaz_ds.id_no.size
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 track_ds = chaz_ds.sel(id=i_track.id.item())
                 track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
-                ensemble_num, storm_id = i_track.id.item()
-                track_name = f"{fname}-{storm_id}-{ensemble_num}"
-                rmw = np.full_like(track_ds.pres.data, np.nan)
-                env_pressure = np.full_like(track_ds.pres.data, DEF_ENV_PRESSURE)
                 self.data.append(xr.Dataset({
                     'time_step': ('time', track_ds.time_step),
                     'max_sustained_wind': ('time', track_ds.Mwspd.data),
                     'central_pressure': ('time', track_ds.pres.data),
-                    'radius_max_wind': ('time', rmw),
-                    'environmental_pressure': ('time', env_pressure),
+                    'radius_max_wind': ('time', track_ds.radius_max_wind.data),
+                    'environmental_pressure': ('time', track_ds.environmental_pressure.data),
                 }, coords={
-                    'time': track_ds.time.dt.round('s').data,
+                    'time': track_ds.time.data,
                     'lat': ('time', track_ds.latitude.data),
                     'lon': ('time', track_ds.longitude.data),
                 }, attrs={
                     'max_sustained_wind_unit': 'kn',
                     'central_pressure_unit': 'mb',
-                    'name': track_name,
-                    'sid': track_name,
+                    'name': track_ds.track_name.item(),
+                    'sid': track_ds.track_name.item(),
                     'orig_event_flag': True,
                     'data_provider': "CHAZ",
                     'basin': "global",
-                    'id_no': i_track.item(),
-                    'category': track_category,
+                    'id_no': track_ds.id_no.item(),
+                    'category': track_ds.category.item(),
                 }))
             if last_perc != 100:
                 LOGGER.info("Progress: 100%")
