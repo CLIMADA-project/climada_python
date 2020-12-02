@@ -1016,10 +1016,10 @@ class TCTracks():
         """Transform this TCTracks instance into a GeoDataFrame.
 
         Parameters:
-            as_points (bool): If true, construct LineString or single Point
-                geometries. A point is created if a track has length one.
-                If set to false, the geometries are returned as points with an
-                additional timestamp column.
+            as_points : bool, optional
+                If False (default), one row per track with a LineString as geometry (or Point
+                geometry for tracks of length one) and all track attributes as dataframe columns.
+                If True, one row per track point, with variable values in addition to attributes.
 
         Returns:
             GeoDataFrame
@@ -1029,22 +1029,11 @@ class TCTracks():
         )
 
         if as_points:
-            times = np.concatenate([track.time.data for track in self.data])
-            points = np.concatenate([
-                np.c_[track.lon, track.lat] for track in self.data
-            ])
-
-            # repeat each idx according to the number of timesteps
-            lens = [track.time.size for track in self.data]
-            idx = np.repeat(gdf.index.to_numpy(), lens)
-
-            gdf_long = gpd.GeoDataFrame({
-                'idx': idx,
-                'time': times,
-                'geometry': [Point(p[0], p[1]) for p in points],
-            }).set_index('idx')
-
-            gdf = gdf.join(gdf_long)
+            gdf_long = pd.concat([track.to_dataframe().assign(idx=i) for i, track in enumerate(self.data)])
+            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'],x['lat']), axis=1)
+            gdf_long = gdf_long.drop(columns=['lon', 'lat'])
+            gdf_long = gpd.GeoDataFrame(gdf_long.reset_index().set_index('idx'), geometry='geometry')
+            gdf = gdf_long.join(gdf)
 
         else:
             # LineString only works with more than one lat/lon pair
