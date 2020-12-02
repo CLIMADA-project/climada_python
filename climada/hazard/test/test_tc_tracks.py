@@ -25,11 +25,13 @@ import xarray as xr
 import numpy as np
 import netCDF4 as nc
 import pandas as pd
+import geopandas as gpd
 
 import climada.hazard.tc_tracks as tc
 from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 from climada.util.coordinates import coord_on_land, dist_to_coast
+from climada.entity import Exposures
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
@@ -288,6 +290,9 @@ class TestIO(unittest.TestCase):
 
         tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1950, 1955))
         self.assertEqual(len(tc_track.data), 0)
+
+        tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, ensemble_nums=[0, 2])
+        self.assertEqual(len(tc_track.data), 9)
 
     def test_read_simulations_storm(self):
         """Test reading NetCDF output from STORM simulations"""
@@ -626,6 +631,25 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(rad_max_wind[191], 56.10776504, places=5)
         self.assertAlmostEqual(rad_max_wind[192], 57.84814530, places=5)
         self.assertAlmostEqual(rad_max_wind[200], 70.00942075, places=5)
+
+    def test_tracks_in_exp_pass(self):
+        """Check if tracks in exp are filtered correctly"""
+
+        # Load two tracks from ibtracks
+        storms = {'in': '2000233N12316', 'out': '2000160N21267'}
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id=list(storms.values()))
+
+        # Define exposure from geopandas
+        world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+        exp_world = Exposures(world)
+        exp = Exposures(exp_world[exp_world.name=='Cuba'])
+
+        # Compute tracks in exp
+        tracks_in_exp = tc_track.tracks_in_exp(exp, buffer=1.0)
+
+        self.assertTrue(tracks_in_exp.get_track(storms['in']))
+        self.assertFalse(tracks_in_exp.get_track(storms['out']))
 
 
 # Execute Tests
