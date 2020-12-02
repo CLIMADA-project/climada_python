@@ -327,7 +327,8 @@ class TestIO(unittest.TestCase):
 
         gdf_points = tc_track.to_geodataframe(as_points=True)
         self.assertIsInstance(gdf_points.unary_union.bounds, tuple)
-        self.assertEqual(gdf_points.size, 418)
+        self.assertEqual(gdf_points.shape[0], len(tc_track.data[0].time))
+        self.assertEqual(gdf_points.shape[1], len(tc_track.data[0].variables)+len(tc_track.data[0].attrs)-1)
         self.assertAlmostEqual(gdf_points.buffer(3).unary_union.area, 348.79972062947854)
         self.assertIsInstance(gdf_points.iloc[0].time, pd._libs.tslibs.timestamps.Timestamp)
 
