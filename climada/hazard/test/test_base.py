@@ -30,6 +30,7 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 from climada.util.coordinates import equal_crs
+from pathos.pools import ProcessPool as Pool
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
@@ -1104,6 +1105,37 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(haz_fl.fraction.min() >= 0)
         self.assertTrue(haz_fl.fraction.max() <= 0.5 / 2)
 
+
+class TestClear(unittest.TestCase):
+    """Test clear method"""
+
+    def test_clear(self):
+        """Clear method clears everything"""
+        haz1 = Hazard('TC')
+        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz1.units = "m"
+        haz1.foo = np.arange(10)
+        haz1.clear()
+        self.assertEqual(list(vars(haz1.tag).values()), ['', '', ''])
+        self.assertEqual(haz1.units, '')
+        self.assertEqual(haz1.centroids.size, 0)
+        self.assertEqual(len(haz1.event_name), 0)
+        for attr in vars(haz1).keys():
+            if attr not in ['tag', 'units', 'event_name', 'pool']:
+                self.assertEqual(getattr(haz1, attr).size, 0)
+        self.assertIsNone(haz1.pool)
+
+    def test_clear_pool(self):
+        """Clear method should not clear a process pool"""
+        haz1 = Hazard('TC')
+        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        pool = Pool(nodes=2)
+        haz1.pool = pool
+        haz1.check()
+        haz1.clear()
+        self.assertEqual(haz1.pool, pool)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
@@ -1116,4 +1148,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
