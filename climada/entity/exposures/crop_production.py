@@ -104,7 +104,7 @@ INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Exposure')
 FAO_FILE = "FAOSTAT_data_producer_prices.csv"
 FAO_FILE2 = "FAOSTAT_data_production_quantity.csv"
 
-YEARS_FAO = (2000, 2018)
+YEARS_FAO = (2008, 2018)
 """Default years from FAO used (data file contains values for 1991-2018)"""
 
 # default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
@@ -283,7 +283,7 @@ class CropProduction(Exposures):
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
         else:
-            LOGGER.error('Invalid hist_mean provided: %s ' %hist_mean')
+            LOGGER.error('Invalid hist_mean provided: %s ' %hist_mean)
             raise ValueError('invalid hist_mean.')
 
         # The bbox is cut out of the hist_mean data file if needed
@@ -648,7 +648,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
     if not input_dir:
         input_dir = INPUT_DIR
     if yearrange is None:
-        yearrange = (2008, 2018)
+        yearrange = YEARS_FAO
     if not unit:
         unit = 't'
     # if the exposure unit is USD/y or kcal/y, temporarily reset the exposure to t/y
@@ -754,7 +754,7 @@ def normalize_several_exp(input_dir=None, output_dir=None,
     if not unit:
         unit = 't'
     if yearrange is None:
-        yearrange = (2008, 2018)
+        yearrange = YEARS_FAO
     filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
                       (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
                       f.startswith('.') if 'firr' in f]
