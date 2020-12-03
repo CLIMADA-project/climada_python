@@ -108,8 +108,8 @@ YEARS_FAO = (2000, 2018)
 """Default years from FAO used (data file contains values for 1991-2018)"""
 
 # default output directory: climada_python/data/ISIMIP_crop/Output/Exposure
-# by default the hist_mean files created by climada_python/hazard/crop_potential are saved in
-# climada_python/data/ISIMIP_crop/Output/hist_mean/
+# by default the hist_mean files created by climada_python/hazard/relative_cropyield
+# are saved in climada_python/data/ISIMIP_crop/Output/hist_mean/
 HIST_MEAN_PATH = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output', 'Hist_mean')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
 
@@ -251,7 +251,7 @@ class CropProduction(Exposures):
         # set historic mean, its latitude, and longitude:
         hist_mean_dict = dict()
         # if hist_mean is given as np.ndarray or dict,
-        # code assumes it contains hist_mean as returned by the hazard crop_potential
+        # code assumes it contains hist_mean as returned by relative_cropyield
         # however structured in dictionary as hist_mean_dict, with same
         # bbox extensions as the exposure:
         if isinstance(hist_mean, dict):
@@ -612,7 +612,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
 
 def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
                           yearrange=None, unit=None, return_data=True):
-    """Normalize (i.e., bias corrent) the given exposures countrywise with the mean
+    """Normalize (i.e., bias correct) the given exposures countrywise with the mean
     crop production quantity documented by the FAO.
     Refer to the beginning of the script for guidance on where to download the
     required cropmporduction data from FAO.Stat.
