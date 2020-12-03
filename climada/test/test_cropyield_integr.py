@@ -54,9 +54,9 @@ class TestIntegr(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', crop='whe', irr='firr')
+                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
 
-        exp.set_to_usd(INPUT_DIR)
+        exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
         exp.assign_centroids(haz, threshold=20)
 
         if_cp = ImpactFuncSet()
@@ -98,7 +98,7 @@ class TestIntegr(unittest.TestCase):
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', crop='whe', irr='firr')
+                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp.assign_centroids(haz, threshold=20)
 
         if_cp = ImpactFuncSet()
@@ -113,7 +113,7 @@ class TestIntegr(unittest.TestCase):
         exp_nan = CropProduction()
         exp_nan.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=[0, 42, 10, 52], yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t', crop='whe', irr='firr')
+                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp_nan.value[exp_nan.value==0] = np.nan
         exp_nan.assign_centroids(haz, threshold=20)
 

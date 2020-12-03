@@ -157,7 +157,7 @@ class CropProduction(Exposures):
                 f.i 'firr' (full irrigation), 'noirr' (no irrigation) or 'combined'= firr+noirr
             isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
             unit (string): unit of the exposure (per year)
-                f.i 'USD' or 't' (default) or 'kcal'
+                f.i 't/y' (default), 'USD/y', or 'kcal/y'
             fn_str_var (string): FileName STRing depending on VARiable and
                 ISIMIP simuation round
 
@@ -181,7 +181,7 @@ class CropProduction(Exposures):
         if yearrange is None:
             yearrange = YEARCHUNKS[isimip_version][scenario]['yearrange']
         if not unit:
-            unit = 't'
+            unit = 't/y'
         #if not soc: soc=''
         # The filename is set or other variables (cl_model, scenario) are extracted of the
         # specified filename
@@ -313,7 +313,7 @@ class CropProduction(Exposures):
         self.tag.description = ("Crop production exposure from ISIMIP " +
                                 (CROP_NAME[crop])['print'] + ' ' +
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[-1]))
-        self.value_unit = 't / y'
+        self.value_unit = 't/y' # input unit, will be reset below if required by user
         self.crop = crop
         self.ref_year = yearrange
         self.crs = DEF_CRS
@@ -334,11 +334,11 @@ class CropProduction(Exposures):
             self.meta = {}
 
         if 'USD' in unit:
-            # set_to_usd() is called to compute the exposure in USD/y (country specific)
-            self.set_to_usd(input_dir=input_dir)
+            # set_value_to_usd() is called to compute the exposure in USD/y (country specific)
+            self.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit:
-            # set_to_kcal() is called to compute the exposure in kcal/y
-            self.set_to_kcal()
+            # set_value_to_kcal() is called to compute the exposure in kcal/y
+            self.set_value_to_kcal()
         self.check()
 
         return self
@@ -367,7 +367,7 @@ class CropProduction(Exposures):
                 f.i 'rainfed', 'irrigated' or 'combined'= rainfed+irrigated
             isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
             unit (string): unit of the exposure (per year)
-                f.i 'USD' or 't' (default)
+                f.i 't/y' (default), 'USD/y', or 'kcal/y'
             fn_str_var (string): FileName STRing depending on VARiable and
                 ISIMIP simuation round
         Returns:
@@ -386,7 +386,7 @@ class CropProduction(Exposures):
         if yearrange is None:
             yearrange = YEARCHUNKS[isimip_version]['histsoc']['yearrange']
         if not unit:
-            unit = 't'
+            unit = 't/y'
         if not fn_str_var:
             fn_str_var = FN_STR_VAR
         filenames = dict()
@@ -434,20 +434,21 @@ class CropProduction(Exposures):
 
         return self
 
-    def set_to_kcal(self):
-        """Converts the exposure from tonnes to kcal using conversion factor per crop type.
+    def set_value_to_kcal(self):
+        """Converts the exposure value from tonnes to kcalper year using
+        conversion factor per crop type.
 
         Returns:
             Exposure
         """
-        if not 't' in self.value_unit:
-            LOGGER.warning('self.unit is neither t nor t / year.')
+        if not 't/y' == self.value_unit:
+            LOGGER.warning('self.unit is not t/y.')
         self['tonnes_per_year'] = self['value'].values
         self.value = self.value * KCAL_PER_TON[self.crop]
-        self.value_unit = 'kcal / y'
+        self.value_unit = 'kcal/y'
         return self
 
-    def set_to_usd(self, input_dir=None, yearrange=None):
+    def set_value_to_usd(self, input_dir=None, yearrange=None):
         # to do: check api availability?; default yearrange for single year (e.g. 5a)
         """Calculates the exposure in USD using country and year specific data published
         by the FAO.
@@ -523,7 +524,7 @@ class CropProduction(Exposures):
 
 
         self['value'] = area_price
-        self.value_unit = 'USD / y'
+        self.value_unit = 'USD/y'
         self.check()
         return self
 
@@ -558,7 +559,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
             [lon min, lat min, lon max, lat max]
         yearrange (array): year range for hazard set, f.i. (1976, 2005)
         isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
-        unit (str): unit in which to return exposure (t/y or USD/y)
+        unit (str): unit in which to return exposure (e.g., t/y or USD/y)
         return_data (boolean): returned output
             False: returns list of filenames only, True: returns also list of data
 
@@ -581,7 +582,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
     if yearrange is None:
         yearrange = YEARCHUNKS[isimip_version]['histsoc']['yearrange']
     if not unit:
-        unit = 't'
+        unit = 't/y'
 
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not
                  f.startswith('.')]
@@ -650,14 +651,14 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
     if yearrange is None:
         yearrange = YEARS_FAO
     if not unit:
-        unit = 't'
+        unit = 't/y'
     # if the exposure unit is USD/y or kcal/y, temporarily reset the exposure to t/y
     # (stored in tonnes_per_year) in order to normalize with FAO crop production
     # values and then apply set_to_XXX() for the normalized exposure to restore the
     # initial exposure unit
-    if exp_firr.value_unit == 'USD / y' or 'kcal' in exp_firr.value_unit:
+    if exp_firr.value_unit == 'USD/y' or 'kcal' in exp_firr.value_unit:
         exp_firr.value = exp_firr.tonnes_per_year
-    if exp_noirr.value_unit == 'USD / y' or 'kcal' in exp_noirr.value_unit:
+    if exp_noirr.value_unit == 'USD/y' or 'kcal' in exp_noirr.value_unit:
         exp_noirr.value = exp_noirr.tonnes_per_year
 
     country_list, countries_firr = exp_firr.aggregate_countries()
@@ -699,14 +700,14 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
         exp_noirr_norm.value[exp_firr.region_id == iso_nr] = ratio[country] * \
         exp_noirr.value[exp_noirr.region_id == iso_nr]
 
-        if unit == 'USD' or exp_noirr.value_unit == 'USD / y':
-            exp_noirr.set_to_usd(input_dir=input_dir)
+        if unit == 'USD/y' or exp_noirr.value_unit == 'USD/y':
+            exp_noirr.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit or 'kcal' in exp_noirr.value_unit:
-            exp_noirr.set_to_kcal()
-        if unit == 'USD' or exp_firr.value_unit == 'USD / y':
-            exp_firr.set_to_usd(input_dir=input_dir)
+            exp_noirr.set_value_to_kcal()
+        if unit == 'USD/y' or exp_firr.value_unit == 'USD/y':
+            exp_firr.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit or 'kcal' in exp_firr.value_unit:
-            exp_firr.set_to_kcal()
+            exp_firr.set_value_to_kcal()
 
     exp_firr_norm.tag.description = exp_firr_norm.tag.description+' normalized'
     exp_noirr_norm.tag.description = exp_noirr_norm.tag.description+' normalized'
@@ -752,7 +753,7 @@ def normalize_several_exp(input_dir=None, output_dir=None,
     if not output_dir:
         output_dir = OUTPUT_DIR
     if not unit:
-        unit = 't'
+        unit = 't/y'
     if yearrange is None:
         yearrange = YEARS_FAO
     filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
