@@ -421,11 +421,11 @@ class CropProduction(Exposures):
 
         # The calculations are repeated for all remaining exposures (starting from index 1 as
         # the first exposure has been saved in combined_exp[:, 0])
-        for j in range(1, len(filenames['subset'])):
-            self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][j],
+        for j, fn in enumerate(filenames['subset'][1:]):
+            self.set_from_isimip_netcdf(input_dir, filename=fn,
                                      hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
                                      crop=crop, irr=irr, unit=unit, isimip_version=isimip_version)
-            combined_exp[:, j] = self.value
+            combined_exp[:, j+1] = self.value
 
         self['value'] = np.mean(combined_exp, 1)
         self['crop'] = crop
