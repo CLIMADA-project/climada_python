@@ -172,9 +172,9 @@ class CropProduction(Exposures):
             hist_mean = HIST_MEAN_PATH
         if not fn_str_var:
             fn_str_var = FN_STR_VAR
-        if (not isimip_version) or ('ISIMIP2' in isimip_version):
+        if (not isimip_version) or (isimip_version in ('ISIMIP2a', 'ISIMIP2b')):
             isimip_version = 'ISIMIP2'
-        elif 'ISIMIP3' in isimip_version:
+        elif isimip_version in ('ISIMIP3a', 'ISIMIP3b'):
             isimip_version = 'ISIMIP3'
         if (not scenario) or (scenario in ('historical', 'hist')):
             scenario = 'histsoc'
@@ -375,9 +375,9 @@ class CropProduction(Exposures):
         """
         if not bbox:
             bbox = BBOX
-        if (not isimip_version) or (isimip_version in ['ISIMIP2a', 'ISIMIP2b']):
+        if (not isimip_version) or (isimip_version in ('ISIMIP2a', 'ISIMIP2b')):
             isimip_version = 'ISIMIP2'
-        elif isimip_version in ['ISIMIP3a', 'ISIMIP3b']:
+        elif isimip_version in ('ISIMIP3a', 'ISIMIP3b'):
             isimip_version = 'ISIMIP3'
         if not input_dir:
             input_dir = INPUT_DIR
@@ -569,9 +569,9 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
     """
     if not bbox:
         bbox = BBOX
-    if (not isimip_version) or ('ISIMIP2' in isimip_version):
+    if (not isimip_version) or (isimip_version in ('ISIMIP2a', 'ISIMIP2b')):
         isimip_version = 'ISIMIP2'
-    elif 'ISIMIP3' in isimip_version:
+    elif isimip_version in ('ISIMIP3a', 'ISIMIP3b'):
         isimip_version = 'ISIMIP3'
     if not input_dir:
         input_dir = INPUT_DIR
