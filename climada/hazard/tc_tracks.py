@@ -1053,9 +1053,11 @@ class TCTracks():
 
         Parameters:
             as_points : bool, optional
-                If False (default), one row per track with a LineString as geometry (or Point
-                geometry for tracks of length one) and all track attributes as dataframe columns.
-                If True, one row per track point, with variable values in addition to attributes.
+                If False (default), one feature (row) per track with a LineString as geometry (or Point
+                geometry for tracks of length one) and all track attributes (sid, name, orig_event_flag,
+                etc) as dataframe columns.
+                If True, one feature (row) per track time step, with variable values per time step (radius_max_wind,
+                max_sustained_wind, etc) as columns in addition to attributes.
 
         Returns:
             GeoDataFrame
