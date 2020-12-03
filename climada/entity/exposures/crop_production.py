@@ -260,8 +260,8 @@ class CropProduction(Exposures):
                 raise ValueError('invalid hist_mean.')
             hist_mean_dict = hist_mean
             lat_mean = self.latitude.values
-        elif isinstance(hist_mean, np.ndarray):
-            hist_mean_dict[irr[0]] = hist_mean
+        elif isinstance(hist_mean, np.ndarray) or isinstance(hist_mean, list):
+            hist_mean_dict[irr[0]] = np.array(hist_mean)
             lat_mean = self.latitude.values
         elif isdir(hist_mean): # else if hist_mean is given as path to directory
         # The adequate file from the directory (depending on crop and irrigation) is extracted
@@ -343,7 +343,7 @@ class CropProduction(Exposures):
 
         return self
 
-    def set_mean_of_several_models(self, input_dir=None, hist_mean=None, bbox=None,
+    def set_mean_of_several_isimip_models(self, input_dir=None, hist_mean=None, bbox=None,
                                    yearrange=None, cl_model=None, scenario=None,
                                    crop=None, irr=None, isimip_version=None,
                                    unit=None, fn_str_var=None):
