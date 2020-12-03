@@ -887,15 +887,18 @@ class TCTracks():
             LOGGER.info("Progress: 100%")
 
     def equal_timestep(self, time_step_h=1, land_params=False):
-        """Generate interpolated track values to time steps of min_time_step.
-        Parameters:
-            time_step_h (float, optional): time step in hours to which to
-                interpolate. Default: 1.
-            land_params (bool, optional): compute on_land and dist_since_lf at
-                each node. Default: False.
+        """Generate interpolated track values to time steps of time_step_h.
+
+        Parameters
+        ----------
+        time_step_h : float or int, optional
+            Temporal resolution in hours (positive, may be non-integer-valued). Default: 1.
+        land_params : bool, optional
+            If True, recompute `on_land` and `dist_since_lf` at each node. Default: False.
         """
-        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size,
-                    time_step_h)
+        if time_step_h <= 0:
+            raise ValueError("time_step_h is not a positive number: %s", time_step_h)
+        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
 
         if land_params:
             extent = self.get_extent()
@@ -1112,11 +1115,18 @@ class TCTracks():
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
 
-        Parameters:
-            track (xr.Dataset): track data
+        Parameters
+        ----------
+        track : xr.Dataset
+            Track data.
+        time_step_h : int or float
+            Desired temporal resolution in hours (may be non-integer-valued).
+        land_geom : shapely.geometry.multipolygon.MultiPolygon, optional
+            Land geometry. If given, recompute `dist_since_lf` and `on_land` property.
 
-        Returns:
-            xr.Dataset
+        Returns
+        -------
+        track_int : xr.Dataset
         """
         if track.time.size >= 2:
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
@@ -1127,7 +1137,7 @@ class TCTracks():
                 # crosses 180 degrees east/west -> use positive degrees east
                 lon[lon < 0] += 360
 
-            time_step = '{}H'.format(time_step_h)
+            time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h))
             track_int = track.resample(time=time_step, keep_attrs=True, skipna=True)\
                              .interpolate('linear')
             track_int['time_step'][:] = time_step_h
