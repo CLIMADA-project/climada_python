@@ -897,7 +897,7 @@ class TCTracks():
             If True, recompute `on_land` and `dist_since_lf` at each node. Default: False.
         """
         if time_step_h <= 0:
-            raise ValueError("time_step_h is not a positive number: %s", time_step_h)
+            raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
         LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
 
         if land_params:
