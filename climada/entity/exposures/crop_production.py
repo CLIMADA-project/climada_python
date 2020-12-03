@@ -283,7 +283,7 @@ class CropProduction(Exposures):
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
         else:
-            LOGGER.error('Invalid hist_mean provided: {hist_mean}')
+            LOGGER.error('Invalid hist_mean provided: %s ' %hist_mean')
             raise ValueError('invalid hist_mean.')
 
         # The bbox is cut out of the hist_mean data file if needed
