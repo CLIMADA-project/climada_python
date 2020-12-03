@@ -256,7 +256,7 @@ class CropProduction(Exposures):
         # bbox extensions as the exposure:
         if isinstance(hist_mean, dict):
             if not ('firr' in hist_mean.keys() or 'noirr' in hist_mean.keys()):
-                LOGGER.error('Invalid hist_mean provided: {hist_mean}')
+                LOGGER.error('Invalid hist_mean provided: %s' %hist_mean)
                 raise ValueError('invalid hist_mean.')
             hist_mean_dict = hist_mean
             lat_mean = self.latitude.values
