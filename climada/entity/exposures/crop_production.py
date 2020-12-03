@@ -176,7 +176,7 @@ class CropProduction(Exposures):
             isimip_version = 'ISIMIP2'
         elif 'ISIMIP3' in isimip_version:
             isimip_version = 'ISIMIP3'
-        if (not scenario) or ('hist' in scenario):
+        if (not scenario) or (scenario in ('historical', 'hist')):
             scenario = 'histsoc'
         if yearrange is None:
             yearrange = YEARCHUNKS[isimip_version][scenario]['yearrange']
@@ -375,9 +375,9 @@ class CropProduction(Exposures):
         """
         if not bbox:
             bbox = BBOX
-        if (not isimip_version) or ('ISIMIP2' in isimip_version):
+        if (not isimip_version) or (isimip_version in ['ISIMIP2a', 'ISIMIP2b']):
             isimip_version = 'ISIMIP2'
-        elif 'ISIMIP3' in isimip_version:
+        elif isimip_version in ['ISIMIP3a', 'ISIMIP3b']:
             isimip_version = 'ISIMIP3'
         if not input_dir:
             input_dir = INPUT_DIR
