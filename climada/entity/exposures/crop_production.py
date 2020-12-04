@@ -616,7 +616,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
     """Normalize (i.e., bias correct) the given exposures countrywise with the mean
     crop production quantity documented by the FAO.
     Refer to the beginning of the script for guidance on where to download the
-    required cropmporduction data from FAO.Stat.
+    required crop production data from FAO.Stat.
 
     Parameters:
         exp_firr (crop_production): exposure under full irrigation
