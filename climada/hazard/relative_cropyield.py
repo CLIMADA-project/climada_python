@@ -470,7 +470,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                 False: returns list of filenames only
                 True: returns also list of data
             save (boolean): save output data to output_dir
-            combine_subcrops (boolean): combine coprs: ric=ri1+ri2, whe=swh+wwh
+            combine_subcrops (boolean): combine crops: ric=ri1+ri2, whe=swh+wwh
         Return:
             filename_list (list): list of filenames
 
