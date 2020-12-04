@@ -848,7 +848,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
             yearrange_fut = (int(fut_file.split('_')[-2]),
                              int(fut_file.split('_')[-1].split('.')[0])
                              )
-        else: # define yearrane from defaults if not specified by user or filename:
+        else: # define yearrange from defaults if not specified by user or filename:
             yearrange_fut = (YEARCHUNKS[scenario]['startyear'],
                              YEARCHUNKS[scenario]['endyear'])
 
