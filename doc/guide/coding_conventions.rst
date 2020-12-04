@@ -3,7 +3,7 @@
 Coding Conventions
 ==================
 
-Contributions are very welcome! But we need to keep a certain order. Please seriously consider the following guidelines.
+Contributions are very welcome! But we need to keep a certain order. Please earnestly consider the following guidelines.
 
 Unit Tests
 ----------
@@ -15,6 +15,10 @@ For these cases it seems sufficient to test the calling method/function.
 Python Style
 ------------
 Follow `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_.
+
+Doc Strings
+-----------
+Modules, classes and public methods should have a Pydoc string in the `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_ format.
 
 Linter
 ------
@@ -77,16 +81,6 @@ Cython, Numba, ...
 - When using Numba, make sure to avoid Python objects as, otherwise, Numba will
   use the less efficient `object mode <https://numba.pydata.org/numba-doc/latest/glossary.html#term-object-mode>`_.
 
-Exposed Interface
-=================
-Library functions???
-
 Configuration
 =============
-Dealing with constants
-----------------------
-??? central registry?
-
-Dealing with defaults
----------------------
-???
+- URLs of external resources and locations of data directories should always be defined in the config.py file and not declared as constants.

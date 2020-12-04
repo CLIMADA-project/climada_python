@@ -197,8 +197,8 @@ def latlon_bounds(lat, lon, buffer=0.0):
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
-                method="equirect"):
-    """Compute approximation of geodistance in km
+                method="equirect", units='km'):
+    """Compute approximation of geodistance in specified units
 
     Parameters
     ----------
@@ -217,15 +217,31 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         * "equirect": equirectangular; very fast, good only at small distances.
         * "geosphere": spherical approximation, slower, but much higher accuracy.
         Default: "equirect".
+    units : str, optional
+        Specify a unit for the distance. One of:
+        * "km": distance in km.
+        * "degree": angular distance in decimal degrees.
+        * "radian": angular distance in radians.
+        Default: "km".
 
     Returns
     -------
     dists : ndarray of floats, shape (nbatch, nx, ny)
-        Approximate distances in km.
+        Approximate distances in specified units.
     vtan : ndarray of floats, shape (nbatch, nx, ny, 2)
         If `log` is True, tangential vectors at first points in local
         lat-lon coordinate system.
     """
+    if units == "km":
+        unit_factor = ONE_LAT_KM
+    elif units == "radian":
+        unit_factor = np.radians(1.0)
+    elif units == "degree":
+        unit_factor = 1
+    else:
+        LOGGER.error('Unknown distance unit: %s', units)
+        raise KeyError
+
     if method == "equirect":
         if normalize:
             lon_normalize(lon1)
@@ -236,9 +252,9 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         fact2 = np.heaviside(-d_lon - 180, 0)
         d_lon -= (fact1 - fact2) * 360
         d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist_km = np.sqrt(d_lon**2 + d_lat**2) * ONE_LAT_KM
+        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
         if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * ONE_LAT_KM
+            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
@@ -246,18 +262,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         # haversine formula:
         hav = np.sin(dlat)**2 \
             + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
-        dist_km = np.degrees(2 * np.arcsin(np.sqrt(hav))) * ONE_LAT_KM
+        dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
-            fact = dist_km / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
+            fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
             vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
-    return (dist_km, vtan) if log else dist_km
+    return (dist, vtan) if log else dist
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -1093,40 +1109,48 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
-            src_crs = src.crs if src_crs is None else src_crs
-            if not src_crs:
-                src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
             dst_meta = src.meta.copy()
 
             if dst_crs or transform:
                 LOGGER.debug('Reprojecting ...')
+
+                src_crs = src.crs if src_crs is None else src_crs
+                if not src_crs:
+                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
                                                transform=transform, resampling=resampling)
             else:
-                trans = dst_meta['transform']
                 if geometry:
                     inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
                         inten[inten == dst_meta['nodata']] = 0
+
                 else:
                     masked_array = src.read(band, window=window, masked=True)
                     inten = masked_array.data
                     inten[masked_array.mask] = 0
+
                     if window:
                         trans = rasterio.windows.transform(window, src.transform)
+                    else:
+                        trans = dst_meta['transform']
+
                 dst_meta.update({
                     "height": inten.shape[1],
                     "width": inten.shape[2],
                     "transform": trans,
                 })
+
     if not dst_meta['crs']:
         dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
+
     return dst_meta, intensity.reshape(dst_shape)
 
 def read_raster_bounds(path, bounds, res=None, bands=None):
@@ -1285,7 +1309,7 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     y_dim = ymin - yres / 2 + yres * np.arange(data.shape[0])
     x_dim = xmin - xres / 2 + xres * np.arange(data.shape[1])
 
-    data = np.float64(data)
+    data = np.array(data, dtype=np.float64)
     data[np.isnan(data)] = fill_value
     return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
                                      method=method, bounds_error=False, fill_value=fill_value)
@@ -1348,14 +1372,19 @@ def read_vector(file_name, field_name, dst_crs=None):
 def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     """Write raster in GeoTiff format
 
-    Parameters:
-        fle_name (str): file name to write
-        data_matrix (np.array): 2d raster data. Either containing one band,
-            or every row is a band and the column represents the grid in 1d.
-        meta (dict): rasterio meta dictionary containing raster
-            properties: width, height, crs and transform must be present
-            at least (transform needs to contain upper left corner!)
-        dtype (numpy dtype): a numpy dtype
+    Parameters
+    ----------
+    file_name : str
+        File name to write.
+    data_matrix : np.array
+        2d raster data. Either containing one band, or every row is a band and the column
+        represents the grid in 1d.
+    meta : dict
+        rasterio meta dictionary containing raster properties:
+        width, height, crs and transform must be present at least.
+        Include `compress="deflate"` for compressed output.
+    dtype : numpy dtype, optional
+        A numpy dtype. Default: np.float32
     """
     LOGGER.info('Writting %s', file_name)
     if data_matrix.shape != (meta['height'], meta['width']):

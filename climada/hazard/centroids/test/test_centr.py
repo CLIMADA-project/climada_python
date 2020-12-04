@@ -22,11 +22,14 @@ import os
 import unittest
 
 import numpy as np
+import pandas as pd
+import geopandas as gpd
 
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data/')
+HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
+                       'test/data/')
 HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 
@@ -67,7 +70,7 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
 
     def test_base_grid(self):
-        """ Read new centroids using from_base_grid, then select by extent """
+        """Read new centroids using from_base_grid, then select by extent."""
 
         centroids = Centroids().from_base_grid(land=True, res_as=150)
 
@@ -82,6 +85,28 @@ class TestCentroidsReader(unittest.TestCase):
         ).size
 
         self.assertEqual(count_sgi, 296)
+
+    def test_geodataframe(self):
+        """Test that constructing a valid Centroids instance from gdf works."""
+        gdf = gpd.GeoDataFrame(pd.read_excel(HAZ_TEMPLATE_XLS))
+        gdf.geometry = gpd.points_from_xy(
+                gdf['longitude'], gdf['latitude']
+        )
+        gdf['elevation'] = np.random.rand(gdf.geometry.size)
+        gdf['region_id'] = np.zeros(gdf.geometry.size)
+        gdf['region_id'][0] = np.NaN
+        gdf['geom'] = gdf.geometry  # this should have no effect on centroids
+
+        centroids = Centroids.from_geodataframe(gdf)
+        centroids.check()
+
+        self.assertEqual(centroids.geometry.size, 45)
+        self.assertEqual(centroids.lon[0], 32.57)
+        self.assertEqual(centroids.lat[0], -25.95)
+        self.assertEqual(centroids.elevation.size, 45)
+        self.assertEqual(centroids.on_land.sum(), 44)
+        self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
+        self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
 
 # Execute Tests
