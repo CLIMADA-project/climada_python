@@ -78,6 +78,18 @@ class TestRiverFlood(unittest.TestCase):
         self.assertAlmostEqual(testCentroids.lat[11], 47.2289138)
         self.assertAlmostEqual(testCentroids.lat[12], 47.2289138)
 
+    def test_exact_area_selection_region(self):
+
+        testCentr, isos, natIDs = RiverFlood._select_exact_area(reg=['SWA'])
+
+        self.assertEqual(testCentr.shape, (877, 976))
+        self.assertAlmostEqual(np.min(testCentr.lat), -0.68767620000001, 4)
+        self.assertAlmostEqual(np.max(testCentr.lat), 38.43726119999998, 4)
+        self.assertAlmostEqual(np.min(testCentr.lon), 60.52061519999998, 4)
+        self.assertAlmostEqual(np.max(testCentr.lon), 101.1455501999999, 4)
+        self.assertAlmostEqual(testCentr.lon[10000], 98.27055479999999, 4)
+        self.assertAlmostEqual(testCentr.lat[10000], 11.47897099999998, 4)
+
     def test_isimip_country_flood(self):
         rf = RiverFlood()
         rf.set_from_nc(dph_path=HAZ_DEMO_FLDDPH, frc_path=HAZ_DEMO_FLDFRC,
