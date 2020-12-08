@@ -64,11 +64,29 @@ class TestGeoclawRun(unittest.TestCase):
             # points inland at higher altitude:
             [-23.37505943, -149.46882493], [-23.36615826, -149.45798872],
         ])
+        gauges = [
+            (-23.44084378, -149.45562336),  # offshore
+            (-23.41494266, -149.39742201),  # coastal
+            (-23.37505943, -149.46882493),  # inland
+        ]
         setup_clawpack()
-        intensity = geoclaw_surge_from_track(track, centroids, ZOS_PATH, TOPO_PATH)
+        intensity, gauge_data = geoclaw_surge_from_track(track, centroids,
+                                                         ZOS_PATH, TOPO_PATH,
+                                                         gauges=gauges)
+
         self.assertEqual(intensity.shape, (centroids.shape[0],))
         self.assertTrue(np.all(intensity[:7] > 0))
         self.assertTrue(np.all(intensity[7:] == 0))
+        for gdata in gauge_data:
+            self.assertTrue((gdata['time'][0][0] - track.time[0]) / np.timedelta64(1, 'h') >= 0)
+            self.assertTrue((track.time[-1] - gdata['time'][0][-1]) / np.timedelta64(1, 'h') >= 0)
+            self.assertAlmostEqual(gdata['base_sea_level'][0], 1.3008515)
+        self.assertLess(gauge_data[0]['topo_height'][0], 0)
+        self.assertTrue(0 <= gauge_data[1]['topo_height'][0] <= 10)
+        self.assertGreater(gauge_data[2]['topo_height'][0], 10)
+        offshore_h = gauge_data[0]['height_above_geoid'][0]
+        self.assertGreater(offshore_h.max() - offshore_h.min(), 0.5)
+        self.assertEqual(np.unique(gauge_data[2]['height_above_geoid'][0]).size, 1)
 
 
 # Execute Tests
