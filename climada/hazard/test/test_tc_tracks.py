@@ -332,7 +332,8 @@ class TestIO(unittest.TestCase):
 
         gdf_points = tc_track.to_geodataframe(as_points=True)
         self.assertIsInstance(gdf_points.unary_union.bounds, tuple)
-        self.assertEqual(gdf_points.size, 418)
+        self.assertEqual(gdf_points.shape[0], len(tc_track.data[0].time))
+        self.assertEqual(gdf_points.shape[1], len(tc_track.data[0].variables)+len(tc_track.data[0].attrs)-1)
         self.assertAlmostEqual(gdf_points.buffer(3).unary_union.area, 348.79972062947854)
         self.assertIsInstance(gdf_points.iloc[0].time, pd._libs.tslibs.timestamps.Timestamp)
 
@@ -411,6 +412,28 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.isnan(tc_track.data[0].basin))
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
+
+        # test some "generic floats"
+        for time_step_h in [0.6663545049172093, 2.509374054925788, 8.175754471661111]:
+            tc_track = tc.TCTracks()
+            tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+            tc_track.equal_timestep(time_step_h=time_step_h)
+            self.assertTrue(np.all(tc_track.data[0].time_step == time_step_h))
+
+        tc_track = tc.TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep(time_step_h=0.16667)
+
+        self.assertEqual(tc_track.data[0].time.size, 1333)
+        self.assertTrue(np.all(tc_track.data[0].time_step == 0.16667))
+        self.assertAlmostEqual(tc_track.data[0].lon.values[66], -27.397636528537127)
+
+        for time_step_h in [0, -0.5, -1]:
+            tc_track = tc.TCTracks()
+            tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+            msg = f"time_step_h is not a positive number: {time_step_h}"
+            with self.assertRaises(ValueError, msg=msg) as cm:
+                tc_track.equal_timestep(time_step_h=time_step_h)
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""

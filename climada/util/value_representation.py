@@ -9,6 +9,7 @@ Created on Mon Nov 16 19:21:42 2020
 import logging
 import math
 import numpy as np
+import decimal
 
 
 LOGGER = logging.getLogger(__name__)
@@ -42,8 +43,9 @@ def sig_dig(x, n_sig_dig = 16):
     if n_sig_dig >= num_of_digits:
         return x
     n = math.floor(math.log10(abs(x)) + 1 - n_sig_dig)
-    result = np.round(x * 10**(-n)) * 10**n
-    return result
+    result = decimal.Decimal(str(np.round(x * 10**(-n)))) \
+              * decimal.Decimal(str(10**n))
+    return float(result)
 
 
 def sig_dig_list(iterable, n_sig_dig=16):
