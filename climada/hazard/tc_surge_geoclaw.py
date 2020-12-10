@@ -95,9 +95,11 @@ class TCSurgeGeoClaw(Hazard):
         For each storm and each gauge, a dict containing the `location` of the gauge, and
         (for each surge event) `base_sea_level`, `topo_height`, `time` and `height_above_geoid`
         information.
+        Due to this format, it can't be written to HDF5.
     """
     def __init__(self):
         Hazard.__init__(self, HAZ_TYPE)
+        self.gauge_data = []
 
 
     @staticmethod
@@ -207,6 +209,13 @@ class TCSurgeGeoClaw(Hazard):
         new_haz.category = np.array([track.category])
         new_haz.basin = [track.basin]
         return new_haz
+
+
+    def write_hdf5(self, *args, **kwargs):
+        gauge_data = self.gauge_data
+        delattr(self, "gauge_data")
+        Hazard.write_hdf5(self, *args, **kwargs)
+        self.gauge_data = gauge_data
 
 
 def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None):
