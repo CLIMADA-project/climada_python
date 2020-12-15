@@ -1266,7 +1266,7 @@ def setup_clawpack(version=CLAWPACK_VERSION):
     if path is None or version not in git_ver and version not in git_ver[0]:
         LOGGER.info("Installing Clawpack version %s", version)
         src_path = CLAWPACK_SRC_DIR
-        pkg = f"git+{CLAWPACK_GIT_URL}@{version}#egg=clawpack-{version}"
+        pkg = f"git+{CLAWPACK_GIT_URL}@{version}#egg=clawpack"
         cmd = [sys.executable, "-m", "pip", "install", "--src", src_path, "-e", pkg]
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
