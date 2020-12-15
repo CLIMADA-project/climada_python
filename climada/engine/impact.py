@@ -226,7 +226,303 @@ class Impact():
 
         if save_mat:
             shape = (self.date.size, exposures.value.size)
-            self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
+            self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)           
+           
+    def calc_ktools(self, exposures, impact_funcs, hazard, path_exe_ktools='/usr/local/bin/', save_mat=False):
+        #HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
+        #HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+
+        #DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
+
+
+        # 1. Assign centroids to each exposure if not done
+        assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
+        if assign_haz not in exposures:
+            exposures.assign_centroids(hazard)
+        else:
+            LOGGER.info('Exposures matching centroids found in %s', assign_haz)
+
+        # 2. Initialize values
+        self.unit = exposures.value_unit
+        self.event_id = hazard.event_id
+        self.event_name = hazard.event_name
+        self.date = hazard.date
+        self.coord_exp = np.stack([exposures.latitude.values,
+                                   exposures.longitude.values], axis=1)
+        self.frequency = hazard.frequency
+        self.at_event = np.zeros(hazard.intensity.shape[0])
+        self.eai_exp = np.zeros(exposures.value.size)
+        #self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag, 'haz': hazard.tag}
+        self.crs = exposures.crs
+
+        # Select exposures with positive value and assigned centroid
+        exp_idx = np.where((exposures.value > 0) & (exposures[assign_haz] >= 0))[0]
+        if exp_idx.size == 0:
+            LOGGER.warning("No affected exposures.")
+
+        
+
+        #folder structure
+        #default given in function call
+        from pathlib import Path
+        import subprocess
+        import platform
+        import pandas as pd
+        #from itertools import repeat
+       
+        #climada_path = Path('/Users/blass/OneDrive - ETHZ/ETH/9. Semester/Semester Arbeit/climada_python-main')
+        #input_data_path = climada_path / 'climada' / 'engine' / 'ktools_data'
+        #path_exe_ktools = "C:/msys32/mingw64/bin/"
+        climada_path = Path.home()
+        #print(climada_path)
+        Path.mkdir(climada_path / 'climada', exist_ok=True)
+        ktools_output_path = climada_path / 'climada' / 'ktools'
+        input_data_path = climada_path / 'climada' / 'ktools_data'       
+        
+        ktools_output_dir = Path.mkdir(ktools_output_path, exist_ok=True) #overwrite if exists
+        ktools_input_dir = Path.mkdir(input_data_path, exist_ok=True)
+        ktools_input_dir = Path.mkdir(input_data_path / 'input', exist_ok=True)
+        ktools_static_dir = Path.mkdir(input_data_path / 'static', exist_ok=True)
+        
+        # 1. events
+        df = pd.DataFrame(data = {'event_id': hazard.event_id}, dtype='int32')        
+        df.to_csv(input_data_path / 'input' / 'events.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'evetobin < events.csv > events.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'input')
+            print(cmd) 
+        else:
+            cmd = 'evetobin < events.csv > events.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'input')
+            print(cmd)  
+        
+        
+        #2. damage bin dictionary
+        nDamageBins = 100 #samplesize of ktools
+        bin_from = np.linspace(1/nDamageBins, 1-1/nDamageBins, num=nDamageBins)
+        bin_to = np.linspace(2/nDamageBins, 1, num=nDamageBins)
+        df = pd.DataFrame(data = {'bin_index': range(1, nDamageBins+1), #starting from 1
+                                  'bin_from': bin_from,
+                                  'bin_to': bin_to,
+                                  'interpolation': 0.5 * (bin_from + bin_to),
+                                  'interval_type': np.full(shape=nDamageBins, fill_value=1201)}, #TODO just copied example of ktools documentation 
+                          dtype='int32')        
+        df.to_csv(input_data_path / 'static' / 'damage_bin_dict.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'damagebintobin < damage_bin_dict.csv > damage_bin_dict.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'static')
+            print(cmd) 
+        else:
+            cmd = 'damagebintobin < damage_bin_dict.csv > damage_bin_dict.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'static')
+            print(cmd)  
+            
+        
+        # 3. coverages & items & gulsummaryxref
+        l = exposures.centr_TC.size
+        coverage_id = range(1, l+1)
+        item_id = range(1, l+1)
+        #workaround when no coverage exists
+        cover = 0 if ~hasattr(exposures, 'coverage') else exposures.coverage
+        
+        cov = pd.DataFrame(data = {'coverage_id': coverage_id,
+                                   'tiv': cover}, #total insured value
+                           dtype='int32')
+        
+        itm = pd.DataFrame(data = {'item_id': item_id,
+                                   'coverage_id': coverage_id,
+                                   'areaperil_id': exposures.centr_TC,
+                                   'vulnerability_id': exposures.if_TC.values[:],
+                                   'group_id': range(1, l+1)},
+                           dtype='int32')
+        
+        gsr = pd.DataFrame(data = {'coverage_id': coverage_id,
+                                   'summary_id': np.full(shape=l, fill_value=1),
+                                   'summaryset_id': np.full(shape=l, fill_value=1)}, 
+                           dtype='int32')
+        cov.to_csv(input_data_path / 'input' / 'coverages.csv', index=False)
+        itm.to_csv(input_data_path / 'input' / 'items.csv', index=False)
+        gsr.to_csv(input_data_path / 'input' / 'gulsummaryxref.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'coveragetobin < coverages.csv > coverages.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'input')
+            print(cmd) 
+            cmd = (path_exe_ktools + 'itemtobin < items.csv > items.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'input')
+            print(cmd) 
+            cmd = (path_exe_ktools + 'gulsummaryxreftobin < gulsummaryxref.csv > gulsummaryxref.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'input')
+            print(cmd) 
+        else:
+            cmd = 'coveragetobin < coverages.csv > coverages.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'input')
+            print(cmd) 
+            cmd = 'itemtobin < items.csv > items.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'input')
+            print(cmd) 
+            cmd = 'gulsummaryxreftobin < gulsummaryxref.csv > gulsummaryxref.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'input')
+            print(cmd) 
+        
+        
+        # 4. footprint        
+        col, row, val = [], [], []
+        for r in range(hazard.intensity.shape[0]):
+            for ind in range(hazard.intensity.indptr[r], hazard.intensity.indptr[r+1]):
+                if hazard.intensity.data[ind] >0:
+                    row.append(hazard.intensity.indptr[r])
+                    col.append(hazard.intensity.indices[ind])
+                    val.append(hazard.intensity.data[ind])
+                    
+        len_bins = 120 #max value of wind of TC
+        val = np.digitize(val, range(len_bins)) #put it into bins for ktools
+        
+        #TODO: this is different then matlab. but I think this is correct because
+        #intensity is events x centroids => row is event_id, col centroid/area,
+        #intensity is binned into bins
+        df = pd.DataFrame(data = {'event_id': row, 
+                                  'areaperil_id': col, 
+                                  'intensity_bin_index': val,
+                                  'prob': np.full(shape=len(val), fill_value=1)}, #from matlab. 1 bec uncertainty already in climada
+                          dtype='int32')        
+        df.to_csv(input_data_path / 'static' / 'footprint.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'footprinttobin -i ' + str(max(val)) + ' -n < footprint.csv > footprint.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'static')
+            print(cmd) 
+        else:
+            cmd = 'footprinttobin -i ' + str(max(val)) + ' -n < footprint.csv > footprint.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'static')
+            print(cmd)
+        
+        
+        # 5. vulnerarbility      
+        """
+        #haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
+        imp_ids = np.unique(impact_funcs.get_ids(hazard.tag.haz_type))
+        print(imp_ids)
+        a1, a2, a3, a4 = [], [], [], []
+        for imp in imp_ids:
+            #n_inten = impact_funcs.get_func(hazard.tag.haz_type, imp).intensity.size
+            #peril = repeat(imp, n_inten)
+            #impact_func.haz
+            print(impact_funcs._data[hazard.tag.haz_type][imp]) 
+            irdf = (impact_funcs.get_func(hazard.tag.haz_type, imp).id == imp)
+            #exposures.centr_TC
+            
+            #print(affected_exp_centr)
+            #spl = UnivariateSpline(range(len(affected_exp_centr)), affected_exp_centr, s=0)
+            #affected_exp_bin = spl(range(nDamageBins))
+            #affected_exp_bin = np.interp(range(nDamageBins), range(len(affected_exp_centr)), affected_exp_centr)
+                        
+            print(irdf)
+            
+            for bin_it in range(nDamageBins):
+                grid = 0.5 * (bin_from[bin_it] + bin_to[bin_it])
+                mddSample = impact_funcs.get_func(hazard.tag.haz_type, imp).mdd
+                paaSample = impact_funcs.get_func(hazard.tag.haz_type, imp).paa
+                mdrMu = mddSample * paaSample
+                mdrSigma = 1e-6 * mdrMu
+                
+                c = mdrMu * (1. - mdrMu) / (mdrSigma * mdrSigma) -1. if (mdrSigma * mdrSigma) else 0.
+                a = c * mdrMu
+                b = c * (1. - mdrMu)
+                for idb in range(nDamageBins-1):
+                    sample_prob = 0
+                    a1.append(imp)
+                    a2.append(bin_it)
+                    a3.append(idb)
+                    a4.append(sample_prob)
+        #len_imp_func = len(impact_funcs)
+        #print(len_imp_func)
+        """
+        #print(exposures.if_TC)
+        from scipy.interpolate import UnivariateSpline
+        imp_ids = np.unique(impact_funcs.get_ids(hazard.tag.haz_type))
+        a1, a2, a3, a4 = [], [], [], []
+        
+        for vul_id in imp_ids: #vulnerabilities
+            #a = np.where(exposures.if_TC.values[i] == imp_ids)
+            #print(a)
+            affected_exp_centr = np.squeeze(np.asarray(hazard.fraction.sum(axis = 0))) #sum over events => fraction of affected exposure at each centroid
+            spl = UnivariateSpline(np.arange(0, len(affected_exp_centr)), affected_exp_centr, k=3, s=0)
+            affected_exp_bin = spl(np.linspace(0, len(affected_exp_centr)-1, nDamageBins)) #fraction at each bin
+            affected_exp_bin /= sum(affected_exp_bin) #percentage of how much each bin is affected
+            
+            for int_idx in range(nDamageBins): #hazard bin intensity or just the grid
+                for dam_idx in range(len_bins): #damage bin index (wind speed)
+                    probs = np.sum(impact_funcs.get_func(hazard.tag.haz_type, vul_id).mdd * 
+                        impact_funcs.get_func(hazard.tag.haz_type, vul_id).paa) * affected_exp_bin[int_idx]
+                    
+                    if probs > 0.:
+                        a1.append(vul_id)
+                        a2.append(int_idx)
+                        a3.append(dam_idx)
+                        a4.append(probs)
+                    
+        a4 /= sum(a4)
+        
+        df = pd.DataFrame(data = {'vulnerability_id': a1,
+                                  'intensity_bin_index': a2,
+                                  'damage_bin_index': a3,
+                                  'prob': a4},
+                          dtype='int32')        
+        df.to_csv(input_data_path / 'static' / 'vulnerability.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'vulnerabilitytobin -d ' + str(max(a3)) + ' < vulnerability.csv > vulnerability.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'static')
+            print(cmd) 
+        else:
+            cmd = 'vulnerabilitytobin -d ' + str(max(a3)) + ' < vulnerability.csv > vulnerability.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'static')
+            print(cmd)
+        
+    
+    
+                
+        # run eve + getmodel with generated binary
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'eve 1 1 ')
+            #cmd = (path_exe_ktools + 'eve 1 1 > events.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout = subprocess.PIPE, cwd=input_data_path)
+            print(cmd)
+            
+            cmd = (path_exe_ktools + 'getmodel > getmodel.bin')
+            p2 = subprocess.Popen(cmd, shell=True, stdin = p1.stdout,
+                                  stdout = subprocess.PIPE, cwd=input_data_path)
+            print(cmd)   
+        else:
+            #cmd = 'eve 1 1 > events.bin'
+            cmd = 'eve 1 1 | getmodel > getmodel.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path)
+            print(cmd)
+        
+        ##hard coded test to check conversion - pandas binary conversion fails
+        """
+        event_test = pd.read_csv('/Users/blass/OneDrive - ETHZ/ETH/9. Semester/Semester Arbeit/ktools/examples/input/events.csv', index_col=None)
+        event_test = event_test['event_id'].to_numpy()
+        
+        df = pd.DataFrame(data = {'event_id': event_test}, dtype='int32')    
+        df.to_csv(input_data_path / 'input' / 'events.csv', index=False)
+        
+        if(platform.system() == 'Windows'):
+            cmd = (path_exe_ktools + 'evetobin < events.csv > events.bin')
+            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=input_data_path / 'input')
+            print(cmd) 
+        else:
+            cmd = 'evetobin < events.csv > events.bin'
+            p1 = subprocess.Popen(cmd, shell=True, cwd=input_data_path / 'input')
+            print(cmd) 
+        """
+    
+    
+    
+    
 
     def calc_risk_transfer(self, attachment, cover):
         """Compute traaditional risk transfer over impact. Returns new impact
