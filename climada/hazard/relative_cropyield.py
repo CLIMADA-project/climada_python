@@ -612,7 +612,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
     return filename_list, output_list
 
-def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_run='ISIMIP2b',
+def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=None,
                     yearrange_his=None, combine_subcrops=True):
     """Initialize full hazard set.
 
@@ -620,10 +620,11 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             filenames (list): list of filenames
 
         Optional Parameters:
-            input_dir (string): path to input data directory
+            input_dir (string): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
-                [lon min, lat min, lon max, lat max]
-            isimip_run (string): name of the ISIMIP run (ISIMIP2a or ISIMIP2b)
+                [lon min, lat min, lon max, lat max], default: BBOX
+            isimip_run (string): name of the ISIMIP run ('ISIMIP2a', 'ISIMIP2b', or 'ISIMIP3b')
+                Deafult: 'ISIMIP2b''
             yearrange_his (int tuple): year range for the historical hazard sets
             combine_subcrops (bool): ignore crops ri2 (2nd harvest rice) and wwh (winter wheat)
                 at this step (will be added to ri1 and wwh to form ric and whe later on)
@@ -637,7 +638,13 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             crop_irr_list (list): list of all crop-irr combinations
             combi_crop_irr_list (list): list of all crop-irr combinations for combined crops
     """
-
+    # set default values for parameters not defined:
+    if input_dir is None:
+        input_dir = INPUT_DIR
+    if bbox is None:
+        bbox = BBOX
+    if isimip_run is None:
+        isimip_run = 'ISIMIP2b'
     crop_irr_list = list()
     combi_crop_irr_list = list()
     file_props = dict()
