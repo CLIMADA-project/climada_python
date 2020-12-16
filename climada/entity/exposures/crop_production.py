@@ -121,7 +121,7 @@ class CropProduction(Exposures):
     Attributes and Exposures.
 
     Attributes:
-        crop (str): crop type f.i. 'mai', 'ric', 'whe', 'soy'
+        crop (str): crop typee.g., 'mai', 'ric', 'whe', 'soy'
 
     """
 
@@ -138,7 +138,7 @@ class CropProduction(Exposures):
 
         """Wrapper to fill exposure from NetCDF file from ISIMIP. Requires historical
         mean relative cropyield module as additional input.
-        Parameters:
+        Optional Parameters:
             input_dir (string): path to input data directory
             filename (string): name of the landuse data file to use,
                 e.g. "histsoc_landuse-15crops_annual_1861_2005.nc""
@@ -146,14 +146,14 @@ class CropProduction(Exposures):
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange (int tuple): year range for exposure set
-                f.i. (1990, 2010)
+               e.g., (1990, 2010)
             scenario (string): climate change and socio economic scenario
-                f.i. '1860soc', 'histsoc', '2005soc', 'rcp26soc','rcp60soc','2100rcp26soc'
+               e.g., '1860soc', 'histsoc', '2005soc', 'rcp26soc','rcp60soc','2100rcp26soc'
             cl_model (string): abbrev. climate model (only for future projections of lu data)
-                f.i. 'gfdl-esm2m', 'hadgem2-es', 'ipsl-cm5a-lr','miroc5'
+               e.g., 'gfdl-esm2m', 'hadgem2-es', 'ipsl-cm5a-lr','miroc5'
             crop (string): crop type
-                f.i. 'mai', 'ric', 'whe', 'soy'
-            irr (string): irrigation type
+               e.g., 'mai', 'ric', 'whe', 'soy'
+            irr (string): irrigation type, default: 'combined'
                 f.i 'firr' (full irrigation), 'noirr' (no irrigation) or 'combined'= firr+noirr
             isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
             unit (string): unit of the exposure (per year)
@@ -165,6 +165,8 @@ class CropProduction(Exposures):
             Exposure
         """
         # parameters not provided in method call are set to default values:
+        if irr is None:
+            irr = 'combined'
         if not bbox:
             bbox = BBOX
         if not input_dir:
@@ -356,14 +358,14 @@ class CropProduction(Exposures):
             historic mean (array): historic mean crop production per centroid
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
-            yearrange (int tuple): year range for exposure set, f.i. (1976, 2005)
+            yearrange (int tuple): year range for exposure set,e.g., (1976, 2005)
             scenario (string): climate change and socio economic scenario
-                f.i. 'histsoc' or 'rcp60soc'
+               e.g., 'histsoc' or 'rcp60soc'
             cl_model (string): abbrev. climate model (only when landuse data
             is future projection)
-                f.i. 'gfdl-esm2m' etc.
+               e.g., 'gfdl-esm2m' etc.
             crop (string): crop type
-                f.i. 'mai', 'ric', 'whe', 'soy'
+               e.g., 'mai', 'ric', 'whe', 'soy'
             irr (string): irrigation type
                 f.i 'rainfed', 'irrigated' or 'combined'= rainfed+irrigated
             isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
@@ -460,7 +462,7 @@ class CropProduction(Exposures):
                 Default is set to the arbitrary time range (2000, 2018)
                 The data is available for the years 1991-2018
             crop (str): crop type
-                f.i. 'mai', 'ric', 'whe', 'soy'
+               e.g., 'mai', 'ric', 'whe', 'soy'
 
         Returns:
             Exposure
@@ -558,7 +560,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         output_dir (string): path to output data directory
         bbox (list of four floats): bounding box:
             [lon min, lat min, lon max, lat max]
-        yearrange (array): year range for hazard set, f.i. (1976, 2005)
+        yearrange (array): year range for hazard set, e.g., (1976, 2005)
         isimip_version(str): 'ISIMIP2' (default) or 'ISIMIP3'
         unit (str): unit in which to return exposure (e.g., t/y or USD/y)
         return_data (boolean): returned output
