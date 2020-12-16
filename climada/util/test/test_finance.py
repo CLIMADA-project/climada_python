@@ -97,7 +97,7 @@ class TestWBData(unittest.TestCase):
         # GDP and years with data available might change if worldbank input
         # data changes, check magnitude and adjust ref_val and/or ref_year
         # if test fails:
-        self.assertIn('GDP SXM %i: %1.3e' %(2011, ref_val), cm.output[0])
+        self.assertIn('GDP SXM %i: %1.3e' % (ref_year, ref_val), cm.output[0])
         self.assertEqual(res_year, ref_year)
         self.assertAlmostEqual(res_val, ref_val, places=0)
 
