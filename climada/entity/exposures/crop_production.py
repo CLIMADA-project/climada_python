@@ -256,6 +256,8 @@ class CropProduction(Exposures):
         # bbox extensions as the exposure:
         if isinstance(hist_mean, dict):
             if not ('firr' in hist_mean.keys() or 'noirr' in hist_mean.keys()):
+                # as a dict hist_mean, needs to contain key 'firr' or 'noirr';
+                # if irr=='combined', both 'firr' and 'noirr' are required.
                 LOGGER.error('Invalid hist_mean provided: %s' %hist_mean)
                 raise ValueError('invalid hist_mean.')
             hist_mean_dict = hist_mean
