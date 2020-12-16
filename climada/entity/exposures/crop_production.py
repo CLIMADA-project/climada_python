@@ -236,11 +236,11 @@ class CropProduction(Exposures):
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
         if irr == 'combined':
-            irr = ['firr', 'noirr']
+            irr_types = ['firr', 'noirr']
         else:
-            irr = [irr]
+            irr_types = [irr]
         area_crop = dict()
-        for irr_var in irr:
+        for irr_var in irr_types:
             area_crop[irr_var] = (
                 getattr(
                     data, (CROP_NAME[crop])['input']+'_'+ (IRR_NAME[irr_var])['name']
@@ -261,12 +261,12 @@ class CropProduction(Exposures):
             hist_mean_dict = hist_mean
             lat_mean = self.latitude.values
         elif isinstance(hist_mean, np.ndarray) or isinstance(hist_mean, list):
-            hist_mean_dict[irr[0]] = np.array(hist_mean)
+            hist_mean_dict[irr_types[0]] = np.array(hist_mean)
             lat_mean = self.latitude.values
         elif isdir(hist_mean): # else if hist_mean is given as path to directory
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
-            for irr_var in irr:
+            for irr_var in irr_types:
                 filename = os.path.join(hist_mean, 'hist_mean_%s-%s_%i-%i.hdf5' %(\
                                         crop, irr_var, yearrange[0], yearrange[1])
                                         )
@@ -275,11 +275,11 @@ class CropProduction(Exposures):
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
         elif isfile(os.path.join(input_dir, hist_mean)): # file path
         # Hist_mean, lat_mean and lon_mean are extracted from the given file
-            if len(irr) > 1:
-                LOGGER.error('For irr=combined, hist_mean can not be single file. Aborting.')
+            if len(irr_types) > 1:
+                LOGGER.error("For irr=='combined', hist_mean can not be single file. Aborting.")
                 raise ValueError('Wrong combination of parameters irr and hist_mean.')
             hist_mean = h5py.File(os.path.join(input_dir, hist_mean), 'r')
-            hist_mean_dict[irr[0]] = hist_mean['mean'][()]
+            hist_mean_dict[irr_types[0]] = hist_mean['mean'][()]
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
         else:
@@ -299,17 +299,15 @@ class CropProduction(Exposures):
 
         # The exposure [t/y] is computed per grid cell as the product of the area covered
         # by a crop [ha] and its yield [t/ha/y]
-        self['value'] = np.squeeze(area_crop[irr[0]]*hist_mean_dict[irr[0]][idx_mean])
+        self['value'] = np.squeeze(area_crop[irr_types[0]] * \
+                                   hist_mean_dict[irr_types[0]][idx_mean])
         self['value'] = np.nan_to_num(self.value) # replace NaN by 0.0
-        for irr_val in irr[1:]: # add other irrigation types if irr=combined
+        for irr_val in irr_types[1:]: # add other irrigation types if irr=='combined'
             value_tmp = np.squeeze(area_crop[irr_val]*hist_mean_dict[irr_val][idx_mean])
             value_tmp = np.nan_to_num(value_tmp) # replace NaN by 0.0
             self['value'] += value_tmp
         self.tag = Tag()
-        if len(irr) > 1:
-            irr = 'combined'
-        else:
-            irr = irr[0]
+
         self.tag.description = ("Crop production exposure from ISIMIP " +
                                 (CROP_NAME[crop])['print'] + ' ' +
                                 irr + ' ' + str(yearrange[0]) + '-' + str(yearrange[-1]))
