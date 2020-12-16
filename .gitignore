@@ -61,6 +61,7 @@ climada/test/data/1988234N13299.nc
 climada/test/data/exposure_high_47_8.h5
 climada/test/data/test_write_hazard.tif
 climada/util/test/data/save_test.pkl
+climada/util/test/data/test_write_raster.tif
 
 # Translations
 *.mo
