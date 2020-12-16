@@ -786,6 +786,11 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                                 scenario=file_props[his_file]['scenario'],
                                 yearrange=np.array([file_props[his_file]['startyear'],
                                                     file_props[his_file]['endyear']]))
+            # The masks in the NetCDF file divides all wheat growing areas globally
+            # in two distinct categories, either growing winter wheat (wwh)
+            # or spring wheat (swh). Since the hazard sets for wwh and swh are calculated
+            # for the whole globe ("all crops everywhere") we need to decide for each grid
+            # cell which one to take when combining 'wwh' and 'swh' into one combined crop wheat (whe):
             if crop == 'swh':
             # mask of winter wheat in spring wheat and vice versa:
                 whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
