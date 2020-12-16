@@ -88,6 +88,8 @@ class TestWBData(unittest.TestCase):
 
     def test_gdp_sxm_2010_pass(self):
         """Test gdp function Sint Maarten."""
+        # If World Bank input data changes, make sure to set ref_year to a year where
+        # no data is available so that the next available data point has to be selected.
         ref_year = 2010
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             res_year, res_val = gdp('SXM', ref_year)
