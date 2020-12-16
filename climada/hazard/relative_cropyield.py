@@ -634,12 +634,12 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             hist_mean_per_crop (dict): empty dictonary to save hist_mean values for each
                 crop-irr combination
             scenario_list (list): list of all future scenarios
-            crop_list (list): list of all crop-irr combinations
-            combi_crop_list (list): list of all crop-irr combinations for combined crops
+            crop_irr_list (list): list of all crop-irr combinations
+            combi_crop_irr_list (list): list of all crop-irr combinations for combined crops
     """
 
-    crop_list = list()
-    combi_crop_list = list()
+    crop_irr_list = list()
+    combi_crop_irr_list = list()
     file_props = dict()
     his_file_list = list()
     scenario_list = list()
@@ -707,10 +707,10 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
         else:
             raise ValueError(f'Invalid value for isimip_run: {isimip_run}')
 
-        if f'{crop}-{irr}' not in crop_list:
-            crop_list.append(f'{crop}-{irr}')
-        if f'{combi_crop}-{irr}' not in combi_crop_list:
-            combi_crop_list.append(f'{combi_crop}-{irr}')
+        if f'{crop}-{irr}' not in crop_irr_list:
+            crop_irr_list.append(f'{crop}-{irr}')
+        if f'{combi_crop}-{irr}' not in combi_crop_irr_list:
+            combi_crop_irr_list.append(f'{combi_crop}-{irr}')
 
     # generate hazard using the first file to determine the size of the historic mean
     # file structure: ag_model _ cl_model _ scenario _ soc _ co2 _
@@ -727,18 +727,15 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
     # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
     # ensure that all files are assigned to the corresponding crop-irr combination
     hist_mean_per_crop = dict()
-    for i, combi_crop_irr in enumerate(combi_crop_list):
-        crop, irr = crop_list[i].split('-')
+    for i, combi_crop_irr in enumerate(combi_crop_irr_list):
+        crop, irr = crop_irr_list[i].split('-')
         amount_crop_irr = sum((crop in s) and (irr in s) for s in his_file_list)
         hist_mean_per_crop[combi_crop_irr] = dict()
         hist_mean_per_crop[combi_crop_irr] = {
             'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
             'idx': 0}
 
-    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_list, combi_crop_list
-    # if isimip_run == 'ISIMIP2a':
-    #     return crop_list, his_file_list, yearrange_list, hist_mean_per_crop, file_props
-    # return crop_list, his_file_list, scenario_list, hist_mean_per_crop, file_props
+    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_irr_list, combi_crop_irr_list
 
 def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                         yearrange_mean=None):
