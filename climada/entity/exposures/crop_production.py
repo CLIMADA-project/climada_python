@@ -164,6 +164,7 @@ class CropProduction(Exposures):
         Returns:
             Exposure
         """
+        # parameters not provided in method call are set to default values:
         if not bbox:
             bbox = BBOX
         if not input_dir:

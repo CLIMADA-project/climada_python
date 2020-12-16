@@ -735,7 +735,8 @@ def init_hazard_sets_isimip(filenames, input_dir=INPUT_DIR, bbox=BBOX, isimip_ru
             'value': np.zeros([amount_crop_irr, haz_dummy.intensity.shape[1]]),
             'idx': 0}
 
-    return his_file_list, file_props, hist_mean_per_crop, scenario_list, crop_irr_list, combi_crop_irr_list
+    return his_file_list, file_props, hist_mean_per_crop, scenario_list, \
+        crop_irr_list, combi_crop_irr_list
 
 def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                         yearrange_mean=None):
