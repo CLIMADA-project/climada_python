@@ -86,17 +86,22 @@ class TestWBData(unittest.TestCase):
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
 
-    def test_gdp_sxm_2012_pass(self):
+    def test_gdp_sxm_2010_pass(self):
         """Test gdp function Sint Maarten."""
-        ref_year = 2012
+        # If World Bank input data changes, make sure to set ref_year to a year where
+        # no data is available so that the next available data point has to be selected.
+        ref_year = 2010
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             res_year, res_val = gdp('SXM', ref_year)
 
-        ref_val = 3.658e+08
-        ref_year = 2014
-        self.assertIn('GDP SXM 2014: 3.658e+08', cm.output[0])
+        ref_val = 936089385.47486 # reference GDP value
+        ref_year = 2011 # nearest year with data available (might change)
+        # GDP and years with data available might change if worldbank input
+        # data changes, check magnitude and adjust ref_val and/or ref_year
+        # if test fails:
+        self.assertIn('GDP SXM %i: %1.3e' % (ref_year, ref_val), cm.output[0])
         self.assertEqual(res_year, ref_year)
-        self.assertEqual(res_val, ref_val)
+        self.assertAlmostEqual(res_val, ref_val, places=0)
 
     def test_gdp_twn_2012_pass(self):
         """Test gdp function TWN."""
