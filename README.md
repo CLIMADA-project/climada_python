@@ -53,7 +53,7 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
-CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 as published by the Free Software Foundation: https://github.com/CLIMADA-project/climada_python/blob/main/LICENSE
+CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 as published by the Free Software Foundation, https://github.com/CLIMADA-project/climada_python/blob/main/LICENSE
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details:
 
