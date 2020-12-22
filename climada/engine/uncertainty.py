@@ -15,21 +15,127 @@ from climada.hazard import Hazard
 
 
 class UncVar():
+    """
+    Uncertainty variable 
+    
+    An uncertainty variable requires a single or multi-parameter function. 
+    The parameters must follow a given distribution.
+    
+    Examples
+    --------
+    
+    Categorical variable function: LitPop exposures with m,n exponents in [0,5]
+        def unc_var_cat(m, n):
+            exp = Litpop()
+            exp.set_country('CHE', exponent=[m, n])
+            return exp
+        distr_dict = {
+            m: sp.stats.randint(low=0, high=5),
+            n: sp.stats.randint(low=0, high=5)
+            }
+        
+    Continuous variable function: Impact function for TC
+        def imp_fun_tc(G, v_half, vmin, k, _id=1):
+            imp_fun = ImpactFunc()
+            imp_fun.haz_type = 'TC'
+            imp_fun.id = _id
+            imp_fun.intensity_unit = 'm/s'
+            imp_fun.intensity = np.linspace(0, 150, num=100)
+            imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
+            imp_fun.paa = np.array([imp_fun_param(v, G, v_half, vmin, k)
+                                    for v in imp_fun.intensity])
+            imp_fun.check()
+            impf_set = ImpactFuncSet()
+            impf_set.append(imp_fun)
+            return impf_set
+        distr_dict = {"G": sp.stats.uniform(0.8, 1),
+              "v_half": sp.stats.uniform(50, 100),
+              "vmin": sp.stats.norm(loc=15, scale=30),
+              "k": sp.stats.randint(low=1, high=9)
+              }
+    
+    """
 
     def __init__(self, unc_var, distr_dict):
+        """
+        Initialize UncVar
+        
+        Parameters
+        ----------
+        unc_var : function
+            Variable defined as a function of the uncertainty parameters
+        distr_dict : dict
+            Dictionnary of the probability density distributions of the 
+            uncertainty parameters, with keys the matching the keyword 
+            arguments (i.e. uncertainty parameters) of the unc_var function.
+            The distribution must be of type scipy.stats
+            https://docs.scipy.org/doc/scipy/reference/stats.html
+            
+        Returns
+        -------
+        None.
+
+        """
         self.labels = list(distr_dict.keys())
         self.distr_dict = distr_dict
         self.unc_var = unc_var
 
     def plot_distr(self):
+        """
+        Plot the distributions of the parameters of the uncertainty variable.
+
+        Returns
+        -------
+        None.
+
+        """
         pass
 
-    def get_unc_var(self, kwargs):
+    def eval_unc_var(self, kwargs):
+        """
+        Evaluate the uncertainty variable.
+
+        Parameters
+        ----------
+        kwargs : 
+            These parameters will be passed to self.unc_var.
+            They must be the input parameters of the uncertainty variable .
+
+        Returns
+        -------
+        
+            Evaluated uncertainty variable
+
+        """
         return self.unc_var(**kwargs)
 
 
 class UncSensitivity():
+    """
+    Sensitivity analysis class
+    
+    This class performs sensitivity analysis on the outputs of a 
+    climada.engine.impact.Impact() object.
+    
+    """
+    
     def __init__(self, exp_unc, impf_unc, haz_unc):
+        """Initialize UncSensitivite
+
+        Parameters
+        ----------
+        exp_unc : climada.engine.uncertainty.UncVar or climada.entity.Exposure
+            Exposure uncertainty variable or Exposure
+        impf_unc : climada.engine.uncertainty.UncVar or climada.entity.ImpactFuncSet
+            Impactfunction uncertainty variable or Impact function
+        haz_unc : climada.engine.uncertainty.UncVar or climada.hazard.Hazard
+            Hazard uncertainty variable or Hazard
+
+        Returns
+        -------
+        None.
+
+        """
 
         if isinstance(exp_unc, Exposures):
             self.exp = UncVar(unc_var=lambda: exp_unc, distr_dict={})
@@ -62,12 +168,25 @@ class UncSensitivity():
         distr_dict.update(self.impf.distr_dict)
         return distr_dict
 
-
     def make_sobol_sample(self, N, calc_second_order):
-        self.n_samples = N
-        self.params = self._make_sobol_sample(calc_second_order=calc_second_order)
+        """
+        Make a sobol sample for all parameters with their respective 
+        distributions.
 
-    def _make_sobol_sample(self, calc_second_order):
+        Parameters
+        ----------
+        N : int
+            Number of samples as defined in SALib.sample.saltelli.sample().
+        calc_second_order : boolean
+            if True, calculate second-order sensitivities.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+        self.n_samples = N
         sobol_uniform_sample = self._make_uniform_sobol_sample(
             calc_second_order=calc_second_order)
         df_params = pd.DataFrame(sobol_uniform_sample, columns=self.param_labels)
@@ -75,10 +194,28 @@ class UncSensitivity():
             df_params[param] = df_params[param].apply(
                 self.distr_dict[param].ppf
                 )
-        return df_params
+        self.params = df_params
+        return None
 
 
     def _make_uniform_sobol_sample(self, calc_second_order):
+        """
+        Make a uniform sobol sample for the defined model uncertainty parameters 
+        (self.param_labels)
+        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
+        
+        Parameters
+        ----------
+        calc_second_order : boolean
+            if True, calculate second-order sensitivities.
+            
+        Returns
+        -------
+        sobol_params : np.matrix
+            Returns a NumPy matrix containing the sampled uncertainty parameters using 
+            Saltelli’s sampling scheme.
+
+        """
         problem = {
             'num_vars' : len(self.param_labels),
             'names' : self.param_labels,
@@ -96,6 +233,39 @@ class UncSensitivity():
                                eai_exp=False,
                                calc_second_order=True,
                                **kwargs):
+        """
+        Compute the sobol sensitivity indices using the SALib library:
+        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
+        
+
+        Parameters
+        ----------
+        N : int
+            Number of samples as defined in SALib.sample.saltelli.sample()
+        rp : list(int), optional
+            Return period in years for which sensitivity indices are computed.
+            The default is [5, 10, 20, 50, 100, 250.
+        eai_exp : boolean, optional
+            Toggle computation of the sensitivity for the impact at each 
+            centroid location. The default is False.
+        calc_second_order : boolean, optional
+            if True, calculate second-order sensitivities. The default is True.
+        **kwargs : 
+            These parameters will be passed to SALib.analyze.sobol.analyze()
+            The default is num_resamples=100, conf_level=0.95,
+            print_to_console=False, parallel=False, n_processors=None,
+            seed=None.
+
+        Returns
+        -------
+        sobol_analysis : dict
+            Dictionnary with keys the uncertainty parameter labels. 
+            For each uncertainty parameter, the item is another dictionnary
+            with keys the sobol sensitivity indices ‘S1’, ‘S1_conf’, ‘ST’, 
+            and ‘ST_conf’. If calc_second_order is True, the dictionary also
+            contains keys ‘S2’ and ‘S2_conf’.
+
+        """
 
         if rp is None:
             rp =[5, 10, 20, 50, 100, 250]
@@ -118,6 +288,30 @@ class UncSensitivity():
                                  rp=None,
                                  eai_exp=False
                                  ):
+        """
+        Computes the impact for each of the parameters set defined in
+        uncertainty.params. 
+        
+        By default, the aggregated average annual impact 
+        (impact.aai_agg) and the excees impact at return periods (rp) is
+        computed and stored in self.aai_freq. Optionally, the impact at 
+        each centroid location is computed (this may require a larger
+        amount of memory if the number of centroids is large).
+
+        Parameters
+        ----------
+        rp : list(int), optional
+            Return period in years to be computed. 
+            The default is [5, 10, 20, 50, 100, 250.
+        eai_exp : boolean, optional
+            Toggle computation of the impact at each centroid location.
+            The default is False.
+
+        Returns
+        -------
+        None.
+
+        """
         
 
         if rp is None:
@@ -134,9 +328,9 @@ class UncSensitivity():
             haz_params = row[self.haz.labels].to_dict()
             impf_params = row[self.impf.labels].to_dict()
 
-            exp = self.exp.get_unc_var(exp_params)
-            haz = self.haz.get_unc_var(haz_params)
-            impf = self.impf.get_unc_var(impf_params)
+            exp = self.exp.eval_unc_var(exp_params)
+            haz = self.haz.eval_unc_var(haz_params)
+            impf = self.impf.eval_unc_var(impf_params)
 
             imp = Impact()
             imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
@@ -157,7 +351,7 @@ class UncSensitivity():
 
         self.aai_freq = df_aai_freq
 
-
+        return None
 
 
 
@@ -166,7 +360,6 @@ class UncRobustness():
     Compute variance from multiplicative Gaussian noise
     """
     pass
-
 
 
 
