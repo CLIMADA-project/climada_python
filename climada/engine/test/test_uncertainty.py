@@ -129,7 +129,7 @@ class TestUncVar(unittest.TestCase):
     impf_unc = UncVar(impf, distr_dict)
     
     unc = UncSensitivity(exp, impf_unc, haz)
-    unc.calc_sobol_sensitivity(N=5, eai_exp=True)
+    unc.calc_sobol_sensitivity(N=1, eai_exp=True)
     
     
 
