@@ -103,6 +103,7 @@ def imp_fun_param(v, G, v_half, vmin, k):
     
     return G * xhi(v, v_half, vmin)**k / (1 + xhi(v, v_half, vmin)**k)
 
+
 def dummy_exp():
     file_name = os.path.join(CURR_DIR, "exp_AIA.h5")
     exp = BlackMarble()
@@ -129,7 +130,7 @@ class TestUncVar(unittest.TestCase):
     impf_unc = UncVar(impf, distr_dict)
     
     unc = UncSensitivity(exp, impf_unc, haz)
-    unc.calc_sobol_sensitivity(N=1, eai_exp=True)
+    unc.calc_sobol_sensitivity(N=1, eai_exp=False)
     
     
 
