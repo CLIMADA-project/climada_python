@@ -133,9 +133,9 @@ class CropProduction(Exposures):
         return CropProduction
 
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, hist_mean=None,
-                            bbox=None, yearrange=None, cl_model=None, scenario=None,
-                            crop=None, irr=None, isimip_version=None,
-                            unit=None, fn_str_var=None):
+                               bbox=None, yearrange=None, cl_model=None, scenario=None,
+                               crop=None, irr=None, isimip_version=None,
+                               unit=None, fn_str_var=None):
 
         """Wrapper to fill exposure from NetCDF file from ISIMIP. Requires historical
         mean relative cropyield module as additional input.
@@ -273,9 +273,8 @@ class CropProduction(Exposures):
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
             for irr_var in irr_types:
-                filename = str(Path(hist_mean, 'hist_mean_%s-%s_%i-%i.hdf5' %(\
-                                        crop, irr_var, yearrange[0], yearrange[1])
-                                        ))
+                filename = str(Path(hist_mean, 'hist_mean_%s-%s_%i-%i.hdf5' %(
+                    crop, irr_var, yearrange[0], yearrange[1])))
                 hist_mean_dict[irr_var] = (h5py.File(filename, 'r'))['mean'][()]
             lat_mean = (h5py.File(filename, 'r'))['lat'][()]
             lon_mean = (h5py.File(filename, 'r'))['lon'][()]
@@ -348,9 +347,9 @@ class CropProduction(Exposures):
         return self
 
     def set_mean_of_several_isimip_models(self, input_dir=None, hist_mean=None, bbox=None,
-                                   yearrange=None, cl_model=None, scenario=None,
-                                   crop=None, irr=None, isimip_version=None,
-                                   unit=None, fn_str_var=None):
+                                          yearrange=None, cl_model=None, scenario=None,
+                                          crop=None, irr=None, isimip_version=None,
+                                          unit=None, fn_str_var=None):
         """Wrapper to fill exposure from several NetCDF files with crop yield data
         from ISIMIP.
 
@@ -416,9 +415,9 @@ class CropProduction(Exposures):
         # The first exposure is calculate to determine its size
         # and initialize the combined exposure
         self.set_from_isimip_netcdf(input_dir, filename=filenames['subset'][0],
-                                 hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
-                                 crop=crop, irr=irr, isimip_version=isimip_version,
-                                 unit=unit, fn_str_var=fn_str_var)
+                                    hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
+                                    crop=crop, irr=irr, isimip_version=isimip_version,
+                                    unit=unit, fn_str_var=fn_str_var)
 
         combined_exp = np.zeros([self.value.size, len(filenames['subset'])])
         combined_exp[:, 0] = self.value
@@ -445,7 +444,7 @@ class CropProduction(Exposures):
         Returns:
             Exposure
         """
-        if 't/y' != self.value_unit:
+        if self.value_unit != 't/y':
             LOGGER.warning('self.unit is not t/y.')
         self['tonnes_per_year'] = self['value'].values
         self.value = self.value * KCAL_PER_TON[self.crop]
@@ -548,8 +547,8 @@ class CropProduction(Exposures):
         return list_countries, country_values
 
 def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
-                           output_dir=None, bbox=None, yearrange=None, unit=None,
-                           isimip_version=None, return_data=False):
+                             output_dir=None, bbox=None, yearrange=None, unit=None,
+                             isimip_version=None, return_data=False):
     """Generates CropProduction instances (exposure sets) for all files found in the
         input directory and saves them as hdf5 files in the output directory.
         Exposures are aggregated per crop and irrigation type.
@@ -589,7 +588,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         unit = 't/y'
 
     filenames = [f for f in Path(hist_mean_dir).iterdir()
-                   if f.is_file and not f.name.startswith('.')]
+                 if f.is_file and not f.name.startswith('.')]
 
     # generate output directory if it does not exist yet
     target_dir = Path(output_dir, 'Exposure')
@@ -603,9 +602,9 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         crop, irr = crop_irr.split('-')
         crop_production = CropProduction()
         crop_production.set_from_isimip_netcdf(input_dir=input_dir, filename=filename,
-                                            hist_mean=hist_mean_dir, bbox=bbox,
-                                            isimip_version=isimip_version,
-                                            yearrange=yearrange, crop=crop, irr=irr, unit=unit)
+                                               hist_mean=hist_mean_dir, bbox=bbox,
+                                               isimip_version=isimip_version,
+                                               yearrange=yearrange, crop=crop, irr=irr, unit=unit)
         filename_expo = ('crop_production_' + crop + '-'+ irr + '_'
                          + str(yearrange[0]) + '-' + str(yearrange[1]) + '.hdf5')
         filename_list.append(filename_expo)
@@ -761,7 +760,7 @@ def normalize_several_exp(input_dir=None, output_dir=None,
     if yearrange is None:
         yearrange = YEARS_FAO
     filenames_firr = [f for f in Path(output_dir, 'Exposure').iterdir()
-                        if f.is_file() and 'firr' in f.name and not f.name.startswith('.')]
+                      if f.is_file() and 'firr' in f.name and not f.name.startswith('.')]
 
     crop_list = list()
     countries_list = list()
