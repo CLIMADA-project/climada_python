@@ -136,7 +136,8 @@ class UncSensitivity():
     Sensitivity analysis class
     
     This class performs sensitivity analysis on the outputs of a 
-    climada.engine.impact.Impact() object.
+    climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
+    object.
     
     """
     
@@ -186,6 +187,13 @@ class UncSensitivity():
         self.aai_freq = None
         self.eai_exp = None
         self.at_event = None
+        
+    @property
+    def n_runs(self):
+        if self.params:
+            return len(self.params)
+        else:
+            return 0
 
     @property
     def param_labels(self):
@@ -303,15 +311,18 @@ class UncSensitivity():
 
         """
         
-        if  calc_eai_exp:
+        if calc_eai_exp:
             raise NotImplementedError()
             
         if calc_at_event:
             raise NotImplementedError()
 
-
         if rp is None:
             rp =[5, 10, 20, 50, 100, 250]
+            
+        self.rp = rp
+        self.calc_eai_exp = calc_eai_exp
+        self.calc_at_event = calc_at_event
 
         if self.params is None:
             self.make_sobol_sample(N, calc_second_order=calc_second_order)
@@ -332,6 +343,7 @@ class UncSensitivity():
                         "index. Consider using more samples or using another "+
                         "sensitivity analysis method." +
                         "See https://github.com/SALib/SALib/issues/109")
+                    continue
             
         self.sensitivity = sobol_analysis
         
@@ -385,28 +397,30 @@ class UncSensitivity():
             eai_exp_list = []
         if calc_at_event:
             at_event_list = []
-
-        for _, param_row in self.params.iterrows():
-
-            exp_params = param_row[self.exp.labels].to_dict()
-            haz_params = param_row[self.haz.labels].to_dict()
-            impf_params = param_row[self.impf.labels].to_dict()
-
-            exp = self.exp.eval_unc_var(exp_params)
-            haz = self.haz.eval_unc_var(haz_params)
-            impf = self.impf.eval_unc_var(impf_params)
-
-            imp = Impact()
-            imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-
-            aai_agg_list.append(imp.aai_agg)
-            freq_curve_list.append(imp.calc_freq_curve(rp).impact)
-
-            if calc_eai_exp:
-                eai_exp_list.append(imp.eai_exp)
-                
-            if calc_at_event:
-                at_event_list.append(imp.at_event)
+            
+        self.rp = rp
+        self.calc_eai_exp = calc_eai_exp
+        self.calc_at_event = calc_at_event
+            
+        if self.pool:
+            chunksize = min(self.n_runs // self.pool.ncpus, 10)
+            impact_metrics = self.pool.map(self._map_impact_eval,
+                                           self.params.iterrows(),
+                                           chunsize = chunksize)
+            
+            [aai_agg_list,
+             freq_curve_list,
+             eai_exp_list,
+             at_event_list] = list(zip(*impact_metrics))
+            
+        else:
+            
+            impact_metrics = map(self._map_impact_eval, self.params.iterrows())
+            
+            [aai_agg_list,
+             freq_curve_list,
+             eai_exp_list,
+             at_event_list] = list(zip(impact_metrics))
 
         df_aai_freq = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
@@ -422,7 +436,35 @@ class UncSensitivity():
             self.at_event = df_at_event
 
         return None
+    
 
+    def _map_impact_eval(self, param_row):
+        
+        # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
+        exp_params = param_row[1][self.exp.labels].to_dict()
+        haz_params = param_row[1][self.haz.labels].to_dict()
+        impf_params = param_row[1][self.impf.labels].to_dict()
+
+        exp = self.exp.eval_unc_var(exp_params)
+        haz = self.haz.eval_unc_var(haz_params)
+        impf = self.impf.eval_unc_var(impf_params)
+
+        imp = Impact()
+        imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
+        
+        rp_curve = imp.calc_freq_curve(self.rp).impact
+
+        if self.calc_eai_exp:
+            eai_exp = imp.eai_exp
+        else:
+            eai_exp = None
+            
+        if self.calc_at_event:
+            at_event= imp.at_event
+        else:
+            at_event = None
+            
+        return [imp.aai_agg, rp_curve, eai_exp, at_event]
 
 
 class UncRobustness():
