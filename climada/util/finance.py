@@ -20,7 +20,6 @@ Finance functionalities.
 """
 __all__ = ['net_present_value', 'income_group', 'gdp']
 
-import glob
 import shutil
 import logging
 import warnings
@@ -188,7 +187,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
         fn_ig = SYSTEM_DIR.joinpath('OGHIST.xls')
         dfr_wb = pd.DataFrame()
         try:
-            if not glob.glob(fn_ig):
+            if not fn_ig.is_file():
                 file_down = download_file(WORLD_BANK_INC_GRP)
                 shutil.move(file_down, fn_ig)
             dfr_wb = pd.read_excel(fn_ig, 'Country Analytical History', skiprows=5)
