@@ -156,7 +156,7 @@ class TCForecast(TCTracks):
             LOGGER.info('Fetching BUFR tracks:')
             for rfile in tqdm.tqdm(remotefiles, desc='Download', unit=' files'):
                 if target_dir:
-                    lfile = Path(target_dir).joinpath(rfile).open('w+b')
+                    lfile = Path(target_dir, rfile).open('w+b')
                 else:
                     lfile = tempfile.TemporaryFile(mode='w+b')
 

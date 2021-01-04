@@ -1085,7 +1085,7 @@ class TCTracks():
         folder_name : str
             Folder name where to write files.
         """
-        list_path = [Path(folder_name).joinpath(track.sid + '.nc') for track in self.data]
+        list_path = [Path(folder_name, track.sid + '.nc') for track in self.data]
         LOGGER.info('Writting %s files.', self.size)
         for track in self.data:
             track.attrs['orig_event_flag'] = int(track.orig_event_flag)
