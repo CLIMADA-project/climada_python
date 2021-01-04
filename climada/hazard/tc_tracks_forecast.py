@@ -194,7 +194,7 @@ class TCForecast(TCTracks):
         elif hasattr(file, 'read_bytes'):
             bufr = decoder.process(file.read_bytes())
         elif Path(file).is_file():
-            with file.open('rb') as i:
+            with Path(file).open('rb') as i:
                 bufr = decoder.process(i.read())
         else:
             raise FileNotFoundError('Check file argument')
