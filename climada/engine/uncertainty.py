@@ -57,7 +57,7 @@ class UncVar():
             imp_fun.intensity_unit = 'm/s'
             imp_fun.intensity = np.linspace(0, 150, num=100)
             imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
-            imp_fun.paa = np.array([imp_fun_param(v, G, v_half, vmin, k)
+            imp_fun.paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
                                     for v in imp_fun.intensity])
             imp_fun.check()
             impf_set = ImpactFuncSet()
@@ -104,6 +104,7 @@ class UncVar():
         None.
 
         """
+        raise NotImplementedError()
         pass
 
     def eval_unc_var(self, kwargs):
@@ -242,10 +243,11 @@ class UncSensitivity():
         return sobol_params
 
 
-    def calc_sobol_sensitivity(self,
+    def calc_impact_sobol_sensitivity(self,
                                N,
                                rp=None,
-                               eai_exp=False,
+                               calc_eai_exp=False,
+                               calc_at_event=False,
                                calc_second_order=True,
                                **kwargs):
         """
@@ -260,9 +262,12 @@ class UncSensitivity():
         rp : list(int), optional
             Return period in years for which sensitivity indices are computed.
             The default is [5, 10, 20, 50, 100, 250.
-        eai_exp : boolean, optional
+        calc_eai_exp : boolean, optional
             Toggle computation of the sensitivity for the impact at each 
             centroid location. The default is False.
+        calc_at_event : boolean, optional
+            Toggle computation of the impact for each event.
+            The default is False.
         calc_second_order : boolean, optional
             if True, calculate second-order sensitivities. The default is True.
         **kwargs : 
@@ -281,6 +286,13 @@ class UncSensitivity():
             contains keys ‘S2’ and ‘S2_conf’.
 
         """
+        
+        if  calc_eai_exp:
+            raise NotImplementedError()
+            
+        if calc_at_event:
+            raise NotImplementedError()
+
 
         if rp is None:
             rp =[5, 10, 20, 50, 100, 250]
@@ -288,20 +300,30 @@ class UncSensitivity():
         if self.params is None:
             self.make_sobol_sample(N, calc_second_order=calc_second_order)
         if self.aai_freq is None:
-            self.calc_impact_distribution(rp=rp, eai_exp=eai_exp)
+            self.calc_impact_distribution(rp=rp,
+                                          calc_eai_exp=calc_eai_exp,
+                                          calc_at_event=calc_at_event
+                                          )
 
         sobol_analysis = {}
         for imp_out in self.aai_freq:
             Y = self.aai_freq[imp_out].to_numpy()
             si_sobol = sobol.analyze(self.problem, Y, **kwargs)
             sobol_analysis.update({imp_out: si_sobol})
-
+            
         return sobol_analysis
+    
+    def calc_cost_benefit_sobol_sensitivity():
+        pass
+    
+    def calc_cost_benefit_sobol_sensitivity():
+        pass
 
 
     def calc_impact_distribution(self,
                                  rp=None,
-                                 eai_exp=False
+                                 calc_eai_exp=False,
+                                 calc_at_event=False
                                  ):
         """
         Computes the impact for each of the parameters set defined in
@@ -317,9 +339,12 @@ class UncSensitivity():
         ----------
         rp : list(int), optional
             Return period in years to be computed. 
-            The default is [5, 10, 20, 50, 100, 250.
-        eai_exp : boolean, optional
+            The default is [5, 10, 20, 50, 100, 250].
+        calc_eai_exp : boolean, optional
             Toggle computation of the impact at each centroid location.
+            The default is False.
+        calc_at_event : boolean, optional
+            Toggle computation of the impact for each event.
             The default is False.
 
         Returns
@@ -334,8 +359,10 @@ class UncSensitivity():
 
         aai_agg_list = []
         freq_curve_list = []
-        if eai_exp:
+        if calc_eai_exp:
             eai_exp_list = []
+        if calc_at_event:
+            at_event_list = []
 
         for _, row in self.params.iterrows():
 
@@ -353,18 +380,24 @@ class UncSensitivity():
             aai_agg_list.append(imp.aai_agg)
             freq_curve_list.append(imp.calc_freq_curve(rp).impact)
 
-            if eai_exp:
+            if calc_eai_exp:
                 eai_exp_list.append(imp.eai_exp)
+                
+            if calc_at_event:
+                at_event_list.append(imp.at_event)
 
         df_aai_freq = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
         df_aai_freq['aai_agg'] = aai_agg_list
+        self.aai_freq = df_aai_freq
 
-        if eai_exp:
+        if calc_eai_exp:
             df_eai_exp = pd.DataFrame(eai_exp_list)
             self.eai_exp = df_eai_exp
-
-        self.aai_freq = df_aai_freq
+            
+        if calc_at_event:
+            df_at_event = pd.DataFrame(at_event_list)
+            self.at_event = df_at_event
 
         return None
 
@@ -374,6 +407,7 @@ class UncRobustness():
     """
     Compute variance from multiplicative Gaussian noise
     """
+
     pass
 
 
