@@ -474,7 +474,7 @@ def get_transformation(crs_in):
     return crs_epsg, units
 
 
-def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True, xticklabels=None):
+def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True, ticklabels=None, invert_axis=False):
     """Draws a bar plot with multiple bars per data point.
     https://stackoverflow.com/questions/14270391/python-matplotlib-multiple-bars
 
@@ -513,8 +513,12 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
     legend: bool, optional, default: True
         If this is set to true, a legend will be added to the axis.
         
-    xticklabels: list, optional, default: None
-        labels of the xticks
+    ticklabels: list, optional, default: None
+        labels of the xticks (yticks if invert_axis=True)
+        
+    invert_axis: boolean, default: False
+        Invert the x and y axis. By default, the bars are vertical. 
+        invert_axis=True gives horizontal bars.
     """
 
     # Check if colors where provided, otherwhise use the default color cycle
@@ -537,13 +541,19 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
         # Draw a bar for every value of that type
         for x, y in enumerate(values):
-            bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)])
+            if invert_axis:
+                bar = ax.barh(x + x_offset, width=y, height=bar_width * single_width, color=colors[i % len(colors)])
+            else:
+                bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)])
 
         # Add a handle to the last drawn bar, which we'll need for the legend
         bars.append(bar[0])
            
-    if xticklabels:
-        plt.setp(ax, xticks=range(len(data), xticklabels=xticklabels);
+    if ticklabels:
+        if invert_axis:
+            plt.setp(ax, yticks=range(len(data), yticklabels=ticklabels);
+        else:
+            plt.setp(ax, xticks=range(len(data), xticklabels=ticklabels);
 
     # Draw legend if we need
     if legend:
