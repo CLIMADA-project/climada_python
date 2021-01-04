@@ -190,11 +190,10 @@ class UncSensitivity():
         
     @property
     def n_runs(self):
-        if self.params:
-            return len(self.params)
+        if isinstance(self.params, pd.DataFrame):
+            return self.params.shape[0]
         else:
             return 0
-
     @property
     def param_labels(self):
         return self.exp.labels + self.haz.labels + self.impf.labels
@@ -357,7 +356,7 @@ class UncSensitivity():
     def calc_impact_distribution(self,
                                  rp=None,
                                  calc_eai_exp=False,
-                                 calc_at_event=False
+                                 calc_at_event=False,
                                  ):
         """
         Computes the impact for each of the parameters set defined in
@@ -386,7 +385,6 @@ class UncSensitivity():
         None.
 
         """
-        
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
@@ -403,7 +401,7 @@ class UncSensitivity():
         self.calc_at_event = calc_at_event
             
         if self.pool:
-            chunksize = min(self.n_runs // self.pool.ncpus, 10)
+            chunksize = min(self.n_runs // self.pool.ncpus, 100)
             impact_metrics = self.pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
@@ -438,12 +436,28 @@ class UncSensitivity():
         return None
     
 
-    def _map_impact_eval(self, param_row):
+    def _map_impact_eval(self, param_sample):
+        """
+        Map to compute impact for all parameter samples in parrallel
+
+        Parameters
+        ----------
+        param_sample : pd.DataFrame.iterrows()
+            Generator of the parameter samples
+
+        Returns
+        -------
+        list
+            impact metrics list for all samples containing aai_agg, rp_curve,
+            eai_exp (if self.calc_eai_exp=True), and at_event (if
+            self.calc_at_event=True)
+
+        """
         
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_params = param_row[1][self.exp.labels].to_dict()
-        haz_params = param_row[1][self.haz.labels].to_dict()
-        impf_params = param_row[1][self.impf.labels].to_dict()
+        exp_params = param_sample[1][self.exp.labels].to_dict()
+        haz_params = param_sample[1][self.haz.labels].to_dict()
+        impf_params = param_sample[1][self.impf.labels].to_dict()
 
         exp = self.exp.eval_unc_var(exp_params)
         haz = self.haz.eval_unc_var(haz_params)
