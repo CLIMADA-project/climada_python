@@ -102,3 +102,9 @@ FAQs
   In this case removing and reinstalling Anaconda will be required.
 
 * Conda right problems in macOS Mojave: try the solutions suggested here `https://github.com/conda/conda/issues/8440 <https://github.com/conda/conda/issues/8440>`_. 
+
+* How to change the log level: By default the logging level is set to ``'INFO'``. This can be changed
+
+  * programmatically, in a script or interactive python environment (Spyder, Jupyter, IPython) by executing e.g., ``climada.util.config.setup_logging('DEBUG')``,
+  
+  * through configuration, by editing the config file ``climada/conf/defaults.conf`` and setting the value of the ``global.log_level`` property.

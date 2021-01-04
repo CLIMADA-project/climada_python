@@ -300,14 +300,17 @@ class TestEconIndices(unittest.TestCase):
         inc_grp = {'CHE': '', 'ZMB': 4}
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
+        # GDP might change if worldbank input data changes,
+        # check magnitude and adjust value in country_isos_ref if test fails
         country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2019, gdp['CHE'], 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2019, 23064722446, inc_grp['ZMB']]
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2019, 23309773922, inc_grp['ZMB']]
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
             for i in [0, 1, 2, 3, 5]:  # test elements one by one:
                 self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
+
             self.assertAlmostEqual(country_isos[country][4] * 1e-6,
                                    country_isos_ref[country][4] * 1e-6, places=0)
 

@@ -97,11 +97,11 @@ HAZ_DEMO_FL = DEMO_DIR.joinpath('SC22000_VE__M1.grd.gz')
 """Raster file of flood over Venezuela. Model from GAR2015"""
 
 HAZ_DEMO_FLDDPH = DEMO_DIR.joinpath(
-    'flddph_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+    'flddph_2000_DEMO.nc')
 """NetCDF4 Flood depth from isimip simulations"""
 
 HAZ_DEMO_FLDFRC = DEMO_DIR.joinpath(
-    'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+    'fldfrc_2000_DEMO.nc')
 """NetCDF4 Flood fraction from isimip simulations"""
 
 HAZ_DEMO_MAT = DEMO_DIR.joinpath('atl_prob_nonames.mat')
