@@ -24,6 +24,7 @@ from SALib.analyze import sobol
 import pandas as pd
 import numpy as np
 import logging
+from pathos import pools
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
@@ -139,7 +140,7 @@ class UncSensitivity():
     
     """
     
-    def __init__(self, exp_unc, impf_unc, haz_unc):
+    def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
         """Initialize UncSensitivite
 
         Parameters
@@ -150,12 +151,20 @@ class UncSensitivity():
             Impactfunction uncertainty variable or Impact function
         haz_unc : climada.engine.uncertainty.UncVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard
+        pool : pathos.pools.ProcessPool
+            Pool of CPUs for parralel computations. Default is None.
 
         Returns
         -------
         None.
 
         """
+        
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
 
         if isinstance(exp_unc, Exposures):
             self.exp = UncVar(unc_var=lambda: exp_unc, distr_dict={})
@@ -176,6 +185,7 @@ class UncSensitivity():
         self.problem = None
         self.aai_freq = None
         self.eai_exp = None
+        self.at_event = None
 
     @property
     def param_labels(self):
@@ -323,10 +333,10 @@ class UncSensitivity():
                         "sensitivity analysis method." +
                         "See https://github.com/SALib/SALib/issues/109")
             
+        self.sensitivity = sobol_analysis
+        
         return sobol_analysis
     
-    def calc_cost_benefit_sobol_sensitivity():
-        pass
     
     def calc_cost_benefit_sobol_sensitivity():
         pass
@@ -376,11 +386,11 @@ class UncSensitivity():
         if calc_at_event:
             at_event_list = []
 
-        for _, row in self.params.iterrows():
+        for _, param_row in self.params.iterrows():
 
-            exp_params = row[self.exp.labels].to_dict()
-            haz_params = row[self.haz.labels].to_dict()
-            impf_params = row[self.impf.labels].to_dict()
+            exp_params = param_row[self.exp.labels].to_dict()
+            haz_params = param_row[self.haz.labels].to_dict()
+            impf_params = param_row[self.impf.labels].to_dict()
 
             exp = self.exp.eval_unc_var(exp_params)
             haz = self.haz.eval_unc_var(haz_params)
