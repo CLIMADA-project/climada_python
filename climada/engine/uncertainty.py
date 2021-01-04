@@ -22,11 +22,15 @@ Define Uncertainty class.
 from SALib.sample import saltelli
 from SALib.analyze import sobol
 import pandas as pd
+import numpy as np
+import logging
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
 from climada.entity import Exposures
 from climada.hazard import Hazard
+
+LOGGER = logging.getLogger(__name__)
 
 
 class UncVar():
@@ -254,7 +258,9 @@ class UncSensitivity():
         Compute the sobol sensitivity indices using the SALib library:
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
         
-
+        Simple introduction:
+        https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
+        
         Parameters
         ----------
         N : int
@@ -310,6 +316,12 @@ class UncSensitivity():
             Y = self.aai_freq[imp_out].to_numpy()
             si_sobol = sobol.analyze(self.problem, Y, **kwargs)
             sobol_analysis.update({imp_out: si_sobol})
+            for si_list in si_sobol.values():
+                if np.any(np.array(si_list)<0):
+                    LOGGER.warning("There is at least one negative sobol " +
+                        "index. Consider using more samples or using another "+
+                        "sensitivity analysis method." +
+                        "See https://github.com/SALib/SALib/issues/109")
             
         return sobol_analysis
     
