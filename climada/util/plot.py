@@ -474,7 +474,7 @@ def get_transformation(crs_in):
     return crs_epsg, units
 
 
-def bar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True):
+def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True, xticklabels=None):
     """Draws a bar plot with multiple bars per data point.
     https://stackoverflow.com/questions/14270391/python-matplotlib-multiple-bars
 
@@ -489,10 +489,13 @@ def bar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True
 
         Example:
         data = {
-            "x":[1,2,3],
-            "y":[1,2,3],
-            "z":[1,2,3],
+            "x": [1, 2, 3],
+            "y": [1, 2, 3],
+            "z": [1, 2, 3],
         }
+        fig, ax = plt.subplots()
+        multibar_plot(ax, data, xticklabels=["a", "b", "c"])
+        
 
     colors : array-like, optional
         A list of colors which are used for the bars. If None, the colors
@@ -509,6 +512,9 @@ def bar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True
 
     legend: bool, optional, default: True
         If this is set to true, a legend will be added to the axis.
+        
+    xticklabels: list, optional, default: None
+        labels of the xticks
     """
 
     # Check if colors where provided, otherwhise use the default color cycle
@@ -535,6 +541,9 @@ def bar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True
 
         # Add a handle to the last drawn bar, which we'll need for the legend
         bars.append(bar[0])
+           
+    if xticklabels:
+        plt.setp(ax, xticks=range(len(data), xticklabels=xticklabels);
 
     # Draw legend if we need
     if legend:
