@@ -159,7 +159,7 @@ def get_file_names(file_name):
                 - or a globbing pattern.
 
     Returns:
-        list
+        list(str)
     """
     file_list = list()
 
