@@ -35,6 +35,7 @@ import h5py
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
+from pathos.pools import ProcessPool as Pool
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -175,13 +176,13 @@ class Hazard():
             self.pool = None
 
     def clear(self):
-        """Reinitialize attributes."""
+        """Reinitialize attributes (except the process Pool)."""
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.array([], dtype=var_val.dtype))
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
-            else:
+            elif not isinstance(var_val, Pool):
                 setattr(self, var_name, var_val.__class__())
 
     def check(self):
