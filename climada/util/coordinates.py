@@ -318,8 +318,25 @@ def dist_great_circle_allgeoms(gdf):
     if not equal_crs(gdf.crs, DEF_CRS):
         gdf = gdf.to_crs(DEF_CRS)
 
-    return gdf.apply(lambda row:  pyproj.Geod(ellps='WGS84').geometry_length(
-                                  row.geometry), axis=1)
+    return gdf.apply(lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
+        row.geometry), axis=1)
+
+def metres_to_degrees(lat, lon, dist=100):
+    """Get an exact estimate for converting distances in metres to degrees,
+    depending on the location on the globe
+    
+    Parameters
+    ----------
+    lat : (float) latitude (in degrees) of the representative location
+    lon : (float) longitude (in degrees) of the representative location
+    dist : (float) distance in metres which should be converted
+    
+    Returns
+    -------
+   (float) distance in degrees
+    """
+    _, lat_end, _ = pyproj.Geod(ellps='WGS84').fwd(lon, lat, 0, dist)
+    return abs(lat-lat_end)
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.

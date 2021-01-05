@@ -691,3 +691,21 @@ def point_exposure_from_lines(gdf_lines, point_dist=5, value_method='fixed', met
     exp.set_lat_lon()
     exp.check()
     return exp
+
+def point_exposure_from_polygons(gdf_polygons, point_area=5, value_method='fixed', metre2_value=1):
+    """ Create a climada point exposure from a GeoDataframe with Polygon 
+    geometries 
+    
+    Parameters
+    ----------
+    gdf_polygons  : 
+    point_area : 
+    value_method :
+    metre2_value : 
+    
+    Returns
+    -------
+    exp
+    """
+    # TODO: implement!!
+    pass

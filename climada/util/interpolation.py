@@ -26,14 +26,16 @@ __all__ = ['interpol_index',
 
 import geopandas as gpd
 import logging
+import math
 import numpy as np
 from numba import jit
+import pandas as pd
 
 from shapely.geometry import MultiPoint
 from sklearn.neighbors import BallTree
 
 from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
-from climada.util.coordinates import dist_great_circle_allgeoms
+from climada.util.coordinates import dist_great_circle_allgeoms, coord_on_land, metres_to_degrees, pts_to_raster_meta, raster_to_meshgrid
 
 LOGGER = logging.getLogger(__name__)
 
@@ -225,3 +227,61 @@ def interpolate_lines(gdf_lines, point_dist=5):
     # expand gdf from MultiPoint entries to single Points per row
     return gdf_lines.explode().drop(['geometry_line', 'distance_vector', 'length'], 
                                     axis=1)
+
+def interpolate_polygons(gdf_poly, area_point):
+    """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
+    throughout the geometries, at a user-specified area distance
+    
+    Parameters
+    ----------
+    gdf_poly : (gpd.GeoDataFrame) with polygons to be interpolated
+    area_point : area in m2 which one point should represent
+    
+    Returns
+    -------
+    (gpd.GeoDataframe) of same length as gdf_poly, with lat/lon pairs
+        for each initial polygon, representing the interpolated centroids
+    """
+    
+    metre_dist = math.sqrt(area_point)
+    
+    gdf_poly['degree_dist'] = gdf_poly.apply(lambda row: metres_to_degrees(
+        row.geometry.representative_point().x, 
+        row.geometry.representative_point().y,
+        metre_dist), axis=1)
+    
+    # get params to make an even grid with desired resolution 
+    # over bounding boxes of polygons:
+    trans = gdf_poly.apply(lambda row: pts_to_raster_meta(
+        row.geometry.bounds, (row.degree_dist, -row.degree_dist)), axis=1)
+    gdf_poly['trans'] = pd.DataFrame(trans.tolist(), index=trans.index).iloc[:,2]
+   
+    gdf_poly['width'] = np.floor(abs(gdf_poly.geometry.bounds.minx-
+                                     gdf_poly.geometry.bounds.maxx)/
+                                 gdf_poly['degree_dist'])
+    gdf_poly['height'] = np.floor(abs(gdf_poly.geometry.bounds.miny-
+                                      gdf_poly.geometry.bounds.maxy)/
+                                  gdf_poly['degree_dist'])
+    
+    # make grid
+    lons_lats = gdf_poly.apply(lambda row: raster_to_meshgrid(
+        row.trans, row.width, row.height), axis=1)
+    
+    lons_lats = pd.DataFrame(lons_lats.tolist(), columns=['lon', 'lat'])
+    lons_lats['lon'] = lons_lats.apply(lambda row: row.lon.flatten(), axis=1)
+    lons_lats['lat'] = lons_lats.apply(lambda row: row.lat.flatten(), axis=1)
+    
+    # filter only centroids in actual polygons
+    for i, polygon in enumerate(gdf_poly.geometry):
+        in_geom = coord_on_land(lat=lons_lats['lat'].iloc[i], 
+                                lon=lons_lats['lon'].iloc[i],
+                                land_geom=polygon)
+        lons_lats['lat'].iloc[i] = lons_lats['lat'].iloc[i][in_geom]
+        lons_lats['lon'].iloc[i] = lons_lats['lon'].iloc[i][in_geom]
+        #TODO: set MultiPoints and explode gdf analogously to interpolate_lines
+        # df_geom.iloc[i] = gpd.points_from_xy(lons_lats['lon'].iloc[i],
+        #   lons_lats['lat'].iloc[i])
+        
+    return gpd.GeoDataFrame(lons_lats)
+
+
