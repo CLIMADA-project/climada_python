@@ -587,4 +587,6 @@ class UncRobustness():
     """
     Compute variance from multiplicative Gaussian noise
     """
-    raise NotImplementedError()
+    
+    def __init__(self):
+        raise NotImplementedError()
