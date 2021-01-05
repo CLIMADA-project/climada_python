@@ -140,10 +140,12 @@ class TestUncVar(unittest.TestCase):
     
     distr_dict = {"G": sp.stats.uniform(0.8,1),
                   "v_half": sp.stats.uniform(50, 100),
-                  "vmin": sp.stats.uniform(15,30),
+                  "vmin": sp.stats.norm(15,30),
                   "k": sp.stats.uniform(1, 5)
                   }
     impf_unc = UncVar(impf, distr_dict)
+    
+    impf_unc.plot_distr()
     
     unc = UncSensitivity(exp, impf_unc, haz)
     unc.calc_impact_sobol_sensitivity(N=1, calc_eai_exp=False, calc_at_event=False)
