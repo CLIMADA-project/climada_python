@@ -62,7 +62,7 @@ GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
 NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
-WORLD_BANK_INC_GRP = CONFIG.litpop.resources.world_bank_inc_group.str()
+WORLD_BANK_INC_GRP = CONFIG.exposures.litpop.resources.world_bank_inc_group.str()
 """Income group historical data from World bank."""
 
 DEF_RES_NASA_KM = 0.5
