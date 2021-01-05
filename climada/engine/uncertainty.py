@@ -32,6 +32,7 @@ from climada.engine import Impact
 from climada.entity import ImpactFuncSet
 from climada.entity import Exposures
 from climada.hazard import Hazard
+from climada.util.value_representation import value_to_monetary_unit as vtm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -108,16 +109,17 @@ class UncVar():
 
         Returns
         -------
-        None.
+        fig, ax: matplotlib.pyplot.fig, matplotlib.pyplot.ax
+            The figure and axis handle of the plot.
 
         """
         nb_plots = len(self.distr_dict)
         fig, ax = plt.subplots(ncols=nb_plots)
-        for ax, (distr_name, distr) in zip(ax, self.distr_dict.items()):
+        for ax, (param_name, distr) in zip(ax, self.distr_dict.items()):
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
-            ax.plot(x, distr.pdf(x), label=distr_name)
+            ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
-        return None
+        return fig, ax
 
     def eval_unc_var(self, kwargs):
         """
@@ -189,12 +191,65 @@ class UncSensitivity():
         else:
             self.haz = haz_unc
 
-        self.params = None
-        self.problem = None
-        self.aai_freq = None
-        self.eai_exp = None
-        self.at_event = None
+        self.params = pd.DataFrame()
+        self.problem = {}
+        self.aai_freq = pd.DataFrame()
+        self.eai_exp = pd.DataFrame()
+        self.at_event = pd.DataFrame()
         
+        
+    def plot_uncertainty(self):
+        """
+        Plot the distribution of values.
+
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        axes : TYPE
+            DESCRIPTION.
+
+        """
+        if self.aai_freq.empty:
+            raise ValueError("No uncertainty data present. Please run "+
+                    "a sensitivity analysis first.")
+        else:
+            log_aai_freq = self.aai_freq.apply(np.log10).copy()
+            log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
+            cols = log_aai_freq.columns
+            n_plots = len(cols)
+            nrows, ncols = int(n_plots / 3) + 1, min(n_plots, 3)
+            fig, axes = plt.subplots(nrows = nrows,
+                                     ncols = ncols,
+                                     figsize=(20, ncols * 3.5),
+                                     sharex=True,
+                                     sharey=True)
+            
+            for ax, col in zip(axes.flatten(), cols):
+                data = log_aai_freq[col]
+                data.hist(ax=ax,  bins=100, density=True, histtype='step')
+                avg = self.aai_freq[col].mean()
+                std = self.aai_freq[col].std()
+                ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
+                        color='red', linestyle='dashed',
+                        label="avg=%.2f%s" %vtm(avg))
+                ax.plot([np.log10(avg) - np.log10(std) / 2,
+                         np.log10(avg) + np.log10(std) / 2],
+                        [0.3, 0.3], color='red',
+                        label="std=%.2f%s" %vtm(std))
+                ax.set_title(col)
+                ax.set_xlabel('value [log10]')
+                ax.set_ylabel('density of events')
+                ax.legend()
+                
+        return fig, axes
+        
+    
     @property
     def n_runs(self):
         if isinstance(self.params, pd.DataFrame):
@@ -330,9 +385,9 @@ class UncSensitivity():
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
 
-        if self.params is None:
+        if self.params.empty:
             self.make_sobol_sample(N, calc_second_order=calc_second_order)
-        if self.aai_freq is None:
+        if self.aai_freq.empty:
             self.calc_impact_distribution(rp=rp,
                                           calc_eai_exp=calc_eai_exp,
                                           calc_at_event=calc_at_event
@@ -357,8 +412,20 @@ class UncSensitivity():
     
     
     def calc_cost_benefit_sobol_sensitivity():
+        raise NotImplementedError()
         pass
 
+    def est_comp_time():
+        """
+        Estimate the computation time
+
+        Returns
+        -------
+        None.
+
+        """
+        raise NotImplementedError()
+        pass
 
     def calc_impact_distribution(self,
                                  rp=None,
@@ -406,7 +473,7 @@ class UncSensitivity():
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-            
+        
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             impact_metrics = self.pool.map(self._map_impact_eval,
@@ -425,8 +492,8 @@ class UncSensitivity():
             [aai_agg_list,
              freq_curve_list,
              eai_exp_list,
-             at_event_list] = list(zip(impact_metrics))
-
+             at_event_list] = list(zip(*impact_metrics))
+        
         df_aai_freq = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
         df_aai_freq['aai_agg'] = aai_agg_list
