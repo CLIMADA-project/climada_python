@@ -113,8 +113,9 @@ class UncVar():
             The figure and axis handle of the plot.
 
         """
-        nb_plots = len(self.distr_dict)
-        fig, ax = plt.subplots(ncols=nb_plots)
+        nplots = len(self.distr_dict)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
         for ax, (param_name, distr) in zip(ax, self.distr_dict.items()):
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
@@ -222,8 +223,8 @@ class UncSensitivity():
             log_aai_freq = self.aai_freq.apply(np.log10).copy()
             log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
             cols = log_aai_freq.columns
-            n_plots = len(cols)
-            nrows, ncols = int(n_plots / 3) + 1, min(n_plots, 3)
+            nplots = len(cols)
+            nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
             fig, axes = plt.subplots(nrows = nrows,
                                      ncols = ncols,
                                      figsize=(20, ncols * 3.5),
