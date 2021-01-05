@@ -19,14 +19,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-from SALib.sample import saltelli
-from SALib.analyze import sobol
 import pandas as pd
 import numpy as np
 import logging
-from pathos import pools
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+
+from SALib.sample import saltelli
+from SALib.analyze import sobol
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
@@ -39,14 +38,14 @@ LOGGER = logging.getLogger(__name__)
 
 class UncVar():
     """
-    Uncertainty variable 
-    
-    An uncertainty variable requires a single or multi-parameter function. 
+    Uncertainty variable
+
+    An uncertainty variable requires a single or multi-parameter function.
     The parameters must follow a given distribution.
-    
+
     Examples
     --------
-    
+
     Categorical variable function: LitPop exposures with m,n exponents in [0,5]
         def unc_var_cat(m, n):
             exp = Litpop()
@@ -56,7 +55,7 @@ class UncVar():
             m: sp.stats.randint(low=0, high=5),
             n: sp.stats.randint(low=0, high=5)
             }
-        
+
     Continuous variable function: Impact function for TC
         def imp_fun_tc(G, v_half, vmin, k, _id=1):
             imp_fun = ImpactFunc()
@@ -76,24 +75,24 @@ class UncVar():
               "vmin": sp.stats.norm(loc=15, scale=30),
               "k": sp.stats.randint(low=1, high=9)
               }
-    
+
     """
 
     def __init__(self, unc_var, distr_dict):
         """
         Initialize UncVar
-        
+
         Parameters
         ----------
         unc_var : function
             Variable defined as a function of the uncertainty parameters
         distr_dict : dict
-            Dictionnary of the probability density distributions of the 
-            uncertainty parameters, with keys the matching the keyword 
+            Dictionnary of the probability density distributions of the
+            uncertainty parameters, with keys the matching the keyword
             arguments (i.e. uncertainty parameters) of the unc_var function.
             The distribution must be of type scipy.stats
             https://docs.scipy.org/doc/scipy/reference/stats.html
-            
+
         Returns
         -------
         None.
@@ -128,13 +127,13 @@ class UncVar():
 
         Parameters
         ----------
-        kwargs : 
+        kwargs :
             These parameters will be passed to self.unc_var.
             They must be the input parameters of the uncertainty variable .
 
         Returns
         -------
-        
+
             Evaluated uncertainty variable
 
         """
@@ -144,13 +143,13 @@ class UncVar():
 class UncSensitivity():
     """
     Sensitivity analysis class
-    
-    This class performs sensitivity analysis on the outputs of a 
+
+    This class performs sensitivity analysis on the outputs of a
     climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
     object.
-    
+
     """
-    
+
     def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
         """Initialize UncSensitivite
 
@@ -170,7 +169,7 @@ class UncSensitivity():
         None.
 
         """
-        
+
         if pool:
             self.pool = pool
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
@@ -197,8 +196,8 @@ class UncSensitivity():
         self.aai_freq = pd.DataFrame()
         self.eai_exp = pd.DataFrame()
         self.at_event = pd.DataFrame()
-        
-        
+
+
     def plot_uncertainty(self):
         """
         Plot the distribution of values.
@@ -219,50 +218,80 @@ class UncSensitivity():
         if self.aai_freq.empty:
             raise ValueError("No uncertainty data present. Please run "+
                     "a sensitivity analysis first.")
-        else:
-            log_aai_freq = self.aai_freq.apply(np.log10).copy()
-            log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
-            cols = log_aai_freq.columns
-            nplots = len(cols)
-            nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
-            fig, axes = plt.subplots(nrows = nrows,
-                                     ncols = ncols,
-                                     figsize=(20, ncols * 3.5),
-                                     sharex=True,
-                                     sharey=True)
-            
-            for ax, col in zip(axes.flatten(), cols):
-                data = log_aai_freq[col]
-                data.hist(ax=ax,  bins=100, density=True, histtype='step')
-                avg = self.aai_freq[col].mean()
-                std = self.aai_freq[col].std()
-                ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
-                        color='red', linestyle='dashed',
-                        label="avg=%.2f%s" %vtm(avg))
-                ax.plot([np.log10(avg) - np.log10(std) / 2,
-                         np.log10(avg) + np.log10(std) / 2],
-                        [0.3, 0.3], color='red',
-                        label="std=%.2f%s" %vtm(std))
-                ax.set_title(col)
-                ax.set_xlabel('value [log10]')
-                ax.set_ylabel('density of events')
-                ax.legend()
-                
+
+        log_aai_freq = self.aai_freq.apply(np.log10).copy()
+        log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
+        cols = log_aai_freq.columns
+        nplots = len(cols)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize=(20, ncols * 3.5),
+                                 sharex=True,
+                                 sharey=True)
+
+        for ax, col in zip(axes.flatten(), cols):
+            data = log_aai_freq[col]
+            data.hist(ax=ax,  bins=100, density=True, histtype='step')
+            avg = self.aai_freq[col].mean()
+            std = self.aai_freq[col].std()
+            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
+                    color='red', linestyle='dashed',
+                    label="avg=%.2f%s" %vtm(avg))
+            ax.plot([np.log10(avg) - np.log10(std) / 2,
+                     np.log10(avg) + np.log10(std) / 2],
+                    [0.3, 0.3], color='red',
+                    label="std=%.2f%s" %vtm(std))
+            ax.set_title(col)
+            ax.set_xlabel('value [log10]')
+            ax.set_ylabel('density of events')
+            ax.legend()
+
         return fig, axes
-        
-    
+
+
     @property
     def n_runs(self):
+        """
+        The effective number of runs needed for the sample size self.n_samples.
+
+        Returns
+        -------
+        int
+            effective number of runs
+
+        """
+
         if isinstance(self.params, pd.DataFrame):
             return self.params.shape[0]
         else:
             return 0
     @property
     def param_labels(self):
+        """
+        Labels of all (exposure, impact function, hazard) uncertainty
+        parameters.
+
+        Returns
+        -------
+        list of strings
+            Labels of all uncertainty parameters.
+
+        """
         return self.exp.labels + self.haz.labels + self.impf.labels
 
     @property
     def distr_dict(self):
+        """
+        Dictionnary of all (exposure, imapct function, hazard) distributions.
+
+        Returns
+        -------
+        distr_dict : dict( sp.stats objects )
+            Dictionnary of all distributions.
+
+        """
+
         distr_dict = dict(self.exp.distr_dict)
         distr_dict.update(self.haz.distr_dict)
         distr_dict.update(self.impf.distr_dict)
@@ -270,7 +299,7 @@ class UncSensitivity():
 
     def make_sobol_sample(self, N, calc_second_order):
         """
-        Make a sobol sample for all parameters with their respective 
+        Make a sobol sample for all parameters with their respective
         distributions.
 
         Parameters
@@ -285,7 +314,7 @@ class UncSensitivity():
         None.
 
         """
-        
+
         self.n_samples = N
         sobol_uniform_sample = self._make_uniform_sobol_sample(
             calc_second_order=calc_second_order)
@@ -295,24 +324,24 @@ class UncSensitivity():
                 self.distr_dict[param].ppf
                 )
         self.params = df_params
-        return None
+
 
 
     def _make_uniform_sobol_sample(self, calc_second_order):
         """
-        Make a uniform sobol sample for the defined model uncertainty parameters 
+        Make a uniform sobol sample for the defined model uncertainty parameters
         (self.param_labels)
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
-        
+
         Parameters
         ----------
         calc_second_order : boolean
             if True, calculate second-order sensitivities.
-            
+
         Returns
         -------
         sobol_params : np.matrix
-            Returns a NumPy matrix containing the sampled uncertainty parameters using 
+            Returns a NumPy matrix containing the sampled uncertainty parameters using
             Saltelli’s sampling scheme.
 
         """
@@ -337,10 +366,10 @@ class UncSensitivity():
         """
         Compute the sobol sensitivity indices using the SALib library:
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
-        
+
         Simple introduction:
         https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
-        
+
         Parameters
         ----------
         N : int
@@ -349,14 +378,14 @@ class UncSensitivity():
             Return period in years for which sensitivity indices are computed.
             The default is [5, 10, 20, 50, 100, 250.
         calc_eai_exp : boolean, optional
-            Toggle computation of the sensitivity for the impact at each 
+            Toggle computation of the sensitivity for the impact at each
             centroid location. The default is False.
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
         calc_second_order : boolean, optional
             if True, calculate second-order sensitivities. The default is True.
-        **kwargs : 
+        **kwargs :
             These parameters will be passed to SALib.analyze.sobol.analyze()
             The default is num_resamples=100, conf_level=0.95,
             print_to_console=False, parallel=False, n_processors=None,
@@ -365,23 +394,23 @@ class UncSensitivity():
         Returns
         -------
         sobol_analysis : dict
-            Dictionnary with keys the uncertainty parameter labels. 
+            Dictionnary with keys the uncertainty parameter labels.
             For each uncertainty parameter, the item is another dictionnary
-            with keys the sobol sensitivity indices ‘S1’, ‘S1_conf’, ‘ST’, 
+            with keys the sobol sensitivity indices ‘S1’, ‘S1_conf’, ‘ST’,
             and ‘ST_conf’. If calc_second_order is True, the dictionary also
             contains keys ‘S2’ and ‘S2_conf’.
 
         """
-        
+
         if calc_eai_exp:
             raise NotImplementedError()
-            
+
         if calc_at_event:
             raise NotImplementedError()
 
         if rp is None:
             rp =[5, 10, 20, 50, 100, 250]
-            
+
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
@@ -406,17 +435,17 @@ class UncSensitivity():
                         "sensitivity analysis method." +
                         "See https://github.com/SALib/SALib/issues/109")
                     continue
-            
-        self.sensitivity = sobol_analysis
-        
-        return sobol_analysis
-    
-    
-    def calc_cost_benefit_sobol_sensitivity():
-        raise NotImplementedError()
-        pass
 
-    def est_comp_time():
+        self.sensitivity = sobol_analysis
+
+        return sobol_analysis
+
+
+    def calc_cost_benefit_sobol_sensitivity(self):
+        raise NotImplementedError()
+
+
+    def est_comp_time(self):
         """
         Estimate the computation time
 
@@ -426,7 +455,7 @@ class UncSensitivity():
 
         """
         raise NotImplementedError()
-        pass
+
 
     def calc_impact_distribution(self,
                                  rp=None,
@@ -435,18 +464,18 @@ class UncSensitivity():
                                  ):
         """
         Computes the impact for each of the parameters set defined in
-        uncertainty.params. 
-        
-        By default, the aggregated average annual impact 
+        uncertainty.params.
+
+        By default, the aggregated average annual impact
         (impact.aai_agg) and the excees impact at return periods (rp) is
-        computed and stored in self.aai_freq. Optionally, the impact at 
+        computed and stored in self.aai_freq. Optionally, the impact at
         each centroid location is computed (this may require a larger
         amount of memory if the number of centroids is large).
 
         Parameters
         ----------
         rp : list(int), optional
-            Return period in years to be computed. 
+            Return period in years to be computed.
             The default is [5, 10, 20, 50, 100, 250].
         calc_eai_exp : boolean, optional
             Toggle computation of the impact at each centroid location.
@@ -470,31 +499,31 @@ class UncSensitivity():
             eai_exp_list = []
         if calc_at_event:
             at_event_list = []
-            
+
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-        
+
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             impact_metrics = self.pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
-            
+
             [aai_agg_list,
              freq_curve_list,
              eai_exp_list,
              at_event_list] = list(zip(*impact_metrics))
-            
+
         else:
-            
+
             impact_metrics = map(self._map_impact_eval, self.params.iterrows())
-            
+
             [aai_agg_list,
              freq_curve_list,
              eai_exp_list,
              at_event_list] = list(zip(*impact_metrics))
-        
+
         df_aai_freq = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
         df_aai_freq['aai_agg'] = aai_agg_list
@@ -503,13 +532,11 @@ class UncSensitivity():
         if calc_eai_exp:
             df_eai_exp = pd.DataFrame(eai_exp_list)
             self.eai_exp = df_eai_exp
-            
+
         if calc_at_event:
             df_at_event = pd.DataFrame(at_event_list)
             self.at_event = df_at_event
 
-        return None
-    
 
     def _map_impact_eval(self, param_sample):
         """
@@ -528,7 +555,7 @@ class UncSensitivity():
             self.calc_at_event=True)
 
         """
-        
+
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
         exp_params = param_sample[1][self.exp.labels].to_dict()
         haz_params = param_sample[1][self.haz.labels].to_dict()
@@ -540,19 +567,19 @@ class UncSensitivity():
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-        
+
         rp_curve = imp.calc_freq_curve(self.rp).impact
 
         if self.calc_eai_exp:
             eai_exp = imp.eai_exp
         else:
             eai_exp = None
-            
+
         if self.calc_at_event:
             at_event= imp.at_event
         else:
             at_event = None
-            
+
         return [imp.aai_agg, rp_curve, eai_exp, at_event]
 
 
@@ -560,105 +587,4 @@ class UncRobustness():
     """
     Compute variance from multiplicative Gaussian noise
     """
-
-    pass
-
-
-
-# class UncVarCat(UncVar):
-
-#     def __init__(self, label, cat_var):
-#         self.labels = [label]
-#         self.unc_var = cat_var
-
-#     @property
-#     def distrs(self):
-#         [label] = self.labels
-#         return {
-#         label : sp.stats.randint(low=0, high=len(self.cat_var))
-#             }
-
-#     def get_unc_var(self, idx):
-#         return self.cat_var[idx]
-#     pass
-
-
-# class UncVarCont(UncVar):
-
-#     def __init__(self, labels, cont_var, bound_dict=None, distr_dict=None):
-#         self.unc_var = cont_var
-#         self.labels = list(distr_dict.keys())
-
-#         if bound_dict is not None:
-#             if distr_dict() is None:
-#                 self.distrs = {
-#                     label: sp.stats.uniform(
-#                         bound_dict[label][0],
-#                         bound_dict[label][1]-bound_dict[label][0]
-#                         )
-#                     for label in labels
-#                     }
-
-#             else:
-#                 raise ValueError("Specify either bounds or distr_dict, not both")
-
-#         if distr_dict() is not None:
-#             if bound_dict is None:
-#                 self.distrs = distr_dict
-#             else:
-#                 raise ValueError("Specify either bounds or distr_dict, not both")
-
-
-#     def get_unc_var(self, *params):
-#         return self.unc_var(params)
-
-#     pass
-
-
-# class UncVarCatCont(UncVar):
-#     pass
-
-
-
-# impacts = []
-# dt_aai_freq = pd.DataFrame(columns=['aai_agg', 'freq_curve'])
-# dt_imp_map = pd.DataFrame(columns=['imp_map'])
-# print('----------  %s  started -------------' %haz_name)
-
-# for cnt, [h, x, G, v_half, vmin, k, m, n] in enumerate(param_values):
-
-#     #Set exposures, hazard, impact functions with parameters
-
-#     imp_fun_set = ImpactFuncSet()
-#     imp_fun_set.append(imp_fun_tc(G=G, v_half=v_half, vmin=vmin, k=k))
-#     exp = exp_dict[(int(m), int(n))].copy(deep=True)
-#     exp.value *= x
-#     haz.intensity.multiply(h)
-#     exp.assign_centroids(hazard=haz)
-
-#     #Compute and save impact
-#     imp = Impact()
-#     imp.calc(exp, imp_fun_set, haz, save_mat=False)
-#     impacts.append(imp)
-
-#     if cnt % 10 == 0:
-#         percent_done = cnt/len(param_values)*100
-#         print("\n\n\n %.2f done \n\n\n" %percent_done )
-
-# n_sig_dig = 16
-# rp = [1, 5, 10, 50, 100, 250]
-# dt_aai_freq.aai_agg = np.array([sig_dig(imp.aai_agg, n_sig_dig = n_sig_dig) for imp in impacts])
-# dt_aai_freq.freq_curve = [sig_dig_list(imp.calc_freq_curve(rp).impact, n_sig_dig = n_sig_dig) for imp in impacts]
-# dt_imp_map.imp_map = [sig_dig_list(imp.eai_exp, n_sig_dig = n_sig_dig) for imp in impacts]
-# dt_imp_map = dt_imp_map['imp_map'].apply(pd.Series)
-
-# filename= haz_name + "_aai_freq_1"
-# output_dir = os.path.join(DATA_DIR, expe, 'sampling')
-# abs_path = os.path.join(output_dir, filename)
-# dt_aai_freq.to_csv(abs_path + '.csv', mode='x')
-
-# filename= haz_name + "_imp_map_1"
-# output_dir = os.path.join(DATA_DIR, expe, 'sampling')
-# abs_path = os.path.join(output_dir, filename)
-# dt_imp_map.to_csv(abs_path + '.csv', mode='x')
-
+    raise NotImplementedError()
