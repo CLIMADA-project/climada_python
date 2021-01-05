@@ -682,8 +682,8 @@ def point_exposure_from_lines(gdf_lines, point_dist=5, value_method='fixed', met
     exp
     """
     
-    gdf_lines = interpolate_lines(gdf_lines, point_dist)
-    exp = Exposures(gdf_lines)
+    gdf_points = interpolate_lines(gdf_lines, point_dist)
+    exp = Exposures(gdf_points)
     if value_method == 'fixed':
         exp['value'] = metre_value*point_dist
     else:

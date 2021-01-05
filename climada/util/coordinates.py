@@ -33,6 +33,7 @@ import geopandas as gpd
 from iso3166 import countries as iso_cntry
 import numpy as np
 import pandas as pd
+import pyproj
 import rasterio
 import rasterio.crs
 import rasterio.features
@@ -286,6 +287,39 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
     return (dist, vtan) if log else dist
+
+def dist_great_circle_allgeoms(gdf):
+    """Calculate the great circle (geodesic / spherical) lengths along any 
+    (complicated) geometry object, based on the pyproj.Geod implementation.
+    
+    
+    Parameters
+    ----------
+    gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
+    
+    Returns
+    -------
+    series : a pandas series (column) with the great circle lengths of the 
+        objects in metres.
+    
+    See also
+    --------
+    * dist_approx() which also offers haversine distance calculation options
+     between specific points (not along any geometries however).
+    * interpolation.interpolate_lines()
+    
+    Note
+    ----
+    This implementation relies on non-projected crs only, which results in 
+    sea-level distances and hence a certain (minor) level of distortion; cf. 
+    https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
+    """
+    # convert to non-projected crs
+    if not equal_crs(gdf.crs, DEF_CRS):
+        gdf = gdf.to_crs(DEF_CRS)
+
+    return gdf.apply(lambda row:  pyproj.Geod(ellps='WGS84').geometry_length(
+                                  row.geometry), axis=1)
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.

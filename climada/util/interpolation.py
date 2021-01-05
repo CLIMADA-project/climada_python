@@ -28,13 +28,12 @@ import geopandas as gpd
 import logging
 import numpy as np
 from numba import jit
-import pyproj
 
 from shapely.geometry import MultiPoint
 from sklearn.neighbors import BallTree
 
-from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM, DEF_CRS
-from climada.util.coordinates import equal_crs
+from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
+from climada.util.coordinates import dist_great_circle_allgeoms
 
 LOGGER = logging.getLogger(__name__)
 
@@ -179,6 +178,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])
 
+
 def interpolate_lines(gdf_lines, point_dist=5):
     """ Convert a GeoDataframe with LineString geometries to 
     Point geometries, where Points are placed at a specified distance along the
@@ -193,34 +193,35 @@ def interpolate_lines(gdf_lines, point_dist=5):
     
     Returns
     -------
-    gdf with individual Point per row
+    gdf with individual Point per row, retaining all other column infos
+        belonging to its corresponding line
+        
+    See also
+    --------
+    * coordinates.dist_great_circle_allgeoms()
+    * entity.exposure.base.point_exposure_from_lines()
     """
-    
-    # read file, if necessary
+
     if not isinstance(gdf_lines, gpd.GeoDataFrame):
         gdf_lines = gpd.read_file(gdf_lines)
     
-    # calculate geodesic (great circle) length of the LineStrings in metres
-    if not equal_crs(gdf_lines.crs, DEF_CRS):
-        gdf_lines = gdf_lines.to_crs(DEF_CRS)
-    gdf_lines['length'] = gdf_lines.apply(
-        lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
-            row.geometry), axis=1)
+    gdf_lines['length'] = dist_great_circle_allgeoms(gdf_lines)
         
     gdf_lines.rename(columns={'geometry': 'geometry_line'}, inplace=True)
    
-    # create normalized distance-vector along line lengths (e.g. 0, 0.5, 1)
+    # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
     gdf_lines['distance_vector'] = gdf_lines.apply(
         lambda row: np.linspace(0, 1, num=int(np.ceil(row.length/
                                                       point_dist)+1)),
         axis=1)
     
-    # create points along the line according to relative distance_vector
+    # create MultiPoints along the line for every position in distance_vector
     gdf_lines['geometry'] = gdf_lines.apply(
         lambda row: MultiPoint(
             [row.geometry_line.interpolate(dist, normalized=True) 
              for dist in row.distance_vector]),
         axis=1)
     
+    # expand gdf from MultiPoint entries to single Points per row
     return gdf_lines.explode().drop(['geometry_line', 'distance_vector', 'length'], 
                                     axis=1)
