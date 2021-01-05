@@ -363,7 +363,7 @@ class LitPop(Exposures):
             plt.show()
 
 def _get_litpop_box(cut_bbox, resolution, return_coords=0,
-                    reference_year=2016, exponents=[1, 1]):
+                    reference_year=2016, exponents=None):
     """
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -389,6 +389,8 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
             form (lon, lat) with the coordinates falling into the cut_bbox are
             return along with the litpop_data (see above).
     """
+    if exponents is None:
+        exponents = [1, 1]
 
     nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year,
                                        resolution=resolution, return_coords=0)
@@ -408,7 +410,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
         return litpop_data, lon, lat
     return litpop_data
 
-def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
+def _LitPop_multiply(nightlights, gpw, exponents):
     """
     PURPOSE:
         Pixel-wise multiplication of lit (nightlights^exponents[0]) and pop
@@ -419,7 +421,7 @@ def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
         nightlights (SparseArray): gridded nightlights data
         gpw (SparseArray): gridded population data
         exponents (list of two integers): exponents for nightlights and
-            population data, default = [1, 1]
+            population data
     OUTPUT:
         litpop_data (dataframe): gridded resulting LitPop
     """
@@ -1202,10 +1204,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
 
 def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                  coords, resolution, adm1_scatter, conserve_cntrytotal=1,
-                 check_plot=1, masks_adm1=[], return_data=1):
-    # TODO: if a state/province has GSDP value, but no coordinates inside,
-#    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
-#    Potential fix: normalise the value in the end
+                 check_plot=1, masks_adm1=None, return_data=1):
     """Calculates the LitPop on admin1 level for provinces/states where such
         information is available (i.e. GDP is distributed on a subnational
         instead of a national level). Requires excel files in a subfolder
@@ -1239,6 +1238,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
             corresponds to the GDP multiplied by the GDP2Asset conversion
             factor.
     """
+# TODO: if a state/province has GSDP value, but no coordinates inside,
+#    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
+#    Potential fix: normalise the value in the end
     gsdp_data = _gsdp_read(curr_country, admin1_info)
     litpop_data = _normalise_litpop(litpop_data)
     if gsdp_data is not None:
@@ -1490,8 +1492,6 @@ def read_bm_file(bm_path, filename):
 
 def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
            **parameters):
-    """Potential TODO: put cutting before zooming (faster), but with expanding
-    bbox in order to preserve additional pixels for interpolation..."""
     """Reads data from NASA GeoTiff files and cuts out the data along a chosen
         bounding box. Call this after the functions
         nightlight.required_nl_files and nightlight.check_nl_local_file_exists
@@ -1538,6 +1538,9 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
         list with latitudinal infomation on the GPW data. Same
         dimensionality as tile_temp (only returned if return_coords=1)
     """
+    # Potential TODO: put cutting before zooming (faster), but with expanding
+    # bbox in order to preserve additional pixels for interpolation...
+    
     bm_path = parameters.get('file_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
     reference_year = parameters.get('reference_year', 30)
@@ -1554,8 +1557,8 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
     file_count = 0
     zoom_factor = 15 / resolution  # Orignal resolution is 15 arc-seconds
     for num_i, _ in enumerate(BM_FILENAMES[::2]):
-        """Due to concat, we have to anlayse the tiles in pairs otherwise the
-        data is concatenated in the wrong order"""
+        # Due to concat, we have to anlayse the tiles in pairs otherwise the
+        # data is concatenated in the wrong order
         arr1 = [None] * 2  # Prepopulate list
         for j in range(0, 2):
             # Loop which cycles through the two tiles in each "column"
