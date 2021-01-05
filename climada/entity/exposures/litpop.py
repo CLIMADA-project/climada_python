@@ -17,8 +17,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 import logging
 import time
-import os
 from sys import stdout
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from pandas_datareader import wb
@@ -37,7 +37,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
-from climada.util.constants import SYSTEM_DIR, DEF_CRS
+from climada.util.constants import SYSTEM_DIR, DEF_CRS, CONFIG
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 logging.root.setLevel(logging.DEBUG)
@@ -62,8 +62,7 @@ GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
 NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
-WORLD_BANK_INC_GRP = \
-"http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
+WORLD_BANK_INC_GRP = CONFIG.litpop.resources.world_bank_inc_group.str()
 """Income group historical data from World bank."""
 
 DEF_RES_NASA_KM = 0.5
@@ -1105,10 +1104,10 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
     else:
         try_ext.append('.xls')
         try_ext.append('.xlsx')
-    path_name = os.path.splitext(os.path.join(file_path, file_name))[0]
+    path_name = Path(file_path, file_name).stem
     for i in try_ext:
-        if os.path.isfile(os.path.join(file_path, path_name + i)) is True:
-            return os.path.join(file_path, path_name + i)
+        if Path(file_path, path_name + i).is_file():
+            return str(Path(file_path, path_name + i))
     return None
 
 def _compare_strings_nospecchars(str1, str2):
@@ -1479,8 +1478,8 @@ def read_bm_file(bm_path, filename):
         Additional info from which coordinates can be calculated.
     """
     try:
-        LOGGER.debug('Importing %s.', os.path.join(bm_path, filename))
-        curr_file = gdal.Open(os.path.join(bm_path, filename))
+        LOGGER.debug('Importing %s.', Path(bm_path, filename))
+        curr_file = gdal.Open(str(Path(bm_path, filename)))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1
