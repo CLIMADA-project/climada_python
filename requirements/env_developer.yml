@@ -6,5 +6,7 @@ dependencies:
   - mccabe=0.6.1
   - pylint=2.4.4
   - sphinx=2.0.1
+  - pip
   - pip:
     - coverage==4.5.3
+    - readthedocs-sphinx-ext==2.1.1
