@@ -25,6 +25,8 @@ import pandas as pd
 import numpy as np
 import logging
 from pathos import pools
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
@@ -109,8 +111,13 @@ class UncVar():
         None.
 
         """
-        raise NotImplementedError()
-        pass
+        nb_plots = len(self.distr_dict)
+        fig, ax = plt.subplots(ncols=nb_plots)
+        for ax, (distr_name, distr) in zip(ax, self.distr_dict.items()):
+            x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
+            ax.plot(x, distr.pdf(x), label=distr_name)
+            ax.legend()
+        return None
 
     def eval_unc_var(self, kwargs):
         """
