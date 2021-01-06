@@ -18,13 +18,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Exposures from MATLAB file.
 """
-import os
 import unittest
 import copy
 
+from climada import CONFIG
 from climada.entity.exposures.base import Exposures, DEF_VAR_MAT
 
-ENT_TEST_MAT = CURR_DIR = os.path.join(os.path.dirname(__file__), 'data/demo_today.mat')
+ENT_TEST_MAT = CURR_DIR = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the ExposuresMat class"""

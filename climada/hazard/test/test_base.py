@@ -964,7 +964,7 @@ class TestHDF5(unittest.TestCase):
 
     def test_write_read_pass(self):
         """Read a hazard mat file correctly."""
-        file_name = DATA_DIR.joinpath('test_haz.h5')
+        file_name = str(DATA_DIR.joinpath('test_haz.h5'))
 
         # Read demo excel file
         hazard = Hazard('TC')

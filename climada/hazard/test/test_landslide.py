@@ -82,7 +82,7 @@ class TestLandslideModule(unittest.TestCase):
     def test_get_raster_meta(self):
         empty_LS = Landslide()
         pixel_width, pixel_height = empty_LS._get_raster_meta(
-            path_sourcefile=DATA_DIR.joinpath('ls_pr_NGI_UNEP/ls_pr.tif'),
+            path_sourcefile=LS_FILE_DIR.joinpath('ls_pr_NGI_UNEP', 'ls_pr.tif'),
             window_array=[865, 840, 120, 120])
         self.assertTrue(math.isclose(pixel_width, -0.00833, rel_tol=1e-03))
         self.assertTrue(math.isclose(pixel_height, 0.00833, rel_tol=1e-03))

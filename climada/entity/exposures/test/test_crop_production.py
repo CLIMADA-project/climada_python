@@ -16,9 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Unit Tests on LitPop exposures.
 """
-import os
-import numpy as np
 import unittest
+import numpy as np
 from climada.entity.exposures.crop_production import CropProduction, normalize_with_fao_cp
 from climada.util.constants import DEMO_DIR
 
@@ -102,7 +101,7 @@ class TestCropProduction(unittest.TestCase):
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                           bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                           scenario='flexible', crop = 'mai', unit='t/y', irr='firr')
-        country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, exp_tot_production = \
+        country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, _exp_tot_production = \
              normalize_with_fao_cp(exp, exp, input_dir=INPUT_DIR,
                               yearrange=np.array([2009, 2018]), unit='t/y', return_data=True)
         self.assertAlmostEqual(ratio[2], 17.671166854032993)
