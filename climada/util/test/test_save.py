@@ -18,15 +18,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test save module.
 """
-import os
 import unittest
+from pathlib import Path
 
+from climada import CONFIG
 from climada.util.save import save, load
 
-from climada.util.config import CONFIG
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-
+DATA_DIR = CONFIG.util.test_data.str()
 IN_CONFIG = CONFIG.local_data.save_dir.str()
 
 class TestSave(unittest.TestCase):
@@ -44,7 +42,7 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         with self.assertLogs('climada.util.save', level='INFO') as cm:
             save(file_name, ent)
-        self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
+        self.assertTrue(Path(DATA_DIR, file_name).is_file())
         self.assertTrue((file_name in cm.output[0]) or
                         (file_name in cm.output[1]))
 
@@ -54,7 +52,7 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         save(file_name, ent)
         res = load(file_name)
-        self.assertTrue(os.path.isfile(os.path.join(DATA_DIR, file_name)))
+        self.assertTrue(Path(DATA_DIR, file_name).is_file())
         self.assertTrue('value' in res)
         self.assertTrue(res['value'] == ent['value'])
 

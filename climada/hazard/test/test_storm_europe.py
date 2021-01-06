@@ -19,18 +19,18 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test StormEurope class
 """
 
-import os
 import copy
 import unittest
 import datetime as dt
 import numpy as np
 from scipy import sparse
 
+from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = CONFIG.hazard.test_data.dir()
 
 class TestReader(unittest.TestCase):
     """Test loading functions from the StormEurope class"""
@@ -89,7 +89,7 @@ class TestReader(unittest.TestCase):
         var_names['col_name']['region_id'] = 'iso_n3'
         test_centroids = Centroids()
         test_centroids.read_excel(
-            os.path.join(DATA_DIR, 'fp_centroids-test.xls'), var_names=var_names)
+            DATA_DIR.joinpath('fp_centroids-test.xls'), var_names=var_names)
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
