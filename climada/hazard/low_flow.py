@@ -23,9 +23,9 @@ WORK IN PROGRESS
 __all__ = ['LowFlow']
 
 import logging
-import os
 import copy
 import datetime as dt
+from pathlib import Path
 import cftime
 import xarray as xr
 import geopandas as gpd
@@ -202,7 +202,7 @@ class LowFlow(Hazard):
             NameError
         """
         if input_dir:
-            if not os.path.exists(input_dir):
+            if not Path(input_dir).is_dir():
                 LOGGER.warning('Input directory %s does not exist', input_dir)
                 raise NameError
         else:
@@ -683,16 +683,15 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         else:
             bias_corr = 'ewembi'
 
-        filename = os.path.join(input_dir, \
-                                f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc'
-                                )
-        if not os.path.isfile(filename):
-            LOGGER.error('Netcdf file not found: %s', filename)
+        filepath = Path(input_dir,
+            f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc')
+        if not filepath.is_file():
+            LOGGER.error('Netcdf file not found: %s', filepath)
         if first_file:
-            dis_xarray = _read_single_nc(filename, yearrange, bbox)
+            dis_xarray = _read_single_nc(filepath, yearrange, bbox)
             first_file = False
         else:
-            dis_xarray = dis_xarray.combine_first(_read_single_nc(filename, yearrange, bbox))
+            dis_xarray = dis_xarray.combine_first(_read_single_nc(filepath, yearrange, bbox))
 
     # set negative discharge values to zero (debugging of input data):
     dis_xarray.dis.values[dis_xarray.dis.values < 0] = 0
@@ -703,7 +702,7 @@ def _read_single_nc(filename, yearrange, bbox):
 
     Parameters:
         filename (str or pathlib.Path): full path of input netcdf file
-        yearrange: (tuple): year range to be extracted from file
+        yearrange (tuple): year range to be extracted from file
         bbox (tuple of float): geographical bounding box in the form:
             (lon_min, lat_min, lon_max, lat_max)
 
@@ -757,7 +756,7 @@ def _xarray_reduce(dis_xarray, fun=None, percentile=None):
 def _split_bbox(bbox, width=BBOX_WIDTH):
     """split bounding box into squares, return new set of bounding boxes
     Note: Could this function be a candidate for climada.util in the future?
-    
+
     Parameters:
         bbox (tuple of float): geographical bounding box in the form:
             (lon_min, lat_min, lon_max, lat_max)
