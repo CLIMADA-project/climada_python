@@ -22,14 +22,13 @@ Define RiverFlood class.
 __all__ = ['RiverFlood']
 
 import logging
-import os
+import datetime as dt
+from pathlib import Path
 import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
-import datetime as dt
-from datetime import date
 from rasterio.warp import Resampling
 import copy
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
@@ -97,10 +96,10 @@ class RiverFlood(Hazard):
         if frc_path is None:
             LOGGER.error('No flood-fraction-path set')
             raise NameError
-        if not os.path.exists(dph_path):
+        if not Path(dph_path).exists():
             LOGGER.error('Invalid flood-file path %s', dph_path)
             raise NameError
-        if not os.path.exists(frc_path):
+        if not Path(frc_path).exists():
             LOGGER.error('Invalid flood-file path %s', frc_path)
             raise NameError
 
@@ -240,7 +239,7 @@ class RiverFlood(Hazard):
         Raises:
             NameError
         """
-        if not os.path.exists(fld_trend_path):
+        if not Path(fld_trend_path).exists():
             LOGGER.error('Invalid ReturnLevel-file path %s', fld_trend_path)
             raise NameError
         else:
@@ -275,7 +274,7 @@ class RiverFlood(Hazard):
             NameErroris function
         """
 
-        if not os.path.exists(frc_path):
+        if not Path(frc_path).exists():
             LOGGER.error('Invalid ReturnLevel-file path %s', frc_path)
             raise NameError
         else:
@@ -299,7 +298,7 @@ class RiverFlood(Hazard):
         """
         self.centroids.set_area_pixel()
         area_centr = self.centroids.area_pixel
-        event_years = np.array([date.fromordinal(self.date[i]).year
+        event_years = np.array([dt.date.fromordinal(self.date[i]).year
                                 for i in range(len(self.date))])
         years = np.unique(event_years)
         year_ev_mk = self._annual_event_mask(event_years, years)
