@@ -33,7 +33,7 @@ class TestReader(unittest.TestCase):
         """Read one single excel file"""
         # Read demo excel file
         expo = Exposures()
-        expo.read_mat(ENT_TEST_MAT)
+        expo.read_mat(str(ENT_TEST_MAT))
 
         # Check results
         n_expos = 50
@@ -79,7 +79,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')
-        self.assertEqual(expo.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(expo.tag.file_name, str(ENT_TEST_MAT))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
@@ -90,7 +90,7 @@ class TestObligatories(unittest.TestCase):
         new_var_names['var_name']['val'] = 'no valid value'
         exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
@@ -98,7 +98,7 @@ class TestObligatories(unittest.TestCase):
         new_var_names['var_name']['imp'] = 'no valid value'
         exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
@@ -106,13 +106,13 @@ class TestObligatories(unittest.TestCase):
         new_var_names['var_name']['lat'] = 'no valid Latitude'
         exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         new_var_names['var_name']['lat'] = 'nLatitude'
         new_var_names['var_name']['lon'] = 'no valid Longitude'
         exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
 class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
@@ -122,7 +122,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['cat'] = 'no valid category'
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         # Check results
         self.assertTrue('category_id' not in exp)
@@ -132,7 +132,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['reg'] = 'no valid region'
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         # Check results
         self.assertTrue('region_id' not in exp)
@@ -142,7 +142,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['uni'] = 'no valid unit'
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         # Check results
         self.assertEqual('USD', exp.value_unit)
@@ -152,7 +152,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['ass'] = 'no valid assign'
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         # Check results
         self.assertTrue('centr_' not in exp)
@@ -162,7 +162,7 @@ class TestOptionals(unittest.TestCase):
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['ref'] = 'no valid ref'
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp.read_mat(str(ENT_TEST_MAT), var_names=new_var_names)
 
         # Check results
         self.assertEqual(2018, exp.ref_year)

@@ -968,7 +968,7 @@ class TestHDF5(unittest.TestCase):
 
         # Read demo excel file
         hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard.read_mat(str(HAZ_TEST_MAT))
         hazard.event_name = list(map(str, hazard.event_name))
         for todense_flag in [False, True]:
             if todense_flag:

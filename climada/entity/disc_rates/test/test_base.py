@@ -223,7 +223,7 @@ class TestReaderMat(unittest.TestCase):
         # Read demo excel file
         disc_rate = DiscRates()
         description = 'One single file.'
-        disc_rate.read_mat(ENT_TEST_MAT, description)
+        disc_rate.read_mat(str(ENT_TEST_MAT), description)
 
         # Check results
         n_rates = 51
