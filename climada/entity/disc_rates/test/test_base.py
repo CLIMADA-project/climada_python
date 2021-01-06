@@ -238,7 +238,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, str(ENT_TEST_MAT))
+        self.assertEqual(disc_rate.tag.file_name, ENT_TEST_MAT)
         self.assertEqual(disc_rate.tag.description, description)
 
 
