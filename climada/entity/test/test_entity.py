@@ -59,11 +59,11 @@ class TestReader(unittest.TestCase):
     def test_read_mat(self):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity()
-        entity_mat.read_mat(str(ENT_TEST_MAT))
-        self.assertEqual(entity_mat.exposures.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(entity_mat.disc_rates.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(entity_mat.measures.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(entity_mat.impact_funcs.tag.file_name, str(ENT_TEST_MAT))
+        entity_mat.read_mat(ENT_TEST_MAT)
+        self.assertEqual(entity_mat.exposures.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.disc_rates.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.measures.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.impact_funcs.tag.file_name, ENT_TEST_MAT)
 
     def test_read_excel(self):
         """Read entity from an xls file following the template."""

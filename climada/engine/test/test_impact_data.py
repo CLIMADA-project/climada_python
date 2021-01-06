@@ -38,7 +38,7 @@ class TestEmdatImport(unittest.TestCase):
         """load selected sub sample from CSV, return DataFrame.
             here: from 2018 EM-DAT version to 2018 target_version"""
 
-        df = im_d.clean_emdat_df(str(EMDAT_TEST_CSV), countries=['Bangladesh'], hazard='TC',
+        df = im_d.clean_emdat_df(EMDAT_TEST_CSV, countries=['Bangladesh'], hazard='TC',
                                  year_range=[2000, 2017], target_version=2018)
         self.assertIn('ISO', df.columns)
         self.assertIn('Year', df.columns)
@@ -58,7 +58,7 @@ class TestEmdatImport(unittest.TestCase):
     def test_emdat_df_2018_to_2020_load(self):
         """load selected sub sample from CSV, return DataFrame
                 here: from 2018 EM-DAT version to 2020 target_version"""
-        df = im_d.clean_emdat_df(str(EMDAT_TEST_CSV), countries=['USA'], hazard='TC',
+        df = im_d.clean_emdat_df(EMDAT_TEST_CSV, countries=['USA'], hazard='TC',
                                  year_range=[2000, 2017], target_version=2020)
         self.assertIn('ISO', df.columns)
         self.assertIn('Year', df.columns)
@@ -77,7 +77,7 @@ class TestEmdatImport(unittest.TestCase):
     def test_emdat_df_2020_load(self):
         """load selected sub sample from CSV, return DataFrame
                 here: from 2020 EM-DAT version to 2020 target_version"""
-        df = im_d.clean_emdat_df(str(EMDAT_2020_CSV_DEMO), countries=['THA', 'Viet Nam'], hazard='TC',
+        df = im_d.clean_emdat_df(EMDAT_2020_CSV_DEMO, countries=['THA', 'Viet Nam'], hazard='TC',
                                  year_range=[2005, 2008], target_version=2020)
         self.assertIn('ISO', df.columns)
         self.assertIn('Year', df.columns)
@@ -112,7 +112,7 @@ class TestGDPScaling(unittest.TestCase):
 class TestEmdatProcessing(unittest.TestCase):
     def test_emdat_impact_event_2018(self):
         """test emdat_impact_event event impact data extraction, version 2018"""
-        df = im_d.emdat_impact_event(str(EMDAT_TEST_CSV), countries=['Bangladesh', 'USA'],
+        df = im_d.emdat_impact_event(EMDAT_TEST_CSV, countries=['Bangladesh', 'USA'],
                                      hazard='Drought', year_range=[2015, 2017],
                                      reference_year=2017, version=2018)
 
@@ -134,7 +134,7 @@ class TestEmdatProcessing(unittest.TestCase):
 
     def test_emdat_impact_event_2020(self):
         """test emdat_impact_event event impact data extraction, version 2020"""
-        df = im_d.emdat_impact_event(str(EMDAT_TEST_CSV), countries=['Bangladesh', 'USA'],
+        df = im_d.emdat_impact_event(EMDAT_TEST_CSV, countries=['Bangladesh', 'USA'],
                                      hazard='Drought', year_range=[2015, 2017],
                                      reference_year=2000, version=2020)
 
@@ -156,7 +156,7 @@ class TestEmdatProcessing(unittest.TestCase):
 
     def test_emdat_affected_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction"""
-        df = im_d.emdat_impact_yearlysum(str(EMDAT_TEST_CSV), countries=['Bangladesh', 'USA'],
+        df = im_d.emdat_impact_yearlysum(EMDAT_TEST_CSV, countries=['Bangladesh', 'USA'],
                                          hazard='Flood', year_range=(2015, 2017),
                                          reference_year=None, imp_str="Total Affected")
 
@@ -170,7 +170,7 @@ class TestEmdatProcessing(unittest.TestCase):
 
     def test_emdat_damage_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction with scaling"""
-        df = im_d.emdat_impact_yearlysum(str(EMDAT_TEST_CSV), countries=['Bangladesh', 'USA'],
+        df = im_d.emdat_impact_yearlysum(EMDAT_TEST_CSV, countries=['Bangladesh', 'USA'],
                                          hazard='Flood', year_range=(2015, 2017),
                                          reference_year=2000)
 
@@ -184,7 +184,7 @@ class TestEmdatProcessing(unittest.TestCase):
 
     def test_emdat_countries_by_hazard_2020_pass(self):
         """test to get list of countries impacted by tropical cyclones from 2000 to 2019"""
-        iso3_codes, country_names = im_d.emdat_countries_by_hazard(str(EMDAT_2020_CSV_DEMO),
+        iso3_codes, country_names = im_d.emdat_countries_by_hazard(EMDAT_2020_CSV_DEMO,
                                                                    hazard='TC',
                                                                    year_range=(2000, 2019))
 
@@ -205,9 +205,9 @@ class TestEmdatToImpact(unittest.TestCase):
         # =====================================================================
 
         # file 1: version 2020
-        _impact_emdat2020, countries2020 = im_d.emdat_to_impact(str(EMDAT_2020_CSV_DEMO), 'TC')
+        _impact_emdat2020, countries2020 = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC')
         # file 2: version 2018
-        impact_emdat, countries = im_d.emdat_to_impact(str(EMDAT_TEST_CSV), 'TC')
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV, 'TC')
 
         self.assertEqual(142, impact_emdat.event_id.size)
         self.assertEqual(141, impact_emdat.event_id[-1])
@@ -228,7 +228,7 @@ class TestEmdatToImpact(unittest.TestCase):
 
     def test_emdat_to_impact_scale(self):
         """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""
-        impact_emdat = im_d.emdat_to_impact(str(EMDAT_TEST_CSV), 'DR',
+        impact_emdat = im_d.emdat_to_impact(EMDAT_TEST_CSV, 'DR',
                                             year_range=[2010, 2016], countries=['USA'],
                                             hazard_type_emdat='Drought',
                                             reference_year=2016)[0]
@@ -246,7 +246,7 @@ class TestEmdatToImpact(unittest.TestCase):
 
     def test_emdat_to_impact_fakedata(self):
         """test import TC EM-DAT to Impact() for all countries in CSV"""
-        impact_emdat, countries = im_d.emdat_to_impact(str(EMDAT_TEST_CSV_FAKE), 'FL',
+        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV_FAKE, 'FL',
                                                        hazard_type_emdat='Flood')
         self.assertEqual(6, impact_emdat.event_id.size)
         self.assertEqual(5, impact_emdat.event_id[-1])
@@ -264,12 +264,12 @@ class TestEmdatToImpact(unittest.TestCase):
 
     def test_emdat_to_impact_2020format(self):
         """test import TC EM-DAT to Impact() from new 2020 EMDAT format CSV"""
-        df1 = im_d.clean_emdat_df(str(EMDAT_2020_CSV_DEMO), hazard='TC',
+        df1 = im_d.clean_emdat_df(EMDAT_2020_CSV_DEMO, hazard='TC',
                                   countries='PHL', year_range=(2013, 2013))
-        df2 = im_d.emdat_impact_event(str(EMDAT_2020_CSV_DEMO), countries='PHL', hazard='TC',
+        df2 = im_d.emdat_impact_event(EMDAT_2020_CSV_DEMO, countries='PHL', hazard='TC',
                                       year_range=(2013, 2013), reference_year=None,
                                       imp_str='Total Affected')
-        impact_emdat, _countries = im_d.emdat_to_impact(str(EMDAT_2020_CSV_DEMO), 'TC',
+        impact_emdat, _countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC',
                                                        countries='PHL',
                                                        year_range=(2013, 2013),
                                                        imp_str="Total Affected")
