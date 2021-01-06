@@ -18,10 +18,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Entity class.
 """
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.disc_rates.base import DiscRates
@@ -29,8 +29,8 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_TEMPLATE_XLS
 
-ENT_TEST_MAT = os.path.join(os.path.dirname(__file__), 
-                            '../exposures/test/data/demo_today.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
+
 
 class TestReader(unittest.TestCase):
     """Test reader functionality of the Entity class"""

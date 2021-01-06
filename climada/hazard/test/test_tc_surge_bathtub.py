@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_surge_bathtub module
 """
 
-import os
 import tempfile
 import unittest
 
@@ -58,7 +57,7 @@ class tmp_artifical_topo(object):
         """Write artifical elevation data to a temporary raster file and provide path as string."""
         elevation = -self.dist_coast / 168
         elevation = np.fmax(-1, elevation).reshape(self.shape)
-        self.tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        self.tmpfile = tempfile.NamedTemporaryFile()
         topo_path = self.tmpfile.name
         dst_meta = {
             'driver': 'GTiff',
@@ -79,7 +78,6 @@ class tmp_artifical_topo(object):
     def __exit__(self, *args, **kwargs):
         """Close and remove temporary raster file."""
         self.tmpfile.close()
-        os.remove(self.tmpfile.name)
 
 
 class TestTCSurgeBathtub(unittest.TestCase):

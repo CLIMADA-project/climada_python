@@ -11,10 +11,10 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
-import os
 import time
 import logging
 from functools import partial
+from pathlib import Path
 
 #matplotlib.use('Qt5Agg', force=True)
 import matplotlib.pyplot as plt
@@ -32,6 +32,7 @@ import overpy
 from climada.entity import Exposures
 from climada.entity.exposures.litpop import LitPop
 
+LOGGER = logging.getLogger(__name__)
 
 def _insistent_osm_api_query(query_clause, read_chunk_size=100000, end_of_patience=127):
     """Runs a single Overpass API query through overpy.Overpass.query.
@@ -140,12 +141,14 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
 
     gdf_poly = geopandas.read_file(shapeout_poly)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_poly_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        Path(save_path, 
+            str(item) + '_poly_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
     gdf_line = geopandas.read_file(shapeout_line)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_line_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        Path(save_path,
+            str(item) + '_line_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
 
     # add buffer to the lines (0.000045° are ~5m)
     for geom in gdf_line.geometry:
@@ -228,8 +231,9 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
             output.write({'geometry': geom, 'properties': prop1})
     gdf_multi = geopandas.read_file(shapeout_multi)  # save_path + '/' + shapeout_multi)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        Path(save_path,
+            str(item) + '_multi_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
     gdf_all = gdf_all.append(gdf_multi, sort=True)
 
     print('Combined all results for %s to one GeoDataFrame: done' % item)
@@ -265,7 +269,7 @@ def _combine_dfs_osm(types, save_path, bbox):
 
     return OSM_features_gdf_combined
 
-def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
+def get_features_OSM(bbox, types, save_path=None, check_plot=1):
     """
     Get shapes from all types of objects that are available on Open Street Map via an API query
     and save them as geodataframe.
@@ -295,6 +299,8 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
                                       'landuse=grass', 'wetland'}, \
                                       save_path = save_path, check_plot=1)
     """
+    if save_path is None:
+        save_path = Path.cwd()
     for item in types:
         # API Queries for relations, nodes and ways
         print('Querying Relations, Nodes and Ways for %s...' % item)
@@ -339,7 +345,7 @@ def _makeUnion(gdf):
     Low_Value_Union = unary_union([union1, union2])
     return Low_Value_Union
 
-def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plot=1):
+def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
     """
     In case low-value features were queried with get_features_OSM(),
     calculate the "counter-shape" representig high value area for a given bounding box.
@@ -359,7 +365,8 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
                                     Low_Value_gdf = save_path+'/Low_Value_gdf_combined_47_8.shp')
     important: Use same bbox and save_path as for get_features_OSM().
     """
-
+    if save_path is None:
+        save_path = Path.cwd()
     Outer_Poly = geometry.Polygon([(bbox[1], bbox[2]), (bbox[1], bbox[0]),
                                    (bbox[3], bbox[0]), (bbox[3], bbox[2])])
 
@@ -485,7 +492,7 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     return exp_sub_high
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
-                          save_path=os.getcwd(), check_plot=1, **kwargs):
+                          save_path=None, check_plot=1, **kwargs):
     """
     Generate climada-compatible exposure by downloading LitPop exposure for a bounding box,
     corrected for centroids which lie inside a certain high-value multipolygon area
@@ -510,15 +517,16 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
                           save_path + '/High_Value_Area_47_8.shp' ,\
                           save_path = save_path)
     """
+    if save_path is None:
+        save_path = Path.cwd()
     if highValueArea is None:
         try:
-            High_Value_Area_gdf = \
-            geopandas.read_file(os.getcwd() + '/High_Value_Area_' + str(int(bbox[0])) + '_' +
-                                str(int(bbox[1])) + ".shp")
+            filepath = str(Path.cwd().joinpath(
+                'High_Value_Area_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp"))
+            High_Value_Area_gdf = geopandas.read_file(filepath)
         except:
-            print('No file found of form %s. Please add or specify path.'
-                  % (os.getcwd() + 'High_Value_Area_' + str(int(bbox[0])) + '_' +
-                     str(int(bbox[1])) + ".shp"))
+            LOGGER.error('No file found of form %s. Please add or specify path.', filepath)
+            raise
     else:
         High_Value_Area_gdf = geopandas.read_file(highValueArea)
 
@@ -613,7 +621,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     return High_Value_Area_gdf
 
 def make_osmexposure(highValueArea, mode="default", country=None,
-                     save_path=os.getcwd(), check_plot=1, **kwargs):
+                     save_path=None, check_plot=1, **kwargs):
     """
     Generate climada-compatiple entity by assigning values to midpoints of
     individual house shapes from OSM query, according to surface area and country.
@@ -637,6 +645,8 @@ def make_osmexposure(highValueArea, mode="default", country=None,
         make_osmexposure(save_path + '/OSM_features_47_8.shp',
                          mode="default", save_path = save_path, check_plot=1)
     """
+    if save_path is None:
+        save_path = Path.cwd()
     High_Value_Area_gdf = _get_midpoints(highValueArea)
 
     High_Value_Area_gdf = _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs)

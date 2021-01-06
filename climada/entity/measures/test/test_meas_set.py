@@ -18,17 +18,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test MeasureSet and Measure classes.
 """
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.measures.base import Measure
 from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
-                            '../../exposures/test/data/demo_today.mat')
+DATA_DIR = CONFIG.measures.test_data.dir()
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -563,7 +562,7 @@ class TestWriter(unittest.TestCase):
         meas_set.append(act_11)
         meas_set.append(act_2)
 
-        file_name = os.path.join(DATA_DIR, 'test_meas.xlsx')
+        file_name = DATA_DIR.joinpath('test_meas.xlsx')
         meas_set.write_excel(file_name)
 
         meas_read = MeasureSet()

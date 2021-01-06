@@ -640,7 +640,7 @@ class TestReader(unittest.TestCase):
 
     def test_write_read_raster_h5(self):
         """Write and read hdf5 format"""
-        file_name = DATA_DIR.joinpath('test_centr.h5')
+        file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
         centr = Centroids()
         xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 10, 5, -0.5, 0.2, 20, 25
@@ -663,7 +663,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue(equal_crs(centr_read.meta['crs'], centr.meta['crs']))
 
     def test_write_read_points_h5(self):
-        file_name = DATA_DIR.joinpath('test_centr.h5')
+        file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
         centr = Centroids()
         centr = Centroids()

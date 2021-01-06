@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test low flow module.
 """
-import os
 import unittest
 import numpy as np
 import pandas as pd
