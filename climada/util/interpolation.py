@@ -239,8 +239,8 @@ def interpolate_polygons(gdf_poly, area_point):
     
     Returns
     -------
-    (gpd.GeoDataframe) of same length as gdf_poly, with lat/lon pairs
-        for each initial polygon, representing the interpolated centroids
+    (gpd.GeoDataFrame) with individual Point per row, retaining all other column infos
+        belonging to its corresponding polygon
     """
     
     metre_dist = math.sqrt(area_point)
@@ -263,25 +263,31 @@ def interpolate_polygons(gdf_poly, area_point):
                                       gdf_poly.geometry.bounds.maxy)/
                                   gdf_poly['degree_dist'])
     
-    # make grid
-    lons_lats = gdf_poly.apply(lambda row: raster_to_meshgrid(
+    # make grid for each polygon-bbox
+    points = gdf_poly.apply(lambda row: raster_to_meshgrid(
         row.trans, row.width, row.height), axis=1)
-    
-    lons_lats = pd.DataFrame(lons_lats.tolist(), columns=['lon', 'lat'])
-    lons_lats['lon'] = lons_lats.apply(lambda row: row.lon.flatten(), axis=1)
-    lons_lats['lat'] = lons_lats.apply(lambda row: row.lat.flatten(), axis=1)
+    points = pd.DataFrame(points.tolist(), columns=['lon', 'lat'])
+    for axis in ['lon', 'lat']:
+        points[axis] = points.apply(lambda row: row[axis].flatten(), axis=1)
     
     # filter only centroids in actual polygons
     for i, polygon in enumerate(gdf_poly.geometry):
-        in_geom = coord_on_land(lat=lons_lats['lat'].iloc[i], 
-                                lon=lons_lats['lon'].iloc[i],
+        in_geom = coord_on_land(lat=points['lat'].iloc[i], 
+                                lon=points['lon'].iloc[i],
                                 land_geom=polygon)
-        lons_lats['lat'].iloc[i] = lons_lats['lat'].iloc[i][in_geom]
-        lons_lats['lon'].iloc[i] = lons_lats['lon'].iloc[i][in_geom]
-        #TODO: set MultiPoints and explode gdf analogously to interpolate_lines
-        # df_geom.iloc[i] = gpd.points_from_xy(lons_lats['lon'].iloc[i],
-        #   lons_lats['lat'].iloc[i])
+        for axis in ['lon', 'lat']:
+            points[axis].iloc[i] = points[axis].iloc[i][in_geom]
+    
+    points['geometry'] = points.apply(lambda row: 
+                                      MultiPoint([(x, y) for x, y 
+                                                  in zip(row.lon, row.lat)]),
+                                      axis=1)
         
-    return gpd.GeoDataFrame(lons_lats)
+    points = pd.merge(points.drop(['lat', 'lon'], axis=1), 
+                      gdf_poly.drop(['geometry', 'trans', 'width', 'height', 
+                                     'degree_dist'], axis=1),
+                      left_index=True, right_index=True)
+
+    return gpd.GeoDataFrame(points).explode()
 
 
