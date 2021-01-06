@@ -22,7 +22,7 @@ Define Tag class.
 __all__ = ['Tag']
 
 import logging
-import os
+from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,10 +83,12 @@ class Tag(object):
     def join_file_names(self):
         """Get a string with the joined file names."""
         if not isinstance(self.file_name, list):
-            join_file = os.path.splitext(os.path.basename(self.file_name))[0]
+            join_file = Path(self.file_name).stem
         else:
-            join_file = ' + '.join([os.path.splitext(
-                os.path.basename(file))[0] for file in self.file_name])
+            join_file = ' + '.join([
+                Path(single_name).stem
+                for single_name in self.file_name
+            ])
         return join_file
 
     def join_descriptions(self):

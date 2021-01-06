@@ -23,6 +23,7 @@ __all__ = ['RiverFlood']
 
 import logging
 import datetime as dt
+import copy
 from pathlib import Path
 import numpy as np
 import scipy as sp
@@ -30,7 +31,6 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 from rasterio.warp import Resampling
-import copy
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
 from climada.util.coordinates import get_region_gridpoints,\
                                      region2isos, country_iso2natid
@@ -72,7 +72,7 @@ class RiverFlood(Hazard):
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
                     centroids=None, countries=None, reg=None, shape=None, ISINatIDGrid=False,
-                    years=[2000]):
+                    years=None):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
             dph_path (string): Flood file to read (depth)
@@ -90,6 +90,8 @@ class RiverFlood(Hazard):
         raises:
             NameError
         """
+        if years is None:
+            years = [2000]
         if dph_path is None:
             LOGGER.error('No flood-depth-path set')
             raise NameError
@@ -172,12 +174,12 @@ class RiverFlood(Hazard):
 
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
-            """TODO: implement case when meta or regulargrid is defined
-                     centroids.meta or grid_is_regular(centroidsxarray)[0]:
-                     centroids>flood --> error
-                     reprojection, resampling.average (centroids< flood)
-                     (transform)
-                     reprojection change resampling"""
+            #TODO: implement case when meta or regulargrid is defined
+            #      centroids.meta or grid_is_regular(centroidsxarray)[0]:
+            #      centroids>flood --> error
+            #      reprojection, resampling.average (centroids< flood)
+            #      (transform)
+            #      reprojection change resampling"""
             # else:
             if centroids.meta:
                 centroids.set_meta_to_lat_lon()
@@ -324,8 +326,8 @@ class RiverFlood(Hazard):
             bool array (columns contain events, rows contain years)
         """
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
-        for year_ind in range(len(years)):
-            events = np.where(event_years == years[year_ind])[0]
+        for year_ind, year in enumerate(years):
+            events = np.where(event_years == year)[0]
             event_mask[year_ind, events] = True
         return event_mask
 
@@ -343,7 +345,7 @@ class RiverFlood(Hazard):
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
     @staticmethod
-    def _select_exact_area(countries=[], reg=[]):
+    def _select_exact_area(countries=None, reg=None):
         """Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
         if only reg is given, the whole region is cut.
@@ -361,7 +363,7 @@ class RiverFlood(Hazard):
         if reg:
             country_isos = region2isos(reg)
         else:
-            country_isos = countries
+            country_isos = countries if countries else []
 
         natIDs = country_iso2natid(country_isos)
 
