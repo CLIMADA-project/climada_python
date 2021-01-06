@@ -435,7 +435,7 @@ class TestReaderMat(unittest.TestCase):
         # Read demo mat file
         imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read_mat(ENT_TEST_MAT, description)
+        imp_funcs.read_mat(str(ENT_TEST_MAT), description)
 
         # Check results
         n_funcs = 2
@@ -501,7 +501,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(imp_funcs.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(imp_funcs.tag.description, description)
 
 class TestReaderExcel(unittest.TestCase):
