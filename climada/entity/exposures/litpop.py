@@ -1540,7 +1540,7 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
     """
     # Potential TODO: put cutting before zooming (faster), but with expanding
     # bbox in order to preserve additional pixels for interpolation...
-    
+
     bm_path = parameters.get('file_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
     reference_year = parameters.get('reference_year', 30)
