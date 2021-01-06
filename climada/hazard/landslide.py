@@ -80,7 +80,7 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=Non
     # the daily one is currently not producing any output
     if save_path is None:
         save_path = CONFIG.hazard.landslide.local_data.dir()
-    
+
     if tif_type == "daily":
         if starttime > endtime:
             LOGGER.error("Start date must lie before end date. Please change")
