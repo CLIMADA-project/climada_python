@@ -161,7 +161,7 @@ def lon_bounds(lon, buffer=0.0):
     Usually, an application of this function is followed by a renormalization of longitudinal
     values around the longitudinal middle value:
 
-    >>> bounds = latlon_bounds(lat, lon)
+    >>> bounds = lon_bounds(lon)
     >>> lon_mid = 0.5 * (bounds[0] + bounds[2])
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
@@ -258,9 +258,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": equirectangular; very fast, good only at small distances.
-        * "geosphere": spherical approximation, slower, but much higher accuracy.
-        Default: "equirect".
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
+          distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+        Note that ellipsoidal distances would be even more accurate, but are currently not
+        implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
         * "km": distance in km.
@@ -288,17 +290,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            lon_normalize(lon1)
-            lon_normalize(lon2)
-        d_lat = lat2[:, None] - lat1[:, :, None]
-        d_lon = lon2[:, None] - lon1[:, :, None]
-        fact1 = np.heaviside(d_lon - 180, 0)
-        fact2 = np.heaviside(-d_lon - 180, 0)
-        d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
-        if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            lon_normalize(lon1, center=mid_lon)
+            lon_normalize(lon2, center=mid_lon)
+        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
+                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        fact1 = np.heaviside(vtan[..., 1] - 180, 0)
+        fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
+        vtan[..., 1] -= (fact1 - fact2) * 360
+        vtan[..., 1] *= np.cos(np.radians(lat1[:, :, None]))
+        vtan *= unit_factor
+        # faster version of `dist = np.linalg.norm(vtan, axis=-1)`
+        dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
