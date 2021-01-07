@@ -19,12 +19,14 @@ Integration Test for open_street_map.py and 3 time consuming unit tests
 
 import math
 import unittest
-from climada.entity import Exposures
-from climada.entity.exposures import open_street_map as OSM
-import os
 import random
 import geopandas
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+from climada import CONFIG
+from climada.entity import Exposures
+from climada.entity.exposures import open_street_map as OSM
+
+DATA_DIR = CONFIG.test_data.dir()
 
 class TestOpenStreetMapModule(unittest.TestCase):
     def test_get_features_osm(self):
@@ -40,11 +42,8 @@ class TestOpenStreetMapModule(unittest.TestCase):
 
     def test_get_highValueArea(self):
         """test get_highValueArea"""
-        Low_Value_gdf_47_8 = OSM.get_features_OSM([47.2, 8.0, 47.3, 8.07],
-                                                  {'waterway', 'landuse=forest'},
-                                                  DATA_DIR, check_plot=0)
         High_Value_gdf_47_8 = OSM.get_highValueArea([47.2, 8.0, 47.3, 8.07], DATA_DIR,
-                                                    DATA_DIR + '/OSM_features_47_8.shp',
+                                                    DATA_DIR.joinpath('OSM_features_47_8.shp'),
                                                     check_plot=0)
         self.assertTrue(math.isclose(47.2, High_Value_gdf_47_8.bounds.miny, rel_tol=0.05))
         self.assertTrue(math.isclose(8.07, High_Value_gdf_47_8.bounds.maxx, rel_tol=0.05))
@@ -55,7 +54,7 @@ class TestOpenStreetMapModule(unittest.TestCase):
         for mode in ['proportional', 'nearest', 'even']:
             exposure_high_47_8 = OSM.get_osmstencil_litpop(
                 [47.2, 8.0, 47.3, 8.07], 'CHE', mode,
-                os.path.join(DATA_DIR, 'High_Value_Area_47_8.shp'),
+                DATA_DIR.joinpath('High_Value_Area_47_8.shp'),
                 DATA_DIR, check_plot=0)
             self.assertIsInstance(exposure_high_47_8, Exposures)
             self.assertEqual(len(exposure_high_47_8.columns), 8)
@@ -67,7 +66,7 @@ class TestOpenStreetMapModule(unittest.TestCase):
         """test for make_osmexposure"""
         # With default 5400 Chf / m2 values
         buildings_47_8_default = OSM.make_osmexposure(
-            os.path.join(DATA_DIR, 'buildings_47_8.shp'),
+            DATA_DIR.joinpath('buildings_47_8.shp'),
             mode='default', save_path=DATA_DIR, check_plot=0)
         self.assertIsInstance(buildings_47_8_default, Exposures)
         self.assertEqual(len(buildings_47_8_default.columns), 12)
@@ -84,7 +83,7 @@ class TestOpenStreetMapModule(unittest.TestCase):
             0)
 
         # With LitPop values
-        buildings_47_8_LitPop = OSM.make_osmexposure(os.path.join(DATA_DIR, 'buildings_47_8.shp'),
+        buildings_47_8_LitPop = OSM.make_osmexposure(DATA_DIR.joinpath('buildings_47_8.shp'),
                                                      country='CHE', mode="LitPop",
                                                      save_path=DATA_DIR, check_plot=0)
         self.assertIsInstance(buildings_47_8_LitPop, Exposures)
@@ -101,7 +100,7 @@ class TestOpenStreetMapModule(unittest.TestCase):
             0)
 
         for mode in ['default', 'LitPop']:
-            os.remove(DATA_DIR + '/exposure_buildings_' + mode + '_47_7.h5')
+            DATA_DIR.joinpath('exposure_buildings_' + mode + '_47_7.h5').unlink()
 
 
 class TestOSMlongUnitTests(unittest.TestCase):
@@ -110,7 +109,7 @@ class TestOSMlongUnitTests(unittest.TestCase):
         """test _get_litpop_bbox within get_osmstencil_litpop function"""
         # Define and load parameters
         country = 'CHE'
-        highValueArea = geopandas.read_file(os.path.join(DATA_DIR, 'High_Value_Area_47_8.shp'))
+        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
         # Execute function
         exp_sub = OSM._get_litpop_bbox(country, highValueArea)
         self.assertTrue(
@@ -122,10 +121,9 @@ class TestOSMlongUnitTests(unittest.TestCase):
         """test _split_exposure_highlow within get_osmstencil_litpop function"""
         # Define and load parameters:
         country = 'CHE'  # this takes too long for unit test probably
-        highValueArea = geopandas.read_file(os.path.join(DATA_DIR, 'High_Value_Area_47_8.shp'))
+        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
         exp_sub = OSM._get_litpop_bbox(country, highValueArea)
-        High_Value_Area_gdf = geopandas.read_file(os.path.join(DATA_DIR,
-                                                               'High_Value_Area_47_8.shp'))
+        High_Value_Area_gdf = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
         # execute function
         for mode in {'proportional', 'even'}:
             print('testing mode %s' % mode)
@@ -141,7 +139,7 @@ class TestOSMlongUnitTests(unittest.TestCase):
         """test _assign_values_exposure within make_osmexposure function"""
         # Define and load parameters:
         # function tested previously
-        building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR, 'buildings_47_8.shp'))
+        building_gdf = OSM._get_midpoints(DATA_DIR.joinpath('buildings_47_8.shp'))
         mode = 'LitPop'     # mode LitPop takes too long for unit test, moved to integration test
         country = 'CHE'
         # Execute function
