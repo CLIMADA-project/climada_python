@@ -72,11 +72,15 @@ class TestFunc(unittest.TestCase):
 
         # test in place operation
         lon_normalize(data)
-        self.assertTrue(np.allclose(data, [180, 20.1, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [180, 20.1, -30, -170, 10])
 
         # test with specific center and return value
         data = lon_normalize(data, center=-170)
-        self.assertTrue(np.allclose(data, [-180, -339.9, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [-180, -339.9, -30, -170, 10])
+
+        # test with center determined automatically (which is 280.05)
+        data = lon_normalize(data, center=None)
+        np.testing.assert_array_almost_equal(data, [180, 380.1, 330, 190, 370])
 
     def test_latlon_bounds(self):
         """Test latlon_bounds function"""
