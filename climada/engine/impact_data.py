@@ -21,12 +21,12 @@ functions to merge EMDAT damages to hazard events
 import logging
 import pickle
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import numpy as np
 from iso3166 import countries as iso_cntry
 from cartopy.io import shapereader
 import shapefile
-# import climada
 
 from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
@@ -437,7 +437,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     (3) filter by country, hazard type and year range (if any given)
 
     Parameters:
-        emdat_file (str or DataFrame): Either string with full path to CSV-file or
+        emdat_file (str, Path, or DataFrame): Either string with full path to CSV-file or
             pandas.DataFrame loaded from EM-DAT CSV
 
     Optional parameters:
@@ -459,7 +459,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
         df_data (pandas.DataFrame): DataFrame containing cleaned and filtered EM-DAT impact data
     """
     # (1) load EM-DAT data from CSV to DataFrame, skipping the header:
-    if isinstance(emdat_file, str):
+    if isinstance(emdat_file, (str, Path)):
         df_emdat = pd.read_csv(emdat_file, encoding="ISO-8859-1", header=0)
         counter = 0
         while not ('Country' in df_emdat.columns and 'ISO' in df_emdat.columns):
