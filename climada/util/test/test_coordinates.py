@@ -121,10 +121,11 @@ class TestFunc(unittest.TestCase):
         """Test approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
-            [45.5, -32.2, 14, 56, 7709.827814738594, 8758.34146833],
-            [45.5, 147.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, 507.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, -212.2, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
+            [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
+            [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
+            [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
+            [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
         ])
         compute_dist = np.stack([
             dist_approx(data[:, None, 0], data[:, None, 1],
@@ -153,6 +154,8 @@ class TestFunc(unittest.TestCase):
                 self.assertAlmostEqual(d[0] * factor, cd[0])
                 self.assertAlmostEqual(d[1] * factor, cd[1])
 
+    def test_dist_approx_log_pass(self):
+        """Test log-functionality of approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
             [0, 0, 0, 1, 111.12, 111.12],
