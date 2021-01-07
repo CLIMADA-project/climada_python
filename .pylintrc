@@ -147,6 +147,8 @@ ignore-on-opaque-inference=yes
 # List of class names for which member attributes should not be checked (useful
 # for classes with dynamically set attributes). This supports the use of
 # qualified names.
+# Config is excluded from pylint, because its members are dynamically created
+# from the climada.conf file
 ignored-classes=optparse.Values,thread._local,_thread._local,climada.util.config.Config
 
 # List of module names for which member attributes should not be checked
