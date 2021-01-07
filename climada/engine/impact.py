@@ -42,7 +42,7 @@ from climada.entity.exposures.base import Exposures
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
 import climada.util.plot as u_plot
-from climada.util.config import CONFIG
+from climada import CONFIG
 from climada.util.constants import DEF_CRS
 import climada.util.dates_times as util_dt
 from climada.util.select import get_attributes_with_matching_dimension

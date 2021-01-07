@@ -42,7 +42,7 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
 import climada.util.checker as check
 import climada.util.dates_times as u_dt
-from climada.util.config import CONFIG
+from climada import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
 

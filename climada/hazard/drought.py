@@ -33,14 +33,12 @@ from scipy import sparse
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
-#from climada.hazard.tag import Tag as TagHazard
-
 from climada.util.files_handler import download_file
 from climada.util.dates_times import datetime64_to_ordinal
-from climada.util.constants import CONFIG, SYSTEM_DIR
-from climada.util.dates_times import str_to_date
-from climada.util.dates_times import date_to_str
+from climada.util.constants import SYSTEM_DIR
+from climada.util.dates_times import str_to_date, date_to_str
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)

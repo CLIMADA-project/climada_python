@@ -31,13 +31,14 @@ from iso3166 import countries as iso_cntry
 import gdal
 from cartopy.io import shapereader
 
+from climada import CONFIG
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
-from climada.util.constants import SYSTEM_DIR, DEF_CRS, CONFIG
+from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 
 logging.root.setLevel(logging.DEBUG)
