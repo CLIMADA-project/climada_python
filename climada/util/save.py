@@ -26,7 +26,7 @@ from pathlib import Path
 import pickle
 import logging
 
-from climada import CONFIG
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
