@@ -979,7 +979,7 @@ class TestHDF5(unittest.TestCase):
             haz_read = Hazard('TC')
             haz_read.read_hdf5(file_name)
 
-            self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
+            self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
             self.assertIsInstance(haz_read.tag.file_name, str)
             self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
             self.assertIsInstance(haz_read.tag.haz_type, str)
