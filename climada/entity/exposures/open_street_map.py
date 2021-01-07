@@ -109,10 +109,10 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
                    'properties': {'Name': 'str:80', 'Natural_Type': 'str:80', 'Item': 'str:80'}}
     schema_line = {'geometry': 'LineString',
                    'properties': {'Name': 'str:80', 'Natural_Type': 'str:80', 'Item': 'str:80'}}
-    shapeout_poly = save_path + '/' + str(item) + '_poly_' + str(int(bbox[0])) +\
-    '_' + str(int(bbox[1])) + ".shp"
-    shapeout_line = save_path + '/' + str(item) + '_line_' + str(int(bbox[0])) +\
-    '_' + str(int(bbox[1])) + ".shp"
+    shapeout_poly = save_path.joinpath(
+        str(item) + '_poly_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
+    shapeout_line = save_path.joinpath(
+        str(item) + '_line_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
 
     way_poly = []
     way_line = []
@@ -141,12 +141,12 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
 
     gdf_poly = geopandas.read_file(shapeout_poly)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        Path(save_path, 
+        save_path.joinpath(
             str(item) + '_poly_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
         ).unlink()
     gdf_line = geopandas.read_file(shapeout_line)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        Path(save_path,
+        save_path.joinpath(
             str(item) + '_line_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
         ).unlink()
 
@@ -218,8 +218,8 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
     schema_multi = {'geometry': 'MultiPolygon',
                     'properties': {'Name': 'str:80', 'Type': 'str:80', 'Item': 'str:80'}}
 
-    shapeout_multi = (save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) + '_'
-                      + str(int(bbox[1])) + ".shp")
+    shapeout_multi = save_path.joinpath(
+        str(item) + '_multi_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
 
     with fiona.open(shapeout_multi, 'w', crs=from_epsg(4326),
                     driver='ESRI Shapefile', schema=schema_multi) as output:
@@ -231,7 +231,7 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
             output.write({'geometry': geom, 'properties': prop1})
     gdf_multi = geopandas.read_file(shapeout_multi)  # save_path + '/' + shapeout_multi)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        Path(save_path,
+        save_path.joinpath(
             str(item) + '_multi_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
         ).unlink()
     gdf_all = gdf_all.append(gdf_multi, sort=True)
@@ -264,8 +264,8 @@ def _combine_dfs_osm(types, save_path, bbox):
             OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
         i += 1
 
-    OSM_features_gdf_combined.to_file(save_path + '/OSM_features_' + str(int(bbox[0])) +
-                                      '_' + str(int(bbox[1])) + '.shp')
+    OSM_features_gdf_combined.to_file(save_path.joinpath('OSM_features_' + str(int(bbox[0])) +
+                                      '_' + str(int(bbox[1])) + '.shp'))
 
     return OSM_features_gdf_combined
 
@@ -279,7 +279,7 @@ def get_features_OSM(bbox, types, save_path=None, check_plot=1):
          types (list): List of features items that should be downloaded from OSM, e.g.
                 {'natural','waterway','water', 'landuse=forest','landuse=farmland',
                 'landuse=grass','wetland'}
-         save_path (str): String with absolute path for saving output. Default is cwd
+         save_path (str or pathlib.Path): String with absolute path for saving output. Default is cwd
          check_plot: default is 1 (yes), else 0.
 
     Returns:
@@ -301,6 +301,9 @@ def get_features_OSM(bbox, types, save_path=None, check_plot=1):
     """
     if save_path is None:
         save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     for item in types:
         # API Queries for relations, nodes and ways
         print('Querying Relations, Nodes and Ways for %s...' % item)
@@ -352,7 +355,7 @@ def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
 
     Parameters:
         bbox (array): List of coordinates in format [South, West, North, East]
-        save_path (str): path for results
+        save_path (str or pathlib.Path): path for results
         Low_Value_gdf (str): absolute path of gdf of low value items which is to be inverted.
           If left empty, searches for OSM_features_gdf_combined_lat_lon.shp in save_path.
         checkplot
@@ -367,19 +370,20 @@ def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
     """
     if save_path is None:
         save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     Outer_Poly = geometry.Polygon([(bbox[1], bbox[2]), (bbox[1], bbox[0]),
                                    (bbox[3], bbox[0]), (bbox[3], bbox[2])])
 
-
     if Low_Value_gdf is None:
+        filepath = save_path.joinpath(
+            'OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + '.shp')
         try:
-            Low_Value_gdf = geopandas.read_file(
-                save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_'
-                + str(int(bbox[1])) + '.shp')
+            Low_Value_gdf = geopandas.read_file(filepath)
         except:
-            print('No Low-Value-Union found with name %s. \n Please add.'
-                  % (save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' +
-                     str(int(bbox[1])) + '.shp'))
+            LOGGER.error('No Low-Value-Union found with name %s. \n Please add.', filepath)
+            raise
     else:
         Low_Value_gdf = geopandas.read_file(Low_Value_gdf)
 
@@ -391,7 +395,7 @@ def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
 
     # save high value multipolygon as shapefile and re-read as gdf:
     schema = {'geometry': 'MultiPolygon', 'properties': {'Name': 'str:80'}}
-    shapeout = (save_path + '/High_Value_Area_' + str(int(bbox[0]))
+    shapeout = save_path.joinpath('High_Value_Area_' + str(int(bbox[0]))
                 + '_' + str(int(bbox[1])) + ".shp")
     with fiona.open(shapeout, 'w', crs=from_epsg(4326), driver='ESRI Shapefile',
                     schema=schema) as output:
@@ -519,6 +523,9 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
     """
     if save_path is None:
         save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     if highValueArea is None:
         try:
             filepath = str(Path.cwd().joinpath(
@@ -539,8 +546,8 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
     exp_sub_high_exp = Exposures(exp_sub_high)
     exp_sub_high_exp.set_lat_lon()
     exp_sub_high_exp.check()
-    exp_sub_high_exp.write_hdf5(save_path + '/exposure_high_' + str(int(bbox[0])) +
-                                '_' + str(int(bbox[1])) + '.h5')
+    exp_sub_high_exp.write_hdf5(save_path.joinpath('exposure_high_' + str(int(bbox[0])) +
+                                '_' + str(int(bbox[1])) + '.h5'))
     # plotting
     if check_plot == 1:
         # normal hexagons
@@ -647,6 +654,9 @@ def make_osmexposure(highValueArea, mode="default", country=None,
     """
     if save_path is None:
         save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     High_Value_Area_gdf = _get_midpoints(highValueArea)
 
     High_Value_Area_gdf = _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs)
@@ -655,9 +665,9 @@ def make_osmexposure(highValueArea, mode="default", country=None,
     exp_buildings = Exposures(High_Value_Area_gdf)
     exp_buildings.set_lat_lon()
     exp_buildings.check()
-    exp_buildings.write_hdf5(save_path + '/exposure_buildings_' + mode + '_' +
+    exp_buildings.write_hdf5(save_path.joinpath('exposure_buildings_' + mode + '_' +
                              str(int(min(High_Value_Area_gdf.bounds.miny))) +
-                             '_' + str(int(min(High_Value_Area_gdf.bounds.minx))) + '.h5')
+                             '_' + str(int(min(High_Value_Area_gdf.bounds.minx))) + '.h5'))
 
     # plotting
     if check_plot == 1:
