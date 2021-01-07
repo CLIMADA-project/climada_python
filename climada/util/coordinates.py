@@ -122,13 +122,16 @@ def lon_normalize(lon, center=0.0):
     lon : np.array
         Longitudinal coordinates
     center : float, optional
-        Central longitude value to use instead of 0.
+        Central longitude value to use instead of 0. If None, the central longitude is determined
+        automatically.
 
     Returns
     -------
     lon : np.array
         Normalized longitudinal coordinates.
     """
+    if center is None:
+        center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
     maxiter = 10
     i = 0
@@ -145,7 +148,7 @@ def lon_normalize(lon, center=0.0):
             break
     return lon
 
-def latlon_bounds(lat, lon, buffer=0.0):
+def lon_bounds(lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
 
     The longitudinal upper bound may be 180 or larger to make sure that the upper bound is always
@@ -165,23 +168,21 @@ def latlon_bounds(lat, lon, buffer=0.0):
 
     Example
     -------
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
-    (175, -2, 181, 5)
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
-    (174, -3, 182, 6)
+    >>> lon_bounds(np.array([-179, 175, 178]))
+    (175, 181)
+    >>> lon_bounds(np.array([-179, 175, 178]), buffer=1)
+    (174, 182)
 
     Parameters
     ----------
-    lat : np.array
-        Latitudinal coordinates
     lon : np.array
         Longitudinal coordinates
     buffer : float, optional
-        Buffer to add to all sides of the bounding box. Default: 0.0.
+        Buffer to add to both sides of the bounding box. Default: 0.0.
 
     Returns
     -------
-    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+    bounds : tuple (lon_min, lon_max)
         Bounding box of the given points.
     """
     lon = lon_normalize(lon.copy())
@@ -206,6 +207,37 @@ def latlon_bounds(lat, lon, buffer=0.0):
         if lon_min <= -180:
             lon_min += 360
             lon_max += 360
+    return (lon_min, lon_max)
+
+
+def latlon_bounds(lat, lon, buffer=0.0):
+    """Bounds of a set of degree values, respecting the periodicity in longitude
+
+    See `lon_bounds` for more information about the handling of longitudinal values crossing the
+    antimeridian.
+
+    Example
+    -------
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
+    (175, -2, 181, 5)
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
+    (174, -3, 182, 6)
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitudinal coordinates
+    lon : np.array
+        Longitudinal coordinates
+    buffer : float, optional
+        Buffer to add to all sides of the bounding box. Default: 0.0.
+
+    Returns
+    -------
+    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+        Bounding box of the given points.
+    """
+    lon_min, lon_max = lon_bounds(lon, buffer=buffer)
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
