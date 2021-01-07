@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 from numba import jit
 import numpy as np
 
-from climada.util.config import CONFIG
+from climada import CONFIG
 import climada.util.coordinates
 import climada.hazard.tc_tracks
 

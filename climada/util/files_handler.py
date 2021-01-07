@@ -33,7 +33,7 @@ from pathlib import Path
 import requests
 from tqdm import tqdm
 
-from climada.util.config import CONFIG
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 

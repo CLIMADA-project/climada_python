@@ -22,10 +22,11 @@ import pandas as pd
 import numpy as np
 from iso3166 import countries as iso_cntry
 
+from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.files_handler import download_file
-from climada.util.constants import SYSTEM_DIR, CONFIG
+from climada.util.constants import SYSTEM_DIR
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)

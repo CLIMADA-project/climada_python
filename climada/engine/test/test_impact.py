@@ -22,12 +22,13 @@ import unittest
 import numpy as np
 from scipy import sparse
 
+from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, CONFIG
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 
 DATA_FOLDER = CONFIG.engine.test_data.dir()
 HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
