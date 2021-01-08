@@ -246,6 +246,10 @@ class TCTracks():
 
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
+        try:  
+            exposure.geometry
+        except AttributeError:
+            exposure.set_geometry_points()
 
         exp_buffer = exposure.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
