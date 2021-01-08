@@ -90,7 +90,7 @@ def download_file(url, download_dir=None, overwrite=True):
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
 
-    LOGGER.info('Downloading %s to file %s', url, file_path.name)
+    LOGGER.info('Downloading %s to file %s', url, file_path)
     with file_path.open('wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
                          total=math.ceil(total_size // block_size),
