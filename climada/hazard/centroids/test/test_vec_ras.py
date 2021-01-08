@@ -18,21 +18,21 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test CentroidsVector and CentroidsRaster classes.
 """
-import os
+import unittest
 from cartopy.io import shapereader
 from fiona.crs import from_epsg
 import geopandas as gpd
-import unittest
 import numpy as np
 from rasterio.windows import Window
 from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
 
+from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import NE_EPSG, equal_crs
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = CONFIG.hazard.test_data.dir()
 
 VEC_LON = np.array([
     -59.6250000000000, -59.6250000000000, -59.6250000000000, -59.5416666666667, -59.5416666666667,
@@ -640,7 +640,7 @@ class TestReader(unittest.TestCase):
 
     def test_write_read_raster_h5(self):
         """Write and read hdf5 format"""
-        file_name = os.path.join(DATA_DIR, 'test_centr.h5')
+        file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
         centr = Centroids()
         xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 10, 5, -0.5, 0.2, 20, 25
@@ -663,7 +663,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue(equal_crs(centr_read.meta['crs'], centr.meta['crs']))
 
     def test_write_read_points_h5(self):
-        file_name = os.path.join(DATA_DIR, 'test_centr.h5')
+        file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
         centr = Centroids()
         centr = Centroids()

@@ -19,26 +19,25 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test TropCyclone class
 """
 
-import os
 import unittest
+import datetime as dt
 import numpy as np
 from scipy import sparse
-import datetime as dt
 
+from climada import CONFIG
 from climada.util import ureg
-import climada.hazard.trop_cyclone as tc
 from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.trop_cyclone import TropCyclone
+from climada.hazard.trop_cyclone import TropCyclone,\
+     _bs_hol08, _close_centroids, _stat_holland, _vtrans
 from climada.hazard.centroids.centr import Centroids
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
-TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
-TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
+DATA_DIR = CONFIG.hazard.test_data.dir()
+HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
+TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
+TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
-CENTR_DIR = os.path.join(os.path.dirname(__file__), 'data/')
 CENTR_TEST_BRB = Centroids()
-CENTR_TEST_BRB.read_mat(os.path.join(CENTR_DIR, 'centr_brb_test.mat'))
+CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 
 class TestReader(unittest.TestCase):
@@ -165,7 +164,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         t_lon = np.array([1, 2, 3])
         centroids = np.array([[0, 0], [0, 0.9], [-0.9, 1.2], [1, 2.1], [0, 4], [0.5, 3.8]])
         test_mask = np.array([False, True, True, False, False, True])
-        mask = tc._close_centroids(t_lat, t_lon, centroids, buffer=1)
+        mask = _close_centroids(t_lat, t_lon, centroids, buffer=1)
         np.testing.assert_equal(mask, test_mask)
 
         # example where antimeridian is crossed
@@ -174,7 +173,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         t_lon[t_lon > 180] -= 360
         centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
         test_mask = np.array([True, True, True, False, False])
-        mask = tc._close_centroids(t_lat, t_lon, centroids, buffer=5)
+        mask = _close_centroids(t_lat, t_lon, centroids, buffer=5)
         np.testing.assert_equal(mask, test_mask)
 
     def test_bs_hol08_pass(self):
@@ -185,7 +184,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         prepcen = 1005.258500000000
         lat = 12.299999504631343
         tint = 1
-        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
+        _bs_res = _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
         self.assertAlmostEqual(_bs_res, 1.270856908796045)
 
         v_trans = 5.123882725120426
@@ -194,7 +193,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         prepcen = 1005.263333333329
         lat = 12.299999279463769
         tint = 1
-        _bs_res = tc._bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
+        _bs_res = _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
         self.assertAlmostEqual(_bs_res, 1.265551666104679)
 
     def test_stat_holland(self):
@@ -207,13 +206,13 @@ class TestWindfieldHelpers(unittest.TestCase):
         lat = np.array([12.299999279463769])
         mask = np.ones_like(d_centr, dtype=bool)
 
-        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
+        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertAlmostEqual(_v_arr[0], 5.384115724400597)
         self.assertAlmostEqual(_v_arr[1], 5.281356766052531)
 
         d_centr = np.array([[]])
         mask = np.ones_like(d_centr, dtype=bool)
-        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
+        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertTrue(np.array_equal(_v_arr, np.array([])))
 
         d_centr = np.array([
@@ -226,7 +225,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         lat = np.array([14.089110370469488])
         mask = np.ones_like(d_centr, dtype=bool)
 
-        _v_arr = tc._stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
+        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
         self.assertAlmostEqual(_v_arr[0], 11.279764005440288)
         self.assertAlmostEqual(_v_arr[1], 11.682978583939310)
         self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
@@ -237,7 +236,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
-        v_trans, _ = tc._vtrans(
+        v_trans, _ = _vtrans(
             tc_track.data[0].lat.values, tc_track.data[0].lon.values,
             tc_track.data[0].time_step.values)
 

@@ -22,8 +22,9 @@ Define functions to handle with coordinates
 import copy
 import logging
 import math
+from pathlib import Path
 from multiprocessing import cpu_count
-import os
+
 import zipfile
 
 from cartopy.io import shapereader
@@ -51,7 +52,6 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import DATA_DIR
 
 pd.options.mode.chained_assignment = None
 
@@ -63,7 +63,7 @@ NE_EPSG = 4326
 NE_CRS = from_epsg(NE_EPSG)
 """Natural Earth CRS"""
 
-TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
+TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
 """Path of elevation file written in set_elevation"""
 
 DEM_NODATA = -9999
@@ -495,16 +495,12 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     zipname = "GMT_intermediate_coast_distance_01d.zip"
     tifname = "GMT_intermediate_coast_distance_01d.tif"
     url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = os.path.join(SYSTEM_DIR, tifname)
-    if not os.path.isfile(path):
-        cwd = os.getcwd()
-        os.chdir(SYSTEM_DIR)
-        path_dwn = download_file(url)
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
         zip_ref = zipfile.ZipFile(path_dwn, 'r')
         zip_ref.extractall(SYSTEM_DIR)
         zip_ref.close()
-        os.remove(path_dwn)
-        os.chdir(cwd)
 
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
@@ -870,9 +866,9 @@ def country_iso2natid(isos):
     for iso in isos:
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
-        except ValueError:
+        except ValueError as ver:
             LOGGER.error('Unknown country ISO: %s', iso)
-            raise KeyError
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
     return natids[0] if return_int else natids
 
 NATEARTH_AREA_NONISO_NUMERIC = {
@@ -1213,8 +1209,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     if not band:
         band = [1]
     LOGGER.info('Reading %s', file_name)
-    if os.path.splitext(file_name)[1] == '.gz':
-        file_name = '/vsigzip/' + file_name
+    if Path(file_name).suffix == '.gz':
+        file_name = '/vsigzip/' + str(file_name)
 
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
@@ -1286,8 +1282,8 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
     resampling = rasterio.warp.Resampling.bilinear
@@ -1359,8 +1355,8 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         return np.zeros_like(lat)
 
     LOGGER.info('Sampling from %s', path)
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
 
     with rasterio.open(path, "r") as src:
         if intermediate_res is None:
@@ -1644,7 +1640,7 @@ def fao_code_def():
     """
     # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
-    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
+    fao_file = pd.read_csv(SYSTEM_DIR.joinpath("FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 

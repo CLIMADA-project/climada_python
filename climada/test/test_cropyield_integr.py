@@ -22,7 +22,7 @@ Tests on Drought Hazard exposure and Impact function.
 import unittest
 import os
 import numpy as np
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR as INPUT_DIR
 from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip, 
                                                calc_his_haz_isimip)
 from climada.entity.exposures.crop_production import CropProduction
@@ -30,7 +30,6 @@ from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
 
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
 FILENAME_LU = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'

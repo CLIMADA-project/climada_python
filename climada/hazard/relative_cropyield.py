@@ -23,9 +23,7 @@ WORK IN PROGRESS
 __all__ = ['RelativeCropyield']
 
 import logging
-import os
-from os import listdir
-from os.path import isfile, join
+from pathlib import Path
 import numpy as np
 from matplotlib import pyplot as plt
 import cartopy
@@ -39,7 +37,7 @@ import xarray as xr
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
 from climada.util import coordinates as coord
-from climada.util.constants import DATA_DIR
+from climada import CONFIG
 
 
 LOGGER = logging.getLogger(__name__)
@@ -53,9 +51,10 @@ BBOX = (-180, -85, 180, 85)  # [Lon min, lat min, lon max, lat max]
 """"Default geographical bounding box of the total global agricultural land extent"""
 
 # ! deposit the input files in: climada_python/data/ISIMIP_crop/Input/Hazard
-INPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Input', 'Hazard')
+DATA_DIR = CONFIG.hazard.relative_cropyield.local_data.dir()
+INPUT_DIR = DATA_DIR.joinpath('Input', 'Hazard')
 """default paths for input and output data:"""
-OUTPUT_DIR = os.path.join(DATA_DIR, 'ISIMIP_crop', 'Output')
+OUTPUT_DIR = DATA_DIR.joinpath('Output')
 
 
 #ISIMIP input data specific global variables
@@ -152,7 +151,7 @@ class RelativeCropyield(Hazard):
             bbox = BBOX
         if input_dir is None:
             input_dir = INPUT_DIR
-        if not os.path.exists(input_dir):
+        if not Path(input_dir).is_dir():
             LOGGER.error('Input directory %s does not exist', input_dir)
             raise NameError
 
@@ -160,32 +159,27 @@ class RelativeCropyield(Hazard):
         # specified filename
         if filename is None:
             yearchunk = YEARCHUNKS[scenario]
-            filename = os.path.join(input_dir, '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
-                                    %(ag_model, cl_model, bias_corr, scenario, soc, co2, crop,
-                                      irr, fn_str_var, str(yearchunk['startyear']),
-                                      str(yearchunk['endyear'])))
-
+            filename = '{}_{}_{}_{}_{}_{}_yield-{}-{}_{}_{}_{}.nc'.format(
+                ag_model, cl_model, bias_corr, scenario, soc, co2,
+                crop, irr, fn_str_var, yearchunk['startyear'], yearchunk['endyear'])
         elif scenario == 'ISIMIP2a':
             (_, _, _, _, _, _, _, crop, _, _, startyear, endyearnc) = filename.split('_')
             endyear, _ = endyearnc.split('.')
             yearchunk = dict()
             yearchunk = {'yearrange': (int(startyear), int(endyear)),
                          'startyear': int(startyear), 'endyear': int(endyear)}
-            filename = os.path.join(input_dir, filename)
         elif scenario == 'test_file':
             yearchunk = dict()
             yearchunk = {'yearrange': (1976, 2005), 'startyear': 1861,
                          'endyear': 2005, 'yearrange_mean': (1976, 2005)}
             ag_model, cl_model, _, _, soc, co2, crop_prop, *_ = filename.split('_')
             _, crop, irr = crop_prop.split('-')
-            filename = os.path.join(input_dir, filename)
         else: # get yearchunk from filename, e.g., for rcp2.6 extended and ISIMIP3
             (_, _, _, _, _, _, crop_irr, _, _, year1, year2) = filename.split('_')
             yearchunk = {'yearrange': (int(year1), int(year2.split('.')[0])),
                          'startyear': int(year1),
                          'endyear': int(year2.split('.')[0])}
             _, crop, irr = crop_irr.split('-')
-            filename = os.path.join(input_dir, filename)
 
         # if no yearrange is given, load full range from input file:
         if yearrange is None or len(yearrange)==0:
@@ -199,7 +193,7 @@ class RelativeCropyield(Hazard):
 
         # hazard setup: set attributes
         [lonmin, latmin, lonmax, latmax] = bbox
-        self.set_raster([filename], band=id_bands,
+        self.set_raster([str(Path(input_dir, filename))], band=id_bands,
                         geometry=list([shapely.geometry.box(lonmin, latmin, lonmax, latmax)]))
 
         self.intensity.data[np.isnan(self.intensity.data)] = 0.0
@@ -241,14 +235,13 @@ class RelativeCropyield(Hazard):
 
         if save:
             # generate output directories if they do not exist yet
-            if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
-            mean_dir = os.path.join(output_dir, 'Hist_mean')
-            if not os.path.exists(mean_dir):
-                os.mkdir(mean_dir)
+            mean_dir = Path(output_dir, 'Hist_mean')
+            mean_dir.mkdir(parents=True, exist_ok=True)
             # save mean_file
-            mean_file = h5py.File(mean_dir + 'hist_mean_' + self.crop + '_' + str(startyear) +
-                                  '-' + str(endyear) + '.hdf5', 'w')
+            mean_file = h5py.File(Path(
+                mean_dir,
+                f'hist_mean_{self.crop}_{startyear}-{endyear}.hdf5'
+            ), 'w')
             mean_file.create_dataset('mean', data=hist_mean)
             mean_file.create_dataset('lat', data=self.centroids.lat)
             mean_file.create_dataset('lon', data=self.centroids.lon)
@@ -481,16 +474,12 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         bbox = BBOX
     if isimip_run is None:
         isimip_run = 'ISIMIP2b'
-    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if
-                 'yield' in f if not f.startswith('.')]
+    filenames = [f for f in Path(input_dir).iterdir()
+                 if f.is_file() and 'yield' in f.name and not f.name.startswith('.')]
 
     # generate output directories if they do not exist yet
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-    if not os.path.exists(os.path.join(output_dir, 'Hazard')):
-        os.mkdir(os.path.join(output_dir, 'Hazard'))
-    if not os.path.exists(os.path.join(output_dir, 'Hist_mean')):
-        os.mkdir(os.path.join(output_dir, 'Hist_mean'))
+    Path(output_dir, 'Hazard').mkdir(parents=True, exist_ok=True)
+    Path(output_dir, 'Hist_mean').mkdir(parents=True, exist_ok=True)
 
     filename_list = list()
     output_list = list()
@@ -524,7 +513,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
             output_list.append(haz_his)
         else: output_list.append(None)
         if save:
-            haz_his.select(reg_id=1).write_hdf5(os.path.join(output_dir, 'Hazard', filename))
+            haz_his.select(reg_id=1).write_hdf5(str(Path(output_dir, 'Hazard', filename)))
 
         if isimip_run in ('ISIMIP2b', 'ISIMIP3b'):
             # compute the relative yield for all future scenarios with the corresponding
@@ -533,20 +522,21 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                 # check whether future file exists for given historical file and scenario:
                 haz_fut = None
                 filename = None
-                fut_file = '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
-                                    %(file_props[his_file]['ag_model'],
-                                      file_props[his_file]['cl_model'],
-                                      file_props[his_file]['bias_corr'],
-                                      scenario,
-                                      file_props[his_file]['soc'],
-                                      file_props[his_file]['co2'],
-                                      file_props[his_file]['crop'],
-                                      file_props[his_file]['irr'],
-                                      FN_STR_VAR,
-                                      YEARCHUNKS[scenario]['startyear'],
-                                      YEARCHUNKS[scenario]['endyear'])
+                fut_file = '{}_{}_{}_{}_{}_{}_yield-{}-{}_{}_{}_{}.nc'.format(
+                    file_props[his_file]['ag_model'],
+                    file_props[his_file]['cl_model'],
+                    file_props[his_file]['bias_corr'],
+                    scenario,
+                    file_props[his_file]['soc'],
+                    file_props[his_file]['co2'],
+                    file_props[his_file]['crop'],
+                    file_props[his_file]['irr'],
+                    FN_STR_VAR,
+                    YEARCHUNKS[scenario]['startyear'],
+                    YEARCHUNKS[scenario]['endyear']
+                )
 
-                if os.path.isfile(os.path.join(input_dir, fut_file)):
+                if Path(input_dir, fut_file).is_file():
                     # if true, calculate and save future hazard set:
                     haz_fut, filename = calc_fut_haz_isimip(his_file, scenario,
                                                             file_props, hist_mean,
@@ -555,29 +545,29 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                                                             fut_file=fut_file)
                     filename_list.append(filename)
                     if save:
-                        haz_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir,
-                                                                         'Hazard',
-                                                                         filename))
+                        haz_fut.select(reg_id=1)\
+                            .write_hdf5(str(Path(output_dir, 'Hazard', filename)))
                     if return_data:
                         output_list.append(haz_fut)
                     else: output_list.append(None)
 
                 if scenario == 'rcp26': # also test for extended
                     # check whether future file exists for given historical file and scenario:
-                    fut_file = '%s_%s_%s_%s_%s_%s_yield-%s-%s_%s_%s_%s.nc' \
-                                        %(file_props[his_file]['ag_model'],
-                                          file_props[his_file]['cl_model'],
-                                          file_props[his_file]['bias_corr'],
-                                          scenario,
-                                          file_props[his_file]['soc'],
-                                          file_props[his_file]['co2'],
-                                          file_props[his_file]['crop'],
-                                          file_props[his_file]['irr'],
-                                          FN_STR_VAR,
-                                          YEARCHUNKS['rcp26-2']['startyear'],
-                                          YEARCHUNKS['rcp26-2']['endyear'])
+                    fut_file = '{}_{}_{}_{}_{}_{}_yield-{}-{}_{}_{}_{}.nc'.format(
+                        file_props[his_file]['ag_model'],
+                        file_props[his_file]['cl_model'],
+                        file_props[his_file]['bias_corr'],
+                        scenario,
+                        file_props[his_file]['soc'],
+                        file_props[his_file]['co2'],
+                        file_props[his_file]['crop'],
+                        file_props[his_file]['irr'],
+                        FN_STR_VAR,
+                        YEARCHUNKS['rcp26-2']['startyear'],
+                        YEARCHUNKS['rcp26-2']['endyear']
+                    )
 
-                    if os.path.isfile(os.path.join(input_dir, fut_file)):
+                    if Path(input_dir, fut_file).is_file():
                         # if true, calculate and save future hazard set:
                         haz_fut, filename = calc_fut_haz_isimip(his_file, scenario,
                                                                 file_props, hist_mean,
@@ -585,9 +575,8 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
                                                                 bbox=bbox, fut_file=fut_file)
                         filename_list.append(filename)
                         if save:
-                            haz_fut.select(reg_id=1).write_hdf5(os.path.join(output_dir,
-                                                                             'Hazard',
-                                                                             filename))
+                            haz_fut.select(reg_id=1)\
+                                .write_hdf5(str(Path(output_dir, 'Hazard', filename)))
                         if return_data:
                             output_list.append(haz_fut)
                         else: output_list.append(None)
@@ -604,7 +593,7 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     if save: # save hist_mean files to hdf5 file:
         for idx, filename in enumerate(filename_list):
             if 'hist_mean_' in filename:
-                mean_file = h5py.File(os.path.join(output_dir, 'Hist_mean', filename), 'w')
+                mean_file = h5py.File(str(Path(output_dir, 'Hist_mean', filename)), 'w')
                 mean_file.create_dataset('mean', data=output_list[idx])
                 mean_file.create_dataset('lat', data=haz_his.centroids.lat)
                 mean_file.create_dataset('lon', data=haz_his.centroids.lon)
@@ -780,17 +769,17 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             his_file2 = his_file.replace('_yield-ri1-', '_yield-ri2-')
         else:
             his_file2 = None
-        if his_file2 and isfile(join(input_dir, his_file2)):
+        if his_file2 and Path(input_dir, his_file2).is_file():
             haz_his2 = RelativeCropyield()
             haz_his2.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file2, bbox=bbox,
                                 scenario=file_props[his_file]['scenario'],
                                 yearrange=np.array([file_props[his_file]['startyear'],
                                                     file_props[his_file]['endyear']]))
-            # The masks in the NetCDF file divides all wheat growing areas globally
-            # in two distinct categories, either growing winter wheat (wwh)
-            # or spring wheat (swh). Since the hazard sets for wwh and swh are calculated
-            # for the whole globe ("all crops everywhere") we need to decide for each grid
-            # cell which one to take when combining 'wwh' and 'swh' into one combined crop wheat (whe):
+            # The masks in the NetCDF file divides all wheat growing areas globally in two distinct
+            # categories, either growing winter wheat (wwh) or spring wheat (swh). Since the hazard
+            # sets for wwh and swh are calculated for the whole globe ("all crops everywhere") we
+            # need to decide for each grid cell which one to take when combining 'wwh' and 'swh'
+            # into one combined crop wheat (whe):
             if crop == 'swh':
             # mask of winter wheat in spring wheat and vice versa:
                 whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
@@ -887,7 +876,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
             fut_file2 = fut_file.replace('_yield-ri1-', '_yield-ri2-')
         else:
             fut_file2 = None
-        if fut_file2 and isfile(join(input_dir, fut_file2)):
+        if fut_file2 and Path(input_dir, fut_file2).is_file():
             haz_fut2 = RelativeCropyield()
             haz_fut2.set_from_isimip_netcdf(input_dir=input_dir, filename=fut_file2,
                                 bbox=bbox, yearrange=yearrange_fut,
@@ -945,6 +934,6 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     if bbox is None:
         bbox = BBOX
 
-    whe_mask = xr.open_dataset(join (input_dir, filename), decode_times=False)
+    whe_mask = xr.open_dataset(Path(input_dir, filename), decode_times=False)
     [lonmin, latmin, lonmax, latmax] = bbox
     return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))

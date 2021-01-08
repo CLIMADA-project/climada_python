@@ -23,6 +23,7 @@ __all__ = ['Measure']
 
 import copy
 import logging
+from pathlib import Path
 import numpy as np
 import pandas as pd
 
@@ -195,7 +196,7 @@ class Measure():
         if isinstance(self.exposures_set, str) and self.exposures_set == NULL_STR:
             return exposures
 
-        if isinstance(self.exposures_set, str):
+        if isinstance(self.exposures_set, (str, Path)):
             LOGGER.debug('Setting new exposures %s', self.exposures_set)
             new_exp = Exposures()
             new_exp.read_hdf5(self.exposures_set)
@@ -206,7 +207,7 @@ class Measure():
             new_exp.check()
         else:
             LOGGER.error('Wrong input exposures.')
-            raise ValueError
+            raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
         if not np.array_equal(np.unique(exposures.latitude.values),
                               np.unique(new_exp.latitude.values)) or \
