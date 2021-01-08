@@ -79,12 +79,19 @@ class TestNightLight(unittest.TestCase):
 
     def test_check_files_exist(self):
         """Test check_nightlight_local_file_exists"""
-        # If invalid path is supplied it has to fall back to DATA_DIR
+        # If invalid directory is supplied it has to fail
+        try:
+            nightlight.check_nl_local_file_exists(
+                np.ones(np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0]
+            raise Exception("if the path is not valid, check_nl_local_file_exists should fail")
+        except ValueError:
+            pass
         np.testing.assert_array_equal(
             nightlight.check_nl_local_file_exists(
-                np.ones(np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0],
-            nightlight.check_nl_local_file_exists(
-                np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR)[0])
+                np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR
+            )[0],
+            np.array([0., 0., 1., 0., 1., 0., 1., 0.])
+        )
 
     def test_download_nightlight_files(self):
         """Test check_nightlight_local_file_exists"""
