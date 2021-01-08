@@ -20,25 +20,22 @@ Finance functionalities.
 """
 __all__ = ['net_present_value', 'income_group', 'gdp']
 
-import os
-import glob
 import shutil
 import logging
-import requests
 import warnings
 import zipfile
+
+from pathlib import Path
+
+import requests
 import numpy as np
 import pandas as pd
+from pandas_datareader import wb
 from cartopy.io import shapereader
 
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 
-# solve version problem in pandas-datareader-0.6.0. see:
-# https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
-# importerror-cannot-import-name-is-list-like
-pd.core.common.is_list_like = pd.api.types.is_list_like
-from pandas_datareader import wb
 
 LOGGER = logging.getLogger(__name__)
 
@@ -187,10 +184,10 @@ def world_bank(cntry_iso, ref_year, info_ind):
         close_year = int(close_val.iloc[0].name[1])
         close_val = float(close_val.iloc[0].values)
     else:  # income group level
-        fn_ig = os.path.join(os.path.abspath(SYSTEM_DIR), 'OGHIST.xls')
+        fn_ig = SYSTEM_DIR.joinpath('OGHIST.xls')
         dfr_wb = pd.DataFrame()
         try:
-            if not glob.glob(fn_ig):
+            if not fn_ig.is_file():
                 file_down = download_file(WORLD_BANK_INC_GRP)
                 shutil.move(file_down, fn_ig)
             dfr_wb = pd.read_excel(fn_ig, 'Country Analytical History', skiprows=5)
@@ -264,7 +261,7 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
         Returns:
             float
     """
-    fname = os.path.join(SYSTEM_DIR, file_name)
+    fname = SYSTEM_DIR.joinpath(file_name)
     factors_all_countries = pd.read_csv(fname, sep=',', index_col=None,
                                         header=0, encoding='ISO-8859-1')
     if ref_year != 2016:
@@ -276,14 +273,14 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
         try:
             val = factors_all_countries[
                 factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
-        except:
+        except (AttributeError, KeyError, IndexError):
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["NFW-to-GDP-ratio"].mean()
     else:
         try:
             val = factors_all_countries[
                 factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
-        except:
+        except (AttributeError, KeyError, IndexError):
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
     val = np.around(val, 5)
@@ -326,20 +323,20 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
                         (applies to 'NW.PCA.*' only). Default = True.
     """
     try:
-        fname = os.path.join(SYSTEM_DIR, FILE_WORLD_BANK_WEALTH_ACC)
-        if not os.path.isfile(fname):
-            fname = os.path.join(SYSTEM_DIR, 'Wealth-Accounts_CSV', FILE_WORLD_BANK_WEALTH_ACC)
-        if not os.path.isfile(fname):
-            if not os.path.isdir(os.path.join(SYSTEM_DIR, 'Wealth-Accounts_CSV')):
-                os.mkdir(os.path.join(SYSTEM_DIR, 'Wealth-Accounts_CSV'))
+        data_file = SYSTEM_DIR.joinpath(FILE_WORLD_BANK_WEALTH_ACC)
+        if not data_file.is_file():
+            data_file = SYSTEM_DIR.joinpath('Wealth-Accounts_CSV', FILE_WORLD_BANK_WEALTH_ACC)
+        if not data_file.is_file():
+            if not SYSTEM_DIR.joinpath('Wealth-Accounts_CSV').is_dir():
+                SYSTEM_DIR.joinpath('Wealth-Accounts_CSV').mkdir()
             file_down = download_file(WORLD_BANK_WEALTH_ACC)
             zip_ref = zipfile.ZipFile(file_down, 'r')
-            zip_ref.extractall(os.path.join(SYSTEM_DIR, 'Wealth-Accounts_CSV'))
+            zip_ref.extractall(SYSTEM_DIR.joinpath('Wealth-Accounts_CSV'))
             zip_ref.close()
-            os.remove(file_down)
-            LOGGER.debug('Download and unzip complete. Unzipping %s', str(fname))
+            Path(file_down).unlink()
+            LOGGER.debug('Download and unzip complete. Unzipping %s', str(data_file))
 
-        data_wealth = pd.read_csv(fname, sep=',', index_col=None, header=0)
+        data_wealth = pd.read_csv(data_file, sep=',', index_col=None, header=0)
     except:
         LOGGER.error('Downloading World Bank Wealth Accounting Data failed.')
         raise
@@ -389,7 +386,7 @@ def _gdp_twn(ref_year, per_capita=False):
     Returns:
         float
     """
-    if not os.path.isfile(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv')):
+    if not SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv').is_file():
         LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
         return 0
     if per_capita:
@@ -402,7 +399,7 @@ def _gdp_twn(ref_year, per_capita=False):
         close_year = 2024
     else:
         close_year = ref_year
-    data = pd.read_csv(os.path.join(os.path.abspath(SYSTEM_DIR), 'GDP_TWN_IMF_WEO_data.csv'),
+    data = pd.read_csv(SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv'),
                        index_col=None, header=0)
     close_val = data.loc[data['Subject Descriptor'] == var_name, str(close_year)].values[0]
     close_val = float(close_val.replace(',', ''))

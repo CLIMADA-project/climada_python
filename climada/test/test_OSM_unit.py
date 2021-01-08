@@ -18,14 +18,16 @@ Unit Tests on Open Street Map exposures.
 """
 
 import unittest
-from climada.entity.exposures import open_street_map as OSM
-import os
 import random
-import geopandas
-import pandas as pd
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-# just for now:
+import pandas as pd
+import geopandas
+
+from climada import CONFIG
+from climada.entity.exposures import open_street_map as OSM
+
+DATA_DIR = CONFIG.test_data.dir()
+
 class TestOSMFunctions(unittest.TestCase):
     """Test OSM Class methods"""
 
@@ -95,7 +97,7 @@ class TestOSMFunctions(unittest.TestCase):
 
     def test_makeUnion(self):
         """test makeUnion function within get_highValueArea function"""
-        gdf_all = geopandas.read_file(os.path.join(DATA_DIR, 'OSM_features_47_8.shp'))
+        gdf_all = geopandas.read_file(DATA_DIR.joinpath('OSM_features_47_8.shp'))
 
         # Execute function
         Low_Value_Union = OSM._makeUnion(gdf_all)
@@ -107,7 +109,7 @@ class TestOSMFunctions(unittest.TestCase):
 #        """test _get_litpop_bbox within get_osmstencil_litpop function"""
 #        # Define and load parameters
 #        country = 'CHE'
-#        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #
 #        # Execute function
 #        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
@@ -119,9 +121,9 @@ class TestOSMFunctions(unittest.TestCase):
 #        """test _split_exposure_highlow within get_osmstencil_litpop function"""
 #        # Define and load parameters:
 #        country = 'CHE' #this takes too long for unit test probably
-#        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
-#        High_Value_Area_gdf = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        High_Value_Area_gdf = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #
 #        # execute function
 #        for mode in {'proportional','even'}:
@@ -135,7 +137,7 @@ class TestOSMFunctions(unittest.TestCase):
     def test_get_midpoints(self):
         """test _get_midpoints within make_osmexposure function"""
         # Define and load parameters:
-        building_path = os.path.join(DATA_DIR, 'buildings_47_8.shp')
+        building_path = DATA_DIR.joinpath('buildings_47_8.shp')
 
         building_gdf = OSM._get_midpoints(building_path)
         self.assertEqual(building_gdf.loc[random.randint(0, len(building_gdf))].geometry.type,
@@ -147,7 +149,7 @@ class TestOSMFunctions(unittest.TestCase):
         """test _assign_values_exposure within make_osmexposure function"""
         # Define and load parameters:
         # function tested previously
-        building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR, 'buildings_47_8.shp'))
+        building_gdf = OSM._get_midpoints(DATA_DIR.joinpath('buildings_47_8.shp'))
         # mode LitPop takes too long for unit test, since loads entire CH-litpop exposure!
         # moved to integration test
         mode = 'default'
