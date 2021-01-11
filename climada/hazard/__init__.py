@@ -27,4 +27,3 @@ from .tc_tracks_forecast import *
 from .tc_rainfield import *
 from .storm_europe import *
 from .wildfire import *
-from .tc_surge import *
