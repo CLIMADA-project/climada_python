@@ -4,12 +4,11 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 import nbformat
 
-from climada.util.constants import SOURCE_DIR
 
-
-NOTEBOOK_DIR = os.path.abspath('doc/tutorial')
+NOTEBOOK_DIR = Path('doc/tutorial')
 '''The path to the notebook directories.'''
 
 BOUND_TO_FAIL = '# Note: execution of this cell will fail'
@@ -117,7 +116,7 @@ def main():
         arg = sys.argv[1]
         if arg == 'report':
             import xmlrunner
-            output = os.path.join(SOURCE_DIR, '../tests_xml')
+            output = Path(__file__).parent.joinpath('tests_xml')
             xmlrunner.XMLTestRunner(output=output).run(suite)
         else:
             jd, nb = os.path.split(arg)
