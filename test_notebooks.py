@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 import nbformat
 
+import climada
 
 NOTEBOOK_DIR = Path(__file__).parent.joinpath('doc', 'tutorial')
 '''The path to the notebook directories.'''
@@ -17,14 +18,14 @@ BOUND_TO_FAIL = '# Note: execution of this cell will fail'
 
 class NotebookTest(unittest.TestCase):
     '''Generic TestCase for testing the executability of notebooks
-    
+
     Attributes
     ----------
     wd : str
         Absolute Path to the working directory, i.e., the directory of the notebook.
     notebook : str
         File name of the notebook.
-    
+
     '''
 
     def __init__(self, methodName, wd=None, notebook=None):
@@ -47,13 +48,13 @@ class NotebookTest(unittest.TestCase):
             # read the notebook into a string
             with open(self.notebook, encoding='utf8') as nb:
                 content = nb.read()
-            
+
             # parse the string with nbformat.reads
             cells = nbformat.reads(content, 4)['cells']
-            
+
             namespace = dict()
             for i, c in enumerate(cells):
-                
+
                 # skip markdown cells
                 if c['cell_type'] != 'code': continue
 
@@ -114,8 +115,8 @@ def main():
         test_name = "_".join(notebook.stem.split())
         setattr(NBTest, test_name, NBTest.test_notebook)
         suite.addTest(NBTest(test_name, notebook.parent, notebook.name))
-    
-    # run the tests depending on the first input argument: None or 'report'. 
+
+    # run the tests depending on the first input argument: None or 'report'.
     # write xml reports for 'report'
     if sys.argv[1:]:
         arg = sys.argv[1]
