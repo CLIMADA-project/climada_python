@@ -8,7 +8,7 @@ from pathlib import Path
 import nbformat
 
 
-NOTEBOOK_DIR = Path('doc/tutorial')
+NOTEBOOK_DIR = Path(__file__).parent.joinpath('doc', 'tutorial')
 '''The path to the notebook directories.'''
 
 BOUND_TO_FAIL = '# Note: execution of this cell will fail'
@@ -38,77 +38,82 @@ class NotebookTest(unittest.TestCase):
         Cells containing `BOUND_TO_FAIL` are elided.
         Cells doing multiprocessing are elided.'''
 
-        # cd to the notebook directory
-        os.chdir(self.wd)
-        print(f'start testing {self.notebook}')
+        cwd = Path.cwd()
+        try:
+            # cd to the notebook directory
+            os.chdir(self.wd)
+            print(f'start testing {self.notebook}')
 
-        # read the notebook into a string
-        with open(self.notebook, encoding='utf8') as nb:
-            content = nb.read()
-        
-        # parse the string with nbformat.reads
-        cells = nbformat.reads(content, 4)['cells']
-        
-        namespace = dict()
-        for i, c in enumerate(cells):
+            # read the notebook into a string
+            with open(self.notebook, encoding='utf8') as nb:
+                content = nb.read()
             
-            # skip markdown cells
-            if c['cell_type'] != 'code': continue
-
-            # skip deliberately failing cells
-            if BOUND_TO_FAIL in c['source']: continue
-
-            # skip multiprocessing cells
-            if any([ tabu in c['source'].split() for tabu in [
-                'pathos.pools',
-                'mulitprocessing',
-            ]]): 
-                print('\n'.join([
-                    f'\nskip multiprocessing cell {i} in {self.notebook}',
-                    '+'+'-'*68+'+',
-                    c['source']
-                ]))
-                continue
-
-            # remove non python lines and help calls which require user input
-            python_code = "\n".join([ln for ln in c['source'].split("\n") 
-                if not ln.startswith('%')
-                and not ln.startswith('help(')
-                and not ln.startswith('ask_ok(')
-                and not ln.strip().endswith('?')
-            ])
-
-            # execute the python code
-            try:
-                exec(python_code, namespace)
+            # parse the string with nbformat.reads
+            cells = nbformat.reads(content, 4)['cells']
             
-            # report failures
-            except Exception as e:
-                failure = "\n".join([
-                    f"notebook {self.notebook} cell {i} failed with {e.__class__}",
-                    f"{e}",
-                    '+'+'-'*68+'+',
-                    c['source']
+            namespace = dict()
+            for i, c in enumerate(cells):
+                
+                # skip markdown cells
+                if c['cell_type'] != 'code': continue
+
+                # skip deliberately failing cells
+                if BOUND_TO_FAIL in c['source']: continue
+
+                # skip multiprocessing cells
+                if any([ tabu in c['source'].split() for tabu in [
+                    'pathos.pools',
+                    'mulitprocessing',
+                ]]): 
+                    print('\n'.join([
+                        f'\nskip multiprocessing cell {i} in {self.notebook}',
+                        '+'+'-'*68+'+',
+                        c['source']
+                    ]))
+                    continue
+
+                # remove non python lines and help calls which require user input
+                python_code = "\n".join([ln for ln in c['source'].split("\n") 
+                    if not ln.startswith('%')
+                    and not ln.startswith('help(')
+                    and not ln.startswith('ask_ok(')
+                    and not ln.strip().endswith('?')
                 ])
-                print(f'failed {self.notebook}')
-                self.fail(failure)
 
-        print(f'succeeded {self.notebook}')
+                # execute the python code
+                try:
+                    exec(python_code, namespace)
+                
+                # report failures
+                except Exception as e:
+                    failure = "\n".join([
+                        f"notebook {self.notebook} cell {i} failed with {e.__class__}",
+                        f"{e}",
+                        '+'+'-'*68+'+',
+                        c['source']
+                    ])
+                    print(f'failed {self.notebook}')
+                    print(failure)
+                    self.fail(failure)
+
+            print(f'succeeded {self.notebook}')
+        finally:
+            os.chdir(cwd)
 
 
 def main():
     # list notebooks in the NOTEBOOK_DIR
-    notebooks = [(NOTEBOOK_DIR, f)
-                 for f in sorted(os.listdir(NOTEBOOK_DIR))
+    notebooks = [f.absolute()
+                 for f in sorted(NOTEBOOK_DIR.iterdir())
                  if os.path.splitext(f)[1] == ('.ipynb')]
 
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()
-    for (jd,nb) in notebooks:
+    for notebook in notebooks:
         class NBTest(NotebookTest): pass
-        test_name = "_".join(os.path.splitext(nb)[0].split())
+        test_name = "_".join(notebook.stem.split())
         setattr(NBTest, test_name, NBTest.test_notebook)
-        suite.addTest(NBTest(test_name, jd, nb))
+        suite.addTest(NBTest(test_name, notebook.parent, notebook.name))
     
     # run the tests depending on the first input argument: None or 'report'. 
     # write xml reports for 'report'
@@ -116,8 +121,8 @@ def main():
         arg = sys.argv[1]
         if arg == 'report':
             import xmlrunner
-            output = Path(__file__).parent.joinpath('tests_xml')
-            xmlrunner.XMLTestRunner(output=output).run(suite)
+            with Path(__file__).parent.joinpath('tests_xml').open("w") as output:
+                xmlrunner.XMLTestRunner(output=output).run(suite)
         else:
             jd, nb = os.path.split(arg)
             unittest.TextTestRunner(verbosity=2).run(NotebookTest('test_notebook', jd, nb))
