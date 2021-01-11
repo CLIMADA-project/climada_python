@@ -83,7 +83,7 @@ class NotebookTest(unittest.TestCase):
                 # execute the python code
                 try:
                     exec(python_code, namespace)
-                
+
                 # report failures
                 except Exception as e:
                     failure = "\n".join([
@@ -121,8 +121,8 @@ def main():
         arg = sys.argv[1]
         if arg == 'report':
             import xmlrunner
-            with Path(__file__).parent.joinpath('tests_xml').open("w") as output:
-                xmlrunner.XMLTestRunner(output=output).run(suite)
+            outdirstr = str(Path(__file__).parent.joinpath('tests_xml'))
+            xmlrunner.XMLTestRunner(output=outdirstr).run(suite)
         else:
             jd, nb = os.path.split(arg)
             unittest.TextTestRunner(verbosity=2).run(NotebookTest('test_notebook', jd, nb))
@@ -132,5 +132,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.path.append(os.getcwd())
+    sys.path.append(Path.cwd())
     main()
