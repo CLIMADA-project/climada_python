@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test Bush fire class
+Test Wild fire class
 """
 
 import os
@@ -25,7 +25,7 @@ import numpy as np
 from scipy import sparse
 from rasterio import Affine
 
-from climada.hazard.bush_fire import BushFire
+from climada.hazard.wildfire import WildFire
 from climada.hazard.centroids.centr import Centroids
 from climada.util import get_resolution
 from climada.util.constants import ONE_LAT_KM
@@ -58,15 +58,15 @@ def def_ori_centroids(firms, centr_res_factor):
     centroids.empty_geometry_points()
     return centroids, res_data
 
-DEF_CENTROIDS = def_ori_centroids(BushFire._clean_firms_csv(TEST_FIRMS), 1/2)
+DEF_CENTROIDS = def_ori_centroids(WildFire._clean_firms_csv(TEST_FIRMS), 1/2)
 
 class TestMethodsFirms(unittest.TestCase):
-    """Test loading functions from the BushFire class"""
+    """Test loading functions from the WildFire class"""
 
     def test_clean_firms_pass(self):
         """ Test _clean_firms_csv """
-        bf = BushFire()
-        firms = bf._clean_firms_csv(TEST_FIRMS)
+        wf = WildFire()
+        firms = wf._clean_firms_csv(TEST_FIRMS)
 
         self.assertEqual(firms['latitude'][0], 36.46245)
         self.assertEqual(firms['longitude'][0], -121.8989)
@@ -79,9 +79,9 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_cons_days_1_pass(self):
         """ Test _firms_cons_days """
-        bf = BushFire()
-        firms_ori = bf._clean_firms_csv(TEST_FIRMS)
-        firms = bf._firms_cons_days(firms_ori.copy())
+        wf = WildFire()
+        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.zeros(9325, int)
         cons_id[8176:-4] = 1
@@ -96,10 +96,10 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_cons_days_2_pass(self):
         """ Test _firms_cons_days """
-        bf = BushFire()
-        firms_ori = bf._clean_firms_csv(TEST_FIRMS)
+        wf = WildFire()
+        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
-        firms = bf._firms_cons_days(firms_ori.copy())
+        firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.ones(9325, int)
         cons_id[100] = 0
@@ -115,11 +115,11 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_cons_days_3_pass(self):
         """ Test _firms_cons_days """
-        ori_thres = BushFire.days_thres
-        BushFire.days_thres = 3
-        bf = BushFire()
-        firms_ori = bf._clean_firms_csv(TEST_FIRMS)
-        firms = bf._firms_cons_days(firms_ori.copy())
+        ori_thres = WildFire.days_thres
+        WildFire.days_thres = 3
+        wf = WildFire()
+        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.zeros(9325, int)
         cons_id[-4:] = 1
@@ -130,15 +130,15 @@ class TestMethodsFirms(unittest.TestCase):
             elif col_name != 'cons_id':
                 for elem_l, elem_r in zip(firms[col_name].values, firms_ori[col_name].values):
                     self.assertEqual(elem_l, elem_r)
-        BushFire.days_thres = ori_thres
+        WildFire.days_thres = ori_thres
 
     def test_firms_cluster_pass(self):
         """ Test _firms_clustering """
-        bf = BushFire()
-        firms_ori = bf._clean_firms_csv(TEST_FIRMS)
+        wf = WildFire()
+        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
-        firms_ori = bf._firms_cons_days(firms_ori)
-        firms = bf._firms_clustering(firms_ori.copy(), 0.375/2/15, 15)
+        firms_ori = wf._firms_cons_days(firms_ori)
+        firms = wf._firms_clustering(firms_ori.copy(), 0.375/2/15, 15)
         self.assertEqual(len(firms), 9325)
         self.assertTrue(np.allclose(firms.clus_id.values[-4:], np.zeros(4, int)))
         self.assertEqual(firms.clus_id.values[100], 0)
@@ -159,13 +159,13 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_event_pass(self):
         """ Test _firms_event """
-        bf = BushFire()
-        firms_ori = bf._clean_firms_csv(TEST_FIRMS)
+        wf = WildFire()
+        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
-        firms_ori = bf._firms_cons_days(firms_ori)
-        firms_ori = bf._firms_clustering(firms_ori, 0.375/2/15, 15)
+        firms_ori = wf._firms_cons_days(firms_ori)
+        firms_ori = wf._firms_clustering(firms_ori, 0.375/2/15, 15)
         firms = firms_ori.copy()
-        bf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
+        wf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
             firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
         self.assertEqual(len(firms), 9325)
         self.assertTrue(np.allclose(np.unique(firms.event_id), np.arange(7)))
@@ -196,102 +196,91 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_iter_events_pass(self):
         """ Test identification of events """
-        ori_thres = BushFire.days_thres
-        bf = BushFire()
-        firms = bf._clean_firms_csv(TEST_FIRMS)
+        ori_thres = WildFire.days_thres
+        wf = WildFire()
+        firms = wf._clean_firms_csv(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
         i_iter = 0
-        BushFire.days_thres = 3
+        WildFire.days_thres = 3
         while firms.iter_ev.any():
             # Compute cons_id: consecutive events in current iteration
-            bf._firms_cons_days(firms)
+            wf._firms_cons_days(firms)
             # Compute clus_id: cluster identifier inside cons_id
-            bf._firms_clustering(firms, 0.375, 15)
+            wf._firms_clustering(firms, 0.375, 15)
             # compute event_id
-            BushFire.days_thres = 2
-            bf._firms_event(BushFire.days_thres, firms.cons_id.values, firms.clus_id.values, 
+            WildFire.days_thres = 2
+            wf._firms_event(WildFire.days_thres, firms.cons_id.values, firms.clus_id.values, 
                 firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
             i_iter += 1
         self.assertEqual(i_iter, 2)
-        BushFire.days_thres = ori_thres
+        WildFire.days_thres = ori_thres
 
-    def test_centroids_resolution_pass(self):
-        """ Test _centroids_resolution """
-        bf = BushFire()
-        res_centr = bf._centroids_resolution(DEF_CENTROIDS[0])
-        res = get_resolution(DEF_CENTROIDS[0].lat, DEF_CENTROIDS[0].lon)
-        self.assertAlmostEqual((res[0]+res[1])/2, res_centr)
-
-        centroids = Centroids()
-        centroids.meta = {'transform': Affine(0.5, 0, -180, 0, -0.5, 90)}
-        res_centr = bf._centroids_resolution(centroids)
-        self.assertAlmostEqual(0.5, res_centr)
 
     def test_calc_bright_pass(self):
         """ Test _calc_brightness """
 #        from pathos.pools import ProcessPool as Pool
 #        pool = Pool()
-        bf = BushFire()
-        firms = bf._clean_firms_csv(TEST_FIRMS)
+        wf = WildFire()
+        firms = wf._clean_firms_csv(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
-        firms = bf._firms_cons_days(firms)
-        firms = bf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15, 15)
-        bf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
+        firms = wf._firms_cons_days(firms)
+        firms = wf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15, 15)
+        wf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
             firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
         firms.latitude[8169] = firms.loc[16]['latitude']
         firms.longitude[8169] = firms.loc[16]['longitude']
-        bf._calc_brightness(firms, DEF_CENTROIDS[0], DEF_CENTROIDS[1])
-        bf.check()
+        wf._calc_brightness(firms, DEF_CENTROIDS[0], DEF_CENTROIDS[1])
+        wf.check()
 
-        self.assertEqual(bf.tag.haz_type, 'BF')
-        self.assertEqual(bf.tag.description, '')
-        self.assertEqual(bf.units, 'K')
-        self.assertEqual(bf.centroids.size, 19454)
-        self.assertTrue(np.allclose(bf.event_id, np.arange(1, 8)))
-        self.assertEqual(bf.event_name, ['1', '2', '3', '4', '5', '6', '7'])
-        self.assertTrue(bf.frequency.size, 0)
-        self.assertTrue(isinstance(bf.intensity, sparse.csr_matrix))
-        self.assertTrue(isinstance(bf.fraction, sparse.csr_matrix))
-        self.assertEqual(bf.intensity.shape, (7, 19454))
-        self.assertEqual(bf.fraction.shape, (7, 19454))
-        self.assertEqual(bf.fraction.max(), 1.0)
-        self.assertAlmostEqual(bf.intensity[0, 16618], firms.loc[100].brightness)
-        self.assertAlmostEqual(bf.intensity[1, 123], max(firms.loc[6721].brightness, firms.loc[6722].brightness))
-        self.assertAlmostEqual(bf.intensity[2, :].max(), firms.loc[8105].brightness)
-        self.assertAlmostEqual(bf.intensity[4, 19367], firms.loc[2879].brightness)
-        self.assertAlmostEqual(bf.intensity[5, 10132], firms.loc[8176].brightness)
-        self.assertAlmostEqual(bf.intensity[6, 10696], max(firms.loc[9322].brightness, firms.loc[9324].brightness))
-        self.assertAlmostEqual(bf.intensity[6, 10697], max(firms.loc[9321].brightness, firms.loc[9323].brightness))
-        self.assertEqual((bf.intensity[0, :]>0).sum(), 1)
-        self.assertEqual((bf.intensity[1, :]>0).sum(), 424)
-        self.assertEqual((bf.intensity[2, :]>0).sum(), 1)
-        self.assertEqual((bf.intensity[3, :]>0).sum(), 1112)
-        self.assertEqual((bf.intensity[4, :]>0).sum(), 1)
-        self.assertEqual((bf.intensity[5, :]>0).sum(), 264)
-        self.assertEqual((bf.intensity[6, :]>0).sum(), 2)
+        self.assertEqual(wf.tag.haz_type, 'WF')
+        self.assertEqual(wf.tag.description, '')
+        self.assertEqual(wf.units, 'K')
+        self.assertEqual(wf.centroids.size, 19454)
+        self.assertTrue(np.allclose(wf.event_id, np.arange(1, 8)))
+        self.assertEqual(wf.event_name, ['1', '2', '3', '4', '5', '6', '7'])
+        self.assertTrue(wf.frequency.size, 0)
+        self.assertTrue(isinstance(wf.intensity, sparse.csr_matrix))
+        self.assertTrue(isinstance(wf.fraction, sparse.csr_matrix))
+        self.assertEqual(wf.intensity.shape, (7, 19454))
+        self.assertEqual(wf.fraction.shape, (7, 19454))
+        self.assertEqual(wf.fraction.max(), 1.0)
+        self.assertAlmostEqual(wf.intensity[0, 16618], firms.loc[100].brightness)
+        self.assertAlmostEqual(wf.intensity[1, 123], max(firms.loc[6721].brightness, firms.loc[6722].brightness))
+        self.assertAlmostEqual(wf.intensity[2, :].max(), firms.loc[8105].brightness)
+        self.assertAlmostEqual(wf.intensity[4, 19367], firms.loc[2879].brightness)
+        self.assertAlmostEqual(wf.intensity[5, 10132], firms.loc[8176].brightness)
+        self.assertAlmostEqual(wf.intensity[6, 10696], max(firms.loc[9322].brightness, firms.loc[9324].brightness))
+        self.assertAlmostEqual(wf.intensity[6, 10697], max(firms.loc[9321].brightness, firms.loc[9323].brightness))
+        self.assertEqual((wf.intensity[0, :]>0).sum(), 1)
+        self.assertEqual((wf.intensity[1, :]>0).sum(), 424)
+        self.assertEqual((wf.intensity[2, :]>0).sum(), 1)
+        self.assertEqual((wf.intensity[3, :]>0).sum(), 1112)
+        self.assertEqual((wf.intensity[4, :]>0).sum(), 1)
+        self.assertEqual((wf.intensity[5, :]>0).sum(), 264)
+        self.assertEqual((wf.intensity[6, :]>0).sum(), 2)
 
     def test_set_frequency_pass(self):
         """ Test _set_frequency """
-        bf = BushFire()
-        bf.date = np.array([736167, 736234, 736235])
-        bf.orig = np.ones(3, bool)
-        bf.event_id = np.arange(3)
-        bf._set_frequency()
-        self.assertTrue(np.allclose(bf.frequency, np.ones(3, float)))
+        wf = WildFire()
+        wf.date = np.array([736167, 736234, 736235])
+        wf.orig = np.ones(3, bool)
+        wf.event_id = np.arange(3)
+        wf._set_frequency()
+        self.assertTrue(np.allclose(wf.frequency, np.ones(3, float)))
 
-        bf = BushFire()
-        bf.date = np.array([736167, 736167, 736167, 736234, 736234, 736234, 736235, 736235, 736235])
-        bf.orig = np.zeros(9, bool)
-        bf.orig[[0, 3, 6]] = True
-        bf.event_id = np.arange(9)
-        bf._set_frequency()
-        self.assertTrue(np.allclose(bf.frequency, np.ones(9, float)/3))
+        wf = WildFire()
+        wf.date = np.array([736167, 736167, 736167, 736234, 736234, 736234, 736235, 736235, 736235])
+        wf.orig = np.zeros(9, bool)
+        wf.orig[[0, 3, 6]] = True
+        wf.event_id = np.arange(9)
+        wf._set_frequency()
+        self.assertTrue(np.allclose(wf.frequency, np.ones(9, float)/3))
 
     def test_centroids_pass(self):
         """ Test _centroids_creation """
-        bf = BushFire()
-        firms = bf._clean_firms_csv(TEST_FIRMS)
-        centroids = bf._centroids_creation(firms, 0.375/ONE_LAT_KM, 1/2)
+        wf = WildFire()
+        firms = wf._clean_firms_csv(TEST_FIRMS)
+        centroids = wf._centroids_creation(firms, 0.375/ONE_LAT_KM, 1/2)
         self.assertEqual(centroids.meta['width'], 144)
         self.assertEqual(centroids.meta['height'], 138)
         self.assertEqual(centroids.meta['crs']['init'], 'epsg:4326')
@@ -311,11 +300,11 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_resolution_pass(self):
         """ Test _firms_resolution """
-        bf = BushFire()
-        firms = bf._clean_firms_csv(TEST_FIRMS)
-        self.assertAlmostEqual(bf._firms_resolution(firms), 0.375/ONE_LAT_KM)
+        wf = WildFire()
+        firms = wf._clean_firms_csv(TEST_FIRMS)
+        self.assertAlmostEqual(wf._firms_resolution(firms), 0.375/ONE_LAT_KM)
         firms['instrument'][0] = 'MODIS'
-        self.assertAlmostEqual(bf._firms_resolution(firms), 1.0/ONE_LAT_KM)
+        self.assertAlmostEqual(wf._firms_resolution(firms), 1.0/ONE_LAT_KM)
 
 # Execute Tests
 if __name__ == "__main__":
