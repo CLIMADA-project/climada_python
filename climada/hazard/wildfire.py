@@ -131,11 +131,11 @@ class WildFire(Hazard):
         # compute centroids
         res_data = self._firms_resolution(firms)
         if not centroids:
-            centroids = self._centroids_creation(firms, res_data, centr_res_factor)
+            centroids = self._firms_centroids_creation(firms, res_data, centr_res_factor)
         else:
             if not centroids.coord.size:
                 centroids.set_meta_to_lat_lon()
-        res_centr = self._centroids_resolution(centroids)
+        res_centr = centroids._centroids_resolution(centroids)
 
         # fire identification
         while firms.iter_ev.any():
@@ -248,7 +248,7 @@ class WildFire(Hazard):
         # compute centroids
         res_data = self._firms_resolution(firms)
         if not centroids:
-            centroids = self._centroids_creation(firms, res_data, centr_res_factor)
+            centroids = self._firms_centroids_creation(firms, res_data, centr_res_factor)
         else:
             if not centroids.coord.size:
                 centroids.set_meta_to_lat_lon()
@@ -460,7 +460,8 @@ class WildFire(Hazard):
 
     def summarize_fires_to_seasons(self, year_start=None, year_end=None,
                                    hemisphere=None):
-        """ Summarize historic fires into fire seasons.
+        """ Summarize historic fires into fire seasons. Fires are summarized
+        by taking the maximum intensity at each grid point.
 
         Parameters:
             year_start (int, optional): start year; fires before that
@@ -594,7 +595,7 @@ class WildFire(Hazard):
         return res_data/ONE_LAT_KM
 
     @staticmethod
-    def _centroids_creation(firms, res_data, centr_res_factor):
+    def _firms_centroids_creation(firms, res_data, centr_res_factor):
         """ Get centroids from the firms dataset and refactor them.
 
         Parameters:
@@ -750,26 +751,6 @@ class WildFire(Hazard):
         firms = firms.reset_index()
 
         return firms
-
-    @staticmethod
-    def _centroids_resolution(centroids):
-        """ Return resolution of the centroids in their units
-
-        Parameters:
-            centroids (Centroids): centroids instance
-
-        Returns:
-            float
-        """
-        if centroids.meta:
-            res_centr = abs(centroids.meta['transform'][4]), \
-                centroids.meta['transform'][0]
-        else:
-            res_centr = get_resolution(centroids.lat, centroids.lon)
-        if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
-            LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
-            return (res_centr[0] + res_centr[1])/2
-        return res_centr[0]
 
     def _calc_brightness(self, firms, centroids, res_centr):
         """ Compute intensity matrix per fire with the maximum brightness at
