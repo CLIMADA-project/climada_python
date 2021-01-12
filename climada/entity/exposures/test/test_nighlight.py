@@ -90,7 +90,7 @@ class TestNightLight(unittest.TestCase):
             nightlight.check_nl_local_file_exists(
                 np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR
             )[0],
-            np.array([0., 0., 1., 0., 1., 0., 1., 0.])
+            np.array([1., 0., 1., 0., 1., 1., 1., 0.])
         )
 
     def test_download_nightlight_files(self):
