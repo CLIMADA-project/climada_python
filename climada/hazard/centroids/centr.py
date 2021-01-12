@@ -860,7 +860,26 @@ class Centroids():
                 self.geometry = (ddata
                                  .map_partitions(apply_point, meta=Point)
                                  .compute(scheduler=scheduler))
+    @staticmethod
+    def _centroids_resolution(centroids):
+        """ Return resolution of the centroids in their units
 
+        Parameters:
+            centroids (Centroids): centroids instance
+
+        Returns:
+            float
+        """
+        if centroids.meta:
+            res_centr = abs(centroids.meta['transform'][4]), \
+                centroids.meta['transform'][0]
+        else:
+            res_centr = get_resolution(centroids.lat, centroids.lon)
+        if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
+            LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
+            return (res_centr[0] + res_centr[1])/2
+        return res_centr[0]
+    
     def _ne_crs_geom(self, scheduler=None):
         """Return x (lon) and y (lat) in the CRS of Natural Earth
 
