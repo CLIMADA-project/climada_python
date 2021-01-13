@@ -56,22 +56,19 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'TCSurgeGeoClaw'
 """Hazard type acronym for this module."""
 
-CLAWPACK_GIT_URL = "https://github.com/clawpack/clawpack.git"
+CLAWPACK_GIT_URL = CONFIG.hazard.tc_surge_geoclaw.resources.clawpack_git.str()
 """URL of the official Clawpack git repository."""
 
-CLAWPACK_VERSION = "v5.7.1"
+CLAWPACK_VERSION = CONFIG.hazard.tc_surge_geoclaw.resources.clawpack_version.str()
 """Version or git decorator (tag, branch) of Clawpack to use."""
 
-DATA_DIR = CONFIG.hazard.tc_surge_geoclaw.local_data.dir()
-"""Directory for this module's data files"""
-
-CLAWPACK_SRC_DIR = DATA_DIR.joinpath("src")
+CLAWPACK_SRC_DIR = CONFIG.hazard.tc_surge_geoclaw.clawpack_src_dir.dir()
 """Directory for Clawpack source checkouts (if it doesn't exist)"""
 
-GEOCLAW_WORK_DIR = DATA_DIR.joinpath("runs")
+GEOCLAW_WORK_DIR = CONFIG.hazard.tc_surge_geoclaw.geoclaw_work_dir.dir()
 """Base directory for GeoClaw run data."""
 
-CENTR_NODE_MAX_DIST_DEG = 5.5
+CENTR_NODE_MAX_DIST_DEG = CONFIG.hazard.tc_surge_geoclaw.centr_node_max_dist_deg.float()
 """Maximum distance between centroid and TC track node in degrees."""
 
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
