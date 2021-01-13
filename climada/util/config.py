@@ -318,5 +318,6 @@ CONFIG_NAME = 'climada.conf'
 CONFIG = Config.from_dict(_fetch_conf([
     Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository
     Path(Path.home(), 'climada', 'conf'),  # ~/climada/conf directory
+    Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
