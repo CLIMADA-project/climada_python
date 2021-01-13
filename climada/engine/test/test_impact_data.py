@@ -18,17 +18,18 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Impact class.
 """
-import os
 import unittest
 import numpy as np
-from climada.util.constants import DATA_DIR
+
+from climada import CONFIG
+from climada.util.constants import DEMO_DIR
 
 import climada.engine.impact_data as im_d
 
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
-EMDAT_TEST_CSV = os.path.join(DATA_FOLDER, 'emdat_testdata_BGD_USA_1970-2017.csv')
-EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.csv')
-EMDAT_2020_CSV_DEMO = os.path.join(DATA_DIR, 'demo', 'demo_emdat_impact_data_2020.csv')
+DATA_DIR = CONFIG.engine.test_data.dir()
+EMDAT_TEST_CSV = DATA_DIR.joinpath('emdat_testdata_BGD_USA_1970-2017.csv')
+EMDAT_TEST_CSV_FAKE = DATA_DIR.joinpath('emdat_testdata_fake_2007-2011.csv')
+EMDAT_2020_CSV_DEMO = DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv')
 
 class TestEmdatImport(unittest.TestCase):
     """Test import of EM-DAT data (as CSV) for impact data analysis"""
@@ -202,9 +203,9 @@ class TestEmdatToImpact(unittest.TestCase):
         #                 year_range=None, countries=None, hazard_type_emdat=None, \
         #                 reference_year=None, imp_str="Total Damages ('000 US$)")
         # =====================================================================
-        
+
         # file 1: version 2020
-        impact_emdat2020, countries2020 = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC')
+        _impact_emdat2020, countries2020 = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC')
         # file 2: version 2018
         impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV, 'TC')
 
@@ -268,7 +269,7 @@ class TestEmdatToImpact(unittest.TestCase):
         df2 = im_d.emdat_impact_event(EMDAT_2020_CSV_DEMO, countries='PHL', hazard='TC',
                                       year_range=(2013, 2013), reference_year=None,
                                       imp_str='Total Affected')
-        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC',
+        impact_emdat, _countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC',
                                                        countries='PHL',
                                                        year_range=(2013, 2013),
                                                        imp_str="Total Affected")

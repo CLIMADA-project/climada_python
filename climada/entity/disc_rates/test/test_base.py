@@ -18,16 +18,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test DiscRates class.
 """
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.disc_rates.base import DiscRates
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
-CURR_DIR = os.path.dirname(__file__)
-ENT_TEST_MAT = os.path.join(CURR_DIR,
-                            '../../exposures/test/data/demo_today.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestChecker(unittest.TestCase):
     """Test discount rates attributes checker"""
@@ -253,7 +251,7 @@ class TestWriter(unittest.TestCase):
         disc_rate.years = np.arange(1950, 2150)
         disc_rate.rates = np.ones(disc_rate.years.size) * 0.03
 
-        file_name = os.path.join(os.path.join(CURR_DIR, 'data'), 'test_disc.xlsx')
+        file_name = CONFIG.disc_rates.test_data.dir().joinpath('test_disc.xlsx')
         disc_rate.write_excel(file_name)
 
         disc_read = DiscRates()

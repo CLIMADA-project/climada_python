@@ -23,12 +23,11 @@ __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
 import datetime as dt
-import glob
 import itertools
 import logging
-import os
 import shutil
 import warnings
+from pathlib import Path
 
 # additional libraries
 import cartopy.crs as ccrs
@@ -247,6 +246,10 @@ class TCTracks():
 
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
+        try:  
+            exposure.geometry
+        except AttributeError:
+            exposure.set_geometry_points()
 
         exp_buffer = exposure.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
@@ -295,8 +298,8 @@ class TCTracks():
                            "Use `estimate_missing` instead.")
             estimate_missing = True
         self.data = list()
-        fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), file_name)
-        if not glob.glob(fn_nc):
+        fn_nc = SYSTEM_DIR.joinpath(file_name)
+        if not fn_nc.is_file():
             try:
                 download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
                 shutil.move(IBTRACS_FILE, fn_nc)
@@ -491,7 +494,7 @@ class TCTracks():
         """
         self.data = []
         for path in get_file_names(file_names):
-            rmw_corr = os.path.basename(path) in EMANUEL_RMW_CORR_FILES
+            rmw_corr = Path(path).name in EMANUEL_RMW_CORR_FILES
             self._read_file_emanuel(path, hemisphere=hemisphere,
                                     rmw_corr=rmw_corr)
 
@@ -788,7 +791,7 @@ class TCTracks():
             category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
             chaz_ds['category'] = ("id", np.argmax(category_test, axis=1) - 1)
 
-            fname = os.path.basename(path)
+            fname = Path(path).name
             chaz_ds.time[:] = chaz_ds.time.dt.round('s').data
             chaz_ds['radius_max_wind'] = xr.full_like(chaz_ds.pres, np.nan)
             chaz_ds['environmental_pressure'] = xr.full_like(chaz_ds.pres, DEF_ENV_PRESSURE)
@@ -879,7 +882,7 @@ class TCTracks():
 
         # add tracks one by one
         last_perc = 0
-        fname = os.path.basename(path)
+        fname = Path(path).name
         groups = tracks_df.groupby(by=["year", "tc_num"])
         for idx, group in groups:
             perc = 100 * len(self.data) / len(groups)
@@ -1086,7 +1089,7 @@ class TCTracks():
         folder_name : str
             Folder name where to write files.
         """
-        list_path = [os.path.join(folder_name, track.sid + '.nc') for track in self.data]
+        list_path = [Path(folder_name, track.sid + '.nc') for track in self.data]
         LOGGER.info('Writting %s files.', self.size)
         for track in self.data:
             track.attrs['orig_event_flag'] = int(track.orig_event_flag)
@@ -1104,7 +1107,7 @@ class TCTracks():
         LOGGER.info('Reading %s files.', len(file_tr))
         self.data = list()
         for file in file_tr:
-            if not os.path.splitext(file)[1] == '.nc':
+            if Path(file).suffix != '.nc':
                 continue
             track = xr.open_dataset(file)
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
@@ -1498,7 +1501,7 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
             raise KeyError
 
     # load ibtracs dataset
-    fn_nc = os.path.join(os.path.abspath(SYSTEM_DIR), 'IBTrACS.ALL.v04r00.nc')
+    fn_nc = SYSTEM_DIR.joinpath('IBTrACS.ALL.v04r00.nc')
     ibtracs_ds = xr.open_dataset(fn_nc)
 
     # choose specified year range

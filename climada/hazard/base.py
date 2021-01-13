@@ -42,7 +42,7 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
 import climada.util.checker as check
 import climada.util.dates_times as u_dt
-from climada.util.config import CONFIG
+from climada import CONFIG
 import climada.util.hdf5_handler as hdf5
 import climada.util.coordinates as co
 
@@ -641,7 +641,7 @@ class Hazard():
                     return_periods)
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size'] / self.intensity.shape[0])
+        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.intensity.shape[0]))
@@ -687,8 +687,8 @@ class Hazard():
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
-                                           colbar_name, title, smooth=smooth,
-                                           axes=axis, **kwargs)
+                                        colbar_name, title, smooth=smooth,
+                                        axes=axis, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,

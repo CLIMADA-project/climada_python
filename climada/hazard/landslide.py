@@ -21,8 +21,9 @@ Define Landslide class.
 __all__ = ['Landslide']
 
 import logging
-import os
+from pathlib import Path
 import glob
+
 import shlex
 import subprocess
 from scipy import sparse
@@ -35,12 +36,12 @@ from rasterio.windows import Window
 import requests
 import numpy as np
 from haversine import haversine
+
+from climada import CONFIG
 from climada.hazard.base import Hazard
-from climada.util.constants import DATA_DIR
+from climada.util.constants import SYSTEM_DIR as LS_FILE_DIR
 
 LOGGER = logging.getLogger(__name__)
-
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 
 HAZ_TYPE = 'LS'
 
@@ -62,7 +63,7 @@ HAZ_TYPE = 'LS'
 #    open((save_path+'/global_LS_catalogue'+'.zip'), 'wb').write(response.content)
 #
 
-def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.getcwd()):
+def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=None):
     """API request to get global monthly LS hazard map, averaged over 15 years from NASA
     or daily global LS nowcasting hazard map. Both from NASA.
 
@@ -77,12 +78,15 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
         tiff files (daily) to save_path/LS_nowcast_date.tif
     """
     # the daily one is currently not producing any output
+    if save_path is None:
+        save_path = CONFIG.hazard.landslide.local_data.dir()
+
     if tif_type == "daily":
         if starttime > endtime:
             LOGGER.error("Start date must lie before end date. Please change")
             raise ValueError
 
-        url = 'https://pmmpublisher.pps.eosdis.nasa.gov/opensearch'
+        url = CONFIG.hazard.landslide.resources.opensearch.str()
         params = dict(
             q='global_landslide_nowcast',
             limit=50,
@@ -101,15 +105,12 @@ def get_nowcast_tiff(tif_type="monthly", starttime="", endtime="", save_path=os.
             LOGGER.info('requesting %s', url)
             resp_tif.append(requests.get(url=url))
             LOGGER.info('downloading content...')
-            with open((save_path + '/LS_nowcast_' + str(url[-12:-4]) + '.tif'), 'wb') as fp:
+            with Path(save_path, 'LS_nowcast_' + str(url[-12:-4]) + '.tif').open('wb') as fp:
                 fp.write(resp_tif[-1].content)
 
     elif tif_type == "monthly":
 
-        command_line = ('curl -LO '
-                        '"https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004631/frames'
-                        '/9600x5400_16x9_30p/MonthlyClimatology/'
-                        '[01-12]_ClimatologyMonthly_032818_9600x5400.tif"')
+        command_line = 'curl -LO ' + CONFIG.hazard.landslide.resources.climatology_monthly.str()
         args = shlex.split(command_line)
         p = subprocess.Popen(args,
                              stdout=subprocess.PIPE,
@@ -133,20 +134,18 @@ def combine_nowcast_tiff(ls_folder_path, search_criteria='LS*.tif', operator="ma
 
 
     # get names of all LS nowcast files present in LS folder
-    ls_files = os.path.join(ls_folder_path, search_criteria)
-    ls_files = glob.glob(ls_files)
+    ls_files = Path(ls_folder_path, search_criteria)
+    ls_files = glob.glob(str(ls_files))
 
     # WITH COMMAND LINE GDAL_CALC: keep maximum pixels when combining
     # loop over all LS nowcast files (inefficient)
-    combined_layers_path = os.path.join(ls_folder_path, 'combined_nowcasts_LS.tif')
+    combined_layers_path = Path(ls_folder_path, 'combined_nowcasts_LS.tif')
     if operator == "maximum":
         i = 0
         for file in ls_files:
             if i == 0:
-                """
-                Popen(['/usr/bin/env', 'progtorun', other, args], ...)
-                /Users/evelynm/anaconda3/envs/climada_env_new/bin
-                """
+                # Popen(['/usr/bin/env', 'progtorun', other, args], ...)
+                # /Users/evelynm/anaconda3/envs/climada_env_new/bin
                 command_line = 'gdal_calc.py --outfile=%s -A "%s" -B "%s" --calc="maximum(A,B)"' \
                 % (combined_layers_path, file, file)
                 args = shlex.split(command_line)
@@ -189,13 +188,13 @@ class Landslide(Hazard):
         self.tag.haz_type = 'LS'
 
 
-    def _get_window_from_coords(self, path_sourcefile, bbox=[]):
+    def _get_window_from_coords(self, path_sourcefile, bbox):
         ###### would fit better into base calss for sub-function of hazard.set_raster()########
         """get row, column, width and height required for rasterio window function
         from coordinate values of bounding box
         Parameters:
+            path_sourcefile (str or Path): path of file from which window should be read in
             bbox (array): [north, east, south, west]
-            large_file (str): path of file from which window should be read in
         Returns:
             window_array (array): corner, width & height for Window() function of rasterio
         """
@@ -387,7 +386,7 @@ class Landslide(Hazard):
             self.centroids.plot()
         return self
 
-    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", path_sourcefile=[], n_years=500,
+    def set_ls_model_prob(self, bbox, ls_model="UNEP_NGI", path_sourcefile=None, n_years=500,
                           incl_neighbour=False, max_dist=1000, max_prob=0.000015, check_plots=1):
         """....
         Parameters:
@@ -411,7 +410,7 @@ class Landslide(Hazard):
         """
 
         if ls_model == "UNEP_NGI":
-            path_sourcefile = os.path.join(LS_FILE_DIR, 'ls_pr_NGI_UNEP/ls_pr.tif')
+            path_sourcefile = LS_FILE_DIR.joinpath('ls_pr_NGI_UNEP/ls_pr.tif')
 
             if not bbox:
                 LOGGER.error('Empty bounding box, please set bounds.')
@@ -476,12 +475,12 @@ class Landslide(Hazard):
                 self.check()
 
             if check_plots == 1:
-                fig1, ax1 = plt.subplots(nrows=1, ncols=1)
-                ax1 = self.plot_raw()
+                fig1, _ = plt.subplots(nrows=1, ncols=1)
+                self.plot_raw()
                 fig1.suptitle('Raw data: Occurrence prob of LS per year', fontsize=14)
 
-                fig2, ax2 = plt.subplots(nrows=1, ncols=1)
-                ax2 = self.plot_events()
+                fig2, _ = plt.subplots(nrows=1, ncols=1)
+                self.plot_events()
                 fig2.suptitle('Prob. LS Hazard Set n_years = %i' % n_years, fontsize=14)
 
             return self

@@ -20,9 +20,10 @@ Test tc_tracks_synth module.
 """
 
 import array
-import numpy as np
-import os
 import unittest
+from pathlib import Path
+
+import numpy as np
 import xarray as xr
 
 import climada.hazard.tc_tracks as tc
@@ -30,9 +31,9 @@ import climada.hazard.tc_tracks_synth as tc_synth
 import climada.util.coordinates
 from climada.util.constants import TC_ANDREW_FL
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
-TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
+DATA_DIR = Path(__file__).parent.joinpath('data')
+TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
+TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
 class TestDecay(unittest.TestCase):
     def test_apply_decay_no_landfall_pass(self):
@@ -425,6 +426,7 @@ class TestSynth(unittest.TestCase):
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_perturbed_trajectories."""
         tc_track = tc.TCTracks()
+        assert TC_ANDREW_FL.is_file()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
