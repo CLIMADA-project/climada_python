@@ -705,7 +705,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         surge_data.drag_law = 1
         surge_data.pressure_forcing = True
         surge_data.storm_specification_type = 'holland80'
-        surge_data.storm_file = self.work_dir.joinpath("track.storm")
+        surge_data.storm_file = str(self.work_dir.joinpath("track.storm"))
         gc_storm = climada_xarray_to_geoclaw_storm(self.track,
                                                    offset=dt64_to_pydt(self.time_offset))
         gc_storm.write(surge_data.storm_file, file_format='geoclaw')
