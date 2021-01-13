@@ -67,15 +67,6 @@ CLAWPACK_SRC_DIR = os.path.join(DATA_DIR, "geoclaw", "src")
 GEOCLAW_WORK_DIR = os.path.join(DATA_DIR, "geoclaw", "runs")
 """Base directory for GeoClaw run data."""
 
-INLAND_MAX_DIST_KM = 50
-"""Maximum inland distance of the centroids in km."""
-
-OFFSHORE_MAX_DIST_KM = 10
-"""Maximum offshore distance of the centroids in km."""
-
-MAX_LATITUDE = 61
-"""Maximum latitude of potentially affected centroids."""
-
 CENTR_NODE_MAX_DIST_DEG = 5.5
 """Maximum distance between centroid and TC track node in degrees."""
 
@@ -101,15 +92,16 @@ class TCSurgeGeoClaw(Hazard):
         Hazard.__init__(self, HAZ_TYPE)
         self.gauge_data = []
 
-
     @staticmethod
-    def from_tc_tracks(tracks, zos_path, topo_path, centroids=None, description='', gauges=None):
-        """New instance with surge inundation from TCTracks objects.
+    def from_tc_tracks(tracks, zos_path, topo_path, centroids=None, description='', gauges=None,
+                       inland_max_dist_km=50, offshore_max_dist_km=10, max_latitude=61,
+                       pool=None):
+        """Generate a TC surge hazard instance from a TCTracks object
 
         Parameters
         ----------
         tracks : TCTracks
-            tracks of events
+            Tracks of tropical cyclone events.
         zos_path : str
             Path to NetCDF file containing gridded monthly sea level data.
         topo_path : str
@@ -117,42 +109,39 @@ class TCSurgeGeoClaw(Hazard):
         centroids : Centroids, optional
             Centroids where to model TC. Default: global centroids.
         description : str, optional
-            description of the events
+            String description of the tropical cyclone events.
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
             This is used mostly for validation purposes.
+        inland_max_dist_km : float, optional
+            Maximum inland distance of the centroids in km. Default: 50.
+        offshore_max_dist_km : float, optional
+            Maximum offshore distance of the centroids in km. Default: 10.
+        max_latitude : float, optional
+            Maximum latitude of potentially affected centroids. Default: 61
+        pool : an object with `map` functionality, optional
+            If given, landfall events for each track are processed in parallel. Note that the
+            solver for a single landfall event is using OpenMP multiprocessing capabilities
+            already. You will only benefit from processing these OpenMP tasks in parallel if a
+            sufficient number of CPUs is available, e.g. with MPI multitasking on a cluster.
         """
         if tracks.size == 0:
             raise ValueError("The given TCTracks object doesn't contain any tracks.")
         setup_clawpack()
 
         if centroids is None:
-            # cell-centered grid within padded bounds at 30 arc-seconds resolution
-            res_deg = 30 / (60 * 60)
-            bounds = tracks.get_bounds(deg_buffer=CENTR_NODE_MAX_DIST_DEG)
-            lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
-            lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
-            lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
-            centroids = Centroids()
-            centroids.set_lat_lon(lat, lon)
+            centroids = get_centroids_from_tracks(tracks, 30 / (60 * 60), CENTR_NODE_MAX_DIST_DEG)
 
-        if not centroids.coord.size:
-            centroids.set_meta_to_lat_lon()
-
-        # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
-        if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
-            centroids.set_dist_coast(signed=True, precomputed=True)
-        coastal_msk = (centroids.dist_coast <= OFFSHORE_MAX_DIST_KM * 1000)
-        coastal_msk &= (centroids.dist_coast >= -INLAND_MAX_DIST_KM * 1000)
-        coastal_msk &= (np.abs(centroids.lat) <= MAX_LATITUDE)
-        coastal_idx = coastal_msk.nonzero()[0]
+        max_dist_coast_km = (offshore_max_dist_km, inland_max_dist_km)
+        coastal_idx = get_coastal_centroids_idx(centroids, max_dist_coast_km,
+                                                max_latitude=max_latitude)
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
         haz = TCSurgeGeoClaw()
         haz.concatenate(
             [TCSurgeGeoClaw.from_xr_track(t, centroids, coastal_idx, zos_path, topo_path,
-                                          gauges=gauges)
+                                          gauges=gauges, pool=pool)
              for t in tracks.data])
         TropCyclone.frequency_from_tracks(haz, tracks.data)
         haz.tag.description = description
@@ -160,13 +149,13 @@ class TCSurgeGeoClaw(Hazard):
 
 
     @staticmethod
-    def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path, gauges=None):
-        """Generate TC surge hazard from a single xarray track dataset
+    def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path, gauges=None, pool=None):
+        """Generate a TC surge hazard from a single xarray track dataset
 
         Parameters
         ----------
         track : xr.Dataset
-            single tropical cyclone track.
+            A single tropical cyclone track.
         centroids : Centroids
             Centroids instance.
         coastal_idx : np.array
@@ -178,6 +167,8 @@ class TCSurgeGeoClaw(Hazard):
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
             This is used mostly for validation purposes.
+        pool : an object with `map` functionality, optional
+            If given, landfall events are processed in parallel.
 
         Returns
         -------
@@ -187,7 +178,7 @@ class TCSurgeGeoClaw(Hazard):
         intensity = np.zeros(centroids.coord.shape[0])
         intensity[coastal_idx], gauge_data = geoclaw_surge_from_track(track, coastal_centroids,
                                                                       zos_path, topo_path,
-                                                                      gauges=gauges)
+                                                                      gauges=gauges, pool=pool)
 
         new_haz = TCSurgeGeoClaw()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
@@ -218,7 +209,67 @@ class TCSurgeGeoClaw(Hazard):
         self.gauge_data = gauge_data
 
 
-def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None):
+def get_centroids_from_tracks(tracks, res_deg, buffer_deg):
+    """Generate gridded centroids within padded bounds of tracks
+
+    Parameters
+    ----------
+    tracks : TCTracks
+        Tracks of tropical cyclone events.
+    res_deg : float
+        Resolution in degrees.
+    buffer_deg : float
+        Buffer around tracks in degrees.
+
+    Returns
+    -------
+    centroids : Centroids
+        Centroids instance.
+    """
+    bounds = tracks.get_bounds(deg_buffer=buffer_deg)
+    lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
+    lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
+    lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
+    centroids = Centroids()
+    centroids.set_lat_lon(lat, lon)
+    return centroids
+
+
+def get_coastal_centroids_idx(centroids, max_dist_coast_km, max_latitude=90):
+    """Get indices of coastal centroids
+
+    Parameters
+    ----------
+    centroids : Centroids
+        Centroids instance.
+    max_dist_coast_km : pair of floats (offshore, inland)
+        Maximum distance to coast offshore and inland. If a single float is given instead of a
+        pair, the values for inland and offshore are assumed as equal.
+    max_latitude : float, optional
+        Maximum latitude cutoff. Default: 90.
+
+    Returns
+    -------
+    coastal_idx : np.array of type int
+        Indices into given `centroids`.
+    """
+    try:
+        offshore_max_dist_km, inland_max_dist_km = max_dist_coast_km
+    except TypeError:
+        offshore_max_dist_km = inland_max_dist_km = max_dist_coast_km
+
+    if not centroids.coord.size:
+        centroids.set_meta_to_lat_lon()
+
+    if not centroids.dist_coast.size or np.all(centroids.dist_coast >= 0):
+        centroids.set_dist_coast(signed=True, precomputed=True)
+    coastal_msk = (centroids.dist_coast <= offshore_max_dist_km * 1000)
+    coastal_msk &= (centroids.dist_coast >= -inland_max_dist_km * 1000)
+    coastal_msk &= (np.abs(centroids.lat) <= max_latitude)
+    return coastal_msk.nonzero()[0]
+
+
+def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None, pool=None):
     """Compute TC surge height on centroids from a single track dataset
 
     Parameters
@@ -234,6 +285,8 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None)
     gauges : list of pairs (lat, lon), optional
         The locations of tide gauges where to measure temporal changes in sea level height.
         This is used mostly for validation purposes.
+    pool : an object with `map` functionality, optional
+        If given, landfall events are processed in parallel.
 
     Returns
     -------
@@ -302,14 +355,21 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None)
         LOGGER.info("This storm doesn't affect any coastal areas.")
     else:
         LOGGER.info("Starting %d runs of GeoClaw...", len(events))
-        surge_h = []
+        runners = []
         for event in events:
+            runners.append(GeoclawRunner(work_dir, track.sel(time=event['time_mask_buffered']),
+                                         event['period'][0], event,
+                                         track_centr[event['centroid_mask']], zos_path,
+                                         topo_path, gauges=gauges))
+
+        if pool is not None:
+            pool.map(GeoclawRunner.run, runners)
+        else:
+            [runner.run() for runner in runners]
+
+        surge_h = []
+        for event, runner in zip(events, runners):
             event_surge_h = np.zeros(track_centr.shape[0])
-            event_track = track.sel(time=event['time_mask_buffered'])
-            runner = GeoclawRunner(work_dir, event_track, event['period'][0], event,
-                                   track_centr[event['centroid_mask']], zos_path, topo_path,
-                                   gauges=gauges)
-            runner.run()
             event_surge_h[event['centroid_mask']] = runner.surge_h
             surge_h.append(event_surge_h)
             for igauge, new_gauge_data in enumerate(runner.gauge_data):
@@ -362,11 +422,12 @@ class GeoclawRunner():
         """
         gauges = [] if gauges is None else gauges
 
-        LOGGER.info("Running GeoClaw to determine surge on %d centroids", centroids.shape[0])
+        LOGGER.info("Prepare GeoClaw to determine surge on %d centroids", centroids.shape[0])
         self.track = track
         self.areas = areas
         self.centroids = centroids
         self.time_offset = time_offset
+        self.time_offset_str = dt64_to_pydt(self.time_offset).strftime("%Y-%m-%d-%H")
         self.zos_path = zos_path
         self.topo_path = topo_path
         self.gauge_data = [{'location': g, 'base_sea_level': 0, 'topo_height': -32768.0,
@@ -379,8 +440,7 @@ class GeoclawRunner():
                                              self.track.time[-1] - self.time_offset)])
 
         # create work directory
-        self.work_dir = os.path.join(
-            base_dir, dt64_to_pydt(self.time_offset).strftime("%Y-%m-%d-%H"))
+        self.work_dir = os.path.join(base_dir, self.time_offset_str)
         os.makedirs(self.work_dir, exist_ok=True)
         LOGGER.info("Init GeoClaw working directory in %s", self.work_dir)
 
@@ -405,7 +465,7 @@ include $(CLAW)/clawutil/src/Makefile.common
 
     def run(self):
         """Run GeoClaw script and set `surge_h` attribute."""
-        LOGGER.info("Running GeoClaw...")
+        LOGGER.info("Running GeoClaw in %s...", self.work_dir)
         self.stdout = ""
         with subprocess.Popen(["make", ".output"],
                               cwd=self.work_dir,
@@ -429,7 +489,8 @@ include $(CLAW)/clawutil/src/Makefile.common
                     time = float(re_m.group(1).replace("D", "E"))
                     perc = 100 * (time - self.time_horizon[0]) / time_span
                     if perc - last_perc >= 10:
-                        LOGGER.info("%d%%", perc)
+                        # for parallelized output, print the time offset each time
+                        LOGGER.info("%s: %d%%", self.time_offset_str, perc)
                         last_perc = perc
         if proc.returncode != 0 or stopped:
             self.print_stdout()
