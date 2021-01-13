@@ -27,7 +27,7 @@ import datetime as dt
 import importlib
 import logging
 import re
-import os
+import pathlib
 import site
 import subprocess
 import sys
@@ -45,9 +45,10 @@ import pandas as pd
 import scipy.sparse as sp
 import xarray as xr
 
+from climada import CONFIG
 from climada.hazard import Centroids, Hazard, Tag as TagHazard, TropCyclone
 from climada.hazard.tc_tracks import estimate_rmw, estimate_roci
-from climada.util import DATA_DIR, ureg
+from climada.util import ureg
 import climada.util.coordinates as coord_util
 
 LOGGER = logging.getLogger(__name__)
@@ -61,10 +62,13 @@ CLAWPACK_GIT_URL = "https://github.com/clawpack/clawpack.git"
 CLAWPACK_VERSION = "v5.7.1"
 """Version or git decorator (tag, branch) of Clawpack to use."""
 
-CLAWPACK_SRC_DIR = os.path.join(DATA_DIR, "geoclaw", "src")
+DATA_DIR = CONFIG.hazard.tc_surge_geoclaw.local_data.dir()
+"""Directory for this module's data files"""
+
+CLAWPACK_SRC_DIR = DATA_DIR.joinpath("src")
 """Directory for Clawpack source checkouts (if it doesn't exist)"""
 
-GEOCLAW_WORK_DIR = os.path.join(DATA_DIR, "geoclaw", "runs")
+GEOCLAW_WORK_DIR = DATA_DIR.joinpath("runs")
 """Base directory for GeoClaw run data."""
 
 CENTR_NODE_MAX_DIST_DEG = 5.5
@@ -340,13 +344,13 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
 
     # create work directory
     work_dir = dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + f"-{track.sid}"
-    work_dir = os.path.join(GEOCLAW_WORK_DIR, work_dir)
-    os.makedirs(work_dir, exist_ok=True)
+    work_dir = GEOCLAW_WORK_DIR.joinpath(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
     # get landfall events
     LOGGER.info("Determine georegions and temporal periods of landfall events...")
     events = TCSurgeEvents(track, track_centr)
-    events.plot_areas(path=os.path.join(work_dir, "event_areas.pdf"))
+    events.plot_areas(path=work_dir.joinpath("event_areas.pdf"))
 
 
     gauge_data = [{'location': g, 'base_sea_level': [], 'topo_height': [],
@@ -440,12 +444,12 @@ class GeoclawRunner():
                                              self.track.time[-1] - self.time_offset)])
 
         # create work directory
-        self.work_dir = os.path.join(base_dir, self.time_offset_str)
-        os.makedirs(self.work_dir, exist_ok=True)
+        self.work_dir = base_dir.joinpath(self.time_offset_str)
+        self.work_dir.mkdir(parents=True, exist_ok=True)
         LOGGER.info("Init GeoClaw working directory in %s", self.work_dir)
 
         # write Makefile
-        with open(os.path.join(self.work_dir, "Makefile"), "w") as file_p:
+        with open(self.work_dir.joinpath("Makefile"), "w") as file_p:
             file_p.write(f"""\
 CLAW = {clawpack_info()[0]}
 CLAW_PKG = geoclaw
@@ -456,7 +460,7 @@ SOURCES = $(CLAW)/riemann/src/rpn2_geoclaw.f \\
           $(CLAW)/riemann/src/geoclaw_riemann_utils.f
 include $(CLAW)/clawutil/src/Makefile.common
 """)
-        with open(os.path.join(self.work_dir, "setrun.py"), "w") as file_p:
+        with open(self.work_dir.joinpath("setrun.py"), "w") as file_p:
             file_p.write("")
 
         # write rundata
@@ -515,15 +519,15 @@ include $(CLAW)/clawutil/src/Makefile.common
         """Read fgmax output data from GeoClaw working directory."""
         # pylint: disable=import-outside-toplevel
         from clawpack.geoclaw import fgmax_tools
-        outdir = os.path.join(self.work_dir, "_output")
-        fg_path = os.path.join(outdir, "fgmax0001.txt")
+        outdir = self.work_dir.joinpath("_output")
+        fg_path = outdir.joinpath("fgmax0001.txt")
 
-        if not os.path.exists(fg_path):
+        if not fg_path.exists():
             LOGGER.error("GeoClaw quit without creating fgmax data!")
             raise FileNotFoundError
 
         fgmax_grid = fgmax_tools.FGmaxGrid()
-        fg_fname = os.path.join(self.work_dir, "fgmax_grids.data")
+        fg_fname = self.work_dir.joinpath("fgmax_grids.data")
         with contextlib.redirect_stdout(None):
             fgmax_grid.read_fgmax_grids_data(1, fg_fname)
             fgmax_grid.read_output(outdir=outdir)
@@ -536,7 +540,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         """Read gauge output data from GeoClaw working directory."""
         # pylint: disable=import-outside-toplevel
         from clawpack.pyclaw.gauges import GaugeSolution
-        outdir = os.path.join(self.work_dir, "_output")
+        outdir = self.work_dir.joinpath("_output")
         for i_gauge, gauge in enumerate(self.gauge_data):
             gauge['base_sea_level'] = self.rundata.geo_data.sea_level
             with warnings.catch_warnings():
@@ -664,14 +668,14 @@ include $(CLAW)/clawutil/src/Makefile.common
                 LOGGER.warning("Area is ignored because it is too small.")
                 continue
             tt3_fname = 'topo_{}s_{}.tt3'.format(res_as, bounds_to_str(bounds))
-            tt3_fname = os.path.join(self.work_dir, tt3_fname)
+            tt3_fname = self.work_dir.joinpath(tt3_fname)
             topo.write(tt3_fname)
             topodata.topofiles.append([3, 1, self.rundata.amrdata.amr_levels_max,
                                        self.rundata.clawdata.t0, self.rundata.clawdata.tfinal,
                                        tt3_fname])
             dems_for_plot.append((bounds, topo.Z))
         plot_dems(dems_for_plot, track=self.track, centroids=self.centroids,
-                  path=os.path.join(self.work_dir, "dems.pdf"))
+                  path=self.work_dir.joinpath("dems.pdf"))
 
 
     def set_rundata_fgmax(self):
@@ -701,7 +705,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         surge_data.drag_law = 1
         surge_data.pressure_forcing = True
         surge_data.storm_specification_type = 'holland80'
-        surge_data.storm_file = os.path.join(self.work_dir, "track.storm")
+        surge_data.storm_file = self.work_dir.joinpath("track.storm")
         gc_storm = climada_xarray_to_geoclaw_storm(self.track,
                                                    offset=dt64_to_pydt(self.time_offset))
         gc_storm.write(surge_data.storm_file, file_format='geoclaw')
@@ -1302,7 +1306,7 @@ def clawpack_info():
         return None, ()
 
     ver = clawpack.__version__
-    path = os.path.dirname(os.path.dirname(clawpack.__file__))
+    path = pathlib.Path(clawpack.__file__).parent.parent
     LOGGER.info("Found Clawpack version %s in %s", ver, path)
 
     proc = subprocess.Popen(git_cmd, stdout=subprocess.PIPE, cwd=path)
