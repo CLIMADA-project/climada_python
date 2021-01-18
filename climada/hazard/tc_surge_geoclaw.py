@@ -68,9 +68,6 @@ CLAWPACK_SRC_DIR = CONFIG.hazard.tc_surge_geoclaw.clawpack_src_dir.dir()
 GEOCLAW_WORK_DIR = CONFIG.hazard.tc_surge_geoclaw.geoclaw_work_dir.dir()
 """Base directory for GeoClaw run data."""
 
-CENTR_NODE_MAX_DIST_DEG = CONFIG.hazard.tc_surge_geoclaw.centr_node_max_dist_deg.float()
-"""Maximum distance between centroid and TC track node in degrees."""
-
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 MBAR_TO_PA = (1.0 * ureg.mbar).to(ureg.pascal).magnitude
@@ -95,8 +92,8 @@ class TCSurgeGeoClaw(Hazard):
 
     @staticmethod
     def from_tc_tracks(tracks, zos_path, topo_path, centroids=None, description='', gauges=None,
-                       inland_max_dist_km=50, offshore_max_dist_km=10, max_latitude=61,
-                       pool=None):
+                       node_max_dist_deg=5.5, inland_max_dist_km=50, offshore_max_dist_km=10,
+                       max_latitude=61, pool=None):
         """Generate a TC surge hazard instance from a TCTracks object
 
         Parameters
@@ -114,10 +111,13 @@ class TCSurgeGeoClaw(Hazard):
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
             This is used mostly for validation purposes.
+        node_max_dist_deg : float, optional
+            Maximum distance from a TC track node in degrees for a centroid to be considered
+            as potentially affected. Default: 5.5
         inland_max_dist_km : float, optional
-            Maximum inland distance of the centroids in km. Default: 50.
+            Maximum inland distance of the centroids in km. Default: 50
         offshore_max_dist_km : float, optional
-            Maximum offshore distance of the centroids in km. Default: 10.
+            Maximum offshore distance of the centroids in km. Default: 10
         max_latitude : float, optional
             Maximum latitude of potentially affected centroids. Default: 61
         pool : an object with `map` functionality, optional
@@ -131,7 +131,7 @@ class TCSurgeGeoClaw(Hazard):
         setup_clawpack()
 
         if centroids is None:
-            centroids = get_centroids_from_tracks(tracks, 30 / (60 * 60), CENTR_NODE_MAX_DIST_DEG)
+            centroids = get_centroids_from_tracks(tracks, 30 / (60 * 60), node_max_dist_deg)
 
         max_dist_coast_km = (offshore_max_dist_km, inland_max_dist_km)
         coastal_idx = get_coastal_centroids_idx(centroids, max_dist_coast_km,
@@ -142,6 +142,7 @@ class TCSurgeGeoClaw(Hazard):
         haz = TCSurgeGeoClaw()
         haz.concatenate(
             [TCSurgeGeoClaw.from_xr_track(t, centroids, coastal_idx, zos_path, topo_path,
+                                          node_max_dist_deg=node_max_dist_deg,
                                           gauges=gauges, pool=pool)
              for t in tracks.data])
         TropCyclone.frequency_from_tracks(haz, tracks.data)
@@ -150,7 +151,8 @@ class TCSurgeGeoClaw(Hazard):
 
 
     @staticmethod
-    def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path, gauges=None, pool=None):
+    def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path,
+                      node_max_dist_deg=5.5, gauges=None, pool=None):
         """Generate a TC surge hazard from a single xarray track dataset
 
         Parameters
@@ -165,6 +167,9 @@ class TCSurgeGeoClaw(Hazard):
             Path to NetCDF file containing gridded monthly sea level data.
         topo_path : str
             Path to raster file containing gridded elevation data.
+        node_max_dist_deg : float, optional
+            Maximum distance from a TC track node in degrees for a centroid to be considered
+            as potentially affected. Default: 5.5
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
             This is used mostly for validation purposes.
@@ -177,9 +182,9 @@ class TCSurgeGeoClaw(Hazard):
         """
         coastal_centroids = centroids.coord[coastal_idx]
         intensity = np.zeros(centroids.coord.shape[0])
-        intensity[coastal_idx], gauge_data = geoclaw_surge_from_track(track, coastal_centroids,
-                                                                      zos_path, topo_path,
-                                                                      gauges=gauges, pool=pool)
+        intensity[coastal_idx], gauge_data = geoclaw_surge_from_track(
+            track, coastal_centroids, zos_path, topo_path,
+            gauges=gauges, pool=pool, node_max_dist_deg=node_max_dist_deg)
 
         new_haz = TCSurgeGeoClaw()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
@@ -270,7 +275,8 @@ def get_coastal_centroids_idx(centroids, max_dist_coast_km, max_latitude=90):
     return coastal_msk.nonzero()[0]
 
 
-def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None, pool=None):
+def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None, pool=None,
+                             node_max_dist_deg=5.5):
     """Compute TC surge height on centroids from a single track dataset
 
     Parameters
@@ -288,6 +294,9 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
         This is used mostly for validation purposes.
     pool : an object with `map` functionality, optional
         If given, landfall events are processed in parallel.
+    node_max_dist_deg : float, optional
+        Maximum distance from a TC track node in degrees for a centroid to be considered
+        as potentially affected. Default: 5.5
 
     Returns
     -------
@@ -310,8 +319,8 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
 
     # restrict to centroids in rectangular bounding box around track
     track_bounds_pad = np.array(track_bounds)
-    track_bounds_pad[:2] -= CENTR_NODE_MAX_DIST_DEG
-    track_bounds_pad[2:] += CENTR_NODE_MAX_DIST_DEG
+    track_bounds_pad[:2] -= node_max_dist_deg
+    track_bounds_pad[2:] += node_max_dist_deg
     track_centr_msk = (track_bounds_pad[1] <= centroids[:, 0])
     track_centr_msk &= (centroids[:, 0] <= track_bounds_pad[3])
     track_centr_msk &= (track_bounds_pad[0] <= centroids[:, 1])
@@ -1168,21 +1177,21 @@ class TCSurgeEvents():
         path : str, optional
             If given, save the plots to the given location. Default: None
         """
-        t_bounds = (self.track.lon.min(), self.track.lat.min(),
-                    self.track.lon.max(), self.track.lat.max())
-        mid_lon = 0.5 * float(t_bounds[0] + t_bounds[2])
+        total_bounds = (min(self.centroids[:, 1].min(), self.track.lon.min()) - 0.1,
+                        min(self.centroids[:, 0].min(), self.track.lat.min()) - 0.1,
+                        max(self.centroids[:, 1].max(), self.track.lon.max()) + 0.1,
+                        max(self.centroids[:, 0].max(), self.track.lat.max()) + 0.1)
+        mid_lon = 0.5 * float(total_bounds[0] + total_bounds[2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-        aspect_ratio = 1.124 * ((t_bounds[2] - t_bounds[0] + 2 * CENTR_NODE_MAX_DIST_DEG)
-                                / (t_bounds[3] - t_bounds[1] + 2 * CENTR_NODE_MAX_DIST_DEG))
+        aspect_ratio = 1.124 * ((total_bounds[2] - total_bounds[0])
+                                / (total_bounds[3] - total_bounds[1]))
         fig = plt.figure(
             figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
             dpi=100)
         axes = fig.add_subplot(111, projection=proj)
         axes.outline_patch.set_linewidth(0.5)
-        axes.set_xlim(t_bounds[0] - mid_lon - CENTR_NODE_MAX_DIST_DEG,
-                      t_bounds[2] - mid_lon + CENTR_NODE_MAX_DIST_DEG)
-        axes.set_ylim(t_bounds[1] - CENTR_NODE_MAX_DIST_DEG,
-                      t_bounds[3] + CENTR_NODE_MAX_DIST_DEG)
+        axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
+        axes.set_ylim(total_bounds[1], total_bounds[3])
 
         # plot coastlines
         axes.add_feature(cfeature.OCEAN.with_scale('50m'), linewidth=0.1)
@@ -1211,6 +1220,8 @@ class TCSurgeEvents():
 
         # plot track data points
         axes.scatter(self.track.lon - mid_lon, self.track.lat, s=2)
+
+        # adjust and output to file or screen
         fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0, hspace=0)
         if path is None or not hasattr(__main__, '__file__'):
             plt.show()
