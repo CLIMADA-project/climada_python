@@ -768,7 +768,7 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     cmap, cnorm = colormap_coastal_dem(axes=axes)
     for bounds, heights in dems:
         bounds = (bounds[0] - mid_lon, bounds[1], bounds[2] - mid_lon, bounds[3])
-        axes.imshow(heights, transform=proj, cmap=cmap, norm=cnorm,
+        axes.imshow(heights, origin='lower', transform=proj, cmap=cmap, norm=cnorm,
                     extent=(bounds[0], bounds[2], bounds[1], bounds[3]),
                     vmin=cnorm.values[0], vmax=cnorm.values[-1])
         plot_bounds(axes, bounds, color='k', linewidth=0.5)
