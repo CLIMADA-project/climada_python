@@ -963,6 +963,13 @@ def load_topography(path, bounds, res_as):
     xcoords = np.arange(xmin + xres / 2, xmax, xres)
     ycoords = np.arange(ymin + yres / 2, ymax, yres)
 
+    nan_msk = np.isnan(zvalues)
+    nan_count = nan_msk.sum()
+    if nan_count > 0:
+        LOGGER.warning("Elevation data contains %d NaN values that are replaced with -1000!",
+                       nan_count)
+        zvalues[nan_msk] = -1000
+
     topo = topotools.Topography()
     topo.set_xyZ(xcoords, ycoords, zvalues.astype(np.float64))
     return bounds, topo
