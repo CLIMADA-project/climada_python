@@ -27,6 +27,9 @@ import matplotlib.pyplot as plt
 from SALib.sample import saltelli
 from SALib.analyze import sobol
 
+import SALib.sample as sas
+import SALib.analyze as saa
+
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
 from climada.entity import Exposures
@@ -87,7 +90,7 @@ class UncVar():
         unc_var : function
             Variable defined as a function of the uncertainty parameters
         distr_dict : dict
-            Dictionnary of the probability density distributions of the
+            Dictionary of the probability density distributions of the
             uncertainty parameters, with keys the matching the keyword
             arguments (i.e. uncertainty parameters) of the unc_var function.
             The distribution must be of type scipy.stats
@@ -140,18 +143,18 @@ class UncVar():
         return self.unc_var(**kwargs)
 
 
-class UncSensitivity():
+class Uncertainty():
     """
-    Sensitivity analysis class
+    Uncertainty analysis class
 
-    This class performs sensitivity analysis on the outputs of a
+    This class performs uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
     object.
 
     """
 
     def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
-        """Initialize UncSensitivite
+        """Initialize Unc
 
         Parameters
         ----------
@@ -198,58 +201,6 @@ class UncSensitivity():
         self.at_event = pd.DataFrame()
 
 
-    def plot_uncertainty(self):
-        """
-        Plot the distribution of values.
-
-        Raises
-        ------
-        ValueError
-            DESCRIPTION.
-
-        Returns
-        -------
-        fig : TYPE
-            DESCRIPTION.
-        axes : TYPE
-            DESCRIPTION.
-
-        """
-        if self.aai_freq.empty:
-            raise ValueError("No uncertainty data present. Please run "+
-                    "a sensitivity analysis first.")
-
-        log_aai_freq = self.aai_freq.apply(np.log10).copy()
-        log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
-        cols = log_aai_freq.columns
-        nplots = len(cols)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
-        fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize=(20, ncols * 3.5),
-                                 sharex=True,
-                                 sharey=True)
-
-        for ax, col in zip(axes.flatten(), cols):
-            data = log_aai_freq[col]
-            data.hist(ax=ax,  bins=100, density=True, histtype='step')
-            avg = self.aai_freq[col].mean()
-            std = self.aai_freq[col].std()
-            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
-                    color='red', linestyle='dashed',
-                    label="avg=%.2f%s" %vtm(avg))
-            ax.plot([np.log10(avg) - np.log10(std) / 2,
-                     np.log10(avg) + np.log10(std) / 2],
-                    [0.3, 0.3], color='red',
-                    label="std=%.2f%s" %vtm(std))
-            ax.set_title(col)
-            ax.set_xlabel('value [log10]')
-            ax.set_ylabel('density of events')
-            ax.legend()
-
-        return fig, axes
-
-
     @property
     def n_runs(self):
         """
@@ -283,12 +234,12 @@ class UncSensitivity():
     @property
     def distr_dict(self):
         """
-        Dictionnary of all (exposure, imapct function, hazard) distributions.
+        Dictionary of all (exposure, imapct function, hazard) distributions.
 
         Returns
         -------
         distr_dict : dict( sp.stats objects )
-            Dictionnary of all distributions.
+            Dictionary of all distributions.
 
         """
 
@@ -296,12 +247,12 @@ class UncSensitivity():
         distr_dict.update(self.haz.distr_dict)
         distr_dict.update(self.impf.distr_dict)
         return distr_dict
-
-    def make_sobol_sample(self, N, calc_second_order):
+    
+    def make_sample(self, N, sampling_method='saltelli', **kwargs):
         """
-        Make a sobol sample for all parameters with their respective
-        distributions.
-
+        Make a sample for all parameters with their respective
+        distributions using the chosen method from SALib.
+ 
         Parameters
         ----------
         N : int
@@ -314,23 +265,23 @@ class UncSensitivity():
         None.
 
         """
-
+        self.sampling_method = sampling_method
         self.n_samples = N
-        sobol_uniform_sample = self._make_uniform_sobol_sample(
-            calc_second_order=calc_second_order)
-        df_params = pd.DataFrame(sobol_uniform_sample, columns=self.param_labels)
+        uniform_base_sample = self._make_uniform_base_sample(**kwargs)
+        df_params = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
         for param in list(df_params):
             df_params[param] = df_params[param].apply(
                 self.distr_dict[param].ppf
                 )
         self.params = df_params
-
-
-
-    def _make_uniform_sobol_sample(self, calc_second_order):
+        
+        
+    def _make_uniform_base_sample(self, **kwargs):
         """
-        Make a uniform sobol sample for the defined model uncertainty parameters
-        (self.param_labels)
+        Make a uniform distributed [0,1] sample for the defined model
+        uncertainty parameters (self.param_labels) with the chosen
+        method from saLib (kwargs are the keyword arguments passed to the
+        saLib method)
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
 
         Parameters
@@ -345,104 +296,18 @@ class UncSensitivity():
             Saltelli’s sampling scheme.
 
         """
+        
         problem = {
             'num_vars' : len(self.param_labels),
             'names' : self.param_labels,
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
         self.problem = problem
-        sobol_params = saltelli.sample(problem, self.n_samples,
-                                       calc_second_order=calc_second_order)
-        return sobol_params
-
-
-    def calc_impact_sobol_sensitivity(self,
-                               N,
-                               rp=None,
-                               calc_eai_exp=False,
-                               calc_at_event=False,
-                               calc_second_order=True,
-                               **kwargs):
-        """
-        Compute the sobol sensitivity indices using the SALib library:
-        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
-
-        Simple introduction:
-        https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
-
-        Parameters
-        ----------
-        N : int
-            Number of samples as defined in SALib.sample.saltelli.sample()
-        rp : list(int), optional
-            Return period in years for which sensitivity indices are computed.
-            The default is [5, 10, 20, 50, 100, 250.
-        calc_eai_exp : boolean, optional
-            Toggle computation of the sensitivity for the impact at each
-            centroid location. The default is False.
-        calc_at_event : boolean, optional
-            Toggle computation of the impact for each event.
-            The default is False.
-        calc_second_order : boolean, optional
-            if True, calculate second-order sensitivities. The default is True.
-        **kwargs :
-            These parameters will be passed to SALib.analyze.sobol.analyze()
-            The default is num_resamples=100, conf_level=0.95,
-            print_to_console=False, parallel=False, n_processors=None,
-            seed=None.
-
-        Returns
-        -------
-        sobol_analysis : dict
-            Dictionnary with keys the uncertainty parameter labels.
-            For each uncertainty parameter, the item is another dictionnary
-            with keys the sobol sensitivity indices ‘S1’, ‘S1_conf’, ‘ST’,
-            and ‘ST_conf’. If calc_second_order is True, the dictionary also
-            contains keys ‘S2’ and ‘S2_conf’.
-
-        """
-
-        if calc_eai_exp:
-            raise NotImplementedError()
-
-        if calc_at_event:
-            raise NotImplementedError()
-
-        if rp is None:
-            rp =[5, 10, 20, 50, 100, 250]
-
-        self.rp = rp
-        self.calc_eai_exp = calc_eai_exp
-        self.calc_at_event = calc_at_event
-
-        if self.params.empty:
-            self.make_sobol_sample(N, calc_second_order=calc_second_order)
-        if self.aai_freq.empty:
-            self.calc_impact_distribution(rp=rp,
-                                          calc_eai_exp=calc_eai_exp,
-                                          calc_at_event=calc_at_event
-                                          )
-
-        sobol_analysis = {}
-        for imp_out in self.aai_freq:
-            Y = self.aai_freq[imp_out].to_numpy()
-            si_sobol = sobol.analyze(self.problem, Y, **kwargs)
-            sobol_analysis.update({imp_out: si_sobol})
-            for si_list in si_sobol.values():
-                if np.any(np.array(si_list)<0):
-                    LOGGER.warning("There is at least one negative sobol " +
-                        "index. Consider using more samples or using another "+
-                        "sensitivity analysis method." +
-                        "See https://github.com/SALib/SALib/issues/109")
-                    continue
-
-        self.sensitivity = sobol_analysis
-
-        return sobol_analysis
-
-
-    def calc_cost_benefit_sobol_sensitivity(self):
-        raise NotImplementedError()
+        salib_sampling_method = getattr(sas, self.sampling_method)
+        sample_params = salib_sampling_method.sample(problem = problem,
+                                                     N = self.n_samples,
+                                                     **kwargs)
+        return sample_params
 
 
     def est_comp_time(self):
@@ -455,6 +320,7 @@ class UncSensitivity():
 
         """
         raise NotImplementedError()
+        
 
 
     def calc_impact_distribution(self,
@@ -581,7 +447,153 @@ class UncSensitivity():
             at_event = None
 
         return [imp.aai_agg, rp_curve, eai_exp, at_event]
+    
+    
+    def plot_uncertainty(self):
+        """
+        Plot the distribution of values.
 
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        axes : TYPE
+            DESCRIPTION.
+
+        """
+        if self.aai_freq.empty:
+            raise ValueError("No uncertainty data present. Please run "+
+                    "a sensitivity analysis first.")
+
+        log_aai_freq = self.aai_freq.apply(np.log10).copy()
+        log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
+        cols = log_aai_freq.columns
+        nplots = len(cols)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize=(20, ncols * 3.5),
+                                 sharex=True,
+                                 sharey=True)
+
+        for ax, col in zip(axes.flatten(), cols):
+            data = log_aai_freq[col]
+            data.hist(ax=ax,  bins=100, density=True, histtype='step')
+            avg = self.aai_freq[col].mean()
+            std = self.aai_freq[col].std()
+            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
+                    color='red', linestyle='dashed',
+                    label="avg=%.2f%s" %vtm(avg))
+            ax.plot([np.log10(avg) - np.log10(std) / 2,
+                     np.log10(avg) + np.log10(std) / 2],
+                    [0.3, 0.3], color='red',
+                    label="std=%.2f%s" %vtm(std))
+            ax.set_title(col)
+            ax.set_xlabel('value [log10]')
+            ax.set_ylabel('density of events')
+            ax.legend()
+
+        return fig, axes
+    
+
+    def calc_impact_sensitivity(self,
+                                   N,
+                                   method='sobol',
+                                   rp=None,
+                                   calc_eai_exp=False,
+                                   calc_at_event=False,
+                                   calc_second_order=True,
+                                   **kwargs):
+            """
+            Compute the sensitivity indices using the SALib library:
+            https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
+    
+            Simple introduction to default Sobol sensitivity
+            https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
+    
+            Parameters
+            ----------
+            N : int
+                Number of samples as defined in SALib.sample.saltelli.sample()
+            rp : list(int), optional
+                Return period in years for which sensitivity indices are computed.
+                The default is [5, 10, 20, 50, 100, 250.
+            calc_eai_exp : boolean, optional
+                Toggle computation of the sensitivity for the impact at each
+                centroid location. The default is False.
+            calc_at_event : boolean, optional
+                Toggle computation of the impact for each event.
+                The default is False.
+            calc_second_order : boolean, optional
+                if True, calculate second-order sensitivities. The default is True.
+            **kwargs :
+                These parameters will be passed to SALib.analyze.sobol.analyze()
+                The default is num_resamples=100, conf_level=0.95,
+                print_to_console=False, parallel=False, n_processors=None,
+                seed=None.
+    
+            Returns
+            -------
+            sobol_analysis : dict
+                Dictionary with keys the uncertainty parameter labels.
+                For each uncertainty parameter, the item is another dictionary
+                with keys the sensitivity indices.    
+            """
+    
+            if calc_eai_exp:
+                raise NotImplementedError()
+    
+            if calc_at_event:
+                raise NotImplementedError()
+    
+            if rp is None:
+                rp =[5, 10, 20, 50, 100, 250]
+    
+            self.rp = rp
+            self.calc_eai_exp = calc_eai_exp
+            self.calc_at_event = calc_at_event
+    
+            if self.params.empty:
+                raise ValueError("I found no sample. Please run first "
+                                 "Uncertainty.make_sample().")
+                
+            if self.aai_freq.empty:
+                self.calc_impact_distribution(rp=rp,
+                                              calc_eai_exp=calc_eai_exp,
+                                              calc_at_event=calc_at_event
+                                              )
+              
+                
+            analysis_method = getattr(saa, method)
+            sensitivity_analysis = {}
+            for imp_out in self.aai_freq:
+                Y = self.aai_freq[imp_out].to_numpy()
+                sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
+                sensitivity_analysis.update({imp_out: sensitivity_index})
+                # for si_list in si_sobol.values():
+                #     if np.any(np.array(si_list)<0):
+                #         LOGGER.warning("There is at least one negative sobol " +
+                #             "index. Consider using more samples or using another "+
+                #             "sensitivity analysis method." +
+                #             "See https://github.com/SALib/SALib/issues/109")
+                #         continue
+    
+            self.sensitivity = sensitivity_analysis
+    
+            return sensitivity_analysis
+
+
+    def calc_cost_benefit_sensitivity(self):
+        raise NotImplementedError()
+    
+    def calc_cost_benefit_distribution(self):
+        raise NotImplementedError()
+    
 
 class UncRobustness():
     """
