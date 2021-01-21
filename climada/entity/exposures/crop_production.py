@@ -34,6 +34,10 @@ from climada.util.constants import DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 from climada import CONFIG
 
+import os
+from os import listdir
+from os.path import isfile, join
+
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -587,8 +591,8 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
     if not unit:
         unit = 't/y'
 
-    filenames = [f for f in Path(hist_mean_dir).iterdir()
-                 if f.is_file and not f.name.startswith('.')]
+    filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not
+             f.startswith('.')]
 
     # generate output directory if it does not exist yet
     target_dir = Path(output_dir, 'Exposure')
@@ -759,8 +763,10 @@ def normalize_several_exp(input_dir=None, output_dir=None,
         unit = 't/y'
     if yearrange is None:
         yearrange = YEARS_FAO
-    filenames_firr = [f for f in Path(output_dir, 'Exposure').iterdir()
-                      if f.is_file() and 'firr' in f.name and not f.name.startswith('.')]
+
+    filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
+                  (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
+                  f.startswith('.') if 'firr' in f]
 
     crop_list = list()
     countries_list = list()
