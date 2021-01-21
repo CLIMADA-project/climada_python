@@ -20,6 +20,9 @@ import logging
 import math
 import copy
 from pathlib import Path
+import os
+from os import listdir
+from os.path import isfile, join
 
 import numpy as np
 import xarray as xr
@@ -34,9 +37,6 @@ from climada.util.constants import DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 from climada import CONFIG
 
-import os
-from os import listdir
-from os.path import isfile, join
 
 
 logging.root.setLevel(logging.DEBUG)
@@ -60,7 +60,7 @@ YEARCHUNKS['ISIMIP2']['2005soc'] = {'yearrange': (2006, 2099), 'startyear': 2006
 YEARCHUNKS['ISIMIP2']['rcp26soc'] = {'yearrange': (2006, 2099), 'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS['ISIMIP2']['rcp60soc'] = {'yearrange': (2006, 2099), 'startyear': 2006, 'endyear': 2099}
 YEARCHUNKS['ISIMIP2']['2100rcp26soc'] = {'yearrange': (2100, 2299), 'startyear': 2100,
-                              'endyear': 2299}
+                                         'endyear': 2299}
 YEARCHUNKS['ISIMIP3'] = dict()
 YEARCHUNKS['ISIMIP3']['histsoc'] = {'yearrange': (1983, 2013), 'startyear': 1850, 'endyear': 2014}
 YEARCHUNKS['ISIMIP3']['2015soc'] = {'yearrange': (1983, 2013), 'startyear': 1850, 'endyear': 2014}
@@ -231,7 +231,7 @@ class CropProduction(Exposures):
 
         # The indeces of the yearrange to be extracted are determined
         time_idx = (int(yearrange[0] - yearchunk['startyear']),
-                             int(yearrange[1] - yearchunk['startyear']))
+                    int(yearrange[1] - yearchunk['startyear']))
 
         # The area covered by a grid cell is calculated depending on the latitude
         # 1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
@@ -429,9 +429,10 @@ class CropProduction(Exposures):
         # The calculations are repeated for all remaining exposures (starting from index 1 as
         # the first exposure has been saved in combined_exp[:, 0])
         for j, fn in enumerate(filenames['subset'][1:]):
-            self.set_from_isimip_netcdf(input_dir, filename=fn,
-                                     hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
-                                     crop=crop, irr=irr, unit=unit, isimip_version=isimip_version)
+            self.set_from_isimip_netcdf(input_dir, filename=fn, hist_mean=hist_mean,
+                                        bbox=bbox, yearrange=yearrange,
+                                        crop=crop, irr=irr, unit=unit,
+                                        isimip_version=isimip_version)
             combined_exp[:, j+1] = self.value
 
         self['value'] = np.mean(combined_exp, 1)
@@ -583,7 +584,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
     if not input_dir:
         input_dir = INPUT_DIR
     if not hist_mean_dir:
-        hist_mean_dir =HIST_MEAN_PATH
+        hist_mean_dir = HIST_MEAN_PATH
     if not output_dir:
         output_dir = OUTPUT_DIR
     if yearrange is None:
@@ -592,7 +593,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         unit = 't/y'
 
     filenames = [f for f in listdir(hist_mean_dir) if (isfile(join(hist_mean_dir, f))) if not
-             f.startswith('.')]
+                 f.startswith('.')]
 
     # generate output directory if it does not exist yet
     target_dir = Path(output_dir, 'Exposure')
@@ -765,8 +766,8 @@ def normalize_several_exp(input_dir=None, output_dir=None,
         yearrange = YEARS_FAO
 
     filenames_firr = [f for f in listdir(os.path.join(output_dir, 'Exposure')) if
-                  (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
-                  f.startswith('.') if 'firr' in f]
+                      (isfile(join(os.path.join(output_dir, 'Exposure'), f))) if not
+                      f.startswith('.') if 'firr' in f]
 
     crop_list = list()
     countries_list = list()

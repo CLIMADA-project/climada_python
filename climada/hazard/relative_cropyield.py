@@ -26,6 +26,7 @@ import logging
 from pathlib import Path
 from os import listdir
 from os.path import isfile, join
+
 import numpy as np
 from matplotlib import pyplot as plt
 import cartopy
@@ -788,10 +789,9 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
                                                                   whe_mask.swh_mask.values.flatten()
                                                                   )
                                                       )
-                haz_his2.intensity = sparse.csr_matrix(np.multiply(haz_his2.intensity.todense(),
-                                                                   whe_mask.wwh_mask.values.flatten()
-                                                                   )
-                                                       )
+                haz_his2.intensity = sparse.csr_matrix(
+                    np.multiply(haz_his2.intensity.todense(), whe_mask.wwh_mask.values.flatten()
+                                ))
             # replace NaN by 0.0:
             haz_his.intensity.data[np.isnan(haz_his.intensity.data)] = 0.0
             haz_his2.intensity.data[np.isnan(haz_his2.intensity.data)] = 0.0
@@ -896,10 +896,9 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                                                                   whe_mask.swh_mask.values.flatten()
                                                                   )
                                                       )
-                haz_fut2.intensity = sparse.csr_matrix(np.multiply(haz_fut2.intensity.todense(),
-                                                                   whe_mask.wwh_mask.values.flatten()
-                                                                   )
-                                                       )
+                haz_fut2.intensity = sparse.csr_matrix(
+                    np.multiply(haz_fut2.intensity.todense(), whe_mask.wwh_mask.values.flatten()
+                                ))
             # replace NaN by 0.0:
             haz_fut.intensity.data[np.isnan(haz_fut.intensity.data)] = 0.0
             haz_fut2.intensity.data[np.isnan(haz_fut2.intensity.data)] = 0.0
