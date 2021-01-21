@@ -502,6 +502,10 @@ include $(CLAW)/clawutil/src/Makefile.common
                         # for parallelized output, print the time offset each time
                         LOGGER.info("%s: %d%%", self.time_offset_str, perc)
                         last_perc = perc
+
+        with open(self.work_dir.joinpath("stdout.log"), "w") as file_p:
+            file_p.write(self.stdout)
+
         if proc.returncode != 0 or stopped:
             self.print_stdout()
             raise RuntimeError("GeoClaw run failed (see output above).")
