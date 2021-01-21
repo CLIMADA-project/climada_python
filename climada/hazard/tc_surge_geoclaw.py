@@ -504,7 +504,7 @@ include $(CLAW)/clawutil/src/Makefile.common
                         last_perc = perc
         if proc.returncode != 0 or stopped:
             self.print_stdout()
-            LOGGER.error("GeoClaw run failed (see output above).")
+            raise RuntimeError("GeoClaw run failed (see output above).")
         else:
             LOGGER.info("Reading GeoClaw output...")
             try:
