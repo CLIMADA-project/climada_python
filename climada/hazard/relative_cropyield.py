@@ -24,6 +24,7 @@ __all__ = ['RelativeCropyield']
 
 import logging
 from pathlib import Path
+import copy
 from os import listdir
 from os.path import isfile, join
 
@@ -391,58 +392,6 @@ class RelativeCropyield(Hazard):
                 row = row + 1
 
         return fig
-
-    def plot_comparing_maps(self, his, fut, axes, nr_cli_models=1, model=1):
-        """Plots comparison maps of historic and future data and their difference fut-his
-
-        Parameters:
-            his (sparse matrix): historic mean annual yield or mean relative yield
-            fut (sparse matrix): future mean annual yield or mean relative yield
-            axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
-            nr_cli_models (int): number of climate models and respectively nr of rows within
-                                    the subplot
-            model (int): current row to plot - this method can be used in a loop to plot
-                subplots in one figure consisting of several rows of subplots.
-                One row displays the intensity for present and future climate and the difference of
-                the two for one model-combination (ag_model and cl_model)
-
-        Returns:
-            geoaxes
-        """
-        dif = fut - his
-        self.event_id = 0
-
-        for subplot in range(3):
-
-            if self.intensity_def == 'Yearly Yield':
-                self.units = 't / y'
-            elif self.intensity_def == 'Relative Yield':
-                self.units = ''
-
-            if subplot == 0:
-                self.intensity = sparse.csr_matrix(his)
-                dif_def = 0
-            elif subplot == 1:
-                self.intensity = sparse.csr_matrix(fut)
-                dif_def = 0
-            elif subplot == 2:
-                self.intensity = sparse.csr_matrix(dif)
-                dif_def = 1
-
-
-            if nr_cli_models == 1:
-                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[subplot])
-            else:
-                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[model, subplot])
-
-            ax1.set_title('')
-
-        if nr_cli_models == 1:
-            cols = ['Historical', 'Future', 'Difference = Future - Historical']
-            for ax0, col in zip(axes, cols):
-                ax0.set_title(col, size='large')
-
-        return axes
 
 
 def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=None,
@@ -937,3 +886,53 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     whe_mask = xr.open_dataset(Path(input_dir, filename), decode_times=False)
     [lonmin, latmin, lonmax, latmax] = bbox
     return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
+
+def plot_comparing_maps(haz_his, haz_fut, event, axes, nr_cli_models=1, model=1):
+    """Plots comparison maps of historic and future data and their difference fut-his
+
+    Parameters:
+        his (sparse matrix): historic mean annual yield or mean relative yield
+        fut (sparse matrix): future mean annual yield or mean relative yield
+        axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
+        nr_cli_models (int): number of climate models and respectively nr of rows within
+                                the subplot
+        model (int): current row to plot - this method can be used in a loop to plot
+            subplots in one figure consisting of several rows of subplots.
+            One row displays the intensity for present and future climate and the difference of
+            the two for one model-combination (ag_model and cl_model)
+
+    Returns:
+        geoaxes
+    """
+
+    for subplot in range(3):
+
+        if nr_cli_models == 1:
+            if subplot == 0:
+                ax1 = haz_his.plot_intensity_cp(event=event, dif=0, axis=axes[subplot])
+            elif subplot == 1:
+                ax1 = haz_fut.plot_intensity_cp(event=event, dif=0, axis=axes[subplot])
+            elif subplot == 2:
+                haz_dif = RelativeCropyield()
+                haz_dif = copy.deepcopy(haz_his)
+                haz_dif.intensity = haz_fut.intensity - haz_his.intensity
+                ax1 = haz_fut.plot_intensity_cp(event=event, dif=1, axis=axes[subplot])
+        else:
+            if subplot == 0:
+                ax1 = haz_his.plot_intensity_cp(event=event, dif=0, axis=axes[model, subplot])
+            elif subplot == 1:
+                ax1 = haz_fut.plot_intensity_cp(event=event, dif=0, axis=axes[model, subplot])
+            elif subplot == 2:
+                haz_dif = RelativeCropyield()
+                haz_dif = copy.deepcopy(haz_his)
+                haz_dif.intensity = haz_fut.intensity - haz_his.intensity
+                ax1 = haz_fut.plot_intensity_cp(event=event, dif=1, axis=axes[model, subplot])
+
+        ax1.set_title('')
+
+    if nr_cli_models == 1:
+        cols = ['Historical', 'Future', 'Difference = Future - Historical']
+        for ax0, col in zip(axes, cols):
+            ax0.set_title(col, size='large')
+
+    return axes
