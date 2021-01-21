@@ -82,6 +82,8 @@ REPO_DATA = {
         DEMO_DIR.joinpath('gepic_gfdl-esm2m_ewembi_historical_2005soc_co2_yield-whe-noirr_global_DEMO_TJANJIN_annual_1861_2005.nc'),
         DEMO_DIR.joinpath('pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-firr_global_annual_DEMO_TJANJIN_1861_2005.nc'),
         DEMO_DIR.joinpath('pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc'),
+        DEMO_DIR.joinpath('WS_ERA40_sample.mat'),
+        DEMO_DIR.joinpath('WS_Europe.xls'),
     ] + WS_DEMO_NC
 }
 
