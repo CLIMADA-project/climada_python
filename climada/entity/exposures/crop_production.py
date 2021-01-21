@@ -86,17 +86,40 @@ IRR_NAME = {'combined': {'name': 'combined'},
             'firr': {'name': 'irrigated'},
             }
 
-"""Conversion factor weight to kcal.
-    Sources:
-        - Nuss and Tanumihardjo, 2010. https://doi.org/10.1111/j.1541-4337.2010.00117.x
-        - USDA Nutrient Database"""
-KCAL_PER_TON = {'mai': 365e4,
-                'ric': 360e4,
-                'whe': 339e4,
-                'soy': 446e4,
-                }
+"""Conversion factor weight [tons] to nutritional value [kcal].
+Based on Mueller et al. (2021), https://doi.org/10.1088/1748-9326/abd8fc :
 
-# default:
+"For the aggregation of different crops, we compute total calories, assuming
+net water contents of 12% for maize, spring and winter wheat, 13% for rice and
+9% for soybean, 228 according to Wirsenius (2000) and caloric contents of the
+“as purchased” biomass (i.e. including the water content) of 3.56kcal/g for maize,
+2.8kcal/g for rice, 3.35kcal/g for soybean and of 3.34kcal/g for spring and
+winter wheat, following FAO (2001).” (Müller et al., 2021)
+
+Version 1: conversion factors for crop biomass "as pruchased",
+    here applied for FAO-normalized production:
+    Production [kcal] = Yield [tons] * X [kcal/tons]
+"""
+
+KCAL_PER_TON = dict()
+KCAL_PER_TON['biomass'] = {'mai': 3.56e6,
+                           'ric': 2.80e6,
+                           'whe': 3.35e6,
+                           'soy': 3.34e6,
+                           }
+"""
+Version 2: conversion factors for crop dry matter as simulated by most crop models,
+    here applied for raw ISIMIP model yields and derived production values:
+    Yield [kcal] = Yield [tons] * X [kcal/tons] / (1-net_water_content_fraction)
+"""
+KCAL_PER_TON['drymatter'] = {'mai': 3.56e6 / (1-.12),
+                             'ric': 2.80e6 / (1-.13),
+                             'whe': 3.35e6 / (1-.12),
+                             'soy': 3.34e6 / (1-.09),
+                             }
+
+
+# Default folder structure for ISIMIP data:
 #   deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
 #   deposit the FAO files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure/FAO
 # The FAO files need to be downloaded and renamed
@@ -345,7 +368,9 @@ class CropProduction(Exposures):
             self.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit:
             # set_value_to_kcal() is called to compute the exposure in kcal/y
-            self.set_value_to_kcal()
+            # here, biomass=False because most crop models provide yield weight
+            # for dry matter, not biomass:
+            self.set_value_to_kcal(biomass=False)
         self.check()
 
         return self
@@ -442,17 +467,26 @@ class CropProduction(Exposures):
 
         return self
 
-    def set_value_to_kcal(self):
+    def set_value_to_kcal(self, biomass=True):
         """Converts the exposure value from tonnes to kcalper year using
         conversion factor per crop type.
 
+        Optional Parameter:
+            biomass (bool): if true, KCAL_PER_TON['biomass'] is used (default,
+                for FAO normalized crop production). If False, KCAL_PER_TON['drymatter']
+                is used (best for crop model output in dry matter, default for 
+                raw crop model output)
+
         Returns:
-            Exposure
+            Exposure with unit kcal/y
         """
         if self.value_unit != 't/y':
             LOGGER.warning('self.unit is not t/y.')
         self['tonnes_per_year'] = self['value'].values
-        self.value = self.value * KCAL_PER_TON[self.crop]
+        if biomass:
+            self.value = self.value * KCAL_PER_TON['biomass'][self.crop]
+        else:
+            self.value = self.value * KCAL_PER_TON['drymatter'][self.crop]
         self.value_unit = 'kcal/y'
         return self
 
@@ -711,11 +745,12 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
         if unit == 'USD/y' or exp_noirr.value_unit == 'USD/y':
             exp_noirr.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit or 'kcal' in exp_noirr.value_unit:
-            exp_noirr.set_value_to_kcal()
+            exp_noirr.set_value_to_kcal(biomass=True)
+            # FAO production is provided in biomass, not dry matter
         if unit == 'USD/y' or exp_firr.value_unit == 'USD/y':
             exp_firr.set_value_to_usd(input_dir=input_dir)
         elif 'kcal' in unit or 'kcal' in exp_firr.value_unit:
-            exp_firr.set_value_to_kcal()
+            exp_firr.set_value_to_kcal(biomass=True)
 
     exp_firr_norm.tag.description = exp_firr_norm.tag.description+' normalized'
     exp_noirr_norm.tag.description = exp_noirr_norm.tag.description+' normalized'

@@ -64,6 +64,8 @@ class TestCropProduction(unittest.TestCase):
 
     def test_set_value_to_kcal(self):
         """Test calculating crop_production Exposure in [kcal/y]"""
+
+        # (1) biomass = True
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
@@ -74,10 +76,23 @@ class TestCropProduction(unittest.TestCase):
         self.assertEqual(exp.latitude.min(), 45.25)
         self.assertEqual(exp.latitude.max(), 49.75)
         self.assertEqual(exp.value.shape, (300,))
-        self.assertAlmostEqual(exp.value.max(), 365*10*1000*max_tonnes, places=3)
-        self.assertAlmostEqual(exp.value.max(), 874488976392.9623, places=3)
-        self.assertAlmostEqual(exp.value.mean(), 19910311383.52674, places=4)
+        self.assertAlmostEqual(exp.value.max(), 3.56e6 * max_tonnes, places=3)
+        self.assertAlmostEqual(exp.value.max(), 852926234509.3002, places=3)
+        self.assertAlmostEqual(exp.value.mean(), 19419372198.727455, places=4)
         self.assertEqual(exp.value.min(), 0.0)
+
+        # (2) biomass = False
+        exp = CropProduction()
+        exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
+                                      bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
+                                      scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
+        max_tonnes = exp.value.max()
+        exp.set_value_to_kcal(biomass=False)
+        self.assertEqual(exp.latitude.min(), 45.25)
+        self.assertEqual(exp.value.shape, (300,))
+        self.assertAlmostEqual(exp.value.max(), 3.56e6 * max_tonnes /(1-.12),
+                               places=3)
+        self.assertAlmostEqual(exp.value.mean(), 22067468407.644833, places=4)
 
     def set_value_to_usd(self):
         """Test calculating cropyield_isimip Exposure in [USD/y]"""
