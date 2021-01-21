@@ -91,31 +91,31 @@ Based on Mueller et al. (2021), https://doi.org/10.1088/1748-9326/abd8fc :
 
 "For the aggregation of different crops, we compute total calories, assuming
 net water contents of 12% for maize, spring and winter wheat, 13% for rice and
-9% for soybean, 228 according to Wirsenius (2000) and caloric contents of the
+9% for soybean, according to Wirsenius (2000) and caloric contents of the
 “as purchased” biomass (i.e. including the water content) of 3.56kcal/g for maize,
 2.8kcal/g for rice, 3.35kcal/g for soybean and of 3.34kcal/g for spring and
 winter wheat, following FAO (2001).” (Müller et al., 2021)
 
 Version 1: conversion factors for crop biomass "as pruchased",
     here applied for FAO-normalized production:
-    Production [kcal] = Yield [tons] * X [kcal/tons]
+    Production [kcal] = KCAL_PER_TON [t] * X [kcal/t]
 """
 
 KCAL_PER_TON = dict()
 KCAL_PER_TON['biomass'] = {'mai': 3.56e6,
                            'ric': 2.80e6,
-                           'whe': 3.35e6,
-                           'soy': 3.34e6,
+                           'soy': 3.35e6,
+                           'whe': 3.34e6,
                            }
 """
 Version 2: conversion factors for crop dry matter as simulated by most crop models,
     here applied for raw ISIMIP model yields and derived production values:
-    Yield [kcal] = Yield [tons] * X [kcal/tons] / (1-net_water_content_fraction)
+    Yield [kcal] = Yield [t] * KCAL_PER_TON [kcal/t] / (1-net_water_content_fraction)
 """
 KCAL_PER_TON['drymatter'] = {'mai': 3.56e6 / (1-.12),
                              'ric': 2.80e6 / (1-.13),
-                             'whe': 3.35e6 / (1-.12),
-                             'soy': 3.34e6 / (1-.09),
+                             'soy': 3.35e6 / (1-.09),
+                             'whe': 3.34e6 / (1-.12),
                              }
 
 
