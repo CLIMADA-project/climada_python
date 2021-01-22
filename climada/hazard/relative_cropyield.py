@@ -887,12 +887,12 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     [lonmin, latmin, lonmax, latmax] = bbox
     return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
 
-def plot_comparing_maps(haz_his, haz_fut, event, axes, nr_cli_models=1, model=1):
+def plot_comparing_maps(haz_his, haz_fut, axes, nr_cli_models=1, model=1):
     """Plots comparison maps of historic and future data and their difference fut-his
 
     Parameters:
-        his (sparse matrix): historic mean annual yield or mean relative yield
-        fut (sparse matrix): future mean annual yield or mean relative yield
+        haz_his (RelativeCropyield): historic hazard
+        haz_fut (RelativeCropyield): future hazard
         axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
         nr_cli_models (int): number of climate models and respectively nr of rows within
                                 the subplot
@@ -905,28 +905,26 @@ def plot_comparing_maps(haz_his, haz_fut, event, axes, nr_cli_models=1, model=1)
         geoaxes
     """
 
-    for subplot in range(3):
+    haz2plot = RelativeCropyield()
+    haz2plot = copy.deepcopy(haz_his)
+    haz2plot.event_id = 0
 
+    for subplot in range(3):
+        
+        his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
+        fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
+    
+        if subplot == 0:
+            haz2plot.intensity = his_mean
+        elif subplot == 1:
+            haz2plot.intensity = fut_mean
+        elif subplot == 2:
+            haz2plot.intensity = fut_mean - his_mean
+                        
         if nr_cli_models == 1:
-            if subplot == 0:
-                ax1 = haz_his.plot_intensity_cp(event=event, dif=0, axis=axes[subplot])
-            elif subplot == 1:
-                ax1 = haz_fut.plot_intensity_cp(event=event, dif=0, axis=axes[subplot])
-            elif subplot == 2:
-                haz_dif = RelativeCropyield()
-                haz_dif = copy.deepcopy(haz_his)
-                haz_dif.intensity = haz_fut.intensity - haz_his.intensity
-                ax1 = haz_fut.plot_intensity_cp(event=event, dif=1, axis=axes[subplot])
+            ax1 = haz2plot.plot_intensity_cp(event=0, dif=0, axis=axes[subplot])   
         else:
-            if subplot == 0:
-                ax1 = haz_his.plot_intensity_cp(event=event, dif=0, axis=axes[model, subplot])
-            elif subplot == 1:
-                ax1 = haz_fut.plot_intensity_cp(event=event, dif=0, axis=axes[model, subplot])
-            elif subplot == 2:
-                haz_dif = RelativeCropyield()
-                haz_dif = copy.deepcopy(haz_his)
-                haz_dif.intensity = haz_fut.intensity - haz_his.intensity
-                ax1 = haz_fut.plot_intensity_cp(event=event, dif=1, axis=axes[model, subplot])
+            ax1 = haz2plot.plot_intensity_cp(event=0, dif=1, axis=axes[model, subplot])
 
         ax1.set_title('')
 
