@@ -147,13 +147,13 @@ class Uncertainty():
     """
     Uncertainty analysis class
 
-    This class performs uncertainty analysis on the outputs of a
+    This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
     object.
 
     """
 
-    def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
+    def __init__(self, unc_vars=None, pool=None):
         """Initialize Unc
 
         Parameters
@@ -172,6 +172,9 @@ class Uncertainty():
         None.
 
         """
+        
+        if unc_vars:
+            self.unc_vars = {}
 
         if pool:
             self.pool = pool
@@ -179,26 +182,8 @@ class Uncertainty():
         else:
             self.pool = None
 
-        if isinstance(exp_unc, Exposures):
-            self.exp = UncVar(unc_var=lambda: exp_unc, distr_dict={})
-        else:
-            self.exp = exp_unc
-
-        if isinstance(impf_unc, ImpactFuncSet):
-            self.impf = UncVar(unc_var=lambda: impf_unc, distr_dict={})
-        else:
-            self.impf = impf_unc
-
-        if isinstance(haz_unc, Hazard):
-            self.haz = UncVar(unc_var=lambda: haz_unc, distr_dict={})
-        else:
-            self.haz = haz_unc
-
         self.params = pd.DataFrame()
         self.problem = {}
-        self.aai_freq = pd.DataFrame()
-        self.eai_exp = pd.DataFrame()
-        self.at_event = pd.DataFrame()
 
 
     @property
@@ -217,10 +202,11 @@ class Uncertainty():
             return self.params.shape[0]
         else:
             return 0
+        
     @property
     def param_labels(self):
         """
-        Labels of all (exposure, impact function, hazard) uncertainty
+        Labels of all uncertainty
         parameters.
 
         Returns
@@ -229,7 +215,8 @@ class Uncertainty():
             Labels of all uncertainty parameters.
 
         """
-        return self.exp.labels + self.haz.labels + self.impf.labels
+        return list(self.distr_dict.keys())
+
 
     @property
     def distr_dict(self):
@@ -243,10 +230,11 @@ class Uncertainty():
 
         """
 
-        distr_dict = dict(self.exp.distr_dict)
-        distr_dict.update(self.haz.distr_dict)
-        distr_dict.update(self.impf.distr_dict)
+        distr_dict = dict()
+        for unc_var in self.unc_vars.values():
+            distr_dict.update(unc_var.distr_dict)
         return distr_dict
+   
     
     def make_sample(self, N, sampling_method='saltelli', **kwargs):
         """
@@ -320,24 +308,95 @@ class Uncertainty():
 
         """
         raise NotImplementedError()
+    
         
+    def _calc_metric_sensitivity(self, dt_metric, analysis_method, **kwargs):
+        
+        sensitivity_dict = {}
+        for metric in dt_metric:
+            Y = dt_metric[metric].to_numpy()
+            sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
+            sensitivity_dict.update({metric: sensitivity_index})
+            
+        return sensitivity_dict
+    
+    
+    
+class UncImpact(Uncertainty):
+    
+    def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
+        """Initialize Unc
 
+        Parameters
+        ----------
+        exp_unc : climada.engine.uncertainty.UncVar or climada.entity.Exposure
+            Exposure uncertainty variable or Exposure
+        impf_unc : climada.engine.uncertainty.UncVar or climada.entity.ImpactFuncSet
+            Impactfunction uncertainty variable or Impact function
+        haz_unc : climada.engine.uncertainty.UncVar or climada.hazard.Hazard
+            Hazard uncertainty variable or Hazard
+        pool : pathos.pools.ProcessPool
+            Pool of CPUs for parralel computations. Default is None.
 
+        Returns
+        -------
+        None.
+
+        """
+
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
+            
+        self.unc_vars = {}
+
+        if isinstance(exp_unc, Exposures):
+            self.unc_vars.update(
+                {'exp': UncVar(unc_var=lambda: exp_unc, distr_dict={})}
+                )
+        else:
+            self.unc_vars.update({'exp' : exp_unc})
+
+        if isinstance(impf_unc, ImpactFuncSet):
+            self.unc_vars.update(
+                {'impf' : UncVar(unc_var=lambda: impf_unc, distr_dict={})}
+                )
+        else:
+            self.unc_vars.update({'impf' : impf_unc})
+
+        if isinstance(haz_unc, Hazard):
+            self.unc_vars.update(
+                {'haz' : UncVar(unc_var=lambda: haz_unc, distr_dict={})}
+                )
+        else:
+            self.unc_vars.update({'haz' : haz_unc})
+
+        self.params = pd.DataFrame()
+        self.problem = {}
+        
+        self.aai = pd.DataFrame()
+        self.freq_curve = pd.DataFrame()
+        self.eai_exp = pd.DataFrame()
+        self.at_event = pd.DataFrame()
+    
+    
     def calc_impact_distribution(self,
-                                 rp=None,
-                                 calc_eai_exp=False,
-                                 calc_at_event=False,
-                                 ):
+                             rp=None,
+                             calc_eai_exp=False,
+                             calc_at_event=False,
+                             ):
         """
         Computes the impact for each of the parameters set defined in
         uncertainty.params.
-
+    
         By default, the aggregated average annual impact
         (impact.aai_agg) and the excees impact at return periods (rp) is
         computed and stored in self.aai_freq. Optionally, the impact at
         each centroid location is computed (this may require a larger
         amount of memory if the number of centroids is large).
-
+    
         Parameters
         ----------
         rp : list(int), optional
@@ -349,57 +408,56 @@ class Uncertainty():
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
-
+    
         Returns
         -------
         None.
-
+    
         """
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
-
+    
         aai_agg_list = []
         freq_curve_list = []
         if calc_eai_exp:
             eai_exp_list = []
         if calc_at_event:
             at_event_list = []
-
+    
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-
-
+    
         #Compute impact distributions
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             impact_metrics = self.pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
-
+    
         else:
-
+    
             impact_metrics = map(self._map_impact_eval, self.params.iterrows())
-
+    
         [
          aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list
          ] = list(zip(*impact_metrics))
-
-
+    
+    
         # Assign computed impact distribution data to self
         df_aai_agg = pd.DataFrame(aai_agg_list, columns = ['aai_agg'])
         self.aai_agg = df_aai_agg
-
+    
         df_freq_curve = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
         self.freq_curve = df_freq_curve
-
+    
         if calc_eai_exp:
             df_eai_exp = pd.DataFrame(eai_exp_list)
             self.eai_exp = df_eai_exp
-
+    
         if calc_at_event:
             df_at_event = pd.DataFrame(at_event_list)
             self.at_event = df_at_event
@@ -424,13 +482,13 @@ class Uncertainty():
         """
 
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_params = param_sample[1][self.exp.labels].to_dict()
-        haz_params = param_sample[1][self.haz.labels].to_dict()
-        impf_params = param_sample[1][self.impf.labels].to_dict()
+        exp_params = param_sample[1][self.unc_vars['exp'].labels].to_dict()
+        haz_params = param_sample[1][self.unc_vars['haz'].labels].to_dict()
+        impf_params = param_sample[1][self.unc_vars['impf'].labels].to_dict()
 
-        exp = self.exp.eval_unc_var(exp_params)
-        haz = self.haz.eval_unc_var(haz_params)
-        impf = self.impf.eval_unc_var(impf_params)
+        exp = self.unc_vars['exp'].eval_unc_var(exp_params)
+        haz = self.unc_vars['haz'].eval_unc_var(haz_params)
+        impf = self.unc_vars['impf'].eval_unc_var(impf_params)
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
@@ -451,8 +509,8 @@ class Uncertainty():
 
         return [imp.aai_agg, rp_curve, eai_exp, at_event]
     
-    
-    def plot_uncertainty(self):
+                    
+    def plot_impact_uncertainty(self):
         """
         Plot the distribution of values.
 
@@ -506,97 +564,85 @@ class Uncertainty():
             ax.legend()
 
         return fig, axes
-    
 
-    def calc_impact_sensitivity(self,
-                                   method='sobol',
-                                   **kwargs):
-            """
-            Compute the sensitivity indices using the SALib library:
-            https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
     
-            Simple introduction to default Sobol sensitivity
-            https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
+    def calc_impact_sensitivity(self, method='sobol', **kwargs):
+        """
+        Compute the sensitivity indices using the SALib library:
+        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
     
-            Parameters
-            ----------
-            N : int
-                Number of samples as defined in SALib.sample.saltelli.sample()
-            rp : list(int), optional
-                Return period in years for which sensitivity indices are computed.
-                The default is [5, 10, 20, 50, 100, 250.
-            calc_eai_exp : boolean, optional
-                Toggle computation of the sensitivity for the impact at each
-                centroid location. The default is False.
-            calc_at_event : boolean, optional
-                Toggle computation of the impact for each event.
-                The default is False.
-            calc_second_order : boolean, optional
-                if True, calculate second-order sensitivities. The default is True.
-            method : string, optional
-                Choose the method for the sensitivity analysis. Note that
-                saLib recommends pairs of sampling anad analysis algorithms.
-                We recommend users to respect these pairings. 
-                Defaul: 'sobol' 
-                Note that for the default 'sobol', negative sensitivity
-                indices indicate that the algorithm has not converged. In this
-                case, please restart the uncertainty and sensitivity analysis
-                with an increased number of samples.
-            **kwargs :
-                These parameters will be passed to SALib.analyze.sobol.analyze()
-                The default is num_resamples=100, conf_level=0.95,
-                print_to_console=False, parallel=False, n_processors=None,
-                seed=None.
+        Simple introduction to default Sobol sensitivity
+        https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
     
-            Returns
-            -------
-            sobol_analysis : dict
-                Dictionary with keys the uncertainty parameter labels.
-                For each uncertainty parameter, the item is another dictionary
-                with keys the sensitivity indices.    
-            """
+        Parameters
+        ----------
+        N : int
+            Number of samples as defined in SALib.sample.saltelli.sample()
+        rp : list(int), optional
+            Return period in years for which sensitivity indices are computed.
+            The default is [5, 10, 20, 50, 100, 250.
+        calc_eai_exp : boolean, optional
+            Toggle computation of the sensitivity for the impact at each
+            centroid location. The default is False.
+        calc_at_event : boolean, optional
+            Toggle computation of the impact for each event.
+            The default is False.
+        calc_second_order : boolean, optional
+            if True, calculate second-order sensitivities. The default is True.
+        method : string, optional
+            Choose the method for the sensitivity analysis. Note that
+            saLib recommends pairs of sampling anad analysis algorithms.
+            We recommend users to respect these pairings. 
+            Defaul: 'sobol' 
+            Note that for the default 'sobol', negative sensitivity
+            indices indicate that the algorithm has not converged. In this
+            case, please restart the uncertainty and sensitivity analysis
+            with an increased number of samples.
+        **kwargs :
+            These parameters will be passed to SALib.analyze.sobol.analyze()
+            The default is num_resamples=100, conf_level=0.95,
+            print_to_console=False, parallel=False, n_processors=None,
+            seed=None.
     
-    
-            if self.params.empty:
-                raise ValueError("I found no samples. Please produce first"
-                                 " samples using Uncertainty.make_sample().")
-                
-            if self.aai_agg.empty:
-                raise ValueError("I found no impact data. Please compute"
-                                 " the impact distribution first using"+
-                                 " Uncertainty.calc_impact_distribution()")
-                                  
-            analysis_method = getattr(saa, method)
-            sensitivity_analysis = {}
-            
-            aai_agg_sens = self._calc_metric_sensitivity(self.aai_agg, analysis_method, **kwargs)
-            sensitivity_analysis.update(aai_agg_sens)
-            
-            freq_curve_sens = self._calc_metric_sensitivity(self.freq_curve, analysis_method, **kwargs)
-            sensitivity_analysis.update(freq_curve_sens)
-            
-            if self.calc_eai_exp:
-                eai_exp_sens = self._calc_metric_sensitivity(self.eai_exp, analysis_method, **kwargs)
-                sensitivity_analysis.update(eai_exp_sens)
-    
-            if self.calc_at_event:
-                at_event_sens = self._calc_metric_sensitivity(self.at_event, analysis_method, **kwargs)
-                sensitivity_analysis.update(at_event_sens)
+        Returns
+        -------
+        sobol_analysis : dict
+            Dictionary with keys the uncertainty parameter labels.
+            For each uncertainty parameter, the item is another dictionary
+            with keys the sensitivity indices.    
+        """
         
-            self.sensitivity = sensitivity_analysis
-    
-            return sensitivity_analysis
-        
-        
-    def _calc_metric_sensitivity(self, dt_metric, analysis_method, **kwargs):
-        
-        sensitivity_dict = {}
-        for metric in dt_metric:
-            Y = dt_metric[metric].to_numpy()
-            sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
-            sensitivity_dict.update({metric: sensitivity_index})
+        if self.params.empty:
+            raise ValueError("I found no samples. Please produce first"
+                             " samples using Uncertainty.make_sample().")
             
-        return sensitivity_dict
+        if self.aai_agg.empty:
+            raise ValueError("I found no impact data. Please compute"
+                             " the impact distribution first using"+
+                             " Uncertainty.calc_impact_distribution()")
+                              
+        analysis_method = getattr(saa, method)
+        sensitivity_analysis = {}
+        
+        aai_agg_sens = self._calc_metric_sensitivity(self.aai_agg, analysis_method, **kwargs)
+        sensitivity_analysis.update(aai_agg_sens)
+        
+        freq_curve_sens = self._calc_metric_sensitivity(self.freq_curve, analysis_method, **kwargs)
+        sensitivity_analysis.update(freq_curve_sens)
+        
+        if self.calc_eai_exp:
+            eai_exp_sens = self._calc_metric_sensitivity(self.eai_exp, analysis_method, **kwargs)
+            sensitivity_analysis.update(eai_exp_sens)
+    
+        if self.calc_at_event:
+            at_event_sens = self._calc_metric_sensitivity(self.at_event, analysis_method, **kwargs)
+            sensitivity_analysis.update(at_event_sens)
+    
+        self.sensitivity = sensitivity_analysis
+    
+        return sensitivity_analysis
+    
+class UncCostBenefit(Uncertainty):
     
     
     def calc_cost_benefit_distribution(self):
@@ -605,7 +651,6 @@ class Uncertainty():
         
     def calc_cost_benefit_sensitivity(self,  method, **kwargs):
         raise NotImplementedError()
-    
 
 
 class UncRobustness():
