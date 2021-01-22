@@ -910,19 +910,19 @@ def plot_comparing_maps(haz_his, haz_fut, axes, nr_cli_models=1, model=1):
     haz2plot.event_id = 0
 
     for subplot in range(3):
-        
+
         his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
         fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
-    
+
         if subplot == 0:
             haz2plot.intensity = his_mean
         elif subplot == 1:
             haz2plot.intensity = fut_mean
         elif subplot == 2:
             haz2plot.intensity = fut_mean - his_mean
-                        
+
         if nr_cli_models == 1:
-            ax1 = haz2plot.plot_intensity_cp(event=0, dif=0, axis=axes[subplot])   
+            ax1 = haz2plot.plot_intensity_cp(event=0, dif=0, axis=axes[subplot])
         else:
             ax1 = haz2plot.plot_intensity_cp(event=0, dif=1, axis=axes[model, subplot])
 
