@@ -28,7 +28,7 @@ import numpy as np
 from climada.entity import BlackMarble
 from climada.hazard import TropCyclone
 import os
-from climada.engine.uncertainty import UncVar, UncSensitivity
+from climada.engine.uncertainty import UncVar, Uncertainty
 import scipy as sp
 
 
@@ -147,8 +147,10 @@ class TestUncVar(unittest.TestCase):
     
     impf_unc.plot_distr()
     
-    unc = UncSensitivity(exp, impf_unc, haz)
-    unc.calc_impact_sobol_sensitivity(N=1, calc_eai_exp=False, calc_at_event=False)
+    unc = Uncertainty(exp, impf_unc, haz)
+    unc.make_sample(N=1)
+    unc.calc_impact_distribution()
+    unc.calc_impact_sensitivity()
     
     
 

@@ -117,12 +117,12 @@ class UncVar():
         """
         nplots = len(self.distr_dict)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
-        for ax, (param_name, distr) in zip(ax, self.distr_dict.items()):
+        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
+        for ax, (param_name, distr) in zip(axis.flatten(), self.distr_dict.items()):
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
-        return fig, ax
+        return fig, axis
 
     def eval_unc_var(self, kwargs):
         """
@@ -370,30 +370,31 @@ class Uncertainty():
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
 
+
+        #Compute impact distributions
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             impact_metrics = self.pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
 
-            [aai_agg_list,
-             freq_curve_list,
-             eai_exp_list,
-             at_event_list] = list(zip(*impact_metrics))
-
         else:
 
             impact_metrics = map(self._map_impact_eval, self.params.iterrows())
 
-            [aai_agg_list,
-             freq_curve_list,
-             eai_exp_list,
-             at_event_list] = list(zip(*impact_metrics))
+        [
+         aai_agg_list, freq_curve_list,
+         eai_exp_list, at_event_list
+         ] = list(zip(*impact_metrics))
 
-        df_aai_freq = pd.DataFrame(freq_curve_list,
+
+        # Assign computed impact distribution data to self
+        df_aai_agg = pd.DataFrame(aai_agg_list, columns = ['aai_agg'])
+        self.aai_agg = df_aai_agg
+
+        df_freq_curve = pd.DataFrame(freq_curve_list,
                                    columns=['rp' + str(n) for n in rp])
-        df_aai_freq['aai_agg'] = aai_agg_list
-        self.aai_freq = df_aai_freq
+        self.freq_curve = df_freq_curve
 
         if calc_eai_exp:
             df_eai_exp = pd.DataFrame(eai_exp_list)
@@ -433,14 +434,16 @@ class Uncertainty():
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-
+        
+        
+        # Extract from impact the chosen metrics
         rp_curve = imp.calc_freq_curve(self.rp).impact
-
+        
         if self.calc_eai_exp:
             eai_exp = imp.eai_exp
         else:
             eai_exp = None
-
+            
         if self.calc_at_event:
             at_event= imp.at_event
         else:
@@ -466,11 +469,15 @@ class Uncertainty():
             DESCRIPTION.
 
         """
-        if self.aai_freq.empty:
+        if self.aai_agg.empty:
             raise ValueError("No uncertainty data present. Please run "+
                     "a sensitivity analysis first.")
 
-        log_aai_freq = self.aai_freq.apply(np.log10).copy()
+        log_aai_freq = pd.concat([self.aai_agg.copy(),
+                                  self.freq_curve.copy()],
+                                 axis=1, join='inner') 
+        
+        log_aai_freq = log_aai_freq.apply(np.log10)
         log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
         cols = log_aai_freq.columns
         nplots = len(cols)
@@ -502,12 +509,7 @@ class Uncertainty():
     
 
     def calc_impact_sensitivity(self,
-                                   N,
                                    method='sobol',
-                                   rp=None,
-                                   calc_eai_exp=False,
-                                   calc_at_event=False,
-                                   calc_second_order=True,
                                    **kwargs):
             """
             Compute the sensitivity indices using the SALib library:
@@ -531,6 +533,15 @@ class Uncertainty():
                 The default is False.
             calc_second_order : boolean, optional
                 if True, calculate second-order sensitivities. The default is True.
+            method : string, optional
+                Choose the method for the sensitivity analysis. Note that
+                saLib recommends pairs of sampling anad analysis algorithms.
+                We recommend users to respect these pairings. 
+                Defaul: 'sobol' 
+                Note that for the default 'sobol', negative sensitivity
+                indices indicate that the algorithm has not converged. In this
+                case, please restart the uncertainty and sensitivity analysis
+                with an increased number of samples.
             **kwargs :
                 These parameters will be passed to SALib.analyze.sobol.analyze()
                 The default is num_resamples=100, conf_level=0.95,
@@ -545,55 +556,57 @@ class Uncertainty():
                 with keys the sensitivity indices.    
             """
     
-            if calc_eai_exp:
-                raise NotImplementedError()
-    
-            if calc_at_event:
-                raise NotImplementedError()
-    
-            if rp is None:
-                rp =[5, 10, 20, 50, 100, 250]
-    
-            self.rp = rp
-            self.calc_eai_exp = calc_eai_exp
-            self.calc_at_event = calc_at_event
     
             if self.params.empty:
-                raise ValueError("I found no sample. Please run first "
-                                 "Uncertainty.make_sample().")
+                raise ValueError("I found no samples. Please produce first"
+                                 " samples using Uncertainty.make_sample().")
                 
-            if self.aai_freq.empty:
-                self.calc_impact_distribution(rp=rp,
-                                              calc_eai_exp=calc_eai_exp,
-                                              calc_at_event=calc_at_event
-                                              )
-              
-                
+            if self.aai_agg.empty:
+                raise ValueError("I found no impact data. Please compute"
+                                 " the impact distribution first using"+
+                                 " Uncertainty.calc_impact_distribution()")
+                                  
             analysis_method = getattr(saa, method)
             sensitivity_analysis = {}
-            for imp_out in self.aai_freq:
-                Y = self.aai_freq[imp_out].to_numpy()
-                sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
-                sensitivity_analysis.update({imp_out: sensitivity_index})
-                # for si_list in si_sobol.values():
-                #     if np.any(np.array(si_list)<0):
-                #         LOGGER.warning("There is at least one negative sobol " +
-                #             "index. Consider using more samples or using another "+
-                #             "sensitivity analysis method." +
-                #             "See https://github.com/SALib/SALib/issues/109")
-                #         continue
+            
+            aai_agg_sens = self._calc_metric_sensitivity(self.aai_agg, analysis_method, **kwargs)
+            sensitivity_analysis.update(aai_agg_sens)
+            
+            freq_curve_sens = self._calc_metric_sensitivity(self.freq_curve, analysis_method, **kwargs)
+            sensitivity_analysis.update(freq_curve_sens)
+            
+            if self.calc_eai_exp:
+                eai_exp_sens = self._calc_metric_sensitivity(self.eai_exp, analysis_method, **kwargs)
+                sensitivity_analysis.update(eai_exp_sens)
     
+            if self.calc_at_event:
+                at_event_sens = self._calc_metric_sensitivity(self.at_event, analysis_method, **kwargs)
+                sensitivity_analysis.update(at_event_sens)
+        
             self.sensitivity = sensitivity_analysis
     
             return sensitivity_analysis
-
-
-    def calc_cost_benefit_sensitivity(self):
-        raise NotImplementedError()
+        
+        
+    def _calc_metric_sensitivity(self, dt_metric, analysis_method, **kwargs):
+        
+        sensitivity_dict = {}
+        for metric in dt_metric:
+            Y = dt_metric[metric].to_numpy()
+            sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
+            sensitivity_dict.update({metric: sensitivity_index})
+            
+        return sensitivity_dict
+    
     
     def calc_cost_benefit_distribution(self):
         raise NotImplementedError()
+        
+        
+    def calc_cost_benefit_sensitivity(self,  method, **kwargs):
+        raise NotImplementedError()
     
+
 
 class UncRobustness():
     """
