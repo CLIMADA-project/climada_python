@@ -323,7 +323,7 @@ class TCForecast(TCTracks):
 
         # according to specs always num-num-letter
         track.attrs['basin'] = BASINS[sid[2]]
-        
+
         if sid[2] == 'X':
             LOGGER.info(
                 'Undefined basin %s for track name %s ensemble no. %d',
