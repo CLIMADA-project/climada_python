@@ -56,7 +56,8 @@ BASINS = {
     'A': 'A - Arabian Sea (North Indian Ocean)',
     'B': 'B - Bay of Bengal (North Indian Ocean)',
     'U': 'U - Australia',
-    'S': 'S - South-West Indian Ocean'
+    'S': 'S - South-West Indian Ocean',
+    'X': 'X - Undefined Basin'
 }
 """Gleaned from the ECMWF wiki at
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
@@ -322,6 +323,11 @@ class TCForecast(TCTracks):
 
         # according to specs always num-num-letter
         track.attrs['basin'] = BASINS[sid[2]]
+        
+        if sid[2] == 'X':
+            LOGGER.info(
+                'Undefined basin %s for track name %s ensemble no. %d',
+                sid[2], track.attrs['name'], track.attrs['ensemble_number'])
 
         cat_name = CAT_NAMES[set_category(
             max_sus_wind=track.max_sustained_wind.values,
