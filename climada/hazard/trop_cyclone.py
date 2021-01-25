@@ -37,7 +37,7 @@ from climada.hazard.tc_tracks import TCTracks, estimate_rmw
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
-import climada.util.coordinates as coord_util
+import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ class TropCyclone(Hazard):
         t_bounds = tracks.get_bounds(deg_buffer=CENTR_NODE_MAX_DIST_DEG)
         t_mid_lon = 0.5 * (t_bounds[0] + t_bounds[2])
         coastal_centroids = centroids.coord[coastal_idx]
-        coord_util.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
+        u_coord.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
         coastal_idx = coastal_idx[((t_bounds[0] <= coastal_centroids[:, 1])
                                    & (coastal_centroids[:, 1] <= t_bounds[2])
                                    & (t_bounds[1] <= coastal_centroids[:, 0])
@@ -454,9 +454,9 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         return windfields, reachable_centr_idx
 
     # normalize longitude values (improves performance of `dist_approx` and `_close_centroids`)
-    mid_lon = 0.5 * sum(coord_util.lon_bounds(t_lon))
-    coord_util.lon_normalize(t_lon, center=mid_lon)
-    coord_util.lon_normalize(centroids[:, 1], center=mid_lon)
+    mid_lon = 0.5 * sum(u_coord.lon_bounds(t_lon))
+    u_coord.lon_normalize(t_lon, center=mid_lon)
+    u_coord.lon_normalize(centroids[:, 1], center=mid_lon)
 
     # restrict to centroids within rectangular bounding boxes around track positions
     track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
@@ -466,9 +466,9 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         return windfields, reachable_centr_idx
 
     # compute distances and vectors to all centroids
-    [d_centr], [v_centr] = coord_util.dist_approx(t_lat[None], t_lon[None],
-                                                  track_centr[None, :, 0], track_centr[None, :, 1],
-                                                  log=True, normalize=False, method=metric)
+    [d_centr], [v_centr] = u_coord.dist_approx(t_lat[None], t_lon[None],
+                                               track_centr[None, :, 0], track_centr[None, :, 1],
+                                               log=True, normalize=False, method=metric)
 
     # exclude centroids that are too far from or too close to the eye
     close_centr_msk = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-2)
@@ -595,9 +595,9 @@ def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     """
     v_trans = np.zeros((t_lat.size, 2))
     v_trans_norm = np.zeros((t_lat.size,))
-    norm, vec = coord_util.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
-                                       t_lat[1:, None], t_lon[1:, None],
-                                       log=True, normalize=False, method=metric)
+    norm, vec = u_coord.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
+                                    t_lat[1:, None], t_lon[1:, None],
+                                    log=True, normalize=False, method=metric)
     v_trans[1:, :] = vec[:, 0, 0]
     v_trans[1:, :] *= KMH_TO_MS / t_tstep[1:, None]
     v_trans_norm[1:] = norm[:, 0, 0]

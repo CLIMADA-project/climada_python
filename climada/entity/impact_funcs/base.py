@@ -25,7 +25,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
-import climada.util.checker as check
+import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,8 +104,8 @@ class ImpactFunc():
             ValueError
         """
         num_exp = len(self.intensity)
-        check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
-        check.size(num_exp, self.paa, 'ImpactFunc.paa')
+        u_check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
+        u_check.size(num_exp, self.paa, 'ImpactFunc.paa')
 
         if num_exp == 0:
             LOGGER.warning("%s impact function with name '%s' (id=%s) has empty"

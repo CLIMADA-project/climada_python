@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR
-import climada.util.checker as check
+import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -101,12 +101,12 @@ class Measure():
             ValueError
         """
         try:
-            check.size(3, self.color_rgb, 'Measure.color_rgb')
+            u_check.size(3, self.color_rgb, 'Measure.color_rgb')
         except ValueError:
-            check.size(4, self.color_rgb, 'Measure.color_rgb')
-        check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
-        check.size(2, self.mdd_impact, 'Measure.mdd_impact')
-        check.size(2, self.paa_impact, 'Measure.paa_impact')
+            u_check.size(4, self.color_rgb, 'Measure.color_rgb')
+        u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
+        u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
+        u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
     def calc_impact(self, exposures, imp_fun_set, hazard):
         """Apply measure and compute impact and risk transfer of measure
