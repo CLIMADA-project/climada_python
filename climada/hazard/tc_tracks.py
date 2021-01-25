@@ -334,6 +334,10 @@ class TCTracks():
             self.data = []
             return
 
+        if not provider:
+            # for an unknown reason, this is much slower when doing it after the filtering
+            ibtracs_ds['track_agency'] = ibtracs_ds.wmo_agency.where(ibtracs_ds.wmo_agency != b'',
+                                                                     ibtracs_ds.usa_agency)
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
         valid_st = ibtracs_ds.valid_t.any(dim="date_time")
@@ -383,8 +387,10 @@ class TCTracks():
         valid_st = ibtracs_ds.valid_t.any(dim="date_time")
         invalid_st = np.nonzero(~valid_st.data)[0]
         if invalid_st.size > 0:
-            st_ids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data)
-            LOGGER.warning('No valid wind/pressure values found for %s.', st_ids)
+            st_ids = ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data
+            st_ids_str = ", ".join(st_ids[:5]) + (", ..." if len(st_ids) > 5  else ".")
+            LOGGER.warning('No valid wind/pressure values found for %d storm events: %s',
+                           len(st_ids), st_ids_str)
             ibtracs_ds = ibtracs_ds.sel(storm=valid_st)
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
@@ -1594,8 +1600,10 @@ def ibtracs_track_agency(ds_sel):
     })
     agency_map[b''] = agency_map[b'wmo']
     agency_fun = lambda x: agency_map[x]
-    track_agency = ds_sel.wmo_agency.where(ds_sel.wmo_agency != '', ds_sel.usa_agency)
-    track_agency_ix = xr.apply_ufunc(agency_fun, track_agency, vectorize=True)
+    if "track_agency" not in ds_sel.data_vars.keys():
+        ds_sel['track_agency'] = ds_sel.wmo_agency.where(ds_sel.wmo_agency != b'',
+                                                         ds_sel.usa_agency)
+    track_agency_ix = xr.apply_ufunc(agency_fun, ds_sel.track_agency, vectorize=True)
     return agency_pref, track_agency_ix
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
