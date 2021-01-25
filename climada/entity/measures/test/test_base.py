@@ -18,11 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test MeasureSet and Measure classes.
 """
-import os
 import unittest
 import copy
 import numpy as np
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
@@ -32,13 +32,10 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
-                        os.pardir, 'hazard', 'test', 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
+DATA_DIR = CONFIG.measures.test_data.dir()
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
-                            '../../exposures/test/data/demo_today.mat')
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestApply(unittest.TestCase):
     """Test implement measures functions."""

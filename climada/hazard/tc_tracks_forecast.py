@@ -26,8 +26,8 @@ import datetime as dt
 import fnmatch
 import ftplib
 import logging
-import os
 import tempfile
+from pathlib import Path
 
 # additional libraries
 import numpy as np
@@ -157,7 +157,7 @@ class TCForecast(TCTracks):
             LOGGER.info('Fetching BUFR tracks:')
             for rfile in tqdm.tqdm(remotefiles, desc='Download', unit=' files'):
                 if target_dir:
-                    lfile = open(os.path.join(target_dir, rfile), 'w+b')
+                    lfile = Path(target_dir, rfile).open('w+b')
                 else:
                     lfile = tempfile.TemporaryFile(mode='w+b')
 
@@ -194,8 +194,8 @@ class TCForecast(TCTracks):
             bufr = decoder.process(file.read())
         elif hasattr(file, 'read_bytes'):
             bufr = decoder.process(file.read_bytes())
-        elif os.path.isfile(file):
-            with open(file, 'rb') as i:
+        elif Path(file).is_file():
+            with Path(file).open('rb') as i:
                 bufr = decoder.process(i.read())
         else:
             raise FileNotFoundError('Check file argument')
