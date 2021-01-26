@@ -310,11 +310,11 @@ class Uncertainty():
         raise NotImplementedError()
     
         
-    def _calc_metric_sensitivity(self, dt_metric, analysis_method, **kwargs):
+    def _calc_metric_sensitivity(self, df_metric, analysis_method, **kwargs):
         
         sensitivity_dict = {}
-        for metric in dt_metric:
-            Y = dt_metric[metric].to_numpy()
+        for metric in df_metric:
+            Y = df_metric[metric].to_numpy()
             sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
             sensitivity_dict.update({metric: sensitivity_index})
             
@@ -529,7 +529,7 @@ class UncImpact(Uncertainty):
         """
         if self.aai_agg.empty:
             raise ValueError("No uncertainty data present. Please run "+
-                    "a sensitivity analysis first.")
+                    "an uncertainty analysis first.")
 
         log_aai_freq = pd.concat([self.aai_agg.copy(),
                                   self.freq_curve.copy()],
@@ -641,6 +641,7 @@ class UncImpact(Uncertainty):
         self.sensitivity = sensitivity_analysis
     
         return sensitivity_analysis
+    
     
 class UncCostBenefit(Uncertainty):
     
