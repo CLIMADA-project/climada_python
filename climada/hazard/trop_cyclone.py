@@ -415,7 +415,6 @@ class TropCyclone(Hazard):
                     for start, stop in zip(chunks[:-1], chunks[1:]):
                         new_val[select[start:stop]] = \
                             new_val[select[start:stop]].multiply(change)
-                        print(start, stop)
                 else:
                     new_val[select] *= change
                 setattr(haz_cc, chg['variable'], new_val)
