@@ -22,56 +22,55 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Integration tests & long unit test landslide module.
 """
 import unittest
-import os
 import datetime as dt
-from datetime import timedelta
 import glob
+from pathlib import Path
+
+from climada import CONFIG
 from climada.hazard import landslide
 from climada.hazard.landslide import Landslide
-from climada.util.constants import DATA_DIR
 
-LS_FILE_DIR = os.path.join(DATA_DIR, 'system')
 
-DATA_DIR_TEST = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = CONFIG.test_data.dir()
 
 class TestTiffFcts(unittest.TestCase):
     """Unit tests for parts of the LS hazard module, but moved to integration tests
     for reasons of runtime: Test functions for getting input tiffs in landslide module,
     outside Landslide() instance"""
     def test_get_nowcast_tiff(self):
-        start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(5), '%Y-%m-%d')
-        end_date = dt.datetime.strftime(dt.datetime.now() - timedelta(1), '%Y-%m-%d')
+        start_date = dt.datetime.strftime(dt.datetime.now() - dt.timedelta(5), '%Y-%m-%d')
+        end_date = dt.datetime.strftime(dt.datetime.now() - dt.timedelta(1), '%Y-%m-%d')
         tif_type = ["monthly", "daily"]
 
         for item in tif_type:
             landslide.get_nowcast_tiff(tif_type=item, starttime=start_date, endtime=end_date,
-                                       save_path=DATA_DIR_TEST)
+                                       save_path=DATA_DIR)
 
         search_criteria = "LS*.tif"
-        LS_files_daily = glob.glob(os.path.join(DATA_DIR_TEST, search_criteria))
+        LS_files_daily = glob.glob(str(DATA_DIR.joinpath(search_criteria)))
         search_criteria = "*5400.tif"
-        LS_files_monthly = glob.glob(os.path.join(os.getcwd(), search_criteria))
+        LS_files_monthly = glob.glob(search_criteria)
 
         self.assertTrue(len(LS_files_daily) > 0)
         self.assertTrue(len(LS_files_monthly) == 12)
 
         for item in LS_files_daily:
-            os.remove(item)
+            Path(item).unlink()
 
         for item in LS_files_monthly:
-            os.remove(item)
+            Path(item).unlink()
 
 #    def test_combine_nowcast_tiff(self):
 #        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='test_global*.tif', operator="maximum")
 #        search_criteria = "combined*.tif"
-#        combined_daily = glob.glob(os.path.join(DATA_DIR, search_criteria))
+#        combined_daily = glob.glob(DATA_DIR.joinpath(search_criteria))
 #        self.assertEqual(len(combined_daily), 1)
 #        for item in combined_daily:
 #            os.remove(item)
 #
 #        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='*5400_test.tif', operator="sum")
 #        search_criteria = "combined*.tif"
-#        combined_monthly = glob.glob(os.path.join(DATA_DIR, search_criteria))
+#        combined_monthly = glob.glob(DATA_DIR.joinpath(search_criteria))
 #        self.assertEqual(len(combined_monthly),1)
 #        for item in combined_monthly:
 #            os.remove(item)
@@ -83,8 +82,7 @@ class TestLSHazard(unittest.TestCase):
         LS_hist = Landslide()
         LS_hist.set_ls_model_hist(
             bbox=[48, 10, 45, 7],
-            path_sourcefile=os.path.join(DATA_DIR_TEST,
-                                         'nasa_global_landslide_catalog_point.shp'),
+            path_sourcefile=DATA_DIR.joinpath('nasa_global_landslide_catalog_point.shp'),
             check_plots=0)
         self.assertEqual(LS_hist.size, 49)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')

@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks module.
 """
 
-import os
 import unittest
 import xarray as xr
 import numpy as np
@@ -28,20 +27,21 @@ import pandas as pd
 import geopandas as gpd
 
 import climada.hazard.tc_tracks as tc
+from climada import CONFIG
 from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 from climada.util.coordinates import coord_on_land, dist_to_coast
 from climada.entity import Exposures
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
-TEST_TRACK_SHORT = os.path.join(DATA_DIR, "trac_short_test.csv")
-TEST_RAW_TRACK = os.path.join(DATA_DIR, 'Storm.2016075S11087.ibtracs_all.v03r10.csv')
-TEST_TRACK_GETTELMAN = os.path.join(DATA_DIR, 'gettelman_test_tracks.nc')
-TEST_TRACK_EMANUEL = os.path.join(DATA_DIR, 'emanuel_test_tracks.mat')
-TEST_TRACK_EMANUEL_CORR = os.path.join(DATA_DIR, 'temp_mpircp85cal_full.mat')
-TEST_TRACK_CHAZ = os.path.join(DATA_DIR, 'chaz_test_tracks.nc')
-TEST_TRACK_STORM = os.path.join(DATA_DIR, 'storm_test_tracks.txt')
+DATA_DIR = CONFIG.hazard.test_data.dir()
+TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
+TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
+TEST_RAW_TRACK = DATA_DIR.joinpath('Storm.2016075S11087.ibtracs_all.v03r10.csv')
+TEST_TRACK_GETTELMAN = DATA_DIR.joinpath('gettelman_test_tracks.nc')
+TEST_TRACK_EMANUEL = DATA_DIR.joinpath('emanuel_test_tracks.mat')
+TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath('temp_mpircp85cal_full.mat')
+TEST_TRACK_CHAZ = DATA_DIR.joinpath('chaz_test_tracks.nc')
+TEST_TRACK_STORM = DATA_DIR.joinpath('storm_test_tracks.txt')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -55,15 +55,15 @@ class TestIbtracs(unittest.TestCase):
 
     def test_write_read_pass(self):
         """Test writting and reading netcdf4 TCTracks instances"""
-        path = os.path.join(DATA_DIR, "tc_tracks_nc")
-        os.makedirs(path, exist_ok=True)
+        path = DATA_DIR.joinpath("tc_tracks_nc")
+        path.mkdir(exist_ok=True)
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
                                      estimate_missing=True)
-        tc_track.write_netcdf(path)
+        tc_track.write_netcdf(str(path))
 
         tc_read = tc.TCTracks()
-        tc_read.read_netcdf(path)
+        tc_read.read_netcdf(str(path))
 
         self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
 
@@ -432,7 +432,7 @@ class TestFuncs(unittest.TestCase):
             tc_track = tc.TCTracks()
             tc_track.read_processed_ibtracs_csv(TEST_TRACK)
             msg = f"time_step_h is not a positive number: {time_step_h}"
-            with self.assertRaises(ValueError, msg=msg) as cm:
+            with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
     def test_interp_origin_pass(self):

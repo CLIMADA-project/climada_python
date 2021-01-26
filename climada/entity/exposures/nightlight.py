@@ -18,14 +18,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define nightlight reader and cutting functions.
 """
-from os import path, getcwd, chdir, remove
 import glob
 import shutil
 import tarfile
-import re
 import gzip
 import pickle
 import logging
+from pathlib import Path
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
@@ -105,10 +104,10 @@ def check_required_nl_files(bbox, *coords):
             else:
                 min_lon = bbox
                 min_lat, max_lon, max_lat = coords
-    except:
+    except Exception as exc:
         raise ValueError('Invalid coordinates supplied. Please either '
                          ' deliver a bounding box or the coordinates defining the '
-                         ' bounding box separately.')
+                         ' bounding box separately.') from exc
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
@@ -140,7 +139,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     denoting the missing files.
 
     Parameters:
-        check_path (str): absolute path where files are stored.
+        check_path (str or Path): absolute path where files are stored.
             Default: SYSTEM_DIR
         required_files (array): Boolean array of dimension (8,) with which
             some files can be skipped. Only files with value 1 are checked,
@@ -155,17 +154,16 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
         LOGGER.warning('The parameter \'required_files\' was too short and '
                        'is ignored.')
-    if not path.exists(check_path):
-        check_path = SYSTEM_DIR
-        LOGGER.warning('The given path does not exist and is ignored. %s'
-                       ' is checked instead.', SYSTEM_DIR)
+    if isinstance(check_path, str):
+        check_path = Path(check_path)
+    if not check_path.is_dir():
+        raise ValueError(f'The given path does not exist: {check_path}')
     files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
     for num_check, name_check in enumerate(BM_FILENAMES):
         if required_files[num_check] == 0:
             continue
-        curr_file = path.join(check_path, name_check)
-        curr_file = curr_file.replace('*', str(year))
-        if path.isfile(curr_file):
+        curr_file = check_path.joinpath(name_check.replace('*', str(year)))
+        if curr_file.is_file():
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
@@ -195,26 +193,19 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
         dwnl_path (str):
 
     Returns:
-        path_str (str): Absolute path to file storage.
+        path_str (Path): Path to download directory.
     """
     if (len(req_files) != len(files_exist)) or (len(req_files) != len(BM_FILENAMES)):
         raise ValueError('The given arguments are invalid. req_files and '
                          'files_exist must both be as long as there are files to download'
                          ' (' + str(len(BM_FILENAMES)) + ').')
-    if not path.exists(dwnl_path):
-        dwnl_path = SYSTEM_DIR
-        if not path.exists(dwnl_path):
-            raise ValueError('The folder does not exist. Operation aborted.')
-        else:
-            LOGGER.warning('The given folder does not exist using the '
-                           'Climada data directory instead.')
+    if not Path(dwnl_path).is_dir():
+        raise ValueError(f'The folder {dwnl_path} does not exist. Operation aborted.')
     if np.all(req_files == files_exist):
         LOGGER.debug('All required files already exist. '
                      'No downloads necessary.')
-        return None
+        return dwnl_path
     try:
-        curr_wd = getcwd()
-        chdir(dwnl_path)
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
             if req_files[num_files] == 0:
                 continue
@@ -226,13 +217,11 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                     curr_file = curr_file.replace('*', str(year))
                     LOGGER.info('Attempting to download file from %s',
                                 curr_file)
-                    path_dwn = download_file(curr_file)
-                    path_str = path.dirname(path_dwn)
-    except:
-        chdir(curr_wd)
+                    download_file(curr_file, download_dir=dwnl_path)
+    except Exception as exc:
         raise RuntimeError('Download failed. Please check the network '
-                           'connection and whether filenames are still valid.')
-    return path_str
+            'connection and whether filenames are still valid.') from exc
+    return dwnl_path
 
 def load_nightlight_nasa(bounds, req_files, year):
     """Get nightlight from NASA repository that contain input boundary.
@@ -264,7 +253,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
 
-        fname = path.join(SYSTEM_DIR, fname.replace('*', str(year)))
+        fname = SYSTEM_DIR.joinpath(fname.replace('*', str(year)))
         with Image.open(fname, "r") as im_nl:
             im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
             im_nl = sparse.csc.csc_matrix(im_nl)
@@ -292,16 +281,16 @@ def unzip_tif_to_py(file_gz):
         sparse.csr_matrix (nightlight)
     """
     LOGGER.info("Unzipping file %s.", file_gz)
-    file_name = path.splitext(file_gz)[0]
+    file_path = Path(file_gz).stem
     with gzip.open(file_gz, 'rb') as f_in:
-        with open(file_name, 'wb') as f_out:
+        with file_path.open('wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-    nightlight = sparse.csc.csc_matrix(plt.imread(file_name))
+    nightlight = sparse.csc.csc_matrix(plt.imread(file_path))
     # flip X axis
     nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
     nightlight = nightlight.tocsr()
-    remove(file_name)
-    file_name = path.splitext(file_name)[0] + ".p"
+    file_path.unlink()
+    file_name = file_path.stem + ".p"
     save(file_name, nightlight)
 
     return file_name, nightlight
@@ -317,31 +306,26 @@ def untar_noaa_stable_nightlight(f_tar_ini):
         f_tif_gz (str)
     """
     # move to SYSTEM_DIR
-    f_tar_dest = path.abspath(path.join(SYSTEM_DIR,
-                                        path.basename(f_tar_ini)))
+    f_tar_dest = SYSTEM_DIR.joinpath(Path(f_tar_ini).name)
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
-    chdir(SYSTEM_DIR)
-    tar_file = tarfile.open(f_tar_dest)
-    file_contents = tar_file.getnames()
-    extract_name = path.splitext(path.basename(f_tar_dest))[0] + \
-        '.*stable_lights.avg_vis.tif.gz'
-    regex = re.compile(extract_name)
+    tar_file = tarfile.open(f_tar_ini)
+    extract_name = [name for name in tar_file.getnames()
+                    if name.endswith('stable_lights.avg_vis.tif.gz')]
+    if len(extract_name) == 0:
+        msg = f'No stable light intensities for selected year and satellite in file {f_tar_ini}'
+        LOGGER.error(msg)
+        raise ValueError(msg)
+    if len(extract_name) > 1:
+        LOGGER.warning('found more than one potential intensity file in %s %s', f_tar_ini, extract_name)
     try:
-        extract_name = list(filter(regex.match, file_contents))[0]
-    except IndexError:
-        LOGGER.error('No stable light intensities for selected year and '
-                     'satellite in file %s', f_tar_dest)
-        raise ValueError
-    try:
-        tar_file.extract(extract_name)
+        tar_file.extract(extract_name[0], SYSTEM_DIR)
     except tarfile.TarError as err:
         LOGGER.error(str(err))
         raise err
     finally:
         tar_file.close()
-    remove(f_tar_dest)
-    f_tif_gz = path.join(path.abspath(SYSTEM_DIR), extract_name)
+    f_tif_gz = SYSTEM_DIR.joinpath(extract_name[0])
 
     return f_tif_gz
 
@@ -359,11 +343,11 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         fn_light (str)
     """
     if sat_name is None:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), '*' +
-                             str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = str(SYSTEM_DIR.joinpath('*' +
+                             str(ref_year) + '*.stable_lights.avg_vis'))
     else:
-        fn_light = path.join(path.abspath(SYSTEM_DIR), sat_name +
-                             str(ref_year) + '*.stable_lights.avg_vis')
+        fn_light = str(SYSTEM_DIR.joinpath(sat_name +
+                             str(ref_year) + '*.stable_lights.avg_vis'))
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
         fn_light = glob.glob(fn_light + ".p")[0]
@@ -394,7 +378,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
             except ValueError:
                 LOGGER.error('Nightlight intensities for year %s and satellite'
                              ' %s do not exist.', ref_year, sat_name)
-                raise ValueError
+                raise
         fn_light = untar_noaa_stable_nightlight(file_down)
         fn_light, nightlight = unzip_tif_to_py(fn_light)
 

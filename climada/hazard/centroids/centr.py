@@ -22,6 +22,7 @@ Define Centroids class.
 import ast
 import copy
 import logging
+from pathlib import Path
 import numpy as np
 from scipy import sparse
 import h5py
@@ -878,7 +879,7 @@ class Centroids():
         file_data : str or h5
             If string, path to read data. If h5 object, the datasets will be read from there.
         """
-        if isinstance(file_data, str):
+        if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
             data = h5py.File(file_data, 'r')
         else:

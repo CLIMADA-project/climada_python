@@ -22,8 +22,9 @@ Define functions to handle with coordinates
 import copy
 import logging
 import math
+from pathlib import Path
 from multiprocessing import cpu_count
-import os
+
 import zipfile
 
 from cartopy.io import shapereader
@@ -51,7 +52,6 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import DATA_DIR
 
 pd.options.mode.chained_assignment = None
 
@@ -63,7 +63,7 @@ NE_EPSG = 4326
 NE_CRS = from_epsg(NE_EPSG)
 """Natural Earth CRS"""
 
-TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
+TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
 """Path of elevation file written in set_elevation"""
 
 DEM_NODATA = -9999
@@ -117,13 +117,21 @@ def lon_normalize(lon, center=0.0):
 
         (lon) -> (lon ± 360)
 
-    Parameters:
-        lon (np.array): Longitudinal coordinates
-        center (float, optional): Central longitude value to use instead of 0.
+    Parameters
+    ----------
+    lon : np.array
+        Longitudinal coordinates
+    center : float, optional
+        Central longitude value to use instead of 0. If None, the central longitude is determined
+        automatically.
 
-    Returns:
-        np.array (same as input)
+    Returns
+    -------
+    lon : np.array
+        Normalized longitudinal coordinates.
     """
+    if center is None:
+        center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
     maxiter = 10
     i = 0
@@ -140,7 +148,7 @@ def lon_normalize(lon, center=0.0):
             break
     return lon
 
-def latlon_bounds(lat, lon, buffer=0.0):
+def lon_bounds(lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
 
     The longitudinal upper bound may be 180 or larger to make sure that the upper bound is always
@@ -153,24 +161,29 @@ def latlon_bounds(lat, lon, buffer=0.0):
     Usually, an application of this function is followed by a renormalization of longitudinal
     values around the longitudinal middle value:
 
-    >>> bounds = latlon_bounds(lat, lon)
+    >>> bounds = lon_bounds(lon)
     >>> lon_mid = 0.5 * (bounds[0] + bounds[2])
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
-    Example:
-        >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
-        (175, -2, 181, 5)
-        >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
-        (174, -3, 182, 6)
+    Example
+    -------
+    >>> lon_bounds(np.array([-179, 175, 178]))
+    (175, 181)
+    >>> lon_bounds(np.array([-179, 175, 178]), buffer=1)
+    (174, 182)
 
-    Parameters:
-        lat (np.array): Latitudinal coordinates
-        lon (np.array): Longitudinal coordinates
-        buffer (float, optional): Buffer to add to all sides of the bounding box. Default: 0.0.
+    Parameters
+    ----------
+    lon : np.array
+        Longitudinal coordinates
+    buffer : float, optional
+        Buffer to add to both sides of the bounding box. Default: 0.0.
 
-    Returns:
-        tuple (lon_min, lat_min, lon_max, lat_max)
+    Returns
+    -------
+    bounds : tuple (lon_min, lon_max)
+        Bounding box of the given points.
     """
     lon = lon_normalize(lon.copy())
     lon_uniq = np.unique(lon)
@@ -194,6 +207,37 @@ def latlon_bounds(lat, lon, buffer=0.0):
         if lon_min <= -180:
             lon_min += 360
             lon_max += 360
+    return (lon_min, lon_max)
+
+
+def latlon_bounds(lat, lon, buffer=0.0):
+    """Bounds of a set of degree values, respecting the periodicity in longitude
+
+    See `lon_bounds` for more information about the handling of longitudinal values crossing the
+    antimeridian.
+
+    Example
+    -------
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
+    (175, -2, 181, 5)
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
+    (174, -3, 182, 6)
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitudinal coordinates
+    lon : np.array
+        Longitudinal coordinates
+    buffer : float, optional
+        Buffer to add to all sides of the bounding box. Default: 0.0.
+
+    Returns
+    -------
+    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+        Bounding box of the given points.
+    """
+    lon_min, lon_max = lon_bounds(lon, buffer=buffer)
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
@@ -214,9 +258,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": equirectangular; very fast, good only at small distances.
-        * "geosphere": spherical approximation, slower, but much higher accuracy.
-        Default: "equirect".
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
+          distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+        Note that ellipsoidal distances would be even more accurate, but are currently not
+        implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
         * "km": distance in km.
@@ -244,17 +290,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            lon_normalize(lon1)
-            lon_normalize(lon2)
-        d_lat = lat2[:, None] - lat1[:, :, None]
-        d_lon = lon2[:, None] - lon1[:, :, None]
-        fact1 = np.heaviside(d_lon - 180, 0)
-        fact2 = np.heaviside(-d_lon - 180, 0)
-        d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
-        if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            lon_normalize(lon1, center=mid_lon)
+            lon_normalize(lon2, center=mid_lon)
+        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
+                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        fact1 = np.heaviside(vtan[..., 1] - 180, 0)
+        fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
+        vtan[..., 1] -= (fact1 - fact2) * 360
+        vtan[..., 1] *= np.cos(np.radians(lat1[:, :, None]))
+        vtan *= unit_factor
+        # faster version of `dist = np.linalg.norm(vtan, axis=-1)`
+        dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
@@ -286,8 +333,8 @@ def grid_is_regular(coord):
     Returns
     -------
     regular : bool
-        Whether the grid is regular. Only in this case, the following
-        width and height are reliable.
+        Whether the grid is regular. Only in this case, the following width and height are
+        reliable.
     height : int
         Height of the supposed grid.
     width : int
@@ -306,13 +353,17 @@ def grid_is_regular(coord):
 def get_coastlines(bounds=None, resolution=110):
     """Get Polygones of coast intersecting given bounds
 
-    Parameters:
-        bounds (tuple): min_lon, min_lat, max_lon, max_lat in EPSG:4326
-        resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
-            110m, i.e. 1:110.000.000
+    Parameters
+    ----------
+    bounds : tuple
+        min_lon, min_lat, max_lon, max_lat in EPSG:4326
+    resolution : float, optional
+        10, 50 or 110. Resolution in m. Default: 110m, i.e. 1:110.000.000
 
-    Returns:
-        GeoDataFrame
+    Returns
+    -------
+    coastlines : GeoDataFrame
+        Polygons of coast intersecting given bounds.
     """
     resolution = nat_earth_resolution(resolution)
     shp_file = shapereader.natural_earth(resolution=resolution,
@@ -332,12 +383,17 @@ def get_coastlines(bounds=None, resolution=110):
 def convert_wgs_to_utm(lon, lat):
     """Get EPSG code of UTM projection for input point in EPSG 4326
 
-    Parameters:
-        lon (float): longitude point in EPSG 4326
-        lat (float): latitude of point (lat, lon) in EPSG 4326
+    Parameters
+    ----------
+    lon : float
+        longitude point in EPSG 4326
+    lat : float
+        latitude of point (lat, lon) in EPSG 4326
 
-    Return:
-        int
+    Returns
+    -------
+    epsg_code : int
+        EPSG code of UTM projection.
     """
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
@@ -345,11 +401,15 @@ def convert_wgs_to_utm(lon, lat):
 def utm_zones(wgs_bounds):
     """Get EPSG code and bounds of UTM zones covering specified region
 
-    Parameters:
-        wgs_bounds (tuple): lon_min, lat_min, lon_max, lat_max
+    Parameters
+    ----------
+    wgs_bounds : tuple
+        lon_min, lat_min, lon_max, lat_max
 
-    Returns:
-        list of pairs (zone_epsg, zone_wgs_bounds)
+    Returns
+    -------
+    zones : list of pairs (zone_epsg, zone_wgs_bounds)
+        EPSG code and bounding box in WGS coordinates.
     """
     lon_min, lat_min, lon_max, lat_max = wgs_bounds
     lon_min, lon_max = max(-179.99, lon_min), min(179.99, lon_max)
@@ -368,21 +428,27 @@ def utm_zones(wgs_bounds):
 def dist_to_coast(coord_lat, lon=None, signed=False):
     """Compute (signed) distance to coast from input points in meters.
 
-    Parameters:
-        coord_lat (GeoDataFrame or np.array or float):
-            - GeoDataFrame with geometry column in epsg:4326
-            - np.array with two columns, first for latitude of each point and
-                second with longitude in epsg:4326
-            - np.array with one dimension containing latitudes in epsg:4326
-            - float with a latitude value in epsg:4326
-        lon (np.array or float, optional):
-            - np.array with one dimension containing longitudes in epsg:4326
-            - float with a longitude value in epsg:4326
-        signed (bool): If True, distance is signed with positive values off shore and negative
-            values on land. Default: False
+    Parameters
+    ----------
+    coord_lat : GeoDataFrame or np.array or float
+        One of the following:
+        * GeoDataFrame with geometry column in epsg:4326
+        * np.array with two columns, first for latitude of each point
+          and second with longitude in epsg:4326
+        * np.array with one dimension containing latitudes in epsg:4326
+        * float with a latitude value in epsg:4326
+    lon : np.array or float, optional
+        One of the following:
+        * np.array with one dimension containing longitudes in epsg:4326
+        * float with a longitude value in epsg:4326
+    signed : bool
+        If True, distance is signed with positive values off shore and negative values on land.
+        Default: False
 
-    Returns:
-        np.array
+    Returns
+    -------
+    dist : np.array
+        (Signed) distance to coast in meters.
     """
     if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
         if not equal_crs(coord_lat.crs, NE_CRS):
@@ -440,16 +506,22 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
 
     Note: The NASA raster file is 300 MB and will be downloaded on first run!
 
-    Parameters:
-        lat (np.array): latitudes in epsg:4326
-        lon (np.array): longitudes in epsg:4326
-        highres (bool, optional): Use full resolution of NASA data (much
-            slower). Default: False.
-        signed (bool): If True, distance is signed with positive values off shore and negative
-            values on land. Default: False
+    Parameters
+    ----------
+    lat : np.array
+        latitudes in epsg:4326
+    lon : np.array
+        longitudes in epsg:4326
+    highres : bool, optional
+        Use full resolution of NASA data (much slower). Default: False.
+    signed : bool
+        If True, distance is signed with positive values off shore and negative values on land.
+        Default: False
 
-    Returns:
-        np.array
+    Returns
+    -------
+    dist : np.array
+        (Signed) distance to coast in meters.
     """
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
@@ -458,16 +530,12 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     zipname = "GMT_intermediate_coast_distance_01d.zip"
     tifname = "GMT_intermediate_coast_distance_01d.tif"
     url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = os.path.join(SYSTEM_DIR, tifname)
-    if not os.path.isfile(path):
-        cwd = os.getcwd()
-        os.chdir(SYSTEM_DIR)
-        path_dwn = download_file(url)
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
         zip_ref = zipfile.ZipFile(path_dwn, 'r')
         zip_ref.extractall(SYSTEM_DIR)
         zip_ref.close()
-        os.remove(path_dwn)
-        os.chdir(cwd)
 
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
@@ -481,18 +549,21 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     return 1000 * dist
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
-    """Get union of all the countries or the provided ones or the points inside
-    the extent.
+    """Get union of the specified (or all) countries or the points inside the extent.
 
-    Parameters:
-        country_names (list, optional): list with ISO3 names of countries, e.g
-            ['ZWE', 'GBR', 'VNM', 'UZB']
-        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat)
-        resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
-            10m, i.e. 1:10.000.000
+    Parameters
+    ----------
+    country_names : list, optional
+        list with ISO3 names of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+    extent : tuple, optional
+        (min_lon, max_lon, min_lat, max_lat)
+    resolution : float, optional
+        10, 50 or 110. Resolution in m. Default: 10m, i.e. 1:10.000.000
 
-    Returns:
-        shapely.geometry.multipolygon.MultiPolygon
+    Returns
+    -------
+    geom : shapely.geometry.multipolygon.MultiPolygon
+        Polygonal shape of union.
     """
     resolution = nat_earth_resolution(resolution)
     shp_file = shapereader.natural_earth(resolution=resolution,
@@ -526,17 +597,21 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     return geom
 
 def coord_on_land(lat, lon, land_geom=None):
-    """Check if point is on land (True) or water (False) of provided coordinates.
-    All globe considered if no input countries.
+    """Check if points are on land.
 
-    Parameters:
-        lat (np.array): latitude of points in epsg:4326
-        lon (np.array): longitude of points in epsg:4326
-        land_geom (shapely.geometry.multipolygon.MultiPolygon, optional):
-            profiles of land.
+    Parameters
+    ----------
+    lat : np.array
+        latitude of points in epsg:4326
+    lon : np.array
+        longitude of points in epsg:4326
+    land_geom : shapely.geometry.multipolygon.MultiPolygon, optional
+         If given, use these as profiles of land. Otherwise, the global landmass is used.
 
-    Returns:
-        np.array(bool)
+    Returns
+    -------
+    on_land : np.array(bool)
+        Entries are True if corresponding coordinate is on land and False otherwise.
     """
     if lat.size != lon.size:
         LOGGER.error('Wrong size input coordinates: %s != %s.', lat.size,
@@ -555,14 +630,19 @@ def coord_on_land(lat, lon, land_geom=None):
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.
 
-    Parameters:
-        resolution (int): resolution in millions, 110 == 1:110.000.000.
+    Parameters
+    ----------
+    resolution : int
+        resolution in millions, 110 == 1:110.000.000.
 
-    Returns:
-        str
+    Returns
+    -------
+    res_name : str
+        Natural Earth name of resolution (e.g. '110m')
 
-    Raises:
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     avail_res = [10, 50, 110]
     if resolution not in avail_res:
@@ -572,24 +652,28 @@ def nat_earth_resolution(resolution):
     return str(resolution) + 'm'
 
 def get_country_geometries(country_names=None, extent=None, resolution=10):
-    """Returns a gpd GeoSeries of natural earth multipolygons of the
-    specified countries, resp. the countries that lie within the specified
-    extent. If no arguments are given, simply returns the whole natural earth
-    dataset.
-    Take heed: we assume WGS84 as the CRS unless the Natural Earth download
-    utility from cartopy starts including the projection information. (They
-    are saving a whopping 147 bytes by omitting it.) Same goes for UTF.
+    """Natural Earth country boundaries within given extent
 
-    Parameters:
-        country_names (list, optional): list with ISO3 names of countries, e.g
-            ['ZWE', 'GBR', 'VNM', 'UZB']
-        extent (tuple, optional): (min_lon, max_lon, min_lat, max_lat) assumed
-            to be in the same CRS as the natural earth data.
-        resolution (float, optional): 10, 50 or 110. Resolution in m. Default:
-            10m
+    If no arguments are given, simply returns the whole natural earth dataset.
 
-    Returns:
-        GeoDataFrame
+    Take heed: we assume WGS84 as the CRS unless the Natural Earth download utility from cartopy
+    starts including the projection information. (They are saving a whopping 147 bytes by omitting
+    it.) Same goes for UTF.
+
+    Parameters
+    ----------
+    country_names : list, optional
+        list with ISO3 names of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+    extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
+        Extent, assumed to be in the same CRS as the natural earth data.
+    resolution : float, optional
+        10, 50 or 110. Resolution in m. Default: 10m
+
+    Returns
+    -------
+    geom : GeoDataFrame
+        Natural Earth multipolygons of the specified countries, resp. the countries that lie
+        within the specified extent.
     """
     resolution = nat_earth_resolution(resolution)
     shp_file = shapereader.natural_earth(resolution=resolution,
@@ -641,21 +725,20 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     Parameters
     ----------
     countries : list, optional
-        ISO 3166-1 alpha-3 codes of countries, or internal numeric NatID if
-        `iso` is set to False.
+        ISO 3166-1 alpha-3 codes of countries, or internal numeric NatID if `iso` is set to False.
     regions : list, optional
         Region IDs.
     resolution : float, optional
         Resolution in arc-seconds, either 150 (default) or 360.
     iso : bool, optional
-        If True, assume that countries are given by their ISO 3166-1 alpha-3
-        codes (instead of the internal NatID). Default: True.
+        If True, assume that countries are given by their ISO 3166-1 alpha-3 codes (instead of the
+        internal NatID). Default: True.
     rect : bool, optional
-        If True, a rectangular box around the specified countries/regions is
-        selected. Default: False.
+        If True, a rectangular box around the specified countries/regions is selected.
+        Default: False.
     basemap : str, optional
-        Choose between different data sources.
-        Currently available: "isimip" and "natearth". Default: "natearth".
+        Choose between different data sources. Currently available: "isimip" and "natearth".
+        Default: "natearth".
 
     Returns
     -------
@@ -750,11 +833,15 @@ def region2isos(regions):
 def country_iso_alpha2numeric(isos):
     """Convert ISO 3166-1 alpha-3 to numeric-3 codes
 
-    Parameters:
-        isos (str or list of str): ISO codes of countries (or single code).
+    Parameters
+    ----------
+    isos : str or list of str
+        ISO codes of countries (or single code).
 
-    Returns:
-        int or list of int
+    Returns
+    -------
+    nums : int or list of int
+        Will only return a list if the input is a list.
     """
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
@@ -775,11 +862,15 @@ def country_iso_alpha2numeric(isos):
 def country_natid2iso(natids):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
-    Parameters:
-        natids (int or list of int): Internal NatIDs of countries (or single ID).
+    Parameters
+    ----------
+    natids : int or list of int
+        Internal NatIDs of countries (or single ID).
 
-    Returns:
-        str or list of str
+    Returns
+    -------
+    isos : str or list of str
+        Will only return a list if the input is a list
     """
     return_str = isinstance(natids, int)
     natids = [natids] if return_str else natids
@@ -794,11 +885,15 @@ def country_natid2iso(natids):
 def country_iso2natid(isos):
     """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
 
-    Parameters:
-        isos (str or list of str): ISO codes of countries (or single code).
+    Parameters
+    ----------
+    isos : str or list of str
+        ISO codes of countries (or single code).
 
-    Returns:
-        int or list of int
+    Returns
+    -------
+    natids : int or list of int
+        Will only return a list if the input is a list.
     """
     return_int = isinstance(isos, str)
     isos = [isos] if return_int else isos
@@ -806,9 +901,9 @@ def country_iso2natid(isos):
     for iso in isos:
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
-        except ValueError:
+        except ValueError as ver:
             LOGGER.error('Unknown country ISO: %s', iso)
-            raise KeyError
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
     return natids[0] if return_int else natids
 
 NATEARTH_AREA_NONISO_NUMERIC = {
@@ -834,11 +929,15 @@ NATEARTH_AREA_NONISO_NUMERIC = {
 def natearth_country_to_int(country):
     """Integer representation (ISO 3166, if possible) of Natural Earth GeoPandas country row
 
-    Parameters:
-        country (GeoSeries): Row from GeoDataFrame.
+    Parameters
+    ----------
+    country : GeoSeries
+        Row from GeoDataFrame.
 
-    Returns:
-        int
+    Returns
+    -------
+    iso_numeric : int
+        Integer representation of given country.
     """
     if country.ISO_N3 != '-99':
         return int(country.ISO_N3)
@@ -847,17 +946,22 @@ def natearth_country_to_int(country):
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
 
-    Oceans get the value zero. Areas that are not in ISO 3166 are given values
-    in the range above 900 according to NATEARTH_AREA_NONISO_NUMERIC.
+    Oceans get the value zero. Areas that are not in ISO 3166 are given values in the range above
+    900 according to NATEARTH_AREA_NONISO_NUMERIC.
 
-    Parameters:
-        lat (np.array): latitude of points in epsg:4326
-        lon (np.array): longitude of points in epsg:4326
-        gridded (bool): If True, interpolate precomputed gridded data which
-            is usually much faster. Default: False.
+    Parameters
+    ----------
+    lat : np.array
+        latitude of points in epsg:4326
+    lon : np.array
+        longitude of points in epsg:4326
+    gridded : bool
+        If True, interpolate precomputed gridded data which is usually much faster. Default: False.
 
-    Returns:
-        np.array(int)
+    Returns
+    -------
+    country_codes : np.array(int)
+        Numeric code for each point.
     """
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     LOGGER.info('Setting region_id %s points.', str(lat.size))
@@ -888,15 +992,19 @@ def get_country_code(lat, lon, gridded=False):
     return region_id
 
 def get_admin1_info(country_names):
-    """Provide registry info and shape files for admin1 regions
+    """Provide Natural Earth registry info and shape files for admin1 regions
 
-    Parameters:
-        country_names (list): list with ISO3 names of countries, e.g.
-                ['ZWE', 'GBR', 'VNM', 'UZB']
+    Parameters
+    ----------
+    country_names : list
+        list with ISO3 names of countries, e.g. ['ZWE', 'GBR', 'VNM', 'UZB']
 
-    Returns:
-        admin1_info (dict)
-        admin1_shapes (dict)
+    Returns
+    -------
+    admin1_info : dict
+        Data according to records in Natural Earth database.
+    admin1_shapes : dict
+        Shape according to Natural Earth.
     """
 
     if isinstance(country_names, str):
@@ -919,13 +1027,17 @@ def get_admin1_info(country_names):
 def get_resolution_1d(coords, min_resol=1.0e-8):
     """Compute resolution of scalar grid
 
-    Parameters:
-        coords (np.array): scalar coordinates
-        min_resol (float, optional): minimum resolution to consider.
-            Default: 1.0e-8.
+    Parameters
+    ----------
+    coords : np.array
+        scalar coordinates
+    min_resol : float, optional
+        minimum resolution to consider. Default: 1.0e-8.
 
-    Returns:
-        float
+    Returns
+    -------
+    res : float
+        Resolution of given grid.
     """
     res = np.diff(np.unique(coords))
     diff = np.diff(coords)
@@ -934,32 +1046,44 @@ def get_resolution_1d(coords, min_resol=1.0e-8):
 
 
 def get_resolution(*coords, min_resol=1.0e-8):
-    """Compute resolution of 2-d grid points
+    """Compute resolution of n-d grid points
 
-    Parameters:
-        X, Y, ... (np.array): scalar coordinates in each axis
-        min_resol (float, optional): minimum resolution to consider.
-            Default: 1.0e-8.
+    Parameters
+    ----------
+    X, Y, ... : np.array
+        Scalar coordinates in each axis
+    min_resol : float, optional
+        minimum resolution to consider. Default: 1.0e-8.
 
-    Returns:
-        pair of floats
+    Returns
+    -------
+    resolution : pair of floats
+        Resolution in each coordinate direction.
     """
     return tuple([get_resolution_1d(c, min_resol=min_resol) for c in coords])
 
 
 def pts_to_raster_meta(points_bounds, res):
-    """Transform vector data coordinates to raster. Returns number of rows,
-    columns and affine transformation
+    """Transform vector data coordinates to raster.
 
-    If a raster of the given resolution doesn't exactly fit the given bounds,
-    the raster might have slightly larger (but never smaller) bounds.
+    If a raster of the given resolution doesn't exactly fit the given bounds, the raster might have
+    slightly larger (but never smaller) bounds.
 
-    Parameters:
-        points_bounds (tuple): points total bounds (xmin, ymin, xmax, ymax)
-        res (tuple): resolution of output raster (xres, yres)
+    Parameters
+    ----------
+    points_bounds : tuple
+        points total bounds (xmin, ymin, xmax, ymax)
+    res : tuple
+        resolution of output raster (xres, yres)
 
-    Returns:
-        int, int, affine.Affine
+    Returns
+    -------
+    nrows : int
+        Number of rows.
+    ncols : int
+        Number of columns.
+    ras_trans : affine.Affine
+        Affine transformation defining the raster.
     """
     Affine = rasterio.Affine
     bounds = np.asarray(points_bounds).reshape(2, 2)
@@ -1002,18 +1126,23 @@ def raster_to_meshgrid(transform, width, height):
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
-    Parameters:
-        crs_one (dict or string or wkt): user crs
-        crs_two (dict or string or wkt): user crs
+    Parameters
+    ----------
+    crs_one : dict or string or wkt
+        user crs
+    crs_two : dict or string or wkt
+        user crs
 
-    Returns:
-        bool
+    Returns
+    -------
+    equal : bool
+        Whether the two specified CRS are equal.
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
                            transform=None, resampling=rasterio.warp.Resampling.nearest):
-    """Helper function for `read_raster`"""
+    """Helper function for `read_raster`."""
     if not band:
         band = [1]
     if not dst_crs:
@@ -1081,31 +1210,42 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 dst_crs=None, transform=None, width=None, height=None,
                 resampling=rasterio.warp.Resampling.nearest):
-    """Read raster of bands and set 0 values to the masked ones. Each
-    band is an event. Select region using window or geometry. Reproject
-    input by proving dst_crs and/or (transform, width, height). Returns matrix
-    in 2d: band x coordinates in 1d (can be reshaped to band x height x width)
+    """Read raster of bands and set 0-values to the masked ones.
 
-    Parameters:
-        file_name (str): name of the file
-        band (list(int), optional): band number to read. Default: 1
-        window (rasterio.windows.Window, optional): window to read
-        geometry (shapely.geometry, optional): consider pixels only in shape
-        dst_crs (crs, optional): reproject to given crs
-        transform (rasterio.Affine): affine transformation to apply
-        wdith (float): number of lons for transform
-        height (float): number of lats for transform
-        resampling (rasterio.warp.Resampling optional): resampling
-            function used for reprojection to dst_crs
+    Parameters
+    ----------
+    file_name : str
+        name of the file
+    band : list(int), optional
+        band number to read. Default: 1
+    window : rasterio.windows.Window, optional
+        window to read
+    geometry : shapely.geometry, optional
+        consider pixels only in shape
+    dst_crs : crs, optional
+        reproject to given crs
+    transform : rasterio.Affine
+        affine transformation to apply
+    wdith : float
+        number of lons for transform
+    height : float
+        number of lats for transform
+    resampling : rasterio.warp.Resampling optional
+        resampling function used for reprojection to dst_crs
 
-    Returns:
-        dict (meta), np.array (band x coordinates_in_1d)
+    Returns
+    -------
+    meta : dict
+        Raster meta (height, width, transform, crs).
+    data : np.array
+        Each row corresponds to one band (raster points are flattened, can be
+        reshaped to height x width).
     """
     if not band:
         band = [1]
     LOGGER.info('Reading %s', file_name)
-    if os.path.splitext(file_name)[1] == '.gz':
-        file_name = '/vsigzip/' + file_name
+    if Path(file_name).suffix == '.gz':
+        file_name = '/vsigzip/' + str(file_name)
 
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
@@ -1177,8 +1317,8 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
     resampling = rasterio.warp.Resampling.bilinear
@@ -1223,29 +1363,35 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     return data, transform
 
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
-    """Read point samples from raster file
+    """Read point samples from raster file.
 
-    Parameters:
-        path (str): path of the raster file
-        lat (np.array): latitudes in file's CRS
-        lon (np.array): longitudes in file's CRS
-        intermediate_res (float, optional): If given, the raster is not read in its original
-            resolution but in the given one. This can increase performance for
-            files of very high resolution.
-        method (str, optional): The interpolation method, passed to
-            scipy.interp.interpn. Default: 'linear'.
-        fill_value (numeric, optional): The value used outside of the raster
-            bounds. Default: The raster's nodata value or 0.
+    Parameters
+    ----------
+    path : str
+        path of the raster file
+    lat : np.array
+        latitudes in file's CRS
+    lon : np.array
+        longitudes in file's CRS
+    intermediate_res : float, optional
+        If given, the raster is not read in its original resolution but in the given one. This can
+        increase performance for files of very high resolution.
+    method : str, optional
+        The interpolation method, passed to scipy.interp.interpn. Default: 'linear'.
+    fill_value : numeric, optional
+        The value used outside of the raster bounds. Default: The raster's nodata value or 0.
 
-    Returns:
-        np.array of same length as lat
+    Returns
+    -------
+    values : np.array of same length as lat
+        Interpolated raster values for each given coordinate point.
     """
     if lat.size == 0:
         return np.zeros_like(lat)
 
     LOGGER.info('Sampling from %s', path)
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
 
     with rasterio.open(path, "r") as src:
         if intermediate_res is None:
@@ -1280,18 +1426,27 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
 
-    Parameters:
-        data (np.array): 2d numpy array containing the values
-        interp_y (np.array): y-coordinates of points (corresp. to first axis of data)
-        interp_x (np.array): x-coordinates of points (corresp. to second axis of data)
-        transform (affine.Affine): affine transform defining the raster
-        method (str, optional): The interpolation method, passed to
+    Parameters
+    ----------
+    data : np.array
+        2d numpy array containing the values
+    interp_y : np.array
+        y-coordinates of points (corresp. to first axis of data)
+    interp_x : np.array
+        x-coordinates of points (corresp. to second axis of data)
+    transform : affine.Affine
+        affine transform defining the raster
+    method : str, optional
+        The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
-        fill_value (numeric, optional): The value used outside of the raster
+    fill_value : numeric, optional
+        The value used outside of the raster
             bounds. Default: 0.
 
-    Returns:
-        np.array
+    Returns
+    -------
+    values : np.array
+        Interpolated raster values for each given coordinate point.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + data.shape[1] * xres
@@ -1317,15 +1472,24 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
 def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     """Refine raster data, given as array and affine transform
 
-    Parameters:
-        data (np.array): 2d numpy array containing the values
-        transform (affine.Affine): affine transform defining the raster
-        res (float or pair of floats): new resolution
-        method (str, optional): The interpolation method, passed to
+    Parameters
+    ----------
+    data : np.array
+        2d array containing the values
+    transform : affine.Affine
+        affine transform defining the raster
+    res : float or pair of floats
+        new resolution
+    method : str, optional
+        The interpolation method, passed to
             scipy.interp.interpn. Default: 'linear'.
 
-    Return:
-        np.array, affine.Affine
+    Returns
+    -------
+    new_data : np.array
+        2d array containing the interpolated values.
+    new_transform : affine.Affine
+        Affine transform defining the refined raster.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + data.shape[1] * xres
@@ -1343,17 +1507,27 @@ def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     return new_data, new_transform
 
 def read_vector(file_name, field_name, dst_crs=None):
-    """Read vector file format supported by fiona. Each field_name name is
-    considered an event.
+    """Read vector file format supported by fiona.
 
-    Parameters:
-        file_name (str): vector file with format supported by fiona and
-            'geometry' field.
-        field_name (list(str)): list of names of the columns with values.
-        dst_crs (crs, optional): reproject to given crs
+    Parameters
+    ----------
+    file_name : str
+        vector file with format supported by fiona and 'geometry' field.
+    field_name : list(str)
+        list of names of the columns with values.
+    dst_crs : crs, optional
+        reproject to given crs
 
-    Returns:
-        np.array (lat), np.array (lon), geometry (GeiSeries), np.array (value)
+    Returns
+    -------
+    lat : np.array
+        Latitudinal coordinates.
+    lon : np.array
+        Longitudinal coordinates.
+    geometry : GeoSeries
+        Shape geometries.
+    value : np.array
+        Values associated to each shape.
     """
     LOGGER.info('Reading %s', file_name)
     data_frame = gpd.read_file(file_name)
@@ -1370,7 +1544,7 @@ def read_vector(file_name, field_name, dst_crs=None):
     return lat, lon, geometry, value
 
 def write_raster(file_name, data_matrix, meta, dtype=np.float32):
-    """Write raster in GeoTiff format
+    """Write raster in GeoTiff format.
 
     Parameters
     ----------
@@ -1380,9 +1554,8 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
         2d raster data. Either containing one band, or every row is a band and the column
         represents the grid in 1d.
     meta : dict
-        rasterio meta dictionary containing raster properties:
-        width, height, crs and transform must be present at least.
-        Include `compress="deflate"` for compressed output.
+        rasterio meta dictionary containing raster properties: width, height, crs and transform
+        must be present at least. Include `compress="deflate"` for compressed output.
     dtype : numpy dtype, optional
         A numpy dtype. Default: np.float32
     """
@@ -1399,22 +1572,29 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
 def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, scheduler=None):
-    """Compute raster matrix and transformation from value column
+    """Compute raster (as data and transform) from GeoDataFrame.
 
-    Parameters:
-        points_df (GeoDataFrame): contains columns latitude, longitude and those listed in
-            the parameter `val_names`
-        val_names (list of str, optional): The names of columns in `points_df` containing
-            values. The raster will contain one band per column. Default: ['value']
-        res (float, optional): resolution of current data in units of latitude
-            and longitude, approximated if not provided.
-        raster_res (float, optional): desired resolution of the raster
-        scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+    Parameters
+    ----------
+    points_df : GeoDataFrame
+        contains columns latitude, longitude and those listed in the parameter `val_names`.
+    val_names : list of str, optional
+        The names of columns in `points_df` containing values. The raster will contain one band per
+        column. Default: ['value']
+    res : float, optional
+        resolution of current data in units of latitude and longitude, approximated if not
+        provided.
+    raster_res : float, optional
+        desired resolution of the raster
+    scheduler : str
+        used for dask map_partitions. “threads”, “synchronous” or “processes”
 
-    Returns:
-        np.array, affine.Affine
-
+    Returns
+    -------
+    data : np.array
+        2d array containing the raster values.
+    transform : affine.Affine
+        Affine transform defining the raster coordinates.
     """
     if not val_names:
         val_names = ['value']
@@ -1463,12 +1643,14 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
     return raster_out, meta
 
 def set_df_geometry_points(df_val, scheduler=None):
-    """Set given geometry to given dataframe using dask if scheduler
+    """Set given geometry to given dataframe using dask if scheduler.
 
-    Parameters:
-        df_val (DataFrame or GeoDataFrame): contains latitude and longitude columns
-        scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+    Parameters
+    ----------
+    df_val : DataFrame or GeoDataFrame
+        contains latitude and longitude columns
+    scheduler : str
+        used for dask map_partitions. “threads”, “synchronous” or “processes”
     """
     LOGGER.info('Setting geometry points.')
     def apply_point(df_exp):
@@ -1482,15 +1664,18 @@ def set_df_geometry_points(df_val, scheduler=None):
                                   .compute(scheduler=scheduler)
 
 def fao_code_def():
-    """Generates list of FAO country codes and corresponding ISO numeric-3 codes
+    """Generates list of FAO country codes and corresponding ISO numeric-3 codes.
 
-    Returns:
-        iso_list (list): list of ISO numeric-3 codes
-        faocode_list (list): list of FAO country codes
+    Returns
+    -------
+    iso_list : list
+        list of ISO numeric-3 codes
+    faocode_list : list
+        list of FAO country codes
     """
     # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
-    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
+    fao_file = pd.read_csv(SYSTEM_DIR.joinpath("FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 
@@ -1505,13 +1690,17 @@ def fao_code_def():
     return iso_list, faocode_list
 
 def country_faocode2iso(input_fao):
-    """Convert FAO country code to ISO numeric-3 codes
+    """Convert FAO country code to ISO numeric-3 codes.
 
-    Parameters:
-        input_fao (int or array): FAO country codes of countries (or single code)
+    Parameters
+    ----------
+    input_fao : int or array
+        FAO country codes of countries (or single code)
 
-    Returns:
-        output_iso (int or array): ISO numeric-3 codes of countries (or single code)
+    Returns
+    -------
+    output_iso : int or array
+        ISO numeric-3 codes of countries (or single code)
     """
 
     # load relation between ISO numeric-3 code and FAO country code
@@ -1527,13 +1716,17 @@ def country_faocode2iso(input_fao):
     return output_iso
 
 def country_iso2faocode(input_iso):
-    """Convert ISO numeric-3 codes to FAO country code
+    """Convert ISO numeric-3 codes to FAO country code.
 
-    Parameters:
-        input_iso (int or array): ISO numeric-3 codes of countries (or single code)
+    Parameters
+    ----------
+    input_iso : int or array
+        ISO numeric-3 codes of countries (or single code)
 
-    Returns:
-        output_faocode (int or array): FAO country codes of countries (or single code)
+    Returns
+    -------
+    output_faocode : int or array
+        FAO country codes of countries (or single code)
     """
     # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
