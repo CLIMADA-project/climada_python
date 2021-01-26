@@ -152,14 +152,15 @@ class TropCyclone(Hazard):
                            & (np.abs(centroids.lat) < 61)).nonzero()[0]
 
         # Restrict to coastal centroids within reach of any of the tracks
-        t_bounds = tracks.get_bounds(deg_buffer=CENTR_NODE_MAX_DIST_DEG)
-        t_mid_lon = 0.5 * (t_bounds[0] + t_bounds[2])
+        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(
+            deg_buffer=CENTR_NODE_MAX_DIST_DEG)
+        t_mid_lon = 0.5 * (t_lon_min + t_lon_max)
         coastal_centroids = centroids.coord[coastal_idx]
         u_coord.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
-        coastal_idx = coastal_idx[((t_bounds[0] <= coastal_centroids[:, 1])
-                                   & (coastal_centroids[:, 1] <= t_bounds[2])
-                                   & (t_bounds[1] <= coastal_centroids[:, 0])
-                                   & (coastal_centroids[:, 0] <= t_bounds[3]))]
+        coastal_idx = coastal_idx[((t_lon_min <= coastal_centroids[:, 1])
+                                   & (coastal_centroids[:, 1] <= t_lon_max)
+                                   & (t_lat_min <= coastal_centroids[:, 0])
+                                   & (coastal_centroids[:, 0] <= t_lat_max))]
 
         LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
                     str(coastal_idx.size))
@@ -349,14 +350,14 @@ class TropCyclone(Hazard):
 
         intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
         intensity[intensity < self.intensity_thres] = 0
-        intensity = sparse.csr_matrix(
+        intensity_sparse = sparse.csr_matrix(
             (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
             shape=(1, ncentroids))
-        intensity.eliminate_zeros()
+        intensity_sparse.eliminate_zeros()
 
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
-        new_haz.intensity = intensity
+        new_haz.intensity = intensity_sparse
         if store_windfields:
             wf_full = np.zeros((npositions, ncentroids, 2))
             wf_full[:, reachable_coastal_centr_idx, :] = windfields
@@ -560,14 +561,13 @@ def _close_centroids(t_lat, t_lon, centroids, buffer=CENTR_NODE_MAX_DIST_DEG):
     mask : np.array of shape (ncentroids,)
         Mask that is True for close centroids and False for other centroids.
     """
-    eye_bounds = np.c_[t_lon, t_lat, t_lon, t_lat]
-    eye_bounds[:, :2] -= buffer
-    eye_bounds[:, 2:] += buffer
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
-    mask = ((eye_bounds[:, None, 1] < centr_lat[None])
-            & (centr_lat[None] < eye_bounds[:, None, 3])
-            & (eye_bounds[:, None, 0] < centr_lon[None])
-            & (centr_lon[None] < eye_bounds[:, None, 2]))
+    # check for each track position which centroids are within buffer, uses NumPy's broadcasting
+    mask = ((t_lat[:, None] - buffer < centr_lat[None])
+            & (centr_lat[None] < t_lat[:, None] + buffer)
+            & (t_lon[:, None] - buffer < centr_lon[None])
+            & (centr_lon[None] < t_lon[:, None] + buffer))
+    # for each centroid, check whether it is in the buffer for any of the track positions
     return mask.any(axis=0)
 
 def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
