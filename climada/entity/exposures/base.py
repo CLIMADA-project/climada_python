@@ -34,7 +34,7 @@ import contextily as ctx
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
-import climada.util.coordinates as co
+import climada.util.coordinates as u_coord
 from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
@@ -199,7 +199,7 @@ class Exposures(GeoDataFrame):
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.shape[0]), str(hazard.centroids.size))
-        if not co.equal_crs(self.crs, hazard.centroids.crs):
+        if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
@@ -229,7 +229,7 @@ class Exposures(GeoDataFrame):
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        co.set_df_geometry_points(self, scheduler)
+        u_coord.set_df_geometry_points(self, scheduler)
 
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
@@ -259,9 +259,9 @@ class Exposures(GeoDataFrame):
         self.__init__()
         self.tag = Tag()
         self.tag.file_name = file_name
-        meta, value = co.read_raster(file_name, [band], src_crs, window,
-                                     geometry, dst_crs, transform, width,
-                                     height, resampling)
+        meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
+                                          geometry, dst_crs, transform, width,
+                                          height, resampling)
         ulx, xres, _, uly, _, yres = meta['transform'].to_gdal()
         lrx = ulx + meta['width'] * xres
         lry = uly + meta['height'] * yres
@@ -382,8 +382,7 @@ class Exposures(GeoDataFrame):
                 LOGGER.error('Points are not ordered according to meta raster.')
                 raise ValueError
         else:
-            raster, meta = co.points_to_raster(self, ['value'], res, raster_res,
-                                               scheduler)
+            raster, meta = u_coord.points_to_raster(self, ['value'], res, raster_res, scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
         if save_tiff is not None:
@@ -561,10 +560,10 @@ class Exposures(GeoDataFrame):
             if self.longitude.values[0] > self.longitude.values[-1]:
                 LOGGER.error('Points are not ordered according to meta raster.')
                 raise ValueError
-            co.write_raster(file_name, raster, self.meta)
+            u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = co.points_to_raster(self, [value_name], scheduler=scheduler)
-            co.write_raster(file_name, raster, meta)
+            raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
+            u_coord.write_raster(file_name, raster, meta)
 
 def add_sea(exposures, sea_res):
     """Add sea to geometry's surroundings with given resolution. region_id
@@ -593,7 +592,7 @@ def add_sea(exposures, sea_res):
 
     lon_mgrid, lat_mgrid = np.meshgrid(lon_arr, lat_arr)
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
-    on_land = ~co.coord_on_land(lat_mgrid, lon_mgrid)
+    on_land = ~u_coord.coord_on_land(lat_mgrid, lon_mgrid)
 
     sea_exp = Exposures()
     sea_exp['latitude'] = lat_mgrid[on_land]
