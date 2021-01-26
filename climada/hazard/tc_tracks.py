@@ -49,7 +49,7 @@ import xarray as xr
 
 # climada dependencies
 from climada.util import ureg
-import climada.util.coordinates as coord_util
+import climada.util.coordinates as u_coord
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
@@ -246,7 +246,7 @@ class TCTracks():
 
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
-        try:  
+        try:
             exposure.geometry
         except AttributeError:
             exposure.set_geometry_points()
@@ -935,7 +935,7 @@ class TCTracks():
 
         if land_params:
             extent = self.get_extent()
-            land_geom = coord_util.get_land_geometry(extent, resolution=10)
+            land_geom = u_coord.get_land_geometry(extent, resolution=10)
         else:
             land_geom = None
 
@@ -987,7 +987,7 @@ class TCTracks():
         -------
         bounds : tuple (lon_min, lat_min, lon_max, lat_max)
         """
-        bounds = coord_util.latlon_bounds(
+        bounds = u_coord.latlon_bounds(
             np.concatenate([t.lat.values for t in self.data]),
             np.concatenate([t.lon.values for t in self.data]),
             buffer=deg_buffer)
@@ -1055,7 +1055,7 @@ class TCTracks():
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
-            lonlat[:, 0] = coord_util.lon_normalize(lonlat[:, 0], center=mid_lon)
+            lonlat[:, 0] = u_coord.lon_normalize(lonlat[:, 0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
             # remove segments which cross 180 degree longitude boundary
             segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
@@ -1273,7 +1273,7 @@ def track_land_params(track, land_geom):
         land geometry
     """
     track['on_land'] = ('time',
-                        coord_util.coord_on_land(track.lat.values, track.lon.values, land_geom))
+                        u_coord.coord_on_land(track.lat.values, track.lon.values, land_geom))
     track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
 def _dist_since_lf(track):

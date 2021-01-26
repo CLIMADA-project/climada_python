@@ -40,11 +40,11 @@ from pathos.pools import ProcessPool as Pool
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
-import climada.util.checker as check
+import climada.util.checker as u_check
 import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as hdf5
-import climada.util.coordinates as co
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -458,7 +458,7 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
@@ -956,7 +956,7 @@ class Hazard():
         if not intensity:
             variable = self.fraction
         if self.centroids.meta:
-            co.write_raster(file_name, variable.toarray(), self.centroids.meta)
+            u_coord.write_raster(file_name, variable.toarray(), self.centroids.meta)
         else:
             pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
@@ -1234,15 +1234,15 @@ class Hazard():
             LOGGER.error("There are events with the same identifier.")
             raise ValueError
 
-        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+        u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                 num_ev, num_ev, num_cen)
-        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = check.array_default(num_ev, self.event_name,
+        u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
+        self.event_name = u_check.array_default(num_ev, self.event_name,
                                               'Hazard.event_name',
                                               list(self.event_id))
-        self.date = check.array_default(num_ev, self.date, 'Hazard.date',
+        self.date = u_check.array_default(num_ev, self.date, 'Hazard.date',
                                         np.ones(self.event_id.shape, dtype=int))
-        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig',
+        self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
                                         np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             LOGGER.error("There are events with same date and name.")
