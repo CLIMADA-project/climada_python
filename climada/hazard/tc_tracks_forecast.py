@@ -61,6 +61,8 @@ BASINS = {
 }
 """Gleaned from the ECMWF wiki at
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
+with added basin 'X' to deal with it appearing in operational forecasts
+(see e.g. years 2020 and 2021 in the sidebar at https://www.ecmwf.int/en/forecasts/charts/tcyclone/)
 and Wikipedia at https://en.wikipedia.org/wiki/Invest_(meteorology)
 """
 
