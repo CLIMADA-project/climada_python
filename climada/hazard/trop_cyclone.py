@@ -405,7 +405,20 @@ class TropCyclone(Hazard):
                 change = chg['change'] * scale
             if select.any():
                 new_val = getattr(haz_cc, chg['variable'])
-                new_val[select] *= change
+                #For sparse matrices *= is ineficient (slow, uses large memory)
+                #Instead use multiply and chunking
+                if isinstance(new_val, sparse.csr_matrix):
+                    chunk_size = 10
+                    n_chunks = int(len(select) / chunk_size)
+                    chunks = np.arange(0, n_chunks, chunk_size)
+                    chunks = np.append(chunks, n_chunks)
+                    for start, stop in zip(chunks[:-1], chunks[1:]):
+                        new_val[select[start:stop]] = \
+                            new_val[select[start:stop]].multiply(change)
+                        print(start, stop)
+                else:
+                    new_val[select] *= change
+                setattr(haz_cc, chg['variable'], new_val)
                 setattr(haz_cc, chg['variable'], new_val)
         return haz_cc
 
