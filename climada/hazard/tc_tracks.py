@@ -1391,8 +1391,8 @@ def _estimate_pressure(cen_pres, lat, lon, v_max):
 
     See function `ibtracs_fit_param` for more details about the statistical estimation:
 
-    >>> ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2019))
-    >>> r^2: 0.8746154487335112
+    >>> ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2020))
+    >>> r^2: 0.8724413133075428
 
     Parameters
     ----------
@@ -1414,7 +1414,7 @@ def _estimate_pressure(cen_pres, lat, lon, v_max):
     v_max = np.where(np.isnan(v_max), -1, v_max)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (cen_pres <= 0) & (v_max > 0) & (lat > -999) & (lon > -999)
-    c_const, c_lat, c_lon, c_vmax = 1024.392, 0.0620, -0.0335, -0.737
+    c_const, c_lat, c_lon, c_vmax = 1026.372, -0.05699, -0.0356, -0.7365
     cen_pres[msk] = c_const + c_lat * lat[msk] \
                             + c_lon * lon[msk] \
                             + c_vmax * v_max[msk]
@@ -1427,8 +1427,8 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
 
     See function `ibtracs_fit_param` for more details about the statistical estimation:
 
-    >>> ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2019))
-    >>> r^2: 0.8717153945288457
+    >>> ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2020))
+    >>> r^2: 0.8683618303414877
 
     Parameters
     ----------
@@ -1450,7 +1450,7 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (v_max <= 0) & (cen_pres > 0) & (lat > -999) & (lon > -999)
-    c_const, c_lat, c_lon, c_pres = 1216.823, 0.0852, -0.0398, -1.182
+    c_const, c_lat, c_lon, c_pres = 1215.819, -0.0445, -0.0422, -1.179
     v_max[msk] = c_const + c_lat * lat[msk] \
                          + c_lon * lon[msk] \
                          + c_pres * cen_pres[msk]
@@ -1565,6 +1565,10 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
     match = (years >= year_range[0]) & (years <= year_range[1])
     ibtracs_ds = ibtracs_ds.sel(storm=match)
+
+    if "wind" in variables:
+        for agency in IBTRACS_AGENCIES:
+            ibtracs_ds[f'{agency}_wind'] *= IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
 
     # fill values
     agency_pref, track_agency_ix = ibtracs_track_agency(ibtracs_ds)

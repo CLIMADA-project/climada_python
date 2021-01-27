@@ -447,8 +447,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
-        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29],
-                               1.0077614e+03)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29], 1008, places=0)
         self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(tc_track.data[0]['time.year'][13], 1951)
@@ -521,8 +520,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
-        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29],
-                               1.0077614e+03)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29], 1008, places=0)
         self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(tc_track.data[0]['time.year'][13], 1951)
@@ -574,8 +572,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
-        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29],
-                               1.0077614e+03)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29], 1008, places=0)
         self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(tc_track.data[0]['time.year'][13], 1951)
@@ -659,29 +656,29 @@ class TestFuncs(unittest.TestCase):
         v_max = np.array([45, np.nan, 50, 55, 0, 60, 75])
         lat = np.array([13.8, 13.9, 14, 14.1, 14.1, np.nan, -999])
         lon = np.array([np.nan, -52.8, -54.4, -56, -58.4, -59.7, -61.1])
-        ref_pres = np.array([np.nan, 993, 990.2324, 986.6072, np.nan, 1004, np.nan])
+        ref_pres = np.array([np.nan, 993, 990, 986, np.nan, 1004, np.nan])
         out_pres = tc._estimate_pressure(cen_pres, lat, lon, v_max)
-        self.assertTrue(np.allclose(ref_pres, out_pres, equal_nan=True))
+        np.testing.assert_array_almost_equal(ref_pres, out_pres, decimal=0)
 
         v_max = np.array([45, np.nan, 50, 55, 0, 60, 75])
         cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
         lat = np.array([13.8, 13.9, 14, 14.1, 14.1, np.nan, -999])
         lon = np.array([np.nan, -52.8, -54.4, -56, -58.4, -59.7, -61.1])
-        ref_vmax = np.array([45, 46.38272, 50, 55, np.nan, 60, 75])
+        ref_vmax = np.array([45, 46, 50, 55, np.nan, 60, 75])
         out_vmax = tc._estimate_vmax(v_max, lat, lon, cen_pres)
-        self.assertTrue(np.allclose(ref_vmax, out_vmax, equal_nan=True))
+        np.testing.assert_array_almost_equal(ref_vmax, out_vmax, decimal=0)
 
         roci = np.array([np.nan, -1, 145, 170, 180, 0, -5])
         cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
         ref_roci = np.array([np.nan, 182.792715, 145, 170, 180, 161.5231086, np.nan])
         out_roci = tc.estimate_roci(roci, cen_pres)
-        self.assertTrue(np.allclose(ref_roci, out_roci, equal_nan=True))
+        np.testing.assert_array_almost_equal(ref_roci, out_roci)
 
         rmw = np.array([17, 33, -1, 25, np.nan, -5, 13])
         cen_pres = np.array([-999, 993, np.nan, -1, 0, 1004, np.nan])
         ref_rmw = np.array([17, 33, np.nan, 25, np.nan, 43.95543761, 13])
         out_rmw = tc.estimate_rmw(rmw, cen_pres)
-        self.assertTrue(np.allclose(ref_rmw, out_rmw, equal_nan=True))
+        np.testing.assert_array_almost_equal(ref_rmw, out_rmw)
 
     def test_estimate_rmw_pass(self):
         """Test estimate_rmw function."""
@@ -694,16 +691,16 @@ class TestFuncs(unittest.TestCase):
             tc_track.data[0].radius_max_wind.values,
             tc_track.data[0].central_pressure.values) * NM_TO_KM
 
-        self.assertAlmostEqual(rad_max_wind[0], 86.4471340900, places=5)
-        self.assertAlmostEqual(rad_max_wind[10], 86.525605570, places=5)
-        self.assertAlmostEqual(rad_max_wind[128], 55.25462781, places=5)
-        self.assertAlmostEqual(rad_max_wind[129], 54.40164284, places=5)
-        self.assertAlmostEqual(rad_max_wind[130], 53.54865787, places=5)
-        self.assertAlmostEqual(rad_max_wind[189], 52.62700450, places=5)
-        self.assertAlmostEqual(rad_max_wind[190], 54.36738477, places=5)
-        self.assertAlmostEqual(rad_max_wind[191], 56.10776504, places=5)
-        self.assertAlmostEqual(rad_max_wind[192], 57.84814530, places=5)
-        self.assertAlmostEqual(rad_max_wind[200], 70.00942075, places=5)
+        self.assertAlmostEqual(rad_max_wind[0], 87, places=0)
+        self.assertAlmostEqual(rad_max_wind[10], 87, places=0)
+        self.assertAlmostEqual(rad_max_wind[128], 56, places=0)
+        self.assertAlmostEqual(rad_max_wind[129], 55, places=0)
+        self.assertAlmostEqual(rad_max_wind[130], 54, places=0)
+        self.assertAlmostEqual(rad_max_wind[189], 53, places=0)
+        self.assertAlmostEqual(rad_max_wind[190], 55, places=0)
+        self.assertAlmostEqual(rad_max_wind[191], 57, places=0)
+        self.assertAlmostEqual(rad_max_wind[192], 58, places=0)
+        self.assertAlmostEqual(rad_max_wind[200], 71, places=0)
 
     def test_tracks_in_exp_pass(self):
         """Check if tracks in exp are filtered correctly"""
