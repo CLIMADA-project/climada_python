@@ -3,82 +3,62 @@
 Configuration options
 =====================
 
-CLIMADA searches for a local configuration file located in the current
+CLIMADA searches for local configuration files located in the current
 working directory. A static default configuration file is supplied by the package
-and used as fallback. The local configuration file needs to be called
-``climada.conf``. All other files will be ignored.
+and used as fallback. The local configuration files needs to be called
+``climada.conf`` and ``climada_test.conf``. All other files will be ignored.
 
-The climada configuration file is a JSON file and consists of the following values:
+Configuration values that are used only for test purposes are defined in ``climada_test.conf``.
+All other configuration values are in ``climada.conf``.
 
-- ``config``
-- ``local_data``
+The climada configuration files are JSON files and has the following values on the
+toplevel:
+
 - ``global``
-- ``trop_cyclone``
+- ``<module>`` where module can be any *climada* module.
 
-A minimal configuration file looks something like this::
+Each entry may have the conventional items ``resource`` and ``data`` on the second level.
+
+- ``resource`` is meant to contain any access information for external resources.
+- ``data`` is for defining directories in the local filesystem that are used for reading and writing files.
+
+Values can be composed of other configuration values by surrounding them with curly brackets,
+or of system variables by surrounding them with square brackets.
+Literal brackets ``[``, ``]``, ``{`` and ``}`` are denoted as ``[[``, ``]]``, ``{{`` and ``}}`` respectively.
+
+A configuration file looks something like this::
 
   {
-      "config":
-      {
-          "env_name": "climada_env"
-      },
-
-      "local_data":
-      {
-          "save_dir": "./results/"
-      },
-
-      "global":
-      {
-          "log_level": "INFO",
-          "max_matrix_size": 1.0e8
-      },
-
-      "trop_cyclone":
-      {
-          "random_seed": 54
+    "global":
+    {
+      "data": {
+        "root": "./[CLIMADA_DATA]/data",
+        "results": "{global.data.root}/results",
+        "system": "{global.data.root}/system"
       }
+      "log_level": "INFO",
+      "max_matrix_size": 1.0e8
+    },
+
+    "climada.hazard.drought":
+    {
+      "resource": {
+        "spei_url": "http://digital.csic.es/bitstream/10261/153475/8"
+      }
+    },
+
+    "climada.hazard.trop_cyclone":
+    {
+      "random_seed": 54
+    }
   }
 
-config
-----------
-Configuration parameters related with configuration settings such as paths.
+Configuration values can be accessed like this:
 
-+---------------+--------------------------------------------------------------------------------------------------+--------------+
-|     Option    |                                Description                                                       |   Default    |
-+===============+==================================================================================================+==============+
-| ``env_name``  | Name given to CLIMADA's virtual environement. Used for checks of paths of libraries.             | "climada_env"|
-+---------------+--------------------------------------------------------------------------------------------------+--------------+
+.. code::
 
-local_data
-----------
-Configuration parameters related to local data location.
+   from climada.util import config
+   SYSTEM_DATA_DIR = config.get("climada.global.data.system")
 
-+---------------+--------------------------------------------------------------------------------------------------+-------------+
-|     Option    |                                Description                                                       |   Default   |
-+===============+==================================================================================================+=============+
-| ``save_dir``  | Folder were the variables are saved through the ``save`` command when no absolute path provided. | "./results" |
-+---------------+--------------------------------------------------------------------------------------------------+-------------+
-
-global
-------
-Configuration parameters with global scope within climada's code.
-
-+---------------------+--------------------------------------------------------------------------------------------------+-------------+
-|     Option          |                                Description                                                       |   Default   |
-+=====================+==================================================================================================+=============+
-| ``log_level``       | Minimum log level showed by logging: DEBUG, INFO, WARNING, ERROR or CRITICAL.                    | "INFO"      |
-+---------------------+--------------------------------------------------------------------------------------------------+-------------+
-| ``max_matrix_size`` | Maximum matrix size that can be used. Set a lower value if memory issues.                        | 1.0E8       |
-+---------------------+--------------------------------------------------------------------------------------------------+-------------+
-
-trop_cyclone
-------------
-Configuration parameters related to tropical cyclones.
-
-+---------------------+--------------------------------------------------------------------------------------------------+-------------+
-|     Option          |                                Description                                                       |   Default   |
-+=====================+==================================================================================================+=============+
-| ``random_seed``     | Seed used for the stochastic tracks generation.                                                  | 54          |
-+---------------------+--------------------------------------------------------------------------------------------------+-------------+
-
+   from climada.test import test_config
+   DROUGHT_TEST_DATA_DIR = test_config.get("climada.hazard.drought.data")

@@ -22,13 +22,14 @@ define save functionalities
 __all__ = ['save',
            'load']
 
-import os
+from pathlib import Path
 import pickle
 import logging
 
 from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
+
 
 def save(out_file_name, var):
     """Save variable with provided file name. Uses configuration save_dir folder
@@ -39,25 +40,24 @@ def save(out_file_name, var):
             save_dir)
         var (object): variable to save in pickle format
     """
-    abs_path = out_file_name
-    if not os.path.isabs(abs_path):
-        abs_path = os.path.abspath(os.path.join(
-            CONFIG['local_data']['save_dir'], out_file_name))
-    folder_path = os.path.abspath(os.path.join(abs_path, os.pardir))
+    out_file = Path(out_file_name) if Path(out_file_name).is_absolute() \
+        else CONFIG.local_data.save_dir.dir().joinpath(out_file_name)
+    target_dir = out_file.parent
     try:
         # Generate folder if it doesn't exists
-        if not os.path.isdir(folder_path):
-            os.mkdir(folder_path)
-            LOGGER.info('Created folder %s.', folder_path)
-        with open(abs_path, 'wb') as file:
-            pickle.dump(var, file, pickle.HIGHEST_PROTOCOL)
-            LOGGER.info('Written file %s', abs_path)
+        if not target_dir.is_dir():
+            target_dir.mkdir()
+            LOGGER.info('Created folder %s.', target_dir)
+        with out_file.open('wb') as flh:
+            pickle.dump(var, flh, pickle.HIGHEST_PROTOCOL)
+            LOGGER.info('Written file %s', out_file)
     except FileNotFoundError:
-        LOGGER.error('Folder not found: %s', folder_path)
-        raise FileNotFoundError
-    except OSError:
+        LOGGER.error('Folder not found: %s', target_dir)
+        raise
+    except OSError as ose:
         LOGGER.error('Data is probably too big. Try splitting it.')
-        raise ValueError
+        raise ValueError from ose
+
 
 def load(in_file_name):
     """Load variable contained in file. Uses configuration save_dir folder
@@ -69,10 +69,8 @@ def load(in_file_name):
     Returns:
         object
     """
-    abs_path = in_file_name
-    if not os.path.isabs(abs_path):
-        abs_path = os.path.abspath(os.path.join(
-            CONFIG['local_data']['save_dir'], in_file_name))
-    with open(abs_path, 'rb') as file:
-        data = pickle.load(file)
+    in_file = Path(in_file_name) if Path(in_file_name).is_absolute() \
+        else CONFIG.local_data.save_dir.dir().joinpath(in_file_name)
+    with in_file.open('rb') as flh:
+        data = pickle.load(flh)
     return data

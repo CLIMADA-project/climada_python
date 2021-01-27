@@ -21,12 +21,27 @@ Define Landslide class.
 __all__ = ['Landslide']
 
 import logging
+from pathlib import Path
+import glob
+
+import shlex
+import subprocess
 from scipy import sparse
+from scipy.stats import binom
+import geopandas
+import pyproj
+import matplotlib.pyplot as plt
+import rasterio
+from rasterio.windows import Window
+import requests
 import geopandas as gpd
 import numpy as np
 import shapely
+from haversine import haversine
+
+from climada import CONFIG
 from climada.hazard.base import Hazard
-from climada.util.coordinates import deg_from_dist
+from climada.util.constants import SYSTEM_DIR as LS_FILE_DIR
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +57,140 @@ class Landslide(Hazard):
         """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.tag.haz_type = 'LS'
+
+
+    def _get_window_from_coords(self, path_sourcefile, bbox=[]):
+        ###### would fit better into base calss for sub-function of hazard.set_raster()########
+        """get row, column, width and height required for rasterio window function
+        from coordinate values of bounding box
+        Parameters:
+            bbox (array): [north, east, south, west]
+            large_file (str): path of file from which window should be read in
+        Returns:
+            window_array (array): corner, width & height for Window() function of rasterio
+        """
+        with rasterio.open(path_sourcefile) as src:
+            utm = pyproj.Proj(init='epsg:4326')  # Pass CRS of image from rasterio
+
+        lonlat = pyproj.Proj(init='epsg:4326')
+        lon, lat = (bbox[3], bbox[0])
+        west, north = pyproj.transform(lonlat, utm, lon, lat)
+
+        # What is the corresponding row and column in our image?
+        row, col = src.index(west, north)  # spatial --> image coordinates
+
+        lon, lat = (bbox[1], bbox[2])
+        east, south = pyproj.transform(lonlat, utm, lon, lat)
+        row2, col2 = src.index(east, south)
+        width = abs(col2 - col)
+        height = abs(row2 - row)
+
+        window_array = [col, row, width, height]
+
+        return window_array
+
+    def _get_raster_meta(self, path_sourcefile, window_array):
+        """get geo-meta data from raster files to set centroids adequately"""
+        raster = rasterio.open(path_sourcefile, 'r',
+                               window=Window(window_array[0], window_array[1],
+                                             window_array[2], window_array[3]))
+        pixel_width = raster.meta['transform'][0]
+        pixel_height = raster.meta['transform'][4]
+
+        return pixel_height, pixel_width
+
+    def _intensity_cat_to_prob(self, max_prob):
+        """convert NASA nowcasting categories into occurrence probabilities:
+            highest value category value receives a prob of max_prob, lowest category value
+            receives a prob value of 0"""
+        self.intensity_cat = self.intensity.copy()  # save prob values
+        self.intensity = self.intensity.astype(float)
+        self.intensity.data = self.intensity.data.astype(float)
+        max_value = float(max(self.intensity_cat.data))
+        min_value = float(min(self.intensity_cat.data))
+
+        for i, j in zip(*self.intensity.nonzero()):
+            self.intensity[i, j] = float((self.intensity[i, j] - min_value) /
+                                         (max_value - min_value) * max_prob)
+
+
+    def _intensity_prob_to_binom(self, n_years):
+        """convert occurrence probabilities in NGI/UNEP landslide hazard map into binary
+        occurrences (yes/no) within a given time frame.
+
+        Parameters
+        ----------
+        n_years : int
+            the timespan of the probabilistic simulation in years
+
+        Returns
+        -------
+        intensity_prob : csr matrix
+            initial probabilities of ls occurrence per year per pixel
+        intensity : csr matrix
+            binary (0/1) occurrence within pixel
+        """
+
+        self.intensity_prob = self.intensity.copy()  # save prob values
+
+        for i, j in zip(*self.intensity.nonzero()):
+            if binom.rvs(n=n_years, p=self.intensity[i, j]) >= 1:
+                self.intensity[i, j] = 1
+            else:
+                self.intensity[i, j] = 0
+
+    def _intensity_binom_to_range(self, max_dist):
+        """Affected neighbourhood' of pixels within certain threshold from ls occurrence
+        can be included (takes long to compute, though).
+        Parameters:
+            max_dist (int): distance in metres (up to max ~1100) until which
+                neighbouring pixels count as affected.
+        Returns:
+            intensity (csr matrix): range (0-1) where 0 = no occurrence, 1 = direct
+                occurrence, ]0-1[ = relative distance to pixel with direct occurrence
+        """
+        self.intensity = self.intensity.tolil()
+        # find all other pixels within certain distance from corresponding centroid,
+        for i, j in zip(*self.intensity.nonzero()):
+            subset_neighbours = self.centroids.geometry.cx[
+                (self.centroids.coord[j][1] - 0.01):(self.centroids.coord[j][1] + 0.01),
+                (self.centroids.coord[j][0] - 0.01):(self.centroids.coord[j][0] + 0.01)
+            ]  # 0.01° = 1.11 km approximately
+            for centroid in subset_neighbours:
+                ix = subset_neighbours[subset_neighbours == centroid].index[0]
+                # calculate dist, assign intensity [0-1] linearly until max_dist
+                if haversine(self.centroids.coord[ix], self.centroids.coord[j], unit='m')\
+                <= max_dist:
+                    actual_dist = haversine(
+                        self.centroids.coord[ix],
+                        self.centroids.coord[j], unit='m')
+                    # this step changes sparsity of matrix -->
+                    # converted to lil_matrix, as more efficient
+                    self.intensity[i, ix] = (max_dist - actual_dist) / max_dist
+        self.intensity = self.intensity.tocsr()
+
+    def plot_raw(self, ev_id=1, **kwargs):
+        """Plot raw LHM data using imshow and without cartopy
+
+        Parameters:
+            ev_id (int, optional): event id. Default: 1.
+            intensity (bool, optional): plot intensity if True, fraction otherwise
+            kwargs (optional): arguments for imshow matplotlib function
+
+        Returns:
+            matplotlib.image.AxesImage
+        """
+        if not self.centroids.meta:
+            LOGGER.error('No raster data set')
+            raise ValueError
+        try:
+            event_pos = np.where(self.event_id == ev_id)[0][0]
+        except IndexError:
+            LOGGER.error('Wrong event id: %s.', ev_id)
+            raise ValueError from IndexError
+
+        return plt.imshow(self.intensity_prob[event_pos, :].toarray().
+                          reshape(self.centroids.shape), **kwargs)
 
     def _incl_affected_surroundings(self, max_dist):
         """
@@ -143,6 +292,7 @@ class Landslide(Hazard):
             self.centroids.plot()
         
         return self
+
 
     def set_ls_prob(self, bbox, path_sourcefile, check_plots=1):
         """

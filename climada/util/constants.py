@@ -19,13 +19,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define constants.
 """
 
-__all__ = ['SOURCE_DIR',
-           'DATA_DIR',
-           'SYSTEM_DIR',
+__all__ = ['SYSTEM_DIR',
+           'DEMO_DIR',
+           'ENT_DEMO_TODAY',
+           'ENT_DEMO_FUTURE',
            'HAZ_DEMO_MAT',
+           'HAZ_DEMO_FL',
            'HAZ_DEMO_FLDDPH',
            'HAZ_DEMO_FLDFRC',
            'ENT_TEMPLATE_XLS',
+           'HAZ_TEMPLATE_XLS',
            'ONE_LAT_KM',
            'EARTH_RADIUS_KM',
            'GLB_CENTROIDS_MAT',
@@ -39,24 +42,20 @@ __all__ = ['SOURCE_DIR',
            'EXP_DEMO_H5',
            'WS_DEMO_NC']
 
-import os
 # pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
 import numpy
 from fiona.crs import from_epsg
 
-SOURCE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          os.pardir))
-"""climada directory"""
+from .config import CONFIG
 
-DATA_DIR = os.path.abspath(os.path.join(SOURCE_DIR, os.pardir, 'data'))
-"""Folder containing the data"""
-
-SYSTEM_DIR = os.path.abspath(os.path.join(DATA_DIR, 'system'))
+SYSTEM_DIR = CONFIG.local_data.system.dir(create=False)
 """Folder containing the data used internally"""
 
+DEMO_DIR = CONFIG.local_data.demo.dir(create=False)
+"""Folder containing the data used for tutorials"""
 
-ISIMIP_GPWV3_NATID_150AS = os.path.join(SYSTEM_DIR, 'NatID_grid_0150as.nc')
+ISIMIP_GPWV3_NATID_150AS = SYSTEM_DIR.joinpath('NatID_grid_0150as.nc')
 """
 Compressed version of National Identifier Grid in 150 arc-seconds from
 ISIMIP project, based on GPWv3. Location in ISIMIP repository:
@@ -72,12 +71,12 @@ More references:
 GLB_CENTROIDS_NC = ISIMIP_GPWV3_NATID_150AS
 """For backwards compatibility, it remains available under its old name."""
 
-GLB_CENTROIDS_MAT = os.path.join(SYSTEM_DIR, 'GLB_NatID_grid_0360as_adv_2.mat')
+GLB_CENTROIDS_MAT = SYSTEM_DIR.joinpath('GLB_NatID_grid_0360as_adv_2.mat')
 """Global centroids"""
 
 NATEARTH_CENTROIDS = {
-    150: os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_150as.hdf5'),
-    360: os.path.join(SYSTEM_DIR, 'NatEarth_Centroids_360as.hdf5'),
+    150: SYSTEM_DIR.joinpath('NatEarth_Centroids_150as.hdf5'),
+    360: SYSTEM_DIR.joinpath('NatEarth_Centroids_360as.hdf5'),
 }
 """
 Global centroids at XXX arc-seconds resolution,
@@ -85,41 +84,39 @@ including region ids from Natural Earth. The 360 AS file includes distance to
 coast from NASA.
 """
 
-ENT_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'entity_template.xlsx')
+ENT_TEMPLATE_XLS = SYSTEM_DIR.joinpath('entity_template.xlsx')
 """Entity template in xls format."""
 
-HAZ_TEMPLATE_XLS = os.path.join(SYSTEM_DIR, 'hazard_template.xlsx')
+HAZ_TEMPLATE_XLS = SYSTEM_DIR.joinpath('hazard_template.xlsx')
 """Hazard template in xls format."""
 
-RIVER_FLOOD_REGIONS_CSV = os.path.join(SYSTEM_DIR, 'NatRegIDs.csv')
+RIVER_FLOOD_REGIONS_CSV = SYSTEM_DIR.joinpath('NatRegIDs.csv')
 """Look-up table for river flood module"""
 
-HAZ_DEMO_FL = os.path.join(DATA_DIR, 'demo', 'SC22000_VE__M1.grd.gz')
+HAZ_DEMO_FL = DEMO_DIR.joinpath('SC22000_VE__M1.grd.gz')
 """Raster file of flood over Venezuela. Model from GAR2015"""
 
-HAZ_DEMO_FLDDPH = os.path.join(
-    DATA_DIR, 'demo', 'flddph_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+HAZ_DEMO_FLDDPH = DEMO_DIR.joinpath('flddph_2000_DEMO.nc')
 """NetCDF4 Flood depth from isimip simulations"""
 
-HAZ_DEMO_FLDFRC = os.path.join(
-    DATA_DIR, 'demo', 'fldfrc_WaterGAP2_miroc5_historical_flopros_gev_picontrol_2000_0.1.nc')
+HAZ_DEMO_FLDFRC = DEMO_DIR.joinpath('fldfrc_2000_DEMO.nc')
 """NetCDF4 Flood fraction from isimip simulations"""
 
-HAZ_DEMO_MAT = os.path.join(DATA_DIR, 'demo', 'atl_prob_nonames.mat')
+HAZ_DEMO_MAT = DEMO_DIR.joinpath('atl_prob_nonames.mat')
 """
 Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids.
 """
 
-HAZ_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'tc_fl_1990_2004.h5')
+HAZ_DEMO_H5 = DEMO_DIR.joinpath('tc_fl_1990_2004.h5')
 """
 Hazard demo in hdf5 format: IBTrACS from 1990 to 2004 over Florida with 2500 centroids.
 """
 
-DEMO_GDP2ASSET = os.path.join(DATA_DIR, 'demo', 'gdp2asset_CHE_exposure.nc')
+DEMO_GDP2ASSET = DEMO_DIR.joinpath('gdp2asset_CHE_exposure.nc')
 """Exposure demo file for GDP2Asset"""
 
-WS_DEMO_NC = [os.path.join(DATA_DIR, 'demo', 'fp_lothar_crop-test.nc'),
-              os.path.join(DATA_DIR, 'demo', 'fp_xynthia_crop-test.nc')]
+WS_DEMO_NC = [DEMO_DIR.joinpath('fp_lothar_crop-test.nc'),
+              DEMO_DIR.joinpath('fp_xynthia_crop-test.nc')]
 """
 Winter storm in Europe files. These test files have been generated using
 the netCDF kitchen sink:
@@ -128,18 +125,17 @@ the netCDF kitchen sink:
 """
 
 
-ENT_DEMO_TODAY = os.path.join(DATA_DIR, 'demo', 'demo_today.xlsx')
+ENT_DEMO_TODAY = DEMO_DIR.joinpath('demo_today.xlsx')
 """Entity demo present in xslx format."""
 
-ENT_DEMO_FUTURE = os.path.join(DATA_DIR, 'demo', 'demo_future_TEST.xlsx')
+ENT_DEMO_FUTURE = DEMO_DIR.joinpath('demo_future_TEST.xlsx')
 """Entity demo future in xslx format."""
 
-EXP_DEMO_H5 = os.path.join(DATA_DIR, 'demo', 'exp_demo_today.h5')
+EXP_DEMO_H5 = DEMO_DIR.joinpath('exp_demo_today.h5')
 """Exposures over Florida"""
 
 
-TC_ANDREW_FL = os.path.join(DATA_DIR, 'demo',
-                            'ibtracs_global_intp-None_1992230N11325.csv')
+TC_ANDREW_FL = DEMO_DIR.joinpath('ibtracs_global_intp-None_1992230N11325.csv')
 """Tropical cyclone Andrew in Florida"""
 
 

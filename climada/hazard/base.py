@@ -35,15 +35,16 @@ import h5py
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
+from pathos.pools import ProcessPool as Pool
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
-import climada.util.checker as check
+import climada.util.checker as u_check
 import climada.util.dates_times as u_dt
-from climada.util.config import CONFIG
+from climada import CONFIG
 import climada.util.hdf5_handler as hdf5
-import climada.util.coordinates as co
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -175,13 +176,13 @@ class Hazard():
             self.pool = None
 
     def clear(self):
-        """Reinitialize attributes."""
+        """Reinitialize attributes (except the process Pool)."""
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.array([], dtype=var_val.dtype))
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
-            else:
+            elif not isinstance(var_val, Pool):
                 setattr(self, var_name, var_val.__class__())
 
     def check(self):
@@ -457,7 +458,7 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
@@ -527,23 +528,29 @@ class Hazard():
             raise var_err
 
     def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
-        """Select events within provided date and/or (historical or synthetical)
-        and/or region. Frequency of the events may need to be recomputed!
+        """Select events matching provided criteria
 
-        Parameters:
-            event_names (list(str), optional): names of event
-            date (tuple(str or int), optional): (initial date, final date) in
-                string ISO format ('2011-01-02') or datetime ordinal integer
-            orig (bool, optional): select only historical (True) or only
-                synthetic (False)
-            reg_id (int, optional): region identifier of the centroids's
-                region_id attibute
-            reset_frequency (boolean): change frequency of events proportional to
-                difference between first and last year (old and new)
-                default = False
+        The frequency of events may need to be recomputed (see `reset_frequency`)!
 
-        Returns:
-            Hazard or children
+        Parameters
+        ----------
+        event_names : list of str, optional
+            Names of events.
+        date : array-like of length 2 containing str or int, optional
+            (initial date, final date) in string ISO format ('2011-01-02') or datetime
+            ordinal integer.
+        orig : bool, optional
+            Select only historical (True) or only synthetic (False) events.
+        reg_id : int, optional
+            Region identifier of the centroids' region_id attibute.
+        reset_frequency : bool, optional
+            Change frequency of events proportional to difference between first and last
+            year (old and new). Default: False.
+
+        Returns
+        -------
+        haz : Hazard or None
+            If no event matching the specified criteria is found, None is returned.
         """
         if type(self) is Hazard:
             haz = Hazard(self.tag.haz_type)
@@ -553,8 +560,8 @@ class Hazard():
         sel_cen = np.ones(self.centroids.size, dtype=bool)
 
         # filter events by date
-        if isinstance(date, tuple):
-            date_ini, date_end = date[0], date[1]
+        if date is not None:
+            date_ini, date_end = date
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date[0])
                 date_end = u_dt.str_to_date(date[1])
@@ -634,7 +641,7 @@ class Hazard():
                     return_periods)
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size'] / self.intensity.shape[0])
+        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.intensity.shape[0]))
@@ -679,9 +686,9 @@ class Hazard():
         title = list()
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
-        _, axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
-                                           colbar_name, title, smooth=smooth,
-                                           axes=axis, **kwargs)
+        axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
+                                        colbar_name, title, smooth=smooth,
+                                        axes=axis, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
@@ -949,7 +956,7 @@ class Hazard():
         if not intensity:
             variable = self.fraction
         if self.centroids.meta:
-            co.write_raster(file_name, variable.toarray(), self.centroids.meta)
+            u_coord.write_raster(file_name, variable.toarray(), self.centroids.meta)
         else:
             pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
@@ -1227,15 +1234,15 @@ class Hazard():
             LOGGER.error("There are events with the same identifier.")
             raise ValueError
 
-        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+        u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                 num_ev, num_ev, num_cen)
-        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = check.array_default(num_ev, self.event_name,
+        u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
+        self.event_name = u_check.array_default(num_ev, self.event_name,
                                               'Hazard.event_name',
                                               list(self.event_id))
-        self.date = check.array_default(num_ev, self.date, 'Hazard.date',
+        self.date = u_check.array_default(num_ev, self.date, 'Hazard.date',
                                         np.ones(self.event_id.shape, dtype=int))
-        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig',
+        self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
                                         np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             LOGGER.error("There are events with same date and name.")
