@@ -412,7 +412,6 @@ class TropCyclone(Hazard):
                 else:
                     new_val[select] *= change
                 setattr(haz_cc, chg['variable'], new_val)
-                setattr(haz_cc, chg['variable'], new_val)
         return haz_cc
 
 def compute_windfields(track, centroids, model, metric="equirect"):
