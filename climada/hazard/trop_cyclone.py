@@ -405,8 +405,8 @@ class TropCyclone(Hazard):
                 change = chg['change'] * scale
             if select.any():
                 new_val = getattr(haz_cc, chg['variable'])
-                #For sparse matrices *= is ineficient (slow, uses large memory)
-                #Instead use multiply and chunking
+                # 1d-masks like `select` are inefficient for indexing sparse matrices since
+                # they are broadcasted densely in the second dimension
                 if isinstance(new_val, sparse.csr_matrix):
                     new_val = sparse.diags(np.where(select, change, 1)).dot(new_val)
                 else:
