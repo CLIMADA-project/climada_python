@@ -262,29 +262,39 @@ class TestClimateSce(unittest.TestCase):
         criterion.append(tmp_chg)
         scale = 0.75
 
+        # artificially increase the size of the hazard by repeating (tiling) the data:
+        ntiles = 8
+
         tc = TropCyclone()
         tc.intensity = np.zeros((4, 10))
         tc.intensity[0, :] = np.arange(10)
         tc.intensity[1, 5] = 10
         tc.intensity[2, :] = np.arange(10, 20)
         tc.intensity[3, 3] = 3
+        tc.intensity = np.tile(tc.intensity, (ntiles, 1))
         tc.intensity = sparse.csr_matrix(tc.intensity)
         tc.basin = ['NA'] * 4
         tc.basin[3] = 'WP'
-        tc.category = np.array([2, 0, 4, 1])
-        tc.event_id = np.arange(4)
+        tc.basin = ntiles * tc.basin
+        tc.category = np.array(ntiles * [2, 0, 4, 1])
+        tc.event_id = np.arange(tc.intensity.shape[0])
 
         tc_cc = tc._apply_criterion(criterion, scale)
-        self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(
-            np.allclose(tc.intensity[0, :].toarray() * 1.03375, tc_cc.intensity[0, :].toarray()))
-        self.assertTrue(
-            np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
+        for i_tile in range(ntiles):
+            offset = i_tile * 4
+            # no factor applied because of category 0
+            np.testing.assert_array_equal(
+                tc.intensity[offset + 1, :].toarray(), tc_cc.intensity[offset + 1, :].toarray())
+            # no factor applied because of basin "WP"
+            np.testing.assert_array_equal(
+                tc.intensity[offset + 3, :].toarray(), tc_cc.intensity[offset + 3, :].toarray())
+            # factor is applied to the remaining events
+            np.testing.assert_array_almost_equal(
+                tc.intensity[offset + 0, :].toarray() * 1.03375,
+                tc_cc.intensity[offset + 0, :].toarray())
+            np.testing.assert_array_almost_equal(
+                tc.intensity[offset + 2, :].toarray() * 1.03375,
+                tc_cc.intensity[offset + 2, :].toarray())
 
     def test_two_criterion_track(self):
         """Test _apply_criterion function with two criteria"""
