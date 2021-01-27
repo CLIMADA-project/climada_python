@@ -119,23 +119,73 @@ class TestIbtracs(unittest.TestCase):
         self.assertEqual(track_ds.sid, '2017242N16333')
         self.assertEqual(track_ds.name, 'IRMA')
         self.assertEqual(track_ds.orig_event_flag, True)
-        self.assertEqual(track_ds.data_provider, 'ibtracs')
+        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
         self.assertEqual(track_ds.category, 5)
 
-        # fixed storm with and without explicit provider
+    def test_read_with_provider(self):
+        """Read a tropical cyclone with and without explicit provider."""
+        tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
+
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True, provider='usa')
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 51)
-        self.assertEqual(track_ds.data_provider, 'usa')
+        self.assertEqual(track_ds.data_provider, 'ibtracs_usa')
         self.assertAlmostEqual(track_ds.lat.values[50], 34.3, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[50], 989, places=5)
+        self.assertAlmostEqual(track_ds.radius_max_wind.values[46], 20, places=5)
+
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True)
         track_ds = tc_track.get_track()
-        self.assertEqual(track_ds.time.size, 105)
-        self.assertEqual(track_ds.data_provider, 'ibtracs')
-        self.assertAlmostEqual(track_ds.lat.values[50], 33.366665, places=5)
-        self.assertAlmostEqual(track_ds.central_pressure.values[50], 976, places=5)
+        self.assertEqual(track_ds.time.size, 99)
+        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
+        self.assertAlmostEqual(track_ds.lat.values[44], 33.30, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
+
+    def test_read_estimate_missing(self):
+        """Read a tropical cyclone and estimate missing values."""
+        tc_track = tc.TCTracks()
+        storm_id = '2012152N12130'
+
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider='official')
+        track_ds = tc_track.get_track()
+        self.assertEqual(track_ds.time.size, 21)
+        self.assertEqual(track_ds.data_provider, 'ibtracs_official')
+        self.assertAlmostEqual(track_ds.lon.values[19], 137.6, places=4)
+        self.assertAlmostEqual(track_ds.central_pressure.values[19], 980, places=5)
+        np.testing.assert_array_equal(track_ds.radius_max_wind.values, 0)
+
+    def test_read_scale_wind(self):
+        """Read a tropical cyclone and scale wind speed according to agency."""
+        tc_track = tc.TCTracks()
+        storm_id = '2012152N12130'
+
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider_wind_corr=True)
+        track_ds = tc_track.get_track()
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55 * 1.16, places=5)
+
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider_wind_corr=False)
+        track_ds = tc_track.get_track()
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55, places=5)
+
+    def test_read_interpolate_missing(self):
+        """Read a tropical cyclone with and without interpolating missing values."""
+        tc_track = tc.TCTracks()
+        storm_id = '2010066S19050'
+
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=False)
+        track_ds = tc_track.get_track()
+        self.assertEqual(track_ds.time.size, 50)
+        self.assertAlmostEqual(track_ds.central_pressure.values[30], 992, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[31], 1006, places=5)
+
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=True)
+        track_ds = tc_track.get_track()
+        self.assertEqual(track_ds.time.size, 65)
+        self.assertAlmostEqual(track_ds.central_pressure.values[30], 992, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[38], 999, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[46], 1006, places=5)
 
     def test_read_range(self):
         """Read several TCs."""
@@ -376,13 +426,13 @@ class TestFuncs(unittest.TestCase):
         """Test extent/bounds attributes."""
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
         tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id=storms)
-        bounds = (153.4752, -23.2000, 258.7132, 17.5166)
+        tc_track.read_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
+        bounds = (153.585022, -23.200001, 258.714996, 17.514986)
         extent = (bounds[0], bounds[2], bounds[1], bounds[3])
-        bounds_buf = (153.3752, -23.3000, 258.8132, 17.6166)
-        self.assertTrue(np.allclose(tc_track.bounds, bounds))
-        self.assertTrue(np.allclose(tc_track.get_bounds(deg_buffer=0.1), bounds_buf))
-        self.assertTrue(np.allclose(tc_track.extent, extent))
+        bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
+        np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
+        np.testing.assert_array_almost_equal(tc_track.get_bounds(deg_buffer=0.1), bounds_buf)
+        np.testing.assert_array_almost_equal(tc_track.extent, extent)
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
