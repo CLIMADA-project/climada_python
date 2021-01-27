@@ -49,7 +49,7 @@ from climada import CONFIG
 from climada.hazard import Centroids, Hazard, Tag as TagHazard, TropCyclone
 from climada.hazard.tc_tracks import estimate_rmw, estimate_roci
 from climada.util import ureg
-import climada.util.coordinates as coord_util
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -312,10 +312,10 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     intensity = np.zeros(centroids.shape[0])
 
     # normalize longitudes of centroids and track
-    track_bounds = coord_util.latlon_bounds(track.lat.values, track.lon.values)
+    track_bounds = u_coord.latlon_bounds(track.lat.values, track.lon.values)
     mid_lon = 0.5 * (track_bounds[0] + track_bounds[2])
-    track['lon'][:] = coord_util.lon_normalize(track.lon.values, center=mid_lon)
-    centroids[:, 1] = coord_util.lon_normalize(centroids[:, 1], center=mid_lon)
+    track['lon'][:] = u_coord.lon_normalize(track.lon.values, center=mid_lon)
+    centroids[:, 1] = u_coord.lon_normalize(centroids[:, 1], center=mid_lon)
 
     # restrict to centroids in rectangular bounding box around track
     track_bounds_pad = np.array(track_bounds)
@@ -328,7 +328,7 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     track_centr_idx = track_centr_msk.nonzero()[0]
 
     # exclude centroids at too low/high topographic altitude
-    centroids_height = coord_util.read_raster_sample(
+    centroids_height = u_coord.read_raster_sample(
         topo_path, centroids[track_centr_msk, 0], centroids[track_centr_msk, 1],
         intermediate_res=0.008)
     track_centr_idx = track_centr_idx[(centroids_height > -10) & (centroids_height < 10)]
@@ -910,8 +910,8 @@ def mean_max_sea_level(path, months, bounds):
                          ", ".join(f"{m[0]:04d}-{m[1]:02d}" for m in months))
             raise IndexError
         zos_ds = zos_ds.sel(time=mask_time)
-        zos_lon = coord_util.lon_normalize(zos_ds.lon.values,
-                                           center=0.5 * (bounds[0] + bounds[2]))
+        zos_lon = u_coord.lon_normalize(
+            zos_ds.lon.values, center=0.5 * (bounds[0] + bounds[2]))
         mask_lat = (bounds[1] <= zos_ds.lat) & (zos_ds.lat <= bounds[3])
         mask_lon = (bounds[0] <= zos_lon) & (zos_lon <= bounds[2]) & np.isfinite(zos_ds.lon)
         mask_bounds = (mask_lat & mask_lon)
@@ -951,7 +951,7 @@ def load_topography(path, bounds, res_as):
 
     LOGGER.info("Load elevation data [%s, %s] from %s", res_as, bounds, path)
     res = res_as / (60 * 60)
-    zvalues, transform = coord_util.read_raster_bounds(path, bounds, res=res, bands=[1])
+    zvalues, transform = u_coord.read_raster_bounds(path, bounds, res=res, bands=[1])
     zvalues = zvalues[0]
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax, ymax = xmin + zvalues.shape[1] * xres, ymin + zvalues.shape[0] * yres
@@ -961,8 +961,8 @@ def load_topography(path, bounds, res_as):
     if yres < 0:
         zvalues = np.flip(zvalues, axis=0)
         yres, ymin, ymax = -yres, ymax, ymin
-    xmin, xmax = coord_util.lon_normalize(np.array([xmin, xmax]),
-                                          center=0.5 * (bounds[0] + bounds[2]))
+    xmin, xmax = u_coord.lon_normalize(
+        np.array([xmin, xmax]), center=0.5 * (bounds[0] + bounds[2]))
     bounds = (xmin, ymin, xmax, ymax)
     xcoords = np.arange(xmin + xres / 2, xmax, xres)
     ycoords = np.arange(ymin + yres / 2, ymax, yres)
@@ -1038,7 +1038,7 @@ class TCSurgeEvents():
         self.centroids = centroids
 
         locs = np.stack([self.track.lat, self.track.lon], axis=1)
-        self.d_centroids = coord_util.dist_approx(
+        self.d_centroids = u_coord.dist_approx(
             locs[None, :, 0], locs[None, :, 1],
             self.centroids[None, :, 0], self.centroids[None, :, 1],
             method="geosphere")[0]
