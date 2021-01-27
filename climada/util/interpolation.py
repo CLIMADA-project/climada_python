@@ -260,7 +260,16 @@ def interpolate_polygons(gdf_poly, area_point):
                                      gdf_poly.geometry.bounds.maxx)/
                                  gdf_poly['degree_dist'])
     gdf_poly['height'] = np.floor(abs(gdf_poly.geometry.bounds.miny-
-                                      gdf_poly.geometry.bounds.maxy)/
+                                      gdf_poly.geometry.bounds.maxy)/29476352551592, 6.130380600677628, 6.131...  POINT (6.51921 52.61313)
+  430289  [[[6.129476352551592, 6.130380600677628, 6.131...  POINT (6.52011 52.61313)
+  430290  [[[6.129476352551592, 6.130380600677628, 6.131...  POINT (6.52102 52.61313)
+
+[824461 rows x 2 columns]
+
+In [420]: gdf_poly.columns
+Out[420]: Index(['geometry', 'degree_dist', 'trans', 'width', 'height', ('lon', 'lat')], dtype='object')
+
+In [421]: 
                                   gdf_poly['degree_dist'])
     
     # make grid for each polygon-bbox
