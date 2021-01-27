@@ -174,8 +174,8 @@ class TestTCSurgeBathtub(unittest.TestCase):
                 self.assertTrue(np.all((fraction >= 0) & (fraction <= 1)))
 
                 # check individual known pixel values
-                self.assertAlmostEqual(inten[14, 26], max(-0.125232829 + slr, 0))
-                self.assertAlmostEqual(inten[14, 34] - slr, 0.59177982)
+                self.assertAlmostEqual(inten[14, 26], max(-0.125 + slr, 0), places=2)
+                self.assertAlmostEqual(inten[14, 34] - slr, 0.592, places=2)
 
 
 # Execute Tests

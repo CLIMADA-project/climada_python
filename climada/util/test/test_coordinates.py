@@ -74,11 +74,15 @@ class TestFunc(unittest.TestCase):
 
         # test in place operation
         lon_normalize(data)
-        self.assertTrue(np.allclose(data, [180, 20.1, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [180, 20.1, -30, -170, 10])
 
         # test with specific center and return value
         data = lon_normalize(data, center=-170)
-        self.assertTrue(np.allclose(data, [-180, -339.9, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [-180, -339.9, -30, -170, 10])
+
+        # test with center determined automatically (which is 280.05)
+        data = lon_normalize(data, center=None)
+        np.testing.assert_array_almost_equal(data, [180, 380.1, 330, 190, 370])
 
     def test_latlon_bounds(self):
         """Test latlon_bounds function"""
@@ -119,10 +123,11 @@ class TestFunc(unittest.TestCase):
         """Test approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
-            [45.5, -32.2, 14, 56, 7709.827814738594, 8758.34146833],
-            [45.5, 147.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, 507.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, -212.2, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
+            [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
+            [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
+            [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
+            [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
         ])
         compute_dist = np.stack([
             dist_approx(data[:, None, 0], data[:, None, 1],
@@ -151,6 +156,8 @@ class TestFunc(unittest.TestCase):
                 self.assertAlmostEqual(d[0] * factor, cd[0])
                 self.assertAlmostEqual(d[1] * factor, cd[1])
 
+    def test_dist_approx_log_pass(self):
+        """Test log-functionality of approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
             [0, 0, 0, 1, 111.12, 111.12],
