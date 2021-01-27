@@ -408,13 +408,7 @@ class TropCyclone(Hazard):
                 #For sparse matrices *= is ineficient (slow, uses large memory)
                 #Instead use multiply and chunking
                 if isinstance(new_val, sparse.csr_matrix):
-                    chunk_size = 10
-                    n_chunks = int(len(select) / chunk_size)
-                    chunks = np.arange(0, n_chunks, chunk_size)
-                    chunks = np.append(chunks, n_chunks)
-                    for start, stop in zip(chunks[:-1], chunks[1:]):
-                        new_val[select[start:stop]] = \
-                            new_val[select[start:stop]].multiply(change)
+                    new_val = sparse.diags(np.where(select, change, 1)).dot(new_val)
                 else:
                     new_val[select] *= change
                 setattr(haz_cc, chg['variable'], new_val)
