@@ -25,8 +25,6 @@ __all__ = ['RelativeCropyield']
 import logging
 from pathlib import Path
 import copy
-from os import listdir
-from os.path import isfile, join
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -116,7 +114,7 @@ class RelativeCropyield(Hazard):
         Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
         for other NetCDF containing gridded crop model output from other sources.
         Parameters:
-            input_dir (string): path to input data directory
+            input_dir (Path or str): path to input data directory
             filename (string): name of netcdf file in input_dir. If filename is given,
                 the other parameters specifying the model run are not required!
             bbox (list of four floats): bounding box:
@@ -153,6 +151,7 @@ class RelativeCropyield(Hazard):
             bbox = BBOX
         if input_dir is None:
             input_dir = INPUT_DIR
+        input_dir = Path(input_dir)
         if not Path(input_dir).is_dir():
             LOGGER.error('Input directory %s does not exist', input_dir)
             raise NameError
@@ -215,19 +214,22 @@ class RelativeCropyield(Hazard):
         return self
 
     def calc_mean(self, yearrange_mean=None,
-                  save=False, output_dir=OUTPUT_DIR):
+                  save=False, output_dir=None):
         """Calculates mean of the hazard for a given reference time period
 
             Optional Parameters:
             yearrange_mean (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
             save (boolean): save mean to file? default: False
-            output_dir (str): path of output directory
+            output_dir (str or Path): path of output directory
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
                     time period for each centroid
         """
+        if output_dir is None:
+            output_dir = OUTPUT_DIR
+        output_dir = Path(output_dir)
         if yearrange_mean is None:
             yearrange_mean = YEARCHUNKS['historical']['yearrange_mean']
         startyear, endyear = yearrange_mean
@@ -237,7 +239,7 @@ class RelativeCropyield(Hazard):
 
         if save:
             # generate output directories if they do not exist yet
-            mean_dir = Path(output_dir, 'Hist_mean')
+            mean_dir = output_dir / 'Hist_mean'
             mean_dir.mkdir(parents=True, exist_ok=True)
             # save mean_file
             mean_file = h5py.File(Path(
@@ -394,7 +396,7 @@ class RelativeCropyield(Hazard):
         return fig
 
 
-def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=None,
+def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
                                 isimip_run=None, yearrange_his=None, yearrange_mean=None,
                                 return_data=False, save=True, combine_subcrops=True):
 
@@ -402,8 +404,8 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     crop yield in a given input directory and save it to output directory.
 
         Optional Parameters:
-            input_dir (string): path to input data directory
-            output_dir (string): path to output data directory
+            input_dir (pathlib.Path or str): path to input data directory
+            output_dir (pathlib.Path or str): path to output data directory
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             isimip_run (string): name of the ISIMIP run (f.i. ISIMIP2a or ISIMIP2b)
@@ -424,9 +426,23 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         bbox = BBOX
     if isimip_run is None:
         isimip_run = 'ISIMIP2b'
+    if input_dir is None:
+        input_dir = INPUT_DIR
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    if isinstance(input_dir, str):
+        input_dir = Path(input_dir)
+    if not (isinstance(input_dir, Path) and input_dir.is_dir()):
+        LOGGER.error('input_dir needs to be valid directory given as str or Path instance')
+        raise NameError
+    if isinstance(output_dir, str):
+        output_dir = Path(output_dir)
+    if not (isinstance(output_dir, Path) and output_dir.is_dir()):
+        LOGGER.error('output_dir needs to be valid directory given as str or Path instance')
+        raise NameError
 
-    filenames = [f for f in listdir(input_dir) if (isfile(join(input_dir, f))) if not
-                 f.startswith('.')]
+    filenames = [f.parts[-1] for f in input_dir.iterdir() if f.is_file() if not
+                 f.parts[-1].startswith('.')]
 
     # generate output directories if they do not exist yet
     Path(output_dir, 'Hazard').mkdir(parents=True, exist_ok=True)
@@ -560,7 +576,7 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
             filenames (list): list of filenames
 
         Optional Parameters:
-            input_dir (string): path to input data directory, default: INPUT_DIR
+            input_dir (pathlib.Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max], default: BBOX
             isimip_run (string): name of the ISIMIP run ('ISIMIP2a', 'ISIMIP2b', or 'ISIMIP3b')
@@ -580,7 +596,7 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
     """
     # set default values for parameters not defined:
     if input_dir is None:
-        input_dir = INPUT_DIR
+        input_dir = Path(INPUT_DIR)
     if bbox is None:
         bbox = BBOX
     if isimip_run is None:
@@ -602,12 +618,8 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
                     continue
                 if crop == 'ri1': # first harvest rice
                     combi_crop = 'ric'
-                    # if not isfile(join(input_dir, file.replace('yield-ri1-', 'yield-ri2-'))):
-                    #     continue # skip ri1 runs without equivalent ri2 run
                 if crop == 'swh': # spring wheat
                     combi_crop = 'whe'
-                    # if not isfile(join(input_dir, file.replace('yield-swh-', 'yield-wwh-'))):
-                    #     continue # skip swh runs without equivalent wwh run
             if scenario == 'historical':
                 his_file_list.append(file)
                 if (yearrange_his is None) and (isimip_run == 'ISIMIP2b'):
@@ -685,14 +697,14 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
     return his_file_list, file_props, hist_mean_per_crop, scenario_list, \
         crop_irr_list, combi_crop_irr_list
 
-def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
+def calc_his_haz_isimip(his_file, file_props, input_dir=None, bbox=None,
                         yearrange_mean=None):
     """Create historical hazard and calculate historical mean.
 
         Parameters:
             his_file (string): file name of historical input hazard file
             file_props (dict): file properties of all historical input hazard files
-            input_dir (string): path to input data directory
+            input_dir (Path): path to input data directory
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange_mean (int tuple): year range for the historical mean
@@ -703,6 +715,10 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             filename (string): name to save historical hazard
             hist_mean (array): historical mean of the historical hazard
     """
+    if input_dir is None:
+        input_dir = Path(INPUT_DIR)
+    if bbox is None:
+        bbox = BBOX
 
     haz_his = RelativeCropyield()
     haz_his.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file, bbox=bbox,
@@ -720,7 +736,7 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             his_file2 = his_file.replace('_yield-ri1-', '_yield-ri2-')
         else:
             his_file2 = None
-        if his_file2 and Path(input_dir, his_file2).is_file():
+        if his_file2 and (input_dir / his_file2).is_file():
             haz_his2 = RelativeCropyield()
             haz_his2.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file2, bbox=bbox,
                                             scenario=file_props[his_file]['scenario'],
@@ -768,8 +784,8 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
 
     return haz_his, filename, hist_mean
 
-def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
-                        fut_file=None, yearrange_fut=None):
+def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=None,
+                        bbox=None, fut_file=None, yearrange_fut=None):
     """Create future hazard.
 
         Parameters:
@@ -780,7 +796,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                 combination and crop-irr cobination
 
         Optional Parameters:
-            input_dir (string): path to input data directory
+            input_dir (Path): path to input data directory
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             fut_file (string): file name of future input hazard file. If given,
@@ -792,6 +808,10 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
             haz_fut (RelativeCropyield): future hazard
             filename (string): name to save future hazard
     """
+    if input_dir is None:
+        input_dir = Path(INPUT_DIR)
+    if bbox is None:
+        bbox = BBOX
     if yearrange_fut is None:
         if isinstance(fut_file, str) and (len(fut_file.split('_')[-2]) == 4):
             yearrange_fut = (int(fut_file.split('_')[-2]),
@@ -869,7 +889,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     combine_crops is True.
 
     Optional Parameters:
-        input_dir (str or Path): path to directory containing input file
+        input_dir (Path or str): path to directory containing input file
         filename (str): name of file
         bbox (tuple): geogr. bounding box, tuple or array with for elements.
 
@@ -877,7 +897,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
         whe_mask (xarray)"""
 
     if input_dir is None:
-        input_dir = INPUT_DIR
+        input_dir = Path(INPUT_DIR)
     if filename is None:
         filename = 'winter_and_spring_wheat_areas_phase3.nc4'
     if bbox is None:

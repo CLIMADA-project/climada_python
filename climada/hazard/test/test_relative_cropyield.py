@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test crop potential module.
 """
-import os
 import unittest
 import numpy as np
 from climada.hazard.relative_cropyield import RelativeCropyield
