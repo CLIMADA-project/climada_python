@@ -127,7 +127,7 @@ class TestIbtracs(unittest.TestCase):
         tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True, provider='usa')
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider='usa')
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 51)
         self.assertEqual(track_ds.data_provider, 'ibtracs_usa')
@@ -135,20 +135,36 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[50], 989, places=5)
         self.assertAlmostEqual(track_ds.radius_max_wind.values[46], 20, places=5)
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True)
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id)
         track_ds = tc_track.get_track()
-        self.assertEqual(track_ds.time.size, 99)
+        self.assertEqual(track_ds.time.size, 35)
         self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
-        self.assertAlmostEqual(track_ds.lat.values[44], 33.30, places=5)
-        self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
-        self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
+        self.assertAlmostEqual(track_ds.lat.values[-1], 31.40, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[-1], 980, places=5)
 
     def test_read_estimate_missing(self):
         """Read a tropical cyclone and estimate missing values."""
         tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider='official')
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True)
+        track_ds = tc_track.get_track()
+        # less time steps are discarded, leading to a larger total size
+        self.assertEqual(track_ds.time.size, 99)
+        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
+        self.assertAlmostEqual(track_ds.lat.values[44], 33.30, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
+        self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
+        # the wind speed at position 44 is missing in the original data
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 57, places=0)
+
+    def test_read_official(self):
+        """Read a tropical cyclone, only officially reported values."""
+        tc_track = tc.TCTracks()
+        storm_id = '2012152N12130'
+
+        tc_track.read_ibtracs_netcdf(
+            storm_id=storm_id, interpolate_missing=False, provider='official')
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 21)
         self.assertEqual(track_ds.data_provider, 'ibtracs_official')
@@ -161,11 +177,11 @@ class TestIbtracs(unittest.TestCase):
         tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider_wind_corr=True)
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=True)
         track_ds = tc_track.get_track()
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55 * 1.16, places=5)
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider_wind_corr=False)
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=False)
         track_ds = tc_track.get_track()
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55, places=5)
 
@@ -209,9 +225,9 @@ class TestIbtracs(unittest.TestCase):
         tc_try = tc.TCTracks()
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
                                    estimate_missing=True)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013.61584, 5)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008.63837, 5)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1014.1515, 4)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1007, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011, places=0)
 
 
 class TestIO(unittest.TestCase):
@@ -228,7 +244,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 55)
-        self.assertEqual(tc_track.data[0].central_pressure.values[29], 975.9651)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29], 976, places=0)
         self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(tc_track.data[0].time.dt.year[13], 1951)
@@ -323,7 +339,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].lat[4], -9.813585651475156)
         self.assertEqual(tc_track.data[0].time_step[3], 6)
         self.assertEqual(tc_track.data[0].max_sustained_wind[2], 20.188325232226354)
-        self.assertEqual(tc_track.data[0].central_pressure[1], 1004.7261436566367)
+        self.assertAlmostEqual(tc_track.data[0].central_pressure.values[1], 1008, places=0)
         self.assertTrue(np.all(tc_track.data[0].time.dt.year == 1991))
         self.assertEqual(tc_track.data[0].time.dt.month[2], 1)
         self.assertEqual(tc_track.data[0].time.dt.day[3], 15)

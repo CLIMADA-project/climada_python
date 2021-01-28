@@ -102,7 +102,7 @@ IBTRACS_AGENCY_1MIN_WIND_FACTOR = {
     "newdelhi": 1.10,  # from 3-minute winds
     "reunion": 1.16,  # from 10-minute winds
     "bom": 1.16,  # from 10-minute winds
-    "nadi": 1.16,  # from 10-minute
+    "nadi": 1.16,  # from 10-minute winds
     "wellington": 1.16,  # from 10-minute winds
     'cma': 1.08,  # from 2-minute winds
     'hko': 1.16,  # from 10-minute winds
@@ -118,7 +118,10 @@ Harper, B.A., Kepert, J.D., Ginger, J.D. (2010): Guidelines for Converting betwe
 Averaging Periods in Tropical Cyclone Conditions. 1555. Geneva, Switzerland: World Meteorological
 Organization. https://library.wmo.int/index.php?lvl=notice_display&id=135
 
-The factors are for "off-land" winds."""
+The factors are due to Table 1.1 for "off-land" winds since the "off-land" values are closest to
+the "traditional" conversion factor between 1- and 10-minute winds (see Section 1.5). Furthermore,
+"off-land" (or coastal) exposure is most dominantly affected by TCs, in general, compared to
+"in-land", "off-sea" and "at-sea" exposures."""
 
 DEF_ENV_PRESSURE = 1010
 """Default environmental pressure"""
@@ -288,11 +291,19 @@ class TCTracks():
         return filtered_tracks
 
 
-    def read_ibtracs_netcdf(self, provider=None, provider_wind_corr=True, storm_id=None,
+    def read_ibtracs_netcdf(self, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, interpolate_missing=True,
                             estimate_missing=False, correct_pres=False,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Read track data from IBTrACS databse.
+
+        When using data from IBTrACS, make sure to be familiar with the scope and limitations of
+        IBTrACS, e.g. by reading the official documentation
+        (https://www.ncdc.noaa.gov/ibtracs/pdf/IBTrACS_version4_Technical_Details.pdf). Reading the
+        CLIMADA documentation can't replace a thorough understanding of the underlying data. This
+        function only provides a (hopefully useful) interface for the data input, but cannot
+        provide any guidance or make recommendations about if and how to use IBTrACS data for your
+        particular project.
 
         Resulting tracks are required to have both pressure and wind speed information at all time
         steps. Therefore, all track positions where one of wind speed or pressure are missing are
@@ -304,21 +315,31 @@ class TCTracks():
         Parameters
         ----------
         provider : str or list of str, optional
-            If specified, enforce use of specific agency, such as "usa", "newdelhi", "bom", "cma",
-            "tokyo". The special value "official" means using the (usually 6-hourly) officially
-            reported values of the responsible agencies. Use "official_3h" to include 3-hourly data
-            of the officially responsible agencies (whenever available).
-            If a list is given, the variables or storms that are not reported by the first agency
-            are taken from the next agency in the list that did.
+            Either specify an agency, such as "usa", "newdelhi", "bom", "cma", "tokyo", or the
+            special values "official" and "official_3h":
+            * "official" means using the (usually 6-hourly) officially reported values of the
+              officially responsible agencies.
+            * "official_3h" means to include (inofficial) 3-hourly data of the officially
+              responsible agencies (whenever available).
+            If you want to restrict to the officially reported values by the officially responsible
+            agencies (`provider="official"`) without any modifications to the original official
+            data, make sure to also set `estimate_missing=False` and `interpolate_missing=False`.
+            Otherwise, gaps in the official reporting will be filled using interpolation and/or
+            statistical estimation procedures (see below).
+            If a list is given, the following logic is applied: For each storm, the variables that
+            are not reported by the first agency for this storm are taken from the next agency in
+            the list that did report this variable for this storm. For different storms, the same
+            variable might be taken from different agencies.
             Default: ['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
             'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']
-        provider_wind_corr : bool, optional
+        rescale_windspeeds : bool, optional
             If True, all wind speeds are linearly rescaled to 1-minute sustained winds.
-            Note however that the IBTrACS documentation (Section 5.2) includes a warning about
-            this kind of conversion: "While a multiplicative factor can describe the numerical
-            differences, there are procedural and observational differences between agencies that
-            can change through time, which confounds the simple multiplicative factor."
-            Default: True
+            Note however that the IBTrACS documentation (Section 5.2,
+            https://www.ncdc.noaa.gov/ibtracs/pdf/IBTrACS_version4_Technical_Details.pdf) includes
+            a warning about this kind of conversion: "While a multiplicative factor can describe
+            the numerical differences, there are procedural and observational differences between
+            agencies that can change through time, which confounds the simple multiplicative
+            factor." Default: True
         storm_id : str or list of str, optional
             IBTrACS ID of the storm, e.g. 1988234N13299, [1988234N13299, 1989260N11316].
         year_range : tuple (min_year, max_year), optional
@@ -326,11 +347,26 @@ class TCTracks():
         basin : str, optional
             E.g. US, SA, NI, SI, SP, WP, EP, NA. If not provided, consider all basins.
         interpolate_missing : bool, optional
-            If True, interpolate temporal reporting gaps linearly if possible. This will be
-            applied before the statistical estimations referred to by `estimate_missing`.
+            If True, interpolate temporal reporting gaps within a variable (such as pressure, wind
+            speed, or radius) linearly if possible.
+            For each time step with a missing value, this procedure is only able to fill in that
+            value if there are other time steps before and after this time step for which values
+            have been reported.
+            This procedure will be applied before the statistical estimations referred to
+            by `estimate_missing`. It is applied to all variables (eye position, wind speed,
+            environmental and central pressure, storm radius and radius of maximum winds).
             Default: True
         estimate_missing : bool, optional
-            Estimate missing pressure, wind speed and radius values using other available values.
+            For each fixed time step, estimate missing pressure, wind speed and radius using other
+            variables that are available at that time step.
+            The relationships between the variables are purely statistical. In comparison to
+            `interpolate_missing`, this procedure is able to estimate values for variables that
+            haven't been reported by any agency at any time step, as long as other variables are
+            available.
+            A typical example are storms before 1950, for which there are often no reported values
+            for pressure, but for wind speed. In this case, a rough statistical pressure-wind
+            relationship is applied to estimate the missing pressure values from the available
+            wind-speed values.
             Default: False
         correct_pres : bool, optional
             For backwards compatibility, alias for `estimate_missing`.
@@ -382,14 +418,14 @@ class TCTracks():
 
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
-        valid_st = ibtracs_ds.valid_t.any(dim="date_time")
-        invalid_st = np.nonzero(~valid_st.data)[0]
-        if invalid_st.size > 0:
-            st_ids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data)
-            LOGGER.warning('No valid timestamps found for %s.', st_ids)
-            ibtracs_ds = ibtracs_ds.sel(storm=valid_st)
+        valid_storms_mask = ibtracs_ds.valid_t.any(dim="date_time")
+        invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
+        if invalid_storms_idx.size > 0:
+            invalid_sids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
+            LOGGER.warning('No valid timestamps found for %s.', invalid_sids)
+            ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
-        if provider_wind_corr:
+        if rescale_windspeeds:
             for agency in IBTRACS_AGENCIES:
                 ibtracs_ds[f'{agency}_wind'] *= IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
 
@@ -397,32 +433,31 @@ class TCTracks():
             provider = ["official_3h"] + IBTRACS_AGENCIES
         provider = [provider] if isinstance(provider, str) else provider
 
-        for var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
+        for tc_var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
             if "official" in provider or "official_3h" in provider:
-                ibtracs_add_official_variable(ibtracs_ds, var, add_3h=("official_3h" in provider))
+                ibtracs_add_official_variable(
+                    ibtracs_ds, tc_var, add_3h=("official_3h" in provider))
 
             # set up dimension of agency-reported values in order of preference, including the
             # newly created `official` and `official_3h` data if specified
-            cols = [f'{a}_{var}' for a in provider]
-            cols = [col for col in cols if col in ibtracs_ds.data_vars.keys()]
-            all_vals = ibtracs_ds[cols].to_array(dim='agency')
-            preferred_ix = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
-            ibtracs_ds[var] = all_vals.isel(agency=preferred_ix)
+            ag_vars = [f'{ag}_{tc_var}' for ag in provider]
+            ag_vars = [ag_var for ag_var in ag_vars if ag_var in ibtracs_ds.data_vars.keys()]
+            all_vals = ibtracs_ds[ag_vars].to_array(dim='agency')
+            # argmax returns the first True (i.e. valid) along the 'agency' dimension
+            preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
+            ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
             if interpolate_missing:
-                # don't interpolate lat/lon if we restrict to official reporting times
-                if provider[0] == "official" and var in ['lat', 'lon']:
-                    continue
-
                 with warnings.catch_warnings():
-                    # See https://github.com/pydata/xarray/issues/4167
+                    # Upstream issue, see https://github.com/pydata/xarray/issues/4167
                     warnings.simplefilter(action="ignore", category=FutureWarning)
 
                     # don't interpolate if there is only a single record for this variable
-                    nonsingular_mask = (ibtracs_ds[var].notnull().sum(dim="date_time") > 1).values
+                    nonsingular_mask = (
+                        ibtracs_ds[tc_var].notnull().sum(dim="date_time") > 1).values
                     if nonsingular_mask.sum() > 0:
-                        ibtracs_ds[var].values[nonsingular_mask] = (
-                            ibtracs_ds[var].sel(storm=nonsingular_mask).interpolate_na(
+                        ibtracs_ds[tc_var].values[nonsingular_mask] = (
+                            ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
         ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
                                  'wind', 'pres', 'rmw', 'roci', 'poci']]
@@ -435,14 +470,14 @@ class TCTracks():
 
         ibtracs_ds['valid_t'] &= (ibtracs_ds.lat.notnull() & ibtracs_ds.lon.notnull()
                                   & ibtracs_ds.wind.notnull() & ibtracs_ds.pres.notnull())
-        valid_st = ibtracs_ds.valid_t.any(dim="date_time")
-        invalid_st = np.nonzero(~valid_st.data)[0]
-        if invalid_st.size > 0:
-            invalid_ids = list(ibtracs_ds.sid.sel(storm=invalid_st).astype(str).data)
-            LOGGER.warning('No valid wind/pressure values found for %d storm events: %s%s',
-                           len(invalid_ids), ", ".join(invalid_ids[:5]),
-                           ", ..." if len(invalid_ids) > 5  else ".")
-            ibtracs_ds = ibtracs_ds.sel(storm=valid_st)
+        valid_storms_mask = ibtracs_ds.valid_t.any(dim="date_time")
+        invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
+        if invalid_storms_idx.size > 0:
+            invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
+            LOGGER.warning('%d storm events are discarded because no valid wind/pressure values '
+                           'have been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
+                           ", ..." if len(invalid_sids) > 5  else ".")
+            ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
@@ -1661,20 +1696,20 @@ def ibtracs_track_agency(ds_sel):
     track_agency_ix = xr.apply_ufunc(agency_fun, ds_sel.track_agency, vectorize=True)
     return agency_pref, track_agency_ix
 
-def ibtracs_add_official_variable(ibtracs_ds, var, add_3h=False):
-    """Add variables for officially reported values to IBTrACS dataset
+def ibtracs_add_official_variable(ibtracs_ds, tc_var, add_3h=False):
+    """Add variables for the officially responsible agencies to an IBTrACS dataset
 
-    This function adds new variables to the xarray `ibtracs_ds` that contain values of the
+    This function adds new variables to the xarray.Dataset `ibtracs_ds` that contain values of the
     specified TC variable `var` that have been reported by the officially responsible agencies.
-    For example, if `var` is "wind", there will be a new variable "official_wind" and, if `add_3h`
-    is True, a variable "official_3h_wind".
+    For example, if `tc_var` is "wind", there will be a new variable "official_wind" and, if
+    `add_3h` is True, an additional variable "official_3h_wind".
 
     Parameters
     ----------
     ibtracs_ds : xarray.Dataset
         Subselection of original IBTrACS NetCDF dataset.
-    var : str
-        Name of variable for which to add an "official" version.
+    tc_var : str
+        Name of variable for which to add an "official" version, e.g. "lat", "wind", "pres".
     add_3h : bool, optional
         Optionally, add an "official_3h" version where also 3-hourly data by the officially
         reporting agencies is included (if available). Default: False
@@ -1685,26 +1720,24 @@ def ibtracs_add_official_variable(ibtracs_ds, var, add_3h=False):
 
     # determine which of the official agencies report this variable at all
     available_agencies = [a for a in IBTRACS_AGENCIES
-                          if f'{a}_{var}' in ibtracs_ds.data_vars.keys()]
-    agency_map = {a.encode("utf-8"): i + 1 for i, a in enumerate(available_agencies)}
+                          if f'{a}_{tc_var}' in ibtracs_ds.data_vars.keys()]
+
+    # map all non-reporting agency variables to the 'nan_var' (0)
+    agency_map = {
+        a.encode("utf-8"): available_agencies.index(a) + 1 if a in available_agencies else 0
+        for a in [''] + IBTRACS_AGENCIES
+    }
     agency_map.update({
         a.encode('utf-8'): agency_map[b'usa'] for a in IBTRACS_USA_AGENCIES
     })
-
-    # map all non-reporting agency variables to the 'nan_var'
-    agency_map[b''] = 0
-    for agency in IBTRACS_AGENCIES:
-        ag_encoded = agency.encode("utf-8")
-        if ag_encoded not in agency_map:
-            agency_map[ag_encoded] = 0
 
     # read from officially responsible agencies that report this variable, but only
     # at official reporting times (usually 6-hourly)
     official_agency_ix = xr.apply_ufunc(
         lambda x: agency_map[x], ibtracs_ds.wmo_agency, vectorize=True)
-    available_cols = ['nan_var'] + [f'{a}_{var}' for a in available_agencies]
+    available_cols = ['nan_var'] + [f'{a}_{tc_var}' for a in available_agencies]
     all_vals = ibtracs_ds[available_cols].to_array(dim='agency')
-    ibtracs_ds[f'official_{var}'] = all_vals.isel(agency=official_agency_ix)
+    ibtracs_ds[f'official_{tc_var}'] = all_vals.isel(agency=official_agency_ix)
 
     if add_3h:
         # create a copy in float for NaN interpolation
@@ -1727,7 +1760,7 @@ def ibtracs_add_official_variable(ibtracs_ds, var, add_3h=False):
         # read from officially responsible agencies that report this variable, including
         # 3-hour time steps if available
         official_agency_ix_interp.values[official_agency_ix_interp.isnull().values] = 0.0
-        ibtracs_ds[f'official_3h_{var}'] = all_vals.isel(
+        ibtracs_ds[f'official_3h_{tc_var}'] = all_vals.isel(
             agency=official_agency_ix_interp.astype(int))
 
 def _change_max_wind_unit(wind, unit_orig, unit_dest):
