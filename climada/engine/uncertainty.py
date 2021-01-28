@@ -23,17 +23,12 @@ import pandas as pd
 import numpy as np
 import logging
 import matplotlib.pyplot as plt
-
-from SALib.sample import saltelli
-from SALib.analyze import sobol
+from functools import partial
 
 import SALib.sample as salibs
 import SALib.analyze as saliba
 
-from climada.engine import Impact
-from climada.entity import ImpactFuncSet
-from climada.entity import Exposures
-from climada.hazard import Hazard
+from climada.engine import Impact, CostBenefit
 from climada.util.value_representation import value_to_monetary_unit as vtm
 
 LOGGER = logging.getLogger(__name__)
@@ -330,11 +325,12 @@ class Uncertainty():
         """
         
         sensitivity_dict = {}
-        for df_metric in self.metrics.values():
+        for name, df_metric in self.metrics.items():
+            sensitivity_dict[name] = {}
             for metric in df_metric:
                 Y = df_metric[metric].to_numpy()
                 sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
-                sensitivity_dict.update({metric: sensitivity_index})
+                sensitivity_dict[name].update({metric: sensitivity_index})
                 
         return sensitivity_dict
     
@@ -360,6 +356,67 @@ class Uncertainty():
             return var
         
         return UncVar(unc_var=lambda: var, distr_dict={})
+    
+    
+    def plot_metric_distribution(self, metric_list):
+        """
+        Plot the distribution of values.
+
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+        axes : TYPE
+            DESCRIPTION.
+
+        """
+        
+        if not self.metrics:
+            raise ValueError("No uncertainty data present for this emtrics. "+
+                    "Please run an uncertainty analysis first.")
+            
+        df_values = pd.DataFrame()
+        for metric in metric_list:
+            df_values = df_values.append(self.metrics[metric])
+            
+        df_values_log = df_values.apply(np.log10).copy()
+        df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
+        cols = df_values_log.columns
+        nplots = len(cols)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize=(nrows*7, ncols * 3.5),
+                                 sharex=True,
+                                 sharey=True)    
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = [axes]
+
+        for ax, col in zip(flat_axes, cols):
+            data = df_values_log[col]
+            data.hist(ax=ax,  bins=100, density=True, histtype='step')
+            avg = df_values[col].mean()
+            std = df_values[col].std()
+            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
+                    color='red', linestyle='dashed',
+                    label="avg=%.2f%s" %vtm(avg))
+            ax.plot([np.log10(avg) - np.log10(std) / 2,
+                     np.log10(avg) + np.log10(std) / 2],
+                    [0.3, 0.3], color='red',
+                    label="std=%.2f%s" %vtm(std))
+            ax.set_title(col)
+            ax.set_xlabel('value [log10]')
+            ax.set_ylabel('density of events')
+            ax.legend()
+
+        return fig, axes
 
     
     
@@ -399,16 +456,10 @@ class UncImpact(Uncertainty):
 
         self.params = pd.DataFrame()
         self.problem = {}
-        self.metrics = {'aai_agg': None,
-                        'freq_curve': None,
-                        'eai_exp': None,
-                        'at_event': None}
-        
-        
-        self.aai = pd.DataFrame()
-        self.freq_curve = pd.DataFrame()
-        self.eai_exp = pd.DataFrame()
-        self.at_event = pd.DataFrame()
+        self.metrics = {'aai_agg': pd.DataFrame([]),
+                        'freq_curve': pd.DataFrame([]),
+                        'eai_exp': pd.DataFrame([]),
+                        'at_event':  pd.DataFrame([])}
     
     
     def calc_impact_distribution(self,
@@ -486,10 +537,9 @@ class UncImpact(Uncertainty):
 
         Returns
         -------
-        metrics : dict
-            impact metrics dictfor all samples containing aai_agg, rp_curve,
-            eai_exp (if self.calc_eai_exp=True), and at_event (if
-            self.calc_at_event=True)
+         : list
+            impact metrics list for all samples containing aai_agg, rp_curve,
+            eai_exp and at_event.
 
         """
 
@@ -520,63 +570,6 @@ class UncImpact(Uncertainty):
             at_event = np.array([])
 
         return [imp.aai_agg, freq_curve, eai_exp, at_event]
-    
-                    
-    def plot_impact_uncertainty(self):
-        """
-        Plot the distribution of values.
-
-        Raises
-        ------
-        ValueError
-            DESCRIPTION.
-
-        Returns
-        -------
-        fig : TYPE
-            DESCRIPTION.
-        axes : TYPE
-            DESCRIPTION.
-
-        """
-        if self.aai_agg.empty:
-            raise ValueError("No uncertainty data present. Please run "+
-                    "an uncertainty analysis first.")
-
-        log_aai_freq = pd.concat([self.aai_agg.copy(),
-                                  self.freq_curve.copy()],
-                                 axis=1, join='inner') 
-        
-        log_aai_freq = log_aai_freq.apply(np.log10)
-        log_aai_freq = log_aai_freq.replace([np.inf, -np.inf], np.nan)
-        cols = log_aai_freq.columns
-        nplots = len(cols)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
-        fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize=(20, ncols * 3.5),
-                                 sharex=True,
-                                 sharey=True)
-
-        for ax, col in zip(axes.flatten(), cols):
-            data = log_aai_freq[col]
-            data.hist(ax=ax,  bins=100, density=True, histtype='step')
-            avg = self.aai_freq[col].mean()
-            std = self.aai_freq[col].std()
-            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
-                    color='red', linestyle='dashed',
-                    label="avg=%.2f%s" %vtm(avg))
-            ax.plot([np.log10(avg) - np.log10(std) / 2,
-                     np.log10(avg) + np.log10(std) / 2],
-                    [0.3, 0.3], color='red',
-                    label="std=%.2f%s" %vtm(std))
-            ax.set_title(col)
-            ax.set_xlabel('value [log10]')
-            ax.set_ylabel('density of events')
-            ax.legend()
-
-        return fig, axes
-
     
     def calc_impact_sensitivity(self, method='sobol', **kwargs):
         """
@@ -613,7 +606,7 @@ class UncImpact(Uncertainty):
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
             
-        if self.metrics['aai_agg'].empty:
+        if not self.metrics:
             raise ValueError("I found no impact data. Please compute"
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
@@ -629,13 +622,144 @@ class UncImpact(Uncertainty):
     
 class UncCostBenefit(Uncertainty):
     
+    def __init__(self, haz_unc, ent_unc, haz_fut_unc, ent_fut_unc, risk_func, pool=None):
+
+         if pool:
+             self.pool = pool
+             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+         else:
+             self.pool = None
+             
+         self.unc_vars = {'haz': self._var_or_uncvar(haz_unc),
+                          'ent': self._var_or_uncvar(ent_unc),
+                          'haz_fut': self._var_or_uncvar(haz_fut_unc),
+                          'ent_fut': self._var_or_uncvar(ent_fut_unc)
+                          }
     
-    def calc_cost_benefit_distribution(self):
-        raise NotImplementedError()
+         self.params = pd.DataFrame()
+         self.problem = {}
+         self.metrics = {'tot_climate_risk': None,
+                         'benefit': None,
+                         'cost_ben_ratio': None,
+                         'imp_meas_present': None,
+                         'imp_meas_future': None}
         
+    
+    
+    def calc_cost_benefit_distribution(self, **kwargs):
+   
+        #Compute impact distributions
+        if self.pool:
+            chunksize = min(self.n_runs // self.pool.ncpus, 100)
+            cb_metrics = self.pool.map(partial(self._map_costben_eval, **kwargs),
+                                           self.params.iterrows(),
+                                           chunsize = chunksize)
+    
+        else:
+            cb_metrics = map(self._map_costben_eval, self.params.iterrows())
+                       
+        [imp_meas_present, imp_meas_future,
+         tot_climate_risk, benefit, cost_ben_ratio] = cb_metrics
+
+        # Assign computed impact distribution data to self
+        
+        self.metrics['tot_climate_risk'] = \
+            pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
+            
+        df_ben = pd.DataFrame()
+        for ben_dict in benefit:
+            df_ben.append(pd.DataFrame(ben_dict))
+        self.metrics['benefit'] = df_ben
+        
+        df_costbenratio = pd.DataFrame()
+        for costbenratio_dict in cost_ben_ratio:
+            df_costbenratio.append(pd.DataFrame(costbenratio_dict))
+        self.metrics['cost_ben_ratio'] = df_costbenratio
+        
+        df_imp_meas_pres = pd.DataFrame()
+        for impd in imp_meas_present:
+            risk = impd['risk']
+            risk_transf = impd['risk_transf']
+            cost_meas, cost_ins = impd['cost']
+            freq_curve = impd['efc']
+            df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
+                              columns = ['risk', 'risk_transf', 'cost_meas',
+                                         'cost_ins', *impd['efc'].return_per]
+                              )
+            df_imp_meas_pres.append(df_tmp)
+        self.metrics['imp_meas_present'] = df_imp_meas_pres
+        
+        df_imp_meas_fut = pd.DataFrame()
+        for impd in imp_meas_future:
+            risk = impd['risk']
+            risk_transf = impd['risk_transf']
+            cost_meas, cost_ins = impd['cost']
+            freq_curve = impd['efc']
+            df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
+                              columns = ['risk', 'risk_transf', 'cost_meas',
+                                         'cost_ins', *impd['efc'].return_per]
+                              )
+            df_imp_meas_fut.append(df_tmp)
+        self.metrics['imp_meas_future'] = df_imp_meas_fut
+
+
+    def _map_costben_eval(self, param_sample, **kwargs):
+        """
+        Map to compute impact for all parameter samples in parrallel
+
+        Parameters
+        ----------
+        param_sample : pd.DataFrame.iterrows()
+            Generator of the parameter samples
+
+        Returns
+        -------
+
+
+        """
+
+        # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
+        haz_params = param_sample[1][self.unc_vars['haz'].labels].to_dict()
+        ent_params = param_sample[1][self.unc_vars['ent'].labels].to_dict()
+        haz_fut_params = param_sample[1][self.unc_vars['haz_fut'].labels].to_dict()
+        ent_fut_params = param_sample[1][self.unc_vars['ent_fut'].labels].to_dict()
+
+        haz = self.unc_vars['haz'].evaluate(haz_params)
+        ent = self.unc_vars['ent'].evaluate(ent_params)
+        haz_fut = self.unc_vars['haz_fut'].evaluate(haz_fut_params)
+        ent_fut = self.unc_vars['ent_fut'].evaluate(ent_fut_params)
+
+        cb = CostBenefit()
+        cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
+                save_imp=False, **kwargs)
+        
+        # Extract from climada.impact the chosen metrics
+        return  [cb.imp_meas_present,
+                 cb.imp_meas_future,
+                 cb.tot_climate_risk,
+                 cb.benefit,
+                 cb.cost_ben_ratio
+                 ]
+
         
     def calc_cost_benefit_sensitivity(self,  method, **kwargs):
-        raise NotImplementedError()
+        
+        if self.params.empty:
+            raise ValueError("I found no samples. Please produce first"
+                             " samples using Uncertainty.make_sample().")
+            
+        if not self.metrics:
+            raise ValueError("I found no impact data. Please compute"
+                             " the impact distribution first using"+
+                             " UncImpact.calc_impact_distribution()")
+                              
+        analysis_method = getattr(saliba, method)
+    
+        
+        sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
+        self.sensitivity = sensitivity_analysis
+    
+        return sensitivity_analysis
 
 
 class UncRobustness():
