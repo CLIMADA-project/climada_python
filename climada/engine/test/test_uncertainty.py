@@ -152,6 +152,8 @@ class TestUncVar(unittest.TestCase):
     unc.calc_impact_distribution()
     unc.calc_impact_sensitivity()
     
+    unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
+    
     
 
     
