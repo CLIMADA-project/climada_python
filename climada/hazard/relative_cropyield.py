@@ -463,6 +463,9 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
     elif (yearrange_mean is None) and (isimip_run == 'ISIMIP3b'):
         yearrange_mean = YEARCHUNKS['historical_ISIMIP3b']['yearrange_mean']
         # (1983, 2013) # c.f. Jaegermeyr et al. on ISIMIP3b
+    elif (yearrange_mean is None) and (isimip_run == 'ISIMIP2a'):
+        yearrange_mean = YEARCHUNKS['ISIMIP2a']['yearrange_mean']
+        # (1980, 1999)
 
     for his_file in his_file_list:
         haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props,
