@@ -931,11 +931,11 @@ def plot_comparing_maps(haz_his, haz_fut, axes, nr_cli_models=1, model=1):
     haz2plot = RelativeCropyield()
     haz2plot = copy.deepcopy(haz_his)
     haz2plot.event_id = 0
-
+    
+    his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
+    fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
+    
     for subplot in range(3):
-
-        his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
-        fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
 
         if subplot == 0:
             haz2plot.intensity = his_mean
