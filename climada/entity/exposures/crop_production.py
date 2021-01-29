@@ -822,7 +822,7 @@ def normalize_several_exp(input_dir=None, output_dir=None,
         yearrange = YEARS_FAO
 
     filenames_firr = [f.parts[-1] for f in (output_dir / 'Exposure').iterdir() if
-                      f.isfile() if not f.parts[-1].startswith('.') if
+                      f.is_file() if not f.parts[-1].startswith('.') if
                       'firr' in f.parts[-1]]
 
     crop_list = list()
