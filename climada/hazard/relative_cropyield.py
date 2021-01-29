@@ -910,31 +910,47 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     [lonmin, latmin, lonmax, latmax] = bbox
     return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
 
-def plot_comparing_maps(haz_his, haz_fut, axes, nr_cli_models=1, model=1):
+def plot_comparing_maps(haz_his, haz_fut, axes=None, nr_cli_models=1, model=1):
     """Plots comparison maps of historic and future data and their difference fut-his
 
     Parameters:
         haz_his (RelativeCropyield): historic hazard
         haz_fut (RelativeCropyield): future hazard
-        axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
+        axes (Geoaxes): subplot axes that are generated if not given
+            (sets the figure size depending on the extent of the single plots and
+             the amount of rows)
         nr_cli_models (int): number of climate models and respectively nr of rows within
-                                the subplot
+            the subplot
         model (int): current row to plot - this method can be used in a loop to plot
             subplots in one figure consisting of several rows of subplots.
             One row displays the intensity for present and future climate and the difference of
             the two for one model-combination (ag_model and cl_model)
 
     Returns:
-        geoaxes
+        figure, geoaxes
     """
+
+
+    if axes is None:
+        len_lat = (np.max(haz_his.centroids.lat)-np.min(haz_his.centroids.lat))*(2.5/13.5)
+        len_lon = (np.max(haz_his.centroids.lon)-np.min(haz_his.centroids.lon))*(5/26)
+
+        fig, axes = plt.subplots(nr_cli_models, 3, figsize=(3*len_lon, nr_cli_models*len_lat), \
+                                 subplot_kw=dict(projection=cartopy.crs.PlateCarree()))
+
+        for subplot in range(3*nr_cli_models):
+            axes.flat[subplot].set_extent([np.min(haz_his.centroids.lon),
+                                           np.max(haz_his.centroids.lon),
+                                           np.min(haz_his.centroids.lat),
+                                           np.max(haz_his.centroids.lat)])
 
     haz2plot = RelativeCropyield()
     haz2plot = copy.deepcopy(haz_his)
     haz2plot.event_id = 0
-    
+
     his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
     fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
-    
+
     for subplot in range(3):
 
         if subplot == 0:
@@ -956,4 +972,4 @@ def plot_comparing_maps(haz_his, haz_fut, axes, nr_cli_models=1, model=1):
         for ax0, col in zip(axes, cols):
             ax0.set_title(col, size='large')
 
-    return axes
+    return fig, axes
