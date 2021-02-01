@@ -69,7 +69,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """MATLAB variable names"""
 
-class Exposures(GeoDataFrame):
+class Exposures():
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
     Attributes.
 
@@ -98,8 +98,7 @@ class Exposures(GeoDataFrame):
             TC. There might be different hazards defined: centr_TC, centr_FL, ...
             Computed in method assign_centroids().
     """
-    _metadata = GeoDataFrame._metadata + ['tag', 'ref_year', 'value_unit',
-                                          'meta']
+    _metadata = ['tag', 'ref_year', 'value_unit', 'meta', 'crs']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -111,75 +110,87 @@ class Exposures(GeoDataFrame):
                 'region_id', 'geometry']
     """Name of the variables that aren't need to compute the impact."""
 
-    @property
-    def _constructor(self):
-        return Exposures
-
     def __init__(self, *args, **kwargs):
-        """Initialize. Copy attributes of input DataFrame."""
-        if args:
-            for var_meta in self._metadata:
-                try:
-                    val_meta = getattr(args[0], var_meta)
-                    setattr(self, var_meta, val_meta)
-                except AttributeError:
-                    pass
-        super(Exposures, self).__init__(*args, **kwargs)
+        """Creates an Exposures object from a GeoDataFrame
+
+        Parameters
+        ----------
+        *args :
+            Arguments of the GeoDataFrame constructor
+        **kwargs :
+            Named arguments of the GeoDataFrame constructor, additionally
+        tag : climada.entity.exposures.tag.Tag
+            Exopusres tag
+        ref_year : int
+            Reference Year
+        value_unit : str
+            Unit of the exposed value
+        meta : dict
+            Metadata dictionary
+        """
+        try:
+            self.meta = kwargs.pop('meta')
+        except KeyError:
+            self.meta = {}
+        try:
+            self.tag = kwargs.pop('tag')
+        except KeyError:
+            self.tag = Tag()
+        try:
+            self.ref_year = kwargs.pop('ref_year')
+        except KeyError:
+            self.ref_year = DEF_REF_YEAR
+        try:
+            self.value_unit = kwargs.pop('value_unit')
+        except KeyError:
+            self.value_unit = DEF_VALUE_UNIT
+        self.gdf = GeoDataFrame(*args, **kwargs)
+        if self.gdf.crs:
+            self.crs = self.gdf.crs
+        else:
+            self.crs = DEF_CRS
+            self.gdf.crs = DEF_CRS
+            LOGGER.info('crs set to default value: %s', self.crs)
 
     def check(self):
         """Check which variables are present"""
-        # check metadata
-        for var in self._metadata:
-            if var[0] == '_':
-                continue
-            try:
-                if getattr(self, var) is None and var == 'crs':
-                    self.crs = DEF_CRS
-                    LOGGER.info('%s set to default value: %s', var, self.__dict__[var])
-            except AttributeError:
-                if var == 'tag':
-                    self.tag = Tag()
-                elif var == 'ref_year':
-                    self.ref_year = DEF_REF_YEAR
-                elif var == 'value_unit':
-                    self.value_unit = DEF_VALUE_UNIT
-                elif var == 'meta':
-                    self.meta = None
-                LOGGER.info('%s metadata set to default value: %s', var, self.__dict__[var])
-
         for var in self.vars_oblig:
-            if var not in self.columns:
+            if var not in self.gdf.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError
 
         for var in self.vars_def:
             if var == INDICATOR_IF:
-                found = np.array([var in var_col for var_col in self.columns]).any()
-                if INDICATOR_IF in self.columns:
+                found = np.array([var in var_col for var_col in self.gdf.columns]).any()
+                if INDICATOR_IF in self.gdf.columns:
                     LOGGER.info("Hazard type not set in %s", var)
             else:
-                found = var in self.columns
-            if not found and var == INDICATOR_IF:
-                LOGGER.info("Setting %s to default impact functions ids 1.", var)
-                self[INDICATOR_IF] = np.ones(self.shape[0], dtype=int)
-            elif not found:
-                LOGGER.info("%s not set.", var)
+                found = var in self.gdf.columns
+            if not found:
+                if var == INDICATOR_IF:
+                    LOGGER.info("Setting %s to default impact functions ids 1.", var)
+                    self.gdf[INDICATOR_IF] = np.ones(self.gdf.shape[0], dtype=int)
+                else:
+                    LOGGER.info("%s not set.", var)
 
         for var in self.vars_opt:
             if var == INDICATOR_CENTR:
-                found = np.array([var in var_col for var_col in self.columns]).any()
-                if INDICATOR_CENTR in self.columns:
+                found = np.array([var in var_col for var_col in self.gdf.columns]).any()
+                if INDICATOR_CENTR in self.gdf.columns:
                     LOGGER.info("Hazard type not set in %s", var)
             else:
-                found = var in self.columns
+                found = var in self.gdf.columns
             if not found:
                 LOGGER.info("%s not set.", var)
-            elif var == 'geometry' and \
-                    (self.geometry.values[0].x != self.longitude.values[0] or
-                     self.geometry.values[0].y != self.latitude.values[0]):
+        
+        try:
+            if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
+                self.gdf.geometry.values[0].y != self.gdf.latitude.values[0]):
                 LOGGER.error(("Geometry values do not correspond to latitude and "
                               "longitude. Use set_geometry_points() or set_lat_lon()."))
                 raise ValueError
+        except AttributeError:  # no geometry column
+            pass
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
@@ -198,28 +209,28 @@ class Exposures(GeoDataFrame):
                 Default 100 km.
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
-                    str(self.shape[0]), str(hazard.centroids.size))
+                    str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
-            x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2])
+            x_i = ((self.gdf.longitude.values - hazard.centroids.meta['transform'][2])
                    / hazard.centroids.meta['transform'][0]).astype(int)
-            y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5])
+            y_i = ((self.gdf.latitude.values - hazard.centroids.meta['transform'][5])
                    / hazard.centroids.meta['transform'][4]).astype(int)
             assigned = y_i * hazard.centroids.meta['width'] + x_i
             assigned[assigned < 0] = -1
             assigned[assigned >= hazard.centroids.size] = -1
         else:
-            coord = np.stack([self.latitude.values, self.longitude.values], axis=1)
+            coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1)
             if np.array_equal(coord, hazard.centroids.coord):
-                assigned = np.arange(self.shape[0])
+                assigned = np.arange(self.gdf.shape[0])
             else:
                 assigned = interpol_index(hazard.centroids.coord, coord,
                                           method=method, distance=distance,
                                           threshold=threshold)
 
-        self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
+        self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and
@@ -229,13 +240,13 @@ class Exposures(GeoDataFrame):
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        u_coord.set_df_geometry_points(self, scheduler)
+        u_coord.set_df_geometry_points(self.gdf, scheduler)
 
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
         LOGGER.info('Setting latitude and longitude attributes.')
-        self['latitude'] = self.geometry[:].y
-        self['longitude'] = self.geometry[:].x
+        self.gdf['latitude'] = self.gdf.geometry[:].y
+        self.gdf['longitude'] = self.gdf.geometry[:].x
 
     def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
@@ -256,7 +267,6 @@ class Exposures(GeoDataFrame):
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
         """
-        self.__init__()
         self.tag = Tag()
         self.tag.file_name = file_name
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -268,12 +278,12 @@ class Exposures(GeoDataFrame):
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
         try:
-            self.crs = meta['crs'].to_dict()
+            self.gdf.crs = meta['crs'].to_dict()
         except AttributeError:
-            self.crs = meta['crs']
-        self['longitude'] = x_grid.flatten()
-        self['latitude'] = y_grid.flatten()
-        self['value'] = value.reshape(-1)
+            self.gdf.crs = meta['crs']
+        self.gdf['longitude'] = x_grid.flatten()
+        self.gdf['latitude'] = y_grid.flatten()
+        self.gdf['value'] = value.reshape(-1)
         self.meta = meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
@@ -299,14 +309,14 @@ class Exposures(GeoDataFrame):
         title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
         if mask is None:
-            mask = np.ones((self.shape[0],), dtype=bool)
+            mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.value[mask].values > 0
+            pos_vals = self.gdf.value[mask].values > 0
         else:
-            pos_vals = np.ones((self.value[mask].values.size,), dtype=bool)
-        value = self.value[mask][pos_vals].values
-        coord = np.stack([self.latitude[mask][pos_vals].values,
-                          self.longitude[mask][pos_vals].values], axis=1)
+            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
+        value = self.gdf.value[mask][pos_vals].values
+        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
+                          self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend, proj=crs_epsg,
                                              axes=axis, **kwargs)
@@ -337,14 +347,14 @@ class Exposures(GeoDataFrame):
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
-            mask = np.ones((self.shape[0],), dtype=bool)
+            mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.value[mask].values > 0
+            pos_vals = self.gdf.value[mask].values > 0
         else:
-            pos_vals = np.ones((self.value[mask].values.size,), dtype=bool)
-        value = self.value[mask][pos_vals].values
-        coord = np.stack([self.latitude[mask][pos_vals].values,
-                          self.longitude[mask][pos_vals].values], axis=1)
+            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
+        value = self.gdf.value[mask][pos_vals].values
+        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
+                          self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
                                          axes=axis, **kwargs)
@@ -373,16 +383,16 @@ class Exposures(GeoDataFrame):
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self):
-            raster = self.value.values.reshape((self.meta['height'],
+            raster = self.gdf.value.values.reshape((self.meta['height'],
                                                 self.meta['width']))
             # check raster starts by upper left corner
-            if self.latitude.values[0] < self.latitude.values[-1]:
+            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.longitude.values[0] > self.longitude.values[-1]:
+            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
                 LOGGER.error('Points are not ordered according to meta raster.')
                 raise ValueError
         else:
-            raster, meta = u_coord.points_to_raster(self, ['value'], res, raster_res, scheduler)
+            raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
         if save_tiff is not None:
@@ -393,8 +403,8 @@ class Exposures(GeoDataFrame):
             ras_tiff.close()
         # make plot
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        xmin, ymin, xmax, ymax = self.longitude.min(), self.latitude.min(), \
-        self.longitude.max(), self.latitude.max()
+        xmin, ymin, xmax, ymax = self.gdf.longitude.min(), self.gdf.latitude.min(), \
+        self.gdf.longitude.max(), self.gdf.latitude.max()
         if not axis:
             _, axis = u_plot.make_map(proj=crs_epsg)
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
@@ -434,7 +444,7 @@ class Exposures(GeoDataFrame):
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.columns:
+        if 'geometry' not in self.gdf.columns:
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
@@ -453,10 +463,10 @@ class Exposures(GeoDataFrame):
         """
         LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
-        pandas_df = pd.DataFrame(self)
+        pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = np.asarray(self[col])
+                pandas_df[col] = np.asarray(self.gdf[col])
         store.put('exposures', pandas_df)
         var_meta = {}
         for var in self._metadata:
@@ -510,21 +520,45 @@ class Exposures(GeoDataFrame):
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-        Exposures.__init__(self, data=exposures)
+        self.gdf = GeoDataFrame(data=exposures)
         _read_mat_metadata(self, data, file_name, var_names)
 
     #
-    # Implement geopandas methods
+    # Extends the according geopandas method
     #
-
     def to_crs(self, crs=None, epsg=None, inplace=False):
-        res = super(Exposures, self).to_crs(crs, epsg, inplace)
-        if res is not None:
-            res.set_lat_lon()
-            return res
+        """Transform geometries to a new coordinate reference system.
+        Transform all geometries in a GeoSeries to a different coordinate reference system.
+        The crs attribute on the current GeoSeries must be set. Either crs in string or dictionary
+        form or an EPSG code may be specified for output.
+        This method will transform all points in all objects. It has no notion or projecting entire
+        geometries. All segments joining points are assumed to be lines in the current projection,
+        not geodesics. Objects crossing the dateline (or other projection boundary) will have
+        undesirable behavior.
 
-        self.set_lat_lon()
-        return None
+        Parameters:
+            crs : dict or str
+                Output projection parameters as string or in dictionary form.  
+            epsg : int
+                EPSG code specifying output projection.  
+            inplace : bool, optional, default: False
+                Whether to return a new GeoDataFrame or do the transformation in  
+                place.
+
+        Returns:
+            None if inplace is True
+            else a transformed copy of the exposures object
+        """
+        if inplace:
+            self.gdf.to_crs(crs, epsg, True)
+            self.crs = self.gdf.crs
+            self.set_lat_lon()
+            self.crs = self.gdf.crs
+            return None
+
+        exp = self.copy()
+        exp.to_crs(crs, epsg, True)
+        return exp
 
     to_crs.__doc__ = GeoDataFrame.to_crs.__doc__
 
@@ -539,11 +573,18 @@ class Exposures(GeoDataFrame):
         -------
             Exposures
         """
+        import copy
         # FIXME: this will likely be unnecessary if removed from GeoDataFrame
-        data = self._data
+        data = self.gdf.values
         if deep:
             data = data.copy()
-        return Exposures(data).__finalize__(self)
+        metadata = dict([
+           (md, copy.deepcopy(self.__dict__[md])) for md in self._metadata
+        ])
+        return self.__init__(
+            data,
+            **metadata
+        )
 
     def write_raster(self, file_name, value_name='value', scheduler=None):
         """Write value data into raster file with GeoTiff format
@@ -552,12 +593,12 @@ class Exposures(GeoDataFrame):
             file_name (str): name output file in tif format
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self):
-            raster = self[value_name].values.reshape((self.meta['height'],
+            raster = self.gdf[value_name].values.reshape((self.meta['height'],
                                                       self.meta['width']))
             # check raster starts by upper left corner
-            if self.latitude.values[0] < self.latitude.values[-1]:
+            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.longitude.values[0] > self.longitude.values[-1]:
+            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
                 LOGGER.error('Points are not ordered according to meta raster.')
                 raise ValueError
             u_coord.write_raster(file_name, raster, self.meta)
@@ -594,17 +635,17 @@ def add_sea(exposures, sea_res):
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
     on_land = ~u_coord.coord_on_land(lat_mgrid, lon_mgrid)
 
-    sea_exp = Exposures()
-    sea_exp['latitude'] = lat_mgrid[on_land]
-    sea_exp['longitude'] = lon_mgrid[on_land]
-    sea_exp['region_id'] = np.zeros(sea_exp.latitude.size, int) - 1
+    sea_exp = Exposures(GeoDataFrame())
+    sea_exp.gdf['latitude'] = lat_mgrid[on_land]
+    sea_exp.gdf['longitude'] = lon_mgrid[on_land]
+    sea_exp.gdf['region_id'] = np.zeros(sea_exp.gdf.latitude.size, int) - 1
 
     if 'geometry' in exposures.columns:
         sea_exp.set_geometry_points()
 
     for var_name in exposures.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
-            sea_exp[var_name] = np.zeros(sea_exp.latitude.size,
+            sea_exp.gdf[var_name] = np.zeros(sea_exp.gdf.latitude.size,
                                          exposures[var_name].dtype)
 
     return pd.concat([exposures, sea_exp], ignore_index=True, sort=False)
