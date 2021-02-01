@@ -286,7 +286,14 @@ class Uncertainty():
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
         self.problem = problem
-        salib_sampling_method = getattr(salibs, self.sampling_method)
+        #To import a submodule from a module use 'from_list' necessary
+        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
+        salib_sampling_method = getattr(
+            __import__('SALib.sample',
+                       fromlist=[self.sampling_method]
+                       ),
+            self.sampling_method
+            )
         sample_params = salib_sampling_method.sample(problem = problem,
                                                      N = self.n_samples,
                                                      **kwargs)
@@ -496,6 +503,11 @@ class UncImpact(Uncertainty):
         None.
     
         """
+        
+        if self.params.empty:
+            LOGGER.info("No sample was found. Please create one first"
+                        "using UncImpact.make_sample(N)")
+            return None
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
@@ -613,7 +625,14 @@ class UncImpact(Uncertainty):
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
                               
-        analysis_method = getattr(saliba, method)
+        #To import a submodule from a module use 'from_list' necessary
+        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
+        analysis_method = getattr(
+            __import__('SALib.analyze',
+                       fromlist=[method]
+                       ),
+            method
+            )
     
         
         sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
@@ -625,7 +644,7 @@ class UncImpact(Uncertainty):
 class UncCostBenefit(Uncertainty):
     
     def __init__(self, haz_unc, ent_unc, haz_fut_unc=None, ent_fut_unc=None,
-                 future_year=None, risk_func=risk_aai_agg, pool=None):
+                 pool=None):
 
          if pool:
              self.pool = pool
@@ -650,6 +669,11 @@ class UncCostBenefit(Uncertainty):
     
     
     def calc_cost_benefit_distribution(self, **kwargs):
+        
+        if self.params.empty:
+            LOGGER.info("No sample was found. Please create one first"
+                        "using UncImpact.make_sample(N)")
+            return None
    
         #Compute impact distributions
         if self.pool:
@@ -659,51 +683,56 @@ class UncCostBenefit(Uncertainty):
                                            chunsize = chunksize)
     
         else:
-            cb_metrics = map(self._map_costben_eval, self.params.iterrows())
-                       
-        [imp_meas_present, imp_meas_future,
-         tot_climate_risk, benefit, cost_ben_ratio] = cb_metrics
+            cb_metrics = map(partial(self._map_costben_eval, **kwargs),
+                             self.params.iterrows())
+                               
+        [imp_meas_present,
+         imp_meas_future,
+         tot_climate_risk,
+         benefit,
+         cost_ben_ratio] = list(zip(*cb_metrics))
 
-        # Assign computed impact distribution data to self
-        
+        # Assign computed impact distribution data to self      
         self.metrics['tot_climate_risk'] = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
             
-        df_ben = pd.DataFrame()
-        for ben_dict in benefit:
-            df_ben.append(pd.DataFrame(ben_dict))
-        self.metrics['benefit'] = df_ben
+        self.metrics['benefit'] = pd.DataFrame(benefit)
+        self.metrics['cost_ben_ratio'] = pd.DataFrame(cost_ben_ratio)
         
-        df_costbenratio = pd.DataFrame()
-        for costbenratio_dict in cost_ben_ratio:
-            df_costbenratio.append(pd.DataFrame(costbenratio_dict))
-        self.metrics['cost_ben_ratio'] = df_costbenratio
         
-        df_imp_meas_pres = pd.DataFrame()
-        for impd in imp_meas_present:
-            risk = impd['risk']
-            risk_transf = impd['risk_transf']
-            cost_meas, cost_ins = impd['cost']
-            freq_curve = impd['efc']
-            df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
-                              columns = ['risk', 'risk_transf', 'cost_meas',
-                                         'cost_ins', *impd['efc'].return_per]
-                              )
-            df_imp_meas_pres.append(df_tmp)
-        self.metrics['imp_meas_present'] = df_imp_meas_pres
+        imp_metric_names = ['risk', 'risk_transf', 'cost_meas',
+                            'cost_ins']
+            
+        for imp_meas, name in zip([imp_meas_present, imp_meas_future],
+                                  ['imp_meas_present', 'imp_meas_future']):
+            df_imp_meas = pd.DataFrame()
+            if imp_meas[0]:
+                for imp in imp_meas:
+                    met_dic = {}
+                    for meas, imp_dic in imp.items():
+                        metrics = [imp_dic['risk'], imp_dic['risk_transf'], *imp_dic['cost']]
+                        dic_tmp = {meas + '-' + m_name: [m_value] for m_name, m_value in zip(imp_metric_names, metrics)}
+                        met_dic.update(dic_tmp)
+                    df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
+            self.metrics[name] = df_imp_meas
         
-        df_imp_meas_fut = pd.DataFrame()
-        for impd in imp_meas_future:
-            risk = impd['risk']
-            risk_transf = impd['risk_transf']
-            cost_meas, cost_ins = impd['cost']
-            freq_curve = impd['efc']
-            df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
-                              columns = ['risk', 'risk_transf', 'cost_meas',
-                                         'cost_ins', *impd['efc'].return_per]
-                              )
-            df_imp_meas_fut.append(df_tmp)
-        self.metrics['imp_meas_future'] = df_imp_meas_fut
+        
+        # df_imp_meas_fut = pd.DataFrame()
+        # if imp_meas_future[0]:
+        #     metric_names = ['risk', 'risk_transf', 'cost_meas',
+        #                     'cost_ins', 
+        #                     *imp_meas_future[0]['no measure']['efc'].return_per]
+        #     for imp_fut in imp_meas_future:
+        #         for meas, imp in imp_fut.items():
+        #             risk = imp['risk']
+        #             risk_transf = imp['risk_transf']
+        #             cost_meas, cost_ins = imp['cost']
+        #             freq_curve = imp['efc']
+        #             df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
+        #                               columns = [meas + '_' + m for m in metric_names]
+        #                               )
+        #             df_imp_meas_fut.append(df_tmp)
+        # self.metrics['imp_meas_future'] = df_imp_meas_fut
 
 
     def _map_costben_eval(self, param_sample, **kwargs):
@@ -745,7 +774,7 @@ class UncCostBenefit(Uncertainty):
                  ]
 
         
-    def calc_cost_benefit_sensitivity(self,  method, **kwargs):
+    def calc_cost_benefit_sensitivity(self,  method='sobol', **kwargs):
         
         if self.params.empty:
             raise ValueError("I found no samples. Please produce first"
@@ -756,7 +785,14 @@ class UncCostBenefit(Uncertainty):
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
                               
-        analysis_method = getattr(saliba, method)
+        #To import a submodule from a module use 'from_list' necessary
+        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
+        analysis_method = getattr(
+            __import__('SALib.analyze',
+                       fromlist=[method]
+                       ),
+            method
+            )
     
         
         sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
