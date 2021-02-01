@@ -23,13 +23,14 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from sklearn.neighbors import DistanceMetric
+import rasterio
 from rasterio.windows import Window
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity.tag import Tag
-from climada.hazard.base import Hazard
+from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
 from climada.util.coordinates import coord_on_land, equal_crs
 
@@ -88,18 +89,44 @@ class TestFuncs(unittest.TestCase):
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
-        exp = Exposures()
-        exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
-        exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
-        exp.crs = DEF_CRS
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+
+        # explicit, easy-to-understand raster centroids for hazard
+        haz.centroids = Centroids()
+        haz.centroids.meta = {
+            'count': 1, 'crs': DEF_CRS,
+            'width': 20, 'height': 10,
+            'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
+        }
+
+        # explicit points with known results (see `expected_result` for details)
+        exp = Exposures()
+        exp['longitude'] = np.array([
+            -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
+            -19.0, -19.0, -19.0, -19.0,
+            -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
+            -6.4, 9.8, 0.0,
+        ])
+        exp['latitude'] = np.array([
+            7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
+            8.1, 7.9, 6.7, 6.5,
+            8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
+            -1.9, -1.7, 0.0,
+        ])
+        exp.crs = DEF_CRS
         exp.assign_centroids(haz)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][0], 51)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][1], 100)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000 - 1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
+
+        expected_result = [
+            # constant y-value, varying x-value
+            -1, 0, 0, 0, 0, 1,
+            # constant x-value, varying y-value
+            -1, 0, 0, 20,
+            # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            # some explicit points within the raster
+            149, 139, 113,
+        ]
+        np.testing.assert_array_equal(exp[INDICATOR_CENTR + 'FL'].values, expected_result)
 
 
     def test_assign_raster_same_pass(self):
