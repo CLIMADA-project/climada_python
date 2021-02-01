@@ -174,7 +174,6 @@ class TestUncVar(unittest.TestCase):
     unc.make_sample(N=1)
     unc.calc_cost_benefit_distribution()
     unc.calc_cost_benefit_sensitivity()
-    print('hi')
 
     
 if __name__ == "__main__":
