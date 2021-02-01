@@ -28,7 +28,8 @@ from functools import partial
 import SALib.sample as salibs
 import SALib.analyze as saliba
 
-from climada.engine import Impact, CostBenefit
+from climada.engine import Impact
+from climada.engine.cost_benefit import CostBenefit, risk_aai_agg
 from climada.util.value_representation import value_to_monetary_unit as vtm
 
 LOGGER = logging.getLogger(__name__)
@@ -348,7 +349,7 @@ class Uncertainty():
         Returns
         -------
         UncVar
-            var if var is UncVar, else UncVar with var and not distribution.
+            var if var is UncVar, else UncVar with var and no distribution.
 
         """
         
@@ -571,6 +572,7 @@ class UncImpact(Uncertainty):
 
         return [imp.aai_agg, freq_curve, eai_exp, at_event]
     
+    
     def calc_impact_sensitivity(self, method='sobol', **kwargs):
         """
         Compute the sensitivity indices using the SALib library:
@@ -622,7 +624,8 @@ class UncImpact(Uncertainty):
     
 class UncCostBenefit(Uncertainty):
     
-    def __init__(self, haz_unc, ent_unc, haz_fut_unc, ent_fut_unc, risk_func, pool=None):
+    def __init__(self, haz_unc, ent_unc, haz_fut_unc=None, ent_fut_unc=None,
+                 future_year=None, risk_func=risk_aai_agg, pool=None):
 
          if pool:
              self.pool = pool
