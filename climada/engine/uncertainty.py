@@ -716,6 +716,9 @@ class UncCostBenefit(Uncertainty):
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             self.metrics[name] = df_imp_meas
         
+        LOGGER.info("Currently the freq_curve is not saved. Please " +
+                    "change the risk_func if return period information " +
+                    "needed")
         
         # df_imp_meas_fut = pd.DataFrame()
         # if imp_meas_future[0]:
@@ -785,7 +788,7 @@ class UncCostBenefit(Uncertainty):
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
                               
-        #To import a submodule from a module use 'from_list' necessary
+        #To import a submodule from a module 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         analysis_method = getattr(
             __import__('SALib.analyze',
