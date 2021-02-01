@@ -18,23 +18,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Exposure base class.
 """
-import os
 import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 from sklearn.neighbors import DistanceMetric
-from climada.util.coordinates import coord_on_land
 from rasterio.windows import Window
 
-from climada.entity.tag import Tag
+from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
-INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+     INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+from climada.entity.tag import Tag
 from climada.hazard.base import Hazard
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
-from climada.util.coordinates import equal_crs
+from climada.util.coordinates import coord_on_land, equal_crs
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = CONFIG.exposures.test_data.dir()
 
 def good_exposures():
     """Followng values are defined for each exposure"""
@@ -173,7 +172,7 @@ class TestIO(unittest.TestCase):
         exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
 
-        file_name = os.path.join(DATA_DIR, 'test_hdf5_exp.h5')
+        file_name = DATA_DIR.joinpath('test_hdf5_exp.h5')
         exp_df.write_hdf5(file_name)
 
         exp_read = Exposures()

@@ -29,7 +29,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import xlsxwriter
 
-import climada.util.checker as check
+import climada.util.checker as u_check
 from climada.entity.tag import Tag
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as hdf5
@@ -91,7 +91,7 @@ class DiscRates():
         Raises:
             ValueError
         """
-        check.size(len(self.years), self.rates, 'DiscRates.rates')
+        u_check.size(len(self.years), self.rates, 'DiscRates.rates')
 
     def select(self, year_range):
         """Select discount rates in given years.
