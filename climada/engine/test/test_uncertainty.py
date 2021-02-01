@@ -126,19 +126,16 @@ def dummy_exp():
     exp.read_hdf5(file_name)
     return exp
     
-def dummy_haz():
+def dummy_haz(x=1):
     file_name = os.path.join(CURR_DIR, "tc_AIA.h5")
     haz= TropCyclone()
     haz.read_hdf5(file_name)
+    haz.intensity = haz.intensity.multiply(x)
     return haz
 
-from climada.hazard import Hazard
-from climada import CONFIG
-HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
-ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
+HAZ_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/hazard/test/data/atl_prob_no_name.mat'
+ENT_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/entity/exposures/test/data/demo_today.mat'
 def dummy_ent():
-    hazard = Hazard('TC')
-    hazard.read_mat(HAZ_TEST_MAT)
     entity = Entity()
     entity.read_mat(ENT_TEST_MAT)
     entity.check()
@@ -151,30 +148,33 @@ def dummy_ent():
     
 class TestUncVar(unittest.TestCase):
     
-    exp = dummy_exp()
-    haz = dummy_haz()
-    impf = imp_fun_tc
+    # exp = dummy_exp()
+    # haz = dummy_haz()
+    # impf = imp_fun_tc
     
-    distr_dict = {"G": sp.stats.uniform(0.8,1),
-                  "v_half": sp.stats.uniform(50, 100),
-                  "vmin": sp.stats.norm(15,30),
-                  "k": sp.stats.uniform(1, 5)
-                  }
-    impf_unc = UncVar(impf, distr_dict)
+    # distr_dict = {"G": sp.stats.uniform(0.8,1),
+    #               "v_half": sp.stats.uniform(50, 100),
+    #               "vmin": sp.stats.norm(15,30),
+    #               "k": sp.stats.uniform(1, 5)
+    #               }
+    # impf_unc = UncVar(impf, distr_dict)
     
-    impf_unc.plot_distr()
+    # impf_unc.plot_distr()
     
-    unc = UncImpact(exp, impf_unc, haz)
-    unc.make_sample(N=1)
-    unc.calc_impact_distribution()
-    unc.calc_impact_sensitivity()
+    # unc = UncImpact(exp, impf_unc, haz)
+    # unc.make_sample(N=1)
+    # unc.calc_impact_distribution(calc_eai_exp=True)
+    # unc.calc_impact_sensitivity()
     
-    unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
+    # unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
     
+    haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
     ent = dummy_ent()
-    unc = UncCostBenefit(haz, ent)
-    
-    
+    unc = UncCostBenefit(haz_unc, ent)
+    unc.make_sample(N=1)
+    unc.calc_cost_benefit_distribution()
+    unc.calc_cost_benefit_sensitivity()
+    print('hi')
 
     
 if __name__ == "__main__":
