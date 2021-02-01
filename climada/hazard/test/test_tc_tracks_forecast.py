@@ -19,14 +19,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks_forecast module.
 """
 
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.hazard.tc_tracks_forecast import TCForecast
 
+DATA_DIR = CONFIG.hazard.test_data.dir()
 TEST_BUFR_FILES = [
-    os.path.join(os.path.dirname(__file__), 'data', i) for i in [
+    DATA_DIR.joinpath(tbf) for tbf in [
         'tracks_22S_HEROLD_2020031912.det.bufr4',
         'tracks_22S_HEROLD_2020031912.eps.bufr4',
     ]

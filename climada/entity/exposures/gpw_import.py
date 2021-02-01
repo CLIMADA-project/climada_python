@@ -4,7 +4,6 @@ Created on Fri Jul 13 10:11:45 2018
 
 @author: Dario
 """
-import os
 import logging
 import subprocess
 
@@ -19,8 +18,6 @@ logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
-FOLDER_GPW = os.path.join(SYSTEM_DIR,
-                          'gpw-v4-population-count-rev%02i_%04i_30_sec_tif')
 GPW_VERSIONS = [11, 10, 12, 13]
 # FILENAME_GPW1 = '_30_sec.tif'
 YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
@@ -106,7 +103,7 @@ def get_box_gpw(**parameters):
 
     Parameters
     ----------
-    gpw_path : str
+    gpw_path : pathlib.Path
         Absolute path where files are stored. Default: SYSTEM_DIR
     resolution : int
         The resolution in arcsec in which the data output is created.
@@ -159,34 +156,32 @@ def get_box_gpw(**parameters):
     zoom_factor = 30 / resolution  # Orignal resolution is arc-seconds
     file_exists = False
     for ver in GPW_VERSIONS:
-        gpw_path = parameters.get('gpw_path', FOLDER_GPW % (ver, year))
-        if not os.path.isdir(gpw_path):
-            gpw_path = SYSTEM_DIR
-        fname = os.path.join(gpw_path, FILENAME_GPW % (ver, year))
-        if os.path.isfile(fname):
+        gpw_path = parameters.get('gpw_path', SYSTEM_DIR)
+        fpath = gpw_path.joinpath(FILENAME_GPW % (ver, year))
+        if fpath.is_file():
             file_exists = True
             LOGGER.info('GPW Version v4.%2i', ver)
             break
 
     try:
         if not file_exists:
-            if os.path.isfile(os.path.join(SYSTEM_DIR, 'GPW_help.pdf')):
-                subprocess.Popen([os.path.join(SYSTEM_DIR, 'GPW_help.pdf')], shell=True)
-                raise FileExistsError('The file ' + str(fname) + ' could not '
+            if SYSTEM_DIR.joinpath('GPW_help.pdf').is_file():
+                subprocess.Popen([str(SYSTEM_DIR.joinpath('GPW_help.pdf'))], shell=True)
+                raise FileExistsError(f'The file {fpath} could not '
                                       + 'be found. Please download the file '
                                       + 'first or choose a different folder. '
                                       + 'Instructions on how to download the '
                                       + 'file has been openend in your PDF '
                                       + 'viewer.')
             else:
-                raise FileExistsError('The file ' + str(fname) + ' could not '
+                raise FileExistsError(f'The file {fpath} could not '
                                       + 'be found. Please download the file '
                                       + 'first or choose a different folder. '
                                       + 'The data can be downloaded from '
                                       + 'http://sedac.ciesin.columbia.edu/'
                                       + 'data/collection/gpw-v4/sets/browse')
-        LOGGER.debug('Importing %s', str(fname))
-        gpw_file = gdal.Open(fname)
+        LOGGER.debug('Importing %s', str(fpath))
+        gpw_file = gdal.Open(str(fpath))
         band1 = gpw_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1, gpw_file
