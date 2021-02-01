@@ -203,13 +203,13 @@ class Exposures(GeoDataFrame):
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
-            x_i = ((self.longitude.values - hazard.centroids.meta['transform'][2])
-                   / hazard.centroids.meta['transform'][0]).astype(int)
-            y_i = ((self.latitude.values - hazard.centroids.meta['transform'][5])
-                   / hazard.centroids.meta['transform'][4]).astype(int)
+            xres, _, xmin, _, yres, ymin = hazard.centroids.meta['transform'][:6]
+            xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
+            x_i = np.round((self.longitude.values - xmin) / xres).astype(int)
+            y_i = np.round((self.latitude.values - ymin) / yres).astype(int)
             assigned = y_i * hazard.centroids.meta['width'] + x_i
-            assigned[assigned < 0] = -1
-            assigned[assigned >= hazard.centroids.size] = -1
+            assigned[(x_i < 0) | (x_i >= hazard.centroids.meta['width'])] = -1
+            assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
         else:
             coord = np.stack([self.latitude.values, self.longitude.values], axis=1)
             if np.array_equal(coord, hazard.centroids.coord):
