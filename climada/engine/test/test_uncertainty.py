@@ -25,10 +25,10 @@ import unittest
 
 from climada.entity import ImpactFunc, ImpactFuncSet
 import numpy as np
-from climada.entity import BlackMarble
+from climada.entity import BlackMarble, Entity
 from climada.hazard import TropCyclone
 import os
-from climada.engine.uncertainty import UncVar, UncImpact
+from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit
 import scipy as sp
 
 
@@ -131,6 +131,23 @@ def dummy_haz():
     haz= TropCyclone()
     haz.read_hdf5(file_name)
     return haz
+
+from climada.hazard import Hazard
+from climada import CONFIG
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
+def dummy_ent():
+    hazard = Hazard('TC')
+    hazard.read_mat(HAZ_TEST_MAT)
+    entity = Entity()
+    entity.read_mat(ENT_TEST_MAT)
+    entity.check()
+    entity.measures._data['TC'] = entity.measures._data.pop('XX')
+    for meas in entity.measures.get_measure('TC'):
+        meas.haz_type = 'TC'
+    entity.check()
+    return entity
+    
     
 class TestUncVar(unittest.TestCase):
     
@@ -153,6 +170,9 @@ class TestUncVar(unittest.TestCase):
     unc.calc_impact_sensitivity()
     
     unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
+    
+    ent = dummy_ent()
+    unc = UncCostBenefit(haz, ent)
     
     
 
