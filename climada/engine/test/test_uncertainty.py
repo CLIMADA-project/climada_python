@@ -57,7 +57,7 @@ def imp_fun_tc(G=1, v_half=84.7, vmin=25.7, k=3, _id=1):
         Impact function with given parameters
 
     """
-    
+
     imp_fun = ImpactFunc()
     imp_fun.haz_type = 'TC'
     imp_fun.id = _id
@@ -68,7 +68,7 @@ def imp_fun_tc(G=1, v_half=84.7, vmin=25.7, k=3, _id=1):
     imp_fun.check()
     impf_set = ImpactFuncSet()
     impf_set.append(imp_fun)
-    
+
     return impf_set
 
 def xhi(v, v_half, vmin):
@@ -87,12 +87,12 @@ def xhi(v, v_half, vmin):
     Returns
     -------
     float
-        impact function xhi parameter 
+        impact function xhi parameter
 
     """
-    
+
     return max([(v - vmin), 0]) / (v_half - vmin)
-  
+
 def imp_fun_param(v, G, v_half, vmin, k):
     """
     impact function formula from (Knutson 2011)
@@ -102,7 +102,7 @@ def imp_fun_param(v, G, v_half, vmin, k):
     v : float
         intensity (wind speed)
     G : float
-        Max impact. 
+        Max impact.
     v_half : float
         intensity at half curve.
     vmin : float
@@ -116,7 +116,7 @@ def imp_fun_param(v, G, v_half, vmin, k):
         impact value at given intensity v
 
     """
-    
+
     return G * xhi(v, v_half, vmin)**k / (1 + xhi(v, v_half, vmin)**k)
 
 
@@ -125,7 +125,7 @@ def dummy_exp():
     exp = BlackMarble()
     exp.read_hdf5(file_name)
     return exp
-    
+
 def dummy_haz(x=1):
     file_name = os.path.join(CURR_DIR, "tc_AIA.h5")
     haz= TropCyclone()
@@ -144,30 +144,31 @@ def dummy_ent():
         meas.haz_type = 'TC'
     entity.check()
     return entity
-    
-    
+
+
 class TestUncVar(unittest.TestCase):
-    
-    # exp = dummy_exp()
-    # haz = dummy_haz()
-    # impf = imp_fun_tc
-    
-    # distr_dict = {"G": sp.stats.uniform(0.8,1),
-    #               "v_half": sp.stats.uniform(50, 100),
-    #               "vmin": sp.stats.norm(15,30),
-    #               "k": sp.stats.uniform(1, 5)
-    #               }
-    # impf_unc = UncVar(impf, distr_dict)
-    
-    # impf_unc.plot_distr()
-    
-    # unc = UncImpact(exp, impf_unc, haz)
-    # unc.make_sample(N=1)
-    # unc.calc_impact_distribution(calc_eai_exp=True)
-    # unc.calc_impact_sensitivity()
-    
-    # unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
-    
+
+    exp = dummy_exp()
+    haz = dummy_haz()
+    impf = imp_fun_tc
+
+    distr_dict = {"G": sp.stats.uniform(0.8,1),
+                  "v_half": sp.stats.uniform(50, 100),
+                  "vmin": sp.stats.norm(15,30),
+                  "k": sp.stats.uniform(1, 5)
+                  }
+    impf_unc = UncVar(impf, distr_dict)
+
+    impf_unc.plot_distr()
+
+    unc = UncImpact(exp, impf_unc, haz)
+    unc.make_sample(N=1)
+    unc.calc_impact_distribution(calc_eai_exp=True)
+    unc.calc_impact_sensitivity()
+
+    unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
+    unc.plot_rp_distribution()
+
     haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
     ent = dummy_ent()
     unc = UncCostBenefit(haz_unc, ent)
@@ -175,8 +176,8 @@ class TestUncVar(unittest.TestCase):
     unc.calc_cost_benefit_distribution()
     unc.calc_cost_benefit_sensitivity()
 
-    
+    unc.plot_metric_distribution(list(unc.metrics.keys())[0:6])
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-    
