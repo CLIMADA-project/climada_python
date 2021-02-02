@@ -22,6 +22,8 @@ Define Exposures class.
 __all__ = ['Exposures', 'add_sea']
 
 import logging
+import copy
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -182,7 +184,7 @@ class Exposures():
                 found = var in self.gdf.columns
             if not found:
                 LOGGER.info("%s not set.", var)
-        
+
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
                 self.gdf.geometry.values[0].y != self.gdf.latitude.values[0]):
@@ -538,11 +540,11 @@ class Exposures():
 
         Parameters:
             crs : dict or str
-                Output projection parameters as string or in dictionary form.  
+                Output projection parameters as string or in dictionary form.
             epsg : int
-                EPSG code specifying output projection.  
+                EPSG code specifying output projection.
             inplace : bool, optional, default: False
-                Whether to return a new GeoDataFrame or do the transformation in  
+                Whether to return a new GeoDataFrame or do the transformation in
                 place.
 
         Returns:
@@ -573,7 +575,6 @@ class Exposures():
         -------
             Exposures
         """
-        import copy
         # FIXME: this will likely be unnecessary if removed from GeoDataFrame
         data = self.gdf.values
         if deep:
@@ -581,7 +582,7 @@ class Exposures():
         metadata = dict([
            (md, copy.deepcopy(self.__dict__[md])) for md in self._metadata
         ])
-        return self.__init__(
+        return type(self)(
             data,
             **metadata
         )
