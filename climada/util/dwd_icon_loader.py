@@ -84,18 +84,9 @@ def download_icon_grib(run_date,
     file_names = []
     for lead_i in lead_times:
         file_name_i = file_name.format(lead_i=lead_i)
-        try:
-            full_path_name_i = download_file(url + file_name_i,
-                                             download_dir=download_dir)
-        except ValueError as err:
-            LOGGER.error('Error while downloading %s.', file_name_i)
-            request = requests.get(url)
-            if request.status_code == 200:
-                raise FileNotFoundError(('Error while downloading %s.', file_name_i)) from err
-            else:
-                raise err
-        file_names.append(full_path_name_i)            
-        
+        full_path_name_i = download_file(url + file_name_i,
+                                         download_dir=download_dir)
+        file_names.append(full_path_name_i)
     return file_names
         
     
@@ -235,7 +226,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
         file_name = 'icon_grid_0047_R19B07_L.nc.bz2'
     else:
         LOGGER.error(('Creation of centroids for the icon model ' +
-                      model_name + 'is not implemented. Please define ' +
+                      model_name + 'is not yet implemented. Please define ' +
                       'the default values in the code first.'))
         raise ValueError
     download_path = CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
