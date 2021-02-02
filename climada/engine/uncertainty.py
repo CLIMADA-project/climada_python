@@ -681,6 +681,55 @@ class UncImpact(Uncertainty):
 
         return sensitivity_analysis
 
+    def plot_rp_distribution(self):
+        """
+        Plot the distribution of return period values.
+
+        Parameters
+        ----------
+
+        Raises
+        ------
+        ValueError
+            If no metric distribution was computed the plot cannot be made.
+
+        Returns
+        -------
+        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
+
+        """
+
+        if not self.metrics:
+            raise ValueError("No uncertainty data present for this emtrics. "+
+                    "Please run an uncertainty analysis first.")
+
+
+        df_values = self.metrics['freq_curve']
+
+        fig, ax = plt.subplots()
+
+        min_l, max_l = df_values.min().min(), df_values.max().max()
+
+        for n, (name, values) in enumerate(df_values.iteritems()):
+            count, division = np.histogram(values, bins=10)
+            count = count / count.max()
+            losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
+            ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
+            ax.fill_between(losses, count + 2*n, 2*n)
+
+        ax.set_xlim(min_l, max_l)
+        ax.set_ylim(0, 2*n)
+        ax.set_xlabel('impact')
+        ax.set_ylabel('return period [years]')
+        ax.legend()
+        ax.set_yticks(np.arange(0, 2*n, 2))
+        ax.set_yticklabels(df_values.columns)
+
+        return fig, ax
+
+
+
 
 class UncCostBenefit(Uncertainty):
     """
@@ -932,4 +981,3 @@ class UncRobustness():
 
     def __init__(self):
         raise NotImplementedError()
-        
