@@ -37,7 +37,7 @@ from climada.hazard.tc_tracks import TCTracks, estimate_rmw
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
-from climada.util.coordinates import dist_approx, lon_bounds, lon_normalize
+import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -151,7 +151,18 @@ class TropCyclone(Hazard):
             coastal_idx = ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
                            & (np.abs(centroids.lat) < 61)).nonzero()[0]
 
-        LOGGER.info('Mapping %s tracks to %s centroids.', str(tracks.size),
+        # Restrict to coastal centroids within reach of any of the tracks
+        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(
+            deg_buffer=CENTR_NODE_MAX_DIST_DEG)
+        t_mid_lon = 0.5 * (t_lon_min + t_lon_max)
+        coastal_centroids = centroids.coord[coastal_idx]
+        u_coord.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
+        coastal_idx = coastal_idx[((t_lon_min <= coastal_centroids[:, 1])
+                                   & (coastal_centroids[:, 1] <= t_lon_max)
+                                   & (t_lat_min <= coastal_centroids[:, 0])
+                                   & (coastal_centroids[:, 0] <= t_lat_max))]
+
+        LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
                     str(coastal_idx.size))
         if self.pool:
             chunksize = min(num_tracks // self.pool.ncpus, 1000)
@@ -175,6 +186,8 @@ class TropCyclone(Hazard):
                     self._tc_from_track(track, centroids, coastal_idx,
                                         model=model, store_windfields=store_windfields,
                                         metric=metric))
+            if last_perc < 100:
+                LOGGER.info("Progress: 100%")
         LOGGER.debug('Append events.')
         self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
@@ -334,14 +347,17 @@ class TropCyclone(Hazard):
                                                              metric=metric)
         reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
-        intensity = np.zeros(ncentroids)
-        intensity[reachable_coastal_centr_idx] = np.linalg.norm(windfields, axis=-1)\
-                                                          .max(axis=0)
+
+        intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
         intensity[intensity < self.intensity_thres] = 0
+        intensity_sparse = sparse.csr_matrix(
+            (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
+            shape=(1, ncentroids))
+        intensity_sparse.eliminate_zeros()
 
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
-        new_haz.intensity = sparse.csr_matrix(intensity.reshape(1, -1))
+        new_haz.intensity = intensity_sparse
         if store_windfields:
             wf_full = np.zeros((npositions, ncentroids, 2))
             wf_full[:, reachable_coastal_centr_idx, :] = windfields
@@ -389,7 +405,12 @@ class TropCyclone(Hazard):
                 change = chg['change'] * scale
             if select.any():
                 new_val = getattr(haz_cc, chg['variable'])
-                new_val[select] *= change
+                # 1d-masks like `select` are inefficient for indexing sparse matrices since
+                # they are broadcasted densely in the second dimension
+                if isinstance(new_val, sparse.csr_matrix):
+                    new_val = sparse.diags(np.where(select, change, 1)).dot(new_val)
+                else:
+                    new_val[select] *= change
                 setattr(haz_cc, chg['variable'], new_val)
         return haz_cc
 
@@ -439,9 +460,9 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         return windfields, reachable_centr_idx
 
     # normalize longitude values (improves performance of `dist_approx` and `_close_centroids`)
-    mid_lon = 0.5 * sum(lon_bounds(t_lon))
-    lon_normalize(t_lon, center=mid_lon)
-    lon_normalize(centroids[:,1], center=mid_lon)
+    mid_lon = 0.5 * sum(u_coord.lon_bounds(t_lon))
+    u_coord.lon_normalize(t_lon, center=mid_lon)
+    u_coord.lon_normalize(centroids[:, 1], center=mid_lon)
 
     # restrict to centroids within rectangular bounding boxes around track positions
     track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
@@ -451,9 +472,9 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         return windfields, reachable_centr_idx
 
     # compute distances and vectors to all centroids
-    [d_centr], [v_centr] = dist_approx(t_lat[None], t_lon[None],
-                                       track_centr[None, :, 0], track_centr[None, :, 1],
-                                       log=True, normalize=False, method=metric)
+    [d_centr], [v_centr] = u_coord.dist_approx(t_lat[None], t_lon[None],
+                                               track_centr[None, :, 0], track_centr[None, :, 1],
+                                               log=True, normalize=False, method=metric)
 
     # exclude centroids that are too far from or too close to the eye
     close_centr_msk = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-2)
@@ -545,15 +566,14 @@ def _close_centroids(t_lat, t_lon, centroids, buffer=CENTR_NODE_MAX_DIST_DEG):
     mask : np.array of shape (ncentroids,)
         Mask that is True for close centroids and False for other centroids.
     """
-    eye_bounds = np.c_[t_lon, t_lat, t_lon, t_lat]
-    eye_bounds[:,:2] -= buffer
-    eye_bounds[:,2:] += buffer
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
-    msk = (eye_bounds[:,None,1] < centr_lat[None])
-    msk &= (centr_lat[None] < eye_bounds[:,None,3])
-    msk &= (eye_bounds[:,None,0] < centr_lon[None])
-    msk &= (centr_lon[None] < eye_bounds[:,None,2])
-    return msk.any(axis=0)
+    # check for each track position which centroids are within buffer, uses NumPy's broadcasting
+    mask = ((t_lat[:, None] - buffer < centr_lat[None])
+            & (centr_lat[None] < t_lat[:, None] + buffer)
+            & (t_lon[:, None] - buffer < centr_lon[None])
+            & (centr_lon[None] < t_lon[:, None] + buffer))
+    # for each centroid, check whether it is in the buffer for any of the track positions
+    return mask.any(axis=0)
 
 def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     """Translational vector and velocity at each track node.
@@ -580,9 +600,9 @@ def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     """
     v_trans = np.zeros((t_lat.size, 2))
     v_trans_norm = np.zeros((t_lat.size,))
-    norm, vec = dist_approx(t_lat[:-1, None], t_lon[:-1, None],
-                            t_lat[1:, None], t_lon[1:, None],
-                            log=True, normalize=False, method=metric)
+    norm, vec = u_coord.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
+                                    t_lat[1:, None], t_lon[1:, None],
+                                    log=True, normalize=False, method=metric)
     v_trans[1:, :] = vec[:, 0, 0]
     v_trans[1:, :] *= KMH_TO_MS / t_tstep[1:, None]
     v_trans_norm[1:] = norm[:, 0, 0]
