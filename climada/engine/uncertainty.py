@@ -19,20 +19,23 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-import pandas as pd
-import numpy as np
 import logging
-import matplotlib.pyplot as plt
 from functools import partial
 
-import SALib.sample as salibs
-import SALib.analyze as saliba
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 from climada.engine import Impact
-from climada.engine.cost_benefit import CostBenefit, risk_aai_agg
+from climada.engine.cost_benefit import CostBenefit
 from climada.util.value_representation import value_to_monetary_unit as vtm
 
 LOGGER = logging.getLogger(__name__)
+
+# Future planed features:
+# - Add 'efc' (frequency curve) to UncCostBenenfit
+# - Make the Robustness class for generic noise robustness tests
+# - Add estimate of computation time and suggest surrogate models if needed
 
 
 class UncVar():
@@ -111,10 +114,11 @@ class UncVar():
 
         Returns
         -------
-        fig, ax: matplotlib.pyplot.fig, matplotlib.pyplot.ax
+        fig, ax: matplotlib.pyplot.figure, matplotlib.pyplot.axes
             The figure and axis handle of the plot.
 
         """
+
         nplots = len(self.distr_dict)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
@@ -153,23 +157,29 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars=None, pool=None):
-        """Initialize Unc
+    def __init__(self, unc_vars, params=None, problem=None,
+                 metrics=None, pool=None):
+        """
+        Initialize Uncertainty
 
         Parameters
         ----------
-        unc_vars : list of uncertainty variables of type
-            climade.engine.uncertainty.UncVar
-        pool : pathos.pools.ProcessPool
+        unc_vars : list of climade.engine.uncertainty.UncVar variables
+            list of uncertainty variables
+        params : pd.DataFrame, optional
+            DataFrame of sampled parameter values.
+            The default is pd.DataFrame().
+        problem : dict, optional
+            The description of the uncertainty variables and their
+            distribution as used in SALib.
+            https://salib.readthedocs.io/en/latest/getting-started.html.
+            The default is {}.
+        metrics : dict(), optional
+            Dictionnary of the metrics evaluation. The default is {}.
+        pool : pathos.pools.ProcessPool, optional
             Pool of CPUs for parralel computations. Default is None.
-        Returns
-        -------
-        None.
-
+            The default is None.
         """
-        
-        if unc_vars:
-            self.unc_vars = {}
 
         if pool:
             self.pool = pool
@@ -177,9 +187,19 @@ class Uncertainty():
         else:
             self.pool = None
 
-        self.params = pd.DataFrame()
-        self.problem = {}
-        self.metrics = {}
+        if params is None:
+            params = pd.DataFrame()
+
+        if problem is None:
+            problem = {}
+
+        if metrics is None:
+            metrics = {}
+
+        self.unc_vars = unc_vars
+        self.params = params
+        self.problem = problem
+        self.metrics = metrics
 
 
     @property
@@ -189,16 +209,15 @@ class Uncertainty():
 
         Returns
         -------
-        int
+        n_runs: int
             effective number of runs
 
         """
 
         if isinstance(self.params, pd.DataFrame):
             return self.params.shape[0]
-        else:
-            return 0
-        
+        return 0
+
     @property
     def param_labels(self):
         """
@@ -206,7 +225,7 @@ class Uncertainty():
 
         Returns
         -------
-        list of strings
+        param_labels: list of strings
             Labels of all uncertainty parameters.
 
         """
@@ -230,25 +249,28 @@ class Uncertainty():
         for unc_var in self.unc_vars.values():
             distr_dict.update(unc_var.distr_dict)
         return distr_dict
-   
-    
+
+
     def make_sample(self, N, sampling_method='saltelli', **kwargs):
         """
         Make a sample for all parameters with their respective
         distributions using the chosen sampling_method from SALib.
         https://salib.readthedocs.io/en/latest/api.html
- 
+
         Parameters
         ----------
         N : int
             Number of samples as defined in SALib.sample.saltelli.sample().
-        kwargs: 
-            Keyword arguments will be passed to the SALib sample method.
-        Returns
-        -------
-        None.
+        sampling_method: string
+            The sampling method as defined in SALib. Possible choices:
+            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            https://salib.readthedocs.io/en/latest/api.html
+            The default is 'saltelli'
+        kwargs:
+            Keyword arguments are passed to the SALib sampling method.
 
         """
+
         self.sampling_method = sampling_method
         self.n_samples = N
         uniform_base_sample = self._make_uniform_base_sample(**kwargs)
@@ -258,19 +280,19 @@ class Uncertainty():
                 self.distr_dict[param].ppf
                 )
         self.params = df_params
-        
-        
+
+
     def _make_uniform_base_sample(self, **kwargs):
         """
-        Make a uniform distributed [0,1] sample for the defined 
+        Make a uniform distributed [0,1] sample for the defined
         uncertainty parameters (self.param_labels) with the chosen
         method from SALib (self.sampling_method)
         https://salib.readthedocs.io/en/latest/api.html
 
         Parameters
         ----------
-        kwargs: 
-            Keyword arguments will be passed to the SALib sample method.
+        kwargs:
+            Keyword arguments are passed to the SALib sample method.
 
         Returns
         -------
@@ -279,7 +301,7 @@ class Uncertainty():
             parameters using the defined sampling method (self.sampling_method)
 
         """
-        
+
         problem = {
             'num_vars' : len(self.param_labels),
             'names' : self.param_labels,
@@ -303,15 +325,10 @@ class Uncertainty():
     def est_comp_time(self):
         """
         Estimate the computation time
-
-        Returns
-        -------
-        None.
-
         """
         raise NotImplementedError()
-    
-        
+
+
     def _calc_metric_sensitivity(self, analysis_method, **kwargs):
         """
         Compute the sensitivity indices using SALib
@@ -319,19 +336,23 @@ class Uncertainty():
         Parameters
         ----------
         analysis_method : str
-            sensitivity analysis method (as named in SALib.analyse)
+            sensitivity analysis method from SALib.analyse
+            https://salib.readthedocs.io/en/latest/api.html
+            Possible choices:
+                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
+            The default is 'sobol'.
         **kwargs : keyword arguments
             Are passed to the chose SALib analyse method.
 
         Returns
         -------
         sensitivity_dict : dict
-            Dictionnary of the sensitivity indices. Keys are the 
+            Dictionnary of the sensitivity indices. Keys are the
             metrics names, values the sensitivity indices dictionnary
             as returned by SALib.
 
         """
-        
+
         sensitivity_dict = {}
         for name, df_metric in self.metrics.items():
             sensitivity_dict[name] = {}
@@ -339,10 +360,10 @@ class Uncertainty():
                 Y = df_metric[metric].to_numpy()
                 sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
-                
+
         return sensitivity_dict
-    
-    
+
+
     @staticmethod
     def _var_or_uncvar(var):
         """
@@ -359,39 +380,46 @@ class Uncertainty():
             var if var is UncVar, else UncVar with var and no distribution.
 
         """
-        
+
         if isinstance(var, UncVar):
             return var
-        
+
         return UncVar(unc_var=lambda: var, distr_dict={})
-    
-    
-    def plot_metric_distribution(self, metric_list):
+
+
+    def plot_metric_distribution(self, metric_list=None):
         """
         Plot the distribution of values.
+
+        Parameters
+        ----------
+        metric_list: list
+            List of metrics to plot the distribution.
+            The default is None.
 
         Raises
         ------
         ValueError
-            DESCRIPTION.
+            If no metric distribution was computed the plot cannot be made.
 
         Returns
         -------
-        fig : TYPE
-            DESCRIPTION.
-        axes : TYPE
-            DESCRIPTION.
+        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
 
         """
-        
+
         if not self.metrics:
             raise ValueError("No uncertainty data present for this emtrics. "+
                     "Please run an uncertainty analysis first.")
-            
+
+        if metric_list is None:
+            metric_list = list(self.metrics.keys())
+
         df_values = pd.DataFrame()
         for metric in metric_list:
             df_values = df_values.append(self.metrics[metric])
-            
+
         df_values_log = df_values.apply(np.log10).copy()
         df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
         cols = df_values_log.columns
@@ -401,7 +429,7 @@ class Uncertainty():
                                  ncols = ncols,
                                  figsize=(nrows*7, ncols * 3.5),
                                  sharex=True,
-                                 sharey=True)    
+                                 sharey=True)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -426,13 +454,20 @@ class Uncertainty():
 
         return fig, axes
 
-    
-    
-    
+
+
+
 class UncImpact(Uncertainty):
-    
+    """
+    Impact uncertainty analysis class
+
+    This is the base class to perform uncertainty analysis on the outputs of a
+    climada.engine.impact.Impact() object.
+
+    """
+
     def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
-        """Initialize Unc
+        """Initialize UncImpact
 
         Parameters
         ----------
@@ -445,51 +480,52 @@ class UncImpact(Uncertainty):
         pool : pathos.pools.ProcessPool
             Pool of CPUs for parralel computations. Default is None.
 
-        Returns
-        -------
-        None.
-
         """
+
 
         if pool:
             self.pool = pool
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
         else:
             self.pool = None
-            
-        self.unc_vars = {'exp': self._var_or_uncvar(exp_unc),
-                         'impf': self._var_or_uncvar(impf_unc),
-                         'haz': self._var_or_uncvar(haz_unc),
-                         }
 
-        self.params = pd.DataFrame()
-        self.problem = {}
-        self.metrics = {'aai_agg': pd.DataFrame([]),
-                        'freq_curve': pd.DataFrame([]),
-                        'eai_exp': pd.DataFrame([]),
-                        'at_event':  pd.DataFrame([])}
-    
-    
+
+        unc_vars = {'exp': self._var_or_uncvar(exp_unc),
+                    'impf': self._var_or_uncvar(impf_unc),
+                    'haz': self._var_or_uncvar(haz_unc),
+                    }
+        params = pd.DataFrame()
+        problem = {}
+        metrics = {'aai_agg': pd.DataFrame([]),
+                   'freq_curve': pd.DataFrame([]),
+                   'eai_exp': pd.DataFrame([]),
+                   'at_event':  pd.DataFrame([])
+                   }
+
+        Uncertainty.__init__(self, unc_vars=unc_vars, pool=pool,
+                             params=params, problem=problem, metrics=metrics)
+
+
     def calc_impact_distribution(self,
-                             rp=None,
-                             calc_eai_exp=False,
-                             calc_at_event=False,
-                             ):
+                                 rp=None,
+                                 calc_eai_exp=False,
+                                 calc_at_event=False,
+                                 ):
         """
         Computes the impact for each of the parameters set defined in
         uncertainty.params.
-    
+
         By default, the aggregated average annual impact
-        (impact.aai_agg) and the excees impact at return periods rp 
+        (impact.aai_agg) and the excees impact at return periods rp
         (imppact.calc_freq_curve(self.rp).impact) is computed.
-        Optionally, eai_exp and at_event is computed (this may require 
+        Optionally, eai_exp and at_event is computed (this may require
         a larger amount of memory if n_samples and/or the number of centroids
         is large).
-    
+
         Parameters
         ----------
         rp : list(int), optional
-            Return period in years to be computed.
+            Return periods in years to be computed.
             The default is [5, 10, 20, 50, 100, 250].
         calc_eai_exp : boolean, optional
             Toggle computation of the impact at each centroid location.
@@ -497,42 +533,43 @@ class UncImpact(Uncertainty):
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
-    
-        Returns
-        -------
-        None.
-    
+
+        Raises
+        ------
+        ValueError:
+            If no sampling parameters defined, the distribution cannot
+            be computed.
+
         """
-        
+
         if self.params.empty:
-            LOGGER.info("No sample was found. Please create one first"
-                        "using UncImpact.make_sample(N)")
-            return None
+            raise ValueError("No sample was found. Please create one first"
+                             "using UncImpact.make_sample(N)")
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
-    
+
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-    
+
         #Compute impact distributions
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             imp_metrics = self.pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
-    
+
         else:
             imp_metrics = map(self._map_impact_eval, self.params.iterrows())
-                       
+
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
 
         # Assign computed impact distribution data to self
         self.metrics['aai_agg']  = pd.DataFrame(aai_agg_list,
                                                 columns = ['aai_agg'])
-        
+
         self.metrics['freq_curve'] = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
         self.metrics['eai_exp'] =  pd.DataFrame(eai_exp_list)
@@ -552,7 +589,8 @@ class UncImpact(Uncertainty):
         -------
          : list
             impact metrics list for all samples containing aai_agg, rp_curve,
-            eai_exp and at_event.
+            eai_exp (np.array([]) if self.calc_eai_exp=False) and at_event
+            (np.array([]) if self.calc_at_event=False).
 
         """
 
@@ -567,64 +605,67 @@ class UncImpact(Uncertainty):
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-        
-        
+
+
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
-        
+
         if self.calc_eai_exp:
             eai_exp = imp.eai_exp
         else:
             eai_exp = np.array([])
-            
+
         if self.calc_at_event:
             at_event= imp.at_event
         else:
             at_event = np.array([])
 
         return [imp.aai_agg, freq_curve, eai_exp, at_event]
-    
-    
+
+
     def calc_impact_sensitivity(self, method='sobol', **kwargs):
         """
         Compute the sensitivity indices using the SALib library:
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
-    
+
         Simple introduction to default Sobol sensitivity
         https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
-    
+
         Parameters
         ----------
         method : string, optional
-            Choose the method for the sensitivity analysis. Note that
-            SALib recommends pairs of sampling anad analysis algorithms.
-            We recommend users to respect these pairings. 
-            Defaul: 'sobol' 
+            Sensitivity analysis method from SALib.analyse.
+            Possible choices:
+                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
+            Note that SALib recommends pairs of sampling anad analysis
+            algorithms. We recommend users to respect these pairings.
+            https://salib.readthedocs.io/en/latest/api.html
+            The Default is 'sobol'.
             Note that for the default 'sobol', negative sensitivity
             indices indicate that the algorithm has not converged. In this
             case, please restart the uncertainty and sensitivity analysis
             with an increased number of samples.
-        **kwargs :
-            These parameters will be passed to chosen SALib.analyze routine.
-    
+        **kwargs : keyword arguments
+            These parameters are passed to the chosen SALib.analyze routine.
+
         Returns
         -------
         sensitivity_analysis : dict
             Dictionary with keys the uncertainty parameter labels.
             For each uncertainty parameter, the item is another dictionary
             with keys the sensitivity indices (the direct ouput from
-            the chosen SALib.analyse method)  
+            the chosen SALib.analyse method)
         """
-        
+
         if self.params.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
-            
+
         if not self.metrics:
             raise ValueError("I found no impact data. Please compute"
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
-                              
+
         #To import a submodule from a module use 'from_list' necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         analysis_method = getattr(
@@ -633,76 +674,130 @@ class UncImpact(Uncertainty):
                        ),
             method
             )
-    
-        
+
+
         sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
         self.sensitivity = sensitivity_analysis
-    
+
         return sensitivity_analysis
-    
-    
+
+
 class UncCostBenefit(Uncertainty):
-    
+    """
+    Cost Benefit Uncertainty analysis class
+
+    This is the base class to perform uncertainty analysis on the outputs of a
+    climada.engine.costbenefit.CostBenefit() object.
+
+    """
+
     def __init__(self, haz_unc, ent_unc, haz_fut_unc=None, ent_fut_unc=None,
                  pool=None):
+        """Initialize UncCostBenefit
 
-         if pool:
-             self.pool = pool
-             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-         else:
-             self.pool = None
-             
-         self.unc_vars = {'haz': self._var_or_uncvar(haz_unc),
-                          'ent': self._var_or_uncvar(ent_unc),
-                          'haz_fut': self._var_or_uncvar(haz_fut_unc),
-                          'ent_fut': self._var_or_uncvar(ent_fut_unc)
-                          }
-    
-         self.params = pd.DataFrame()
-         self.problem = {}
-         self.metrics = {'tot_climate_risk': None,
-                         'benefit': None,
-                         'cost_ben_ratio': None,
-                         'imp_meas_present': None,
-                         'imp_meas_future': None}
-        
-    
-    
+        Parameters
+        ----------
+        haz_unc : climada.engine.uncertainty.UncVar
+                  or climada.hazard.Hazard
+            Hazard uncertainty variable or Hazard for the present Hazard
+            in climada.engine.CostBenefit.calc
+        ent_unc : climada.engine.uncertainty.UncVar
+                  or climada.entity.Entity
+            Entity uncertainty variable or Entity for the future Entity
+            in climada.engine.CostBenefit.calc
+        haz_unc_fut: climada.engine.uncertainty.UncVar
+                     or climada.hazard.Hazard, optional
+            Hazard uncertainty variable or Hazard for the future Hazard
+            in climada.engine.CostBenefit.calc
+            The Default is None.
+        ent_fut_unc : climada.engine.uncertainty.UncVar
+                      or climada.entity.Entity, optional
+            Entity uncertainty variable or Entity for the future Entity
+            in climada.engine.CostBenefit.calc
+        pool : pathos.pools.ProcessPool, optional
+            Pool of CPUs for parralel computations. Default is None.
+            The default is None.
+
+        """
+
+
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
+
+        unc_vars = {'haz': self._var_or_uncvar(haz_unc),
+                         'ent': self._var_or_uncvar(ent_unc),
+                         'haz_fut': self._var_or_uncvar(haz_fut_unc),
+                         'ent_fut': self._var_or_uncvar(ent_fut_unc)
+                         }
+
+        params = pd.DataFrame()
+        problem = {}
+        metrics =  {'tot_climate_risk': None,
+                    'benefit': None,
+                    'cost_ben_ratio': None,
+                    'imp_meas_present': None,
+                    'imp_meas_future': None}
+
+        Uncertainty.__init__(self, unc_vars=unc_vars, pool=pool,
+                             params=params, problem=problem, metrics=metrics)
+
+
     def calc_cost_benefit_distribution(self, **kwargs):
-        
+        """
+        Computes the cost benefit for each of the parameters set defined in
+        uncertainty.params.
+
+        By default, imp_meas_present, imp_meas_future, tot_climate_risk,
+        benefit, cost_ben_ratio are computed.
+
+        Parameters
+        ----------
+        **kwargs : keyword arguments
+            These parameters are passed to
+            climada.engine.CostBenefit.calc().
+
+        Returns
+        -------
+        None.
+
+        """
+
         if self.params.empty:
             LOGGER.info("No sample was found. Please create one first"
                         "using UncImpact.make_sample(N)")
             return None
-   
+
         #Compute impact distributions
         if self.pool:
             chunksize = min(self.n_runs // self.pool.ncpus, 100)
             cb_metrics = self.pool.map(partial(self._map_costben_eval, **kwargs),
                                            self.params.iterrows(),
                                            chunsize = chunksize)
-    
+
         else:
             cb_metrics = map(partial(self._map_costben_eval, **kwargs),
                              self.params.iterrows())
-                               
+
         [imp_meas_present,
          imp_meas_future,
          tot_climate_risk,
          benefit,
-         cost_ben_ratio] = list(zip(*cb_metrics))
+         cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
 
-        # Assign computed impact distribution data to self      
+        # Assign computed impact distribution data to self
         self.metrics['tot_climate_risk'] = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
-            
+
         self.metrics['benefit'] = pd.DataFrame(benefit)
         self.metrics['cost_ben_ratio'] = pd.DataFrame(cost_ben_ratio)
-        
-        
+
+
         imp_metric_names = ['risk', 'risk_transf', 'cost_meas',
                             'cost_ins']
-            
+
         for imp_meas, name in zip([imp_meas_present, imp_meas_future],
                                   ['imp_meas_present', 'imp_meas_future']):
             df_imp_meas = pd.DataFrame()
@@ -710,37 +805,27 @@ class UncCostBenefit(Uncertainty):
                 for imp in imp_meas:
                     met_dic = {}
                     for meas, imp_dic in imp.items():
-                        metrics = [imp_dic['risk'], imp_dic['risk_transf'], *imp_dic['cost']]
-                        dic_tmp = {meas + '-' + m_name: [m_value] for m_name, m_value in zip(imp_metric_names, metrics)}
+                        metrics = [imp_dic['risk'],
+                                   imp_dic['risk_transf'],
+                                   *imp_dic['cost']]
+                        dic_tmp = {meas + '-' + m_name: [m_value]
+                                   for m_name, m_value
+                                   in zip(imp_metric_names, metrics)
+                                    }
                         met_dic.update(dic_tmp)
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             self.metrics[name] = df_imp_meas
-        
+
         LOGGER.info("Currently the freq_curve is not saved. Please " +
                     "change the risk_func if return period information " +
                     "needed")
-        
-        # df_imp_meas_fut = pd.DataFrame()
-        # if imp_meas_future[0]:
-        #     metric_names = ['risk', 'risk_transf', 'cost_meas',
-        #                     'cost_ins', 
-        #                     *imp_meas_future[0]['no measure']['efc'].return_per]
-        #     for imp_fut in imp_meas_future:
-        #         for meas, imp in imp_fut.items():
-        #             risk = imp['risk']
-        #             risk_transf = imp['risk_transf']
-        #             cost_meas, cost_ins = imp['cost']
-        #             freq_curve = imp['efc']
-        #             df_tmp = pd.DataFrame(risk, risk_transf, cost_meas, cost_ins, *freq_curve,
-        #                               columns = [meas + '_' + m for m in metric_names]
-        #                               )
-        #             df_imp_meas_fut.append(df_tmp)
-        # self.metrics['imp_meas_future'] = df_imp_meas_fut
+
+        return None
 
 
     def _map_costben_eval(self, param_sample, **kwargs):
         """
-        Map to compute impact for all parameter samples in parrallel
+        Map to compute cost benefit for all parameter samples in parallel
 
         Parameters
         ----------
@@ -749,7 +834,10 @@ class UncCostBenefit(Uncertainty):
 
         Returns
         -------
-
+         : list
+            icost benefit metrics list for all samples containing
+            imp_meas_present, imp_meas_future, tot_climate_risk,
+            benefit, cost_ben_ratio
 
         """
 
@@ -767,7 +855,7 @@ class UncCostBenefit(Uncertainty):
         cb = CostBenefit()
         cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
                 save_imp=False, **kwargs)
-        
+
         # Extract from climada.impact the chosen metrics
         return  [cb.imp_meas_present,
                  cb.imp_meas_future,
@@ -776,18 +864,51 @@ class UncCostBenefit(Uncertainty):
                  cb.cost_ben_ratio
                  ]
 
-        
+
+
     def calc_cost_benefit_sensitivity(self,  method='sobol', **kwargs):
-        
+        """
+        Compute the sensitivity indices using the SALib library:
+        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
+
+        Simple introduction to default Sobol sensitivity
+        https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
+
+        Parameters
+        ----------
+        method : string, optional
+            Sensitivity analysis method from SALib.analyse.
+            Possible choices:
+                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
+            Note that SALib recommends pairs of sampling anad analysis
+            algorithms. We recommend users to respect these pairings.
+            https://salib.readthedocs.io/en/latest/api.html
+            The Default is 'sobol'.
+            Note that for the default 'sobol', negative sensitivity
+            indices indicate that the algorithm has not converged. In this
+            case, please restart the uncertainty and sensitivity analysis
+            with an increased number of samples.
+        **kwargs : keyword arguments
+            These parameters are passed to the chosen SALib.analyze routine.
+
+        Returns
+        -------
+        sensitivity_analysis : dict
+            Dictionary with keys the uncertainty parameter labels.
+            For each uncertainty parameter, the item is another dictionary
+            with keys the sensitivity indices (the direct ouput from
+            the chosen SALib.analyse method)
+        """
+
         if self.params.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
-            
+
         if not self.metrics:
             raise ValueError("I found no impact data. Please compute"
                              " the impact distribution first using"+
                              " UncImpact.calc_impact_distribution()")
-                              
+
         #To import a submodule from a module 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         analysis_method = getattr(
@@ -796,11 +917,11 @@ class UncCostBenefit(Uncertainty):
                        ),
             method
             )
-    
-        
+
+
         sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
         self.sensitivity = sensitivity_analysis
-    
+
         return sensitivity_analysis
 
 
@@ -808,6 +929,7 @@ class UncRobustness():
     """
     Compute variance from multiplicative Gaussian noise
     """
-    
+
     def __init__(self):
         raise NotImplementedError()
+        
