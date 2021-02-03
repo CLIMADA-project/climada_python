@@ -290,7 +290,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.crs, exp.crs)
         self.assertEqual(res_exp.gdf.crs, exp.gdf.crs)
 
-        # regions
+        # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[1:25], np.ones(24) * 3))
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[25:], np.ones(25)))
