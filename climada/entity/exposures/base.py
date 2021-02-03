@@ -157,6 +157,14 @@ class Exposures():
             if 'value_unit' not in self.meta:
                 LOGGER.info('value_unit set to default value %s', self.value_unit)
 
+        # remaining generic attributes
+        for mda in type(self)._metadata:
+            if mda not in Exposures._metadata:
+                if mda in kwargs:
+                    setattr(self, mda, kwargs.pop(mda))
+                elif mda in self.meta:
+                    setattr(self, mda, self.meta[mda])
+
         self.gdf = GeoDataFrame(*args, **kwargs)
         if self.gdf.crs:
             self.crs = self.gdf.crs
