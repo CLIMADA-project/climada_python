@@ -96,10 +96,10 @@ class GDP2Asset(Exposures):
         res = 0.0416666
 
 
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
-                                                    self.latitude.min(),
-                                                    self.longitude.max(),
-                                                    self.latitude.max()), res)
+        rows, cols, ras_trans = pts_to_raster_meta((self.gdf.longitude.min(),
+                                                    self.gdf.latitude.min(),
+                                                    self.gdf.longitude.max(),
+                                                    self.gdf.latitude.max()), res)
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
                      'transform': ras_trans}
 
@@ -126,11 +126,11 @@ class GDP2Asset(Exposures):
         if_rf_info = np.full((len(assets),), if_rf)
 
         exp_gdpasset = GDP2Asset()
-        exp_gdpasset['value'] = assets
-        exp_gdpasset['latitude'] = coord[:, 0]
-        exp_gdpasset['longitude'] = coord[:, 1]
-        exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
-        exp_gdpasset['region_id'] = reg_id_info
+        exp_gdpasset.gdf['value'] = assets
+        exp_gdpasset.gdf['latitude'] = coord[:, 0]
+        exp_gdpasset.gdf['longitude'] = coord[:, 1]
+        exp_gdpasset.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset.gdf['region_id'] = reg_id_info
         return exp_gdpasset
 
 
