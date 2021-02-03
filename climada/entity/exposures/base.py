@@ -134,32 +134,48 @@ class Exposures():
             self.meta = kwargs.pop('meta')
         except KeyError:
             self.meta = {}
+            LOGGER.info('meta set to default value %s', self.meta)
+
         try:
             self.tag = kwargs.pop('tag')
         except KeyError:
-            self.tag = Tag()
+            self.tag = self.meta.get('tag', Tag())
+            if 'tag' not in self.meta:
+                LOGGER.info('tag set to default value %s', self.tag)
+
         try:
             self.ref_year = kwargs.pop('ref_year')
         except KeyError:
-            self.ref_year = DEF_REF_YEAR
+            self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR)
+            if 'ref_year' not in self.meta:
+                LOGGER.info('ref_year set to default value %s', self.ref_year)
+
         try:
             self.value_unit = kwargs.pop('value_unit')
         except KeyError:
-            self.value_unit = DEF_VALUE_UNIT
+            self.value_unit = self.meta.get('ref_year', DEF_VALUE_UNIT)
+            if 'value_unit' not in self.meta:
+                LOGGER.info('value_unit set to default value %s', self.value_unit)
+
         self.gdf = GeoDataFrame(*args, **kwargs)
         if self.gdf.crs:
             self.crs = self.gdf.crs
         else:
-            self.crs = DEF_CRS
-            self.gdf.crs = DEF_CRS
-            LOGGER.info('crs set to default value: %s', self.crs)
+            self.crs = self.meta.get('crs', DEF_CRS)
+            self.gdf.crs = self.crs
+            if 'crs' not in self.meta:
+                LOGGER.info('crs set to default value: %s', self.crs)
 
     def check(self):
         """Check which variables are present"""
+        if self.crs != self.gdf.crs:
+            raise ValueError(f"crs is not synchronized between Exposures ({self.crs})" +
+                             f" and GeoDataFrame ({self.gdf.crs})")
+
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
                 LOGGER.error("%s missing.", var)
-                raise ValueError
+                raise ValueError(f"{var} missing in gdf")
 
         for var in self.vars_def:
             if var == INDICATOR_IF:
@@ -188,9 +204,8 @@ class Exposures():
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
                 self.gdf.geometry.values[0].y != self.gdf.latitude.values[0]):
-                LOGGER.error(("Geometry values do not correspond to latitude and "
-                              "longitude. Use set_geometry_points() or set_lat_lon()."))
-                raise ValueError
+                raise ValueError("Geometry values do not correspond to latitude and" +
+                                 " longitude. Use set_geometry_points() or set_lat_lon().")
         except AttributeError:  # no geometry column
             pass
 
@@ -280,9 +295,10 @@ class Exposures():
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
         try:
-            self.gdf.crs = meta['crs'].to_dict()
+            self.crs = meta['crs'].to_dict()
         except AttributeError:
-            self.gdf.crs = meta['crs']
+            self.crs = meta['crs']
+        self.gdf.crs = self.crs
         self.gdf['longitude'] = x_grid.flatten()
         self.gdf['latitude'] = y_grid.flatten()
         self.gdf['value'] = value.reshape(-1)
@@ -471,7 +487,7 @@ class Exposures():
                 pandas_df[col] = np.asarray(self.gdf[col])
         store.put('exposures', pandas_df)
         var_meta = {}
-        for var in self._metadata:
+        for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
 
         store.get_storer('exposures').attrs.metadata = var_meta
@@ -492,7 +508,10 @@ class Exposures():
             self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
             for key, val in metadata.items():
-                setattr(self, key, val)
+                if key in type(self)._metadata:
+                    setattr(self, key, val)
+                if key == 'crs':
+                    self.gdf.crs = val
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
@@ -555,7 +574,6 @@ class Exposures():
             self.gdf.to_crs(crs, epsg, True)
             self.crs = self.gdf.crs
             self.set_lat_lon()
-            self.crs = self.gdf.crs
             return None
 
         exp = self.copy()
@@ -575,15 +593,12 @@ class Exposures():
         -------
             Exposures
         """
-        # FIXME: this will likely be unnecessary if removed from GeoDataFrame
-        data = self.gdf.values
-        if deep:
-            data = data.copy()
+        gdf = self.gdf.copy(deep)
         metadata = dict([
-           (md, copy.deepcopy(self.__dict__[md])) for md in self._metadata
+           (md, copy.deepcopy(self.__dict__[md])) for md in type(self)._metadata
         ])
         return type(self)(
-            data,
+            gdf,
             **metadata
         )
 
@@ -624,10 +639,10 @@ def add_sea(exposures, sea_res):
 
     sea_res = (sea_res[0] / ONE_LAT_KM, sea_res[1] / ONE_LAT_KM)
 
-    min_lat = max(-90, float(exposures.latitude.min()) - sea_res[0])
-    max_lat = min(90, float(exposures.latitude.max()) + sea_res[0])
-    min_lon = max(-180, float(exposures.longitude.min()) - sea_res[0])
-    max_lon = min(180, float(exposures.longitude.max()) + sea_res[0])
+    min_lat = max(-90, float(exposures.gdf.latitude.min()) - sea_res[0])
+    max_lat = min(90, float(exposures.gdf.latitude.max()) + sea_res[0])
+    min_lon = max(-180, float(exposures.gdf.longitude.min()) - sea_res[0])
+    max_lon = min(180, float(exposures.gdf.longitude.max()) + sea_res[0])
 
     lat_arr = np.arange(min_lat, max_lat + sea_res[1], sea_res[1])
     lon_arr = np.arange(min_lon, max_lon + sea_res[1], sea_res[1])
@@ -636,20 +651,27 @@ def add_sea(exposures, sea_res):
     lon_mgrid, lat_mgrid = lon_mgrid.ravel(), lat_mgrid.ravel()
     on_land = ~u_coord.coord_on_land(lat_mgrid, lon_mgrid)
 
-    sea_exp = Exposures(GeoDataFrame())
-    sea_exp.gdf['latitude'] = lat_mgrid[on_land]
-    sea_exp.gdf['longitude'] = lon_mgrid[on_land]
-    sea_exp.gdf['region_id'] = np.zeros(sea_exp.gdf.latitude.size, int) - 1
+    sea_exp_gdf = GeoDataFrame()
+    sea_exp_gdf['latitude'] = lat_mgrid[on_land]
+    sea_exp_gdf['longitude'] = lon_mgrid[on_land]
+    sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
 
-    if 'geometry' in exposures.columns:
-        sea_exp.set_geometry_points()
+    if 'geometry' in exposures.gdf.columns:
+        u_coord.set_df_geometry_points(sea_exp_gdf)
 
-    for var_name in exposures.columns:
+    for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
-            sea_exp.gdf[var_name] = np.zeros(sea_exp.gdf.latitude.size,
-                                         exposures[var_name].dtype)
+            sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf.latitude.size,
+                                            exposures.gdf[var_name].dtype)
 
-    return pd.concat([exposures, sea_exp], ignore_index=True, sort=False)
+    return Exposures(
+        pd.concat([exposures.gdf, sea_exp_gdf], ignore_index=True, sort=False),
+        crs=exposures.crs,
+        ref_year=exposures.ref_year,
+        value_unit=exposures.value_unit,
+        meta=exposures.meta,
+        tag=exposures.tag
+    )
 
 def _read_mat_obligatory(exposures, data, var_names):
     """Fill obligatory variables."""
