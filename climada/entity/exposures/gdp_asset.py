@@ -41,10 +41,6 @@ CONVERTER = SYSTEM_DIR.joinpath('GDP2Asset_converter_2.5arcmin.nc')
 
 class GDP2Asset(Exposures):
 
-    @property
-    def _constructor(self):
-        return GDP2Asset
-
     def set_countries(self, countries=[], reg=[], ref_year=2000,
                       path=None):
         """Model countries using values at reference year. If GDP or income

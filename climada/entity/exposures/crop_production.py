@@ -129,10 +129,6 @@ class CropProduction(Exposures):
 
     _metadata = Exposures._metadata + ['crop']
 
-    @property
-    def _constructor(self):
-        return CropProduction
-
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, hist_mean=None,
                                bbox=None, yearrange=None, cl_model=None, scenario=None,
                                crop=None, irr=None, isimip_version=None,

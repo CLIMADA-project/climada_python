@@ -61,10 +61,6 @@ class BlackMarble(Exposures):
     - -1 for water
     """
 
-    @property
-    def _constructor(self):
-        return BlackMarble
-
     def set_countries(self, countries, ref_year=2016, res_km=None, from_hr=None,
                       admin_file='admin_0_countries', **kwargs):
         """ Model countries using values at reference year. If GDP or income

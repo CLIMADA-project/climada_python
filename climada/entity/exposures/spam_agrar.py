@@ -64,10 +64,6 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
     - -1 for water
     """
 
-    @property
-    def _constructor(self):
-        return SpamAgrar
-
     def init_spam_agrar(self, **parameters):
         """initiates agriculture exposure from SPAM data:
 

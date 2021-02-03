@@ -94,10 +94,6 @@ class LitPop(Exposures):
         ent.plot()
     """
 
-    @property
-    def _constructor(self):
-        return LitPop
-
     def clear(self):
         """Appending the base class clear attribute to also delete attributes
             which are only used here.
