@@ -410,8 +410,8 @@ class WildFire(Hazard):
                         np.amax(self.intensity[evt_idx_merge], 0))
                     self.event_id = np.array([np.max(self.event_id)+1])
                     self.event_name = list(map(str, self.event_id))
-                    self.date = [date_start]
-                    self.date_end = [date_end]
+                    self.date = np.array([date_start])
+                    self.date_end = np.array([date_end])
                     self.orig = np.ones(1, bool)
                     self._set_frequency()
                     self.fraction = self.intensity.copy()
@@ -442,8 +442,8 @@ class WildFire(Hazard):
                 self.intensity = sparse.csr_matrix(np.amax(self.intensity, 0))
                 self.event_id = np.array([np.max(self.event_id)+1])
                 self.event_name = list(map(str, self.event_id))
-                self.date = [np.min(self.date)]
-                self.date_end = [np.max(self.date_end)]
+                self.date = np.array([np.min(self.date)])
+                self.date_end = np.array([np.max(self.date_end)])
                 self.orig = np.ones(1, bool)
                 self._set_frequency()
                 self.fraction = self.intensity.copy()
@@ -830,8 +830,9 @@ class WildFire(Hazard):
 
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
-        temp_firms = firms.reindex(index=(np.argwhere(firms['event_id'] == ev_id).reshape(-1,)),
-                                   columns=['latitude', 'longitude', 'brightness', 'datenum'])
+        temp_firms = firms.reindex(
+            index=(np.argwhere(firms['event_id'].values == ev_id).reshape(-1,)),
+            columns=['latitude', 'longitude', 'brightness', 'datenum'])
 
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni
         # Set the same index value for each duplicate (lat,lon) points -> lat_lon_cpy
