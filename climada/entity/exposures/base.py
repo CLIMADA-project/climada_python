@@ -549,7 +549,7 @@ class Exposures():
             LOGGER.error("Not existing variable: %s", str(var_err))
             raise var_err
 
-        self.gdf = GeoDataFrame(data=exposures)
+        self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
         _read_mat_metadata(self, data, file_name, var_names)
 
     #
