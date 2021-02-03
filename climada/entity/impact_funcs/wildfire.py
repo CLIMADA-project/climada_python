@@ -27,9 +27,9 @@ class IFWildfire(ImpactFunc):
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'WF'
+        self.haz_type = 'WFsingle'
 
-    def set_default_FIRMS(self, i_half=523.8, if_id=1):
+    def set_default_FIRMS(self, i_half=535.8, if_id=1):
 
         """Using the formula of Emanuele 2011 but adjusted to wildfire.
         As 295K resembles the lowest number of a FIRMS data set, i_thresh can
@@ -87,8 +87,7 @@ class IFWildfire(ImpactFunc):
         self.mdd = np.array([0, 0, 1, 1])
         self.paa = np.array([1, 1, 1, 1])
 
-    def set_sigmoid(self, int_range=np.arange(295, 500, 5), sig_mid=320,
-                    sig_shape=0.1, sig_max=1.0, if_id=1):
+    def set_sigmoid(self, sig_mid=320, sig_shape=0.1, sig_max=1.0, if_id=1):
 
         """ Sigmoid type impact function hinging on three parameter. This type
         of impact function is very flexible for any sort of study/resolution.
@@ -110,7 +109,7 @@ class IFWildfire(ImpactFunc):
         self.id = if_id
         self.name = "wildfire sigmoid"
         self.intensity_unit = "K"
-        self.intensity = int_range
-        self.mdd = np.ones(len(int_range))
-        self.paa = sig_max/(1+np.exp(-sig_shape*(int_range-sig_mid)))
+        self.intensity = np.arange(295, 500, 5)
+        self.mdd = np.ones(len(self.intensity))
+        self.paa = sig_max/(1+np.exp(-sig_shape*(self.intensity-sig_mid)))
         
