@@ -55,7 +55,7 @@ def download_icon_grib(run_date,
     Parameters:
         run_date (datetime): The starting timepoint of the forecast run 
         model_name (str): the name of the forecast model written as it appears
-            in the folder structure in opendata.dwd.de/weather/nwp/
+            in the folder structure in opendata.dwd.de/weather/nwp/ or 'test'
         parameter_name (str): the name of the meteorological parameter 
             written as it appears in the folder structure in 
             opendata.dwd.de/weather/nwp/
@@ -79,14 +79,19 @@ def download_icon_grib(run_date,
                                                         model_name,
                                                         parameter_name,
                                                         max_lead_time)
+    download_path = CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
     
     #download all files
     file_names = []
     for lead_i in lead_times:
         file_name_i = file_name.format(lead_i=lead_i)
-        full_path_name_i = download_file(url + file_name_i,
-                                         download_dir=download_dir)
-        file_names.append(full_path_name_i)
+        bz2_pathfile_i = download_path.absolute().joinpath(file_name_i)
+
+        # download file if it does not exist already
+        if not bz2_pathfile_i.exists():
+            full_path_name_i = download_file(url + file_name_i,
+                                             download_dir=download_dir)
+        file_names.append(str(bz2_pathfile_i))
     return file_names
         
     
@@ -160,6 +165,13 @@ def _create_icon_grib_name(run_date,
                                      np.arange(51,73,3),
                                      np.arange(78,121,6)
                                      ))
+    elif model_name == 'test':
+        file_extension = '_storm_europe_icon_'
+        max_lead_time_default = 2 # maximum available data
+        lead_times = np.concatenate((np.arange(1,49),
+                                     np.arange(51,73,3),
+                                     np.arange(78,121,6)
+                                     ))
     else:
         LOGGER.error(('Download for model ' + model_name + 
                       ' and parameter ' + parameter_name + 
@@ -224,6 +236,8 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
         file_name = 'icon_grid_0024_R02B06_G.nc.bz2'
     elif model_name=='icon-d2-eps' or model_name=='icon-d2':
         file_name = 'icon_grid_0047_R19B07_L.nc.bz2'
+    elif model_name=='test':
+        file_name = 'test_storm_europe_icon_grid.nc.bz2'
     else:
         LOGGER.error(('Creation of centroids for the icon model ' +
                       model_name + 'is not yet implemented. Please define ' +

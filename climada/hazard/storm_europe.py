@@ -277,8 +277,8 @@ class StormEurope(Hazard):
         ncdf.close()
 
     def read_icon_grib(self, run_date, event_date=None,
-                       model_name='icon-eu-eps', description=None, 
-                       delete_raw_data=True):
+                       model_name='icon-eu-eps', description=None,
+                       grib_dir=None, delete_raw_data=True):
         """Clear instance and download and read dwd icon weather forecast 
         footprints into it. One event is one full day in UCT. Current setup 
         works for runs starting at 00H and 12H. Otherwise the aggregation is 
@@ -295,16 +295,20 @@ class StormEurope(Hazard):
                 (see _download_icon_grib for further info)
             description (str, optional): description of the events, defaults
                 to 'icon weather forecast'
+            grib_dir (str, optional): path to folder, where grib files are
+                or should be stored
             delete_raw_data (bool,optional): select if downloaded raw data in 
                 .grib.bz2 file format should be stored on the computer or 
                 removed
         """
         self.clear()
         # download files, if they don't already exist
-        file_names = download_icon_grib(run_date,model_name=model_name)
+        file_names = download_icon_grib(run_date,
+                                        model_name=model_name,
+                                        download_dir=grib_dir)
        
         # create centroids
-        nc_centroids_file = download_icon_centroids_file(model_name)
+        nc_centroids_file = download_icon_centroids_file(model_name, grib_dir)
         self.centroids = self._centroids_from_nc(nc_centroids_file)
         
         # read intensity from files
