@@ -28,7 +28,7 @@ from rasterio.windows import Window
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
-     INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+     INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT, concat
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
@@ -270,6 +270,36 @@ class TestAddSea(unittest.TestCase):
             [exp_sea.gdf.longitude.values[-1], exp_sea.gdf.latitude.values[-1]],
             [exp_sea.gdf.longitude.values[-2], exp_sea.gdf.latitude.values[-2]],
         ])[0][1], sea_res_km)
+
+
+class TestConcat(unittest.TestCase):
+    """Check constructor Exposures through DataFrames readers"""
+    def setUp(self):
+        exp = Exposures(crs='epsg:3395')
+        exp.gdf['value'] = np.arange(0, 1.0e6, 1.0e5)
+        min_lat, max_lat = 27.5, 30
+        min_lon, max_lon = -18, -12
+        exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
+        exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
+        exp.gdf['region_id'] = np.ones(10)
+        exp.gdf['if_TC'] = np.ones(10)
+        exp.ref_year = 2015
+        exp.value_unit = 'XSD'
+        self.dummy = exp
+
+    def test_concat_pass(self):
+        """Test add_sea function with fake data."""
+        
+        self.dummy.check()
+
+        catexp = concat(self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy)
+        self.assertEqual(self.dummy.gdf.shape, (10,5))
+        self.assertEqual(catexp.gdf.shape, (40,5))
+        self.assertEqual(catexp.gdf.crs, 'epsg:3395')
+    
+    def test_concat_fail(self):
+        with self.assertRaises(TypeError):
+            concat(self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy)
 
 
 class TestGeoDFFuncs(unittest.TestCase):

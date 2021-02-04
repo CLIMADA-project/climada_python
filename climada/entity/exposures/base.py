@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea']
+__all__ = ['Exposures', 'add_sea', 'concat']
 
 import logging
 import copy
@@ -556,7 +556,9 @@ class Exposures():
     # Extends the according geopandas method
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
-        """Transform geometries to a new coordinate reference system.
+        """Wrapper of the GeoDataFrame.to_crs method.
+        
+        Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
         The crs attribute on the current GeoSeries must be set. Either crs in string or dictionary
         form or an EPSG code may be specified for output.
@@ -588,7 +590,10 @@ class Exposures():
         exp.to_crs(crs, epsg, True)
         return exp
 
-    to_crs.__doc__ = GeoDataFrame.to_crs.__doc__
+    def plot(self, *args, **kwargs):
+        """Wrapper of the GeoDataFram.plot method"""
+        self.gdf.plot(*args, **kwargs)
+    plot.__doc__ = GeoDataFrame.plot.__doc__
 
     def copy(self, deep=True):
         """Make a copy of this Exposures object.
@@ -629,6 +634,7 @@ class Exposures():
         else:
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
+
 
 def add_sea(exposures, sea_res):
     """Add sea to geometry's surroundings with given resolution. region_id
@@ -681,6 +687,7 @@ def add_sea(exposures, sea_res):
         tag=exposures.tag
     )
 
+
 def _read_mat_obligatory(exposures, data, var_names):
     """Fill obligatory variables."""
     exposures['value'] = np.squeeze(data[var_names['var_name']['val']])
@@ -690,6 +697,7 @@ def _read_mat_obligatory(exposures, data, var_names):
 
     exposures[INDICATOR_IF] = np.squeeze(
         data[var_names['var_name']['imp']]).astype(int, copy=False)
+
 
 def _read_mat_optional(exposures, data, var_names):
     """Fill optional parameters."""
@@ -722,6 +730,7 @@ def _read_mat_optional(exposures, data, var_names):
     except KeyError:
         pass
 
+
 def _read_mat_metadata(exposures, data, file_name, var_names):
     """Fille metadata in DataFrame object"""
     try:
@@ -736,3 +745,28 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
+
+
+def concat(*exposures_list):
+    """Concatenates Exposures or DataFrame objectss to one Exposures object.
+
+    Parameters
+    ----------
+    exposures_list : list of Exposures or DataFrames
+        The list must not be empty with the first item supposed to be an Exposures object.
+
+    Returns
+    -------
+    Exposures
+        with the metadata of the first item in the list and the dataframes concatenated.
+    """
+    exp = exposures_list[0].copy()
+    df_list = [
+        el.gdf if isinstance(el, Exposures) else el
+        for el in exposures_list
+    ]
+    exp.gdf = GeoDataFrame(
+        pd.concat(df_list, ignore_index=True, sort=False),
+        crs=exp.crs
+    )
+    return exp
