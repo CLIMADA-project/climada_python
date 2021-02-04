@@ -208,7 +208,7 @@ class StormEurope(Hazard):
         return new_haz
 
 
-    def read_cosmoe_file(self, fp_file, event_date, run_date,
+    def read_cosmoe_file(self, fp_file, run_date, event_date=None,
                        model_name='COSMO-2E', description=None):
         """Clear instance and read MeteoSwiss cosmoe weather forecast 
         footprint netcdf files into it. One event is one full day in UCT.
@@ -216,10 +216,10 @@ class StormEurope(Hazard):
 
         Parameters:
             fp_file (str): string directing to one netcdf file
-            event_date (datetime, optional): one day within the forecast
-                period, only this day (00H-24H) will be included in the hazard
             run_date (datetime): The starting timepoint of the forecast run 
                 of the cosmo model
+            event_date (datetime, optional): one day within the forecast
+                period, only this day (00H-24H) will be included in the hazard
             model_name (str,optional): select the name of the icon model to
                 be downloaded. Must match the url string 
                 (see _download_icon_grib for further info)
@@ -232,37 +232,50 @@ class StormEurope(Hazard):
         
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
-        if event_date == None:
-            LOGGER.error(('Creation of hazard from the cosmo model ' +
-                          'without event_date is not implemented. ' +
-                          'Please define event_date in read_cosmoe_file or' +
-                          'change the code analogue to read_icon_grib first.'))
-            raise ValueError
+        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D")))
+        
+        if event_date:
+            # stacked = np.max(ncdf.sel(time=event_date.strftime('%Y-%m-%d')).VMAX_10M,
+            #                  axis=0).stack(intensity=('y_1', 'x_1'))
+            stacked2 = ncdf.sel(time=event_date.strftime('%Y-%m-%d')).groupby('date').max().stack(intensity=('y_1', 'x_1'))
+            considered_dates = np.datetime64(event_date)
         else:
-            stacked = np.max(ncdf.sel(time=event_date.strftime('%Y-%m-%d')).VMAX_10M, axis=0).stack(intensity=('y_1', 'x_1'))
-        stacked = stacked.where(stacked > self.intensity_thres)
-        stacked = stacked.fillna(0)
+            time_covered_step = ncdf['time'].diff('time')
+            time_covered_day = time_covered_step.groupby('date').sum()
+            days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
+            stacked2 = ncdf.groupby('date').max().sel(date=days_to_consider).stack(intensity=('y_1', 'x_1'))
+            unique_dates = ncdf['time'].groupby('date').min()
+            considered_dates = unique_dates.sel(date=days_to_consider).values
+
+            
+        stacked3 = stacked2.stack(event=('date', 'epsd_1'))
+        stacked3 = stacked3.where(stacked3.VMAX_10M > self.intensity_thres)
+        stacked3 = stacked3.fillna(0)
     
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked)
-        self.event_id = ncdf.epsd_1.values+1
+        self.intensity = sparse.csr_matrix(stacked3.VMAX_10M.T)
+        self.event_id = np.arange(stacked3.date.size)+1
+
     
         # fill in default values
         self.units = 'm/s'
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
-        self.orig[0] = True
-        self.date = np.ones_like(self.event_id) * np.array([datetime64_to_ordinal(ncdf.time.data[0])])
+        self.orig[(stacked3.epsd_1 == 0).values] = True
+        self.date = np.repeat(
+            np.array(datetime64_to_ordinal(considered_dates)),
+            ncdf.epsd_1.size
+            )
         self.event_name = [date_i + '_ens' + str(ens_i) 
                            for date_i, ens_i in zip(
                                    date_to_str(self.date),
-                                   ncdf.epsd_1.values+1
+                                   stacked3.epsd_1.values+1
                                    )
                            ]
         self.frequency = np.divide(
                 np.ones_like(self.event_id),
-                np.max(ncdf.epsd_1.values)+1)
+                ncdf.epsd_1.size)
         if not description:
             description = (model_name +
                            ' weather forecast windfield ' +
@@ -275,6 +288,7 @@ class StormEurope(Hazard):
             )
         # close netcdf file
         ncdf.close()
+        self.check()
 
     def read_icon_grib(self, run_date, event_date=None,
                        model_name='icon-eu-eps', description=None,
