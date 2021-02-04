@@ -18,8 +18,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 init util
 """
-from .constants import *
 from .config import *
+from .constants import *
 from .coordinates import *
 from .save import *
 

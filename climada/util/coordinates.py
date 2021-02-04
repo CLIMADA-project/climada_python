@@ -22,8 +22,9 @@ Define functions to handle with coordinates
 import copy
 import logging
 import math
+from pathlib import Path
 from multiprocessing import cpu_count
-import os
+
 import zipfile
 
 from cartopy.io import shapereader
@@ -51,7 +52,6 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as hdf5
-from climada.util.constants import DATA_DIR
 
 pd.options.mode.chained_assignment = None
 
@@ -63,7 +63,7 @@ NE_EPSG = 4326
 NE_CRS = from_epsg(NE_EPSG)
 """Natural Earth CRS"""
 
-TMP_ELEVATION_FILE = os.path.join(SYSTEM_DIR, 'tmp_elevation.tif')
+TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
 """Path of elevation file written in set_elevation"""
 
 DEM_NODATA = -9999
@@ -122,13 +122,16 @@ def lon_normalize(lon, center=0.0):
     lon : np.array
         Longitudinal coordinates
     center : float, optional
-        Central longitude value to use instead of 0.
+        Central longitude value to use instead of 0. If None, the central longitude is determined
+        automatically.
 
     Returns
     -------
     lon : np.array
         Normalized longitudinal coordinates.
     """
+    if center is None:
+        center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
     maxiter = 10
     i = 0
@@ -145,7 +148,7 @@ def lon_normalize(lon, center=0.0):
             break
     return lon
 
-def latlon_bounds(lat, lon, buffer=0.0):
+def lon_bounds(lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
 
     The longitudinal upper bound may be 180 or larger to make sure that the upper bound is always
@@ -158,30 +161,28 @@ def latlon_bounds(lat, lon, buffer=0.0):
     Usually, an application of this function is followed by a renormalization of longitudinal
     values around the longitudinal middle value:
 
-    >>> bounds = latlon_bounds(lat, lon)
+    >>> bounds = lon_bounds(lon)
     >>> lon_mid = 0.5 * (bounds[0] + bounds[2])
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
     Example
     -------
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
-    (175, -2, 181, 5)
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
-    (174, -3, 182, 6)
+    >>> lon_bounds(np.array([-179, 175, 178]))
+    (175, 181)
+    >>> lon_bounds(np.array([-179, 175, 178]), buffer=1)
+    (174, 182)
 
     Parameters
     ----------
-    lat : np.array
-        Latitudinal coordinates
     lon : np.array
         Longitudinal coordinates
     buffer : float, optional
-        Buffer to add to all sides of the bounding box. Default: 0.0.
+        Buffer to add to both sides of the bounding box. Default: 0.0.
 
     Returns
     -------
-    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+    bounds : tuple (lon_min, lon_max)
         Bounding box of the given points.
     """
     lon = lon_normalize(lon.copy())
@@ -206,6 +207,37 @@ def latlon_bounds(lat, lon, buffer=0.0):
         if lon_min <= -180:
             lon_min += 360
             lon_max += 360
+    return (lon_min, lon_max)
+
+
+def latlon_bounds(lat, lon, buffer=0.0):
+    """Bounds of a set of degree values, respecting the periodicity in longitude
+
+    See `lon_bounds` for more information about the handling of longitudinal values crossing the
+    antimeridian.
+
+    Example
+    -------
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
+    (175, -2, 181, 5)
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
+    (174, -3, 182, 6)
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitudinal coordinates
+    lon : np.array
+        Longitudinal coordinates
+    buffer : float, optional
+        Buffer to add to all sides of the bounding box. Default: 0.0.
+
+    Returns
+    -------
+    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+        Bounding box of the given points.
+    """
+    lon_min, lon_max = lon_bounds(lon, buffer=buffer)
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
@@ -226,9 +258,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": equirectangular; very fast, good only at small distances.
-        * "geosphere": spherical approximation, slower, but much higher accuracy.
-        Default: "equirect".
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
+          distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+        Note that ellipsoidal distances would be even more accurate, but are currently not
+        implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
         * "km": distance in km.
@@ -256,17 +290,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            lon_normalize(lon1)
-            lon_normalize(lon2)
-        d_lat = lat2[:, None] - lat1[:, :, None]
-        d_lon = lon2[:, None] - lon1[:, :, None]
-        fact1 = np.heaviside(d_lon - 180, 0)
-        fact2 = np.heaviside(-d_lon - 180, 0)
-        d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
-        if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            lon_normalize(lon1, center=mid_lon)
+            lon_normalize(lon2, center=mid_lon)
+        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
+                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        fact1 = np.heaviside(vtan[..., 1] - 180, 0)
+        fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
+        vtan[..., 1] -= (fact1 - fact2) * 360
+        vtan[..., 1] *= np.cos(np.radians(lat1[:, :, None]))
+        vtan *= unit_factor
+        # faster version of `dist = np.linalg.norm(vtan, axis=-1)`
+        dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
@@ -495,16 +530,12 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     zipname = "GMT_intermediate_coast_distance_01d.zip"
     tifname = "GMT_intermediate_coast_distance_01d.tif"
     url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = os.path.join(SYSTEM_DIR, tifname)
-    if not os.path.isfile(path):
-        cwd = os.getcwd()
-        os.chdir(SYSTEM_DIR)
-        path_dwn = download_file(url)
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
         zip_ref = zipfile.ZipFile(path_dwn, 'r')
         zip_ref.extractall(SYSTEM_DIR)
         zip_ref.close()
-        os.remove(path_dwn)
-        os.chdir(cwd)
 
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
@@ -870,9 +901,9 @@ def country_iso2natid(isos):
     for iso in isos:
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
-        except ValueError:
+        except ValueError as ver:
             LOGGER.error('Unknown country ISO: %s', iso)
-            raise KeyError
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
     return natids[0] if return_int else natids
 
 NATEARTH_AREA_NONISO_NUMERIC = {
@@ -1213,8 +1244,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     if not band:
         band = [1]
     LOGGER.info('Reading %s', file_name)
-    if os.path.splitext(file_name)[1] == '.gz':
-        file_name = '/vsigzip/' + file_name
+    if Path(file_name).suffix == '.gz':
+        file_name = '/vsigzip/' + str(file_name)
 
     with rasterio.Env():
         with rasterio.open(file_name, 'r') as src:
@@ -1286,8 +1317,8 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
     resampling = rasterio.warp.Resampling.bilinear
@@ -1359,8 +1390,8 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         return np.zeros_like(lat)
 
     LOGGER.info('Sampling from %s', path)
-    if os.path.splitext(path)[1] == '.gz':
-        path = '/vsigzip/' + path
+    if Path(path).suffix == '.gz':
+        path = '/vsigzip/' + str(path)
 
     with rasterio.open(path, "r") as src:
         if intermediate_res is None:
@@ -1644,7 +1675,7 @@ def fao_code_def():
     """
     # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
-    fao_file = pd.read_csv(os.path.join(DATA_DIR, 'system', "FAOSTAT_data_country_codes.csv"))
+    fao_file = pd.read_csv(SYSTEM_DIR.joinpath("FAOSTAT_data_country_codes.csv"))
     fao_code = getattr(fao_file, 'Country Code').values
     fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
 

@@ -19,20 +19,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test coordinates module.
 """
 
-import os
 import unittest
+from pathlib import Path
 
 from cartopy.io import shapereader
 from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
 import shapely
-import geopandas
 from shapely.geometry import box
 from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
 
+from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import (convert_wgs_to_utm,
                                       coord_on_land,
@@ -63,6 +63,8 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       NE_EPSG,
                                       ONE_LAT_KM)
 
+DATA_DIR = CONFIG.util.test_data.dir()
+
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
 
@@ -72,11 +74,15 @@ class TestFunc(unittest.TestCase):
 
         # test in place operation
         lon_normalize(data)
-        self.assertTrue(np.allclose(data, [180, 20.1, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [180, 20.1, -30, -170, 10])
 
         # test with specific center and return value
         data = lon_normalize(data, center=-170)
-        self.assertTrue(np.allclose(data, [-180, -339.9, -30, -170, 10]))
+        np.testing.assert_array_almost_equal(data, [-180, -339.9, -30, -170, 10])
+
+        # test with center determined automatically (which is 280.05)
+        data = lon_normalize(data, center=None)
+        np.testing.assert_array_almost_equal(data, [180, 380.1, 330, 190, 370])
 
     def test_latlon_bounds(self):
         """Test latlon_bounds function"""
@@ -117,10 +123,11 @@ class TestFunc(unittest.TestCase):
         """Test approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
-            [45.5, -32.2, 14, 56, 7709.827814738594, 8758.34146833],
-            [45.5, 147.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, 507.8, 14, -124, 7709.827814738594, 8758.34146833],
-            [45.5, -212.2, 14, -124, 7709.827814738594, 8758.34146833],
+            [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
+            [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
+            [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
+            [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
+            [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
         ])
         compute_dist = np.stack([
             dist_approx(data[:, None, 0], data[:, None, 1],
@@ -149,6 +156,8 @@ class TestFunc(unittest.TestCase):
                 self.assertAlmostEqual(d[0] * factor, cd[0])
                 self.assertAlmostEqual(d[1] * factor, cd[1])
 
+    def test_dist_approx_log_pass(self):
+        """Test log-functionality of approximate distance functions"""
         data = np.array([
             # lat1, lon1, lat2, lon2, dist, dist_sph
             [0, 0, 0, 1, 111.12, 111.12],
@@ -251,7 +260,7 @@ class TestGetGeodata(unittest.TestCase):
         ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
         self.assertEqual(coast.shape[0], 14)
         self.assertTrue(coast.total_bounds[2] < 0)
-        for row, line in coast.iterrows():
+        for _row, line in coast.iterrows():
             if not ex_box.intersects(line.geometry):
                 self.assertEqual(1, 0)
 
@@ -352,7 +361,7 @@ class TestGetGeodata(unittest.TestCase):
         it's very similar"""
         iso_countries = ['NLD', 'VNM']
         res = get_country_geometries(iso_countries, resolution=110)
-        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
+        self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
 
     def test_get_country_geometries_country_norway_pass(self):
         """test correct numeric ISO3 for country Norway"""
@@ -377,7 +386,7 @@ class TestGetGeodata(unittest.TestCase):
             np.min(lat), np.max(lat)
         ))
 
-        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
+        self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
         self.assertTrue(
             np.allclose(res.bounds.iloc[1, 1], lat[0])
         )
@@ -398,7 +407,7 @@ class TestGetGeodata(unittest.TestCase):
         """get_country_geometries with no countries or extent; i.e. the whole
         earth"""
         res = get_country_geometries(resolution=110)
-        self.assertIsInstance(res, geopandas.geodataframe.GeoDataFrame)
+        self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
 
     def test_country_code_pass(self):
@@ -536,7 +545,7 @@ class TestRasterMeta(unittest.TestCase):
         df_val['latitude'] = y.flatten()
         df_val['longitude'] = x.flatten()
         df_val['value'] = np.ones(len(df_val)) * 10
-        raster, meta = points_to_raster(df_val, val_names=['value'])
+        _raster, meta = points_to_raster(df_val, val_names=['value'])
         self.assertTrue(equal_crs(meta['crs'], df_val.crs))
         self.assertAlmostEqual(meta['transform'][0], 0.5)
         self.assertAlmostEqual(meta['transform'][1], 0)
@@ -550,9 +559,7 @@ class TestRasterMeta(unittest.TestCase):
 class TestRasterIO(unittest.TestCase):
     def test_write_raster_pass(self):
         """Test write_raster function."""
-        data_dir = os.path.join(os.path.dirname(__file__), "data")
-        os.makedirs(data_dir, exist_ok=True)
-        test_file = os.path.join(data_dir, "test_write_raster.tif")
+        test_file = Path(DATA_DIR, "test_write_raster.tif")
         data = np.arange(24).reshape(6, 4).astype(np.float32)
         meta = {
             'transform': Affine(0.1, 0, 0, 0, 1, 0),

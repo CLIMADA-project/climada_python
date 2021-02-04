@@ -22,12 +22,13 @@ Define Centroids class.
 import ast
 import copy
 import logging
+from pathlib import Path
 
 import geopandas as gpd
 import h5py
 import numpy as np
 import pandas as pd
-import rasterio
+import raste
 from rasterio.warp import Resampling
 from scipy import sparse
 from shapely.geometry.point import Point
@@ -900,7 +901,7 @@ class Centroids():
         file_data : str or h5
             If string, path to read data. If h5 object, the datasets will be read from there.
         """
-        if isinstance(file_data, str):
+        if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
             data = h5py.File(file_data, 'r')
         else:
@@ -995,6 +996,26 @@ class Centroids():
                 self.geometry = (ddata
                                  .map_partitions(apply_point, meta=Point)
                                  .compute(scheduler=scheduler))
+
+    @staticmethod
+    def _centroids_resolution(centroids):
+        """ Return resolution of the centroids in their units
+
+        Parameters:
+            centroids (Centroids): centroids instance
+
+        Returns:
+            float
+        """
+        if centroids.meta:
+            res_centr = abs(centroids.meta['transform'][4]), \
+                centroids.meta['transform'][0]
+        else:
+            res_centr = get_resolution(centroids.lat, centroids.lon)
+        if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
+            LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
+            return (res_centr[0] + res_centr[1])/2
+        return res_centr[0]
 
     def _ne_crs_geom(self, scheduler=None):
         """Return `geometry` attribute in the CRS of Natural Earth.

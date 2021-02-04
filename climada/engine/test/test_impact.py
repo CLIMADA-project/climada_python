@@ -18,11 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Impact class.
 """
-import os
 import unittest
 import numpy as np
 from scipy import sparse
 
+from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
@@ -30,10 +30,8 @@ from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
-
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
+DATA_FOLDER = CONFIG.engine.test_data.dir()
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
@@ -369,7 +367,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.join(DATA_FOLDER, 'test.csv')
+        file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -408,7 +406,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.join(DATA_FOLDER, 'test.csv')
+        file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -437,7 +435,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
-        file_name = os.path.join(DATA_FOLDER, 'test.xlsx')
+        file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
         imp_read = Impact()
@@ -467,9 +465,9 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[4, :] = np.arange(4) * 5
         impact.imp_mat = sparse.csr_matrix(impact.imp_mat)
 
-        file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
+        file_name = DATA_FOLDER.joinpath('test_imp_mat')
         impact.write_sparse_csr(file_name)
-        read_imp_mat = Impact().read_sparse_csr(file_name + '.npz')
+        read_imp_mat = Impact().read_sparse_csr(f'{file_name}.npz')
         for irow in range(5):
             self.assertTrue(
                 np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),

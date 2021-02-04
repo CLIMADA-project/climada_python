@@ -23,11 +23,12 @@ __all__ = ['Measure']
 
 import copy
 import logging
+from pathlib import Path
 import numpy as np
 import pandas as pd
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR
-import climada.util.checker as check
+import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -100,12 +101,12 @@ class Measure():
             ValueError
         """
         try:
-            check.size(3, self.color_rgb, 'Measure.color_rgb')
+            u_check.size(3, self.color_rgb, 'Measure.color_rgb')
         except ValueError:
-            check.size(4, self.color_rgb, 'Measure.color_rgb')
-        check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
-        check.size(2, self.mdd_impact, 'Measure.mdd_impact')
-        check.size(2, self.paa_impact, 'Measure.paa_impact')
+            u_check.size(4, self.color_rgb, 'Measure.color_rgb')
+        u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
+        u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
+        u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
     def calc_impact(self, exposures, imp_fun_set, hazard):
         """Apply measure and compute impact and risk transfer of measure
@@ -195,7 +196,7 @@ class Measure():
         if isinstance(self.exposures_set, str) and self.exposures_set == NULL_STR:
             return exposures
 
-        if isinstance(self.exposures_set, str):
+        if isinstance(self.exposures_set, (str, Path)):
             LOGGER.debug('Setting new exposures %s', self.exposures_set)
             new_exp = Exposures()
             new_exp.read_hdf5(self.exposures_set)
@@ -206,7 +207,7 @@ class Measure():
             new_exp.check()
         else:
             LOGGER.error('Wrong input exposures.')
-            raise ValueError
+            raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
         if not np.array_equal(np.unique(exposures.latitude.values),
                               np.unique(new_exp.latitude.values)) or \

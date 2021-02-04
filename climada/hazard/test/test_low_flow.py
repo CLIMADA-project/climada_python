@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test low flow module.
 """
-import os
 import unittest
 import numpy as np
 import pandas as pd
@@ -26,10 +25,9 @@ import datetime as dt
 
 from climada.hazard.low_flow import LowFlow, unique_clusters, \
     _compute_threshold_grid, _read_and_combine_nc, _split_bbox
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR as INPUT_DIR
 from climada.hazard.centroids import Centroids
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'co2_dis_global_daily_DEMO_FR'
 
 
