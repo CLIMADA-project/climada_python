@@ -28,7 +28,7 @@ import geopandas as gpd
 import h5py
 import numpy as np
 import pandas as pd
-import raste
+import rasterio
 from rasterio.warp import Resampling
 from scipy import sparse
 from shapely.geometry.point import Point
@@ -48,7 +48,7 @@ from climada.util.coordinates import (coord_on_land,
                                       read_raster_sample,
                                       read_vector,
                                       NE_CRS)
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
 
 __all__ = ['Centroids']
@@ -437,7 +437,7 @@ class Centroids():
         if var_names is None:
             var_names = DEF_VAR_MAT
 
-        cent = hdf5.read(file_name)
+        cent = u_hdf5.read(file_name)
         # Try open encapsulating variable FIELD_NAMES
         num_try = 0
         for field in var_names['field_names']:
