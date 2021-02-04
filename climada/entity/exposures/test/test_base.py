@@ -139,6 +139,19 @@ class TestFuncs(unittest.TestCase):
         exp.assign_centroids(haz)
         self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
                                        np.arange(haz.centroids.size, dtype=int)))
+        
+    def test_assign_large_hazard_subset_pass(self):
+        """Test assign_centroids with raster hazard"""
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.check()
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL])
+        haz.raster_to_vector()
+        exp.assign_centroids(haz)
+        assigned_cent = haz.centroids.select(sel_cen=exp.centr_FL.values)
+        self.assertTrue(np.array_equal(assigned_cent.lat, exp.latitude))
+        self.assertTrue(np.array_equal(assigned_cent.lon, exp.longitude))
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""

@@ -215,9 +215,21 @@ class Exposures(GeoDataFrame):
             if np.array_equal(coord, hazard.centroids.coord):
                 assigned = np.arange(self.shape[0])
             else:
-                assigned = interpol_index(hazard.centroids.coord, coord,
-                                          method=method, distance=distance,
-                                          threshold=threshold)
+                assigned = None
+                if hazard.centroids.size > 100000:
+                    haz_coord = np.stack([hazard.centroids.lat, hazard.centroids.lon], axis=1)
+                    haz_coord_view = haz_coord.view(dtype='float64,float64').reshape((-1,))
+                    coord_view = coord.view(dtype='float64,float64').reshape((-1,))
+                    cent = np.isin(haz_coord_view, coord_view)
+                    cent_idx = cent.nonzero()[0]
+                    if len(cent_idx) == len(coord):
+                        assigned = cent_idx
+                    else:
+                        pass
+                if assigned is None:
+                    assigned = interpol_index(hazard.centroids.coord, coord,
+                                              method=method, distance=distance,
+                                              threshold=threshold)
 
         self[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
