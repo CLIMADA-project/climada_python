@@ -948,7 +948,7 @@ class Centroids():
     @property
     def coord(self):
         """Get [lat, lon] array. Might take some time."""
-        return np.array([self.lat, self.lon]).transpose()
+        return np.stack([self.lat, self.lon], axis=1)
 
     def set_geometry_points(self, scheduler=None):
         """Set `geometry` attribute with Points from `lat`/`lon` attributes.
