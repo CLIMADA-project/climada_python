@@ -55,18 +55,27 @@ class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
-        """Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        # Fill with dummy values the centroids
-        haz = Hazard('TC')
-        haz.centroids.set_lat_lon(np.ones(expo.shape[0] + 6), np.ones(expo.shape[0] + 6))
-        # assign
-        expo.assign_centroids(haz)
+        """Check that attribute `assigned` is correctly set."""
+        np_rand = np.random.RandomState(123456789)
 
-        # check assigned variable has been set with correct length
-        self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz.raster_to_vector()
+        ncentroids = haz.centroids.size
+
+        exp = Exposures()
+        exp.crs = haz.centroids.crs
+
+        # some are matching exactly, some are geographically close
+        exp['longitude'] = np.concatenate([
+            haz.centroids.lon, haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        exp['latitude'] = np.concatenate([
+            haz.centroids.lat, haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        expected_result = np.concatenate([np.arange(ncentroids), np.arange(ncentroids)])
+
+        exp.assign_centroids(haz)
+        self.assertEqual(exp.shape[0], len(exp[INDICATOR_CENTR + 'FL']))
+        np.testing.assert_array_equal(exp[INDICATOR_CENTR + 'FL'].values, expected_result)
 
     def test_read_raster_pass(self):
         """set_from_raster"""
@@ -151,7 +160,7 @@ class TestFuncs(unittest.TestCase):
         haz.set_raster([HAZ_DEMO_FL])
         haz.raster_to_vector()
         exp.assign_centroids(haz)
-        assigned_centroids = haz.centroids.select(sel_cen=exp.centr_FL.values)
+        assigned_centroids = haz.centroids.select(sel_cen=exp[INDICATOR_CENTR + 'FL'].values)
         np.testing.assert_array_equal(assigned_centroids.lat, exp.latitude)
         np.testing.assert_array_equal(assigned_centroids.lon, exp.longitude)
 
