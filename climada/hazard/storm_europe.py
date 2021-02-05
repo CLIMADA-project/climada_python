@@ -208,7 +208,7 @@ class StormEurope(Hazard):
 
 
     def read_cosmoe_file(self, fp_file, run_date, event_date=None,
-                       model_name='COSMO-2E', description=None):
+                         model_name='COSMO-2E', description=None):
         """Clear instance and read MeteoSwiss cosmoe weather forecast
         footprint netcdf files into it. One event is one full day in UCT.
         Works for COSMO-1E and COSMO-2E
@@ -274,10 +274,8 @@ class StormEurope(Hazard):
             ncdf.epsd_1.size
             )
         self.event_name = [date_i + '_ens' + str(ens_i)
-                           for date_i, ens_i in zip(
-                                   date_to_str(self.date),
-                                   stacked2.epsd_1.values+1
-                                   )
+                           for date_i, ens_i in zip(date_to_str(self.date),
+                                                    stacked2.epsd_1.values+1)
                            ]
         self.frequency = np.divide(
                 np.ones_like(self.event_id),
@@ -381,10 +379,8 @@ class StormEurope(Hazard):
             stacked.number.size
             )
         self.event_name = [date_i + '_ens' + str(ens_i)
-                           for date_i, ens_i in zip(
-                                   date_to_str(self.date),
-                                   stacked2.number.values
-                                   )
+                           for date_i, ens_i in zip(date_to_str(self.date),
+                                                    stacked2.number.values)
                            ]
         self.frequency = np.divide(
                 np.ones_like(self.event_id),
@@ -395,8 +391,8 @@ class StormEurope(Hazard):
                            run_date.strftime('%Y%m%d%H'))
 
         self.tag = TagHazard(
-                HAZ_TYPE, 'Hazard set not saved, too large to pickle',
-                description=description
+            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+            description=description
             )
         self.check()
 

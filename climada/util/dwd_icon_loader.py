@@ -40,10 +40,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def download_icon_grib(run_date,
-                        model_name='icon-eu-eps',
-                        parameter_name='vmax_10m',
-                        max_lead_time=None,
-                        download_dir=None):
+                       model_name='icon-eu-eps',
+                       parameter_name='vmax_10m',
+                       max_lead_time=None,
+                       download_dir=None):
     """download the gribfiles of a weather forecast run for a certain
     weather parameter from opendata.dwd.de/weather/nwp/.
 
@@ -84,8 +84,8 @@ def download_icon_grib(run_date,
 
         # download file if it does not exist already
         if not bz2_pathfile_i.exists():
-            _ = download_file(url + file_name_i,
-                                             download_dir=download_dir)
+            download_file(url + file_name_i,
+                          download_dir=download_dir)
         file_names.append(str(bz2_pathfile_i))
     return file_names
 
@@ -153,19 +153,19 @@ def _create_icon_grib_name(run_date,
             in hours, which are available for download
     """
     # define defaults of the url for each model and parameter combination
-    if (model_name=='icon-eu-eps') & (parameter_name=='vmax_10m'):
+    if (model_name == 'icon-eu-eps') & (parameter_name == 'vmax_10m'):
         file_extension = '_europe_icosahedral_single-level_'
         max_lead_time_default = 120 # maximum available data
-        lead_times = np.concatenate((np.arange(1,49),
-                                     np.arange(51,73,3),
-                                     np.arange(78,121,6)
+        lead_times = np.concatenate((np.arange(1, 49),
+                                     np.arange(51, 73, 3),
+                                     np.arange(78, 121, 6)
                                      ))
     elif model_name == 'test':
         file_extension = '_storm_europe_icon_'
         max_lead_time_default = 2 # maximum available data
-        lead_times = np.concatenate((np.arange(1,49),
-                                     np.arange(51,73,3),
-                                     np.arange(78,121,6)
+        lead_times = np.concatenate((np.arange(1, 49),
+                                     np.arange(51, 73, 3),
+                                     np.arange(78, 121, 6)
                                      ))
     else:
         LOGGER.error(('Download for model ' + model_name +
@@ -225,13 +225,13 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
 
     # define url and filename
     url = 'https://opendata.dwd.de/weather/lib/cdo/'
-    if model_name=='icon-eu-eps':
+    if model_name == 'icon-eu-eps':
         file_name = 'icon_grid_0028_R02B07_N02.nc.bz2'
-    elif model_name=='icon-eu':
+    elif model_name == 'icon-eu':
         file_name = 'icon_grid_0024_R02B06_G.nc.bz2'
     elif model_name in ('icon-d2-eps', 'icon-d2'):
         file_name = 'icon_grid_0047_R19B07_L.nc.bz2'
-    elif model_name=='test':
+    elif model_name == 'test':
         file_name = 'test_storm_europe_icon_grid.nc.bz2'
     else:
         LOGGER.error(('Creation of centroids for the icon model ' +
@@ -247,7 +247,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
         if not bz2_pathfile.exists():
             try:
                 download_file(url + file_name,
-                                             download_dir=download_path)
+                              download_dir=download_path)
             except ValueError as err:
                 LOGGER.error('Error while downloading %s.', url + file_name)
                 raise err
