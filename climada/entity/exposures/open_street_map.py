@@ -433,10 +433,10 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     exp.set_geometry_points()
 
     # Crop bbox of High Value Area from Country Exposure
-    exp_sub = exp.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
-                     min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
+    exp.gdf = exp.gdf.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
+                         min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
 
-    return exp_sub
+    return exp
 
 def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     """divide litpop exposure into high-value exposure and low-value exposure
@@ -612,7 +612,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     if mode == "LitPop":
         # assign LitPop values of this area to houses.
         exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
-        totalValue = sum(exp_sub.value)
+        totalValue = sum(exp_sub.gdf.value)
         totalArea = sum(High_Value_Area_gdf['projected_area'])
         High_Value_Area_gdf['value'] = 0
         for index in High_Value_Area_gdf.index:

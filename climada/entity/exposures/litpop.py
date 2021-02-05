@@ -94,16 +94,6 @@ class LitPop(Exposures):
         ent.plot()
     """
 
-    def clear(self):
-        """Appending the base class clear attribute to also delete attributes
-            which are only used here.
-        """
-        Exposures.clear(self)
-        try:
-            del self.country_data
-        except AttributeError:
-            pass
-
     def set_country(self, countries, **args):
         """Get LitPop based exposre for one country or multiple countries
         using values at reference year. If produced capital, GDP, or income
@@ -255,16 +245,19 @@ class LitPop(Exposures):
                                    min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
                                    min(BM_YEARS, key=lambda x: abs(x - reference_year)),
                                    exponents[0], exponents[1]))
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
-                           crs=DEF_CRS)
-        self.ref_year = reference_year
-        self.tag = tag
-        self.value_unit = 'USD'
+        Exposures.__init__(
+            self, 
+            data=gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
+            crs=DEF_CRS,
+            ref_year=reference_year,
+            tag=tag,
+            value_unit='USD'
+        )
         try:
             rows, cols, ras_trans = pts_to_raster_meta(
-                (self.longitude.min(), self.latitude.min(),
-                 self.longitude.max(), self.latitude.max()),
-                get_resolution(self.longitude, self.latitude))
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -295,17 +288,16 @@ class LitPop(Exposures):
             lat (array): latudinal coordinates
             curr_country: name or iso3 ID of country
         """
-        lp_ent = LitPop()
-        lp_ent['value'] = litpop_data.to_numpy()
-        lp_ent['latitude'] = lat
-        lp_ent['longitude'] = lon
+        lp_ent = LitPop(data={
+            'value': litpop_data.to_numpy(),
+            'latitude': lat,
+            'longitude': lon
+        })
         try:
-            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(cntry_info[1]).numeric)
+            lp_ent.gdf['region_id'] = int(iso_cntry.get(cntry_info[1]).numeric)
         except KeyError:
-            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(curr_country).numeric)
-        lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
+            lp_ent.gdf['region_id'] = int(iso_cntry.get(curr_country).numeric)
+        lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
         return lp_ent
 
     def _append_additional_info(self, cntries_info):
@@ -332,21 +324,21 @@ class LitPop(Exposures):
         # one. Countries can be identified by their region id, hence this
         # can be implemented
         import matplotlib.colors as colors
-        if not self.value.sum() == 0:
+        if not self.gdf.value.sum() == 0:
             plt.figure()
 #            countr_shape = _get_country_shape(country_iso, 0)
-            countr_bbox = np.array((min(self.coord[:, 1]),
-                                    min(self.coord[:, 0]),
-                                    max(self.coord[:, 1]),
-                                    max(self.coord[:, 0])))
+            countr_bbox = np.array((min(self.gdf.coord[:, 1]),
+                                    min(self.gdf.coord[:, 0]),
+                                    max(self.gdf.coord[:, 1]),
+                                    max(self.gdf.coord[:, 0])))
             plt.gca().set_xlim(countr_bbox[0]
                                - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
                                + 0.1 * (countr_bbox[2] - countr_bbox[0]))
             plt.gca().set_ylim(countr_bbox[1]
                                - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
                                + 0.1 * (countr_bbox[3] - countr_bbox[1]))
-            plt.scatter(self.coord[:, 1], self.coord[:, 0],
-                        c=self.value, marker=',', s=3,
+            plt.scatter(self.gdf.coord[:, 1], self.gdf.coord[:, 0],
+                        c=self.gdf.value, marker=',', s=3,
                         norm=colors.LogNorm())
             plt.title('Logarithmic scale LitPop value')
             if hasattr(self, 'country_data') and\

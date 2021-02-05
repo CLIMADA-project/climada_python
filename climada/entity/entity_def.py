@@ -103,7 +103,7 @@ class Entity(object):
 
     def write_excel(self, file_name):
         """Write excel file following template."""
-        self.exposures.to_excel(file_name)
+        self.exposures.gdf.to_excel(file_name)
         self.impact_funcs.write_excel(file_name)
         self.measures.write_excel(file_name)
         self.disc_rates.write_excel(file_name)

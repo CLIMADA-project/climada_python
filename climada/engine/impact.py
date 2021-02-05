@@ -892,16 +892,18 @@ class Impact():
             self.imp_mat[1][1].extend(list(exp_iimp[col_ind]))
 
     def _build_exp(self):
-        eai_exp = Exposures()
-        eai_exp['value'] = self.eai_exp
-        eai_exp['latitude'] = self.coord_exp[:, 0]
-        eai_exp['longitude'] = self.coord_exp[:, 1]
-        eai_exp.crs = self.crs
-        eai_exp.value_unit = self.unit
-        eai_exp.ref_year = 0
-        eai_exp.tag = Tag()
-        eai_exp.meta = None
-        return eai_exp
+        return Exposures(
+            data={
+                'value': self.eai_exp,
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     def _build_exp_event(self, event_id):
         """Write impact of an event as Exposures
@@ -909,16 +911,18 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
-        impact_csr_exp = Exposures()
-        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
-        impact_csr_exp['latitude'] = self.coord_exp[:, 0]
-        impact_csr_exp['longitude'] = self.coord_exp[:, 1]
-        impact_csr_exp.crs = self.crs
-        impact_csr_exp.value_unit = self.unit
-        impact_csr_exp.ref_year = 0
-        impact_csr_exp.tag = Tag()
-        impact_csr_exp.meta = None
-        return impact_csr_exp
+        return Exposures(
+            data={
+                'value': self.imp_mat.toarray()[event_id - 1, :],
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     @staticmethod
     def _cen_return_imp(imp, freq, imp_th, return_periods):

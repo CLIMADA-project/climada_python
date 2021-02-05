@@ -107,18 +107,19 @@ class BlackMarble(Exposures):
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(
-            pd.concat(bkmrbl_list, ignore_index=True)), crs=DEF_CRS)
+        Exposures.__init__(self,
+            data=pd.concat(bkmrbl_list, ignore_index=True),
+            crs=DEF_CRS,
+            ref_year=ref_year,
+            tag=Tag(file_name=fn_nl),
+            value_unit='USD'
+        )
 
-        # set metadata
-        self.ref_year = ref_year
-        self.tag = tag
-        self.tag.file_name = fn_nl
-        self.value_unit = 'USD'
         rows, cols, ras_trans = pts_to_raster_meta(
-            (self.longitude.min(), self.latitude.min(),
-             self.longitude.max(), self.latitude.max()),
-            (coord_nl[0, 1], -coord_nl[0, 1]))
+            (self.gdf.longitude.min(), self.gdf.latitude.min(),
+             self.gdf.longitude.max(), self.gdf.latitude.max()),
+            (coord_nl[0, 1], -coord_nl[0, 1])
+        )
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs, 'transform': ras_trans}
 
     @staticmethod
@@ -158,12 +159,13 @@ class BlackMarble(Exposures):
         nightlight_reg, lat_reg, lon_reg = _resample_land(geom, nightlight_reg,
                                                           lat_reg, lon_reg, res_fact, on_land)
 
-        exp_bkmrb = BlackMarble()
-        exp_bkmrb['value'] = np.asarray(nightlight_reg).reshape(-1,)
-        exp_bkmrb['latitude'] = lat_reg
-        exp_bkmrb['longitude'] = lon_reg
-        exp_bkmrb['region_id'] = np.ones(exp_bkmrb.value.size, int) * cntry_info[0]
-        exp_bkmrb[INDICATOR_IF] = np.ones(exp_bkmrb.value.size, int)
+        exp_bkmrb = BlackMarble(data={
+            'value': np.asarray(nightlight_reg).reshape(-1,),
+            'latitude': lat_reg,
+            'longitude': lon_reg,
+        })
+        exp_bkmrb.gdf['region_id'] = cntry_info[0]
+        exp_bkmrb.gdf[INDICATOR_IF] = 1
 
         return exp_bkmrb
 
