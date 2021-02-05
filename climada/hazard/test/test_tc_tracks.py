@@ -156,7 +156,7 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
         # the wind speed at position 44 is missing in the original data
-        self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 57, places=0)
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 58, places=0)
 
     def test_read_official(self):
         """Read a tropical cyclone, only officially reported values."""
@@ -179,7 +179,7 @@ class TestIbtracs(unittest.TestCase):
 
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=True)
         track_ds = tc_track.get_track()
-        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55 * 1.16, places=5)
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], (55 - 23.3) / 0.6, places=5)
 
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=False)
         track_ds = tc_track.get_track()
@@ -226,8 +226,8 @@ class TestIbtracs(unittest.TestCase):
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
                                    estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013, places=0)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1007, places=0)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
 
 class TestIO(unittest.TestCase):
