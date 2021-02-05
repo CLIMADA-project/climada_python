@@ -97,31 +97,27 @@ IBTRACS_USA_AGENCIES = [
 
 
 IBTRACS_AGENCY_1MIN_WIND_FACTOR = {
-    "usa": 1.0,  # already 1-minute winds
-    "tokyo": 1.16,  # from 10-minute winds
-    "newdelhi": 1.10,  # from 3-minute winds
-    "reunion": 1.16,  # from 10-minute winds
-    "bom": 1.16,  # from 10-minute winds
-    "nadi": 1.16,  # from 10-minute winds
-    "wellington": 1.16,  # from 10-minute winds
-    'cma': 1.08,  # from 2-minute winds
-    'hko': 1.16,  # from 10-minute winds
-    'ds824': 1.0,  # already 1-minute winds
-    'td9636': 1.0,  # already 1-minute winds
-    'td9635': 1.0,  # already 1-minute winds
-    'neumann': 1.16,  # from 10-minute winds
-    'mlc': 1.0,  # already 1-minute winds
+    "usa": [1.0, 0.0],
+    "tokyo": [0.60, 23.3],
+    "newdelhi": [1.0, 0.0],
+    "reunion": [0.88, 0.0],
+    "bom": [0.88, 0.0],
+    "nadi": [0.88, 0.0],
+    "wellington": [0.88, 0.0],
+    'cma': [0.871, 0.0],
+    'hko': [0.9, 0.0],
+    'ds824': [1.0, 0.0],
+    'td9636': [1.0, 0.0],
+    'td9635': [1.0, 0.0],
+    'neumann': [0.88, 0.0],
+    'mlc': [1.0, 0.0],
 }
-"""Factors to apply for conversion from agency's reported winds to 1-minute sustained winds. From:
+"""Scale and shift used by agencies to convert their internal Dvorak 1-minute sustained winds to
+the officially reported values that are in IBTrACS. From Table 1 in:
 
-Harper, B.A., Kepert, J.D., Ginger, J.D. (2010): Guidelines for Converting between Various Wind
-Averaging Periods in Tropical Cyclone Conditions. 1555. Geneva, Switzerland: World Meteorological
-Organization. https://library.wmo.int/index.php?lvl=notice_display&id=135
-
-The factors are due to Table 1.1 for "off-land" winds since the "off-land" values are closest to
-the "traditional" conversion factor between 1- and 10-minute winds (see Section 1.5). Furthermore,
-"off-land" (or coastal) exposure is most dominantly affected by TCs, in general, compared to
-"in-land", "off-sea" and "at-sea" exposures."""
+Knapp, K.R., Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
+Wind Speed Estimates. Monthly Weather Review 138(4): 1459–1473.
+https://library.wmo.int/index.php?lvl=notice_display&id=135"""
 
 DEF_ENV_PRESSURE = 1010
 """Default environmental pressure"""
@@ -312,6 +308,10 @@ class TCTracks():
         Some corrections are automatically applied, such as: `environmental_pressure` is enforced
         to be larger than `central_pressure`.
 
+        Note that the tracks returned by this function might contain irregular time steps since
+        that is often the case for the original IBTrACS records. Apply the `equal_timestep`
+        function afterwards to enforce regular time steps.
+
         Parameters
         ----------
         provider : str or list of str, optional
@@ -348,7 +348,9 @@ class TCTracks():
             E.g. US, SA, NI, SI, SP, WP, EP, NA. If not provided, consider all basins.
         interpolate_missing : bool, optional
             If True, interpolate temporal reporting gaps within a variable (such as pressure, wind
-            speed, or radius) linearly if possible.
+            speed, or radius) linearly if possible. Temporal interpolation is with respect to the
+            time steps defined in IBTrACS for a particular storm. No new time steps are added that
+            are not originally defined in IBTrACS.
             For each time step with a missing value, this procedure is only able to fill in that
             value if there are other time steps before and after this time step for which values
             have been reported.
@@ -367,6 +369,8 @@ class TCTracks():
             for pressure, but for wind speed. In this case, a rough statistical pressure-wind
             relationship is applied to estimate the missing pressure values from the available
             wind-speed values.
+            Make sure to set `rescale_windspeeds=True` when using this option because the
+            statistical relationships are calibrated using rescaled wind speeds.
             Default: False
         correct_pres : bool, optional
             For backwards compatibility, alias for `estimate_missing`.
@@ -379,6 +383,9 @@ class TCTracks():
             LOGGER.warning("`correct_pres` is deprecated. "
                            "Use `estimate_missing` instead.")
             estimate_missing = True
+        if estimate_missing and not rescale_windspeeds:
+            LOGGER.warning(
+                "Using `estimate_missing` without `rescale_windspeeds` is strongly discouraged!")
         self.data = list()
         fn_nc = SYSTEM_DIR.joinpath(file_name)
         if not fn_nc.is_file():
@@ -427,11 +434,14 @@ class TCTracks():
 
         if rescale_windspeeds:
             for agency in IBTRACS_AGENCIES:
-                ibtracs_ds[f'{agency}_wind'] *= IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
+                scale, shift = IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
+                ibtracs_ds[f'{agency}_wind'] -= shift
+                ibtracs_ds[f'{agency}_wind'] /= scale
 
         if provider is None:
             provider = ["official_3h"] + IBTRACS_AGENCIES
-        provider = [provider] if isinstance(provider, str) else provider
+        elif isinstance(provider, str):
+            provider = [provider]
 
         for tc_var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
             if "official" in provider or "official_3h" in provider:
@@ -1427,7 +1437,7 @@ def _estimate_pressure(cen_pres, lat, lon, v_max):
     See function `ibtracs_fit_param` for more details about the statistical estimation:
 
     >>> ibtracs_fit_param('pres', ['lat', 'lon', 'wind'], year_range=(1980, 2020))
-    >>> r^2: 0.8724413133075428
+    >>> r^2: 0.8726728075520206
 
     Parameters
     ----------
@@ -1449,7 +1459,7 @@ def _estimate_pressure(cen_pres, lat, lon, v_max):
     v_max = np.where(np.isnan(v_max), -1, v_max)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (cen_pres <= 0) & (v_max > 0) & (lat > -999) & (lon > -999)
-    c_const, c_lat, c_lon, c_vmax = 1026.372, -0.05699, -0.0356, -0.7365
+    c_const, c_lat, c_lon, c_vmax = 1026.3401, -0.05504, -0.03536, -0.7357
     cen_pres[msk] = c_const + c_lat * lat[msk] \
                             + c_lon * lon[msk] \
                             + c_vmax * v_max[msk]
@@ -1463,7 +1473,7 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
     See function `ibtracs_fit_param` for more details about the statistical estimation:
 
     >>> ibtracs_fit_param('wind', ['lat', 'lon', 'pres'], year_range=(1980, 2020))
-    >>> r^2: 0.8683618303414877
+    >>> r^2: 0.8683725434617979
 
     Parameters
     ----------
@@ -1485,7 +1495,7 @@ def _estimate_vmax(v_max, lat, lon, cen_pres):
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
     lat, lon = [np.where(np.isnan(ar), -999, ar) for ar in [lat, lon]]
     msk = (v_max <= 0) & (cen_pres > 0) & (lat > -999) & (lon > -999)
-    c_const, c_lat, c_lon, c_pres = 1215.819, -0.0445, -0.0422, -1.179
+    c_const, c_lat, c_lon, c_pres = 1216.5223, -0.04086, -0.04190, -1.1797
     v_max[msk] = c_const + c_lat * lat[msk] \
                          + c_lon * lon[msk] \
                          + c_pres * cen_pres[msk]
@@ -1603,7 +1613,9 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
 
     if "wind" in variables:
         for agency in IBTRACS_AGENCIES:
-            ibtracs_ds[f'{agency}_wind'] *= IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
+            scale, shift = IBTRACS_AGENCY_1MIN_WIND_FACTOR[agency]
+            ibtracs_ds[f'{agency}_wind'] -= shift
+            ibtracs_ds[f'{agency}_wind'] /= scale
 
     # fill values
     agency_pref, track_agency_ix = ibtracs_track_agency(ibtracs_ds)
