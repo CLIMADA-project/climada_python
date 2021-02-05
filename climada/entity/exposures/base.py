@@ -174,6 +174,12 @@ class Exposures():
             if 'crs' not in self.meta:
                 LOGGER.info('crs set to default value: %s', self.crs)
 
+    def __str__(self):
+        return '\n'.join([
+            f"{md}: {self.__dict__[md]}" for md in type(self)._metadata
+        ] + [ "data:",  str(self.gdf) ]
+        )
+
     def check(self):
         """Check which variables are present"""
         if self.crs != self.gdf.crs:
