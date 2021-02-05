@@ -26,7 +26,6 @@ import math
 import numpy as np
 from numpy.polynomial.polynomial import polyval
 import pandas as pd
-import geopandas as gpd
 from scipy import ndimage
 import shapely.vectorized
 from cartopy.io import shapereader
@@ -107,7 +106,8 @@ class BlackMarble(Exposures):
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self,
+        Exposures.__init__(
+            self,
             data=pd.concat(bkmrbl_list, ignore_index=True),
             crs=DEF_CRS,
             ref_year=ref_year,

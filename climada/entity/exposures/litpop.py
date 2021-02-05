@@ -246,7 +246,7 @@ class LitPop(Exposures):
                                    min(BM_YEARS, key=lambda x: abs(x - reference_year)),
                                    exponents[0], exponents[1]))
         Exposures.__init__(
-            self, 
+            self,
             data=gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
             crs=DEF_CRS,
             ref_year=reference_year,
