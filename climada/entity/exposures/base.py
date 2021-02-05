@@ -175,46 +175,54 @@ class Exposures():
                 LOGGER.info('crs set to default value: %s', self.crs)
 
     def __str__(self):
-        return '\n'.join([
-            f"{md}: {self.__dict__[md]}" for md in type(self)._metadata
-        ] + [ "data:",  str(self.gdf) ]
+        return '\n'.join(
+            [f"{md}: {self.__dict__[md]}" for md in type(self)._metadata] +
+            ["data:",  str(self.gdf)]
         )
 
     def check(self):
-        """Check which variables are present"""
+        """Check Exposures consistency.
+        
+        Reports missing columns in log messages.
+        If no if_* column is present in the dataframe, a default column 'if_' is added with
+        default impact function id 1.
+        """
         if self.crs != self.gdf.crs:
             raise ValueError(f"crs is not synchronized between Exposures ({self.crs})" +
                              f" and GeoDataFrame ({self.gdf.crs})")
 
+        # mandatory columns
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
                 LOGGER.error("%s missing.", var)
                 raise ValueError(f"{var} missing in gdf")
 
-        for var in self.vars_def:
-            if var == INDICATOR_IF:
-                found = np.array([var in var_col for var_col in self.gdf.columns]).any()
-                if INDICATOR_IF in self.gdf.columns:
-                    LOGGER.info("Hazard type not set in %s", var)
-            else:
-                found = var in self.gdf.columns
-            if not found:
-                if var == INDICATOR_IF:
-                    LOGGER.info("Setting %s to default impact functions ids 1.", var)
-                    self.gdf[INDICATOR_IF] = np.ones(self.gdf.shape[0], dtype=int)
-                else:
-                    LOGGER.info("%s not set.", var)
-
-        for var in self.vars_opt:
-            if var == INDICATOR_CENTR:
-                found = np.array([var in var_col for var_col in self.gdf.columns]).any()
-                if INDICATOR_CENTR in self.gdf.columns:
-                    LOGGER.info("Hazard type not set in %s", var)
-            else:
-                found = var in self.gdf.columns
-            if not found:
+        # computable columns except if_*
+        for var in set(self.vars_def).difference([INDICATOR_IF]):
+            if not var in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
+        # special treatment for if_*
+        if INDICATOR_IF in self.gdf.columns:
+            LOGGER.info("Hazard type not set in %s", INDICATOR_IF)
+
+        elif not any([col.startswith(INDICATOR_IF) for col in self.gdf.columns]):
+            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IF)
+            self.gdf[INDICATOR_IF] = 1
+
+        # optional columns except centr_*
+        for var in set(self.vars_opt).difference([INDICATOR_CENTR]):
+            if not var in self.gdf.columns:
+                LOGGER.info("%s not set.", var)
+
+        # special treatment for centr_*
+        if INDICATOR_CENTR in self.gdf.columns:
+            LOGGER.info("Hazard type not set in %s", INDICATOR_CENTR)
+
+        elif not any([col.startswith(INDICATOR_CENTR) for col in self.gdf.columns]):
+            LOGGER.info("%s not set.", INDICATOR_CENTR)
+
+        # check whether geometry corresponds to lat/lon
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
                 self.gdf.geometry.values[0].y != self.gdf.latitude.values[0]):

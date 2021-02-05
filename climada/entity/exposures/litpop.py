@@ -237,7 +237,7 @@ class LitPop(Exposures):
                                            country_info[curr_country][3],
                                            country_info[curr_country][4])
             lp_cntry.append(self._set_one_country(country_info[curr_country],
-                                                  litpop_curr, lon, lat, curr_country))
+                                                  litpop_curr, lon, lat, curr_country).gdf)
             tag.description += ('LitPop for %s at %i as, year=%i, financial mode=%s, '
                                 'GPW-year=%i, BM-year=%i, exp=[%i, %i]'
                                 % (country_info[curr_country][1], resolution, reference_year,
@@ -247,7 +247,7 @@ class LitPop(Exposures):
                                    exponents[0], exponents[1]))
         Exposures.__init__(
             self,
-            data=gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
+            data=pd.concat(lp_cntry, ignore_index=True),
             crs=DEF_CRS,
             ref_year=reference_year,
             tag=tag,
@@ -1868,19 +1868,17 @@ def exposure_set_admin1(exposure, res_arcsec):
         exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
     """
 
-    exposure['admin1'] = pd.Series()
-    exposure['admin1_ID'] = pd.Series()
-    count = 0
-    for cntry in np.unique(exposure.region_id):
+    exposure.gdf['admin1'] = pd.Series()
+    exposure.gdf['admin1_ID'] = pd.Series()
+    for cntry in np.unique(exposure.gdf.region_id):
         _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
         for adm1_shp in admin1_info:
-            count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
             mask_adm1 = _mask_from_shape(
                 adm1_shp[0], resolution=res_arcsec,
-                points2check=list(zip(exposure.longitude, exposure.latitude)))
-            exposure.admin1_ID[mask_adm1] = adm1_shp[1][3]
-            exposure.admin1[mask_adm1] = adm1_shp[1]['name']
+                points2check=list(zip(exposure.gdf.longitude, exposure.gdf.latitude)))
+            exposure.gdf.admin1_ID[mask_adm1] = adm1_shp[1][3]
+            exposure.gdf.admin1[mask_adm1] = adm1_shp[1]['name']
     return exposure
 
 

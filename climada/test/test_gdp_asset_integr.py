@@ -46,88 +46,88 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
         testGDP2A_LIE = ga.GDP2Asset()
         testGDP2A_LIE.set_countries(countries=['LIE'], path=DEMO_GDP2ASSET)
 
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[0, 2], 9.5206968)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[1, 2], 9.5623634)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[2, 2], 9.60403)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[3, 2], 9.5206968)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[4, 2], 9.5623634)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[5, 2], 9.60403)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[6, 2], 9.5206968)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[7, 2], 9.5623634)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[8, 2], 9.60403)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[9, 2], 9.5206968)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[10, 2], 9.5623634)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[11, 2], 9.5206968)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[12, 2], 9.5623634)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[0, 2], 9.5206968)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[1, 2], 9.5623634)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[2, 2], 9.60403)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[3, 2], 9.5206968)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[4, 2], 9.5623634)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[5, 2], 9.60403)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[6, 2], 9.5206968)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[7, 2], 9.5623634)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[8, 2], 9.60403)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[9, 2], 9.5206968)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[10, 2], 9.5623634)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[11, 2], 9.5206968)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[12, 2], 9.5623634)
 
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[0, 1], 47.0622474)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[1, 1], 47.0622474)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[2, 1], 47.0622474)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[3, 1], 47.103914)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[4, 1], 47.103914)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[5, 1], 47.103914)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[6, 1], 47.1455806)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[7, 1], 47.1455806)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[8, 1], 47.1455806)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[9, 1], 47.1872472)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[10, 1], 47.1872472)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[11, 1], 47.2289138)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[12, 1], 47.2289138)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[0, 1], 47.0622474)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[1, 1], 47.0622474)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[2, 1], 47.0622474)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[3, 1], 47.103914)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[4, 1], 47.103914)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[5, 1], 47.103914)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[6, 1], 47.1455806)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[7, 1], 47.1455806)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[8, 1], 47.1455806)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[9, 1], 47.1872472)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[10, 1], 47.1872472)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[11, 1], 47.2289138)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[12, 1], 47.2289138)
 
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[0, 0], 174032107.65846416)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[1, 0], 20386409.991937194)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[2, 0], 2465206.6989314994)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[3, 0], 0.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[4, 0], 12003959.733058406)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[5, 0], 97119771.42771776)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[6, 0], 0.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[7, 0], 4137081.3646739507)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[8, 0], 27411196.308422357)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[9, 0], 0.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[10, 0], 4125847.312198318)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[11, 0], 88557558.43543366)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[12, 0], 191881403.05181965)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[0, 0], 174032107.65846416)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[1, 0], 20386409.991937194)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[2, 0], 2465206.6989314994)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[3, 0], 0.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[4, 0], 12003959.733058406)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[5, 0], 97119771.42771776)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[6, 0], 0.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[7, 0], 4137081.3646739507)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[8, 0], 27411196.308422357)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[9, 0], 0.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[10, 0], 4125847.312198318)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[11, 0], 88557558.43543366)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[12, 0], 191881403.05181965)
 
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[0, 3], 3.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[12, 3], 3.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[0, 4], 11.0)
-        self.assertAlmostEqual(testGDP2A_LIE.iloc[12, 4], 11.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[0, 3], 3.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[12, 3], 3.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[0, 4], 11.0)
+        self.assertAlmostEqual(testGDP2A_LIE.gdf.iloc[12, 4], 11.0)
 
     def test_two_countries(self):
         testGDP2A_LIE_CHE = ga.GDP2Asset()
         testGDP2A_LIE_CHE.set_countries(countries=['LIE', 'CHE'],
                                         path=DEMO_GDP2ASSET)
 
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[0, 2], 9.520696799999968,
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[0, 2], 9.520696799999968,
                                4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[45, 2], 7.39570019999996,
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[45, 2], 7.39570019999996,
                                4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[1000, 2],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[1000, 2],
                                9.604029999999966, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[2500, 2],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[2500, 2],
                                9.395696999999984, 4)
 
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[0, 1],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[0, 1],
                                47.062247399999976, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[45, 1],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[45, 1],
                                45.978915799999996, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[1000, 1], 46.6039148, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[2500, 1],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[1000, 1], 46.6039148, 4)
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[2500, 1],
                                47.3955802, 4)
 
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[0, 0],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[0, 0],
                                174032107.65846416, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[45, 0],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[45, 0],
                                11682292.467251074, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[1000, 0],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[1000, 0],
                                508470546.39168245, 4)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[2500, 0],
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[2500, 0],
                                949321115.5175464, 4)
 
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[0, 3], 3.0)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[12, 3], 3.0)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[0, 4], 11.0)
-        self.assertAlmostEqual(testGDP2A_LIE_CHE.iloc[2500, 4], 11.0)
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[0, 3], 3.0)
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[12, 3], 3.0)
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[0, 4], 11.0)
+        self.assertAlmostEqual(testGDP2A_LIE_CHE.gdf.iloc[2500, 4], 11.0)
 
 
 if __name__ == "__main__":

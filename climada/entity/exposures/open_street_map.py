@@ -442,10 +442,11 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     """divide litpop exposure into high-value exposure and low-value exposure
     according to area queried in OSM, re-assign all low values to high-value centroids
     Parameters:
-        exp_sub (exposure)
+        exp_sub (GeoDataFrame)
         mode (str)
+        High_Value_Area_gdf (GeoDataFrame)
     Returns:
-        exp_sub_high (exposure)
+        exp_sub_high (GeoDataFrame)
     """
 
     exp_sub_high = pd.DataFrame(columns=exp_sub.columns)
@@ -539,7 +540,7 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
 
     exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
 
-    exp_sub_high = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
+    exp_sub_high = _split_exposure_highlow(exp_sub.gdf, mode, High_Value_Area_gdf)
 
     ###### how to "spread" centroids with value to e.g. hexagons? ###########
     # put exp_sub_high back into CLIMADA-compatible exposure format and save as hdf5 file:
@@ -599,14 +600,21 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     """add value-columns to high-resolution exposure gdf
     according to m2 area of underlying features.
 
-    Parameters:
-        High_Value_Area_gdf
-        mode
-        country
-        kwargs (dict): arguments for LitPop set_country method
+    Parameters
+    ----------
+    High_Value_Area_gdf : GeoDataFrame
+         high-resolution exposure gdf
+    mode : str
+        'LitPop' or 'default'
+    country : str
+        country alpha-3 code
+    kwargs : dict
+        arguments for LitPop set_country method
 
-    Returns:
-        exp_sub_high
+    Returns
+    -------
+    GeoDataFrame
+        High_Value_Area_gdf, the transformed input dataframe
     """
 
     if mode == "LitPop":
