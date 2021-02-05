@@ -85,18 +85,18 @@ class TestDataAvail(unittest.TestCase):
         """Test availability ECMWF essentials TC forecast."""
         fcast = TCForecast.fetch_bufr_ftp()
         [f.close() for f in fcast]
-        
+
     def test_icon_forecast_download(self):
         """Test availability of DWD icon forecast."""
-        run_date = dt.datetime.today().replace(hour=0, 
-                                               minute=0, 
-                                               second=0, 
+        run_date = dt.datetime.today().replace(hour=0,
+                                               minute=0,
+                                               second=0,
                                                microsecond=0)
         icon_file = download_icon_grib(run_date,max_lead_time=1)
         self.assertEqual(len(icon_file), 1)
         delete_icon_grib(run_date,max_lead_time=1) #deletes icon_file
         self.assertFalse(Path(icon_file[0]).exists())
-        
+
     def test_icon_centroids_download(self):
         """Test availablility of DWD icon grid information."""
         grid_file = download_icon_centroids_file()

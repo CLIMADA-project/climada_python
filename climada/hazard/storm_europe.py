@@ -209,18 +209,18 @@ class StormEurope(Hazard):
 
     def read_cosmoe_file(self, fp_file, run_date, event_date=None,
                        model_name='COSMO-2E', description=None):
-        """Clear instance and read MeteoSwiss cosmoe weather forecast 
+        """Clear instance and read MeteoSwiss cosmoe weather forecast
         footprint netcdf files into it. One event is one full day in UCT.
         Works for COSMO-1E and COSMO-2E
 
         Parameters:
             fp_file (str): string directing to one netcdf file
-            run_date (datetime): The starting timepoint of the forecast run 
+            run_date (datetime): The starting timepoint of the forecast run
                 of the cosmo model
             event_date (datetime, optional): one day within the forecast
                 period, only this day (00H-24H) will be included in the hazard
             model_name (str,optional): select the name of the icon model to
-                be downloaded. Must match the url string 
+                be downloaded. Must match the url string
                 (see _download_icon_grib for further info)
             description (str, optional): description of the events, defaults
                 to 'cosmo weather forecast'
@@ -228,48 +228,55 @@ class StormEurope(Hazard):
         self.clear()
         # create centroids
         self.centroids = self._centroids_from_nc(fp_file)
-        
+
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
         ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D")))
-        
+
         if event_date:
             # stacked = np.max(ncdf.sel(time=event_date.strftime('%Y-%m-%d')).VMAX_10M,
             #                  axis=0).stack(intensity=('y_1', 'x_1'))
-            stacked2 = ncdf.sel(time=event_date.strftime('%Y-%m-%d')).groupby('date').max().stack(intensity=('y_1', 'x_1'))
+            stacked2 = ncdf.sel(time=event_date.strftime('%Y-%m-%d')
+                                ).groupby('date'
+                                          ).max().stack(intensity=('y_1',
+                                                                   'x_1'))
             considered_dates = np.datetime64(event_date)
         else:
             time_covered_step = ncdf['time'].diff('time')
             time_covered_day = time_covered_step.groupby('date').sum()
-            days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
-            stacked2 = ncdf.groupby('date').max().sel(date=days_to_consider).stack(intensity=('y_1', 'x_1'))
+            # forecast run should cover at least 18 hours of a day
+            days_to_consider = time_covered_day > np.timedelta64(18,'h') 
+            stacked2 = ncdf.groupby('date'
+                                    ).max().sel(date=days_to_consider
+                                                ).stack(intensity=('y_1',
+                                                                   'x_1'))
             unique_dates = ncdf['time'].groupby('date').min()
             considered_dates = unique_dates.sel(date=days_to_consider).values
 
-            
-        stacked3 = stacked2.stack(event=('date', 'epsd_1'))
-        stacked3 = stacked3.where(stacked3.VMAX_10M > self.intensity_thres)
-        stacked3 = stacked3.fillna(0)
-    
-        # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked3.VMAX_10M.T)
-        self.event_id = np.arange(stacked3.date.size)+1
 
-    
+        stacked2 = stacked2.stack(event=('date', 'epsd_1'))
+        stacked2 = stacked2.where(stacked2.VMAX_10M > self.intensity_thres)
+        stacked2 = stacked2.fillna(0)
+
+        # fill in values from netCDF
+        self.intensity = sparse.csr_matrix(stacked2.VMAX_10M.T)
+        self.event_id = np.arange(stacked2.date.size)+1
+
+
         # fill in default values
         self.units = 'm/s'
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked3.epsd_1 == 0).values] = True
+        self.orig[(stacked2.epsd_1 == 0).values] = True
         self.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             ncdf.epsd_1.size
             )
-        self.event_name = [date_i + '_ens' + str(ens_i) 
+        self.event_name = [date_i + '_ens' + str(ens_i)
                            for date_i, ens_i in zip(
                                    date_to_str(self.date),
-                                   stacked3.epsd_1.values+1
+                                   stacked2.epsd_1.values+1
                                    )
                            ]
         self.frequency = np.divide(
@@ -280,7 +287,7 @@ class StormEurope(Hazard):
                            ' weather forecast windfield ' +
                            'for run startet at ' +
                            run_date.strftime('%Y%m%d%H'))
-    
+
         self.tag = TagHazard(
                 HAZ_TYPE, 'Hazard set not saved, too large to pickle',
                 description=description
@@ -292,26 +299,26 @@ class StormEurope(Hazard):
     def read_icon_grib(self, run_date, event_date=None,
                        model_name='icon-eu-eps', description=None,
                        grib_dir=None, delete_raw_data=True):
-        """Clear instance and download and read dwd icon weather forecast 
-        footprints into it. One event is one full day in UCT. Current setup 
-        works for runs starting at 00H and 12H. Otherwise the aggregation is 
-        inaccurate, because of the given file structure with 1-hour, 3-hour 
+        """Clear instance and download and read dwd icon weather forecast
+        footprints into it. One event is one full day in UCT. Current setup
+        works for runs starting at 00H and 12H. Otherwise the aggregation is
+        inaccurate, because of the given file structure with 1-hour, 3-hour
         and 6-hour maxima provided.
 
         Parameters:
-            run_date (datetime): The starting timepoint of the forecast run 
+            run_date (datetime): The starting timepoint of the forecast run
                 of the icon model
             event_date (datetime, optional): one day within the forecast
                 period, only this day (00H-24H) will be included in the hazard
             model_name (str,optional): select the name of the icon model to
-                be downloaded. Must match the url string 
+                be downloaded. Must match the url string
                 (see _download_icon_grib for further info)
             description (str, optional): description of the events, defaults
                 to 'icon weather forecast'
             grib_dir (str, optional): path to folder, where grib files are
                 or should be stored
-            delete_raw_data (bool,optional): select if downloaded raw data in 
-                .grib.bz2 file format should be stored on the computer or 
+            delete_raw_data (bool,optional): select if downloaded raw data in
+                .grib.bz2 file format should be stored on the computer or
                 removed
         """
         self.clear()
@@ -319,11 +326,11 @@ class StormEurope(Hazard):
         file_names = download_icon_grib(run_date,
                                         model_name=model_name,
                                         download_dir=grib_dir)
-       
+
         # create centroids
         nc_centroids_file = download_icon_centroids_file(model_name, grib_dir)
         self.centroids = self._centroids_from_nc(nc_centroids_file)
-        
+
         # read intensity from files
         for ind_i, file_i in enumerate(file_names):
             gripfile_path_i = os.path.join(file_i[:-4])
@@ -335,12 +342,12 @@ class StormEurope(Hazard):
                 stacked = ds_i
             else:
                 stacked = xr.concat([stacked,ds_i], 'valid_time')
-                
+
         # create intensity matrix with max for each full day
         if not (run_date.hour == 0 or run_date.hour == 12):
-            LOGGER.warning('The event definition is inaccuratly implemented for '+
-                        'starting times, which are not 00H or 12H.')
-        
+            LOGGER.warning('The event definition is inaccuratly implemented '+
+                           'for starting times, which are not 00H or 12H.')
+
         stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
         if event_date:
             stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
@@ -348,34 +355,35 @@ class StormEurope(Hazard):
         else:
             time_covered_step = stacked['valid_time'].diff('valid_time')
             time_covered_day = time_covered_step.groupby('date').sum()
-            days_to_consider = time_covered_day > np.timedelta64(18,'h') # forecast run covered at least 18 hours of a day
+            # forecast run should cover at least 18 hours of a day
+            days_to_consider = time_covered_day > np.timedelta64(18,'h') 
             stacked2 = stacked.groupby('date').max().sel(date=days_to_consider)
             unique_dates = stacked['valid_time'].groupby('date').min()
             considered_dates = unique_dates.sel(date=days_to_consider).values
-        stacked3 = stacked2.stack(intensity=('date', 'number'))
-        stacked3 = stacked3.where(stacked3 > self.intensity_thres)
-        stacked3 = stacked3.fillna(0)
-        
-    
+        stacked2 = stacked2.stack(event=('date', 'number'))
+        stacked2 = stacked2.where(stacked2 > self.intensity_thres)
+        stacked2 = stacked2.fillna(0)
+
+
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked3.gust.T)
-        self.event_id = np.arange(stacked3.date.size)+1
-    
+        self.intensity = sparse.csr_matrix(stacked2.gust.T)
+        self.event_id = np.arange(stacked2.date.size)+1
+
         # fill in default values
         self.units = 'm/s'
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked3.number == 1).values] = True
-        
+        self.orig[(stacked2.number == 1).values] = True
+
         self.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             stacked.number.size
             )
-        self.event_name = [date_i + '_ens' + str(ens_i) 
+        self.event_name = [date_i + '_ens' + str(ens_i)
                            for date_i, ens_i in zip(
                                    date_to_str(self.date),
-                                   stacked3.number.values
+                                   stacked2.number.values
                                    )
                            ]
         self.frequency = np.divide(
@@ -385,15 +393,15 @@ class StormEurope(Hazard):
             description = ('icon weather forecast windfield ' +
                            'for run startet at ' +
                            run_date.strftime('%Y%m%d%H'))
-            
+
         self.tag = TagHazard(
                 HAZ_TYPE, 'Hazard set not saved, too large to pickle',
                 description=description
             )
         self.check()
-    
 
-        
+
+
         # delete generated .grib2 and .4cc40.idx files
         for ind_i, file_i in enumerate(file_names):
             gripfile_path_i = os.path.join(file_i[:-4])
@@ -421,15 +429,15 @@ class StormEurope(Hazard):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
         elif hasattr(ncdf, 'lat_1'):
-            if (len(ncdf.lon_1.shape)>1 & \
+            if len(ncdf.lon_1.shape)>1 & \
                 (ncdf.lon_1.shape == ncdf.lat_1.shape) \
-                ):
+                :
                 lats = ncdf.lat_1.data.flatten()
                 lons = ncdf.lon_1.data.flatten()
                 create_meshgrid = False
             else:
                 lats = ncdf.lat_1.data
-                lons = ncdf.lon_1.data                
+                lons = ncdf.lon_1.data
         elif hasattr(ncdf, 'clat'):
             lats = ncdf.clat.data
             lons = ncdf.clon.data
@@ -441,7 +449,7 @@ class StormEurope(Hazard):
             raise AttributeError('netcdf file has no field named latitude or '
                                  'other know abrivation for coordinates.')
         ncdf.close()
-        
+
         if create_meshgrid:
             lats, lons = np.array([np.repeat(lats, len(lons)),
                                    np.tile(lons, len(lats))])
@@ -717,7 +725,7 @@ class StormEurope(Hazard):
 
         return new_haz
 
-    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
+    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args=None,
                    power=1.15, scale=0.0225):
         """Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
@@ -746,6 +754,8 @@ class StormEurope(Hazard):
         ssi : np.array
             SSI per synthetic event according to provided method.
         """
+        if not ssi_args:
+            ssi_args = {}
         shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape
 
         # reshape to the raster that the data represents
@@ -799,5 +809,3 @@ class StormEurope(Hazard):
         ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)
 
         return intensity_out[:, sel_cen], ssi
-
-
