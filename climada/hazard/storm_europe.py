@@ -44,7 +44,6 @@ from climada.util.dwd_icon_loader import (download_icon_centroids_file,
                                           download_icon_grib,
                                           delete_icon_grib,
                                           )
-from climada.util import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -339,7 +338,7 @@ class StormEurope(Hazard):
                 
         # create intensity matrix with max for each full day
         if not (run_date.hour == 0 or run_date.hour == 12):
-            LOGGER.warn('The event definition is inaccuratly implemented for '
+            LOGGER.warning('The event definition is inaccuratly implemented for '+
                         'starting times, which are not 00H or 12H.')
         
         stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
@@ -618,7 +617,7 @@ class StormEurope(Hazard):
 
         return fig, axs
 
-    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
+    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args=None,
                              **kwargs):
         """Generates a new hazard set with one original and 29 probabilistic
         storms per historic storm. This represents a partial implementation of
