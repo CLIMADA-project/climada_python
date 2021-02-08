@@ -747,7 +747,7 @@ class Impact():
             args_imp = dict()
         imp_list = []
         exp_list = []
-        imp_arr = np.zeros(len(exp))
+        imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
             imp_tmp.calc(exp, if_set, haz_list[i_time])
