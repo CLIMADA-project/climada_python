@@ -1,0 +1,455 @@
+"""
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Define Uncertainty class.
+"""
+
+__all__ = ['UncVar', 'Uncertainty']
+
+import logging
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from climada.util.value_representation import value_to_monetary_unit as u_vtm
+
+LOGGER = logging.getLogger(__name__)
+
+# Future planed features:
+# - Add estimate of computation time and suggest surrogate models if needed
+
+
+class UncVar():
+    """
+    Uncertainty variable
+
+    An uncertainty variable requires a single or multi-parameter function.
+    The parameters must follow a given distribution.
+
+    Examples
+    --------
+
+    Categorical variable function: LitPop exposures with m,n exponents in [0,5]
+        import scipy as sp
+        def litpop_cat(m, n):
+            exp = Litpop()
+            exp.set_country('CHE', exponent=[m, n])
+            return exp
+        distr_dict = {
+            m: sp.stats.randint(low=0, high=5),
+            n: sp.stats.randint(low=0, high=5)
+            }
+        unc_var_cat = UncVar(litpop_cat, distr_dict)
+
+    Continuous variable function: Impact function for TC
+        import scipy as sp
+        def imp_fun_tc(G, v_half, vmin, k, _id=1):
+            imp_fun = ImpactFunc()
+            imp_fun.haz_type = 'TC'
+            imp_fun.id = _id
+            imp_fun.intensity_unit = 'm/s'
+            imp_fun.intensity = np.linspace(0, 150, num=100)
+            imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
+            imp_fun.paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
+                                    for v in imp_fun.intensity])
+            imp_fun.check()
+            impf_set = ImpactFuncSet()
+            impf_set.append(imp_fun)
+            return impf_set
+        distr_dict = {"G": sp.stats.uniform(0.8, 1),
+              "v_half": sp.stats.uniform(50, 100),
+              "vmin": sp.stats.norm(loc=15, scale=30),
+              "k": sp.stats.randint(low=1, high=9)
+              }
+        unc_var_cont = UncVar(imp_fun_tc, distr_dict)
+
+    """
+
+    def __init__(self, unc_var, distr_dict):
+        """
+        Initialize UncVar
+
+        Parameters
+        ----------
+        unc_var : function
+            Variable defined as a function of the uncertainty parameters
+        distr_dict : dict
+            Dictionary of the probability density distributions of the
+            uncertainty parameters, with keys the matching the keyword
+            arguments (i.e. uncertainty parameters) of the unc_var function.
+            The distribution must be of type scipy.stats
+            https://docs.scipy.org/doc/scipy/reference/stats.html
+
+        Returns
+        -------
+        None.
+
+        """
+        self.labels = list(distr_dict.keys())
+        self.distr_dict = distr_dict
+        self.unc_var = unc_var
+
+    def plot_distr(self):
+        """
+        Plot the distributions of the parameters of the uncertainty variable.
+
+        Returns
+        -------
+        fig, ax: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
+
+        """
+
+        nplots = len(self.distr_dict)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
+        for ax, (param_name, distr) in zip(axis.flatten(), self.distr_dict.items()):
+            x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
+            ax.plot(x, distr.pdf(x), label=param_name)
+            ax.legend()
+        return fig, axis
+
+    def evaluate(self, kwargs):
+        """
+        Evaluate the uncertainty variable.
+
+        Parameters
+        ----------
+        kwargs :
+            These parameters will be passed to self.unc_var.
+            They must be the input parameters of the uncertainty variable .
+
+        Returns
+        -------
+
+            Evaluated uncertainty variable
+
+        """
+        return self.unc_var(**kwargs)
+
+
+class Uncertainty():
+    """
+    Uncertainty analysis class
+
+    This is the base class to perform uncertainty analysis on the outputs of a
+    climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
+    object.
+
+    """
+
+    def __init__(self, unc_vars, params=None, problem=None,
+                 metrics=None, pool=None):
+        """
+        Initialize Uncertainty
+
+        Parameters
+        ----------
+        unc_vars : list of climade.engine.uncertainty.UncVar variables
+            list of uncertainty variables
+        params : pd.DataFrame, optional
+            DataFrame of sampled parameter values.
+            The default is pd.DataFrame().
+        problem : dict, optional
+            The description of the uncertainty variables and their
+            distribution as used in SALib.
+            https://salib.readthedocs.io/en/latest/getting-started.html.
+            The default is {}.
+        metrics : dict(), optional
+            Dictionnary of the metrics evaluation. The default is {}.
+        pool : pathos.pools.ProcessPool, optional
+            Pool of CPUs for parralel computations. Default is None.
+            The default is None.
+        """
+
+        if pool:
+            self.pool = pool
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+        else:
+            self.pool = None
+
+        if params is None:
+            params = pd.DataFrame()
+
+        if problem is None:
+            problem = {}
+
+        if metrics is None:
+            metrics = {}
+
+        self.unc_vars = unc_vars
+        self.params = params
+        self.problem = problem
+        self.metrics = metrics
+
+
+    @property
+    def n_runs(self):
+        """
+        The effective number of runs needed for the sample size self.n_samples.
+
+        Returns
+        -------
+        n_runs: int
+            effective number of runs
+
+        """
+
+        if isinstance(self.params, pd.DataFrame):
+            return self.params.shape[0]
+        return 0
+
+    @property
+    def param_labels(self):
+        """
+        Labels of all uncertainty parameters.
+
+        Returns
+        -------
+        param_labels: list of strings
+            Labels of all uncertainty parameters.
+
+        """
+        return list(self.distr_dict.keys())
+
+
+    @property
+    def distr_dict(self):
+        """
+        Dictionary of the distribution of all the parameters of all variables
+        listed in self.unc_vars
+
+        Returns
+        -------
+        distr_dict : dict( sp.stats objects )
+            Dictionary of all distributions.
+
+        """
+
+        distr_dict = dict()
+        for unc_var in self.unc_vars.values():
+            distr_dict.update(unc_var.distr_dict)
+        return distr_dict
+
+
+    def make_sample(self, N, sampling_method='saltelli', **kwargs):
+        """
+        Make a sample for all parameters with their respective
+        distributions using the chosen sampling_method from SALib.
+        https://salib.readthedocs.io/en/latest/api.html
+
+        Parameters
+        ----------
+        N : int
+            Number of samples as defined in SALib.sample.saltelli.sample().
+        sampling_method: string
+            The sampling method as defined in SALib. Possible choices:
+            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            https://salib.readthedocs.io/en/latest/api.html
+            The default is 'saltelli'
+        kwargs:
+            Keyword arguments are passed to the SALib sampling method.
+
+        """
+
+        self.sampling_method = sampling_method
+        self.n_samples = N
+        uniform_base_sample = self._make_uniform_base_sample(**kwargs)
+        df_params = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
+        for param in list(df_params):
+            df_params[param] = df_params[param].apply(
+                self.distr_dict[param].ppf
+                )
+        self.params = df_params
+
+
+    def _make_uniform_base_sample(self, **kwargs):
+        """
+        Make a uniform distributed [0,1] sample for the defined
+        uncertainty parameters (self.param_labels) with the chosen
+        method from SALib (self.sampling_method)
+        https://salib.readthedocs.io/en/latest/api.html
+
+        Parameters
+        ----------
+        kwargs:
+            Keyword arguments are passed to the SALib sample method.
+
+        Returns
+        -------
+        sample_params : np.matrix
+            Returns a NumPy matrix containing the sampled uncertainty
+            parameters using the defined sampling method (self.sampling_method)
+
+        """
+
+        problem = {
+            'num_vars' : len(self.param_labels),
+            'names' : self.param_labels,
+            'bounds' : [[0, 1]]*len(self.param_labels)
+            }
+        self.problem = problem
+        #To import a submodule from a module use 'from_list' necessary
+        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
+        salib_sampling_method = getattr(
+            __import__('SALib.sample',
+                       fromlist=[self.sampling_method]
+                       ),
+            self.sampling_method
+            )
+        sample_params = salib_sampling_method.sample(problem = problem,
+                                                     N = self.n_samples,
+                                                     **kwargs)
+        return sample_params
+
+
+    def est_comp_time(self):
+        """
+        Estimate the computation time
+        """
+        raise NotImplementedError()
+
+
+    def _calc_metric_sensitivity(self, analysis_method, **kwargs):
+        """
+        Compute the sensitivity indices using SALib
+
+        Parameters
+        ----------
+        analysis_method : str
+            sensitivity analysis method from SALib.analyse
+            https://salib.readthedocs.io/en/latest/api.html
+            Possible choices:
+                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
+            The default is 'sobol'.
+        **kwargs : keyword arguments
+            Are passed to the chose SALib analyse method.
+
+        Returns
+        -------
+        sensitivity_dict : dict
+            Dictionnary of the sensitivity indices. Keys are the
+            metrics names, values the sensitivity indices dictionnary
+            as returned by SALib.
+
+        """
+
+        sensitivity_dict = {}
+        for name, df_metric in self.metrics.items():
+            sensitivity_dict[name] = {}
+            for metric in df_metric:
+                Y = df_metric[metric].to_numpy()
+                sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
+                sensitivity_dict[name].update({metric: sensitivity_index})
+
+        return sensitivity_dict
+
+
+    @staticmethod
+    def _var_or_uncvar(var):
+        """
+        Returns uncertainty variable with no distribution if var is not
+        an UncVar. Else, returns var.
+
+        Parameters
+        ----------
+        var : Object or else
+
+        Returns
+        -------
+        UncVar
+            var if var is UncVar, else UncVar with var and no distribution.
+
+        """
+
+        if isinstance(var, UncVar):
+            return var
+
+        return UncVar(unc_var=lambda: var, distr_dict={})
+
+
+    def plot_metric_distribution(self, metric_list=None):
+        """
+        Plot the distribution of values.
+
+        Parameters
+        ----------
+        metric_list: list
+            List of metrics to plot the distribution.
+            The default is None.
+
+        Raises
+        ------
+        ValueError
+            If no metric distribution was computed the plot cannot be made.
+
+        Returns
+        -------
+        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
+
+        """
+
+        if not self.metrics:
+            raise ValueError("No uncertainty data present for this emtrics. "+
+                    "Please run an uncertainty analysis first.")
+
+        if metric_list is None:
+            metric_list = list(self.metrics.keys())
+
+        df_values = pd.DataFrame()
+        for metric in metric_list:
+            df_values = df_values.append(self.metrics[metric])
+
+        df_values_log = df_values.apply(np.log10).copy()
+        df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
+        cols = df_values_log.columns
+        nplots = len(cols)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize=(nrows*7, ncols * 3.5),
+                                 sharex=True,
+                                 sharey=True)
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = [axes]
+
+        for ax, col in zip(flat_axes, cols):
+            data = df_values_log[col]
+            data.hist(ax=ax,  bins=100, density=True, histtype='step')
+            avg = df_values[col].mean()
+            std = df_values[col].std()
+            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
+                    color='red', linestyle='dashed',
+                    label="avg=%.2f%s" %u_vtm(avg))
+            ax.plot([np.log10(avg) - np.log10(std) / 2,
+                     np.log10(avg) + np.log10(std) / 2],
+                    [0.3, 0.3], color='red',
+                    label="std=%.2f%s" %u_vtm(std))
+            ax.set_title(col)
+            ax.set_xlabel('value [log10]')
+            ax.set_ylabel('density of events')
+            ax.legend()
+
+        return fig, axes
+
+
+
+
