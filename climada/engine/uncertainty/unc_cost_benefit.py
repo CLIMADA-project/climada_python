@@ -85,7 +85,7 @@ class UncCostBenefit(Uncertainty):
                              params=params, problem=problem, metrics=metrics)
 
 
-    def calc_cost_benefit_distribution(self, pool=None, **kwargs):
+    def calc_distribution(self, pool=None, **kwargs):
         """
         Computes the cost benefit for each of the parameters set defined in
         uncertainty.params.
@@ -211,7 +211,7 @@ class UncCostBenefit(Uncertainty):
 
 
 
-    def calc_cost_benefit_sensitivity(self,  method='sobol', **kwargs):
+    def calc_sensitivity(self,  method='sobol', **kwargs):
         """
         Compute the sensitivity indices using the SALib library:
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
@@ -252,7 +252,7 @@ class UncCostBenefit(Uncertainty):
         if not self.metrics:
             raise ValueError("I found no impact data. Please compute"
                              " the impact distribution first using"+
-                             " UncImpact.calc_impact_distribution()")
+                             " UncCostBenefit.calc_distribution()")
 
         #To import a submodule from a module 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
