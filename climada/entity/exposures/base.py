@@ -414,7 +414,7 @@ class Exposures():
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf.value.values.reshape((self.meta['height'],
                                                 self.meta['width']))
             # check raster starts by upper left corner
@@ -627,7 +627,7 @@ class Exposures():
         Parameters:
             file_name (str): name output file in tif format
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self):
+        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
                                                       self.meta['width']))
             # check raster starts by upper left corner
@@ -753,7 +753,7 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
     exposures.tag = Tag(file_name)
 
 
-def concat(*exposures_list):
+def concat(exposures_list):
     """Concatenates Exposures or DataFrame objectss to one Exposures object.
 
     Parameters
