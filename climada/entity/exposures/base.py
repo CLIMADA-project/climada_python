@@ -112,6 +112,10 @@ class Exposures():
                 'region_id', 'geometry']
     """Name of the variables that aren't need to compute the impact."""
 
+    @property
+    def crs(self):
+        return self.gdf.crs
+
     def __init__(self, *args, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
@@ -166,11 +170,8 @@ class Exposures():
                     setattr(self, mda, self.meta[mda])
 
         self.gdf = GeoDataFrame(*args, **kwargs)
-        if self.gdf.crs:
-            self.crs = self.gdf.crs
-        else:
-            self.crs = self.meta.get('crs', DEF_CRS)
-            self.gdf.crs = self.crs
+        if not self.gdf.crs:
+            self.gdf.crs = self.meta.get('crs', DEF_CRS)
             if 'crs' not in self.meta:
                 LOGGER.info('crs set to default value: %s', self.crs)
 
@@ -187,10 +188,6 @@ class Exposures():
         If no if_* column is present in the dataframe, a default column 'if_' is added with
         default impact function id 1.
         """
-        if self.crs != self.gdf.crs:
-            raise ValueError(f"crs is not synchronized between Exposures ({self.crs})" +
-                             f" and GeoDataFrame ({self.gdf.crs})")
-
         # mandatory columns
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
@@ -317,10 +314,9 @@ class Exposures():
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
         try:
-            self.crs = meta['crs'].to_dict()
+            self.gdf.crs = meta['crs'].to_dict()
         except AttributeError:
-            self.crs = meta['crs']
-        self.gdf.crs = self.crs
+            self.gdf.crs = meta['crs']
         self.gdf['longitude'] = x_grid.flatten()
         self.gdf['latitude'] = y_grid.flatten()
         self.gdf['value'] = value.reshape(-1)
@@ -596,7 +592,6 @@ class Exposures():
         """
         if inplace:
             self.gdf.to_crs(crs, epsg, True)
-            self.crs = self.gdf.crs
             self.set_lat_lon()
             return None
 

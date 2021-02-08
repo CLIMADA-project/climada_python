@@ -31,7 +31,6 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.constants import DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 from climada import CONFIG
 
@@ -316,7 +315,6 @@ class CropProduction(Exposures):
         self.value_unit = 't/y' # input unit, will be reset below if required by user
         self.crop = crop
         self.ref_year = yearrange
-        self.crs = DEF_CRS
         try:
             rows, cols, ras_trans = pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),

@@ -31,7 +31,7 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
-from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEF_CRS, SYSTEM_DIR
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -87,7 +87,6 @@ class GDP2Asset(Exposures):
         self.ref_year = ref_year
         self.value_unit = 'USD'
         self.tag.description = 'GDP2Asset ' + str(self.ref_year)
-        self.crs = DEF_CRS
         # set meta
         res = 0.0416666
 
