@@ -100,7 +100,7 @@ class Exposures():
             TC. There might be different hazards defined: centr_TC, centr_FL, ...
             Computed in method assign_centroids().
     """
-    _metadata = ['tag', 'ref_year', 'value_unit', 'meta', 'crs']
+    _metadata = ['tag', 'ref_year', 'value_unit', 'meta']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -168,6 +168,8 @@ class Exposures():
                     setattr(self, mda, kwargs.pop(mda))
                 elif mda in self.meta:
                     setattr(self, mda, self.meta[mda])
+                else:
+                    setattr(self, mda, None)
 
         self.gdf = GeoDataFrame(*args, **kwargs)
         if not self.gdf.crs:
@@ -178,7 +180,7 @@ class Exposures():
     def __str__(self):
         return '\n'.join(
             [f"{md}: {self.__dict__[md]}" for md in type(self)._metadata] +
-            ["data:",  str(self.gdf)]
+            [f"crs: {self.crs}", "data:", str(self.gdf)]
         )
 
     def check(self):
@@ -617,8 +619,9 @@ class Exposures():
         """
         gdf = self.gdf.copy(deep)
         metadata = dict([
-           (md, copy.deepcopy(self.__dict__[md])) for md in type(self)._metadata
+            (md, copy.deepcopy(self.__dict__[md])) for md in type(self)._metadata
         ])
+        metadata['crs'] = self.crs
         return type(self)(
             gdf,
             **metadata
@@ -632,7 +635,7 @@ class Exposures():
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self):
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
-                                                      self.meta['width']))
+                                                         self.meta['width']))
             # check raster starts by upper left corner
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
