@@ -35,7 +35,7 @@ from climada import CONFIG
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.entity.exposures import gpw_import
+from climada.entity.exposures import gpw_import, concat
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
@@ -245,9 +245,10 @@ class LitPop(Exposures):
                                    min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
                                    min(BM_YEARS, key=lambda x: abs(x - reference_year)),
                                    exponents[0], exponents[1]))
+            
         Exposures.__init__(
             self,
-            data=gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
+            data=concat([lp.gdf for lp in lp_cntry]).gdf,
             crs=DEF_CRS,
             ref_year=reference_year,
             tag=tag,
