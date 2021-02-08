@@ -24,7 +24,6 @@ import pandas as pd
 from pandas_datareader import wb
 from scipy import ndimage as nd
 from scipy import stats
-import geopandas as gpd
 import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
@@ -36,6 +35,7 @@ from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
+from climada.entity.exposures import concat as concat_exp
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
@@ -245,9 +245,10 @@ class LitPop(Exposures):
                                    min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
                                    min(BM_YEARS, key=lambda x: abs(x - reference_year)),
                                    exponents[0], exponents[1]))
+
         Exposures.__init__(
             self,
-            data=pd.concat(lp_cntry, ignore_index=True),
+            data=concat_exp(lp_cntry).gdf,
             crs=DEF_CRS,
             ref_year=reference_year,
             tag=tag,

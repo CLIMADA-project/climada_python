@@ -747,7 +747,7 @@ class Impact():
             args_imp = dict()
         imp_list = []
         exp_list = []
-        imp_arr = np.zeros(len(exp))
+        imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
             imp_tmp.calc(exp, if_set, haz_list[i_time])
@@ -763,14 +763,14 @@ class Impact():
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
 
         if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.value.values.min()
+            args_exp['vmin'] = exp.gdf.value.values.min()
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                                          if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.value.values.max()
+            args_exp['vmax'] = exp.gdf.value.values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
