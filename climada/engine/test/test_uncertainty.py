@@ -30,6 +30,7 @@ from climada.hazard import TropCyclone
 import os
 from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit
 import scipy as sp
+from pathos.pools import ProcessPool as Pool
 
 
 CURR_DIR = "/Users/ckropf/Documents/Climada/Uncertainty"
@@ -169,12 +170,16 @@ class TestUncVar(unittest.TestCase):
     unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
     unc.plot_rp_distribution()
 
+    pool = Pool()
     haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
     ent = dummy_ent()
     unc = UncCostBenefit(haz_unc, ent)
     unc.make_sample(N=1)
-    unc.calc_cost_benefit_distribution()
+    unc.calc_cost_benefit_distribution(pool=pool)
     unc.calc_cost_benefit_sensitivity()
+    pool.close()
+    pool.join()
+    pool.clear()
 
     unc.plot_metric_distribution(list(unc.metrics.keys())[0:6])
 

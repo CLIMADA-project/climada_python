@@ -42,8 +42,7 @@ class UncCostBenefit(Uncertainty):
 
     """
 
-    def __init__(self, haz_unc, ent_unc, haz_fut_unc=None, ent_fut_unc=None,
-                 pool=None):
+    def __init__(self, haz_unc, ent_unc, haz_fut_unc=None, ent_fut_unc=None):
         """Initialize UncCostBenefit
 
         Parameters
@@ -65,18 +64,8 @@ class UncCostBenefit(Uncertainty):
                       or climada.entity.Entity, optional
             Entity uncertainty variable or Entity for the future Entity
             in climada.engine.CostBenefit.calc
-        pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations. Default is None.
-            The default is None.
 
         """
-
-
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
         unc_vars = {'haz': self._var_or_uncvar(haz_unc),
                          'ent': self._var_or_uncvar(ent_unc),
@@ -92,11 +81,11 @@ class UncCostBenefit(Uncertainty):
                     'imp_meas_present': None,
                     'imp_meas_future': None}
 
-        Uncertainty.__init__(self, unc_vars=unc_vars, pool=pool,
+        Uncertainty.__init__(self, unc_vars=unc_vars,
                              params=params, problem=problem, metrics=metrics)
 
 
-    def calc_cost_benefit_distribution(self, **kwargs):
+    def calc_cost_benefit_distribution(self, pool=None, **kwargs):
         """
         Computes the cost benefit for each of the parameters set defined in
         uncertainty.params.
@@ -106,6 +95,9 @@ class UncCostBenefit(Uncertainty):
 
         Parameters
         ----------
+        pool : pathos.pools.ProcessPool, optional
+            Pool of CPUs for parralel computations. Default is None.
+            The default is None.
         **kwargs : keyword arguments
             These parameters are passed to
             climada.engine.CostBenefit.calc().
@@ -115,6 +107,7 @@ class UncCostBenefit(Uncertainty):
         None.
 
         """
+        
 
         if self.params.empty:
             LOGGER.info("No sample was found. Please create one first"
@@ -122,9 +115,10 @@ class UncCostBenefit(Uncertainty):
             return None
 
         #Compute impact distributions
-        if self.pool:
-            chunksize = min(self.n_runs // self.pool.ncpus, 100)
-            cb_metrics = self.pool.map(partial(self._map_costben_eval, **kwargs),
+        if pool:
+            LOGGER.info('Using %s CPUs.', pool.ncpus)
+            chunksize = min(self.n_runs // pool.ncpus, 100)
+            cb_metrics = pool.map(partial(self._map_costben_eval, **kwargs),
                                            self.params.iterrows(),
                                            chunsize = chunksize)
 

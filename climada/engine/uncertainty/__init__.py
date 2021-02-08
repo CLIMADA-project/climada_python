@@ -18,5 +18,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 from .base import *
-from .uncertainty_impact import *
-from .uncertainty_cost_benefit import *
+from .unc_impact import *
+from .unc_cost_benefit import *
