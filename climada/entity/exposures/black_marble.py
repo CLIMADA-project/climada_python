@@ -35,6 +35,7 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.entity.exposures import nightlight as nl_utils
+from climada.engine.exposures import concat_exp
 from climada.util.finance import gdp, income_group
 from climada.util.coordinates import pts_to_raster_meta
 
@@ -108,7 +109,7 @@ class BlackMarble(Exposures):
 
         Exposures.__init__(
             self,
-            data=pd.concat(bkmrbl_list, ignore_index=True),
+            data=concat_exp([bkmrbl.gdf for bkmrbl in bkmrbl_list]).gdf,
             crs=DEF_CRS,
             ref_year=ref_year,
             tag=Tag(file_name=fn_nl),
