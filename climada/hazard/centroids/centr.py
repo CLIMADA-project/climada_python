@@ -213,6 +213,8 @@ class Centroids():
             land_reg_ids = list(range(1, 1000))
             land_reg_ids.remove(10)  # Antarctica
             centroids = centroids.select(reg_id=land_reg_ids)
+
+        centroids.check()
         return centroids
 
     @staticmethod
