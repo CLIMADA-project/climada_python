@@ -102,7 +102,7 @@ class BlackMarble(Exposures):
 
             bkmrbl_list.append(
                 self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
-                                      cntry_admin1[cntry_iso], **kwargs))
+                                      cntry_admin1[cntry_iso], **kwargs).gdf)
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
