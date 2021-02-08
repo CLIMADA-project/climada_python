@@ -154,7 +154,7 @@ class Uncertainty():
     """
 
     def __init__(self, unc_vars, params=None, problem=None,
-                 metrics=None, pool=None):
+                 metrics=None):
         """
         Initialize Uncertainty
 
@@ -172,17 +172,9 @@ class Uncertainty():
             The default is {}.
         metrics : dict(), optional
             Dictionnary of the metrics evaluation. The default is {}.
-        pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations. Default is None.
-            The default is None.
+            
         """
-
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
-
+        
         if params is None:
             params = pd.DataFrame()
 

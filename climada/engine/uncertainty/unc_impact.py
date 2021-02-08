@@ -43,7 +43,7 @@ class UncImpact(Uncertainty):
 
     """
 
-    def __init__(self, exp_unc, impf_unc, haz_unc, pool=None):
+    def __init__(self, exp_unc, impf_unc, haz_unc):
         """Initialize UncImpact
 
         Parameters
@@ -54,18 +54,8 @@ class UncImpact(Uncertainty):
             Impactfunction uncertainty variable or Impact function
         haz_unc : climada.engine.uncertainty.UncVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard
-        pool : pathos.pools.ProcessPool
-            Pool of CPUs for parralel computations. Default is None.
 
         """
-
-
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
-
 
         unc_vars = {'exp': self._var_or_uncvar(exp_unc),
                     'impf': self._var_or_uncvar(impf_unc),
@@ -79,7 +69,7 @@ class UncImpact(Uncertainty):
                    'at_event':  pd.DataFrame([])
                    }
 
-        Uncertainty.__init__(self, unc_vars=unc_vars, pool=pool,
+        Uncertainty.__init__(self, unc_vars=unc_vars,
                              params=params, problem=problem, metrics=metrics)
 
 
@@ -87,6 +77,7 @@ class UncImpact(Uncertainty):
                                  rp=None,
                                  calc_eai_exp=False,
                                  calc_at_event=False,
+                                 pool=None
                                  ):
         """
         Computes the impact for each of the parameters set defined in
@@ -110,6 +101,9 @@ class UncImpact(Uncertainty):
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
+        pool : pathos.pools.ProcessPool, optional
+            Pool of CPUs for parralel computations. Default is None.
+            The default is None.
 
         Raises
         ------
@@ -131,9 +125,10 @@ class UncImpact(Uncertainty):
         self.calc_at_event = calc_at_event
 
         #Compute impact distributions
-        if self.pool:
-            chunksize = min(self.n_runs // self.pool.ncpus, 100)
-            imp_metrics = self.pool.map(self._map_impact_eval,
+        if pool:
+            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+            chunksize = min(self.n_runs // pool.ncpus, 100)
+            imp_metrics = pool.map(self._map_impact_eval,
                                            self.params.iterrows(),
                                            chunsize = chunksize)
 
