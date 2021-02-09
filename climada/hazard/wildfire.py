@@ -42,7 +42,6 @@ from climada.hazard.centroids.centr import Centroids
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
-from climada.util.coordinates import get_resolution
 from climada.util.dates_times import str_to_date
 
 from climada.util.alpha_shape import alpha_shape, plot_polygon
@@ -51,7 +50,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 LOGGER = logging.getLogger(__name__)
 
 HAZ_TYPE = 'WF'
-""" Hazard type acronym for Wild Fire """
+""" Hazard type acronym for Wild Fire, might be changed to WFseason or WFsingle """
 
 CLEAN_THRESH = 30
 """ Minimal confidence value for the data from MODIS instrument to be use as input"""
@@ -282,8 +281,8 @@ class WildFire(Hazard):
         # fires season (used to define distribution of n fire for the
         # probabilistic fire seasons)
         n_fires = np.zeros(len(years))
-        for i, wf in enumerate(hist_fire_seasons):
-            n_fires[i] = len(wf.event_id)
+        for idx, wf in enumerate(hist_fire_seasons):
+            n_fires[idx] = len(wf.event_id)
 
         if keep_all_fires:
             self.hist_fire_seasons = hist_fire_seasons
@@ -373,15 +372,16 @@ class WildFire(Hazard):
 
         # Following values are defined for each event and centroid
         new_intensity = sparse.lil_matrix((np.zeros([n_fire_seasons, len(self.centroids.lat)])))
-        for idx, bf in enumerate(prob_fire_seasons):
-            new_intensity[idx] = sparse.csr_matrix(bf).max(0)
+        for idx, wf in enumerate(prob_fire_seasons):
+            new_intensity[idx] = sparse.csr_matrix(wf).max(0)
         new_intensity = new_intensity.tocsr()
         self.intensity = sparse.vstack([self.intensity, new_intensity],
                                        format='csr')
         self.fraction = self.intensity.copy()
         self.fraction.data.fill(1.0)
 
-    def combine_fires(self, event_id_merge=None, remove_rest=False, probabilistic=False):
+    def combine_fires(self, event_id_merge=None, remove_rest=False,
+                      probabilistic=False):
         """ Combine events that are identified as different fires by the
         clustering algorithms but need to be treated as one (i.e. due to impact
         data reporting or for case studies). Orig fires are removed and a new
@@ -470,7 +470,7 @@ class WildFire(Hazard):
                 no cut if not specified
             hemisphere (str, optional): 'SHS' or 'NHS' to define fire seasons
         """
-        
+
         # define hemisphere
         if hemisphere is None:
             if self.centroids.lat[0] > 0:
@@ -494,16 +494,16 @@ class WildFire(Hazard):
 
         for i, year in enumerate(years):
             if hemisphere == 'NHS':
-                StartTime = date.toordinal(date(year, 1, 1))
-                EndTime = date.toordinal(date(year+1, 1, 1))
+                start = date.toordinal(date(year, 1, 1))
+                end = date.toordinal(date(year+1, 1, 1))
             elif hemisphere == 'SHS':
-                StartTime = date.toordinal(date(year, 7, 1))
-                EndTime = date.toordinal(date(year+1, 7, 1))
-    
-            date_new[i] = StartTime
-            date_end_new[i] = EndTime
-            idx = np.where((self.date > StartTime-1) & \
-                           (self.date < EndTime + 1))
+                start = date.toordinal(date(year, 7, 1))
+                end = date.toordinal(date(year+1, 7, 1))
+
+            date_new[i] = start
+            date_end_new[i] = end
+            idx = np.where((self.date > start-1) & \
+                           (self.date < end + 1))
             n_fires[i] = len(idx)
             intensity_new[i] = sparse.csr_matrix( \
                                     np.amax(self.intensity[idx], 0))
@@ -1109,13 +1109,13 @@ class WildFire(Hazard):
 
         firms['date'] = firms['acq_date'].apply(pd.to_datetime)
         if hemisphere == 'NHS':
-            StartTime = pd.Timestamp(year, 1, 1)
-            EndTime = pd.Timestamp(year+1, 1, 1)
+            start = pd.Timestamp(year, 1, 1)
+            end = pd.Timestamp(year+1, 1, 1)
         elif hemisphere == 'SHS':
-            StartTime = pd.Timestamp(year, 7, 1)
-            EndTime = pd.Timestamp(year+1, 7, 1)
+            start = pd.Timestamp(year, 7, 1)
+            end = pd.Timestamp(year+1, 7, 1)
 
-        firms = firms[(firms['date'] > StartTime) & (firms['date'] < EndTime)]
+        firms = firms[(firms['date'] > start) & (firms['date'] < end)]
         firms = firms.drop('date', axis=1)
         return firms
 
