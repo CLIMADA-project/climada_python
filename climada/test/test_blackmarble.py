@@ -64,7 +64,7 @@ class Test2013(unittest.TestCase):
         ent = BlackMarble()
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
-        self.assertIn('GDP SXM 2014: 3.658e+08.', cm.output[0])
+        self.assertIn('GDP SXM 2013: 1.023e+09.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
