@@ -420,12 +420,11 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     """get litpop exposure for the bbox area of the queried OSM features
     Parameters:
         country (str)
-        highValueArea (gdf)
+        highValueArea (GeoDataFrame)
         bbox (array)
         kwargs (dict): arguments for LitPop set_country method
     Returns:
-        exp_sub (exposure)
-        High_Value_Area_gdf (gdf)
+        exp_sub (LitPop)
     """
     # Load LitPop Exposure for whole country, and High Value Area
     exp = LitPop()
@@ -442,32 +441,32 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     """divide litpop exposure into high-value exposure and low-value exposure
     according to area queried in OSM, re-assign all low values to high-value centroids
     Parameters:
-        exp_sub (GeoDataFrame)
+        exp_sub (Exposures)
         mode (str)
         High_Value_Area_gdf (GeoDataFrame)
     Returns:
-        exp_sub_high (GeoDataFrame)
+        exp_sub_high (Exposures)
     """
 
-    exp_sub_high = pd.DataFrame(columns=exp_sub.columns)
-    exp_sub_low = pd.DataFrame(columns=exp_sub.columns)
-    for i, pt in enumerate(exp_sub.geometry):
+    exp_sub_high = pd.DataFrame(columns=exp_sub.gdf.columns)
+    exp_sub_low = pd.DataFrame(columns=exp_sub.gdf.columns)
+    for i, pt in enumerate(exp_sub.gdf.geometry):
         if pt.within(High_Value_Area_gdf.loc[0]['geometry']):
-            exp_sub_high = exp_sub_high.append(exp_sub.iloc[i])
+            exp_sub_high = exp_sub_high.append(exp_sub.gdf.iloc[i])
         else:
-            exp_sub_low = exp_sub_low.append(exp_sub.iloc[i])
+            exp_sub_low = exp_sub_low.append(exp_sub.gdf.iloc[i])
 
     exp_sub_high = GeoDataFrame(exp_sub_high, crs=exp_sub.crs, geometry=exp_sub_high.geometry)
     exp_sub_low = GeoDataFrame(exp_sub_low, crs=exp_sub.crs, geometry=exp_sub_low.geometry)
 
     if mode == "nearest":
         # assign asset values of low-value points to nearest point in high-value df.
-        pointsToAssign = exp_sub_high.geometry.unary_union
+        points_to_assign = exp_sub_high.geometry.unary_union
         exp_sub_high["addedValNN"] = 0
         for i in range(0, len(exp_sub_low)):
             nearest = exp_sub_high.geometry == nearest_points(exp_sub_low.iloc[i].geometry,
-                                                              pointsToAssign)[1]  # point
-            exp_sub_high.addedValNN.loc[nearest] = exp_sub_low.iloc[i].value
+                                                              points_to_assign)[1]  # point
+            exp_sub_high.addedValNN.loc[nearest] += exp_sub_low.iloc[i].value
         exp_sub_high["combinedValNN"] = exp_sub_high[['addedValNN', 'value']].sum(axis=1)
         exp_sub_high.rename(columns={'value': 'value_old', 'combinedValNN': 'value'},
                             inplace=True)
@@ -492,9 +491,11 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
 
     else:
         print("No proper re-assignment mode set. "
-              "Please choose either nearest, even or proportional.")
+              "Please choose either 'nearest', 'even' or 'proportional'.")
 
-    return exp_sub_high
+    exp = exp_sub.copy(deep=False)
+    exp.gdf = exp_sub_high
+    return exp
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
                           save_path=None, check_plot=1, **kwargs):

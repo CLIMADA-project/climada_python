@@ -33,7 +33,7 @@ class TestDefault(unittest.TestCase):
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             ent.init_spam_agrar()
-        ent_select = ent.gdf[ent['region_id'] == 208]  # select Denmark only
+        ent_select = ent.gdf[ent.gdf.region_id == 208]  # select Denmark only
         self.assertIn('Lat. range: -55.375 to +71.125.', cm.output[0])
         self.assertIn('Lon. range: -179.125 to +179.958.', cm.output[1])
         self.assertIn("Total V_agg TA global: 1301919384722.2 USD.", cm.output[2])

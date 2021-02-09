@@ -95,7 +95,7 @@ class BlackMarble(Exposures):
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(
             ref_year, cntry_info, res_km, from_hr)
 
-        tag = Tag()
+        tag = Tag(file_name=fn_nl)
         bkmrbl_list = []
 
         for cntry_iso, cntry_val in cntry_info.items():
@@ -111,7 +111,7 @@ class BlackMarble(Exposures):
             data=concat_exp(bkmrbl_list).gdf,
             crs=DEF_CRS,
             ref_year=ref_year,
-            tag=Tag(file_name=fn_nl),
+            tag=tag,
             value_unit='USD'
         )
 

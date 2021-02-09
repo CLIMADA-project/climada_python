@@ -26,12 +26,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy as sp
-import geopandas as gpd
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
+from .base import Exposures, INDICATOR_IF
+from .base import concat as concat_exp
+
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
@@ -77,19 +78,22 @@ class GDP2Asset(Exposures):
                                                         ref_year, path))
                 tag.description += ("{} GDP2Asset \n").\
                     format(countries[cntr_ind])
-            Exposures.__init__(self, gpd.GeoDataFrame(
-                pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
             LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
                          ' reference year %s', countries, reg, ref_year)
             raise
-        self.tag = tag
-        self.ref_year = ref_year
-        self.value_unit = 'USD'
-        self.tag.description = 'GDP2Asset ' + str(self.ref_year)
+        
+        tag.description += 'GDP2Asset ' + str(self.ref_year)
+        Exposures.__init__(
+            self,
+            data=concat_exp(gdp2a_list).gdf,
+            ref_year=ref_year,
+            tag=tag,
+            value_unit='USD'
+        )
+
         # set meta
         res = 0.0416666
-
 
         rows, cols, ras_trans = pts_to_raster_meta((self.gdf.longitude.min(),
                                                     self.gdf.latitude.min(),
@@ -97,6 +101,8 @@ class GDP2Asset(Exposures):
                                                     self.gdf.latitude.max()), res)
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
                      'transform': ras_trans}
+
+
 
     @staticmethod
     def _set_one_country(countryISO, ref_year, path=None):
@@ -109,7 +115,7 @@ class GDP2Asset(Exposures):
         Raises:
             KeyError, OSError
         Returns:
-            np.array
+            GDP2Asset
         """
         natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)

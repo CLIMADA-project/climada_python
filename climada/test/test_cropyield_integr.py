@@ -69,7 +69,7 @@ class TestIntegr(unittest.TestCase):
         reg_sel.gdf = reg_sel.gdf[reg_sel.gdf.region_id == 276]
         impact.calc(reg_sel, if_cp, haz.select(['2002']), save_mat=True)
 
-        exp_manual = reg_sel.values
+        exp_manual = reg_sel.gdf.value
         impact_manual = haz.select(event_names=['2002'], reg_id=276).intensity.multiply(exp_manual)
         dif = (impact_manual - impact.imp_mat).data
 

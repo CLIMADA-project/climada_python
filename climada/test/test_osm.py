@@ -72,14 +72,14 @@ class TestOpenStreetMapModule(unittest.TestCase):
         self.assertEqual(len(buildings_47_8_default.gdf.columns), 12)
         self.assertEqual(
             buildings_47_8_default.gdf.loc[
-                random.randint(0, len(buildings_47_8_default))].geometry.type,
+                random.randint(0, len(buildings_47_8_default.gdf))].geometry.type,
             "Point")
         self.assertGreater(
-            buildings_47_8_default.gdf.loc[random.randint(0, len(buildings_47_8_default))].value,
+            buildings_47_8_default.gdf.loc[random.randint(0, len(buildings_47_8_default.gdf))].value,
             0)
         self.assertGreater(
             buildings_47_8_default.gdf.loc[
-                random.randint(0, len(buildings_47_8_default))].projected_area,
+                random.randint(0, len(buildings_47_8_default.gdf))].projected_area,
             0)
 
         # With LitPop values
@@ -89,14 +89,14 @@ class TestOpenStreetMapModule(unittest.TestCase):
         self.assertIsInstance(buildings_47_8_LitPop, Exposures)
         self.assertEqual(len(buildings_47_8_LitPop.gdf.columns), 12)
         self.assertEqual(
-            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop))].geometry.type,
+            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop.gdf))].geometry.type,
             "Point")
         self.assertGreater(
-            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop))].value,
+            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop.gdf))].value,
             0)
         self.assertGreater(
             buildings_47_8_LitPop.gdf.loc[
-                random.randint(0, len(buildings_47_8_LitPop))].projected_area,
+                random.randint(0, len(buildings_47_8_LitPop.gdf))].projected_area,
             0)
 
         for mode in ['default', 'LitPop']:
@@ -128,12 +128,12 @@ class TestOSMlongUnitTests(unittest.TestCase):
         for mode in {'proportional', 'even'}:
             print('testing mode %s' % mode)
             exp_sub_high = OSM._split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
-            self.assertTrue(math.isclose(sum(exp_sub_high.value),
+            self.assertTrue(math.isclose(sum(exp_sub_high.gdf.value),
                                          sum(exp_sub.gdf.value),
                                          rel_tol=0.01))
         print('testing mode nearest neighbour')
         exp_sub_high = OSM._split_exposure_highlow(exp_sub, "nearest", High_Value_Area_gdf)
-        self.assertTrue(math.isclose(sum(exp_sub_high.value), sum(exp_sub.gdf.value), rel_tol=0.1))
+        self.assertTrue(math.isclose(sum(exp_sub_high.gdf.value), sum(exp_sub.gdf.value), rel_tol=0.1))
 
     def test_assign_values_exposure(self):
         """test _assign_values_exposure within make_osmexposure function"""
