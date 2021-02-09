@@ -126,7 +126,7 @@ venv.bak/
 # mac finder files
 .DS_Store
 
-# directory with input data for hazard emulator tutorial 
+# directory with input data for hazard emulator tutorial
 data/emulator
 
 # climada system data files
@@ -170,7 +170,7 @@ data/system/GMT_intermediate_coast*
 # climada system data files: folders for hazard and exposure data
 data/system/hazard/
 data/system/litpop/
-data/system/litpop_2014/ 
+data/system/litpop_2014/
 
 # climada data: ISIMIP crop data folder:
 data/ISIMIP_crop/
