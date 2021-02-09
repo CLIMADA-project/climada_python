@@ -5,6 +5,7 @@ dependencies:
   - astroid=2.3.3
   - mccabe=0.6.1
   - pylint=2.4.4
+  - pyxlsb=1.0.8
   - sphinx=2.0.1
   - pip
   - pip:

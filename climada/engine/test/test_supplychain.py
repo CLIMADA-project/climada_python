@@ -19,21 +19,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Supplychain class.
 """
 
-
 import unittest
 import os
-import glob
 import numpy as np
 
 from climada.entity.exposures.base import Exposures
-from climada.entity.entity_def import Entity
+from climada.entity import ImpactFuncSet, IFTropCyclone
 from climada.hazard.base import Hazard
 from climada.engine.supplychain import SupplyChain
 from climada.util.constants import SOURCE_DIR
+from climada.util.constants import EXP_DEMO_H5
 
-TEST_DATA_DIR = os.path.join(SOURCE_DIR, 'engine', 'test', 'data', 'supplychain')
-TEST_EXP_DIR = os.path.join(TEST_DATA_DIR, 'test_exposures')
-TEST_WIOD = 'test_wiod.xlsx'
+HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
+HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+
+TEST_DATA_DIR = os.path.join(SOURCE_DIR, 'engine', 'test', 'data')
+TEST_WIOD = 'WIOTtest_Nov16_ROW.xlsb'
 TEST_EXP = 'test_sup_exp.mat'
 TEST_HAZ = 'test_hazard'
 HAZ_DIR = os.path.join(SOURCE_DIR, 'hazard', 'test', 'data')
@@ -41,227 +42,149 @@ HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
 
 class TestSupplyChain(unittest.TestCase):
     """Testing the SupplyChain class."""
-    def test_read_wiod(self):
-        """Test reading of wiod table with mini-version of
-        original table."""
+    def test_read_wiot(self):
+        """Test reading of wiod table."""
         sup = SupplyChain()
-        sup.read_wiod(file_path=TEST_DATA_DIR, file_name=TEST_WIOD, \
-                      rows=112, cols='E:DL', tot_prod_col='DM')
-        mainsectors = ['agriculture', 'forestry_fishing', 'manufacturing',\
-                            'mining_quarrying', 'services', 'utilities']
+        sup.read_wiot(year = 'test', file_path=TEST_DATA_DIR, rows_range=(5,117),
+                      col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
+
         self.assertAlmostEqual(sup.mriot_data[0, 0], 12924.1797, places=3)
+        self.assertAlmostEqual(sup.mriot_data[0, -1], 0, places=3)
+        self.assertAlmostEqual(sup.mriot_data[-1, 0], 0, places=3)
         self.assertAlmostEqual(sup.mriot_data[-1, -1], 22.222, places=3)
+        
+        self.assertAlmostEqual(sup.mriot_data[0, 0], 
+                               sup.mriot_data[sup.cntry_pos[list(sup.cntry_pos)[0]][0], 
+                                              sup.cntry_pos[list(sup.cntry_pos)[0]][0]], 
+                               places=3)
+        self.assertAlmostEqual(sup.mriot_data[-1, -1], 
+                               sup.mriot_data[sup.cntry_pos[list(sup.cntry_pos)[-1]][-1], 
+                                              sup.cntry_pos[list(sup.cntry_pos)[-1]][-1]], 
+                               places=3)        
         self.assertEqual(np.shape(sup.mriot_data), (112, 112))
-        self.assertAlmostEqual(sum(sup.total_prod), 3533367.88300, places=3)
-        self.assertEqual(len(sup.countries_iso3), sup.n_countries*sup.n_sectors)
+        self.assertAlmostEqual(sup.total_prod.sum(), 3533367.89439, places=3)
         self.assertEqual(len(sup.countries_iso3), len(sup.countries))
-        self.assertEqual(len(sup.countries_iso3), len(sup.sectors))
-        self.assertEqual(set(sup.main_sectors), set(mainsectors))
 
-        #Testing aggregation of labels:
-        aggregated_dict_keys = ['sectors', 'aggregation_info', 'countries', \
-                                'countries_iso3'] 
-        aggregated_ctries = ['Australia', 'Austria']
-        aggregation_info_keys = ['agriculture', 'forestry_fishing', \
-                                 'manufacturing', 'mining_quarrying', \
-                                 'services', 'utilities']
+    def test_calc_impact(self):
+        """Test running direct and indirect impact calculations."""
         
-        self.assertEqual(list(sup.aggregated_mriot.keys()), \
-                         aggregated_dict_keys)
-        self.assertEqual(len(sup.aggregated_mriot['countries']), 12)
-        self.assertEqual(len(sup.aggregated_mriot['countries']), \
-                         len(sup.aggregated_mriot['countries_iso3']))
-        self.assertEqual(len(sup.aggregated_mriot['countries']), \
-                         len(sup.aggregated_mriot['sectors']))
-        self.assertEqual(set(sup.aggregated_mriot['countries']), \
-                         set(aggregated_ctries))
-        self.assertEqual(set(sup.aggregated_mriot['aggregation_info'].keys()),
-                         set(aggregation_info_keys))
-        
-    # THE FUNCTIONALITY OF METHOD DEFAULT EXPOSURE IS INHERENTLY DEPENDENT ON USING
-    # THE ACTUAL EXPOSURE RAW DATA AND USING OTHER DATA FOR TESTING WOULD NOT
-    # ACTUALLY TEST ITS FUNCTIONALITY. FOR NOW, TESTING IS NOT IMPLEMENTED DUE
-    # TO LENGTHY COMPUTATION TIME.
-    # def test_default_exp(self):
-    #     """Test method which creates default exposure files, including the
-    #     internal methods that are called by the main method to create
-    #     the exposures. Note that these can't rely on simplified test data
-    #     as their functionality is specifically tied to the respective raw
-    #     data files. For succesful testing, the raw data files hence need to be
-    #     in the correct location (data/system).
-        
-    #     Note that these methods do not do anything but writing new files. 
-    #     We assert whether these files were created (in the proper location and
-    #     with proper name).
-        
-    #     Note also that these tests also test the respective exposures classes
-    #     modules that are used by default_exposures().
-    #     """
-    #     file_names = {'agriculture': 'GLB_agriculture_XXX',
-    #           'forestry_fishing': 'GLB_forestry_fishing_XXX',
-    #           'utilities': 'GLB_utilities_XXX',
-    #           'services': 'GLB_services_XXX',
-    #           'mining_quarrying': 'GLB_mining_quarrying_XXX',
-    #           'manufacturing': 'GLB_manufacturing_XXX'}
-    #     ## First the individual methods...
-    #     ## Manufacturing:
-    #     sup._create_manu_expo(file_names)
-    #     required_file_in_folder = ['GLB_manufacturing_XXX']
-    #     actual_file_in_folder = [os.path.basename(path) for path in \
-    #                 (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_manu*')))]
-    #     self.assertEqual(required_file_in_folder, actual_file_in_folder)
-        
-    #     ## Utilities:
-    #     sup._create_utilities_expo(file_names)
-    #     required_file_in_folder = ['GLB_utilities_XXX']
-    #     actual_file_in_folder = [os.path.basename(path) for path in \
-    #                 (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_util*')))]
-    #     self.assertEqual(required_file_in_folder, actual_file_in_folder)
-        
-    #     ## Forestry and Fishing:
-    #     sup._create_forest_expo(file_names)
-    #     required_file_in_folder = ['GLB_forestry_fishing_XXX']
-    #     actual_file_in_folder = [os.path.basename(path) for path in \
-    #                 (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_forest*')))]
-    #     self.assertEqual(required_file_in_folder, actual_file_in_folder)
-        
-    #     ## Mining and Quarrying:
-    #     sup._create_mining_expo(file_names)
-    #     required_file_in_folder = ['GLB_mining_quarrying_XXX']
-    #     actual_file_in_folder = [os.path.basename(path) for path in \
-    #                 (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_mining*')))]
-    #     self.assertEqual(required_file_in_folder, actual_file_in_folder)
-        
-    #     ## Agriculture:
-    #     sup._create_agri_expo(file_names)
-    #     required_file_in_folder = ['GLB_agriculture_XXX']
-    #     actual_file_in_folder = [os.path.basename(path) for path in \
-    #                 (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_agri*')))]
-    #     self.assertEqual(required_file_in_folder, actual_file_in_folder)
-        
-    #     ## Services:
-    #     sup._create_services_expo()
-    #     required_files_in_folder = 201
-    #     actual_files_in_folder = len(glob.glob(os.path.join(SUP_DATA_DIR, \
-    #                                                 '*_services_*')))
-    #     self.assertEqual(required_files_in_folder, actual_files_in_folder)
-        
-    #     ## Now the main method...
-    #     with self.assertRaises(UserWarning):
-    #       sup.default_exposures()
-    #     # Method does not return anything but writes new files. We assert
-    #     # whether these files were created (in the proper location and with
-    #     # proper name).
-    #     required_files_in_folder = ['GLB_agriculture_XXX',\
-    #                                 'GLB_forestry_fishing_XXX',\
-    #                                 'GLB_manufacturing_XXX',\
-    #                                 'GLB_mining_quarrying_XXX',\
-    #                                 'GLB_services_XXX',\
-    #                                 'GLB_utilities_XXX']
-        
-    #     actual_files_in_folder = [os.path.basename(path) for path in \
-    #                         (glob.glob(os.path.join(SUP_DATA_DIR, '*GLB_*')))]
-    #     self.assertEqual(required_files_in_folder, actual_files_in_folder)
-        
-    def test_prepare_exposures(self):
         sup = SupplyChain()
-        sup.prepare_exposures(files_source=os.path.join(TEST_EXP_DIR, 'pre-preparation'),\
-                              files_target=TEST_EXP_DIR, remove_restofw_ctries=False)
-        required_files_in_folder = 18
-        actual_files_in_folder = len(glob.glob(os.path.join(TEST_EXP_DIR, \
-                                                            '*XXX')))
-        self.assertEqual(required_files_in_folder, actual_files_in_folder) 
+        sup.read_wiot(year='test', file_path=TEST_DATA_DIR, rows_range=(5,117),
+                      col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
+
+        # Tropical cyclone over Florida and Caribbean
+        hazard = Hazard('TC')
+        hazard.read_mat(HAZ_TEST_MAT)
+
+        # Read demo entity values
+        # Set the entity default file to the demo one
+        exp = Exposures()
+        exp.read_hdf5(EXP_DEMO_H5)
+        exp.check()
+        exp.region_id = 840 #assign right id for USA
+        exp.assign_centroids(hazard)
+
+        impf_tc= IFTropCyclone()
+        impf_tc.set_emanuel_usa()
+        impf_set = ImpactFuncSet()
+        impf_set.append(impf_tc)
+        impf_set.check()
         
-        che_exp = Exposures()
-        che_exp.read_hdf5(os.path.join(TEST_EXP_DIR, 'pre-preparation', 'CHE_services_XXX'))
-        chn_exp = Exposures()
-        chn_exp.read_hdf5(os.path.join(TEST_EXP_DIR, 'pre-preparation', 'CHN_services_XXX'))
-        row_exp = Exposures()
-        row_exp.read_hdf5(os.path.join(TEST_EXP_DIR, 'ROW_services_XXX'))
-        self.assertAlmostEqual(row_exp.value[0], che_exp.value[0]/(sum(che_exp.value)+sum(chn_exp.value)))
-    
-    # The following is a pseudo-test, as the method's core functionality - i.e. creating
-    # the supplychain default global TC hazard - cannot be tested with dummy data.
-    # create_default_haz() uses a sequence of climada functions which are tested separately
-    # anyway, however.
-    def test_create_default_haz(self):
-        sup = SupplyChain()
-        haz = sup.create_default_haz(save_haz=False, file_path=TEST_DATA_DIR, file_name='test_hazard')
-        self.assertEqual(len(haz.event_id), len(haz.event_name))
-        self.assertEqual(haz.tag.haz_type, 'TC')
-    
-    def test_calc_direct_impact(self):
-        sup = SupplyChain()
-        # Write dummy exposures to test data directory (required to proceed).
-        unique_ctries, ind = np.unique(sup.countries_iso3, return_index=True)
-        unique_ctries = np.append(unique_ctries[np.argsort(ind)], 'ROW')
-        unique_msect, ind = np.unique(sup.main_sectors, return_index=True)
-        unique_msect = list(unique_msect[np.argsort(ind)])
-        for ctry in unique_ctries:
-            for msect in unique_msect:
-                exp = Exposures()
-                ent = Entity()
-                ent.read_mat(os.path.join(TEST_DATA_DIR, TEST_EXP))
-                exp = ent.exposures
-                exp.check()
-                del(ent)
-                exp.write_hdf5(os.path.join(TEST_EXP_DIR, 'imp_exp', ctry+'_'+msect+'_XXX'))
-        required_files_in_folder = 18
-        actual_files_in_folder = len(glob.glob(os.path.join(TEST_EXP_DIR, \
-                                                'imp_exp','*XXX')))
-        self.assertEqual(required_files_in_folder, actual_files_in_folder) 
+        # Test direct impacts
+        sup.calc_sector_direct_impact(hazard, exp, impf_set,
+                                      sec_subsec=None, 
+                                      sector_type='manufacturing')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.direct_impact.shape)
+        self.assertAlmostEqual(sup.direct_impact.sum(), 
+                                sup.direct_impact[:, sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],),
+                                sup.direct_aai_agg.shape)
+        self.assertAlmostEqual(sup.direct_aai_agg.sum(), 
+                                sup.direct_aai_agg[sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        self.assertAlmostEqual(sup.cntry_dir_imp[0], 'USA')
+
+        sup.calc_sector_direct_impact(hazard, exp, impf_set,
+                                      sec_subsec=None, 
+                                      sector_type='agriculture')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.direct_impact.shape)
+        self.assertAlmostEqual(sup.direct_impact.sum(), 
+                                sup.direct_impact[:, sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],),
+                                sup.direct_aai_agg.shape)
+        self.assertAlmostEqual(sup.direct_aai_agg.sum(), 
+                                sup.direct_aai_agg[sup.cntry_pos['USA']].sum(),
+                                places = 3)
+
+        sup.calc_sector_direct_impact(hazard, exp, impf_set,
+                                      sec_subsec=None, 
+                                      sector_type='mining')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.direct_impact.shape)
+        self.assertAlmostEqual(sup.direct_impact.sum(), 
+                                sup.direct_impact[:, sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],),
+                                sup.direct_aai_agg.shape)
+        self.assertAlmostEqual(sup.direct_aai_agg.sum(), 
+                                sup.direct_aai_agg[sup.cntry_pos['USA']].sum(),
+                                places = 3)
         
-        # Testing actual calculations. First create test hazard based on
-        # default hazard file:
-        haz = Hazard('TC')
-        haz.read_hdf5(os.path.join(TEST_DATA_DIR, TEST_HAZ))
-        sup.calc_direct_impact(haz, exp_source_path=os.path.join(TEST_EXP_DIR,\
-                            'imp_exp'), imp_target_path=TEST_DATA_DIR)
-        
-        # Assertions:
-        self.assertEqual(np.mean(sup.direct_impact[:,2]), sup.direct_aai_agg[2])
-        self.assertEqual(len(sup.direct_impact[0,:]), len(sup.direct_aai_agg))
-        
-    def test_calc_indirect_impact(self):
-        sup = SupplyChain()
-        # Leontief approach:
-        sup.calc_indirect_impact(io_approach='leontief')
-        self.assertEqual(np.mean(sup.indirect_impact[:,2]), sup.indirect_aai_agg[2])
-        self.assertEqual(len(sup.indirect_impact[0,:]), len(sup.indirect_aai_agg))
-        shape = np.shape(sup.io_data['risk_structure'])
-        self.assertEqual(shape, np.shape(sup.mriot_data) + (len(sup.years), ))
-        self.assertEqual(np.shape(sup.mriot_data), np.shape(sup.io_data['inverse']))
-        self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.direct_impact))
-        # Ghosh approach:
+        sup.calc_sector_direct_impact(hazard, exp, impf_set,
+                                      sec_subsec=None, 
+                                      sector_type='service')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.direct_impact.shape)
+        self.assertAlmostEqual(sup.direct_impact.sum(), 
+                                sup.direct_impact[:, sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],), sup.direct_aai_agg.shape)
+        self.assertAlmostEqual(sup.direct_aai_agg.sum(), 
+                                sup.direct_aai_agg[sup.cntry_pos['USA']].sum(),
+                                places = 3)
+        # Test indirect impacts
         sup.calc_indirect_impact(io_approach='ghosh')
-        sup.calc_indirect_impact(io_approach='leontief')
-        self.assertEqual(np.mean(sup.indirect_impact[:,2]), sup.indirect_aai_agg[2])
-        self.assertEqual(len(sup.indirect_impact[0,:]), len(sup.indirect_aai_agg))
-        shape = np.shape(sup.io_data['risk_structure'])
-        self.assertEqual(shape, np.shape(sup.mriot_data) + (len(sup.years), ))
-        self.assertEqual(np.shape(sup.mriot_data), np.shape(sup.io_data['inverse']))
-        self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.direct_impact))
-        # Env extended io approach:
-        sup.calc_indirect_impact(io_approach='eeio')
-        sup.calc_indirect_impact(io_approach='leontief')
-        self.assertEqual(np.mean(sup.indirect_impact[:,2]), sup.indirect_aai_agg[2])
-        self.assertEqual(len(sup.indirect_impact[0,:]), len(sup.indirect_aai_agg))
-        shape = np.shape(sup.io_data['risk_structure'])
-        self.assertEqual(shape, np.shape(sup.mriot_data) + (len(sup.years), ))
-        self.assertEqual(np.shape(sup.mriot_data), np.shape(sup.io_data['inverse']))
-        self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.direct_impact))
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.indirect_impact.shape)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],), sup.indirect_aai_agg.shape)
+        self.assertAlmostEqual(sup.mriot_data.shape, sup.io_data['inverse'].shape)
+        self.assertAlmostEqual(sup.io_data['risk_structure'].shape, 
+                               (sup.mriot_data.shape[0], sup.mriot_data.shape[1],
+                                sup.years.shape[0]))
+        self.assertAlmostEqual('ghosh', sup.io_data['io_approach'])
         
-    def test_calc_total_impact(self):
-        sup = SupplyChain()
-        sup.calc_total_impact()
-        self.assertEqual(np.shape(sup.indirect_impact), np.shape(sup.total_impact))
-        self.assertTrue(np.all(sup.indirect_impact+sup.direct_impact == sup.total_impact))
+        sup.calc_indirect_impact(io_approach='leontief')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.indirect_impact.shape)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],), sup.indirect_aai_agg.shape)
+        self.assertAlmostEqual(sup.mriot_data.shape, sup.io_data['inverse'].shape)
+        self.assertAlmostEqual(sup.io_data['risk_structure'].shape, 
+                               (sup.mriot_data.shape[0], sup.mriot_data.shape[1],
+                                sup.years.shape[0]))
+        self.assertAlmostEqual('leontief', sup.io_data['io_approach'])
 
-        
-# Execute Tests
+        sup.calc_indirect_impact(io_approach='eeioa')
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.indirect_impact.shape)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],), sup.indirect_aai_agg.shape)
+        self.assertAlmostEqual(sup.mriot_data.shape, sup.io_data['inverse'].shape)
+        self.assertAlmostEqual(sup.io_data['risk_structure'].shape, 
+                               (sup.mriot_data.shape[0], sup.mriot_data.shape[1],
+                                sup.years.shape[0]))
+        self.assertAlmostEqual('eeioa', sup.io_data['io_approach'])        
+
+        # Test total impacts
+        sup.calc_total_impact()
+        self.assertAlmostEqual((sup.years.shape[0], sup.mriot_data.shape[0]),
+                                sup.total_impact.shape)
+        self.assertAlmostEqual((sup.mriot_data.shape[0],), sup.total_aai_agg.shape)
+ 
+## Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSupplyChain)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-        
-        
-        
+    
