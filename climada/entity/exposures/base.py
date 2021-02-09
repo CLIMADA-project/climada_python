@@ -114,6 +114,7 @@ class Exposures():
 
     @property
     def crs(self):
+        """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
         return self.gdf.crs
 
     def __init__(self, *args, **kwargs):
@@ -617,7 +618,7 @@ class Exposures():
         -------
             Exposures
         """
-        gdf = self.gdf.copy(deep)
+        gdf = self.gdf.copy(deep=deep)
         metadata = dict([
             (md, copy.deepcopy(self.__dict__[md])) for md in type(self)._metadata
         ])
@@ -772,7 +773,7 @@ def concat(exposures_list):
     Exposures
         with the metadata of the first item in the list and the dataframes concatenated.
     """
-    exp = exposures_list[0].copy()
+    exp = exposures_list[0].copy(deep=False)
     df_list = [
         el.gdf if isinstance(el, Exposures) else el
         for el in exposures_list

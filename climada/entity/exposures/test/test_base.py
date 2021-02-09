@@ -152,8 +152,8 @@ class TestChecker(unittest.TestCase):
         self.assertIn('ref_year set to default value', cm.output[2])
         self.assertIn('value_unit set to default value', cm.output[3])
         self.assertIn('crs set to default value', cm.output[4])
-        self.assertIn('cover not set', cm.output[5])
-        self.assertIn('geometry not set', cm.output[6])
+        self.assertIn('geometry not set', cm.output[5])
+        self.assertIn('cover not set', cm.output[6])
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
@@ -288,18 +288,20 @@ class TestConcat(unittest.TestCase):
         self.dummy = exp
 
     def test_concat_pass(self):
-        """Test add_sea function with fake data."""
-        
+        """Test condat function with fake data."""
+
         self.dummy.check()
 
-        catexp = concat(self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy)
+        catexp = concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
         self.assertEqual(self.dummy.gdf.shape, (10,5))
         self.assertEqual(catexp.gdf.shape, (40,5))
         self.assertEqual(catexp.gdf.crs, 'epsg:3395')
-    
+
     def test_concat_fail(self):
+        """Test failing concat function with fake data."""
+
         with self.assertRaises(TypeError):
-            concat(self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy)
+            concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
 
 
 class TestGeoDFFuncs(unittest.TestCase):

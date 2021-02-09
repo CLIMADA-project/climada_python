@@ -108,7 +108,7 @@ class BlackMarble(Exposures):
 
         Exposures.__init__(
             self,
-            data=concat_exp([bkmrbl.gdf for bkmrbl in bkmrbl_list]).gdf,
+            data=concat_exp(bkmrbl_list).gdf,
             crs=DEF_CRS,
             ref_year=ref_year,
             tag=Tag(file_name=fn_nl),
