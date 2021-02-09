@@ -115,8 +115,8 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_cons_days_3_pass(self):
         """ Test _firms_cons_days """
-        ori_thres = WildFire.days_thres
-        WildFire.days_thres = 3
+        ori_thres = WildFire.days_thres_firms
+        WildFire.days_thres_firms = 3
         wf = WildFire()
         firms_ori = wf._clean_firms_csv(TEST_FIRMS)
         firms = wf._firms_cons_days(firms_ori.copy())
@@ -130,7 +130,7 @@ class TestMethodsFirms(unittest.TestCase):
             elif col_name != 'cons_id':
                 for elem_l, elem_r in zip(firms[col_name].values, firms_ori[col_name].values):
                     self.assertEqual(elem_l, elem_r)
-        WildFire.days_thres = ori_thres
+        WildFire.days_thres_firms = ori_thres
 
     def test_firms_cluster_pass(self):
         """ Test _firms_clustering """
@@ -157,15 +157,15 @@ class TestMethodsFirms(unittest.TestCase):
                 for elem_l, elem_r in zip(firms[col_name].values, firms_ori[col_name].values):
                     self.assertEqual(elem_l, elem_r)
 
-    def test_firms_event_pass(self):
-        """ Test _firms_event """
+    def test_firms_fire_pass(self):
+        """ Test _firms_fire """
         wf = WildFire()
         firms_ori = wf._clean_firms_csv(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
         firms_ori = wf._firms_cons_days(firms_ori)
         firms_ori = wf._firms_clustering(firms_ori, 0.375/2/15, 15)
         firms = firms_ori.copy()
-        wf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
+        wf._firms_fire(2, firms.cons_id.values, firms.clus_id.values,
             firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
         self.assertEqual(len(firms), 9325)
         self.assertTrue(np.allclose(np.unique(firms.event_id), np.arange(7)))
@@ -196,24 +196,24 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_iter_events_pass(self):
         """ Test identification of events """
-        ori_thres = WildFire.days_thres
+        ori_thres = WildFire.days_thres_firms
         wf = WildFire()
         firms = wf._clean_firms_csv(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
         i_iter = 0
-        WildFire.days_thres = 3
+        WildFire.days_thres_firms = 3
         while firms.iter_ev.any():
             # Compute cons_id: consecutive events in current iteration
             wf._firms_cons_days(firms)
             # Compute clus_id: cluster identifier inside cons_id
             wf._firms_clustering(firms, 0.375, 15)
             # compute event_id
-            WildFire.days_thres = 2
-            wf._firms_event(WildFire.days_thres, firms.cons_id.values, firms.clus_id.values, 
+            WildFire.days_thres_firms = 2
+            wf._firms_fire(WildFire.days_thres_firms, firms.cons_id.values, firms.clus_id.values, 
                 firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
             i_iter += 1
         self.assertEqual(i_iter, 2)
-        WildFire.days_thres = ori_thres
+        WildFire.days_thres_firms = ori_thres
 
 
     def test_calc_bright_pass(self):
@@ -225,14 +225,14 @@ class TestMethodsFirms(unittest.TestCase):
         firms['datenum'].values[100] = 7000
         firms = wf._firms_cons_days(firms)
         firms = wf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15, 15)
-        wf._firms_event(2, firms.cons_id.values, firms.clus_id.values,
+        wf._firms_fire(2, firms.cons_id.values, firms.clus_id.values,
             firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
         firms.latitude[8169] = firms.loc[16]['latitude']
         firms.longitude[8169] = firms.loc[16]['longitude']
         wf._calc_brightness(firms, DEF_CENTROIDS[0], DEF_CENTROIDS[1])
         wf.check()
 
-        self.assertEqual(wf.tag.haz_type, 'WF')
+        self.assertEqual(wf.tag.haz_type, 'WFsingle')
         self.assertEqual(wf.tag.description, '')
         self.assertEqual(wf.units, 'K')
         self.assertEqual(wf.centroids.size, 19454)
@@ -277,10 +277,10 @@ class TestMethodsFirms(unittest.TestCase):
         self.assertTrue(np.allclose(wf.frequency, np.ones(9, float)/3))
 
     def test_centroids_pass(self):
-        """ Test _centroids_creation """
+        """ Test _firms_centroids_creation """
         wf = WildFire()
         firms = wf._clean_firms_csv(TEST_FIRMS)
-        centroids = wf._centroids_creation(firms, 0.375/ONE_LAT_KM, 1/2)
+        centroids = wf._firms_centroids_creation(firms, 0.375/ONE_LAT_KM, 1/2)
         self.assertEqual(centroids.meta['width'], 144)
         self.assertEqual(centroids.meta['height'], 138)
         self.assertEqual(centroids.meta['crs']['init'], 'epsg:4326')

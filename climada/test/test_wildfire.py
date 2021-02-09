@@ -79,7 +79,7 @@ class TestWildFire(unittest.TestCase):
         orig = np.zeros(2, bool)
         orig[0] = True
         self.assertTrue(np.allclose(wf.orig, orig))
-        self.assertEqual(wf.event_name, ['2016', '2'])
+        self.assertEqual(len(wf.event_name), 2)
         self.assertEqual(wf.intensity.shape, (2, 51042))
         self.assertEqual(wf.fraction.shape, (2, 51042))
         self.assertEqual(wf.intensity[1, :].nonzero()[1][0], 5080)
