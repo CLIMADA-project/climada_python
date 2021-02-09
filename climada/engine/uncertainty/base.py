@@ -153,14 +153,15 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars, samples=None, metrics=None):
+    def __init__(self, unc_vars=None, samples=None, metrics=None):
         """
         Initialize Uncertainty
 
         Parameters
         ----------
-        unc_vars : list of climade.engine.uncertainty.UncVar variables
-            list of uncertainty variables
+        unc_vars : list of climade.engine.uncertainty.UncVar 
+            list of uncertainty variables, optional
+            The default is [].
         samples : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
@@ -176,7 +177,7 @@ class Uncertainty():
             
         """
     
-        self.unc_vars = unc_vars
+        self.unc_vars = unc_vars if unc_vars else []
         if samples:
             if self.param_labels == samples.columns.to_list():
                 self.samples = samples
