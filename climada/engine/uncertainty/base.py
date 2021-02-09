@@ -153,8 +153,7 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars, params=None, problem=None,
-                 metrics=None):
+    def __init__(self, unc_vars, samples=None, metrics=None):
         """
         Initialize Uncertainty
 
@@ -162,48 +161,48 @@ class Uncertainty():
         ----------
         unc_vars : list of climade.engine.uncertainty.UncVar variables
             list of uncertainty variables
-        params : pd.DataFrame, optional
-            DataFrame of sampled parameter values.
+        samples : pd.DataFrame, optional
+            DataFrame of sampled parameter values. Column names must be
+            parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
-        problem : dict, optional
-            The description of the uncertainty variables and their
-            distribution as used in SALib.
-            https://salib.readthedocs.io/en/latest/getting-started.html.
-            The default is {}.
         metrics : dict(), optional
-            Dictionnary of the metrics evaluation. The default is {}.
+            Dictionnary of the CLIMADA metrics for which the sensitivity
+            will be computed. For each sample, each metric must have a
+            definite value.
+            Keys are metric names (e.g. 'aai_agg', 'freq_curve') and 
+            values are pd.DataFrame with values for each parameter sample
+            (one row per sample).
+            The default is {}.
             
         """
-        
-        if params is None:
-            params = pd.DataFrame()
-
-        if problem is None:
-            problem = {}
-
-        if metrics is None:
-            metrics = {}
-
+    
         self.unc_vars = unc_vars
-        self.params = params
-        self.problem = problem
-        self.metrics = metrics
+        if samples:
+            if self.param_labels == samples.columns.to_list():
+                self.samples = samples
+            else:
+                raise ValueError("The samples paramters (column names) do "
+                                 "not correspond to the unc_vars parameters" +
+                                 " (all labels)")
+        else:
+            self.sample = pd.DataFrame()
+        self.metrics = metrics if metrics else {}
 
 
     @property
-    def n_runs(self):
+    def n_samples(self):
         """
-        The effective number of runs needed for the sample size self.n_samples.
+        The effective number of samples
 
         Returns
         -------
-        n_runs: int
-            effective number of runs
+        n_samples: int
+            effective number of samples
 
         """
 
-        if isinstance(self.params, pd.DataFrame):
-            return self.params.shape[0]
+        if isinstance(self.samples, pd.DataFrame):
+            return self.samples.shape[0]
         return 0
 
     @property
@@ -237,6 +236,25 @@ class Uncertainty():
         for unc_var in self.unc_vars.values():
             distr_dict.update(unc_var.distr_dict)
         return distr_dict
+    
+    @property
+    def problem(self):
+        """
+        The description of the uncertainty variables and their
+        distribution as used in SALib.
+        https://salib.readthedocs.io/en/latest/getting-started.html.
+
+        Returns
+        -------
+        problem : dict
+            Salib problem dictionnary.
+
+        """
+        return {
+            'num_vars' : len(self.param_labels),
+            'names' : self.param_labels,
+            'bounds' : [[0, 1]]*len(self.param_labels)
+            }
 
 
     def make_sample(self, N, sampling_method='saltelli', **kwargs):
@@ -260,17 +278,16 @@ class Uncertainty():
         """
 
         self.sampling_method = sampling_method
-        self.n_samples = N
-        uniform_base_sample = self._make_uniform_base_sample(**kwargs)
-        df_params = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
-        for param in list(df_params):
-            df_params[param] = df_params[param].apply(
+        uniform_base_sample = self._make_uniform_base_sample(N, **kwargs)
+        df_samples = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
+        for param in list(df_samples):
+            df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
-        self.params = df_params
+        self.samples = df_samples
 
 
-    def _make_uniform_base_sample(self, **kwargs):
+    def _make_uniform_base_sample(self, N, **kwargs):
         """
         Make a uniform distributed [0,1] sample for the defined
         uncertainty parameters (self.param_labels) with the chosen
@@ -290,12 +307,6 @@ class Uncertainty():
 
         """
 
-        problem = {
-            'num_vars' : len(self.param_labels),
-            'names' : self.param_labels,
-            'bounds' : [[0, 1]]*len(self.param_labels)
-            }
-        self.problem = problem
         #To import a submodule from a module use 'from_list' necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         salib_sampling_method = getattr(
@@ -304,8 +315,8 @@ class Uncertainty():
                        ),
             self.sampling_method
             )
-        sample_params = salib_sampling_method.sample(problem = problem,
-                                                     N = self.n_samples,
+        sample_params = salib_sampling_method.sample(problem = self.problem,
+                                                     N = N,
                                                      **kwargs)
         return sample_params
 
@@ -317,7 +328,7 @@ class Uncertainty():
         raise NotImplementedError()
 
 
-    def _calc_metric_sensitivity(self, analysis_method, **kwargs):
+    def calc_metric_sensitivity(self, analysis_method, **kwargs):
         """
         Compute the sensitivity indices using SALib
 

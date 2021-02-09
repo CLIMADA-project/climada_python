@@ -73,22 +73,19 @@ class UncCostBenefit(Uncertainty):
                          'ent_fut': self._var_or_uncvar(ent_fut_unc)
                          }
 
-        params = pd.DataFrame()
-        problem = {}
         metrics =  {'tot_climate_risk': None,
                     'benefit': None,
                     'cost_ben_ratio': None,
                     'imp_meas_present': None,
                     'imp_meas_future': None}
 
-        Uncertainty.__init__(self, unc_vars=unc_vars,
-                             params=params, problem=problem, metrics=metrics)
+        Uncertainty.__init__(self, unc_vars=unc_vars, metrics=metrics)
 
 
     def calc_distribution(self, pool=None, **kwargs):
         """
         Computes the cost benefit for each of the parameters set defined in
-        uncertainty.params.
+        uncertainty.samples.
 
         By default, imp_meas_present, imp_meas_future, tot_climate_risk,
         benefit, cost_ben_ratio are computed.
@@ -109,7 +106,7 @@ class UncCostBenefit(Uncertainty):
         """
         
 
-        if self.params.empty:
+        if self.samples.empty:
             LOGGER.info("No sample was found. Please create one first"
                         "using UncImpact.make_sample(N)")
             return None
@@ -117,14 +114,14 @@ class UncCostBenefit(Uncertainty):
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
-            chunksize = min(self.n_runs // pool.ncpus, 100)
+            chunksize = min(self.n_samples // pool.ncpus, 100)
             cb_metrics = pool.map(partial(self._map_costben_eval, **kwargs),
-                                           self.params.iterrows(),
+                                           self.samples.iterrows(),
                                            chunsize = chunksize)
 
         else:
             cb_metrics = map(partial(self._map_costben_eval, **kwargs),
-                             self.params.iterrows())
+                             self.samples.iterrows())
 
         [imp_meas_present,
          imp_meas_future,
@@ -187,15 +184,15 @@ class UncCostBenefit(Uncertainty):
         """
 
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        haz_params = param_sample[1][self.unc_vars['haz'].labels].to_dict()
-        ent_params = param_sample[1][self.unc_vars['ent'].labels].to_dict()
-        haz_fut_params = param_sample[1][self.unc_vars['haz_fut'].labels].to_dict()
-        ent_fut_params = param_sample[1][self.unc_vars['ent_fut'].labels].to_dict()
+        haz_samples = param_sample[1][self.unc_vars['haz'].labels].to_dict()
+        ent_samples = param_sample[1][self.unc_vars['ent'].labels].to_dict()
+        haz_fut_samples = param_sample[1][self.unc_vars['haz_fut'].labels].to_dict()
+        ent_fut_samples = param_sample[1][self.unc_vars['ent_fut'].labels].to_dict()
 
-        haz = self.unc_vars['haz'].evaluate(haz_params)
-        ent = self.unc_vars['ent'].evaluate(ent_params)
-        haz_fut = self.unc_vars['haz_fut'].evaluate(haz_fut_params)
-        ent_fut = self.unc_vars['ent_fut'].evaluate(ent_fut_params)
+        haz = self.unc_vars['haz'].evaluate(haz_samples)
+        ent = self.unc_vars['ent'].evaluate(ent_samples)
+        haz_fut = self.unc_vars['haz_fut'].evaluate(haz_fut_samples)
+        ent_fut = self.unc_vars['ent_fut'].evaluate(ent_fut_samples)
 
         cb = CostBenefit()
         cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
@@ -245,7 +242,7 @@ class UncCostBenefit(Uncertainty):
             the chosen SALib.analyse method)
         """
 
-        if self.params.empty:
+        if self.samples.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
 
@@ -264,7 +261,7 @@ class UncCostBenefit(Uncertainty):
             )
 
 
-        sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
+        sensitivity_analysis = self.calc_metric_sensitivity(analysis_method, **kwargs)
         self.sensitivity = sensitivity_analysis
 
         return sensitivity_analysis
