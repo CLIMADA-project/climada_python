@@ -61,16 +61,14 @@ class UncImpact(Uncertainty):
                     'impf': self._var_or_uncvar(impf_unc),
                     'haz': self._var_or_uncvar(haz_unc),
                     }
-        params = pd.DataFrame()
-        problem = {}
+
         metrics = {'aai_agg': pd.DataFrame([]),
                    'freq_curve': pd.DataFrame([]),
                    'eai_exp': pd.DataFrame([]),
                    'at_event':  pd.DataFrame([])
                    }
 
-        Uncertainty.__init__(self, unc_vars=unc_vars,
-                             params=params, problem=problem, metrics=metrics)
+        Uncertainty.__init__(self, unc_vars=unc_vars, metrics=metrics)
 
 
     def calc_distribution(self,
@@ -81,7 +79,7 @@ class UncImpact(Uncertainty):
                                  ):
         """
         Computes the impact for each of the parameters set defined in
-        uncertainty.params.
+        uncertainty.samples.
 
         By default, the aggregated average annual impact
         (impact.aai_agg) and the excees impact at return periods rp
@@ -113,7 +111,7 @@ class UncImpact(Uncertainty):
 
         """
 
-        if self.params.empty:
+        if self.samples.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
@@ -129,11 +127,11 @@ class UncImpact(Uncertainty):
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
             chunksize = min(self.n_runs // pool.ncpus, 100)
             imp_metrics = pool.map(self._map_impact_eval,
-                                           self.params.iterrows(),
+                                           self.samples.iterrows(),
                                            chunsize = chunksize)
 
         else:
-            imp_metrics = map(self._map_impact_eval, self.params.iterrows())
+            imp_metrics = map(self._map_impact_eval, self.samples.iterrows())
 
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
@@ -167,13 +165,13 @@ class UncImpact(Uncertainty):
         """
 
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_params = param_sample[1][self.unc_vars['exp'].labels].to_dict()
-        haz_params = param_sample[1][self.unc_vars['haz'].labels].to_dict()
-        impf_params = param_sample[1][self.unc_vars['impf'].labels].to_dict()
+        exp_samples = param_sample[1][self.unc_vars['exp'].labels].to_dict()
+        haz_samples = param_sample[1][self.unc_vars['haz'].labels].to_dict()
+        impf_samples = param_sample[1][self.unc_vars['impf'].labels].to_dict()
 
-        exp = self.unc_vars['exp'].evaluate(exp_params)
-        haz = self.unc_vars['haz'].evaluate(haz_params)
-        impf = self.unc_vars['impf'].evaluate(impf_params)
+        exp = self.unc_vars['exp'].evaluate(exp_samples)
+        haz = self.unc_vars['haz'].evaluate(haz_samples)
+        impf = self.unc_vars['impf'].evaluate(impf_samples)
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
@@ -229,7 +227,7 @@ class UncImpact(Uncertainty):
             the chosen SALib.analyse method)
         """
 
-        if self.params.empty:
+        if self.samples.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
 
@@ -248,7 +246,7 @@ class UncImpact(Uncertainty):
             )
 
 
-        sensitivity_analysis = self._calc_metric_sensitivity(analysis_method, **kwargs)
+        sensitivity_analysis = self.calc_metric_sensitivity(analysis_method, **kwargs)
         self.sensitivity = sensitivity_analysis
 
         return sensitivity_analysis
