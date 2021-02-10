@@ -30,6 +30,7 @@ import scipy.sparse as sparse
 import matplotlib.pyplot as plt
 from PIL import Image
 
+from .litpop import read_bm_file
 from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
@@ -251,14 +252,12 @@ def load_nightlight_nasa(bounds, req_files, year):
         if np.any(extent[1, :] < 0) or np.any(extent[0, :] >= NASA_TILE_SIZE):
             # this tile does not intersect the specified bounds
             continue
-        extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
-
-        fname = SYSTEM_DIR.joinpath(fname.replace('*', str(year)))
-        with Image.open(fname, "r") as im_nl:
-            im_nl = im_nl.transpose(method=Image.FLIP_TOP_BOTTOM).getchannel(0)
-            im_nl = sparse.csc.csc_matrix(im_nl)
-            im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
-            nightlight.append((tile_coord, im_nl))
+        extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))        
+        im_nl, _ = read_bm_file(SYSTEM_DIR, fname.replace('*', str(year)))
+        im_nl = sparse.csc.csc_matrix(im_nl)
+        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
+        nightlight.append((tile_coord, im_nl))
+        
     tile_coords = np.array([n[0] for n in nightlight])
     shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
     nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
@@ -281,7 +280,7 @@ def unzip_tif_to_py(file_gz):
         sparse.csr_matrix (nightlight)
     """
     LOGGER.info("Unzipping file %s.", file_gz)
-    file_path = Path(file_gz).stem
+    file_path = Path(Path(file_gz).stem)
     with gzip.open(file_gz, 'rb') as f_in:
         with file_path.open('wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
@@ -363,7 +362,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
             for pre_i in np.arange(ini_pre, end_pre, -1):
                 url = NOAA_SITE + 'F' + str(pre_i) + str(ref_year) + '.v4.tar'
                 try:
-                    file_down = download_file(url)
+                    file_down = download_file(url)#, download_dir=SYSTEM_DIR)
                     break
                 except ValueError:
                     pass
@@ -374,7 +373,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         else:
             url = NOAA_SITE + sat_name + str(ref_year) + '.v4.tar'
             try:
-                file_down = download_file(url)
+                file_down = download_file(url)#, download_dir=SYSTEM_DIR)
             except ValueError:
                 LOGGER.error('Nightlight intensities for year %s and satellite'
                              ' %s do not exist.', ref_year, sat_name)
