@@ -541,13 +541,10 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
 
     exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
 
-    exp_sub_high = _split_exposure_highlow(exp_sub.gdf, mode, High_Value_Area_gdf)
-
-    ###### how to "spread" centroids with value to e.g. hexagons? ###########
-    # put exp_sub_high back into CLIMADA-compatible exposure format and save as hdf5 file:
-    exp_sub_high_exp = Exposures(exp_sub_high)
-    exp_sub_high_exp.set_lat_lon()
+    exp_sub_high_exp = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
     exp_sub_high_exp.check()
+
+    # save as hdf5 file:
     exp_sub_high_exp.write_hdf5(save_path.joinpath('exposure_high_' + str(int(bbox[0])) +
                                 '_' + str(int(bbox[1])) + '.h5'))
     # plotting
