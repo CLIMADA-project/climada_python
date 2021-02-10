@@ -153,7 +153,7 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars=None, sample=None, metrics=None,
+    def __init__(self, unc_vars, sample=None, metrics=None,
                  sensitivity=None):
         """
         Initialize Uncertainty
@@ -161,8 +161,7 @@ class Uncertainty():
         Parameters
         ----------
         unc_vars : list of climade.engine.uncertainty.UncVar 
-            list of uncertainty variables, optional
-            The default is [].
+            list of uncertainty variables
         sample : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
@@ -182,7 +181,8 @@ class Uncertainty():
         """
     
         self.unc_vars = unc_vars if unc_vars else []
-        self.sample = sample if sample else pd.DataFrame()
+        self.sample = sample if sample else pd.DataFrame(
+            columns = self.param_labels)
         self.metrics = metrics if metrics else {}
         self.sensitivity = sensitivity if sensitivity else None
         self.check()
@@ -199,7 +199,18 @@ class Uncertainty():
         """
         check = True
         check &= (self.param_labels == self.sample.columns.to_list())
+        if not check:
+            raise ValueError("Parameter names from unc_vars do not "
+                             "correspond to parameters names of sample")
+        for metric, df_distr in self.metrics.items():
+            if df_distr.empty:
+                continue
+            check &= (len(df_distr) == self.n_samples)
+            raise ValueError(f"Metric f{metric} has less values than the "
+                             "number of samples {self.n_samples}")
         return check
+        
+        
 
     @property
     def n_samples(self):

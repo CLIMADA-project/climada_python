@@ -75,11 +75,11 @@ class UncCostBenefit(Uncertainty):
             }
 
         metrics =  {
-            'tot_climate_risk': None,
-            'benefit': None,
-            'cost_ben_ratio': None,
-            'imp_meas_present': None,
-            'imp_meas_future': None
+            'tot_climate_risk': pd.DataFrame([]),
+            'benefit': pd.DataFrame([]),
+            'cost_ben_ratio': pd.DataFrame([]),
+            'imp_meas_present': pd.DataFrame([]),
+            'imp_meas_future': pd.DataFrame([])
             }
 
         Uncertainty.__init__(self, unc_vars=unc_vars, metrics=metrics)
