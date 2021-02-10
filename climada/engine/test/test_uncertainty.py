@@ -28,7 +28,7 @@ import numpy as np
 from climada.entity import BlackMarble, Entity
 from climada.hazard import TropCyclone
 import os
-from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit
+from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit, Uncertainty
 import scipy as sp
 from pathos.pools import ProcessPool as Pool
 
@@ -163,9 +163,9 @@ class TestUncVar(unittest.TestCase):
     impf_unc.plot_distr()
 
     unc = UncImpact(exp, impf_unc, haz)
-    unc.make_sample(N=1)
-    unc.calc_impact_distribution(calc_eai_exp=True)
-    unc.calc_impact_sensitivity()
+    unc.set_sample(unc.make_sample(N=1))
+    unc.calc_distribution(calc_eai_exp=True)
+    unc.calc_sensitivity()
 
     unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
     unc.plot_rp_distribution()
@@ -174,9 +174,9 @@ class TestUncVar(unittest.TestCase):
     haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
     ent = dummy_ent()
     unc = UncCostBenefit(haz_unc, ent)
-    unc.make_sample(N=1)
-    unc.calc_cost_benefit_distribution(pool=pool)
-    unc.calc_cost_benefit_sensitivity()
+    unc.set_sample(unc.make_sample(N=1))
+    unc.calc_distribution(pool=pool)
+    unc.calc_sensitivity()
     pool.close()
     pool.join()
     pool.clear()

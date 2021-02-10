@@ -38,7 +38,7 @@ class UncCostBenefit(Uncertainty):
     Cost Benefit Uncertainty analysis class
 
     This is the base class to perform uncertainty analysis on the outputs of a
-    climada.engine.costbenefit.CostBenefit() object.
+    climada.engine.costbenefit.CostBenefit() object using the SALib package.
 
     """
 
@@ -67,17 +67,20 @@ class UncCostBenefit(Uncertainty):
 
         """
 
-        unc_vars = {'haz': self._var_or_uncvar(haz_unc),
-                         'ent': self._var_or_uncvar(ent_unc),
-                         'haz_fut': self._var_or_uncvar(haz_fut_unc),
-                         'ent_fut': self._var_or_uncvar(ent_fut_unc)
-                         }
+        unc_vars = {
+            'haz': self._var_or_uncvar(haz_unc),
+            'ent': self._var_or_uncvar(ent_unc),
+            'haz_fut': self._var_or_uncvar(haz_fut_unc),
+            'ent_fut': self._var_or_uncvar(ent_fut_unc)
+            }
 
-        metrics =  {'tot_climate_risk': None,
-                    'benefit': None,
-                    'cost_ben_ratio': None,
-                    'imp_meas_present': None,
-                    'imp_meas_future': None}
+        metrics =  {
+            'tot_climate_risk': None,
+            'benefit': None,
+            'cost_ben_ratio': None,
+            'imp_meas_present': None,
+            'imp_meas_future': None
+            }
 
         Uncertainty.__init__(self, unc_vars=unc_vars, metrics=metrics)
 
