@@ -111,7 +111,7 @@ class UncImpact(Uncertainty):
 
         """
 
-        if self.samples.empty:
+        if self.sample.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
@@ -131,7 +131,7 @@ class UncImpact(Uncertainty):
                                            chunsize = chunksize)
 
         else:
-            imp_metrics = map(self._map_impact_eval, self.samples.iterrows())
+            imp_metrics = map(self._map_impact_eval, self.sample.iterrows())
 
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
@@ -227,7 +227,7 @@ class UncImpact(Uncertainty):
             the chosen SALib.analyse method)
         """
 
-        if self.samples.empty:
+        if self.sample.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
 
