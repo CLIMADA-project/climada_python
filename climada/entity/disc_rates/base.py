@@ -32,7 +32,7 @@ import xlsxwriter
 import climada.util.checker as u_check
 from climada.entity.tag import Tag
 import climada.util.finance as u_fin
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class DiscRates():
             description (str, optional): description of the data
             var_names (dict, optional): name of the variables in the file
         """
-        disc = hdf5.read(file_name)
+        disc = u_hdf5.read(file_name)
         self.clear()
         self.tag.file_name = file_name
         self.tag.description = description
