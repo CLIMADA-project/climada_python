@@ -193,7 +193,7 @@ class UncImpact(Uncertainty):
         return [imp.aai_agg, freq_curve, eai_exp, at_event]
 
 
-    def calc_sensitivity(self, method='sobol', **kwargs):
+    def calc_sensitivity(self, method='sobol', method_kwargs=None):
         """
         Compute the sensitivity indices using the SALib library:
         https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
@@ -235,18 +235,12 @@ class UncImpact(Uncertainty):
             raise ValueError("I found no impact data. Please compute"
                              " the impact distribution first using"+
                              " UncImpact.calc_distribution()")
-
-        #To import a submodule from a module use 'from_list' necessary
-        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
-        analysis_method = getattr(
-            __import__('SALib.analyze',
-                       fromlist=[method]
-                       ),
-            method
-            )
+            
+        if method_kwargs is None: method_kwargs= {}
 
 
-        sensitivity_analysis = self.calc_metric_sensitivity(analysis_method, **kwargs)
+        sensitivity_analysis = self.calc_metric_sensitivity(method, 
+                                                            method_kwargs)
         self.sensitivity = sensitivity_analysis
 
         return sensitivity_analysis

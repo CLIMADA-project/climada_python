@@ -364,21 +364,21 @@ class Uncertainty():
         raise NotImplementedError()
 
 
-    def calc_metric_sensitivity(self, analysis_method, **kwargs):
+    def calc_metric_sensitivity(self, salib_method, method_kwargs=None):
         """
         Compute the sensitivity indices using SALib
 
         Parameters
         ----------
-        analysis_method : str
+        salib_method : str
             sensitivity analysis method from SALib.analyse
             https://salib.readthedocs.io/en/latest/api.html
             Possible choices:
                 'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
             The default is 'sobol'.
-        **kwargs : keyword arguments
-            Are passed to the chose SALib analyse method.
-
+        method_kwargs: dict(), optional
+            Keyword arguments of the chosen SALib analyse method.
+            The default is to use SALib's default arguments.
         Returns
         -------
         sensitivity_dict : dict
@@ -387,13 +387,24 @@ class Uncertainty():
             as returned by SALib.
 
         """
+        
+        #To import a submodule from a module use 'from_list' necessary
+        #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
+        method = getattr(
+            __import__('SALib.analyze',
+                       fromlist=[salib_method]
+                       ),
+            salib_method
+            )
 
+        if method_kwargs is None: method_kwargs = {} 
         sensitivity_dict = {}
         for name, df_metric in self.metrics.items():
             sensitivity_dict[name] = {}
             for metric in df_metric:
                 Y = df_metric[metric].to_numpy()
-                sensitivity_index = analysis_method.analyze(self.problem, Y, **kwargs)
+                sensitivity_index = method.analyze(self.problem, Y,
+                                                            **method_kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
 
         return sensitivity_dict
