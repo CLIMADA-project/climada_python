@@ -153,7 +153,7 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars=None, samples=None, metrics=None):
+    def __init__(self, unc_vars=None, sample=None, metrics=None):
         """
         Initialize Uncertainty
 
@@ -162,14 +162,14 @@ class Uncertainty():
         unc_vars : list of climade.engine.uncertainty.UncVar 
             list of uncertainty variables, optional
             The default is [].
-        samples : pd.DataFrame, optional
+        sample : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
         metrics : dict(), optional
             Dictionnary of the CLIMADA metrics for which the sensitivity
             will be computed. For each sample, each metric must have a
-            definite value.
+            definite value.sss
             Keys are metric names (e.g. 'aai_agg', 'freq_curve') and 
             values are pd.DataFrame with values for each parameter sample
             (one row per sample).
@@ -178,17 +178,30 @@ class Uncertainty():
         """
     
         self.unc_vars = unc_vars if unc_vars else []
-        if samples:
-            if self.param_labels == samples.columns.to_list():
-                self.samples = samples
-            else:
-                raise ValueError("The samples paramters (column names) do "
-                                 "not correspond to the unc_vars parameters" +
-                                 " (all labels)")
-        else:
-            self.sample = pd.DataFrame()
+        if sample: self.set_sample(sample) 
         self.metrics = metrics if metrics else {}
+    
+    def set_sample(self, sample):
+        """
+        Set samples attribute
 
+        Parameters
+        ----------
+        sample : pd.DataFrame
+            Samples of all uncertainty parameters. Column names must be
+            parameter names (all labels) from all unc_vars.
+
+        Returns
+        -------
+        None.
+
+        """
+        if self.param_labels == sample.columns.to_list():
+                self.sample = sample
+        else:
+            raise ValueError("The samples parameters (column names) do "
+                             "not correspond to the unc_vars parameters" +
+                             " (all labels)")      
 
     @property
     def n_samples(self):
@@ -258,7 +271,8 @@ class Uncertainty():
             }
 
 
-    def make_sample(self, N, sampling_method='saltelli', **kwargs):
+    def make_sample(self, N, sampling_method='saltelli',
+                          sampling_kwargs=None):
         """
         Make a sample for all parameters with their respective
         distributions using the chosen sampling_method from SALib.
@@ -273,22 +287,22 @@ class Uncertainty():
             'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
             https://salib.readthedocs.io/en/latest/api.html
             The default is 'saltelli'
-        kwargs:
-            Keyword arguments are passed to the SALib sampling method.
+        sampling_kwargs: dict()
+            Optional keyword arguments of the chosen SALib sampling method.
 
         """
-
-        self.sampling_method = sampling_method
-        uniform_base_sample = self._make_uniform_base_sample(N, **kwargs)
+        
+        uniform_base_sample = self._make_uniform_base_sample(N)
         df_samples = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
         for param in list(df_samples):
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
-        self.samples = df_samples
+        return df_samples
 
 
-    def _make_uniform_base_sample(self, N, **kwargs):
+    def _make_uniform_base_sample(self, N, sampling_method='saltelli',
+                                  sampling_kwargs=None):
         """
         Make a uniform distributed [0,1] sample for the defined
         uncertainty parameters (self.param_labels) with the chosen
@@ -297,29 +311,40 @@ class Uncertainty():
 
         Parameters
         ----------
-        kwargs:
-            Keyword arguments are passed to the SALib sample method.
+        N:
+            Number of samples as defined for the SALib sample method.
+            Note that the effective number of created samples might be
+            larger (c.f. SALib)
+        sampling_method: string
+            The sampling method as defined in SALib. Possible choices:
+            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            https://salib.readthedocs.io/en/latest/api.html
+            The default is 'saltelli'
+        sampling_kwargs: dict()
+            Optional keyword arguments of the chosen SALib sampling method.
 
         Returns
         -------
-        sample_params : np.matrix
+        sample_uniform : np.matrix
             Returns a NumPy matrix containing the sampled uncertainty
             parameters using the defined sampling method (self.sampling_method)
 
         """
+        
+        if sampling_kwargs is None: sampling_kwargs = {}
 
         #To import a submodule from a module use 'from_list' necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         salib_sampling_method = getattr(
             __import__('SALib.sample',
-                       fromlist=[self.sampling_method]
+                       fromlist=[sampling_method]
                        ),
-            self.sampling_method
+            sampling_method
             )
-        sample_params = salib_sampling_method.sample(problem = self.problem,
+        sample_uniform = salib_sampling_method.sample(problem = self.problem,
                                                      N = N,
-                                                     **kwargs)
-        return sample_params
+                                                     **sampling_kwargs)
+        return sample_uniform
 
 
     def est_comp_time(self):
