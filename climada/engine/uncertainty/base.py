@@ -153,7 +153,8 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars=None, sample=None, metrics=None):
+    def __init__(self, unc_vars=None, sample=None, metrics=None,
+                 sensitivity=None):
         """
         Initialize Uncertainty
 
@@ -169,39 +170,36 @@ class Uncertainty():
         metrics : dict(), optional
             Dictionnary of the CLIMADA metrics for which the sensitivity
             will be computed. For each sample, each metric must have a
-            definite value.sss
+            definite value.
             Keys are metric names (e.g. 'aai_agg', 'freq_curve') and 
             values are pd.DataFrame with values for each parameter sample
             (one row per sample).
             The default is {}.
-            
+        sensitivity: dict(), optional
+            Dictionnary of the sensitivity analysis for each uncertainty
+            parameter.
+            The default is None.
         """
     
         self.unc_vars = unc_vars if unc_vars else []
-        if sample: self.set_sample(sample) 
+        self.sample = sample if sample else pd.DataFrame()
         self.metrics = metrics if metrics else {}
+        self.sensitivity = sensitivity if sensitivity else None
+        self.check()
     
-    def set_sample(self, sample):
+    def check(self):
         """
-        Set samples attribute
-
-        Parameters
-        ----------
-        sample : pd.DataFrame
-            Samples of all uncertainty parameters. Column names must be
-            parameter names (all labels) from all unc_vars.
+        Check if the data variables are consistent
 
         Returns
         -------
-        None.
+        check: boolean
+            True if data is consistent.
 
         """
-        if self.param_labels == sample.columns.to_list():
-                self.sample = sample
-        else:
-            raise ValueError("The samples parameters (column names) do "
-                             "not correspond to the unc_vars parameters" +
-                             " (all labels)")      
+        check = True
+        check &= (self.param_labels == self.sample.columns.to_list())
+        return check
 
     @property
     def n_samples(self):
@@ -215,8 +213,8 @@ class Uncertainty():
 
         """
 
-        if isinstance(self.samples, pd.DataFrame):
-            return self.samples.shape[0]
+        if isinstance(self.sample, pd.DataFrame):
+            return self.sample.shape[0]
         return 0
 
     @property
@@ -298,6 +296,7 @@ class Uncertainty():
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
+        self.sample = df_samples
         return df_samples
 
 

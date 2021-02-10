@@ -161,9 +161,8 @@ class TestUncVar(unittest.TestCase):
     impf_unc = UncVar(impf, distr_dict)
 
     impf_unc.plot_distr()
-
     unc = UncImpact(exp, impf_unc, haz)
-    unc.set_sample(unc.make_sample(N=1))
+    unc.make_sample(N=1)
     unc.calc_distribution(calc_eai_exp=True)
     unc.calc_sensitivity()
 
@@ -174,7 +173,7 @@ class TestUncVar(unittest.TestCase):
     haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
     ent = dummy_ent()
     unc = UncCostBenefit(haz_unc, ent)
-    unc.set_sample(unc.make_sample(N=1))
+    unc.make_sample(N=1)
     unc.calc_distribution(pool=pool)
     unc.calc_sensitivity()
     pool.close()

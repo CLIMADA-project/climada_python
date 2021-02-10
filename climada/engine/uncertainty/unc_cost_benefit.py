@@ -109,7 +109,7 @@ class UncCostBenefit(Uncertainty):
         """
         
 
-        if self.samples.empty:
+        if self.sample.empty:
             LOGGER.info("No sample was found. Please create one first"
                         "using UncImpact.make_sample(N)")
             return None
@@ -119,12 +119,12 @@ class UncCostBenefit(Uncertainty):
             LOGGER.info('Using %s CPUs.', pool.ncpus)
             chunksize = min(self.n_samples // pool.ncpus, 100)
             cb_metrics = pool.map(partial(self._map_costben_eval, **kwargs),
-                                           self.samples.iterrows(),
+                                           self.sample.iterrows(),
                                            chunsize = chunksize)
 
         else:
             cb_metrics = map(partial(self._map_costben_eval, **kwargs),
-                             self.samples.iterrows())
+                             self.sample.iterrows())
 
         [imp_meas_present,
          imp_meas_future,
@@ -245,7 +245,7 @@ class UncCostBenefit(Uncertainty):
             the chosen SALib.analyse method)
         """
 
-        if self.samples.empty:
+        if self.sample.empty:
             raise ValueError("I found no samples. Please produce first"
                              " samples using Uncertainty.make_sample().")
 
