@@ -155,32 +155,42 @@ class TestUncVar(unittest.TestCase):
 
     distr_dict = {"G": sp.stats.uniform(0.8,1),
                   "v_half": sp.stats.uniform(50, 100),
-                  "vmin": sp.stats.norm(15,30),
+                  "vmin": sp.stats.uniform(15,30),
                   "k": sp.stats.uniform(1, 5)
                   }
     impf_unc = UncVar(impf, distr_dict)
 
     impf_unc.plot_distr()
     unc = UncImpact(exp, impf_unc, haz)
-    unc.make_sample(N=1)
-    unc.calc_distribution(calc_eai_exp=True)
-    unc.calc_sensitivity()
+    unc.make_sample(N=100, sampling_kwargs = {'calc_second_order': False})
+    unc.plot_sample()
+    unc.calc_distribution(calc_eai_exp=False)
+    unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
 
-    unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
-    unc.plot_rp_distribution()
+    # unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
+    # unc.plot_rp_distribution()
+    unc.plot_sensitivity()
+    print(unc.n_samples)
+    
+    
+    # unc.make_sample(N=1000)
+    # unc.plot_sample()
 
-    pool = Pool()
-    haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
-    ent = dummy_ent()
-    unc = UncCostBenefit(haz_unc, ent)
-    unc.make_sample(N=1)
-    unc.calc_distribution(pool=pool)
-    unc.calc_sensitivity()
-    pool.close()
-    pool.join()
-    pool.clear()
+    # pool = Pool()
+    # haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
+    # ent = dummy_ent()
+    # unc = UncCostBenefit(haz_unc, ent)
+    # unc.make_sample(N=10)
+    # unc.calc_distribution(pool=pool)
+    # unc.calc_sensitivity()
+    # pool.close()
+    # pool.join()
+    # pool.clear()
+    
+    # unc.plot_sensitivity()
+    # print(unc.n_samples)
 
-    unc.plot_metric_distribution(list(unc.metrics.keys())[0:6])
+    # unc.plot_metric_distribution(list(unc.metrics.keys())[0:6])
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)
