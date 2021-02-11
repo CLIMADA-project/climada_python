@@ -55,6 +55,8 @@ climada/engine/test/data/test.csv
 climada/engine/test/data/test.xlsx
 climada/engine/test/data/test_imp_mat.npz
 climada/entity/impact_funcs/test/test_write.xlsx
+climada/entity/impact_funcs/test/data/
+climada/hazard/test/data/test_centr.h5
 climada/hazard/test/data/test_haz.h5
 climada/hazard/test/data/tc_tracks_nc/*
 climada/test/data/1988234N13299.nc
@@ -123,7 +125,7 @@ venv.bak/
 # mac finder files
 .DS_Store
 
-# directory with input data for hazard emulator tutorial 
+# directory with input data for hazard emulator tutorial
 data/emulator
 
 # climada system data files
@@ -169,11 +171,12 @@ data/system/GMT_intermediate_coast*
 # climada system data files: folders for hazard and exposure data
 data/system/hazard/
 data/system/litpop/
-data/system/litpop_2014/ 
+data/system/litpop_2014/
 
 # climada data: ISIMIP crop data folder:
 data/ISIMIP_crop/
 
 # climada data results folder:
 data/results/
+results/
 
