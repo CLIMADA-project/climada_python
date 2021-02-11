@@ -206,8 +206,16 @@ class Uncertainty():
             if df_distr.empty:
                 continue
             check &= (len(df_distr) == self.n_samples)
-            raise ValueError(f"Metric f{metric} has less values than the "
+            if not check:
+                raise ValueError(f"Metric f{metric} has less values than the "
                              "number of samples {self.n_samples}")
+            
+            if df_distr.isnull().values.any():
+                LOGGER.warning("At least one metric evaluated to Nan for " +
+                    "one cominbation of uncertainty parameters containend " +
+                    "in sample. Note that the sensitivity analysis will " +
+                    "then return Nan. " +
+                    "See https://github.com/SALib/SALib/issues/237")
         return check
         
         
@@ -301,7 +309,9 @@ class Uncertainty():
 
         """
         
-        uniform_base_sample = self._make_uniform_base_sample(N)
+        uniform_base_sample = self._make_uniform_base_sample(N,
+                                                             sampling_method,
+                                                             sampling_kwargs)
         df_samples = pd.DataFrame(uniform_base_sample, columns=self.param_labels)
         for param in list(df_samples):
             df_samples[param] = df_samples[param].apply(
@@ -364,7 +374,7 @@ class Uncertainty():
         raise NotImplementedError()
 
 
-    def calc_metric_sensitivity(self, salib_method, method_kwargs=None):
+    def calc_sensitivity(self, salib_method='sobol', method_kwargs=None):
         """
         Compute the sensitivity indices using SALib
 
@@ -406,6 +416,8 @@ class Uncertainty():
                 sensitivity_index = method.analyze(self.problem, Y,
                                                             **method_kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
+        
+        self.sensitivity = sensitivity_dict
 
         return sensitivity_dict
 
@@ -433,7 +445,7 @@ class Uncertainty():
         return UncVar(unc_var=lambda: var, distr_dict={})
 
 
-    def plot_metric_distribution(self, metric_list=None):
+    def plot_distribution(self, metric_list=None):
         """
         Plot the distribution of values.
 
@@ -501,5 +513,102 @@ class Uncertainty():
         return fig, axes
 
 
+    def plot_sample(self):
+        """
+        Plot the sample distributions of the uncertainty parameters.
+        
+        Raises
+        ------
+        ValueError
+            If no sample was computed the plot cannot be made.
+
+        Returns
+        -------
+        fig, ax: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
+
+        """
+        
+        if self.sample.empty:
+            raise ValueError("No uncertainty sample present."+
+                    "Please make a sample first.")
+
+        nplots = len(self.param_labels)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
+        for ax, label in zip(axis.flatten(), self.param_labels):
+            self.sample[label].hist(ax=ax, bins=100) 
+            ax.set_title(label)
+            ax.set_xlabel('value')
+            ax.set_ylabel('Sample count')
+            ax.legend()
+            
+        return fig, axis
 
 
+   
+    def plot_sensitivity(self, salib_si='ST', metric_list=None):
+        """
+        Plot the first order sensitivity indices of the chosen metric.
+
+        Parameters
+        ----------
+        salib_si: string, optional
+            The sensitivity index to plot (see SALib option)
+            https://salib.readthedocs.io/en/latest/basics.html
+            Possible choices: "S1", "ST", "S2" (only if calc_second_order=True)
+            The default is ST
+            
+        metric_list: list of strings, optional
+            List of metrics to plot the sensitivity
+            The default is ['aai_agg', 'freq_curve', ]
+
+        Raises
+        ------
+        ValueError
+            If no sensitivity was computed the plot cannot be made.
+
+        Returns
+        -------
+        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axis handle of the plot.
+
+        """
+
+        if not self.metrics:
+            raise ValueError("No sensitivity present for this emtrics. "+
+                    "Please run a sensitivity analysis first.")
+            
+        if metric_list is None:
+            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
+                           'benefit', 'cost_ben_ratio', 'imp_meas_present',
+                           'imp_meas_future']
+            metric_list = list(set(metric_list) & set(self.metrics.keys()))
+            
+            
+        nplots = len(metric_list)
+        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize=(nrows*9, ncols * 3.5),
+                                 sharex=True,
+                                 sharey=True)
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = [axes]
+        
+        for ax, metric in zip(flat_axes, metric_list):
+            si_dict = self.sensitivity[metric]
+            S = {label: si[salib_si] for label, si in si_dict.items()}
+            S_conf = {
+                label: si[salib_si + '_conf']
+                for label, si in si_dict.items()
+                }
+            df_S = pd.DataFrame(S)
+            df_S_conf = pd.DataFrame(S_conf)
+            df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
+            ax.set_xticklabels(self.param_labels, rotation=0)
+            ax.set_title('S1 - ' + metric)
+            
+        return fig, axes

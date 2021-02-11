@@ -72,11 +72,12 @@ class UncImpact(Uncertainty):
 
 
     def calc_distribution(self,
-                                 rp=None,
-                                 calc_eai_exp=False,
-                                 calc_at_event=False,
-                                 pool=None
-                                 ):
+                          
+                            rp=None,
+                            calc_eai_exp=False,
+                            calc_at_event=False,
+                            pool=None
+                            ):
         """
         Computes the impact for each of the parameters set defined in
         uncertainty.samples.
@@ -144,7 +145,9 @@ class UncImpact(Uncertainty):
                                     columns=['rp' + str(n) for n in rp])
         self.metrics['eai_exp'] =  pd.DataFrame(eai_exp_list)
         self.metrics['at_event'] = pd.DataFrame(at_event_list)
-
+        self.check()
+        
+        return None
 
     def _map_impact_eval(self, param_sample):
         """
@@ -192,58 +195,6 @@ class UncImpact(Uncertainty):
 
         return [imp.aai_agg, freq_curve, eai_exp, at_event]
 
-
-    def calc_sensitivity(self, method='sobol', method_kwargs=None):
-        """
-        Compute the sensitivity indices using the SALib library:
-        https://salib.readthedocs.io/en/latest/api.html#sobol-sensitivity-analysis
-
-        Simple introduction to default Sobol sensitivity
-        https://en.wikipedia.org/wiki/Variance-based_sensitivity_analysis
-
-        Parameters
-        ----------
-        method : string, optional
-            Sensitivity analysis method from SALib.analyse.
-            Possible choices:
-                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
-            Note that SALib recommends pairs of sampling anad analysis
-            algorithms. We recommend users to respect these pairings.
-            https://salib.readthedocs.io/en/latest/api.html
-            The Default is 'sobol'.
-            Note that for the default 'sobol', negative sensitivity
-            indices indicate that the algorithm has not converged. In this
-            case, please restart the uncertainty and sensitivity analysis
-            with an increased number of samples.
-        **kwargs : keyword arguments
-            These parameters are passed to the chosen SALib.analyze routine.
-
-        Returns
-        -------
-        sensitivity_analysis : dict
-            Dictionary with keys the uncertainty parameter labels.
-            For each uncertainty parameter, the item is another dictionary
-            with keys the sensitivity indices (the direct ouput from
-            the chosen SALib.analyse method)
-        """
-
-        if self.sample.empty:
-            raise ValueError("I found no samples. Please produce first"
-                             " samples using Uncertainty.make_sample().")
-
-        if not self.metrics:
-            raise ValueError("I found no impact data. Please compute"
-                             " the impact distribution first using"+
-                             " UncImpact.calc_distribution()")
-            
-        if method_kwargs is None: method_kwargs= {}
-
-
-        sensitivity_analysis = self.calc_metric_sensitivity(method, 
-                                                            method_kwargs)
-        self.sensitivity = sensitivity_analysis
-
-        return sensitivity_analysis
 
     def plot_rp_distribution(self):
         """
