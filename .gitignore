@@ -130,9 +130,9 @@ data/emulator
 # they get downloaded separately from the repo
 data/system/global_coast*
 data/system/global_country*
-data/system/ls_pr*
-data/system/nasa*
 data/system/tmp_elevation.tif
+data/system/ls_*
+data/system/nasa_*
 
 # climada system data files: Nightlight and population data
 data/system/BlackMarble*tif

@@ -323,24 +323,6 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError
     return (dist, vtan) if log else dist
 
-def deg_from_dist(dist_mtrs):
-    """
-    Compute approximate distance in degrees given distance in metres,
-    assuming perfect sphere approximation of R = 6,371 km and 
-    1 ° of latitude  = 111.12 km
-    
-    Parameters
-    ----------
-    dist_mtrs (int): distance in metres
-    
-    Returns
-    -------
-    distance in degrees
-    
-    """
-    return dist_mtrs / (ONE_LAT_KM*1000)
-
-
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
 
@@ -1524,23 +1506,6 @@ def refine_raster_data(data, transform, res, method='linear', fill_value=0):
                                   fill_value=fill_value)
     new_data = new_data.reshape(new_shape)
     return new_data, new_transform
-
-def read_gdf_from_bbox(bbox, path_sourcefile):
-    """
-    load geo-dataframe for only those points within bounding box
-    from a bigger shp-file.
-    Workaround of the bbox kwarg of gpd.read_file(), which is not very robust.
-    
-    Parameters
-    ----------
-        bbox (list): [N, E , S, W] geographic extent of interest
-        path_sourcefile (str): path to shapefile with point data
-    Returns
-    --------
-        (gdf): geopandas geodataframe with points inside bbox
-    """
-    return gpd.read_file(path_sourcefile).cx[bbox[3]:bbox[1], 
-                                             bbox[2]:bbox[0]]
 
 def read_vector(file_name, field_name, dst_crs=None):
     """Read vector file format supported by fiona.

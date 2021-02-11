@@ -33,7 +33,7 @@ class TestLandslideModule(unittest.TestCase):
     def test_set_ls_hist(self):
         """ Test function set_ls_hist()"""
         LS_hist = Landslide()
-        LS_hist.set_ls_hist(bbox=[48, 23, 40, 20], 
+        LS_hist.set_ls_hist(bbox=(20,40,23,46), 
                                   path_sourcefile=LS_HIST_FILE, 
                                   check_plots=0)
         self.assertEqual(LS_hist.size, 272)
@@ -45,7 +45,7 @@ class TestLandslideModule(unittest.TestCase):
     def test_set_ls_prob(self):
         """ Test the function set_ls_prob()"""
         LS_prob = Landslide()
-        LS_prob.set_ls_prob(bbox=[46, 11, 45, 8], 
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
                             path_sourcefile=LS_PROB_FILE, 
                             check_plots=0)
         LS_prob.fraction = LS_prob.fraction/10e6
@@ -67,7 +67,7 @@ class TestLandslideModule(unittest.TestCase):
     
     def test_sample_events_from_probs(self):
         LS_sampled_evs = Landslide()
-        LS_sampled_evs.set_ls_prob(bbox=[46, 11, 45, 8], 
+        LS_sampled_evs.set_ls_prob(bbox=(8,45,11,46), 
                             path_sourcefile=LS_PROB_FILE, 
                             check_plots=0)
         LS_sampled_evs.fraction = LS_sampled_evs.fraction/10e6

@@ -53,7 +53,6 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       nat_earth_resolution,
                                       points_to_raster,
                                       pts_to_raster_meta,
-                                      read_gdf_from_bbox,
                                       read_raster,
                                       read_raster_sample,
                                       read_raster_bounds,
@@ -227,17 +226,6 @@ class TestFunc(unittest.TestCase):
         lat, lon = 41.522410, 1.891026
         epsg = convert_wgs_to_utm(lon, lat)
         self.assertEqual(epsg, 32631)
-        
-    def test_read_gdf_from_bbox(self):
-        """test function read_gdf_from_bbox()"""
-        bbox = [48,23,40,20]
-        path_sourcefile = CONFIG.hazard.test_data.dir() / 'test_ls_hist.shp'
-        gdf_cropped = read_gdf_from_bbox(bbox, path_sourcefile)
-        self.assertEqual(len(gdf_cropped), 272)
-        self.assertTrue(max(gdf_cropped.geometry.y)<=bbox[0])
-        self.assertTrue(max(gdf_cropped.geometry.x)<=bbox[1])
-        self.assertTrue(min(gdf_cropped.geometry.y)>=bbox[2])
-        self.assertTrue(min(gdf_cropped.geometry.x)>=bbox[3])
 
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):

@@ -22,13 +22,13 @@ __all__ = ['Landslide']
 
 import logging
 
+import geopandas as gpd
+import numpy as np
 from scipy import sparse
 from scipy.stats import binom
-import numpy as np
 import shapely
 
 from climada.hazard.base import Hazard
-from climada.util.coordinates import read_gdf_from_bbox
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class Landslide(Hazard):
 
         Parameters:
         ----------
-            bbox (list): [N, E , S, W] geographic extent of interest
+            bbox (tuple): (minx, miny, maxx, maxy) geographic extent of interest
             path_sourcefile (str): path to shapefile (.shp) with ls point data
             incl_surrounding (bool): default is False. Whether to include
                 circular surroundings from point hazard as affected area.
@@ -77,7 +77,7 @@ class Landslide(Hazard):
             LOGGER.error('No sourcefile (.shp) with historic LS points given')
             raise ValueError()
 
-        ls_gdf_bbox = read_gdf_from_bbox(bbox, path_sourcefile)
+        ls_gdf_bbox = gpd.read_file(path_sourcefile, bbox=bbox)
 
         self.centroids.set_lat_lon(ls_gdf_bbox.geometry.y,
                                    ls_gdf_bbox.geometry.x)
@@ -142,8 +142,8 @@ class Landslide(Hazard):
 
         Parameters:
         ----------
-            bbox : list
-                [N, E , S, W] geographic extent of interest
+            bbox : tuple
+                (minx, miny, maxx, maxy) geographic extent of interest
             path_sourcefile : str
                 path to UNEP/NGI ls hazard file (.tif)
 
@@ -155,7 +155,7 @@ class Landslide(Hazard):
 
         # raster by default stored in self.intensity
         self.set_raster([path_sourcefile],
-                        geometry=[shapely.geometry.box(*bbox[::-1], ccw=True)])
+                        geometry=[shapely.geometry.box(*bbox, ccw=True)])
 
         # set frequ. to 1 everywhere since annual:
         self.frequency = np.array([1])
@@ -171,7 +171,7 @@ class Landslide(Hazard):
 
         self.centroids.set_raster_file(path_sourcefile,
                                        geometry=[shapely.geometry.box(
-                                           *bbox[::-1], ccw=True)])        
+                                           *bbox, ccw=True)])        
         if "unnamed" in self.centroids.crs.wkt:
             self.centroids.meta['crs'] = {'init': 'epsg:4326', 'no_defs': True}
      
