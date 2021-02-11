@@ -28,7 +28,7 @@ from rasterio.windows import Window
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
-     INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT, concat
+     INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
@@ -292,7 +292,7 @@ class TestConcat(unittest.TestCase):
 
         self.dummy.check()
 
-        catexp = concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
+        catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
         self.assertEqual(self.dummy.gdf.shape, (10,5))
         self.assertEqual(catexp.gdf.shape, (40,5))
         self.assertEqual(catexp.gdf.crs, 'epsg:3395')
@@ -301,7 +301,7 @@ class TestConcat(unittest.TestCase):
         """Test failing concat function with fake data."""
 
         with self.assertRaises(TypeError):
-            concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
+            Exposures.concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
 
 
 class TestGeoDFFuncs(unittest.TestCase):

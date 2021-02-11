@@ -35,7 +35,6 @@ from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import gpw_import
-from climada.entity.exposures import concat as concat_exp
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
@@ -248,7 +247,7 @@ class LitPop(Exposures):
 
         Exposures.__init__(
             self,
-            data=concat_exp(lp_cntry).gdf,
+            data=Exposures.concat(lp_cntry).gdf,
             crs=DEF_CRS,
             ref_year=reference_year,
             tag=tag,
