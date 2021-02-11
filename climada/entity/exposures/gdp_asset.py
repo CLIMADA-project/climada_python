@@ -31,7 +31,6 @@ from climada.util.coordinates import pts_to_raster_meta
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
 from .base import Exposures, INDICATOR_IF
-from .base import concat as concat_exp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -86,7 +85,7 @@ class GDP2Asset(Exposures):
         tag.description += 'GDP2Asset ' + str(self.ref_year)
         Exposures.__init__(
             self,
-            data=concat_exp(gdp2a_list).gdf,
+            data=Exposures.concat(gdp2a_list).gdf,
             ref_year=ref_year,
             tag=tag,
             value_unit='USD'

@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea', 'concat']
+__all__ = ['Exposures', 'add_sea']
 
 import logging
 import copy
@@ -648,6 +648,30 @@ class Exposures():
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
+    def concat(exposures_list):
+        """Concatenates Exposures or DataFrame objectss to one Exposures object.
+
+        Parameters
+        ----------
+        exposures_list : list of Exposures or DataFrames
+            The list must not be empty with the first item supposed to be an Exposures object.
+
+        Returns
+        -------
+        Exposures
+            with the metadata of the first item in the list and the dataframes concatenated.
+        """
+        exp = exposures_list[0].copy(deep=False)
+        df_list = [
+            el.gdf if isinstance(el, Exposures) else el
+            for el in exposures_list
+        ]
+        exp.gdf = GeoDataFrame(
+            pd.concat(df_list, ignore_index=True, sort=False),
+            crs=exp.crs
+        )
+        return exp
+
 
 def add_sea(exposures, sea_res):
     """Add sea to geometry's surroundings with given resolution. region_id
@@ -758,28 +782,3 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
-
-
-def concat(exposures_list):
-    """Concatenates Exposures or DataFrame objectss to one Exposures object.
-
-    Parameters
-    ----------
-    exposures_list : list of Exposures or DataFrames
-        The list must not be empty with the first item supposed to be an Exposures object.
-
-    Returns
-    -------
-    Exposures
-        with the metadata of the first item in the list and the dataframes concatenated.
-    """
-    exp = exposures_list[0].copy(deep=False)
-    df_list = [
-        el.gdf if isinstance(el, Exposures) else el
-        for el in exposures_list
-    ]
-    exp.gdf = GeoDataFrame(
-        pd.concat(df_list, ignore_index=True, sort=False),
-        crs=exp.crs
-    )
-    return exp
