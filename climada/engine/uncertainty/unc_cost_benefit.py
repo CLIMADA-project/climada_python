@@ -164,7 +164,6 @@ class UncCostBenefit(Uncertainty):
         LOGGER.info("Currently the freq_curve is not saved. Please " +
                     "change the risk_func if return period information " +
                     "needed")
-        
         self.check()
 
         return None
