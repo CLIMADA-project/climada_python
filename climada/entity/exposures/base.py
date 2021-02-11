@@ -32,7 +32,7 @@ from rasterio.warp import Resampling
 import contextily as ctx
 
 from climada.entity.tag import Tag
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
 import climada.util.coordinates as u_coord
 from climada.util.interpolation import interpol_index
@@ -494,7 +494,7 @@ class Exposures(GeoDataFrame):
         if not var_names:
             var_names = DEF_VAR_MAT
 
-        data = hdf5.read(file_name)
+        data = u_hdf5.read(file_name)
         try:
             data = data[var_names['sup_field_name']]
         except KeyError:
@@ -658,8 +658,8 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.ref_year = DEF_REF_YEAR
 
     try:
-        exposures.value_unit = hdf5.get_str_from_ref(file_name,
-                                                     data[var_names['var_name']['uni']][0][0])
+        exposures.value_unit = u_hdf5.get_str_from_ref(
+            file_name, data[var_names['var_name']['uni']][0][0])
     except KeyError:
         exposures.value_unit = DEF_VALUE_UNIT
 

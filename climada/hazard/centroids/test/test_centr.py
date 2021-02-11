@@ -70,20 +70,24 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_base_grid(self):
         """Read new centroids using from_base_grid, then select by extent."""
-
-        centroids = Centroids().from_base_grid(land=True, res_as=150)
+        centroids = Centroids.from_base_grid(land=True, res_as=150)
+        self.assertEqual(centroids.lat.size, 8858035)
+        self.assertTrue(np.all(np.diff(centroids.lat) <= 0))
 
         count_sandwich = np.sum(centroids.region_id == 239)
-
-        self.assertEqual(centroids.lat.size, 8858035)
         self.assertEqual(count_sandwich, 321)
 
         count_sgi = centroids.select(
             reg_id=239,
             extent=(-39, -34.7, -55.5, -53.6)  # south georgia island
         ).size
-
         self.assertEqual(count_sgi, 296)
+
+        # test negative latitudinal orientation by testing that northern hemisphere (Russia)
+        # is listed before southern hemisphere (South Africa)
+        russia_max_idx = (centroids.region_id == 643).nonzero()[0].max()
+        safrica_min_idx = (centroids.region_id == 710).nonzero()[0].min()
+        self.assertTrue(russia_max_idx < safrica_min_idx)
 
     def test_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""

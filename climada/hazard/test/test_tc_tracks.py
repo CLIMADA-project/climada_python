@@ -156,7 +156,7 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
         # the wind speed at position 44 is missing in the original data
-        self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 57, places=0)
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 58, places=0)
 
     def test_read_official(self):
         """Read a tropical cyclone, only officially reported values."""
@@ -179,7 +179,7 @@ class TestIbtracs(unittest.TestCase):
 
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=True)
         track_ds = tc_track.get_track()
-        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55 * 1.16, places=5)
+        self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], (55 - 23.3) / 0.6, places=5)
 
         tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=False)
         track_ds = tc_track.get_track()
@@ -226,8 +226,8 @@ class TestIbtracs(unittest.TestCase):
         tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
                                    estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013, places=0)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1007, places=0)
-        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1011, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
+        self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
 
 class TestIO(unittest.TestCase):
@@ -463,6 +463,7 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(np.max(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(np.min(tc_track.data[0].radius_max_wind), 0)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 25)
+        self.assertTrue(np.isfinite(tc_track.data[0].central_pressure.values).all())
         self.assertAlmostEqual(tc_track.data[0].central_pressure.values[29], 1008, places=0)
         self.assertEqual(np.max(tc_track.data[0].environmental_pressure), 1010)
         self.assertEqual(np.min(tc_track.data[0].environmental_pressure), 1010)
@@ -480,18 +481,23 @@ class TestFuncs(unittest.TestCase):
 
         # test some "generic floats"
         for time_step_h in [0.6663545049172093, 2.509374054925788, 8.175754471661111]:
-            tc_track = tc.TCTracks()
-            tc_track.read_processed_ibtracs_csv(TEST_TRACK)
-            tc_track.equal_timestep(time_step_h=time_step_h)
-            self.assertTrue(np.all(tc_track.data[0].time_step == time_step_h))
+            # artifically create data that doesn't start at full hour
+            for loffset in [0, 22, 30]:
+                tc_track = tc.TCTracks()
+                tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+                tc_track.data[0].time.values[:] += np.timedelta64(loffset, "m")
+                tc_track.equal_timestep(time_step_h=time_step_h)
+                np.testing.assert_array_equal(tc_track.data[0].time_step, time_step_h)
+                self.assertTrue(np.isfinite(tc_track.data[0].central_pressure.values).all())
 
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=0.16667)
 
-        self.assertEqual(tc_track.data[0].time.size, 1333)
+        self.assertEqual(tc_track.data[0].time.size, 1332)
         self.assertTrue(np.all(tc_track.data[0].time_step == 0.16667))
-        self.assertAlmostEqual(tc_track.data[0].lon.values[66], -27.397636528537127)
+        self.assertTrue(np.isfinite(tc_track.data[0].central_pressure.values).all())
+        self.assertAlmostEqual(tc_track.data[0].lon.values[65], -27.397636528537127)
 
         for time_step_h in [0, -0.5, -1]:
             tc_track = tc.TCTracks()
