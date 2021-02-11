@@ -167,30 +167,30 @@ class TestUncVar(unittest.TestCase):
     unc.calc_distribution(calc_eai_exp=False)
     unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
 
-    # unc.plot_metric_distribution(['aai_agg', 'freq_curve'])
-    # unc.plot_rp_distribution()
+    unc.plot_distribution(['aai_agg', 'freq_curve'])
+    unc.plot_rp_distribution()
     unc.plot_sensitivity()
     print(unc.n_samples)
     
     
-    # unc.make_sample(N=1000)
-    # unc.plot_sample()
+    unc.make_sample(N=1000)
+    unc.plot_sample()
 
-    # pool = Pool()
-    # haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
-    # ent = dummy_ent()
-    # unc = UncCostBenefit(haz_unc, ent)
-    # unc.make_sample(N=10)
-    # unc.calc_distribution(pool=pool)
-    # unc.calc_sensitivity()
-    # pool.close()
-    # pool.join()
-    # pool.clear()
+    pool = Pool()
+    haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
+    ent = dummy_ent()
+    unc = UncCostBenefit(haz_unc, ent)
+    unc.make_sample(N=10)
+    unc.calc_distribution(pool=pool)
+    unc.calc_sensitivity()
+    pool.close()
+    pool.join()
+    pool.clear()
     
-    # unc.plot_sensitivity()
-    # print(unc.n_samples)
+    unc.plot_sensitivity(metric_list=list(unc.metrics.keys())[0:6])
+    print(unc.n_samples)
 
-    # unc.plot_metric_distribution(list(unc.metrics.keys())[0:6])
+    unc.plot_distribution(metric_list=list(unc.metrics.keys())[0:6])
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)

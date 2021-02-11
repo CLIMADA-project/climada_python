@@ -607,6 +607,7 @@ class Uncertainty():
                 }
             df_S = pd.DataFrame(S)
             df_S_conf = pd.DataFrame(S_conf)
+            if df_S.empty: continue
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title('S1 - ' + metric)
