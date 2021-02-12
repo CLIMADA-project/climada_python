@@ -22,6 +22,7 @@ Define Uncertainty Cost Benefit class
 __all__ = ['UncCostBenefit']
 
 import logging
+import time
 from functools import partial
 import pandas as pd
 
@@ -111,6 +112,17 @@ class UncCostBenefit(Uncertainty):
         if self.sample.empty:
             raise ValueError("No sample was found. Please create one first" + 
                         "using UncImpact.make_sample(N)")
+            
+        start = time.time()
+        one_sample = self.sample.iloc[0:1].iterrows()
+        cb_metrics = map(self._map_costben_eval, one_sample)
+        [imp_meas_present,
+         imp_meas_future,
+         tot_climate_risk,
+         benefit,
+         cost_ben_ratio] = list(zip(*cb_metrics))
+        elapsed_time = (time.time() - start) 
+        self._est_comp_time(elapsed_time, pool)
 
         #Compute impact distributions
         if pool:
@@ -126,6 +138,7 @@ class UncCostBenefit(Uncertainty):
             cb_metrics = map(partial(self._map_costben_eval, **kwargs),
                              self.sample.iterrows())
         LOGGER.setLevel(logging.NOTSET)
+        
         
         [imp_meas_present,
          imp_meas_future,
