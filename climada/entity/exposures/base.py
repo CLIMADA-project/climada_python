@@ -307,7 +307,7 @@ class Exposures():
                 function used for reprojection to dst_crs
         """
         self.tag = Tag()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
