@@ -34,7 +34,6 @@ import geopandas as gpd
 from iso3166 import countries as iso_cntry
 import numpy as np
 import pandas as pd
-import pyproj
 import rasterio
 import rasterio.crs
 import rasterio.features
