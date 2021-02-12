@@ -14,11 +14,13 @@ import decimal
 
 LOGGER = logging.getLogger(__name__)
 
-ABBREV = {1:'',
-          1000: 'K',
-          1000000: 'M',
-          1000000000: 'Bn',
-          1000000000000: 'Tn'}
+ABBREV = {
+    1:'',
+    1000: 'K',
+    1000000: 'M',
+    1000000000: 'Bn',
+    1000000000000: 'Tn'
+    }
 
 
 def sig_dig(x, n_sig_dig = 16):
@@ -85,7 +87,8 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     abbreviations: dict, optional
         Name of the abbreviations for the money 1000s counts
         Default:
-         {0:'',
+         {
+          1:'',
           1000: 'K',
           1000000: 'M',
           1000000000: 'Bn',
@@ -108,19 +111,18 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     exponents = []
     for val in values:
-        if val == 0:
-            exponents.append(0)
+        if math.isclose(val, 0) or not math.isfinite(val):
             continue
         exponents.append(math.log10(abs(val)))
-
+    if not exponents: exponents = [0]
     max_exp = max(exponents)
     min_exp = min(exponents)
 
     avg_exp = math.floor((max_exp + min_exp) / 2)  # rounded down
     mil_exp = 3 * math.floor(avg_exp/3)
 
-    name = ''
-    thsder = int(10**mil_exp)
+    thsder = int(10**mil_exp) #Remove negative exponents
+    thsder = 1 if thsder < 1 else thsder
 
     try:
         name = abbreviations[thsder]

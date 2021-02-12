@@ -23,6 +23,7 @@ Test of util.math module
 from climada.util.value_representation import sig_dig, sig_dig_list, value_to_monetary_unit, ABBREV 
 import unittest
 import numpy as np
+import math
 
 
 class TestDigits(unittest.TestCase):
@@ -60,6 +61,25 @@ class TestDigits(unittest.TestCase):
             money, names = value_to_monetary_unit(nb_in)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
+            
+    def test_value_to_monetary_unit_0inf_pass(self):
+        """Test money_unit function"""
+        nbs_in = [-math.inf, 0, 1e-10, 1e-5, math.inf]
+        nbs_out = [-math.inf, 0, 1e-10, 1e-5, math.inf]
+        names_out = [ABBREV[1], ABBREV[1], ABBREV[1], ABBREV[1],
+                 ABBREV[1], ABBREV[1], ABBREV[1]]
+        for j, (nb_in, nb_out) in enumerate(zip(nbs_in, nbs_out)):
+            money, names = value_to_monetary_unit(nb_in)
+            self.assertEqual(money[0], nb_out)
+            self.assertEqual(names, names_out[j])
+            
+    def test_value_to_monetary_unit_nan_pass(self):
+        """Test money_unit function"""
+        nb_in = math.nan
+        money, name = value_to_monetary_unit(nb_in)
+        self.assertTrue(math.isnan(money[0]))
+        self.assertEqual(name, '')
+            
             
     def test_value_to_monetary_unit_sigdig_pass(self):
         """Test money_unit function with significant digits"""
