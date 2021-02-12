@@ -189,7 +189,7 @@ class Exposures():
 
     def check(self):
         """Check Exposures consistency.
-        
+
         Reports missing columns in log messages.
         If no if_* column is present in the dataframe, a default column 'if_' is added with
         default impact function id 1.
@@ -426,7 +426,7 @@ class Exposures():
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf.value.values.reshape((self.meta['height'],
-                                                self.meta['width']))
+                                                    self.meta['width']))
             # check raster starts by upper left corner
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
@@ -573,7 +573,7 @@ class Exposures():
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
         """Wrapper of the GeoDataFrame.to_crs method.
-        
+
         Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
         The crs attribute on the current GeoSeries must be set. Either crs in string or dictionary
@@ -640,7 +640,7 @@ class Exposures():
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
-                                                         self.meta['width']))
+                                                          self.meta['width']))
             # check raster starts by upper left corner
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
@@ -652,6 +652,7 @@ class Exposures():
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
+    @staticmethod
     def concat(exposures_list):
         """Concatenates Exposures or DataFrame objectss to one Exposures object.
 
@@ -667,8 +668,8 @@ class Exposures():
         """
         exp = exposures_list[0].copy(deep=False)
         df_list = [
-            el.gdf if isinstance(el, Exposures) else el
-            for el in exposures_list
+            ex.gdf if isinstance(ex, Exposures) else ex
+            for ex in exposures_list
         ]
         exp.gdf = GeoDataFrame(
             pd.concat(df_list, ignore_index=True, sort=False),
@@ -717,7 +718,7 @@ def add_sea(exposures, sea_res):
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
             sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf.latitude.size,
-                                            exposures.gdf[var_name].dtype)
+                                             exposures.gdf[var_name].dtype)
 
     return Exposures(
         pd.concat([exposures.gdf, sea_exp_gdf], ignore_index=True, sort=False),
