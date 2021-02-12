@@ -25,6 +25,7 @@ import logging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import zip_longest
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 
@@ -493,8 +494,14 @@ class Uncertainty():
         else:
             flat_axes = [axes]
 
-        for ax, col in zip(flat_axes, cols):
+        for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
+            if col is None:
+                ax.remove()
+                continue
             data = df_values_log[col]
+            if data.empty:
+                ax.remove()
+                continue
             data.hist(ax=ax,  bins=100, density=True, histtype='step')
             avg = df_values[col].mean()
             std = df_values[col].std()
@@ -536,7 +543,10 @@ class Uncertainty():
         nplots = len(self.param_labels)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
-        for ax, label in zip(axis.flatten(), self.param_labels):
+        for ax, label in zip_longest(axis.flatten(), self.param_labels, fillvalue=None):
+            if label is None:
+                ax.remove()
+                continue
             self.sample[label].hist(ax=ax, bins=100) 
             ax.set_title(label)
             ax.set_xlabel('value')
@@ -598,7 +608,10 @@ class Uncertainty():
         else:
             flat_axes = [axes]
         
-        for ax, metric in zip(flat_axes, metric_list):
+        for ax, metric in zip_longest(flat_axes, metric_list, fillvalue=None):
+            if metric is None:
+                ax.remove()
+                continue
             si_dict = self.sensitivity[metric]
             S = {label: si[salib_si] for label, si in si_dict.items()}
             S_conf = {
@@ -607,9 +620,12 @@ class Uncertainty():
                 }
             df_S = pd.DataFrame(S)
             df_S_conf = pd.DataFrame(S_conf)
-            if df_S.empty: continue
+            if df_S.empty:
+                ax.remove()
+                continue
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title('S1 - ' + metric)
+        plt.tight_layout()
             
         return fig, axes
