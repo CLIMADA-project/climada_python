@@ -25,11 +25,14 @@ import logging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty
 
 LOGGER = logging.getLogger(__name__)
+
+from functools import wraps
 
 # Future planed features:
 # Nice plots
@@ -72,7 +75,6 @@ class UncImpact(Uncertainty):
 
 
     def calc_distribution(self,
-                          
                             rp=None,
                             calc_eai_exp=False,
                             calc_at_event=False,
@@ -122,10 +124,18 @@ class UncImpact(Uncertainty):
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-
+        
+        start = time.time()
+        one_sample = self.sample.iloc[0:1].iterrows()
+        imp_metrics = map(self._map_impact_eval, one_sample)
+        [aai_agg_list, freq_curve_list,
+         eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+        elapsed_time = (time.time() - start) 
+        self._est_comp_time(elapsed_time, pool)
+        
         #Compute impact distributions
         if pool:
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+            LOGGER.info('Using %s CPUs.', pool.ncpus)
             chunksize = min(self.n_runs // pool.ncpus, 100)
             imp_metrics = pool.map(self._map_impact_eval,
                                            self.samples.iterrows(),
@@ -133,7 +143,7 @@ class UncImpact(Uncertainty):
 
         else:
             imp_metrics = map(self._map_impact_eval, self.sample.iterrows())
-
+        
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
 
@@ -149,13 +159,13 @@ class UncImpact(Uncertainty):
         
         return None
 
-    def _map_impact_eval(self, param_sample):
+    def _map_impact_eval(self, sample_iterrows):
         """
         Map to compute impact for all parameter samples in parrallel
 
         Parameters
         ----------
-        param_sample : pd.DataFrame.iterrows()
+        sample_iterrows : pd.DataFrame.iterrows()
             Generator of the parameter samples
 
         Returns
@@ -168,9 +178,9 @@ class UncImpact(Uncertainty):
         """
 
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_samples = param_sample[1][self.unc_vars['exp'].labels].to_dict()
-        haz_samples = param_sample[1][self.unc_vars['haz'].labels].to_dict()
-        impf_samples = param_sample[1][self.unc_vars['impf'].labels].to_dict()
+        exp_samples = sample_iterrows[1][self.unc_vars['exp'].labels].to_dict()
+        haz_samples = sample_iterrows[1][self.unc_vars['haz'].labels].to_dict()
+        impf_samples = sample_iterrows[1][self.unc_vars['impf'].labels].to_dict()
 
         exp = self.unc_vars['exp'].evaluate(exp_samples)
         haz = self.unc_vars['haz'].evaluate(haz_samples)
@@ -178,7 +188,6 @@ class UncImpact(Uncertainty):
 
         imp = Impact()
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
@@ -237,7 +246,6 @@ class UncImpact(Uncertainty):
         ax.set_ylim(0, 2*n)
         ax.set_xlabel('impact')
         ax.set_ylabel('return period [years]')
-        ax.legend()
         ax.set_yticks(np.arange(0, 2*n, 2))
         ax.set_yticklabels(df_values.columns)
 

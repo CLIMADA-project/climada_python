@@ -99,33 +99,34 @@ class UncCostBenefit(Uncertainty):
             Pool of CPUs for parralel computations. Default is None.
             The default is None.
         **kwargs : keyword arguments
-            These parameters are passed to
-            climada.engine.CostBenefit.calc().
+            Any keyword arguments of climada.engine.CostBenefit.calc()
+            EXCEPT: haz, ent, haz_fut, ent_fut
 
         Returns
         -------
         None.
 
         """
-        
 
         if self.sample.empty:
-            LOGGER.info("No sample was found. Please create one first"
+            raise ValueError("No sample was found. Please create one first" + 
                         "using UncImpact.make_sample(N)")
-            return None
 
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
+            LOGGER.setLevel(logging.WARNING)
             chunksize = min(self.n_samples // pool.ncpus, 100)
             cb_metrics = pool.map(partial(self._map_costben_eval, **kwargs),
                                            self.sample.iterrows(),
                                            chunsize = chunksize)
 
         else:
+            LOGGER.setLevel(logging.WARNING)
             cb_metrics = map(partial(self._map_costben_eval, **kwargs),
                              self.sample.iterrows())
-
+        LOGGER.setLevel(logging.NOTSET)
+        
         [imp_meas_present,
          imp_meas_future,
          tot_climate_risk,
@@ -160,7 +161,7 @@ class UncCostBenefit(Uncertainty):
                         met_dic.update(dic_tmp)
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             self.metrics[name] = df_imp_meas
-
+            
         LOGGER.info("Currently the freq_curve is not saved. Please " +
                     "change the risk_func if return period information " +
                     "needed")
