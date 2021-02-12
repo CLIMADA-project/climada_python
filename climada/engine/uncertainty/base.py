@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 from itertools import zip_longest
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
+from climada.util.value_representation import sig_dig as u_sig_dig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -368,11 +369,34 @@ class Uncertainty():
         return sample_uniform
 
 
-    def est_comp_time(self):
-        """
+    def _est_comp_time(self, time_one_run, pool=None):
+        """      
         Estimate the computation time
+
+        Parameters
+        ----------
+        time_one_run : int/float
+            Estimated computation time for one parameter set in seconds
+        pool : pathos.pool, optional
+            pool for parallel computation. The default is None.
+
+        Returns
+        -------
+        None.
+
         """
-        raise NotImplementedError()
+        time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
+        if time_one_run > 5:
+            LOGGER.warning("Computation time for one set of parameters is "+
+                f"{time_one_run}s. This is suspiciously long. Possible " +
+                "reasons: unc_vars are loading data, entroids not assigned " +
+                "to exp before defining unc_var, ...")
+
+        ncpus = pool.ncpus if pool else 1
+        total_time = self.n_samples * time_one_run / ncpus
+        LOGGER.info(f"\n\nEstimated computation time: {total_time}s\n")
+        
+        return None
 
 
     def calc_sensitivity(self, salib_method='sobol', method_kwargs=None):
@@ -551,7 +575,6 @@ class Uncertainty():
             ax.set_title(label)
             ax.set_xlabel('value')
             ax.set_ylabel('Sample count')
-            ax.legend()
             
         return fig, axis
 
