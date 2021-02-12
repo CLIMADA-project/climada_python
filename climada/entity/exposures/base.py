@@ -115,7 +115,10 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        return self.gdf.crs
+        try:
+            return self.gdf.crs
+        except AttributeError:
+            return self.meta.get('crs')
 
     def __init__(self, *args, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
@@ -138,7 +141,7 @@ class Exposures():
         try:
             self.meta = kwargs.pop('meta')
         except KeyError:
-            self.meta = {}
+            self.meta = {'crs': kwargs.get('crs', DEF_CRS)}
             LOGGER.info('meta set to default value %s', self.meta)
 
         try:
@@ -595,6 +598,7 @@ class Exposures():
         """
         if inplace:
             self.gdf.to_crs(crs, epsg, True)
+            self.meta['crs'] = crs
             self.set_lat_lon()
             return None
 
