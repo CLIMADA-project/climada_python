@@ -320,6 +320,7 @@ class Uncertainty():
                 self.distr_dict[param].ppf
                 )
         self.sample = df_samples
+        LOGGER.info("Effective number of made samples: %d" %self.n_samples)
         return df_samples
 
 
