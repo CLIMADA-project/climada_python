@@ -26,11 +26,13 @@ from cartopy.io import shapereader
 from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
+from pyproj.crs import CRS as PCRS
 import shapely
 from shapely.geometry import box
 from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
+from rasterio.crs import CRS as RCRS
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
@@ -59,6 +61,7 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       read_vector,
                                       refine_raster_data,
                                       set_df_geometry_points,
+                                      to_crs_user_input,
                                       write_raster,
                                       NE_EPSG,
                                       ONE_LAT_KM)
@@ -226,6 +229,32 @@ class TestFunc(unittest.TestCase):
         lat, lon = 41.522410, 1.891026
         epsg = convert_wgs_to_utm(lon, lat)
         self.assertEqual(epsg, 32631)
+
+    def test_to_crs_user_input(self):
+        pcrs = PCRS.from_epsg(4326)
+        rcrs = RCRS.from_epsg(4326)
+
+        # are they the default?
+        self.assertTrue(pcrs == PCRS.from_user_input(to_crs_user_input(DEF_CRS)))
+        self.assertEqual(rcrs, RCRS.from_user_input(to_crs_user_input(DEF_CRS)))
+
+        # can they be understood from the provider?
+        for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326]:
+            self.assertEqual(pcrs, PCRS.from_user_input(to_crs_user_input(arg)))
+            self.assertEqual(rcrs, RCRS.from_user_input(to_crs_user_input(arg)))
+            
+        # can they be misunderstood from the provider?
+        for arg in [{'init': 'epsg:4326', 'no_defs': True}, b'{"init": "epsg:4326", "no_defs": True}' ]:
+            self.assertFalse(pcrs == PCRS.from_user_input(to_crs_user_input(arg)))
+            self.assertEqual(rcrs, RCRS.from_user_input(to_crs_user_input(arg)))
+
+        # are they noticed?
+        for arg in [4326.0, [4326]]:
+            with self.assertRaises(ValueError):
+                to_crs_user_input(arg)
+        with self.assertRaises(SyntaxError):
+            to_crs_user_input('{init: epsg:4326, no_defs: True}')
+
 
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
@@ -738,6 +767,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertLessEqual(transform[5], bounds[3] - transform[4])
         self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
         self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
+
 
 # Execute Tests
 if __name__ == "__main__":

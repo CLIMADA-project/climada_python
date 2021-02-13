@@ -1134,7 +1134,7 @@ def to_crs_user_input(crs_obj):
 
     Parameters
     ----------
-    crs_obj : dict or str or bytes
+    crs_obj : int, dict or str or bytes
         the crs object to be converted user input
 
     Returns
@@ -1147,19 +1147,19 @@ def to_crs_user_input(crs_obj):
     ------
     ValueError
         if type(crs_obj) has the wrong type
-    """    
-    if isinstance(crs_obj, dict):
+    """
+    if type(crs_obj) in [dict, int]:
         return crs_obj
 
     crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
 
     if not isinstance(crs_string, str):
-        raise ValueError("crs has unhandled data set type")
+        raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
 
     if crs_string[0] == '{':
-        return ast.literal_eval(crs_string) 
-    else:
-        return crs_string
+        return ast.literal_eval(crs_string)
+
+    return crs_string
 
 
 def equal_crs(crs_one, crs_two):
