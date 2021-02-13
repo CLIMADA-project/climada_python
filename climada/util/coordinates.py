@@ -1167,15 +1167,15 @@ def equal_crs(crs_one, crs_two):
 
     Parameters
     ----------
-    crs_one : dict or string or wkt
+    crs_one : dict, str or int
         user crs
-    crs_two : dict or string or wkt
+    crs_two : dict, str or int
         user crs
 
     Returns
     -------
     equal : bool
-        Whether the two specified CRS are equal.
+        Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
