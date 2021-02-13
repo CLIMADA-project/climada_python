@@ -667,7 +667,7 @@ class Impact():
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
         try:
-            self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+            self.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             self.crs = DEF_CRS
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),

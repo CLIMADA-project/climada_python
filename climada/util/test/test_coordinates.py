@@ -23,7 +23,6 @@ import unittest
 from pathlib import Path
 
 from cartopy.io import shapereader
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
@@ -188,9 +187,8 @@ class TestFunc(unittest.TestCase):
                                              name='populated_places_simple')
         lat, lon, geometry, intensity = read_vector(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(PCRS.from_user_input(geometry.crs), PCRS.from_epsg(NE_EPSG))
         self.assertEqual(geometry.size, lat.size)
-        self.assertEqual(geometry.crs, from_epsg(NE_EPSG))
         self.assertAlmostEqual(lon[0], 12.453386544971766)
         self.assertAlmostEqual(lon[-1], 114.18306345846304)
         self.assertAlmostEqual(lat[0], 41.903282179960115)
