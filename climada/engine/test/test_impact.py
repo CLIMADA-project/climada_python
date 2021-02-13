@@ -422,7 +422,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(
             0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
-        self.assertIsInstance(imp_read.crs, dict)
+        self.assertIsInstance(imp_read.crs, str)
 
     def test_write_read_excel_pass(self):
         """Test write and read in excel"""
@@ -452,7 +452,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(
             0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
-        self.assertIsInstance(imp_read.crs, dict)
+        self.assertIsInstance(imp_read.crs, str)
 
     def test_write_imp_mat(self):
         """Test write_excel_imp_mat function"""
