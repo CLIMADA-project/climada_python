@@ -49,7 +49,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('GPW-year=2015', ent.tag.description)
         self.assertIn('BM-year=2016', ent.tag.description)
         self.assertIn('exp=[1, 1]', ent.tag.description)
-        self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
+        self.assertTrue(equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
         self.assertTrue(equal_crs(ent.meta['crs'], {'init': 'epsg:4326'}))
