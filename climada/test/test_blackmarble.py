@@ -64,7 +64,7 @@ class Test2013(unittest.TestCase):
         ent = BlackMarble()
         with self.assertLogs('climada.util.finance', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
-        self.assertIn('GDP SXM 2014: 3.658e+08.', cm.output[0])
+        self.assertIn('GDP SXM 2013: 1.023e+09.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
@@ -74,7 +74,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
-        self.assertAlmostEqual(ent.value.sum(), 3.658e+08 * (4 + 1))
+        self.assertTrue(np.isclose(ent.value.sum(), 1.023e+09 * (4 + 1), 1))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
     def test_anguilla_pass(self):
@@ -131,7 +131,6 @@ class Test2012(unittest.TestCase):
             print('MemoryError caught')
             pass
 
-
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2012, res_km=5.0, from_hr=False)
@@ -146,8 +145,8 @@ class BMFuncs(unittest.TestCase):
     def test_cut_nasa_esp_pass(self):
         """Test load_nightlight_nasa function."""
         shp_fn = shapereader.natural_earth(resolution='10m',
-                                           category='cultural',
-                                           name='admin_0_countries')
+                                            category='cultural',
+                                            name='admin_0_countries')
         shp_file = shapereader.Reader(shp_fn)
         list_records = list(shp_file.records())
         for info_idx, info in enumerate(list_records):
@@ -176,9 +175,9 @@ class BMFuncs(unittest.TestCase):
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])
         self.assertEqual(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1],
-                         NOAA_BORDER[3])
+                          NOAA_BORDER[3])
         self.assertEqual(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1],
-                         NOAA_BORDER[2])
+                          NOAA_BORDER[2])
 
     def test_set_country_pass(self):
         """Test exposures attributes after black marble."""
