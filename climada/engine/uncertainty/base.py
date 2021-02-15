@@ -106,7 +106,7 @@ class UncVar():
         self.distr_dict = distr_dict
         self.unc_var = unc_var
 
-    def plot_distr(self):
+    def plot(self):
         """
         Plot the distributions of the parameters of the uncertainty variable.
 
