@@ -28,6 +28,7 @@ import pandas as pd
 
 from climada.engine.uncertainty.base import Uncertainty
 from climada.engine.cost_benefit import CostBenefit
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,36 +116,41 @@ class UncCostBenefit(Uncertainty):
             
         start = time.time()
         one_sample = self.sample.iloc[0:1].iterrows()
-        cb_metrics = map(self._map_costben_eval, one_sample)
+        cb_metrics = map(self._map_costben_calc, one_sample)
         [imp_meas_present,
          imp_meas_future,
          tot_climate_risk,
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start) 
-        self._est_comp_time(elapsed_time, pool)
+        est_com_time = self.est_comp_time(elapsed_time, pool)
+        LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
 
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
-            LOGGER.setLevel(logging.WARNING)
             chunksize = min(self.n_samples // pool.ncpus, 100)
-            cb_metrics = pool.map(partial(self._map_costben_eval, **kwargs),
+            cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
                                            self.sample.iterrows(),
                                            chunsize = chunksize)
 
         else:
-            LOGGER.setLevel(logging.WARNING)
-            cb_metrics = map(partial(self._map_costben_eval, **kwargs),
+            cb_metrics = map(partial(self._map_costben_calc, **kwargs),
                              self.sample.iterrows())
-        LOGGER.setLevel(logging.NOTSET)
         
+        logger_cb = logging.getLogger('climada.engine.cost_benefit')
+        logger_cb.setLevel('ERROR')
+        logger_impf = logging.getLogger('climada.entity.impact_funcs')
+        logger_impf.setLevel('ERROR')
         
         [imp_meas_present,
          imp_meas_future,
          tot_climate_risk,
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
+        
+        logger_cb.setLevel(CONFIG.log_level.str())
+        logger_impf.setLevel(CONFIG.log_level.str())
 
         # Assign computed impact distribution data to self
         self.metrics['tot_climate_risk'] = \
@@ -183,7 +189,7 @@ class UncCostBenefit(Uncertainty):
         return None
 
 
-    def _map_costben_eval(self, param_sample, **kwargs):
+    def _map_costben_calc(self, param_sample, **kwargs):
         """
         Map to compute cost benefit for all parameter samples in parallel
 
