@@ -370,7 +370,7 @@ class Uncertainty():
         return sample_uniform
 
 
-    def _est_comp_time(self, time_one_run, pool=None):
+    def est_comp_time(self, time_one_run, pool=None):
         """      
         Estimate the computation time
 
@@ -379,11 +379,12 @@ class Uncertainty():
         time_one_run : int/float
             Estimated computation time for one parameter set in seconds
         pool : pathos.pool, optional
-            pool for parallel computation. The default is None.
+            pool that would be used for parallel computation.
+            The default is None.
 
         Returns
         -------
-        None.
+        Estimated computation time in secs.
 
         """
         time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
@@ -395,9 +396,8 @@ class Uncertainty():
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
-        LOGGER.info(f"\n\nEstimated computation time: {total_time}s\n")
         
-        return None
+        return total_time
 
 
     def calc_sensitivity(self, salib_method='sobol', method_kwargs=None):

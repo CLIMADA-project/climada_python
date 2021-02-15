@@ -29,10 +29,10 @@ import time
 
 from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
-from functools import wraps
 
 # Future planed features:
 # Nice plots
@@ -127,25 +127,34 @@ class UncImpact(Uncertainty):
         
         start = time.time()
         one_sample = self.sample.iloc[0:1].iterrows()
-        imp_metrics = map(self._map_impact_eval, one_sample)
+        imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start) 
-        self._est_comp_time(elapsed_time, pool)
+        est_com_time = self.est_comp_time(elapsed_time, pool)
+        LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
         
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
             chunksize = min(self.n_runs // pool.ncpus, 100)
-            imp_metrics = pool.map(self._map_impact_eval,
+            imp_metrics = pool.map(self._map_impact_calc,
                                            self.samples.iterrows(),
                                            chunsize = chunksize)
 
         else:
-            imp_metrics = map(self._map_impact_eval, self.sample.iterrows())
+            imp_metrics = map(self._map_impact_calc, self.sample.iterrows())
+        
+        logger_imp = logging.getLogger('climada.engine.impact')
+        logger_imp.setLevel('ERROR')
+        logger_impf = logging.getLogger('climada.entity.impact_funcs')
+        logger_impf.setLevel('ERROR')
         
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+        
+        logger_imp.setLevel(CONFIG.log_level.str())
+        logger_impf.setLevel(CONFIG.log_level.str())
 
         # Assign computed impact distribution data to self
         self.metrics['aai_agg']  = pd.DataFrame(aai_agg_list,
@@ -159,7 +168,7 @@ class UncImpact(Uncertainty):
         
         return None
 
-    def _map_impact_eval(self, sample_iterrows):
+    def _map_impact_calc(self, sample_iterrows):
         """
         Map to compute impact for all parameter samples in parrallel
 
@@ -187,8 +196,9 @@ class UncImpact(Uncertainty):
         impf = self.unc_vars['impf'].evaluate(impf_samples)
 
         imp = Impact()
-        imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
 
+        imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
+    
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
 
