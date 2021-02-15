@@ -43,7 +43,7 @@ import climada.util.plot as u_plot
 import climada.util.checker as u_check
 import climada.util.dates_times as u_dt
 from climada import CONFIG
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
@@ -484,13 +484,13 @@ class Hazard():
         self.tag.file_name = file_name
         self.tag.description = description
         try:
-            data = hdf5.read(file_name)
+            data = u_hdf5.read(file_name)
             try:
                 data = data[var_names['field_name']]
             except KeyError:
                 pass
 
-            haz_type = hdf5.get_string(data[var_names['var_name']['per_id']])
+            haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
             self.tag.haz_type = haz_type
             self.centroids.read_mat(file_name, var_names=var_names['var_cent'])
             self._read_att_mat(data, file_name, var_names)
@@ -1286,20 +1286,20 @@ class Hazard():
         self.event_id = np.squeeze(
             data[var_names['var_name']['even_id']].astype(np.int, copy=False))
         try:
-            self.units = hdf5.get_string(data[var_names['var_name']['unit']])
+            self.units = u_hdf5.get_string(data[var_names['var_name']['unit']])
         except KeyError:
             pass
 
         n_cen = self.centroids.size
         n_event = len(self.event_id)
         try:
-            self.intensity = hdf5.get_sparse_csr_mat(
+            self.intensity = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in intensity matrix.')
             raise err
         try:
-            self.fraction = hdf5.get_sparse_csr_mat(
+            self.fraction = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in fraction matrix.')
@@ -1309,12 +1309,12 @@ class Hazard():
                                                       dtype=np.float))
         # Event names: set as event_id if no provided
         try:
-            self.event_name = hdf5.get_list_str_from_ref(
+            self.event_name = u_hdf5.get_list_str_from_ref(
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
             self.event_name = list(self.event_id)
         try:
-            comment = hdf5.get_string(data[var_names['var_name']['comment']])
+            comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
             self.tag.description += ' ' + comment
         except KeyError:
             pass

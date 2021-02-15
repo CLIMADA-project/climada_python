@@ -51,7 +51,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     ISIMIP_NATID_TO_ISO,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 pd.options.mode.chained_assignment = None
 
@@ -754,14 +754,14 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
 
     if basemap == "natearth":
         base_file = NATEARTH_CENTROIDS[resolution]
-        hdf5_f = hdf5.read(base_file)
+        hdf5_f = u_hdf5.read(base_file)
         meta = hdf5_f['meta']
         grid_shape = (meta['height'][0], meta['width'][0])
         transform = rasterio.Affine(*meta['transform'])
         region_id = hdf5_f['region_id'].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
-        hdf5_f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
+        hdf5_f = u_hdf5.read(ISIMIP_GPWV3_NATID_150AS)
         dim_lon, dim_lat = hdf5_f['lon'], hdf5_f['lat']
         bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
         orig_res = get_resolution(dim_lon, dim_lat)
@@ -966,7 +966,7 @@ def get_country_code(lat, lon, gridded=False):
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     LOGGER.info('Setting region_id %s points.', str(lat.size))
     if gridded:
-        base_file = hdf5.read(NATEARTH_CENTROIDS[150])
+        base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
         meta, region_id = base_file['meta'], base_file['region_id']
         transform = rasterio.Affine(*meta['transform'])
         region_id = region_id.reshape(meta['height'][0], meta['width'][0])

@@ -32,7 +32,7 @@ import xlsxwriter
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.tag import Tag
 import climada.util.plot as u_plot
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -344,7 +344,7 @@ class ImpactFuncSet():
             for row, (fun_id, fun_type) in enumerate(
                     zip(imp[var_names['var_name']['fun_id']].squeeze(),
                         imp[var_names['var_name']['peril']].squeeze())):
-                type_str = hdf5.get_str_from_ref(file_name, fun_type)
+                type_str = u_hdf5.get_str_from_ref(file_name, fun_type)
                 key = (type_str, int(fun_id))
                 if key not in func_pos:
                     func_pos[key] = list()
@@ -355,7 +355,7 @@ class ImpactFuncSet():
             """Get rows with same string in var_name."""
             prev_str = ""
             for row in idxs:
-                cur_str = hdf5.get_str_from_ref(file_name, imp[var_name][row][0])
+                cur_str = u_hdf5.get_str_from_ref(file_name, imp[var_name][row][0])
                 if prev_str == "":
                     prev_str = cur_str
                 elif prev_str != cur_str:
@@ -363,7 +363,7 @@ class ImpactFuncSet():
                     raise ValueError
             return prev_str
 
-        imp = hdf5.read(file_name)
+        imp = u_hdf5.read(file_name)
         self.clear()
         self.tag.file_name = file_name
         self.tag.description = description

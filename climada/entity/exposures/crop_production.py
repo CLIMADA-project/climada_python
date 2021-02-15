@@ -31,7 +31,6 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.constants import DEF_CRS
 from climada.util.coordinates import pts_to_raster_meta, get_resolution
 from climada import CONFIG
 
@@ -129,10 +128,6 @@ class CropProduction(Exposures):
 
     _metadata = Exposures._metadata + ['crop']
 
-    @property
-    def _constructor(self):
-        return CropProduction
-
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, hist_mean=None,
                                bbox=None, yearrange=None, cl_model=None, scenario=None,
                                crop=None, irr=None, isimip_version=None,
@@ -222,9 +217,9 @@ class CropProduction(Exposures):
 
         # The latitude and longitude are set; the region_id is determined
         lon, lat = np.meshgrid(data.lon.values, data.lat.values)
-        self['latitude'] = lat.flatten()
-        self['longitude'] = lon.flatten()
-        self['region_id'] = u_coord.get_country_code(self.latitude, self.longitude)
+        self.gdf['latitude'] = lat.flatten()
+        self.gdf['longitude'] = lon.flatten()
+        self.gdf['region_id'] = u_coord.get_country_code(self.gdf.latitude, self.gdf.longitude)
 
         # The indeces of the yearrange to be extracted are determined
         time_idx = (int(yearrange[0] - yearchunk['startyear']),
@@ -266,10 +261,10 @@ class CropProduction(Exposures):
                 LOGGER.error('Invalid hist_mean provided: %s', hist_mean)
                 raise ValueError('invalid hist_mean.')
             hist_mean_dict = hist_mean
-            lat_mean = self.latitude.values
+            lat_mean = self.gdf.latitude.values
         elif isinstance(hist_mean, np.ndarray) or isinstance(hist_mean, list):
             hist_mean_dict[irr_types[0]] = np.array(hist_mean)
-            lat_mean = self.latitude.values
+            lat_mean = self.gdf.latitude.values
         elif Path(hist_mean).is_dir(): # else if hist_mean is given as path to directory
         # The adequate file from the directory (depending on crop and irrigation) is extracted
         # and the variables hist_mean, lat_mean and lon_mean are set accordingly
@@ -293,25 +288,25 @@ class CropProduction(Exposures):
             raise ValueError('invalid hist_mean.')
 
         # The bbox is cut out of the hist_mean data file if needed
-        if len(lat_mean) != len(self.latitude.values):
-            idx_mean = np.zeros(len(self.latitude.values), dtype=int)
-            for i in range(len(self.latitude.values)):
+        if len(lat_mean) != len(self.gdf.latitude.values):
+            idx_mean = np.zeros(len(self.gdf.latitude.values), dtype=int)
+            for i in range(len(self.gdf.latitude.values)):
                 idx_mean[i] = np.where(
-                    (lat_mean == self.latitude.values[i])
-                    & (lon_mean == self.longitude.values[i])
+                    (lat_mean == self.gdf.latitude.values[i])
+                    & (lon_mean == self.gdf.longitude.values[i])
                 )[0][0]
         else:
             idx_mean = np.arange(0, len(lat_mean))
 
         # The exposure [t/y] is computed per grid cell as the product of the area covered
         # by a crop [ha] and its yield [t/ha/y]
-        self['value'] = np.squeeze(area_crop[irr_types[0]] * \
+        self.gdf['value'] = np.squeeze(area_crop[irr_types[0]] * \
                                    hist_mean_dict[irr_types[0]][idx_mean])
-        self['value'] = np.nan_to_num(self.value) # replace NaN by 0.0
+        self.gdf['value'] = np.nan_to_num(self.gdf.value) # replace NaN by 0.0
         for irr_val in irr_types[1:]: # add other irrigation types if irr=='combined'
             value_tmp = np.squeeze(area_crop[irr_val]*hist_mean_dict[irr_val][idx_mean])
             value_tmp = np.nan_to_num(value_tmp) # replace NaN by 0.0
-            self['value'] += value_tmp
+            self.gdf['value'] += value_tmp
         self.tag = Tag()
 
         self.tag.description = ("Crop production exposure from ISIMIP " +
@@ -320,12 +315,11 @@ class CropProduction(Exposures):
         self.value_unit = 't/y' # input unit, will be reset below if required by user
         self.crop = crop
         self.ref_year = yearrange
-        self.crs = DEF_CRS
         try:
             rows, cols, ras_trans = pts_to_raster_meta(
-                (self.longitude.min(), self.latitude.min(),
-                 self.longitude.max(), self.latitude.max()),
-                get_resolution(self.longitude, self.latitude))
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -420,8 +414,8 @@ class CropProduction(Exposures):
                                     crop=crop, irr=irr, isimip_version=isimip_version,
                                     unit=unit, fn_str_var=fn_str_var)
 
-        combined_exp = np.zeros([self.value.size, len(filenames['subset'])])
-        combined_exp[:, 0] = self.value
+        combined_exp = np.zeros([self.gdf.value.size, len(filenames['subset'])])
+        combined_exp[:, 0] = self.gdf.value
 
         # The calculations are repeated for all remaining exposures (starting from index 1 as
         # the first exposure has been saved in combined_exp[:, 0])
@@ -429,10 +423,10 @@ class CropProduction(Exposures):
             self.set_from_isimip_netcdf(input_dir, filename=fn,
                                      hist_mean=hist_mean, bbox=bbox, yearrange=yearrange,
                                      crop=crop, irr=irr, unit=unit, isimip_version=isimip_version)
-            combined_exp[:, j+1] = self.value
+            combined_exp[:, j+1] = self.gdf.value
 
-        self['value'] = np.mean(combined_exp, 1)
-        self['crop'] = crop
+        self.gdf['value'] = np.mean(combined_exp, 1)
+        self.gdf['crop'] = crop
 
         self.check()
 
@@ -447,8 +441,8 @@ class CropProduction(Exposures):
         """
         if self.value_unit != 't/y':
             LOGGER.warning('self.unit is not t/y.')
-        self['tonnes_per_year'] = self['value'].values
-        self.value = self.value * KCAL_PER_TON[self.crop]
+        self.gdf['tonnes_per_year'] = self.gdf['value'].values
+        self.gdf.value = self.gdf.value * KCAL_PER_TON[self.crop]
         self.value_unit = 'kcal/y'
         return self
 
@@ -473,7 +467,7 @@ class CropProduction(Exposures):
         if yearrange is None:
             yearrange = YEARS_FAO
         # the exposure in t/y is saved as 'tonnes_per_year'
-        self['tonnes_per_year'] = self['value'].values
+        self.gdf['tonnes_per_year'] = self.gdf['value'].values
 
         # account for the case of only specifying one year as yearrange
         if len(yearrange) == 1:
@@ -491,7 +485,7 @@ class CropProduction(Exposures):
 
         # create a list of the countries contained in the exposure
         iso3alpha = list()
-        for reg_id in self.region_id:
+        for reg_id in self.gdf.region_id:
             try:
                 iso3alpha.append(iso_cntry.get(reg_id).alpha3)
             except KeyError:
@@ -503,12 +497,12 @@ class CropProduction(Exposures):
 
         # iterate over all countries that are covered in the exposure, extract the according price
         # and calculate the crop production in USD/y
-        area_price = np.zeros(self.value.size)
+        area_price = np.zeros(self.gdf.value.size)
         for country in list_countries:
             [idx_country] = np.where(np.asarray(iso3alpha) == country)
             if country == 'Other country':
                 price = 0
-                area_price[idx_country] = self.value[idx_country] * price
+                area_price[idx_country] = self.gdf.value[idx_country] * price
             elif country != 'No country' and country != 'Other country':
                 idx_price = np.where((np.asarray(fao_country) == country) &
                                      (np.asarray(fao['crops']) == \
@@ -524,10 +518,10 @@ class CropProduction(Exposures):
                                          (fao['year'] >= yearrange[0]) &
                                          (fao['year'] <= yearrange[1]))
                     price = np.mean(fao['price'][idx_price])
-                area_price[idx_country] = self.value[idx_country] * price
+                area_price[idx_country] = self.gdf.value[idx_country] * price
 
 
-        self['value'] = area_price
+        self.gdf['value'] = area_price
         self.value_unit = 'USD/y'
         self.check()
         return self
@@ -540,10 +534,10 @@ class CropProduction(Exposures):
             country_values (array): aggregated exposure value
         """
 
-        list_countries = np.unique(self.region_id)
+        list_countries = np.unique(self.gdf.region_id)
         country_values = np.zeros(len(list_countries))
         for i, iso_nr in enumerate(list_countries):
-            country_values[i] = self.loc[self.region_id == iso_nr].value.sum()
+            country_values[i] = self.gdf.loc[self.gdf.region_id == iso_nr].value.sum()
 
         return list_countries, country_values
 
@@ -661,9 +655,9 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
     # values and then apply set_to_XXX() for the normalized exposure to restore the
     # initial exposure unit
     if exp_firr.value_unit == 'USD/y' or 'kcal' in exp_firr.value_unit:
-        exp_firr.value = exp_firr.tonnes_per_year
+        exp_firr.gdf.value = exp_firr.tonnes_per_year
     if exp_noirr.value_unit == 'USD/y' or 'kcal' in exp_noirr.value_unit:
-        exp_noirr.value = exp_noirr.tonnes_per_year
+        exp_noirr.gdf.value = exp_noirr.tonnes_per_year
 
     country_list, countries_firr = exp_firr.aggregate_countries()
     country_list, countries_noirr = exp_noirr.aggregate_countries()
@@ -680,8 +674,8 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
 
     fao_crop_production = np.zeros(len(country_list))
     ratio = np.ones(len(country_list))
-    exp_firr_norm = copy.deepcopy(exp_firr)
-    exp_noirr_norm = copy.deepcopy(exp_noirr)
+    exp_firr_norm = exp_firr.copy(deep=True)
+    exp_noirr_norm = exp_noirr.copy(deep=True)
 
     # loop over countries: compute ratio & apply normalization:
     for country, iso_nr in enumerate(country_list):
@@ -699,10 +693,10 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
         elif fao_crop_production[country] != np.nan and fao_crop_production[country] != 0:
             ratio[country] = fao_crop_production[country] / exp_tot_production[country]
 
-        exp_firr_norm.value[exp_firr.region_id == iso_nr] = ratio[country] * \
-        exp_firr.value[exp_firr.region_id == iso_nr]
-        exp_noirr_norm.value[exp_firr.region_id == iso_nr] = ratio[country] * \
-        exp_noirr.value[exp_noirr.region_id == iso_nr]
+        exp_firr_norm.gdf.value[exp_firr.gdf.region_id == iso_nr] = ratio[country] * \
+        exp_firr.gdf.value[exp_firr.gdf.region_id == iso_nr]
+        exp_noirr_norm.gdf.value[exp_firr.gdf.region_id == iso_nr] = ratio[country] * \
+        exp_noirr.gdf.value[exp_noirr.gdf.region_id == iso_nr]
 
         if unit == 'USD/y' or exp_noirr.value_unit == 'USD/y':
             exp_noirr.set_value_to_usd(input_dir=input_dir)

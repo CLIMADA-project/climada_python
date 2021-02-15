@@ -24,7 +24,7 @@ import numpy as np
 import h5py
 
 from climada.util.constants import HAZ_DEMO_MAT
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 class TestFunc(unittest.TestCase):
     """Test the auxiliary functions used to retrieve variables from HDF5"""
@@ -33,13 +33,13 @@ class TestFunc(unittest.TestCase):
         """Check function to get a string from input integer array"""
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = u_hdf5.read(HAZ_DEMO_MAT)
 
         # Convert several strings
-        str_date = hdf5.get_string(contents['hazard']['date'])
-        str_comment = hdf5.get_string(contents['hazard']['comment'])
-        str_wf = hdf5.get_string(contents['hazard']['windfield_comment'])
-        str_fn = hdf5.get_string(contents['hazard']['filename'])
+        str_date = u_hdf5.get_string(contents['hazard']['date'])
+        str_comment = u_hdf5.get_string(contents['hazard']['comment'])
+        str_wf = u_hdf5.get_string(contents['hazard']['windfield_comment'])
+        str_fn = u_hdf5.get_string(contents['hazard']['filename'])
 
         # Check results
         self.assertEqual('14-Nov-2017 10:09:05', str_date)
@@ -57,13 +57,13 @@ class TestFunc(unittest.TestCase):
         to build a sparse matrix from the read HDF5 variable"""
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = u_hdf5.read(HAZ_DEMO_MAT)
 
         # get matrix size
         mat_shape = (len(contents['hazard']['event_ID']),
                      len(contents['hazard']['centroid_ID']))
-        spr_mat = hdf5.get_sparse_csr_mat(contents['hazard']['intensity'],
-                                          mat_shape)
+        spr_mat = u_hdf5.get_sparse_csr_mat(
+            contents['hazard']['intensity'], mat_shape)
 
         self.assertEqual(mat_shape[0], spr_mat.shape[0])
         self.assertEqual(mat_shape[1], spr_mat.shape[1])
@@ -81,14 +81,14 @@ class TestFunc(unittest.TestCase):
         """Check import string from a HDF5 object reference"""
         file = h5py.File(HAZ_DEMO_MAT, 'r')
         var = file['hazard']['name'][0][0]
-        res = hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
+        res = u_hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
         self.assertEqual('NNN_1185101', res)
 
     def test_get_list_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
         file = h5py.File(HAZ_DEMO_MAT, 'r')
         var = file['hazard']['name']
-        var_list = hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
+        var_list = u_hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
         self.assertEqual('NNN_1185101', var_list[0])
         self.assertEqual('NNN_1185101_gen1', var_list[1])
         self.assertEqual('NNN_1185101_gen2', var_list[2])
@@ -100,7 +100,7 @@ class TestReader(unittest.TestCase):
         """Checking result against matlab atl_prob.mat file"""
 
         # Load input
-        contents = hdf5.read(HAZ_DEMO_MAT)
+        contents = u_hdf5.read(HAZ_DEMO_MAT)
 
         # Check read contents
         self.assertEqual(1, len(contents))
@@ -140,7 +140,7 @@ class TestReader(unittest.TestCase):
         # Check some random values
         mat_shape = (len(contents['hazard']['event_ID']),
                      len(contents['hazard']['centroid_ID']))
-        sp_mat = hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
+        sp_mat = u_hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
 
         self.assertTrue(np.array_equal(np.array([[84], [67]]),
                                        hazard['peril_ID']))
@@ -154,7 +154,7 @@ class TestReader(unittest.TestCase):
 
         # Load input
         refs = True
-        contents = hdf5.read(HAZ_DEMO_MAT, refs)
+        contents = u_hdf5.read(HAZ_DEMO_MAT, refs)
 
         # Check read contents
         self.assertEqual(2, len(contents))

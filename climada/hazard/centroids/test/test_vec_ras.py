@@ -18,11 +18,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test CentroidsVector and CentroidsRaster classes.
 """
+import os
 import unittest
+
 from cartopy.io import shapereader
 from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
+import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
@@ -457,15 +460,36 @@ class TestRaster(unittest.TestCase):
 
     def test_get_closest_point(self):
         """Test get_closest_point"""
+        for y_sign in [1, -1]:
+            centr_ras = Centroids()
+            centr_ras.meta = {
+                'width': 10,
+                'height': 20,
+                'transform': rasterio.Affine(0.5, 0, 0.1, 0, y_sign * 0.6, y_sign * (-0.3)),
+                'crs': DEF_CRS,
+            }
+            test_data = np.array([
+                [0.4, 0.1, 0.35, 0.0, 0],
+                [-0.1, 0.2, 0.35, 0.0, 0],
+                [2.2, 0.1, 2.35, 0.0, 4],
+                [1.4, 2.5, 1.35, 2.4, 42],
+                [5.5, -0.1, 4.85, 0.0, 9],
+            ])
+            test_data[:,[1,3]] *= y_sign
+            for x_in, y_in, x_out, y_out, idx_out in test_data:
+                x, y, idx = centr_ras.get_closest_point(x_in, y_in)
+                self.assertEqual(x, x_out)
+                self.assertEqual(y, y_out)
+                self.assertEqual(idx, idx_out)
+                self.assertEqual(centr_ras.lon[idx], x)
+                self.assertEqual(centr_ras.lat[idx], y)
+
         centr_ras = Centroids()
-        centr_ras.set_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        x, y, idx = centr_ras.get_closest_point(-69.334, 10.42)
-        self.assertAlmostEqual(x, -69.3326495969998)
-        self.assertAlmostEqual(y, 10.423720966978939)
-        self.assertEqual(idx, 0)
-        centr_ras.set_meta_to_lat_lon()
-        self.assertEqual(centr_ras.lon[idx], x)
-        self.assertEqual(centr_ras.lat[idx], y)
+        centr_ras.set_lat_lon(np.array([0, 0.2, 0.7]), np.array([-0.4, 0.2, 1.1]))
+        x, y, idx = centr_ras.get_closest_point(0.1, 0.0)
+        self.assertEqual(x, 0.2)
+        self.assertEqual(y, 0.2)
+        self.assertEqual(idx, 1)
 
     def test_set_meta_to_lat_lon_pass(self):
         """Test set_meta_to_lat_lon by using its inverse set_lat_lon_to_meta"""
@@ -588,6 +612,16 @@ class TestCentroids(unittest.TestCase):
         centr.geometry = gpd.GeoSeries(np.ones(1))
         with self.assertRaises(ValueError):
             centr.check()
+
+        cen = Centroids()
+        cen.meta = {
+            'width': 10,
+            'height': 20,
+            'transform': rasterio.Affine(0.1, 0, 0, 0, 0.1, 0),
+            'crs': DEF_CRS,
+        }
+        with self.assertRaises(ValueError):
+            cen.check()
 
 class TestReader(unittest.TestCase):
     """Test Centroids setter vector and raster methods"""

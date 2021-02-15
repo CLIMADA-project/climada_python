@@ -44,5 +44,5 @@ def main():
 
 if __name__ == '__main__':
     matplotlib.use("Agg")
-    sys.path.append(SOURCE_DIR)
+    sys.path.append(str(SOURCE_DIR))
     main()

@@ -18,10 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 init util
 """
+from pint import UnitRegistry
+
 from .config import *
 from .constants import *
 from .coordinates import *
 from .save import *
 
-from pint import UnitRegistry
 ureg = UnitRegistry()

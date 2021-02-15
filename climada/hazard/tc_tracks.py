@@ -511,7 +511,6 @@ class TCTracks():
             st_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
 
             # set time_step in hours
-            track_ds.time.values[:1] = track_ds.time[:1].dt.floor('H')
             track_ds['time_step'] = xr.ones_like(track_ds.time, dtype=float)
             if track_ds.time.size > 1:
                 track_ds.time_step.values[1:] = (track_ds.time.diff(dim="date_time")
@@ -1293,6 +1292,9 @@ class TCTracks():
             track_int.attrs['category'] = set_category(
                 track_int.max_sustained_wind.values,
                 track_int.max_sustained_wind_unit)
+            # restrict to time steps within original bounds
+            track_int = track_int.sel(
+                time=(track.time[0] <= track_int.time) & (track_int.time <= track.time[-1]))
         else:
             LOGGER.warning('Track interpolation not done. '
                            'Not enough elements for %s', track.name)

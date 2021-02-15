@@ -420,12 +420,11 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     """get litpop exposure for the bbox area of the queried OSM features
     Parameters:
         country (str)
-        highValueArea (gdf)
+        highValueArea (GeoDataFrame)
         bbox (array)
         kwargs (dict): arguments for LitPop set_country method
     Returns:
-        exp_sub (exposure)
-        High_Value_Area_gdf (gdf)
+        exp_sub (LitPop)
     """
     # Load LitPop Exposure for whole country, and High Value Area
     exp = LitPop()
@@ -433,40 +432,41 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     exp.set_geometry_points()
 
     # Crop bbox of High Value Area from Country Exposure
-    exp_sub = exp.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
-                     min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
+    exp.gdf = exp.gdf.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
+                         min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
 
-    return exp_sub
+    return exp
 
 def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     """divide litpop exposure into high-value exposure and low-value exposure
     according to area queried in OSM, re-assign all low values to high-value centroids
     Parameters:
-        exp_sub (exposure)
+        exp_sub (Exposures)
         mode (str)
+        High_Value_Area_gdf (GeoDataFrame)
     Returns:
-        exp_sub_high (exposure)
+        exp_sub_high (Exposures)
     """
 
-    exp_sub_high = pd.DataFrame(columns=exp_sub.columns)
-    exp_sub_low = pd.DataFrame(columns=exp_sub.columns)
-    for i, pt in enumerate(exp_sub.geometry):
+    exp_sub_high = pd.DataFrame(columns=exp_sub.gdf.columns)
+    exp_sub_low = pd.DataFrame(columns=exp_sub.gdf.columns)
+    for i, pt in enumerate(exp_sub.gdf.geometry):
         if pt.within(High_Value_Area_gdf.loc[0]['geometry']):
-            exp_sub_high = exp_sub_high.append(exp_sub.iloc[i])
+            exp_sub_high = exp_sub_high.append(exp_sub.gdf.iloc[i])
         else:
-            exp_sub_low = exp_sub_low.append(exp_sub.iloc[i])
+            exp_sub_low = exp_sub_low.append(exp_sub.gdf.iloc[i])
 
     exp_sub_high = GeoDataFrame(exp_sub_high, crs=exp_sub.crs, geometry=exp_sub_high.geometry)
     exp_sub_low = GeoDataFrame(exp_sub_low, crs=exp_sub.crs, geometry=exp_sub_low.geometry)
 
     if mode == "nearest":
         # assign asset values of low-value points to nearest point in high-value df.
-        pointsToAssign = exp_sub_high.geometry.unary_union
+        points_to_assign = exp_sub_high.geometry.unary_union
         exp_sub_high["addedValNN"] = 0
         for i in range(0, len(exp_sub_low)):
             nearest = exp_sub_high.geometry == nearest_points(exp_sub_low.iloc[i].geometry,
-                                                              pointsToAssign)[1]  # point
-            exp_sub_high.addedValNN.loc[nearest] = exp_sub_low.iloc[i].value
+                                                              points_to_assign)[1]  # point
+            exp_sub_high.addedValNN.loc[nearest] += exp_sub_low.iloc[i].value
         exp_sub_high["combinedValNN"] = exp_sub_high[['addedValNN', 'value']].sum(axis=1)
         exp_sub_high.rename(columns={'value': 'value_old', 'combinedValNN': 'value'},
                             inplace=True)
@@ -491,9 +491,11 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
 
     else:
         print("No proper re-assignment mode set. "
-              "Please choose either nearest, even or proportional.")
+              "Please choose either 'nearest', 'even' or 'proportional'.")
 
-    return exp_sub_high
+    exp = exp_sub.copy(deep=False)
+    exp.gdf = exp_sub_high
+    return exp
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
                           save_path=None, check_plot=1, **kwargs):
@@ -539,13 +541,10 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
 
     exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
 
-    exp_sub_high = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
-
-    ###### how to "spread" centroids with value to e.g. hexagons? ###########
-    # put exp_sub_high back into CLIMADA-compatible exposure format and save as hdf5 file:
-    exp_sub_high_exp = Exposures(exp_sub_high)
-    exp_sub_high_exp.set_lat_lon()
+    exp_sub_high_exp = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
     exp_sub_high_exp.check()
+
+    # save as hdf5 file:
     exp_sub_high_exp.write_hdf5(save_path.joinpath('exposure_high_' + str(int(bbox[0])) +
                                 '_' + str(int(bbox[1])) + '.h5'))
     # plotting
@@ -599,20 +598,27 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     """add value-columns to high-resolution exposure gdf
     according to m2 area of underlying features.
 
-    Parameters:
-        High_Value_Area_gdf
-        mode
-        country
-        kwargs (dict): arguments for LitPop set_country method
+    Parameters
+    ----------
+    High_Value_Area_gdf : GeoDataFrame
+         high-resolution exposure gdf
+    mode : str
+        'LitPop' or 'default'
+    country : str
+        country alpha-3 code
+    kwargs : dict
+        arguments for LitPop set_country method
 
-    Returns:
-        exp_sub_high
+    Returns
+    -------
+    GeoDataFrame
+        High_Value_Area_gdf, the transformed input dataframe
     """
 
     if mode == "LitPop":
         # assign LitPop values of this area to houses.
         exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
-        totalValue = sum(exp_sub.value)
+        totalValue = sum(exp_sub.gdf.value)
         totalArea = sum(High_Value_Area_gdf['projected_area'])
         High_Value_Area_gdf['value'] = 0
         for index in High_Value_Area_gdf.index:

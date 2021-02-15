@@ -155,7 +155,7 @@ class Impact():
         """
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
-        if assign_haz not in exposures:
+        if assign_haz not in exposures.gdf:
             exposures.assign_centroids(hazard)
         else:
             LOGGER.info('Exposures matching centroids found in %s', assign_haz)
@@ -165,17 +165,17 @@ class Impact():
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
         self.date = hazard.date
-        self.coord_exp = np.stack([exposures.latitude.values,
-                                   exposures.longitude.values], axis=1)
+        self.coord_exp = np.stack([exposures.gdf.latitude.values,
+                                   exposures.gdf.longitude.values], axis=1)
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
-        self.eai_exp = np.zeros(exposures.value.size)
+        self.eai_exp = np.zeros(exposures.gdf.value.size)
         self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
                     'haz': hazard.tag}
         self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where((exposures.value > 0) & (exposures[assign_haz] >= 0))[0]
+        exp_idx = np.where((exposures.gdf.value > 0) & (exposures.gdf[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
@@ -186,18 +186,18 @@ class Impact():
         # Get damage functions for this hazard
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if if_haz not in exposures and INDICATOR_IF not in exposures:
+        if if_haz not in exposures.gdf and INDICATOR_IF not in exposures.gdf:
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
-        if if_haz not in exposures:
+        if if_haz not in exposures.gdf:
             LOGGER.info('Missing exposures impact functions for hazard %s. '
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
 
         # Check if deductible and cover should be applied
         insure_flag = False
-        if ('deductible' in exposures) and ('cover' in exposures) \
-        and exposures.cover.max():
+        if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
+        and exposures.gdf.cover.max():
             insure_flag = True
 
         if save_mat:
@@ -208,7 +208,7 @@ class Impact():
         tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
+            exp_iimp = np.where(exposures.gdf[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
             exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
@@ -229,7 +229,7 @@ class Impact():
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
         if save_mat:
-            shape = (self.date.size, exposures.value.size)
+            shape = (self.date.size, exposures.gdf.value.size)
             self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
 
     def calc_risk_transfer(self, attachment, cover):
@@ -747,7 +747,7 @@ class Impact():
             args_imp = dict()
         imp_list = []
         exp_list = []
-        imp_arr = np.zeros(len(exp))
+        imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
             imp_tmp.calc(exp, if_set, haz_list[i_time])
@@ -763,14 +763,14 @@ class Impact():
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
 
         if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.value.values.min()
+            args_exp['vmin'] = exp.gdf.value.values.min()
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                                          if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.value.values.max()
+            args_exp['vmax'] = exp.gdf.value.values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
@@ -861,7 +861,7 @@ class Impact():
             return
 
         # get assigned centroids
-        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
+        icens = exposures.gdf[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
 
         # get affected intensities
         inten_val = hazard.intensity[:, icens]
@@ -869,14 +869,14 @@ class Impact():
         fract = hazard.fraction[:, icens]
         # impact = fraction * mdr * value
         inten_val.data = imp_fun.calc_mdr(inten_val.data)
-        impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
+        impact = fract.multiply(inten_val).multiply(exposures.gdf.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
             inten_val = hazard.intensity[:, icens].toarray()
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             impact = impact.toarray()
-            impact -= exposures.deductible.values[exp_iimp] * paa
-            impact = np.clip(impact, 0, exposures.cover.values[exp_iimp])
+            impact -= exposures.gdf.deductible.values[exp_iimp] * paa
+            impact = np.clip(impact, 0, exposures.gdf.cover.values[exp_iimp])
             self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
             impact = sparse.coo_matrix(impact)
         else:
@@ -884,7 +884,7 @@ class Impact():
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
-        self.tot_value += np.sum(exposures.value.values[exp_iimp])
+        self.tot_value += np.sum(exposures.gdf.value.values[exp_iimp])
         if isinstance(self.imp_mat, tuple):
             row_ind, col_ind = impact.nonzero()
             self.imp_mat[0].extend(list(impact.data))
@@ -892,16 +892,18 @@ class Impact():
             self.imp_mat[1][1].extend(list(exp_iimp[col_ind]))
 
     def _build_exp(self):
-        eai_exp = Exposures()
-        eai_exp['value'] = self.eai_exp
-        eai_exp['latitude'] = self.coord_exp[:, 0]
-        eai_exp['longitude'] = self.coord_exp[:, 1]
-        eai_exp.crs = self.crs
-        eai_exp.value_unit = self.unit
-        eai_exp.ref_year = 0
-        eai_exp.tag = Tag()
-        eai_exp.meta = None
-        return eai_exp
+        return Exposures(
+            data={
+                'value': self.eai_exp,
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     def _build_exp_event(self, event_id):
         """Write impact of an event as Exposures
@@ -909,16 +911,18 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
-        impact_csr_exp = Exposures()
-        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
-        impact_csr_exp['latitude'] = self.coord_exp[:, 0]
-        impact_csr_exp['longitude'] = self.coord_exp[:, 1]
-        impact_csr_exp.crs = self.crs
-        impact_csr_exp.value_unit = self.unit
-        impact_csr_exp.ref_year = 0
-        impact_csr_exp.tag = Tag()
-        impact_csr_exp.meta = None
-        return impact_csr_exp
+        return Exposures(
+            data={
+                'value': self.imp_mat.toarray()[event_id - 1, :],
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     @staticmethod
     def _cen_return_imp(imp, freq, imp_th, return_periods):
