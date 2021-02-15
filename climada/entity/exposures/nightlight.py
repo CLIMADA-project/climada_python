@@ -229,12 +229,14 @@ def load_nightlight_nasa(bounds, req_files, year):
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat
-        req_files (np.array): array with flags for NASA files needed	        
+        req_files (np.array): array with flags for NASA files needed
         year (int): nightlight year
 
     Returns:
         nightlight (sparse.csr_matrix), coord_nl (np.array)
     """
+    # TODO: argument req_files is not used in this function
+
     coord_min = np.array([-90, -180]) + NASA_RESOLUTION_DEG / 2
     coord_h = np.full((2,), NASA_RESOLUTION_DEG)
 
