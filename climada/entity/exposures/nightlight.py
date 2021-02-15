@@ -28,13 +28,13 @@ from pathlib import Path
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
+from PIL import Image
 
-from .litpop import read_bm_file, get_bm
 from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
-from PIL import Image
+from .litpop import read_bm_file
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
@@ -224,12 +224,11 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
             'connection and whether filenames are still valid.') from exc
     return dwnl_path
 
-def load_nightlight_nasa(bounds, req_files, year):
+def load_nightlight_nasa(bounds, year):
     """Get nightlight from NASA repository that contain input boundary.
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat
-        req_files (np.array): array with flags for NASA files needed
         year (int): nightlight year
 
     Returns:
@@ -253,13 +252,13 @@ def load_nightlight_nasa(bounds, req_files, year):
             # this tile does not intersect the specified bounds
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
-        
+
         im_nl, _ = read_bm_file(SYSTEM_DIR, fname.replace('*', str(year)))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
         nightlight.append((tile_coord, im_nl))
-        
+
     tile_coords = np.array([n[0] for n in nightlight])
     shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
     nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
