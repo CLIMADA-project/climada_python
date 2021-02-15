@@ -300,7 +300,7 @@ class Exposures():
             haz_coord = hazard.centroids.coord
 
             if np.array_equal(coord, haz_coord):
-                assigned = np.arange(self.shape[0])
+                assigned = np.arange(self.gdf.shape[0])
             else:
                 # pairs of floats can be sorted (lexicographically) in NumPy
                 coord_view = coord.view(dtype='float64,float64').reshape(-1)
