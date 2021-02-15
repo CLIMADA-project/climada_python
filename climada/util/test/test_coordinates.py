@@ -556,6 +556,23 @@ class TestRasterMeta(unittest.TestCase):
         self.assertEqual(meta['height'], 21)
         self.assertEqual(meta['width'], 5)
 
+        # test for values crossing antimeridian
+        df_val = gpd.GeoDataFrame(crs=DEF_CRS)
+        df_val['latitude'] = [1, 0, 1, 0]
+        df_val['longitude'] = [178, -179.0, 181, -180]
+        df_val['value'] = np.arange(4)
+        r_data, meta = points_to_raster(df_val, val_names=['value'], res=0.5, raster_res=1.0)
+        self.assertTrue(equal_crs(meta['crs'], df_val.crs))
+        self.assertAlmostEqual(meta['transform'][0], 1.0)
+        self.assertAlmostEqual(meta['transform'][1], 0)
+        self.assertAlmostEqual(meta['transform'][2], 177.5)
+        self.assertAlmostEqual(meta['transform'][3], 0)
+        self.assertAlmostEqual(meta['transform'][4], -1.0)
+        self.assertAlmostEqual(meta['transform'][5], 1.5)
+        self.assertEqual(meta['height'], 2)
+        self.assertEqual(meta['width'], 4)
+        np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
+
 class TestRasterIO(unittest.TestCase):
     def test_write_raster_pass(self):
         """Test write_raster function."""
