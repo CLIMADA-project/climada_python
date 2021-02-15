@@ -47,7 +47,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
-        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.362e+12 * (4 + 1), 4))
+        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.355e+12 * (4 + 1), 0.001))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 2699)
         self.assertEqual(ent.meta['height'], 1938)
@@ -74,7 +74,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
-        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.023e+09 * (4 + 1), 1))
+        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.023e+09 * (4 + 1), 0.001))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
     def test_anguilla_pass(self):
@@ -145,8 +145,8 @@ class BMFuncs(unittest.TestCase):
     def test_cut_nasa_esp_pass(self):
         """Test load_nightlight_nasa function."""
         shp_fn = shapereader.natural_earth(resolution='10m',
-                                            category='cultural',
-                                            name='admin_0_countries')
+                                           category='cultural',
+                                           name='admin_0_countries')
         shp_file = shapereader.Reader(shp_fn)
         list_records = list(shp_file.records())
         for info_idx, info in enumerate(list_records):
@@ -175,9 +175,9 @@ class BMFuncs(unittest.TestCase):
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])
         self.assertEqual(coord_nl[0, 0] + (nightlight.shape[0] - 1) * coord_nl[0, 1],
-                          NOAA_BORDER[3])
+                         NOAA_BORDER[3])
         self.assertEqual(coord_nl[1, 0] + (nightlight.shape[1] - 1) * coord_nl[1, 1],
-                          NOAA_BORDER[2])
+                         NOAA_BORDER[2])
 
     def test_set_country_pass(self):
         """Test exposures attributes after black marble."""
@@ -198,7 +198,7 @@ class BMFuncs(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(Test2013)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test1968))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test2012))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(BMFuncs))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test1968))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(Test2012))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(BMFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
