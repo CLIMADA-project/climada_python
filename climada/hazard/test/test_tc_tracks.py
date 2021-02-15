@@ -735,10 +735,10 @@ class TestFuncs(unittest.TestCase):
         # Define exposure from geopandas
         world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
         exp_world = Exposures(world)
-        exp = Exposures(exp_world[exp_world.name=='Cuba'])
+        exp = Exposures(exp_world.gdf[exp_world.gdf.name=='Cuba'])
 
         # Compute tracks in exp
-        tracks_in_exp = tc_track.tracks_in_exp(exp, buffer=1.0)
+        tracks_in_exp = tc_track.tracks_in_exp(exp.gdf, buffer=1.0)
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
