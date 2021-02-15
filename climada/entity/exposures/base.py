@@ -186,7 +186,7 @@ class Exposures():
 
     def check(self):
         """Check Exposures consistency.
-        
+
         Reports missing columns in log messages.
         If no if_* column is present in the dataframe, a default column 'if_' is added with
         default impact function id 1.
@@ -262,12 +262,32 @@ class Exposures():
             assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
         else:
             coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1)
-            if np.array_equal(coord, hazard.centroids.coord):
-                assigned = np.arange(self.gdf.shape[0])
+            haz_coord = hazard.centroids.coord
+
+            if np.array_equal(coord, haz_coord):
+                assigned = np.arange(self.shape[0])
             else:
-                assigned = interpol_index(hazard.centroids.coord, coord,
-                                          method=method, distance=distance,
-                                          threshold=threshold)
+                # pairs of floats can be sorted (lexicographically) in NumPy
+                coord_view = coord.view(dtype='float64,float64').reshape(-1)
+                haz_coord_view = haz_coord.view(dtype='float64,float64').reshape(-1)
+
+                # assign each hazard coordinate to an element in coord using searchsorted
+                coord_sorter = np.argsort(coord_view)
+                haz_assign_idx = np.fmin(coord_sorter.size - 1, np.searchsorted(
+                    coord_view, haz_coord_view, side="left", sorter=coord_sorter))
+                haz_assign_idx = coord_sorter[haz_assign_idx]
+
+                # determine which of the assignements match exactly
+                haz_match_idx = (coord_view[haz_assign_idx] == haz_coord_view).nonzero()[0]
+                assigned = np.full_like(coord_sorter, -1)
+                assigned[haz_assign_idx[haz_match_idx]] = haz_match_idx
+
+                # assign remaining coordinates to their geographically nearest neighbor
+                if haz_match_idx.size != coord_view.size:
+                    not_assigned_mask = (assigned == -1)
+                    assigned[not_assigned_mask] = interpol_index(
+                        haz_coord, coord[not_assigned_mask],
+                        method=method, distance=distance, threshold=threshold)
 
         self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
@@ -570,7 +590,7 @@ class Exposures():
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
         """Wrapper of the GeoDataFrame.to_crs method.
-        
+
         Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
         The crs attribute on the current GeoSeries must be set. Either crs in string or dictionary

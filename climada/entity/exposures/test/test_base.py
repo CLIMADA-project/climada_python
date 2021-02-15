@@ -55,18 +55,27 @@ class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
-        """Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        # Fill with dummy values the centroids
-        haz = Hazard('TC')
-        haz.centroids.set_lat_lon(np.ones(expo.gdf.shape[0] + 6), np.ones(expo.gdf.shape[0] + 6))
-        # assign
-        expo.assign_centroids(haz)
+        """Check that attribute `assigned` is correctly set."""
+        np_rand = np.random.RandomState(123456789)
 
-        # check assigned variable has been set with correct length
-        self.assertEqual(expo.gdf.shape[0], len(expo.gdf[INDICATOR_CENTR + 'TC']))
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz.raster_to_vector()
+        ncentroids = haz.centroids.size
+
+        exp = Exposures()
+        exp.gdf.crs = haz.centroids.crs
+
+        # some are matching exactly, some are geographically close
+        exp.gdf['longitude'] = np.concatenate([
+            haz.centroids.lon, haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        exp.gdf['latitude'] = np.concatenate([
+            haz.centroids.lat, haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        expected_result = np.concatenate([np.arange(ncentroids), np.arange(ncentroids)])
+
+        exp.assign_centroids(haz)
+        self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
+        np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
     def test_read_raster_pass(self):
         """set_from_raster"""
@@ -139,6 +148,22 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(np.array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
                                        np.arange(haz.centroids.size, dtype=int)))
 
+    def test_assign_large_hazard_subset_pass(self):
+        """Test assign_centroids with raster hazard"""
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
+        exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
+        exp.check()
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL])
+        haz.raster_to_vector()
+        exp.assign_centroids(haz)
+        assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
+        np.testing.assert_array_equal(assigned_centroids.lat, exp.gdf.latitude)
+        np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
+
+
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
 
@@ -152,8 +177,9 @@ class TestChecker(unittest.TestCase):
         self.assertIn('ref_year set to default value', cm.output[2])
         self.assertIn('value_unit set to default value', cm.output[3])
         self.assertIn('crs set to default value', cm.output[4])
-        self.assertIn('geometry not set', cm.output[5])
-        self.assertIn('cover not set', cm.output[6])
+        # the following lines are from an iteration over a set, so that the order may change:
+        self.assertTrue(any(f'{var} not set' in o for o in cm.output[5:7])
+                        for var in ['geometry', 'cover'])
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
