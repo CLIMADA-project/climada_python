@@ -133,5 +133,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.path.append(Path.cwd())
+    sys.path.append(str(Path.cwd()))
     main()
