@@ -26,6 +26,7 @@ ABBREV = {
 def sig_dig(x, n_sig_dig = 16):
     """
     Rounds x to n_sig_dig number of significant digits.
+    0, inf, Nan are returned unchanged.
     Examples: 1.234567 -> 1.2346, 123456.89 -> 123460.0
 
     Parameters
@@ -74,7 +75,8 @@ def sig_dig_list(iterable, n_sig_dig=16):
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """
-    Converts values to closest common monetary unit, default: (K, M Bn, Tn)
+    Converts list of values to closest common monetary unit 
+    0, Nan and inf have not unit.
 
     Parameters
     ----------
@@ -100,6 +102,12 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         Array of values in monetary unit
     name : string
         Monetary unit
+        
+    Examples
+    --------
+    values = [1e6, 2*1e6, 4.5*1e7, 0, Nan, inf] ->
+        [1, 2, 4.5, 0, Nan, inf]
+        ['M']
 
     """
 
