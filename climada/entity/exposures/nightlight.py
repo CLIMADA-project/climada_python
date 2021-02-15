@@ -224,11 +224,12 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
             'connection and whether filenames are still valid.') from exc
     return dwnl_path
 
-def load_nightlight_nasa(bounds, year):
+def load_nightlight_nasa(bounds, req_files, year):
     """Get nightlight from NASA repository that contain input boundary.
 
     Parameters:
         bounds (tuple): min_lon, min_lat, max_lon, max_lat
+        req_files (np.array): array with flags for NASA files needed	        
         year (int): nightlight year
 
     Returns:
