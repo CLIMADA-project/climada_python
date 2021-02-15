@@ -74,7 +74,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
-        self.assertTrue(np.isclose(ent.value.sum(), 1.023e+09 * (4 + 1), 1))
+        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.023e+09 * (4 + 1), 1))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
     def test_anguilla_pass(self):
