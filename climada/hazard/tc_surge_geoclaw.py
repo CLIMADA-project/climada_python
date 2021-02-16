@@ -35,6 +35,7 @@ import warnings
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import matplotlib.colors
 import matplotlib.cm
@@ -746,12 +747,14 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     centroids : np.array
         If given, overlay as scatter points. Default: None
     """
+    # adjust properties of the colorbar (ignored by cartopy axes)
     matplotlib.rc('axes', linewidth=0.5)
     matplotlib.rc('font', size=7, family='serif')
     matplotlib.rc('xtick', top=True, direction='out')
     matplotlib.rc('xtick.major', size=2.5, width=0.5)
     matplotlib.rc('ytick', right=True, direction='out')
     matplotlib.rc('ytick.major', size=2.5, width=0.5)
+
     total_bounds = (
         min([bounds[0] for bounds, _ in dems]),
         min([bounds[1] for bounds, _ in dems]),
@@ -764,24 +767,32 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     fig = plt.figure(
         figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
         dpi=100)
-    proj = ccrs.PlateCarree(central_longitude=mid_lon)
-    axes = fig.add_subplot(111, projection=proj)
+    proj_data = ccrs.PlateCarree()
+    proj_ax = ccrs.PlateCarree(central_longitude=mid_lon)
+    axes = fig.add_subplot(111, projection=proj_ax)
     axes.spines['geo'].set_linewidth(0.5)
-    axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
-    axes.set_ylim(total_bounds[1], total_bounds[3])
+    axes.set_extent(
+        (total_bounds[0], total_bounds[2], total_bounds[1], total_bounds[3]), crs=proj_data)
+
+    # add axes tick labels
+    grid = axes.gridlines(draw_labels=True, alpha=0.2, linewidth=0)
+    grid.top_labels = grid.right_labels = False
+    grid.xformatter, grid.yformatter = LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
     cmap, cnorm = colormap_coastal_dem(axes=axes)
     for bounds, heights in dems:
-        bounds = (bounds[0] - mid_lon, bounds[1], bounds[2] - mid_lon, bounds[3])
-        axes.imshow(heights, origin='lower', transform=proj, cmap=cmap, norm=cnorm,
-                    extent=(bounds[0], bounds[2], bounds[1], bounds[3]),
+        # a bug (?) in cartopy breaks imshow with a transform different from `proj_ax`, so we
+        # manually shift the central longitude in the `extent` attribute
+        axes.imshow(heights, origin='lower', transform=proj_ax, cmap=cmap, norm=cnorm,
+                    extent=(bounds[0] - mid_lon, bounds[2] - mid_lon, bounds[1], bounds[3]),
                     vmin=cnorm.values[0], vmax=cnorm.values[-1])
-        plot_bounds(axes, bounds, color='k', linewidth=0.5)
+        plot_bounds(axes, bounds, transform=proj_data, color='k', linewidth=0.5)
     axes.coastlines(resolution='10m', linewidth=0.5)
     if track is not None:
-        axes.plot(track.lon - mid_lon, track.lat, color='k', linewidth=0.5)
+        axes.plot(track.lon, track.lat, transform=proj_data, color='k', linewidth=0.5)
     if centroids is not None:
-        axes.scatter(centroids[:, 1] - mid_lon, centroids[:, 0], s=0.1, alpha=0.5)
-    fig.subplots_adjust(left=0.02, bottom=0.01, right=0.89, top=0.99, wspace=0, hspace=0)
+        axes.scatter(centroids[:, 1], centroids[:, 0], transform=proj_data, s=0.1, alpha=0.5)
+    fig.subplots_adjust(left=0.02, bottom=0.03, right=0.89, top=0.99, wspace=0, hspace=0)
     if path is None or not hasattr(__main__, '__file__'):
         plt.show()
     if path is not None:
@@ -1193,24 +1204,30 @@ class TCSurgeEvents():
                         max(self.centroids[:, 1].max(), self.track.lon.max()) + 0.1,
                         max(self.centroids[:, 0].max(), self.track.lat.max()) + 0.1)
         mid_lon = 0.5 * float(total_bounds[0] + total_bounds[2])
-        proj = ccrs.PlateCarree(central_longitude=mid_lon)
+        proj_data = ccrs.PlateCarree()
         aspect_ratio = 1.124 * ((total_bounds[2] - total_bounds[0])
                                 / (total_bounds[3] - total_bounds[1]))
         fig = plt.figure(
             figsize=(10, 10 / aspect_ratio) if aspect_ratio >= 1 else (aspect_ratio * 10, 10),
             dpi=100)
-        axes = fig.add_subplot(111, projection=proj)
-        axes.outline_patch.set_linewidth(0.5)
-        axes.set_xlim(total_bounds[0] - mid_lon, total_bounds[2] - mid_lon)
-        axes.set_ylim(total_bounds[1], total_bounds[3])
+        axes = fig.add_subplot(111, projection=ccrs.PlateCarree(central_longitude=mid_lon))
+        axes.spines['geo'].set_linewidth(0.5)
+        axes.set_extent(
+            (total_bounds[0], total_bounds[2], total_bounds[1], total_bounds[3]), crs=proj_data)
+
+        # add axes tick labels
+        grid = axes.gridlines(draw_labels=True, alpha=0.2, transform=proj_data, linewidth=0)
+        grid.top_labels = grid.right_labels = False
+        grid.xformatter = LONGITUDE_FORMATTER
+        grid.yformatter = LATITUDE_FORMATTER
 
         # plot coastlines
         axes.add_feature(cfeature.OCEAN.with_scale('50m'), linewidth=0.1)
 
         # plot TC track with masks
-        axes.plot(self.track.lon - mid_lon, self.track.lat, color='k', linewidth=0.5)
+        axes.plot(self.track.lon, self.track.lat, transform=proj_data, color='k', linewidth=0.5)
         for mask in self.time_mask_buffered:
-            axes.plot(self.track.lon[mask] - mid_lon, self.track.lat[mask],
+            axes.plot(self.track.lon[mask], self.track.lat[mask], transform=proj_data,
                       color='k', linewidth=1.5)
 
         # plot rectangular areas
@@ -1218,7 +1235,7 @@ class TCSurgeEvents():
         linew = 1 + linestep * self.nevents
         color_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
         for i_event, mask in enumerate(self.time_mask):
-            axes.plot(self.track.lon[mask] - mid_lon, self.track.lat[mask],
+            axes.plot(self.track.lon[mask], self.track.lat[mask], transform=proj_data,
                       color=color_cycle[i_event], linewidth=3)
             linew -= linestep
             areas = [
@@ -1226,14 +1243,14 @@ class TCSurgeEvents():
                 self.landfall_area[i_event],
             ] + self.surge_areas[i_event]
             for bounds in areas:
-                bounds = (bounds[0] - mid_lon, bounds[1], bounds[2] - mid_lon, bounds[3])
-                plot_bounds(axes, bounds, color=color_cycle[i_event], linewidth=linew)
+                plot_bounds(axes, bounds, transform=proj_data,
+                            color=color_cycle[i_event], linewidth=linew)
 
         # plot track data points
-        axes.scatter(self.track.lon - mid_lon, self.track.lat, s=2)
+        axes.scatter(self.track.lon, self.track.lat, transform=proj_data, s=2)
 
         # adjust and output to file or screen
-        fig.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0, hspace=0)
+        fig.subplots_adjust(left=0.01, bottom=0.03, right=0.99, top=0.99, wspace=0, hspace=0)
         if path is None or not hasattr(__main__, '__file__'):
             plt.show()
         if path is not None:
