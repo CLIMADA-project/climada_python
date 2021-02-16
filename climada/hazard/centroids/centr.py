@@ -751,6 +751,9 @@ class Centroids():
             region to filter according to region_id values
         extent : tuple
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
         sel_cen : np.array
             1-dim mask, overrides reg_id and extent
 
@@ -761,7 +764,7 @@ class Centroids():
         """
 
         if sel_cen is None:
-            sel_cen = np.ones_like(self.region_id, dtype=bool)
+            sel_cen = np.ones_like(self.lat, dtype=bool)
             if reg_id:
                 sel_cen &= np.isin(self.region_id, reg_id)
             if extent:
@@ -778,11 +781,11 @@ class Centroids():
 
                 sel_cen &= (        
                     (
-                        ((self.lon > lon_min ) & (self.lon < mid_lon_min)) | 
-                        ((self.lon > mid_lon_max) & (self.lon < lon_max))
+                        ((self.lon >= lon_min ) & (self.lon <= mid_lon_min)) | 
+                        ((self.lon >= mid_lon_max) & (self.lon <= lon_max))
                     ) &
                     (
-                        (lat_min < self.lat) & (lat_max > self.lat)
+                        (self.lat >= lat_min) & (self.lat <= lat_max)
                     )
                     )
                     
