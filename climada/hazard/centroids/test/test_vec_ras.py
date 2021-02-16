@@ -730,12 +730,33 @@ class TestCentroidsFuncs(unittest.TestCase):
         self.assertEqual(fil_centr.lon[0], VEC_LON[100])
         self.assertEqual(fil_centr.lon[1], VEC_LON[200])
         self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
+        
+    def test_select_extent_pass(self):
+        """Test select extent"""
+        centr = Centroids()
+        centr.set_lat_lon(np.array([-5, -3, 0, 3, 5]),
+                          np.array([-180, -175, -170, 170, 175]))
+        centr.check()
+        centr.region_id = np.zeros(len(centr.lat))
+        ext_centr = centr.select(extent=[-175, -170, -5, 5])
+        self.assertTrue(np.array_equal(ext_centr.lon, np.array([-175, -170])))
+        self.assertTrue(np.array_equal(ext_centr.lat, np.array([-3, 0])))
+        # Cross antimeridian
+        ext_centr = centr.select(extent=[170, -175, -5, 5])
+        self.assertTrue(np.array_equal(ext_centr.lon,
+                                       np.array([-180, -175, 170, 175])
+                                       )
+                        )
+        self.assertTrue(np.array_equal(ext_centr.lat,
+                                       np.array([-5, -3, 3, 5])
+                                       )
+                        )
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRaster)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVector))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVector))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroidsFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
