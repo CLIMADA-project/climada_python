@@ -759,13 +759,33 @@ class Centroids():
         cen : Centroids
             Sub-selection of this object
         """
+
         if sel_cen is None:
             sel_cen = np.ones_like(self.region_id, dtype=bool)
             if reg_id:
                 sel_cen &= np.isin(self.region_id, reg_id)
             if extent:
-                sel_cen &= ((extent[0] < self.lon) & (extent[1] > self.lon)
-                            & (extent[2] < self.lat) & (extent[3] > self.lat))
+                # Cute the longitude into two ensembles 
+                # lon_min < lon_max: lon_min ... mid and mid ... lon_max
+                # lon_min > lon_max: -180 ... lon_max and lon_min ... 180
+                lon_min, lon_max, lat_min, lat_max = extent
+                mid_lon_min = mid_lon_max = (lon_max + lon_min) / 2
+                if lon_min > lon_max:
+                    mid_lon_min = lon_max
+                    mid_lon_max = lon_min
+                    lon_min = -180
+                    lon_max = 180
+
+                sel_cen &= (        
+                    (
+                        ((self.lon > lon_min ) & (self.lon < mid_lon_min)) | 
+                        ((self.lon > mid_lon_max) & (self.lon < lon_max))
+                    ) &
+                    (
+                        (lat_min < self.lat) & (lat_max > self.lat)
+                    )
+                    )
+                    
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
