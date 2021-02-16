@@ -88,13 +88,14 @@ class TestDataAvail(unittest.TestCase):
 
     def test_icon_forecast_download(self):
         """Test availability of DWD icon forecast."""
-        run_date = dt.datetime.today().replace(hour=0,
-                                               minute=0,
-                                               second=0,
-                                               microsecond=0)
-        icon_file = download_icon_grib(run_date,max_lead_time=1)
+        run_datetime = dt.datetime.utcnow() - dt.timedelta(hours=5)
+        run_datetime = run_datetime.replace(hour=run_datetime.hour//12*12,
+                                            minute=0,
+                                            second=0,
+                                            microsecond=0)
+        icon_file = download_icon_grib(run_datetime,max_lead_time=1)
         self.assertEqual(len(icon_file), 1)
-        delete_icon_grib(run_date,max_lead_time=1) #deletes icon_file
+        delete_icon_grib(run_datetime,max_lead_time=1) #deletes icon_file
         self.assertFalse(Path(icon_file[0]).exists())
 
     def test_icon_centroids_download(self):

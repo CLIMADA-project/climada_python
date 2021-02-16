@@ -21,6 +21,8 @@ Test StormEurope class
 
 import copy
 import unittest
+import logging
+import mock
 import datetime as dt
 import numpy as np
 from scipy import sparse
@@ -144,7 +146,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms_prob.size, 60)
         self.assertTrue(np.allclose((1 / storms_prob.frequency).astype(int), 330))
         self.assertAlmostEqual(storms.frequency.sum(),
-                                storms_prob.frequency.sum())
+                               storms_prob.frequency.sum())
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)
         self.assertEqual(storms_prob.centroids.size, 3054)
         self.assertIsInstance(storms_prob.intensity,
@@ -154,8 +156,8 @@ class TestReader(unittest.TestCase):
         """test reading from cosmo-e netcdf"""
         haz = StormEurope()
         haz.read_cosmoe_file(DATA_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
-                              run_date=dt.datetime(2018,1,1),
-                              event_date=dt.datetime(2018,1,3))
+                             run_datetime=dt.datetime(2018,1,1),
+                             event_date=dt.datetime(2018,1,3))
         self.assertEqual(haz.tag.haz_type, 'WS')
         self.assertEqual(haz.units, 'm/s')
         self.assertEqual(haz.event_id.size, 21)
@@ -197,6 +199,15 @@ class TestReader(unittest.TestCase):
         self.assertEqual(haz.intensity.shape, (40, 49))
         self.assertAlmostEqual(haz.intensity.max(), 17.276321,places=3)
         self.assertEqual(haz.fraction.shape, (40, 49))
+        logger = logging.getLogger('climada.hazard.storm_europe')
+        with mock.patch.object(logger,'warning') as mock_logger:
+            with self.assertRaises(ValueError):
+                haz.read_icon_grib(dt.datetime(2021, 1, 28, 6),
+                                    dt.datetime(2021, 1, 28),
+                                    model_name='test',
+                                    grib_dir=CONFIG.hazard.test_data.str(),
+                                    delete_raw_data=False)
+            mock_logger.assert_called_once()
 
 
 # Execute Tests

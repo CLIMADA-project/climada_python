@@ -31,6 +31,7 @@ import logging
 from pathlib import Path
 import bz2
 import numpy as np
+import datetime as dt
 
 from climada.util.config import CONFIG
 from climada.util.files_handler import download_file
@@ -39,7 +40,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 
-def download_icon_grib(run_date,
+def download_icon_grib(run_datetime,
                        model_name='icon-eu-eps',
                        parameter_name='vmax_10m',
                        max_lead_time=None,
@@ -48,7 +49,7 @@ def download_icon_grib(run_date,
     weather parameter from opendata.dwd.de/weather/nwp/.
 
     Parameters:
-        run_date (datetime): The starting timepoint of the forecast run
+        run_datetime (datetime): The starting timepoint of the forecast run
         model_name (str): the name of the forecast model written as it appears
             in the folder structure in opendata.dwd.de/weather/nwp/ or 'test'
         parameter_name (str): the name of the meteorological parameter
@@ -67,10 +68,10 @@ def download_icon_grib(run_date,
 
     LOGGER.info(('Downloading icon grib files of model ' +
                  model_name + ' for parameter ' + parameter_name +
-                 ' with starting date ' + run_date.strftime('%Y%m%d%H') +
+                 ' with starting date ' + run_datetime.strftime('%Y%m%d%H') +
                  '.'))
 
-    url, file_name, lead_times = _create_icon_grib_name(run_date,
+    url, file_name, lead_times = _create_icon_grib_name(run_datetime,
                                                         model_name,
                                                         parameter_name,
                                                         max_lead_time)
@@ -84,14 +85,33 @@ def download_icon_grib(run_date,
 
         # download file if it does not exist already
         if not bz2_pathfile_i.exists():
-            download_file(url + file_name_i,
-                          download_dir=download_dir)
+            try:
+                download_file(url + file_name_i,
+                              download_dir=download_dir)
+            except ValueError as err:
+                if run_datetime > (dt.datetime.utcnow()-dt.timedelta(hours=6)):
+                    LOGGER.error('Forecast file %s might not yet be available'
+                                 ' on %s. Wait a few hours. Error while '
+                                 'downloading %s.',
+                                 file_name_i,
+                                 url,
+                                 url + file_name_i)
+                elif run_datetime < (dt.datetime.utcnow()
+                                     -dt.timedelta(hours=24)):
+                    LOGGER.error('Forecast file %s might no longer be '
+                                 'available on %s. Files are only openly '
+                                 'available for 24 hours. Error while '
+                                 'downloading %s.',
+                                 file_name_i,
+                                 url,
+                                 url + file_name_i)
+                raise err
         file_names.append(str(bz2_pathfile_i))
     return file_names
 
 
 
-def delete_icon_grib(run_date,
+def delete_icon_grib(run_datetime,
                      model_name='icon-eu-eps',
                      parameter_name='vmax_10m',
                      max_lead_time=None,
@@ -100,7 +120,7 @@ def delete_icon_grib(run_date,
     certain weather parameter from opendata.dwd.de/weather/nwp/.
 
     Parameters:
-        run_date (datetime): The starting timepoint of the forecast run
+        run_datetime (datetime): The starting timepoint of the forecast run
         model_name (str): the name of the forecast model written as it appears
             in the folder structure in opendata.dwd.de/weather/nwp/
         parameter_name (str): the name of the meteorological parameter
@@ -112,7 +132,7 @@ def delete_icon_grib(run_date,
             are stored at the moment
     """
 
-    _, file_name, lead_times = _create_icon_grib_name(run_date,
+    _, file_name, lead_times = _create_icon_grib_name(run_datetime,
                                                       model_name,
                                                       parameter_name,
                                                       max_lead_time)
@@ -128,7 +148,7 @@ def delete_icon_grib(run_date,
                            full_path_name_i)
 
 
-def _create_icon_grib_name(run_date,
+def _create_icon_grib_name(run_datetime,
                            model_name='icon-eu-eps',
                            parameter_name='vmax_10m',
                            max_lead_time=None):
@@ -137,7 +157,7 @@ def _create_icon_grib_name(run_date,
     opendata.dwd.de/weather/nwp/.
 
     Parameters:
-        run_date (datetime): The starting timepoint of the forecast run
+        run_datetime (datetime): The starting timepoint of the forecast run
         model_name (str): the name of the forecast model written as it appears
             in the folder structure in opendata.dwd.de/weather/nwp/
         parameter_name (str): the name of the meteorological parameter
@@ -178,13 +198,13 @@ def _create_icon_grib_name(run_date,
     url = ('https://opendata.dwd.de/weather/nwp/' +
            model_name +
            '/grib/' +
-           run_date.strftime('%H') +
+           run_datetime.strftime('%H') +
            '/' +
            parameter_name +
            '/')
     file_name = (model_name +
                  file_extension +
-                 run_date.strftime('%Y%m%d%H') +
+                 run_datetime.strftime('%Y%m%d%H') +
                  '_' +
                  '{lead_i:03}' +
                  '_' +
