@@ -23,20 +23,19 @@ import ast
 import copy
 import logging
 from pathlib import Path
-import numpy as np
-from scipy import sparse
-import h5py
-import pandas as pd
-from rasterio import Affine
-from rasterio.warp import Resampling
+
 import geopandas as gpd
+import h5py
+import numpy as np
+import pandas as pd
+import rasterio
+from rasterio.warp import Resampling
+from scipy import sparse
 from shapely.geometry.point import Point
 
-import climada.util.plot as u_plot
 from climada.util.constants import (DEF_CRS,
                                     ONE_LAT_KM,
                                     NATEARTH_CENTROIDS)
-import climada.util.hdf5_handler as hdf5
 from climada.util.coordinates import (coord_on_land,
                                       dist_to_coast,
                                       dist_to_coast_nasa,
@@ -47,8 +46,10 @@ from climada.util.coordinates import (coord_on_land,
                                       raster_to_meshgrid,
                                       read_raster,
                                       read_raster_sample,
-                                      read_vector)
-from climada.util.coordinates import NE_CRS
+                                      read_vector,
+                                      NE_CRS)
+import climada.util.hdf5_handler as u_hdf5
+import climada.util.plot as u_plot
 
 __all__ = ['Centroids']
 
@@ -80,15 +81,17 @@ LOGGER = logging.getLogger(__name__)
 
 
 class Centroids():
-    """Contains raster or vector centroids. Raster data can be set with
-    set_raster_file() or set_meta(). Vector data can be set with set_lat_lon()
-    or set_vector_file().
+    """Contains raster or vector centroids.
+
+    Raster data can be set with set_raster_file() or set_meta().
+    Vector data can be set with set_lat_lon() or set_vector_file().
 
     Attributes
     ----------
     meta : dict, optional
         rasterio meta dictionary containing raster properties: width, height, crs and transform
-        must be present at least (transform needs to contain upper left corner!)
+        must be present at least. The affine ransformation needs to be shearless (only stretching)
+        and have positive x- and negative y-orientation.
     lat : np.array, optional
         latitude of size size
     lon : np.array, optional
@@ -136,13 +139,17 @@ class Centroids():
                                  str(n_centr), str(var_val.size))
                     raise ValueError
         if self.meta:
-            if 'width' not in self.meta.keys() or 'height' not in self.meta.keys() or \
-            'crs' not in self.meta.keys() or 'transform' not in self.meta.keys():
-                LOGGER.error('Missing meta information: width, height,'
-                             'crs or transform')
+            for name in ['width', 'height', 'crs', 'transform']:
+                if name not in self.meta.keys():
+                    LOGGER.error('Missing meta information: %s', name)
+                    raise ValueError
+            xres, xshear, xoff, yshear, yres, yoff = self.meta['transform'][:6]
+            if xshear != 0 or yshear != 0:
+                LOGGER.error('Affine transformations with shearing components are not supported.')
                 raise ValueError
-            if self.meta['transform'][4] > 0:
-                LOGGER.error('Meta does not contain upper left corner data.')
+            if yres > 0 or xres < 0:
+                LOGGER.error('Affine transformations with positive y-orientation '
+                             'or negative x-orientation are not supported.')
                 raise ValueError
 
     def equal(self, centr):
@@ -187,10 +194,27 @@ class Centroids():
             base_file = NATEARTH_CENTROIDS[res_as]
 
         centroids.read_hdf5(base_file)
+        if centroids.meta:
+            xres, xshear, xoff, yshear, yres, yoff = centroids.meta['transform'][:6]
+            shape = (centroids.meta['height'], centroids.meta['width'])
+            if yres > 0:
+                # make sure y-orientation is negative
+                centroids.meta['transform'] = rasterio.Affine(xres, xshear, xoff, yshear,
+                                                              -yres, yoff + (shape[0] - 1) * yres)
+                # flip y-axis in data arrays
+                for name in ["region_id", "dist_coast"]:
+                    if not hasattr(centroids, name):
+                        continue
+                    data = getattr(centroids, name)
+                    if data.size == 0:
+                        continue
+                    setattr(centroids, name, np.flipud(data.reshape(shape)).reshape(-1))
         if land:
             land_reg_ids = list(range(1, 1000))
             land_reg_ids.remove(10)  # Antarctica
             centroids = centroids.select(reg_id=land_reg_ids)
+
+        centroids.check()
         return centroids
 
     @staticmethod
@@ -270,8 +294,7 @@ class Centroids():
             'width': n_lon,
             'height': n_lat,
             'crs': crs,
-            'transform': Affine(d_lon, 0.0, xo_lon,
-                                0.0, d_lat, xf_lat),
+            'transform': rasterio.Affine(d_lon, 0.0, xo_lon, 0.0, d_lat, xf_lat),
         }
 
     def set_raster_from_pnt_bounds(self, points_bounds, res, crs=DEF_CRS):
@@ -416,7 +439,7 @@ class Centroids():
         if var_names is None:
             var_names = DEF_VAR_MAT
 
-        cent = hdf5.read(file_name)
+        cent = u_hdf5.read(file_name)
         # Try open encapsulating variable FIELD_NAMES
         num_try = 0
         for field in var_names['field_names']:
@@ -510,8 +533,8 @@ class Centroids():
                 'width': width,
                 'height': height,
                 'crs': crs,
-                'transform': Affine(self.meta['transform'][0], 0.0, left,
-                                    0.0, self.meta['transform'][4], top),
+                'transform': rasterio.Affine(self.meta['transform'][0], 0.0, left,
+                                             0.0, self.meta['transform'][4], top),
             }
             self.lat, self.lon = np.array([]), np.array([])
         else:
@@ -555,8 +578,9 @@ class Centroids():
         if self.meta:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
-            i_lat = np.floor((self.meta['transform'][5] - y_lat) / abs(self.meta['transform'][4]))
-            i_lon = np.floor((x_lon - self.meta['transform'][2]) / abs(self.meta['transform'][0]))
+            i_lat, i_lon = rasterio.transform.rowcol(self.meta['transform'], x_lon, y_lat)
+            i_lat = np.clip(i_lat, 0, self.meta['height'] - 1)
+            i_lon = np.clip(i_lon, 0, self.meta['width'] - 1)
             close_idx = int(i_lat * self.meta['width'] + i_lon)
         else:
             self.set_geometry_points(scheduler)
@@ -899,7 +923,7 @@ class Centroids():
                 if key != 'transform':
                     self.meta[key] = value[0]
                 else:
-                    self.meta[key] = Affine(*value)
+                    self.meta[key] = rasterio.Affine(*value)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(self, centr_name, np.array(data.get(centr_name)))
@@ -948,7 +972,7 @@ class Centroids():
     @property
     def coord(self):
         """Get [lat, lon] array. Might take some time."""
-        return np.array([self.lat, self.lon]).transpose()
+        return np.stack([self.lat, self.lon], axis=1)
 
     def set_geometry_points(self, scheduler=None):
         """Set `geometry` attribute with Points from `lat`/`lon` attributes.
