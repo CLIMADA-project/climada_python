@@ -241,7 +241,7 @@ class StormEurope(Hazard):
 
         if event_date:
             try:
-                stacked2 = ncdf.sel(time=event_date.strftime('%Y-%m-%d')
+                stacked = ncdf.sel(time=event_date.strftime('%Y-%m-%d')
                                     ).groupby('date'
                                               ).max().stack(intensity=('y_1',
                                                                        'x_1'))
@@ -260,18 +260,18 @@ class StormEurope(Hazard):
             time_covered_day = time_covered_step.groupby('date').sum()
             # forecast run should cover at least 18 hours of a day
             considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
-            stacked2 = ncdf.groupby('date'
+            stacked = ncdf.groupby('date'
                                     ).max().sel(date=considered_dates_bool
                                                 ).stack(intensity=('y_1',
                                                                    'x_1'))
-            considered_dates = stacked2['date'].values
-        stacked2 = stacked2.stack(date_ensemble=('date', 'epsd_1'))
-        stacked2 = stacked2.where(stacked2.VMAX_10M > self.intensity_thres)
-        stacked2 = stacked2.fillna(0)
+            considered_dates = stacked['date'].values
+        stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
+        stacked = stacked.where(stacked.VMAX_10M > self.intensity_thres)
+        stacked = stacked.fillna(0)
 
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked2.VMAX_10M.T)
-        self.event_id = np.arange(stacked2.date.size)+1
+        self.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
+        self.event_id = np.arange(stacked.date_ensemble.size)+1
 
 
         # fill in default values
@@ -279,18 +279,18 @@ class StormEurope(Hazard):
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked2.epsd_1 == 0).values] = True
+        self.orig[(stacked.epsd_1 == 0).values] = True
         self.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
-            ncdf.epsd_1.size
+            np.unique(ncdf.epsd_1).size
             )
         self.event_name = [date_i + '_ens' + str(ens_i)
                            for date_i, ens_i in zip(date_to_str(self.date),
-                                                    stacked2.epsd_1.values+1)
+                                                    stacked.epsd_1.values+1)
                            ]
         self.frequency = np.divide(
                 np.ones_like(self.event_id),
-                ncdf.epsd_1.size)
+                np.unique(ncdf.epsd_1).size)
         if not description:
             description = (model_name +
                            ' weather forecast windfield ' +
@@ -361,7 +361,7 @@ class StormEurope(Hazard):
         stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
         if event_date:
             try:
-                stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
+                stacked = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
             except KeyError:
                 raise ValueError('Extraction of date and coordinates failed. '
                                  'This is most likely because '
@@ -378,35 +378,35 @@ class StormEurope(Hazard):
             time_covered_day = time_covered_step.groupby('date').sum()
             # forecast run should cover at least 18 hours of a day
             considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
-            stacked2 = stacked.groupby('date').max().sel(date=considered_dates_bool)
-            considered_dates = stacked2['date'].values
-        stacked2 = stacked2.stack(date_ensemble=('date', 'number'))
-        stacked2 = stacked2.where(stacked2 > self.intensity_thres)
-        stacked2 = stacked2.fillna(0)
+            stacked = stacked.groupby('date').max().sel(date=considered_dates_bool)
+            considered_dates = stacked['date'].values
+        stacked = stacked.stack(date_ensemble=('date', 'number'))
+        stacked = stacked.where(stacked > self.intensity_thres)
+        stacked = stacked.fillna(0)
 
 
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked2.gust.T)
-        self.event_id = np.arange(stacked2.date.size)+1
+        self.intensity = sparse.csr_matrix(stacked.gust.T)
+        self.event_id = np.arange(stacked.date_ensemble.size)+1
 
         # fill in default values
         self.units = 'm/s'
         self.fraction = self.intensity.copy().tocsr()
         self.fraction.data.fill(1)
         self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked2.number == 1).values] = True
+        self.orig[(stacked.number == 1).values] = True
 
         self.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
-            stacked.number.size
+            np.unique(stacked.number).size
             )
         self.event_name = [date_i + '_ens' + str(ens_i)
                            for date_i, ens_i in zip(date_to_str(self.date),
-                                                    stacked2.number.values)
+                                                    stacked.number.values)
                            ]
         self.frequency = np.divide(
                 np.ones_like(self.event_id),
-                stacked.number.size)
+                np.unique(stacked.number).size)
         if not description:
             description = ('icon weather forecast windfield ' +
                            'for run startet at ' +
