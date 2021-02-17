@@ -748,18 +748,32 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             continue
         if land_sea - sea_land == 1:
             continue
-        p_decay = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
-        p_decay = _decay_p_function(p_decay, p_rel[ss_scale_idx][1],
-                                    track.dist_since_lf[sea_land:land_sea].values)
-        # dont applay decay if it would decrease central pressure
-        p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1] / p_landfall
-        track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
+        S = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
+        if S <= 1:
+            # central_pressure at start of landfall > env_pres after landfall:
+            # set central_pressure to environmental pressure during whole lf
+            track.central_pressure[sea_land:land_sea] = track.environmental_pressure[sea_land:land_sea]
+        else:
+            p_decay = _decay_p_function(S, p_rel[ss_scale_idx][1],
+                                        track.dist_since_lf[sea_land:land_sea].values)
+            # dont applay decay if it would decrease central pressure
+            if np.any(p_decay > 1):
+                LOGGER.warning('Landfall decay would decrease pressure for '
+                               'track id %s. Decay not applied, please check.',
+                               track.sid)
+                p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1] / p_landfall
+            track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
         v_decay = _decay_v_function(v_rel[ss_scale_idx],
                                     track.dist_since_lf[sea_land:land_sea].values)
-        # dont applay decay if it would increas wind speeds
-        v_decay[v_decay > 1] = (track.max_sustained_wind[sea_land:land_sea][v_decay > 1]
-                                / v_landfall)
+        # dont apply decay if it would increase wind speeds
+        if np.any(v_decay > 1):
+            # should not happen unless v_rel is negative
+            LOGGER.warning('Landfall decay would increase wind speed for '
+                           'track id %s. Decay not applied, please check.',
+                           track.sid)
+            v_decay[v_decay > 1] = (track.max_sustained_wind[sea_land:land_sea][v_decay > 1]
+                                    / v_landfall)
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea after a landfall (until next landfall, if any)
@@ -780,13 +794,14 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             rndn = rndn * 10  # mean value 10
             r_diff = track.max_sustained_wind[land_sea].values - \
                      track.max_sustained_wind[land_sea - 1].values - rndn
-    # correct limits
-    np.warnings.filterwarnings('ignore')
-    cor_p = track.central_pressure.values > track.environmental_pressure.values
-    track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
-    track.max_sustained_wind[track.max_sustained_wind < 0] = 0
             track.max_sustained_wind[land_sea:end_cor] += - r_diff
-            
+
+        # correct limits
+        np.warnings.filterwarnings('ignore')
+        cor_p = track.central_pressure.values > track.environmental_pressure.values
+        track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
+        track.max_sustained_wind[track.max_sustained_wind < 0] = 0
+
     track.attrs['category'] = climada.hazard.tc_tracks.set_category(
         track.max_sustained_wind.values, track.max_sustained_wind_unit)
     return track
