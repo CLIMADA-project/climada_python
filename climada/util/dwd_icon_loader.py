@@ -17,7 +17,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 
 Functions to download weather forecasts of the ICON weather forecast model
-from the German Weather Service DWD (opendata.dwd.de)
+from the German Weather Service DWD (opendata.dwd.de). Currently used for wind
+gust forecast in climada.hazard.storm_europe. Other parameters like rainfall or
+temperature are available.
 """
 
 __all__ = [
