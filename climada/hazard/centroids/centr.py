@@ -772,8 +772,10 @@ class Centroids():
                 lon_min, lon_max, lat_min, lat_max = extent
                 lon_max += 360 if lon_min > lon_max else 0
                 lon_normalized = lon_normalize(self.lon.copy(), center=0.5 * (lon_min + lon_max))
-                sel_cen &= ((lon_min <= lon_normalized) & (lon_normalized <= lon_max)
-                            & (lat_min <= self.lat) & (self.lat <= lat_max))
+                sel_cen &= (
+                  (lon_normalized >= lon_min) & (lon_normalized <= lon_max) &
+                  (self.lat >= lat_min) & (self.lat <= lat_max)
+                )
 
 
         if not self.lat.size or not self.lon.size:
