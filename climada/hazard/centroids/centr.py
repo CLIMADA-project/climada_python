@@ -47,6 +47,7 @@ from climada.util.coordinates import (coord_on_land,
                                       read_raster,
                                       read_raster_sample,
                                       read_vector,
+                                      lon_normalize,
                                       NE_CRS)
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
@@ -768,27 +769,12 @@ class Centroids():
             if reg_id:
                 sel_cen &= np.isin(self.region_id, reg_id)
             if extent:
-                # Cute the longitude into two ensembles 
-                # lon_min < lon_max: lon_min ... mid and mid ... lon_max
-                # lon_min > lon_max: -180 ... lon_max and lon_min ... 180
                 lon_min, lon_max, lat_min, lat_max = extent
-                mid_lon_min = mid_lon_max = (lon_max + lon_min) / 2
-                if lon_min > lon_max:
-                    mid_lon_min = lon_max
-                    mid_lon_max = lon_min
-                    lon_min = -180
-                    lon_max = 180
+                lon_max += 360 if lon_min > lon_max else 0
+                lon_normalized = lon_normalize(self.lon.copy(), center=0.5 * (lon_min + lon_max))
+                sel_cen &= ((lon_min <= lon_normalized) & (lon_normalized <= lon_max)
+                            & (lat_min <= self.lat) & (self.lat <= lat_max))
 
-                sel_cen &= (        
-                    (
-                        ((self.lon >= lon_min ) & (self.lon <= mid_lon_min)) | 
-                        ((self.lon >= mid_lon_max) & (self.lon <= lon_max))
-                    ) &
-                    (
-                        (self.lat >= lat_min) & (self.lat <= lat_max)
-                    )
-                    )
-                    
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
