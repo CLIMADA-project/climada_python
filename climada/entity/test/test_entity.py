@@ -42,8 +42,8 @@ class TestReader(unittest.TestCase):
         def_entity.read_excel(ENT_TEMPLATE_XLS)
 
         # Check default demo excel file has been loaded
-        self.assertEqual(len(def_entity.exposures.deductible), 24)
-        self.assertEqual(def_entity.exposures.value[2], 12596064143.542929)
+        self.assertEqual(len(def_entity.exposures.gdf.deductible), 24)
+        self.assertEqual(def_entity.exposures.gdf.value[2], 12596064143.542929)
 
         self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1).mdd), 25)
 
