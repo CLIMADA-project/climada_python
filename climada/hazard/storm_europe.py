@@ -246,7 +246,9 @@ class StormEurope(Hazard):
                                               ).max().stack(intensity=('y_1',
                                                                        'x_1'))
             except KeyError:
-                raise ValueError('The selected event_date {} is not contained'
+                raise ValueError('Extraction of date and coordinates failed. '
+                                 'This is most likely because '
+                                 'the selected event_date {} is not contained'
                                  ' in the weather forecast selected by '
                                  'fp_file {}. Please adjust event_date'
                                  ' or fp_file.'.format(
@@ -361,7 +363,9 @@ class StormEurope(Hazard):
             try:
                 stacked2 = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
             except KeyError:
-                raise ValueError('The selected event_date {} is not contained'
+                raise ValueError('Extraction of date and coordinates failed. '
+                                 'This is most likely because '
+                                 'the selected event_date {} is not contained'
                                  ' in the weather forecast selected by '
                                  'run_datetime {}. Please adjust event_date'
                                  ' or run_datetime.'.format(
