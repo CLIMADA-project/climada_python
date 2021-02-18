@@ -120,19 +120,20 @@ class UncVar():
         nplots = len(self.distr_dict)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
-        for ax, (param_name, distr) in zip(axis.flatten(), self.distr_dict.items()):
+        axis = np.asarray(axis)
+        for ax, (param_name, distr) in zip(axis.ravel(), self.distr_dict.items()):
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
         return fig, axis
 
-    def evaluate(self, kwargs):
+    def evaluate(self, uncvar_kwargs):
         """
         Evaluate the uncertainty variable.
 
         Parameters
         ----------
-        kwargs :
+        uncvar_kwargs : dict
             These parameters will be passed to self.unc_var.
             They must be the input parameters of the uncertainty variable .
 
@@ -142,7 +143,7 @@ class UncVar():
             Evaluated uncertainty variable
 
         """
-        return self.unc_var(**kwargs)
+        return self.unc_var(**uncvar_kwargs)
 
 
 class Uncertainty():
