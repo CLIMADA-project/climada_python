@@ -731,6 +731,27 @@ class TestCentroidsFuncs(unittest.TestCase):
         self.assertEqual(fil_centr.lon[1], VEC_LON[200])
         self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
 
+    def test_select_extent_pass(self):
+        """Test select extent"""
+        centr = Centroids()
+        centr.set_lat_lon(np.array([-5, -3, 0, 3, 5]),
+                          np.array([-180, -175, -170, 170, 175]))
+        centr.check()
+        centr.region_id = np.zeros(len(centr.lat))
+        ext_centr = centr.select(extent=[-175, -170, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-175, -170]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-3, 0]))
+
+        # Cross antimeridian, version 1
+        ext_centr = centr.select(extent=[170, -175, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
+
+        # Cross antimeridian, version 2
+        ext_centr = centr.select(extent=[170, 185, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRaster)

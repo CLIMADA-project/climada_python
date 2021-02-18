@@ -47,7 +47,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
-        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.362e+12 * (4 + 1), 4))
+        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.355e+12 * (4 + 1), 0.001))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 2699)
         self.assertEqual(ent.meta['height'], 1938)
@@ -74,7 +74,7 @@ class Test2013(unittest.TestCase):
                       cm.output[0])
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
-        self.assertAlmostEqual(ent.gdf.value.sum(), 3.658e+08 * (4 + 1))
+        self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.023e+09 * (4 + 1), 0.001))
         self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
 
     def test_anguilla_pass(self):
@@ -130,7 +130,6 @@ class Test2012(unittest.TestCase):
         except TypeError:
             print('MemoryError caught')
             pass
-
 
         ent = BlackMarble()
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
