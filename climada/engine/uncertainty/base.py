@@ -163,8 +163,8 @@ class Uncertainty():
 
         Parameters
         ----------
-        unc_vars : list of climade.engine.uncertainty.UncVar 
-            list of uncertainty variables
+        unc_vars : dict
+            keys are names and values are climade.engine.uncertainty.UncVar 
         sample : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
@@ -180,14 +180,14 @@ class Uncertainty():
         sensitivity: dict(), optional
             Dictionnary of the sensitivity analysis for each uncertainty
             parameter.
-            The default is None.
+            The default is {}.
         """
     
-        self.unc_vars = unc_vars if unc_vars else []
-        self.sample = sample if sample else pd.DataFrame(
+        self.unc_vars = unc_vars if unc_vars else {}
+        self.sample = sample if sample is not None else pd.DataFrame(
             columns = self.param_labels)
-        self.metrics = metrics if metrics else {}
-        self.sensitivity = sensitivity if sensitivity else None
+        self.metrics = metrics if metrics is not None else {}
+        self.sensitivity = sensitivity if sensitivity is not None else {}
         self.check()
     
     def check(self):
