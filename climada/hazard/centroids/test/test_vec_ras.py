@@ -755,8 +755,8 @@ class TestCentroidsFuncs(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestRaster)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVector))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVector))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReader))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroidsFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
