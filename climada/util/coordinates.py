@@ -113,9 +113,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon - center <= 180
 
-    The input data is modified in place (!) using the following operations:
-
-        (lon) -> (lon ± 360)
+    The input data is modified in place!
 
     Parameters
     ----------
@@ -128,24 +126,20 @@ def lon_normalize(lon, center=0.0):
     Returns
     -------
     lon : np.array
-        Normalized longitudinal coordinates.
+        Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
+        returned array is the same Python object (instead of a copy).
     """
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
-    maxiter = 10
-    i = 0
-    while True:
-        msk1 = (lon > bounds[1])
-        lon[msk1] -= 360
-        msk2 = (lon <= bounds[0])
-        lon[msk2] += 360
-        if msk1.sum() == 0 and msk2.sum() == 0:
-            break
-        i += 1
-        if i > maxiter:
-            LOGGER.warning("lon_normalize: killed before finishing")
-            break
+    # map to [center - 360, center + 360] using modulo operator
+    outside_mask = (lon <= bounds[0]) | (lon > bounds[1])
+    lon[outside_mask] = (lon[outside_mask] % 360) + (center - center % 360)
+    # map from [center - 360, center + 360] to [center - 180, center + 180], adding ±360
+    if center % 360 < 180:
+        lon[lon > bounds[1]] -= 360
+    else:
+        lon[lon <= bounds[0]] += 360
     return lon
 
 def lon_bounds(lon, buffer=0.0):
