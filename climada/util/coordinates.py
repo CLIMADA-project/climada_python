@@ -113,9 +113,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon - center <= 180
 
-    The input data is modified in place (!) using the following operations:
-
-        (lon) -> (lon ± 360)
+    The input data is modified in place!
 
     Parameters
     ----------
@@ -128,24 +126,20 @@ def lon_normalize(lon, center=0.0):
     Returns
     -------
     lon : np.array
-        Normalized longitudinal coordinates.
+        Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
+        returned array is the same Python object (instead of a copy).
     """
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
-    maxiter = 10
-    i = 0
-    while True:
-        msk1 = (lon > bounds[1])
-        lon[msk1] -= 360
-        msk2 = (lon <= bounds[0])
-        lon[msk2] += 360
-        if msk1.sum() == 0 and msk2.sum() == 0:
-            break
-        i += 1
-        if i > maxiter:
-            LOGGER.warning("lon_normalize: killed before finishing")
-            break
+    # map to [center - 360, center + 360] using modulo operator
+    outside_mask = (lon <= bounds[0]) | (lon > bounds[1])
+    lon[outside_mask] = (lon[outside_mask] % 360) + (center - center % 360)
+    # map from [center - 360, center + 360] to [center - 180, center + 180], adding ±360
+    if center % 360 < 180:
+        lon[lon > bounds[1]] -= 360
+    else:
+        lon[lon <= bounds[0]] += 360
     return lon
 
 def lon_bounds(lon, buffer=0.0):
@@ -1333,33 +1327,27 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
         shape = (int(np.ceil(height / res[1]) + 1),
                  int(np.ceil(width / res[0]) + 1))
+
+        # make sure that the extent of pixel centers covers the specified regions
         extra = (0.5 * ((shape[1] - 1) * res[0] - width),
                  0.5 * ((shape[0] - 1) * res[1] - height))
         bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
                   bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
 
-        if bounds[0] > 180:
-            bounds = (bounds[0] - 360, bounds[1], bounds[2] - 360, bounds[3])
-
-        window = src.window(*bounds)
-        w_transform = src.window_transform(window)
-        transform = rasterio.Affine(np.sign(w_transform[0]) * res[0], 0, w_transform[2],
-                                    0, np.sign(w_transform[4]) * res[1], w_transform[5])
-
-        if bounds[2] <= 180:
-            data = src.read(bands, out_shape=shape, window=window,
-                            resampling=resampling)
-        else:
-            # split up at antimeridian
-            bounds_sub = [(bounds[0], bounds[1], 180, bounds[3]),
-                          (-180, bounds[1], bounds[2] - 360, bounds[3])]
-            ratio_left = (bounds_sub[0][2] - bounds_sub[0][0]) / (bounds[2] - bounds[0])
-            shapes_sub = [(shape[0], int(shape[1] * ratio_left))]
-            shapes_sub.append((shape[0], shape[1] - shapes_sub[0][1]))
-            windows_sub = [src.window(*bds) for bds in bounds_sub]
-            data = [src.read(bands, out_shape=shp, window=win, resampling=resampling)
-                    for shp, win in zip(shapes_sub, windows_sub)]
-            data = np.concatenate(data, axis=2)
+        data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
+        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
+                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
+        crs = DEF_CRS if src.crs is None else src.crs
+        for iband, band in enumerate(bands):
+            rasterio.warp.reproject(
+                source=rasterio.band(src, band),
+                destination=data[iband],
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=transform,
+                dst_crs=crs,
+                resampling=resampling)
     return data, transform
 
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
@@ -1609,7 +1597,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
-    df_poly = points_df[val_names]
+    df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
         df_poly['geometry'] = apply_box(points_df)
     else:
@@ -1617,9 +1605,19 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
                                npartitions=cpu_count())
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
+    df_poly.crs = points_df.crs
+
+    # renormalize longitude if necessary
+    if df_poly.crs == DEF_CRS:
+        xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
+                                               points_df.longitude.values)
+        x_mid = 0.5 * (xmin + xmax)
+        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid})
+    else:
+        xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
+                                  points_df.longitude.max(), points_df.latitude.max())
+
     # construct raster
-    xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
-                              points_df.longitude.max(), points_df.latitude.max())
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
                                                (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))
