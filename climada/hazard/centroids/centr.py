@@ -47,6 +47,7 @@ from climada.util.coordinates import (coord_on_land,
                                       read_raster,
                                       read_raster_sample,
                                       read_vector,
+                                      lon_normalize,
                                       NE_CRS)
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
@@ -751,6 +752,9 @@ class Centroids():
             region to filter according to region_id values
         extent : tuple
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
         sel_cen : np.array
             1-dim mask, overrides reg_id and extent
 
@@ -759,13 +763,20 @@ class Centroids():
         cen : Centroids
             Sub-selection of this object
         """
+
         if sel_cen is None:
             sel_cen = np.ones_like(self.region_id, dtype=bool)
             if reg_id:
                 sel_cen &= np.isin(self.region_id, reg_id)
             if extent:
-                sel_cen &= ((extent[0] < self.lon) & (extent[1] > self.lon)
-                            & (extent[2] < self.lat) & (extent[3] > self.lat))
+                lon_min, lon_max, lat_min, lat_max = extent
+                lon_max += 360 if lon_min > lon_max else 0
+                lon_normalized = lon_normalize(self.lon.copy(), center=0.5 * (lon_min + lon_max))
+                sel_cen &= (
+                  (lon_normalized >= lon_min) & (lon_normalized <= lon_max) &
+                  (self.lat >= lat_min) & (self.lat <= lat_max)
+                )
+
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
