@@ -34,118 +34,43 @@ import scipy as sp
 from pathos.pools import ProcessPool as Pool
 
 
-CURR_DIR = "/Users/ckropf/Documents/Climada/Uncertainty"
-
-def imp_fun_tc(G=1, v_half=84.7, vmin=25.7, k=3, _id=1):
-    """
-    Parametrized impact function from (Knutson 2011)
-
-    Parameters
-    ----------
-    G : float, optional
-        Max impact. The default is 1.
-    v_half : float, optional
-        intensity at half curve. The default is 84.7.
-    vmin : float, optional
-        minimum intensity. The default is 25.7.
-    k : float, optional
-        curve exponent (slope). The default is 3.
-    _id : int, optional
-        impact function id. The default is 1.
-
-    Returns
-    -------
-    imp_fun : climada.ImpactFunc
-        Impact function with given parameters
-
-    """
-
-    imp_fun = ImpactFunc()
-    imp_fun.haz_type = 'TC'
-    imp_fun.id = _id
-    imp_fun.intensity_unit = 'm/s'
-    imp_fun.intensity = np.linspace(0, 150, num=100)
-    imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
-    imp_fun.paa = np.array([imp_fun_param(v, G, v_half, vmin, k) for v in imp_fun.intensity])
-    imp_fun.check()
+def impf_dem(x_impf=1):
+    impf = ImpactFunc()
+    impf.haz_type = 'TC'
+    impf.id = 1
+    impf.intensity_unit = 'm/s'
+    impf.intensity = np.linspace(0, 150, num=100)
+    impf.mdd = np.repeat(1, len(impf.intensity))
+    impf.paa = np.arange(0, len(impf.intensity)) / len(impf.intensity) * x_impf
+    impf.check()
     impf_set = ImpactFuncSet()
-    impf_set.append(imp_fun)
-
+    impf_set.append(impf)
     return impf_set
 
-def xhi(v, v_half, vmin):
-    """
-    impact function parameter (c.f. (Knutson 2011))
-
-    Parameters
-    ----------
-    v : float
-        intensity (wind speed)
-    v_half : float
-        intensity at half curve.
-    vmin : float
-        minimum intensity
-
-    Returns
-    -------
-    float
-        impact function xhi parameter
-
-    """
-
-    return max([(v - vmin), 0]) / (v_half - vmin)
-
-def imp_fun_param(v, G, v_half, vmin, k):
-    """
-    impact function formula from (Knutson 2011)
-
-    Parameters
-    ----------
-    v : float
-        intensity (wind speed)
-    G : float
-        Max impact.
-    v_half : float
-        intensity at half curve.
-    vmin : float
-        minimum intensity
-    k : float
-        curve exponent (slope).
-
-    Returns
-    -------
-    float
-        impact value at given intensity v
-
-    """
-
-    return G * xhi(v, v_half, vmin)**k / (1 + xhi(v, v_half, vmin)**k)
-
-
-def exp(x=1):
+def exp_dem(x_exp=1):
     exp = Exposures()
     exp.read_hdf5(EXP_DEMO_H5)
-    exp.value *= x
+    exp.value *= x_exp
     exp.check()
     return exp
 
-def haz(x=1):
+def haz_dem(x_haz=1):
     haz= Hazard()
     haz.read_hdf5(HAZ_DEMO_H5)
-    haz.intensity = haz.intensity.multiply(x)
+    haz.intensity = haz.intensity.multiply(x_haz)
     return haz
 
-HAZ_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/hazard/test/data/atl_prob_no_name.mat'
-ENT_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/entity/exposures/test/data/demo_today.mat'
-def dummy_ent():
-    entity = Entity()
-    entity.read_mat(ENT_TEST_MAT)
-    entity.check()
-    entity.measures._data['TC'] = entity.measures._data.pop('XX')
-    for meas in entity.measures.get_measure('TC'):
-        meas.haz_type = 'TC'
-    entity.check()
-    return entity
+# HAZ_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/hazard/test/data/atl_prob_no_name.mat'
+# ENT_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/entity/exposures/test/data/demo_today.mat'
+# def dummy_ent():
+#     entity = Entity()
+#     entity.read_mat(ENT_TEST_MAT)
+#     entity.check()
+#     entity.measures._data['TC'] = entity.measures._data.pop('XX')
+#     for meas in entity.measures.get_measure('TC'):
+#         meas.haz_type = 'TC'
+#     entity.check()
+#     return entity
 
 
 class TestUncVar(unittest.TestCase):
@@ -153,29 +78,23 @@ class TestUncVar(unittest.TestCase):
     
     def test_init_pass(self):
         
-        impf = imp_fun_tc
-        distr_dict = {"G": sp.stats.uniform(0.8,1),
-              "v_half": sp.stats.uniform(50, 100),
-              "vmin": sp.stats.uniform(15,30),
-              "k": sp.stats.uniform(1, 5)
+        impf = impf_dem
+        distr_dict = {"x_impf": sp.stats.uniform(0.8,1.2)
               }
         impf_unc = UncVar(impf, distr_dict)
         self.assertTrue(
-            np.array_equal(impf_unc.labels, ['G', 'v_half', 'vmin', 'k'])
+            np.array_equal(impf_unc.labels, ['x_impf'])
             )
         self.assertTrue(isinstance(impf_unc.distr_dict, dict))
         
     def test_evaluate_pass(self):
         
-        impf = imp_fun_tc
-        distr_dict = {"G": sp.stats.uniform(0.8,1),
-              "v_half": sp.stats.uniform(50, 100),
-              "vmin": sp.stats.uniform(15,30),
-              "k": sp.stats.uniform(1, 5)
+        impf = impf_dem
+        distr_dict = {"x_impf": sp.stats.uniform(0.8, 1.2),
               }
         impf_unc = UncVar(impf, distr_dict)
-        impf_eval = impf_unc.evaluate({'G':1, 'v_half':100, 'vmin':0, "k":1})
-        impf_true = impf(G=1,v_half=100,vmin=0,k=1)
+        impf_eval = impf_unc.evaluate({'x_impf': 0.8})
+        impf_true = impf_dem(x_impf = 0.8)
         self.assertEqual(impf_eval.size(), impf_true.size())
         impf_func1 = impf_eval.get_func()['TC'][1]
         impf_func2 = impf_true.get_func()['TC'][1]
@@ -201,45 +120,42 @@ class TestUncVar(unittest.TestCase):
         self.assertEqual(impf_func1.haz_type, impf_func2.haz_type)
 
     def test_plot_pass(self):
-        impf = imp_fun_tc
-        distr_dict = {"G": sp.stats.uniform(0.8,1),
-              "v_half": sp.stats.uniform(50, 100),
-              "vmin": sp.stats.uniform(15,30),
-              "k": sp.stats.uniform(1, 5)
+        impf = impf_dem()
+        distr_dict = {'x_impf': sp.stats.norm(1, 2)
               }
         impf_unc = UncVar(impf, distr_dict)
         self.assertIsNotNone(impf_unc.plot());
 
 
 class TestUncertainty(unittest.TestCase):
-    """Test the Uncertainty class"""
+    """Test the Uncertainty class""" 
 
-    exp = exp()
-    haz = haz()
-    impf = imp_fun_tc
+    # exp = exp_dem()
+    # haz = haz_dem()
+    # impf = impf_dem()
 
-    distr_dict = {"G": sp.stats.uniform(0.8,1),
-                  "v_half": sp.stats.uniform(50, 100),
-                  "vmin": sp.stats.uniform(15,30),
-                  "k": sp.stats.uniform(1, 5)
-                  }
+    # distr_dict = {"G": sp.stats.uniform(0.8,1),
+    #               "v_half": sp.stats.uniform(50, 100),
+    #               "vmin": sp.stats.uniform(15,30),
+    #               "k": sp.stats.uniform(1, 5)
+    #               }
     
-    impf_unc = UncVar(impf, distr_dict)
+    # impf_unc = UncVar(impf, distr_dict)
 
-    impf_unc.plot_distr()
-    unc = UncImpact(exp, impf_unc, haz)
-    unc.make_sample(N=10, sampling_kwargs = {'calc_second_order': False})
-    unc.plot_sample()
-    unc.calc_distribution(calc_eai_exp=False)
-    unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
+    # impf_unc.plot_distr()
+    # unc = UncImpact(exp, impf_unc, haz)
+    # unc.make_sample(N=10, sampling_kwargs = {'calc_second_order': False})
+    # unc.plot_sample()
+    # unc.calc_distribution(calc_eai_exp=False)
+    # unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
 
-    unc.plot_distribution(['aai_agg', 'freq_curve'])
-    unc.plot_rp_distribution()
-    unc.plot_sensitivity()
+    # unc.plot_distribution(['aai_agg', 'freq_curve'])
+    # unc.plot_rp_distribution()
+    # unc.plot_sensitivity()
     
     
-    unc.make_sample(N=1000)
-    unc.plot_sample()
+    # unc.make_sample(N=1000)
+    # unc.plot_sample()
 
 
 # class TestUncertainty(unittest.TestCase):
@@ -265,5 +181,5 @@ class TestUncertainty(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
+    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
