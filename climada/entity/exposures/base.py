@@ -32,6 +32,7 @@ from geopandas import GeoDataFrame
 import rasterio
 from rasterio.warp import Resampling
 import contextily as ctx
+import cartopy.crs as ccrs
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
@@ -265,7 +266,7 @@ class Exposures():
             haz_coord = hazard.centroids.coord
 
             if np.array_equal(coord, haz_coord):
-                assigned = np.arange(self.shape[0])
+                assigned = np.arange(self.gdf.shape[0])
             else:
                 # pairs of floats can be sorted (lexicographically) in NumPy
                 coord_view = coord.view(dtype='float64,float64').reshape(-1)
@@ -461,20 +462,26 @@ class Exposures():
             ras_tiff.write(raster.astype(np.float32), 1)
             ras_tiff.close()
         # make plot
-        crs_epsg, _ = u_plot.get_transformation(self.crs)
-        xmin, ymin, xmax, ymax = self.gdf.longitude.min(), self.gdf.latitude.min(), \
-        self.gdf.longitude.max(), self.gdf.latitude.max()
+        proj_data, _ = u_plot.get_transformation(self.crs)
+        proj_plot = proj_data
+        if isinstance(proj_data, ccrs.PlateCarree):
+            # use different projections for plot and data to shift the central lon in the plot
+            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(
+                self.gdf.latitude.values, self.gdf.longitude.values)
+            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        else:
+            xmin, ymin, xmax, ymax = (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                                      self.gdf.longitude.max(), self.gdf.latitude.max())
+
         if not axis:
-            _, axis = u_plot.make_map(proj=crs_epsg)
+            _, axis = u_plot.make_map(proj=proj_plot)
+
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
-        axis.set_extent([max(xmin, crs_epsg.x_limits[0]),
-                         min(xmax, crs_epsg.x_limits[1]),
-                         max(ymin, crs_epsg.y_limits[0]),
-                         min(ymax, crs_epsg.y_limits[1])], crs_epsg)
+        axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
-                           extent=[xmin, xmax, ymin, ymax], transform=crs_epsg)
+                           extent=(xmin, xmax, ymin, ymax), transform=proj_data)
         plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.draw()
         return axis
