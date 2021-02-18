@@ -75,7 +75,7 @@ class BlackMarble(Exposures):
                 independently of its year of acquisition.
             admin_file (str): file name, admin_0_countries or admin_0_map_subunits
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
-                country ISO_alpha3 code. 'poly_val' polynomial transformation
+                country ISO_alpha3 code. 'poly_val' list of polynomial coefficients
                 [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
                 provided). If provided, these are used.
         """
