@@ -756,7 +756,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         else:
             p_decay = _decay_p_function(S, p_rel[ss_scale_idx][1],
                                         track.dist_since_lf[sea_land:land_sea].values)
-            # dont applay decay if it would decrease central pressure
+            # dont apply decay if it would decrease central pressure
             if np.any(p_decay > 1):
                 LOGGER.warning('Landfall decay would decrease pressure for '
                                'track id %s. Decay not applied, please check.',
