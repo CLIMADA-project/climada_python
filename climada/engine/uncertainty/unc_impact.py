@@ -149,12 +149,15 @@ class UncImpact(Uncertainty):
         logger_imp.setLevel('ERROR')
         logger_impf = logging.getLogger('climada.entity.impact_funcs')
         logger_impf.setLevel('ERROR')
+        logger_exp = logging.getLogger('climada.entity.exposures')
+        logger_exp.setLevel('ERROR')
         
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list] = list(zip(*imp_metrics))
         
         logger_imp.setLevel(CONFIG.log_level.str())
         logger_impf.setLevel(CONFIG.log_level.str())
+        logger_exp.setLevel(CONFIG.log_level.str())
 
         # Assign computed impact distribution data to self
         self.metrics['aai_agg']  = pd.DataFrame(aai_agg_list,
@@ -253,10 +256,10 @@ class UncImpact(Uncertainty):
             ax.fill_between(losses, count + 2*n, 2*n)
 
         ax.set_xlim(min_l, max_l)
-        ax.set_ylim(0, 2*n)
+        ax.set_ylim(0, 2*(n+1))
         ax.set_xlabel('impact')
         ax.set_ylabel('return period [years]')
-        ax.set_yticks(np.arange(0, 2*n, 2))
+        ax.set_yticks(np.arange(0, 2*(n+1), 2))
         ax.set_yticklabels(df_values.columns)
 
         return fig, ax
