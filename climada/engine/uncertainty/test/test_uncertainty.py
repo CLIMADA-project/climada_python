@@ -26,9 +26,9 @@ import unittest
 from climada.entity import ImpactFunc, ImpactFuncSet
 import numpy as np
 import pandas as pd
-from climada.entity import Entity
-from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
-from climada.entity import Exposures
+from climada.entity import Entity, Exposures
+from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
+from climada.engine import CostBenefit
 from climada.hazard import Hazard
 from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit, Uncertainty
 import scipy as sp
@@ -79,20 +79,21 @@ def make_imp_uncs():
     haz_unc = UncVar(haz, haz_distr)
 
     return exp_unc, impf_unc, haz_unc
-
     
+    
+def ent_dem():
+    entity = Entity()
+    entity.read_excel(ENT_DEMO_TODAY)
+    entity.exposures.ref_year = 2018
+    entity.check()
+    return entity
 
-# HAZ_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/hazard/test/data/atl_prob_no_name.mat'
-# ENT_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/entity/exposures/test/data/demo_today.mat'
-# def dummy_ent():
-#     entity = Entity()
-#     entity.read_mat(ENT_TEST_MAT)
-#     entity.check()
-#     entity.measures._data['TC'] = entity.measures._data.pop('XX')
-#     for meas in entity.measures.get_measure('TC'):
-#         meas.haz_type = 'TC'
-#     entity.check()
-#     return entity
+def ent_fut_dem():
+    entity = Entity()
+    entity.read_excel(ENT_DEMO_FUTURE)
+    entity.exposures.ref_year = 2040
+    entity.check()
+    return entity
 
 
 class TestUncVar(unittest.TestCase):
@@ -372,62 +373,83 @@ class TestUncImpact(unittest.TestCase):
         unc.make_sample(N=1)
         unc.calc_distribution()
         unc.plot_rp_distribution()
-
         
-        # self.assertDictEqual(unc.sensitivity, {})
         
-        # self.assertEqual(unc.n_samples, 0)
-        # self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz', 'x_impf'})
-        # self.assertSetEqual(set(unc.problem['names']),
-        #                     {'x_exp', 'x_haz', 'x_impf'})
-        # self.assertSetEqual(set(unc.distr_dict.keys()),
-        #                     {"x_exp", "x_impf", "x_haz"})
+class TestUncCostBenefit(unittest.TestCase):
+    """Test the UncCostBenefit class"""  
+
+    def test_init_pass(self):
         
-        # unc = Uncertainty(
-        #     {'exp': exp_unc, 'impf': impf_unc}, 
-        #     sample = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
-        #     metrics = {'aai_agg': pd.DataFrame({'aai_agg': [100, 200]})}
-        #     )
-        # self.assertEqual(unc.n_samples, 2)
-        # self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_impf'})
-        # self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
-        # self.assertDictEqual(unc.sensitivity, {})       
-    
-    # unc.calc_distribution(calc_eai_exp=False)
-    # unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
+        haz = haz_dem()
+        ent = ent_dem()
+        ent_fut = ent_fut_dem()
 
-    # unc.plot_distribution(['aai_agg', 'freq_curve'])
-    # unc.plot_rp_distribution()
-    # unc.plot_sensitivity()
-    
-    
-    # unc.make_sample(N=1000)
-    # unc.plot_sample()
+        unc = UncCostBenefit(haz_unc=haz, ent_unc=ent,
+                             haz_fut_unc=haz, ent_fut_unc=ent_fut)
+        
+        self.assertSetEqual(set(unc.metrics.keys()),
+             {'tot_climate_risk', 'benefit', 'cost_ben_ratio',
+              'imp_meas_present', 'imp_meas_future'}
+             )
+        self.assertSetEqual(set(unc.unc_vars.keys()), {'haz', 'ent', 
+                                                       'haz_fut', 'ent_fut'})
+        
+    def test_calc_distribution_pass(self):
+        
+        haz_fut = haz_dem
+        haz_distr = {"x_haz": sp.stats.uniform(1, 3),
+                      }
+        haz_fut_unc = UncVar(haz_fut, haz_distr)
+        haz = haz_dem(x_haz=10)
+        
+        ent = ent_dem()
+        ent_fut = ent_fut_dem()
 
+        unc = UncCostBenefit(haz_unc=haz, ent_unc=ent,
+                             haz_fut_unc=haz_fut_unc, ent_fut_unc=ent_fut)
+        
+        unc.make_sample(N=1)
+        unc.calc_distribution()
+        
+        print(unc.metrics)
+        
+        self.assertTrue(
+            np.allclose(unc.metrics['tot_climate_risk']['tot_climate_risk'],
+                np.array([1.494806e+11, 1.262690e+11,
+                          1.494806e+11, 1.262690e+11])
+                )
+            )
+        self.assertTrue(
+            np.allclose(unc.metrics['benefit']['Mangroves'],
+                np.array([1.004445e+10, 2.403430e+09,
+                          1.004445e+10, 2.403430e+09])
+                )
+            )
+        self.assertTrue(
+            np.allclose(unc.metrics['cost_ben_ratio']['Beach nourishment'],
+                np.array([0.210822, 0.889260,
+                          0.210822, 0.889260])
+                )
+            )
 
-# class TestUncertainty(unittest.TestCase):
+        self.assertTrue(
+            np.allclose(unc.metrics['imp_meas_present']['Seawall-risk'],
+                np.array([1.164395e+10, 1.164395e+10,
+                          1.164395e+10, 1.164395e+10])
+                )
+            )
 
-#     exp = exp()
-#     haz = haz()
-#     impf = imp_fun_tc
-
-
-#     pool = Pool()
-#     haz_unc = UncVar(dummy_haz, {'x': sp.stats.norm(1, 1)})
-#     ent = dummy_ent()
-#     unc = UncCostBenefit(haz_unc, ent)
-#     unc.make_sample(N=1)
-#     unc.calc_distribution(pool=pool)
-#     unc.calc_sensitivity()
-#     pool.close()
-#     pool.join()
-#     pool.clear()
-    
-#     unc.plot_sensitivity(metric_list=list(unc.metrics.keys())[0:6])
-#     unc.plot_distribution(metric_list=list(unc.metrics.keys())[0:6])
+        self.assertTrue(
+            np.allclose(unc.metrics['imp_meas_future']['Building code-risk'],
+                np.array([2.556347e+09, 5.303379e+08,
+                          2.556347e+09, 5.303379e+08])
+                )
+            )
+        
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
