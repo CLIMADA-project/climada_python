@@ -26,7 +26,7 @@ import time
 from functools import partial
 import pandas as pd
 
-from climada.engine.uncertainty.base import Uncertainty
+from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.engine.cost_benefit import CostBenefit
 from climada.util.config import CONFIG
 
@@ -70,10 +70,10 @@ class UncCostBenefit(Uncertainty):
         """
 
         unc_vars = {
-            'haz': self._var_or_uncvar(haz_unc),
-            'ent': self._var_or_uncvar(ent_unc),
-            'haz_fut': self._var_or_uncvar(haz_fut_unc),
-            'ent_fut': self._var_or_uncvar(ent_fut_unc)
+            'haz': UncVar.var_or_uncvar(haz_unc),
+            'ent': UncVar.var_or_uncvar(ent_unc),
+            'haz_fut': UncVar.var_or_uncvar(haz_fut_unc),
+            'ent_fut': UncVar.var_or_uncvar(ent_fut_unc)
             }
 
         metrics =  {

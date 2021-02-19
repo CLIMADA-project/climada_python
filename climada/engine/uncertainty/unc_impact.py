@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import time
 
 from climada.engine import Impact
-from climada.engine.uncertainty.base import Uncertainty
+from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
@@ -60,9 +60,9 @@ class UncImpact(Uncertainty):
 
         """
 
-        unc_vars = {'exp': self._var_or_uncvar(exp_unc),
-                    'impf': self._var_or_uncvar(impf_unc),
-                    'haz': self._var_or_uncvar(haz_unc),
+        unc_vars = {'exp': UncVar.var_or_uncvar(exp_unc),
+                    'impf': UncVar.var_or_uncvar(impf_unc),
+                    'haz': UncVar.var_or_uncvar(haz_unc),
                     }
 
         metrics = {'aai_agg': pd.DataFrame([]),
