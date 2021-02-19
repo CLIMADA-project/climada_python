@@ -144,6 +144,30 @@ class UncVar():
 
         """
         return self.unc_var(**uncvar_kwargs)
+    
+    
+    @staticmethod
+    def var_or_uncvar(var):
+        """
+        Returns uncertainty variable with no distribution if var is not
+        an UncVar. Else, returns var.
+
+        Parameters
+        ----------
+        var : Object or else
+
+        Returns
+        -------
+        UncVar
+            var if var is UncVar, else UncVar with var and no distribution.
+
+        """
+
+        if isinstance(var, UncVar):
+            return var
+
+        return UncVar(unc_var=lambda: var, distr_dict={})
+
 
 
 class Uncertainty():
@@ -447,29 +471,6 @@ class Uncertainty():
         self.sensitivity = sensitivity_dict
 
         return sensitivity_dict
-
-
-    @staticmethod
-    def _var_or_uncvar(var):
-        """
-        Returns uncertainty variable with no distribution if var is not
-        an UncVar. Else, returns var.
-
-        Parameters
-        ----------
-        var : Object or else
-
-        Returns
-        -------
-        UncVar
-            var if var is UncVar, else UncVar with var and no distribution.
-
-        """
-
-        if isinstance(var, UncVar):
-            return var
-
-        return UncVar(unc_var=lambda: var, distr_dict={})
 
 
     def plot_distribution(self, metric_list=None):
