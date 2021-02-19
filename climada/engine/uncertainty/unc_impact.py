@@ -60,9 +60,9 @@ class UncImpact(Uncertainty):
 
         """
 
-        unc_vars = {'exp': UncVar.var_or_uncvar(exp_unc),
-                    'impf': UncVar.var_or_uncvar(impf_unc),
-                    'haz': UncVar.var_or_uncvar(haz_unc),
+        unc_vars = {'exp': UncVar.var_to_uncvar(exp_unc),
+                    'impf': UncVar.var_to_uncvar(impf_unc),
+                    'haz': UncVar.var_to_uncvar(haz_unc),
                     }
 
         metrics = {'aai_agg': pd.DataFrame([]),

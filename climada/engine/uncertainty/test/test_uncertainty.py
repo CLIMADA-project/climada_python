@@ -61,25 +61,6 @@ def haz_dem(x_haz=1):
     haz.intensity = haz.intensity.multiply(x_haz)
     return haz
 
-def make_uncs():
-    
-    exp = exp_dem
-    exp_distr = {"x_exp": sp.stats.uniform(0.8,2),
-                  }
-    exp_unc = UncVar(exp, exp_distr)
-    
-    impf = impf_dem
-    impf_distr = {"x_impf": sp.stats.beta(0.5, 1),
-              }
-    impf_unc = UncVar(impf, impf_distr)
-    
-    haz = haz_dem
-    haz_distr = {"x_haz": sp.stats.poisson(1),
-                  }
-    haz_unc = UncVar(haz, haz_distr)
-
-    return exp_unc, impf_unc, haz_unc
-
 def make_imp_uncs():
     
     exp = exp_dem
@@ -97,8 +78,8 @@ def make_imp_uncs():
                   }
     haz_unc = UncVar(haz, haz_distr)
 
-    
     return exp_unc, impf_unc, haz_unc
+
     
 
 # HAZ_TEST_MAT = '/Users/ckropf/Documents/Climada/climada_python/climada/hazard/test/data/atl_prob_no_name.mat'
@@ -165,18 +146,20 @@ class TestUncVar(unittest.TestCase):
         impf_unc = UncVar(impf, distr_dict)
         self.assertIsNotNone(impf_unc.plot());
         
-    def test_vac_or_uncvar(self):
+    def test_vac_to_uncvar(self):
         
         exp = exp_dem()
         distr_dict = {"x_exp": sp.stats.uniform(0.8,1.2)
               }
         
-        var = UncVar.var_or_uncvar(exp)
+        var = UncVar.var_to_uncvar(exp)
         self.assertDictEqual(var.distr_dict, {})
-        self.assertEqual(var.evaluate({}), var)
+        self.assertTrue(isinstance(var.evaluate({}), Exposures))
         
-        unc_var = UncVar.var_or_uncvar(UncVar(exp, distr_dict))
-        self.assertEqual(unc_var, var)
+        unc_var = UncVar.var_to_uncvar(UncVar(exp, distr_dict))
+        self.assertDictEqual(unc_var.distr_dict, distr_dict)
+        self.assertTrue(isinstance(var.evaluate({}), Exposures))
+
         
 
 class TestUncertainty(unittest.TestCase):
@@ -336,30 +319,79 @@ class TestUncImpact(unittest.TestCase):
     def test_init_pass(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        haz = haz_dem()
 
-        unc = UncImpact({'exp': exp_unc,
-                         'impf': impf_unc,
-                         'haz': haz_unc})
+        unc = UncImpact(exp_unc, impf_unc, haz)
         
-        self.assertDictEqual(unc.metrics, {})
-        self.assertDictEqual(unc.sensitivity, {})
+        self.assertSetEqual(set(unc.metrics.keys()),
+             {'aai_agg', 'freq_curve', 'eai_exp', 'at_event'}
+             )
+        self.assertSetEqual(set(unc.unc_vars.keys()), {'exp', 'impf', 'haz'})
         
-        self.assertEqual(unc.n_samples, 0)
-        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz', 'x_impf'})
-        self.assertSetEqual(set(unc.problem['names']),
-                            {'x_exp', 'x_haz', 'x_impf'})
-        self.assertSetEqual(set(unc.distr_dict.keys()),
-                            {"x_exp", "x_impf", "x_haz"})
+    def test_calc_distribution_pass(self):
         
-        unc = Uncertainty(
-            {'exp': exp_unc, 'impf': impf_unc}, 
-            sample = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
-            metrics = {'aai_agg': pd.DataFrame({'aai_agg': [100, 200]})}
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        haz = haz_dem()
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1)
+        
+        unc.calc_distribution()
+        
+        self.assertListEqual(unc.rp, [5, 10, 20, 50, 100, 250])
+        self.assertEqual(unc.calc_eai_exp, False)
+        self.assertEqual(unc.calc_at_event, False)
+        
+        self.assertTrue(
+            np.allclose(
+                unc.metrics['aai_agg'].aai_agg,
+                np.array([6.750486e+07, 1.000553e+08, 3.307738e+09,
+                          3.307738e+09, 1.000553e+08,4.902708e+09])
+                )
             )
-        self.assertEqual(unc.n_samples, 2)
-        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_impf'})
-        self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
-        self.assertDictEqual(unc.sensitivity, {})       
+        self.assertTrue(
+            np.allclose(
+                unc.metrics['freq_curve'].rp5,
+                np.zeros(6)
+                )
+            )
+        self.assertTrue(
+            np.allclose(
+                unc.metrics['freq_curve'].rp250,
+                np.array([2.025634e+09, 3.002382e+09, 9.925607e+10,
+                          9.925607e+10, 3.002382e+09, 1.471167e+11])
+                )
+            )
+        self.assertTrue(unc.metrics['eai_exp'].empty)
+        self.assertTrue(unc.metrics['at_event'].empty)
+        
+    def test_plot_distribution_pass(self):
+        
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        haz = haz_dem()
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1)
+        unc.calc_distribution()
+        unc.plot_rp_distribution()
+
+        
+        # self.assertDictEqual(unc.sensitivity, {})
+        
+        # self.assertEqual(unc.n_samples, 0)
+        # self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz', 'x_impf'})
+        # self.assertSetEqual(set(unc.problem['names']),
+        #                     {'x_exp', 'x_haz', 'x_impf'})
+        # self.assertSetEqual(set(unc.distr_dict.keys()),
+        #                     {"x_exp", "x_impf", "x_haz"})
+        
+        # unc = Uncertainty(
+        #     {'exp': exp_unc, 'impf': impf_unc}, 
+        #     sample = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
+        #     metrics = {'aai_agg': pd.DataFrame({'aai_agg': [100, 200]})}
+        #     )
+        # self.assertEqual(unc.n_samples, 2)
+        # self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_impf'})
+        # self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
+        # self.assertDictEqual(unc.sensitivity, {})       
     
     # unc.calc_distribution(calc_eai_exp=False)
     # unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
@@ -396,5 +428,6 @@ class TestUncImpact(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncVar)
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestUncertainty)
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncImpact))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

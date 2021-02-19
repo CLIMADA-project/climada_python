@@ -70,10 +70,10 @@ class UncCostBenefit(Uncertainty):
         """
 
         unc_vars = {
-            'haz': UncVar.var_or_uncvar(haz_unc),
-            'ent': UncVar.var_or_uncvar(ent_unc),
-            'haz_fut': UncVar.var_or_uncvar(haz_fut_unc),
-            'ent_fut': UncVar.var_or_uncvar(ent_fut_unc)
+            'haz': UncVar.var_to_uncvar(haz_unc),
+            'ent': UncVar.var_to_uncvar(ent_unc),
+            'haz_fut': UncVar.var_to_uncvar(haz_fut_unc),
+            'ent_fut': UncVar.var_to_uncvar(ent_fut_unc)
             }
 
         metrics =  {
