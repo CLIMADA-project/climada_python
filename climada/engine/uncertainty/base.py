@@ -147,7 +147,7 @@ class UncVar():
     
     
     @staticmethod
-    def var_or_uncvar(var):
+    def var_to_uncvar(var):
         """
         Returns uncertainty variable with no distribution if var is not
         an UncVar. Else, returns var.
