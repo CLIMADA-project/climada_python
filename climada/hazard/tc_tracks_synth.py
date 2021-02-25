@@ -34,6 +34,49 @@ import climada.hazard.tc_tracks
 
 LOGGER = logging.getLogger(__name__)
 
+LANDFALL_DECAY_V = {
+    2: 0.0017219917301371703,
+    6: 0.002595834561794121,
+    1: 0.00012285815226960615,
+    5: 0.002644866334692554,
+    3: 0.002299182035879582,
+    4: 0.0025887346457309896,
+    7: 0.00397813058576188
+}
+"""Global landfall decay parameters for wind speed by TC category.
+Keys are TC categories with 1='TD', 2='TS', 3='Cat 1', ..., 7='Cat 5'.
+It is v_rel as derived from:
+tracks = TCTracks()
+tracks.read_ibtracs_netcdf(year_range=(1980,2019),
+                           estimate_missing=True)
+extent = tracks.get_extent()
+land_geom = climada.util.coordinates.get_land_geometry(
+    extent=extent, resolution=10
+)
+v_rel, p_rel = _calc_land_decay(tracks.data, land_geom,
+                                pool=tracks.pool)"""
+
+LANDFALL_DECAY_P = {
+    2: (1.0194994980230085, 0.0030702654707023256),
+    6: (1.0825529416232729, 0.004157255859762298),
+    1: (1.0089315640011636, 0.0021694084866327895),
+    5: (1.0652603933624192, 0.0037557812788230143),
+    3: (1.0365767270424973, 0.0035347637567456768),
+    4: (1.0467348458061756, 0.004042906726642808),
+    7: (1.1092059075832368, 0.005485547796536179)
+}
+"""Global landfall decay parameters for pressure by TC category.
+Keys are TC categories with 1='TD', 2='TS', 3='Cat 1', ..., 7='Cat 5'.
+It is p_rel as derived from:
+tracks = TCTracks()
+tracks.read_ibtracs_netcdf(year_range=(1980,2019),
+                           estimate_missing=True)
+extent = tracks.get_extent()
+land_geom = climada.util.coordinates.get_land_geometry(
+    extent=extent, resolution=10
+)
+v_rel, p_rel = _calc_land_decay(tracks.data, land_geom,
+                                pool=tracks.pool)"""
 
 def calc_perturbed_trajectories(tracks,
                                 nb_synth_tracks=9,
@@ -43,7 +86,8 @@ def calc_perturbed_trajectories(tracks,
                                 autocorr_dspeed=0.85,
                                 autocorr_ddirection=0.85,
                                 seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
-                                decay=True):
+                                decay=True,
+                                use_global_decay_params=True):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
@@ -99,7 +143,14 @@ def calc_perturbed_trajectories(tracks,
         Random number generator seed for replicability of random walk.
         Put negative value if you don't want to use it. Default: configuration file.
     decay : bool, optional
-        Whether to compute land decay in probabilistic tracks. Default: True.
+        Whether to apply landfall decay in probabilistic tracks. Default: True.
+    use_global_decay_params : bool, optional
+        Whether to use precomputed global parameter values for landfall decay
+        obtained from IBTrACS (1980-2019). If False, parameters are fitted
+        using historical tracks in input parameter 'tracks', in which case the
+        landfall decay applied depends on the tracks passed as an input and may
+        not be robust if few historical tracks make landfall in this object.
+        Default: True.
     """
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
@@ -146,22 +197,28 @@ def calc_perturbed_trajectories(tracks,
     tracks.data = sum(new_ens, [])
 
     if decay:
-        hist_tracks = [track for track in tracks.data if track.orig_event_flag]
-        if hist_tracks:
-            try:
-                extent = tracks.get_extent()
-                land_geom = climada.util.coordinates.get_land_geometry(
-                    extent=extent, resolution=10
-                )
-                v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom,
-                                                pool=tracks.pool)
-                tracks.data = _apply_land_decay(tracks.data, v_rel, p_rel,
-                                                land_geom, pool=tracks.pool)
-            except ValueError:
-                LOGGER.info('No land decay coefficients could be applied.')
+        extent = tracks.get_extent()
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=extent, resolution=10
+        )
+        if use_global_decay_params:
+            tracks.data = _apply_land_decay(tracks.data, LANDFALL_DECAY_V,
+                                            LANDFALL_DECAY_P,
+                                            land_geom, pool=tracks.pool)
         else:
-            LOGGER.error('No historical tracks contained. '
-                         'Historical tracks are needed for land decay.')
+            # fit land decay coefficients based on historical tracks
+            hist_tracks = [track for track in tracks.data if track.orig_event_flag]
+            if hist_tracks:
+                try:
+                    v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom,
+                                                    pool=tracks.pool)
+                    tracks.data = _apply_land_decay(tracks.data, v_rel, p_rel,
+                                                    land_geom, pool=tracks.pool)
+                except ValueError:
+                    LOGGER.info('No land decay coefficients could be applied.')
+            else:
+                LOGGER.error('No historical tracks contained. '
+                             'Historical tracks are needed for land decay.')
 
 
 def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
