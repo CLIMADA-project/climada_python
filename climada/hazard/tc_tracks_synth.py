@@ -510,12 +510,14 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
         v_rel (dict(category: A)), p_rel (dict(category: (S, B)))
     """
     
-    if len(hist_tracks) < 10:
-        LOGGER.warning('Using only %s historical tracks to calculate '
-                       'landfall decay. Consider using a larger number of '
-                       'tracks from which you sub-select the tracks that '
-                       'are relevant to your application for a more robust '
-                       'calculation of landfall decay.', len(hist_tracks))
+    if len(hist_tracks) < 100:
+        LOGGER.warning('For the calibration of the landfall decay '
+                       'it is recommended to provide as many historical '
+                       'tracks as possible, but only %s historical tracks '
+                       'were provided. '
+                       'For a more robust calculation consider using '
+                       'a larger number of tracks or set '
+                       '`use_global_decay_params` to True', len(hist_tracks))
 
     # Key is Saffir-Simpson scale
     # values are lists of wind/wind at landfall
@@ -720,19 +722,23 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
         elif v_rel[ss_scale] < 0:
-            LOGGER.error('Landfall wind speed decay parameter is negative '
-                         'for category %s. Please check or use a larger '
-                         'number of events to obtain more sensible landfall '
-                         'decay values for wind speed.',
-                         climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
-            raise ValueError
+            raise ValueError('The calibration of landfall decay for wind '
+                             'speed resulted in a wind speed increase for '
+                             'TC category %s.'
+                             'This behavious in unphysical.'
+                             'Please use a larger number of tracks or '
+                             'use global paramaters by setting '
+                             '`use_global_decay_params` to True',
+                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
         elif p_rel[ss_scale][0] < 0 or p_rel[ss_scale][1] < 0:
-            LOGGER.error('Landfall pressure decay parameter is negative '
-                         'for category %s. Please check or use a larger '
-                         'number of events to obtain more sensible landfall '
-                         'decay values for pressure.',
-                         climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
-            raise ValueError
+            raise ValueError('The calibration of landfall decay for central '
+                             'pressure resulted in a pressure decrease for '
+                             'TC category %s.'
+                             'This behavious in unphysical.'
+                             'Please use a larger number of tracks or '
+                             'use global paramaters by setting '
+                             '`use_global_decay_params` to True',
+                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
 
     return v_rel, p_rel
 
