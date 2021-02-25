@@ -823,9 +823,12 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
                                         track.dist_since_lf[sea_land:land_sea].values)
             # dont apply decay if it would decrease central pressure
             if np.any(p_decay > 1):
-                LOGGER.warning('Landfall decay would decrease pressure for '
-                               'track id %s. Decay not applied, please check.',
-                               track.sid)
+                LOGGER.info('Landfall decay would decrease pressure for '
+                            'track id %s, leading to an intensification '
+                            'of the Tropical Cyclone. This behaviour is '
+                            'unphysical and therefore landfall decay is not '
+                            'applied in this case.',
+                            track.sid)
                 p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1] / p_landfall
             track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
@@ -834,9 +837,11 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         # dont apply decay if it would increase wind speeds
         if np.any(v_decay > 1):
             # should not happen unless v_rel is negative
-            LOGGER.warning('Landfall decay would increase wind speed for '
-                           'track id %s. Decay not applied, please check.',
-                           track.sid)
+            LOGGER.info('Landfall decay would increase wind speed for '
+                        'track id %s. This behavious in unphysical and '
+                        'therefore landfall decay is not applied in this '
+                        'case.',
+                        track.sid)
             v_decay[v_decay > 1] = (track.max_sustained_wind[sea_land:land_sea][v_decay > 1]
                                     / v_landfall)
         track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
