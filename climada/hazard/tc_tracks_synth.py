@@ -748,7 +748,8 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
 
         axes[0].set_xlabel('Distance from landfall (km)')
         axes[0].set_ylabel('Max sustained wind relative to landfall')
-        axes[0].set_title('Wind')
+        axes[0].set_title('Wind, TC cat %s' %
+                          climada.hazard.tc_tracks.CAT_NAMES[track_cat-2])
         axes[0].plot(x_val[track_cat], v_lf[track_cat], '*', c=color,
                      label=climada.hazard.tc_tracks.CAT_NAMES[track_cat - 2])
         axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
@@ -756,7 +757,8 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
 
         axes[1].set_xlabel('Distance from landfall (km)')
         axes[1].set_ylabel('Central pressure relative to landfall')
-        axes[1].set_title('Pressure')
+        axes[1].set_title('Pressure, TC cat %s' %
+                          climada.hazard.tc_tracks.CAT_NAMES[track_cat-2])
         axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
                      label=climada.hazard.tc_tracks.CAT_NAMES[track_cat - 2])
         axes[1].plot(
