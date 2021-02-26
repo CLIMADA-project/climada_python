@@ -290,6 +290,7 @@ class TCTracks():
     def read_ibtracs_netcdf(self, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, interpolate_missing=True,
                             estimate_missing=False, correct_pres=False,
+                            discard_single_points=True,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Read track data from IBTrACS databse.
 
@@ -375,6 +376,9 @@ class TCTracks():
         correct_pres : bool, optional
             For backwards compatibility, alias for `estimate_missing`.
             This is deprecated, use `estimate_missing` instead!
+        discard_single_points : bool, optional
+            Whether to discard tracks that consists of a single point. Recommended for full
+            compatiblity with other functions such as `equal_timesteps`. Default: True.
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
             Default: 'IBTrACS.ALL.v04r00.nc'
@@ -488,6 +492,16 @@ class TCTracks():
                            'have been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
                            ", ..." if len(invalid_sids) > 5  else ".")
             ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
+            
+        if discard_single_points:
+            valid_storms_mask = ibtracs_ds.valid_t.sum(axis=1) > 1
+            invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
+            if invalid_storms_idx.size > 0:
+                invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
+                LOGGER.warning('%d storm events are discarded because only one valid timestep '
+                               'has been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
+                               ", ..." if len(invalid_sids) > 5  else ".")
+                ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
