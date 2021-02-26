@@ -16,13 +16,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Unit Tests on LitPop exposures.
 """
-import os
-import numpy as np
 import unittest
+import numpy as np
 from climada.entity.exposures.crop_production import CropProduction, normalize_with_fao_cp
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
+INPUT_DIR = DEMO_DIR
 FILENAME = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
 
@@ -35,14 +34,14 @@ class TestCropProduction(unittest.TestCase):
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
 
-        self.assertEqual(exp.longitude.min(), -4.75)
-        self.assertEqual(exp.longitude.max(), 15.75)
-        self.assertEqual(exp.latitude.min(), 42.25)
-        self.assertEqual(exp.latitude.max(), 54.75)
-        self.assertEqual(exp.value.shape, (1092,))
+        self.assertEqual(exp.gdf.longitude.min(), -4.75)
+        self.assertEqual(exp.gdf.longitude.max(), 15.75)
+        self.assertEqual(exp.gdf.latitude.min(), 42.25)
+        self.assertEqual(exp.gdf.latitude.max(), 54.75)
+        self.assertEqual(exp.gdf.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 't/y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.value.max(), 284244.81023404596, places=5)
+        self.assertAlmostEqual(exp.gdf.value.max(), 284244.81023404596, places=5)
 
     def test_set_value_to_usd(self):
         """Test calculating crop_production Exposure in [USD/y]"""
@@ -51,17 +50,17 @@ class TestCropProduction(unittest.TestCase):
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
         exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
-        self.assertEqual(exp.longitude.min(), -4.75)
-        self.assertEqual(exp.longitude.max(), 15.75)
-        self.assertEqual(exp.latitude.min(), 42.25)
-        self.assertEqual(exp.latitude.max(), 54.75)
-        self.assertEqual(exp.value.shape, (1092,))
+        self.assertEqual(exp.gdf.longitude.min(), -4.75)
+        self.assertEqual(exp.gdf.longitude.max(), 15.75)
+        self.assertEqual(exp.gdf.latitude.min(), 42.25)
+        self.assertEqual(exp.gdf.latitude.max(), 54.75)
+        self.assertEqual(exp.gdf.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 'USD/y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.tonnes_per_year[28], 1998.3634803238633)
-        self.assertAlmostEqual(exp.value.max(), 51603897.28533253, places=5)
-        self.assertAlmostEqual(exp.value.mean(), 907401.9933073953, places=5)
-        self.assertEqual(exp.value.min(), 0.0)
+        self.assertAlmostEqual(exp.gdf.tonnes_per_year[28], 1998.3634803238633)
+        self.assertAlmostEqual(exp.gdf.value.max(), 51603897.28533253, places=5)
+        self.assertAlmostEqual(exp.gdf.value.mean(), 907401.9933073953, places=5)
+        self.assertEqual(exp.gdf.value.min(), 0.0)
 
     def test_set_value_to_kcal(self):
         """Test calculating crop_production Exposure in [kcal/y]"""
@@ -69,16 +68,16 @@ class TestCropProduction(unittest.TestCase):
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
-        max_tonnes = exp.value.max()
+        max_tonnes = exp.gdf.value.max()
         exp.set_value_to_kcal()
 
-        self.assertEqual(exp.latitude.min(), 45.25)
-        self.assertEqual(exp.latitude.max(), 49.75)
-        self.assertEqual(exp.value.shape, (300,))
-        self.assertAlmostEqual(exp.value.max(), 365*10*1000*max_tonnes, places=3)
-        self.assertAlmostEqual(exp.value.max(), 874488976392.9623, places=3)
-        self.assertAlmostEqual(exp.value.mean(), 19910311383.52674, places=4)
-        self.assertEqual(exp.value.min(), 0.0)
+        self.assertEqual(exp.gdf.latitude.min(), 45.25)
+        self.assertEqual(exp.gdf.latitude.max(), 49.75)
+        self.assertEqual(exp.gdf.value.shape, (300,))
+        self.assertAlmostEqual(exp.gdf.value.max(), 365*10*1000*max_tonnes, places=3)
+        self.assertAlmostEqual(exp.gdf.value.max(), 874488976392.9623, places=3)
+        self.assertAlmostEqual(exp.gdf.value.mean(), 19910311383.52674, places=4)
+        self.assertEqual(exp.gdf.value.min(), 0.0)
 
     def set_value_to_usd(self):
         """Test calculating cropyield_isimip Exposure in [USD/y]"""
@@ -86,14 +85,14 @@ class TestCropProduction(unittest.TestCase):
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                       scenario='flexible', crop = 'mai', irr='firr', unit='USD/y')
-        self.assertEqual(exp.longitude.min(), -4.75)
-        self.assertEqual(exp.longitude.max(), 15.75)
-        self.assertEqual(exp.latitude.min(), 42.25)
-        self.assertEqual(exp.latitude.max(), 54.75)
-        self.assertEqual(exp.value.shape, (1092,))
+        self.assertEqual(exp.gdf.longitude.min(), -4.75)
+        self.assertEqual(exp.gdf.longitude.max(), 15.75)
+        self.assertEqual(exp.gdf.latitude.min(), 42.25)
+        self.assertEqual(exp.gdf.latitude.max(), 54.75)
+        self.assertEqual(exp.gdf.value.shape, (1092,))
         self.assertEqual(exp.value_unit, 'USD/y')
         self.assertEqual(exp.crop, 'mai')
-        self.assertAlmostEqual(exp.value.max(), 51603897.28533253, places=6)
+        self.assertAlmostEqual(exp.gdf.value.max(), 51603897.28533253, places=6)
 
     def test_normalize_with_fao_cp(self):
         """ Test normalizing of two given exposures countrywise (usually firr + norr)
@@ -102,17 +101,17 @@ class TestCropProduction(unittest.TestCase):
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                           bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),
                                           scenario='flexible', crop = 'mai', unit='t/y', irr='firr')
-        country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, exp_tot_production = \
+        country_list, ratio, exp_firr_norm, exp_noirr_norm, fao_crop_production, _exp_tot_production = \
              normalize_with_fao_cp(exp, exp, input_dir=INPUT_DIR,
                               yearrange=np.array([2009, 2018]), unit='t/y', return_data=True)
         self.assertAlmostEqual(ratio[2], 17.671166854032993)
         self.assertAlmostEqual(ratio[11], .86250775)
         self.assertAlmostEqual(fao_crop_production[2], 673416.4)
         self.assertAlmostEqual(fao_crop_production[11], 160328.7)
-        self.assertAlmostEqual(np.nanmax(exp_firr_norm.value.values), 220735.69212710857)
-        self.assertAlmostEqual(np.nanmax(exp_firr_norm.value.values), np.nanmax(exp_noirr_norm.value.values))
-        self.assertAlmostEqual(np.nanmax(exp.value.values), 284244.81023404596)
-        self.assertAlmostEqual(np.nansum(exp_noirr_norm.value.values) + np.nansum(exp_firr_norm.value.values), np.nansum(fao_crop_production), places=1)
+        self.assertAlmostEqual(np.nanmax(exp_firr_norm.gdf.value.values), 220735.69212710857)
+        self.assertAlmostEqual(np.nanmax(exp_firr_norm.gdf.value.values), np.nanmax(exp_noirr_norm.gdf.value.values))
+        self.assertAlmostEqual(np.nanmax(exp.gdf.value.values), 284244.81023404596)
+        self.assertAlmostEqual(np.nansum(exp_noirr_norm.gdf.value.values) + np.nansum(exp_firr_norm.gdf.value.values), np.nansum(fao_crop_production), places=1)
 
         self.assertListEqual(list(country_list), [0, 40, 56, 70, 191, 203, 208, 250,
                                                   276, 380, 442, 528, 616, 705, 724, 756, 826])

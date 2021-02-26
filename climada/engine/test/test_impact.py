@@ -18,11 +18,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Impact class.
 """
-import os
 import unittest
 import numpy as np
 from scipy import sparse
 
+from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
@@ -30,10 +30,8 @@ from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
-
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
+DATA_FOLDER = CONFIG.engine.test_data.dir()
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
@@ -125,7 +123,7 @@ class TestOneExposure(unittest.TestCase):
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
-        impact.eai_exp = np.zeros(len(ent.exposures.value))
+        impact.eai_exp = np.zeros(len(ent.exposures.gdf.value))
         impact.tot_value = 0
 
         # Assign centroids to exposures
@@ -134,17 +132,17 @@ class TestOneExposure(unittest.TestCase):
         # Compute impact for 6th exposure
         iexp = 5
         # Take its impact function
-        imp_id = ent.exposures.if_TC[iexp]
+        imp_id = ent.exposures.gdf.if_TC[iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)
         # Compute
         insure_flag = True
         impact._exp_impact(np.array([iexp]), ent.exposures, hazard, imp_fun, insure_flag)
 
-        self.assertEqual(impact.eai_exp.size, ent.exposures.shape[0])
+        self.assertEqual(impact.eai_exp.size, ent.exposures.gdf.shape[0])
         self.assertEqual(impact.at_event.size, hazard.intensity.shape[0])
 
-        events_pos = hazard.intensity[:, ent.exposures.centr_TC[iexp]].nonzero()[0]
-        res_exp = np.zeros((ent.exposures.shape[0]))
+        events_pos = hazard.intensity[:, ent.exposures.gdf.centr_TC[iexp]].nonzero()[0]
+        res_exp = np.zeros((ent.exposures.gdf.shape[0]))
         res_exp[iexp] = np.sum(impact.at_event[events_pos] * hazard.frequency[events_pos])
         self.assertTrue(np.array_equal(res_exp, impact.eai_exp))
 
@@ -190,7 +188,7 @@ class TestCalc(unittest.TestCase):
 
         # Check result
         num_events = len(hazard.event_id)
-        num_exp = ent.exposures.shape[0]
+        num_exp = ent.exposures.gdf.shape[0]
         # Check relative errors as well when absolute value gt 1.0e-7
         # impact.at_event == EDS.damage in MATLAB
         self.assertEqual(num_events, len(impact.at_event))
@@ -236,7 +234,7 @@ class TestCalc(unittest.TestCase):
         impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
         self.assertTrue(isinstance(impact.imp_mat, sparse.csr_matrix))
         self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
-                                                ent.exposures.value.size))
+                                                ent.exposures.gdf.value.size))
         self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
                                     impact.at_event))
         self.assertTrue(
@@ -250,7 +248,7 @@ class TestCalc(unittest.TestCase):
         """Execute when no if_HAZ present, but only if_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
-        ent.exposures.rename(columns={'if_TC': 'if_'}, inplace=True)
+        ent.exposures.gdf.rename(columns={'if_TC': 'if_'}, inplace=True)
         ent.check()
 
         # Read default hazard file
@@ -262,7 +260,7 @@ class TestCalc(unittest.TestCase):
 
         # Check result
         num_events = len(hazard.event_id)
-        num_exp = ent.exposures.shape[0]
+        num_exp = ent.exposures.gdf.shape[0]
         # Check relative errors as well when absolute value gt 1.0e-7
         # impact.at_event == EDS.damage in MATLAB
         self.assertEqual(num_events, len(impact.at_event))
@@ -369,7 +367,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.join(DATA_FOLDER, 'test.csv')
+        file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -408,7 +406,7 @@ class TestIO(unittest.TestCase):
         imp_write.aai_agg = 1001
         imp_write.unit = 'USD'
 
-        file_name = os.path.join(DATA_FOLDER, 'test.csv')
+        file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
         imp_read = Impact()
@@ -437,7 +435,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
-        file_name = os.path.join(DATA_FOLDER, 'test.xlsx')
+        file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
         imp_read = Impact()
@@ -467,9 +465,9 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[4, :] = np.arange(4) * 5
         impact.imp_mat = sparse.csr_matrix(impact.imp_mat)
 
-        file_name = os.path.join(DATA_FOLDER, 'test_imp_mat')
+        file_name = DATA_FOLDER.joinpath('test_imp_mat')
         impact.write_sparse_csr(file_name)
-        read_imp_mat = Impact().read_sparse_csr(file_name + '.npz')
+        read_imp_mat = Impact().read_sparse_csr(f'{file_name}.npz')
         for irow in range(5):
             self.assertTrue(
                 np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
@@ -497,7 +495,7 @@ class TestRPmatrix(unittest.TestCase):
         impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
 
         self.assertTrue(isinstance(impact_rp, np.ndarray))
-        self.assertEqual(impact_rp.size, 2 * ent.exposures.value.size)
+        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 

@@ -18,15 +18,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test ImpactFuncSet class.
 """
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
-CURR_DIR = os.path.dirname(__file__)
-ENT_TEST_MAT = os.path.join(CURR_DIR, '../../exposures/test/data/demo_today.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -642,7 +641,7 @@ class TestWriter(unittest.TestCase):
         imp4.paa = np.ones(5)
         imp_funcs.append(imp4)
 
-        file_name = os.path.join(CURR_DIR, 'test_write.xlsx')
+        file_name = CONFIG.impact_funcs.test_data.dir().joinpath('test_write.xlsx')
         imp_funcs.write_excel(file_name)
 
         imp_res = ImpactFuncSet()

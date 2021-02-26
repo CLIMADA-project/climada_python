@@ -17,20 +17,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 import logging
 import time
-import os
 from sys import stdout
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from pandas_datareader import wb
 from scipy import ndimage as nd
 from scipy import stats
-import geopandas as gpd
 import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
 import gdal
 from cartopy.io import shapereader
 
+from climada import CONFIG
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
@@ -62,8 +62,7 @@ GPW_YEARS = [2020, 2015, 2010, 2005, 2000]
 
 NASA_RESOLUTION_DEG = (15 * ureg.arc_second).to(ureg.deg).magnitude
 
-WORLD_BANK_INC_GRP = \
-"http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
+WORLD_BANK_INC_GRP = CONFIG.exposures.litpop.resources.world_bank_inc_group.str()
 """Income group historical data from World bank."""
 
 DEF_RES_NASA_KM = 0.5
@@ -93,20 +92,6 @@ class LitPop(Exposures):
         ent.set_country(country_name)
         ent.plot()
     """
-
-    @property
-    def _constructor(self):
-        return LitPop
-
-    def clear(self):
-        """Appending the base class clear attribute to also delete attributes
-            which are only used here.
-        """
-        Exposures.clear(self)
-        try:
-            del self.country_data
-        except AttributeError:
-            pass
 
     def set_country(self, countries, **args):
         """Get LitPop based exposre for one country or multiple countries
@@ -251,7 +236,7 @@ class LitPop(Exposures):
                                            country_info[curr_country][3],
                                            country_info[curr_country][4])
             lp_cntry.append(self._set_one_country(country_info[curr_country],
-                                                  litpop_curr, lon, lat, curr_country))
+                                                  litpop_curr, lon, lat, curr_country).gdf)
             tag.description += ('LitPop for %s at %i as, year=%i, financial mode=%s, '
                                 'GPW-year=%i, BM-year=%i, exp=[%i, %i]'
                                 % (country_info[curr_country][1], resolution, reference_year,
@@ -259,16 +244,20 @@ class LitPop(Exposures):
                                    min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
                                    min(BM_YEARS, key=lambda x: abs(x - reference_year)),
                                    exponents[0], exponents[1]))
-        Exposures.__init__(self, gpd.GeoDataFrame(pd.concat(lp_cntry, ignore_index=True)),
-                           crs=DEF_CRS)
-        self.ref_year = reference_year
-        self.tag = tag
-        self.value_unit = 'USD'
+
+        Exposures.__init__(
+            self,
+            data=Exposures.concat(lp_cntry).gdf,
+            crs=DEF_CRS,
+            ref_year=reference_year,
+            tag=tag,
+            value_unit='USD'
+        )
         try:
             rows, cols, ras_trans = pts_to_raster_meta(
-                (self.longitude.min(), self.latitude.min(),
-                 self.longitude.max(), self.latitude.max()),
-                get_resolution(self.longitude, self.latitude))
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -299,17 +288,16 @@ class LitPop(Exposures):
             lat (array): latudinal coordinates
             curr_country: name or iso3 ID of country
         """
-        lp_ent = LitPop()
-        lp_ent['value'] = litpop_data.to_numpy()
-        lp_ent['latitude'] = lat
-        lp_ent['longitude'] = lon
+        lp_ent = LitPop(data={
+            'value': litpop_data.to_numpy(),
+            'latitude': lat,
+            'longitude': lon
+        })
         try:
-            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(cntry_info[1]).numeric)
+            lp_ent.gdf['region_id'] = int(iso_cntry.get(cntry_info[1]).numeric)
         except KeyError:
-            lp_ent['region_id'] = np.ones(lp_ent.value.shape, int) \
-                    * int(iso_cntry.get(curr_country).numeric)
-        lp_ent[INDICATOR_IF + DEF_HAZ_TYPE] = np.ones(lp_ent.value.size, int)
+            lp_ent.gdf['region_id'] = int(iso_cntry.get(curr_country).numeric)
+        lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
         return lp_ent
 
     def _append_additional_info(self, cntries_info):
@@ -336,21 +324,21 @@ class LitPop(Exposures):
         # one. Countries can be identified by their region id, hence this
         # can be implemented
         import matplotlib.colors as colors
-        if not self.value.sum() == 0:
+        if not self.gdf.value.sum() == 0:
             plt.figure()
 #            countr_shape = _get_country_shape(country_iso, 0)
-            countr_bbox = np.array((min(self.coord[:, 1]),
-                                    min(self.coord[:, 0]),
-                                    max(self.coord[:, 1]),
-                                    max(self.coord[:, 0])))
+            countr_bbox = np.array((min(self.gdf.coord[:, 1]),
+                                    min(self.gdf.coord[:, 0]),
+                                    max(self.gdf.coord[:, 1]),
+                                    max(self.gdf.coord[:, 0])))
             plt.gca().set_xlim(countr_bbox[0]
                                - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
                                + 0.1 * (countr_bbox[2] - countr_bbox[0]))
             plt.gca().set_ylim(countr_bbox[1]
                                - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
                                + 0.1 * (countr_bbox[3] - countr_bbox[1]))
-            plt.scatter(self.coord[:, 1], self.coord[:, 0],
-                        c=self.value, marker=',', s=3,
+            plt.scatter(self.gdf.coord[:, 1], self.gdf.coord[:, 0],
+                        c=self.gdf.value, marker=',', s=3,
                         norm=colors.LogNorm())
             plt.title('Logarithmic scale LitPop value')
             if hasattr(self, 'country_data') and\
@@ -364,7 +352,7 @@ class LitPop(Exposures):
             plt.show()
 
 def _get_litpop_box(cut_bbox, resolution, return_coords=0,
-                    reference_year=2016, exponents=[1, 1]):
+                    reference_year=2016, exponents=None):
     """
     PURPOSE:
         A function which retrieves and calculates the LitPop data within a
@@ -390,6 +378,8 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
             form (lon, lat) with the coordinates falling into the cut_bbox are
             return along with the litpop_data (see above).
     """
+    if exponents is None:
+        exponents = [1, 1]
 
     nightlights = _get_box_blackmarble(cut_bbox, reference_year=reference_year,
                                        resolution=resolution, return_coords=0)
@@ -409,7 +399,7 @@ def _get_litpop_box(cut_bbox, resolution, return_coords=0,
         return litpop_data, lon, lat
     return litpop_data
 
-def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
+def _LitPop_multiply(nightlights, gpw, exponents):
     """
     PURPOSE:
         Pixel-wise multiplication of lit (nightlights^exponents[0]) and pop
@@ -420,7 +410,7 @@ def _LitPop_multiply(nightlights, gpw, exponents=[1, 1]):
         nightlights (SparseArray): gridded nightlights data
         gpw (SparseArray): gridded population data
         exponents (list of two integers): exponents for nightlights and
-            population data, default = [1, 1]
+            population data
     OUTPUT:
         litpop_data (dataframe): gridded resulting LitPop
     """
@@ -1038,7 +1028,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
         LOGGER.error("invalid fin_mode")
 
 def _gsdp_read(country_iso3, admin1_shape_data,
-               look_folder=os.path.join(SYSTEM_DIR, 'GSDP')):
+               look_folder=SYSTEM_DIR.joinpath('GSDP')):
     """Retrieves the GSDP data for a certain country. It requires an
         excel file in a subfolder "GSDP" in climadas data folder (or in the
         specified folder). The excel file should bear the name
@@ -1105,10 +1095,10 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=1):
     else:
         try_ext.append('.xls')
         try_ext.append('.xlsx')
-    path_name = os.path.splitext(os.path.join(file_path, file_name))[0]
+    path_name = Path(file_path, file_name).stem
     for i in try_ext:
-        if os.path.isfile(os.path.join(file_path, path_name + i)) is True:
-            return os.path.join(file_path, path_name + i)
+        if Path(file_path, path_name + i).is_file():
+            return str(Path(file_path, path_name + i))
     return None
 
 def _compare_strings_nospecchars(str1, str2):
@@ -1203,10 +1193,7 @@ def _plot_admin1_shapes(adm0_a3, gray_val=str(0.3)):
 
 def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                  coords, resolution, adm1_scatter, conserve_cntrytotal=1,
-                 check_plot=1, masks_adm1=[], return_data=1):
-    # TODO: if a state/province has GSDP value, but no coordinates inside,
-#    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
-#    Potential fix: normalise the value in the end
+                 check_plot=1, masks_adm1=None, return_data=1):
     """Calculates the LitPop on admin1 level for provinces/states where such
         information is available (i.e. GDP is distributed on a subnational
         instead of a national level). Requires excel files in a subfolder
@@ -1240,6 +1227,9 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
             corresponds to the GDP multiplied by the GDP2Asset conversion
             factor.
     """
+# TODO: if a state/province has GSDP value, but no coordinates inside,
+#    the final total value is off (e.g. Basel Switzerland at 300 arcsec).
+#    Potential fix: normalise the value in the end
     gsdp_data = _gsdp_read(curr_country, admin1_info)
     litpop_data = _normalise_litpop(litpop_data)
     if gsdp_data is not None:
@@ -1479,8 +1469,8 @@ def read_bm_file(bm_path, filename):
         Additional info from which coordinates can be calculated.
     """
     try:
-        LOGGER.debug('Importing %s.', os.path.join(bm_path, filename))
-        curr_file = gdal.Open(os.path.join(bm_path, filename))
+        LOGGER.debug('Importing %s.', Path(bm_path, filename))
+        curr_file = gdal.Open(str(Path(bm_path, filename)))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1
@@ -1491,8 +1481,6 @@ def read_bm_file(bm_path, filename):
 
 def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
            **parameters):
-    """Potential TODO: put cutting before zooming (faster), but with expanding
-    bbox in order to preserve additional pixels for interpolation..."""
     """Reads data from NASA GeoTiff files and cuts out the data along a chosen
         bounding box. Call this after the functions
         nightlight.required_nl_files and nightlight.check_nl_local_file_exists
@@ -1539,6 +1527,9 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
         list with latitudinal infomation on the GPW data. Same
         dimensionality as tile_temp (only returned if return_coords=1)
     """
+    # Potential TODO: put cutting before zooming (faster), but with expanding
+    # bbox in order to preserve additional pixels for interpolation...
+
     bm_path = parameters.get('file_path', SYSTEM_DIR)
     resolution = parameters.get('resolution', 30)
     reference_year = parameters.get('reference_year', 30)
@@ -1555,8 +1546,8 @@ def get_bm(required_files=np.ones(np.count_nonzero(BM_FILENAMES),),
     file_count = 0
     zoom_factor = 15 / resolution  # Orignal resolution is 15 arc-seconds
     for num_i, _ in enumerate(BM_FILENAMES[::2]):
-        """Due to concat, we have to anlayse the tiles in pairs otherwise the
-        data is concatenated in the wrong order"""
+        # Due to concat, we have to anlayse the tiles in pairs otherwise the
+        # data is concatenated in the wrong order
         arr1 = [None] * 2  # Prepopulate list
         for j in range(0, 2):
             # Loop which cycles through the two tiles in each "column"
@@ -1877,19 +1868,17 @@ def exposure_set_admin1(exposure, res_arcsec):
         exposure: exposure instance with 2 extra columns: admin1 & admin1_ID
     """
 
-    exposure['admin1'] = pd.Series()
-    exposure['admin1_ID'] = pd.Series()
-    count = 0
-    for cntry in np.unique(exposure.region_id):
+    exposure.gdf['admin1'] = pd.Series()
+    exposure.gdf['admin1_ID'] = pd.Series()
+    for cntry in np.unique(exposure.gdf.region_id):
         _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
         for adm1_shp in admin1_info:
-            count = count + 1
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
             mask_adm1 = _mask_from_shape(
                 adm1_shp[0], resolution=res_arcsec,
-                points2check=list(zip(exposure.longitude, exposure.latitude)))
-            exposure.admin1_ID[mask_adm1] = adm1_shp[1][3]
-            exposure.admin1[mask_adm1] = adm1_shp[1]['name']
+                points2check=list(zip(exposure.gdf.longitude, exposure.gdf.latitude)))
+            exposure.gdf.admin1_ID[mask_adm1] = adm1_shp[1][3]
+            exposure.gdf.admin1[mask_adm1] = adm1_shp[1]['name']
     return exposure
 
 

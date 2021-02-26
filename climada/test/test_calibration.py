@@ -18,21 +18,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Calibration class.
 """
-import os
 import unittest
 import pandas as pd
 
+from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact
 from climada.engine.calibration_opt import calib_instance
 from climada.util.constants import ENT_DEMO_TODAY
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data/')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+HAZ_DIR = CONFIG.hazard.test_data.dir()
+HAZ_TEST_MAT = HAZ_DIR.joinpath('atl_prob_no_name.mat')
 
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
-
+DATA_FOLDER = CONFIG.test_data.dir()
 
 class TestCalib(unittest.TestCase):
     """Test engine calibration method."""
@@ -50,7 +49,7 @@ class TestCalib(unittest.TestCase):
 
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.tag.haz_type,
-                                             ent.exposures.if_TC.median())
+                                             ent.exposures.gdf.if_TC.median())
 
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)
