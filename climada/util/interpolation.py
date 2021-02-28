@@ -195,8 +195,9 @@ def interpolate_lines(gdf_lines, point_dist=5):
     
     Returns
     -------
-    gdf with individual Point per row, retaining all other column infos
-        belonging to its corresponding line
+    gdf_points with individual Point per row, retaining all other column infos
+        belonging to its corresponding line (incl. line length of original geom.
+        and multi-index referring to original indexing)
         
     See also
     --------
@@ -206,27 +207,24 @@ def interpolate_lines(gdf_lines, point_dist=5):
 
     if not isinstance(gdf_lines, gpd.GeoDataFrame):
         gdf_lines = gpd.read_file(gdf_lines)
-    
-    gdf_lines['length'] = dist_great_circle_allgeoms(gdf_lines)
         
-    gdf_lines.rename(columns={'geometry': 'geometry_line'}, inplace=True)
-   
+    gdf_points = gdf_lines.copy()
+    gdf_points['length'] = np.ones(len(gdf_points))*point_dist
+    gdf_points['length_full'] = dist_great_circle_allgeoms(gdf_points)
+
     # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
-    gdf_lines['distance_vector'] = gdf_lines.apply(
-        lambda row: np.linspace(0, 1, num=int(np.ceil(row.length/
-                                                      point_dist)+1)),
-        axis=1)
-    
+    gdf_points['distance_vector'] = gdf_points.apply(
+        lambda row: np.linspace(0, 1, num=int(np.ceil(row.length_full/
+                                                      row.length)+1)), axis=1)
+
     # create MultiPoints along the line for every position in distance_vector
-    gdf_lines['geometry'] = gdf_lines.apply(
+    gdf_points['geometry'] = gdf_points.apply(
         lambda row: MultiPoint(
-            [row.geometry_line.interpolate(dist, normalized=True) 
-             for dist in row.distance_vector]),
-        axis=1)
+            [row.geometry.interpolate(dist, normalized=True) 
+             for dist in row.distance_vector]), axis=1)
     
     # expand gdf from MultiPoint entries to single Points per row
-    return gdf_lines.explode().drop(['geometry_line', 'distance_vector', 'length'], 
-                                    axis=1)
+    return gdf_points.explode().drop(['distance_vector', 'length_full'], axis=1)
 
 def interpolate_polygons(gdf_poly, area_point):
     """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
@@ -260,16 +258,7 @@ def interpolate_polygons(gdf_poly, area_point):
                                      gdf_poly.geometry.bounds.maxx)/
                                  gdf_poly['degree_dist'])
     gdf_poly['height'] = np.floor(abs(gdf_poly.geometry.bounds.miny-
-                                      gdf_poly.geometry.bounds.maxy)/29476352551592, 6.130380600677628, 6.131...  POINT (6.51921 52.61313)
-  430289  [[[6.129476352551592, 6.130380600677628, 6.131...  POINT (6.52011 52.61313)
-  430290  [[[6.129476352551592, 6.130380600677628, 6.131...  POINT (6.52102 52.61313)
-
-[824461 rows x 2 columns]
-
-In [420]: gdf_poly.columns
-Out[420]: Index(['geometry', 'degree_dist', 'trans', 'width', 'height', ('lon', 'lat')], dtype='object')
-
-In [421]: 
+                                      gdf_poly.geometry.bounds.maxy)/
                                   gdf_poly['degree_dist'])
     
     # make grid for each polygon-bbox

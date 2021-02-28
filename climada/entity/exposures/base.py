@@ -38,7 +38,7 @@ from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
 import climada.util.coordinates as u_coord
-from climada.util.interpolation import interpol_index, interpolate_lines
+from climada.util.interpolation import interpol_index, interpolate_lines, interpolate_polygons
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -809,47 +809,3 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
         exposures.value_unit = DEF_VALUE_UNIT
 
     exposures.tag = Tag(file_name)
-
-def point_exposure_from_lines(gdf_lines, point_dist=5, value_method='fixed', metre_value=1):
-    """ Create a climada point exposure from a GeoDataframe with LineString 
-    geometries 
-    
-    Parameters
-    ----------
-    gdf_lines  : 
-    point_dist : 
-    value_method :
-    metre_value : 
-    
-    Returns
-    -------
-    exp
-    """
-    
-    gdf_points = interpolate_lines(gdf_lines, point_dist)
-    exp = Exposures(gdf_points)
-    if value_method == 'fixed':
-        exp['value'] = metre_value*point_dist
-    else:
-        LOGGER.warning("No other method for valuation yet implemented")
-    exp.set_lat_lon()
-    exp.check()
-    return exp
-
-def point_exposure_from_polygons(gdf_polygons, point_area=5, value_method='fixed', metre2_value=1):
-    """ Create a climada point exposure from a GeoDataframe with Polygon 
-    geometries 
-    
-    Parameters
-    ----------
-    gdf_polygons  : 
-    point_area : 
-    value_method :
-    metre2_value : 
-    
-    Returns
-    -------
-    exp
-    """
-    # TODO: implement!!
-    pass
