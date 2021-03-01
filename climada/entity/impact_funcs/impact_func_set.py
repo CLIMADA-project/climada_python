@@ -326,7 +326,7 @@ class ImpactFuncSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         self._fill_dfr(dfr, var_names)
 
@@ -365,7 +365,7 @@ class ImpactFuncSet():
 
         imp = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
 
         try:

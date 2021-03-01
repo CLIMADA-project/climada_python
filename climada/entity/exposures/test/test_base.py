@@ -177,9 +177,16 @@ class TestChecker(unittest.TestCase):
         self.assertIn('ref_year set to default value', cm.output[2])
         self.assertIn('value_unit set to default value', cm.output[3])
         self.assertIn('crs set to default value', cm.output[4])
-        # the following lines are from an iteration over a set, so that the order may change:
-        self.assertTrue(any(f'{var} not set' in o for o in cm.output[5:7])
-                        for var in ['geometry', 'cover'])
+        self.assertIn('cover not set', cm.output[5])
+        self.assertIn('geometry not set', cm.output[6])
+
+        self.assertTrue(expo.crs is not None)
+        self.assertTrue(expo.gdf.crs is not None)
+        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
+            expo2 = Exposures(expo.gdf, meta={'crs': 4230})
+            expo2.check()
+            self.assertEqual(expo.crs, expo2.crs)
+        self.assertTrue(any(['ignored and overwritten' in line for line in cm.output]))
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""

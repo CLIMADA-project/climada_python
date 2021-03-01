@@ -89,7 +89,7 @@ class Entity(object):
         """
         self.exposures = Exposures(pd.read_excel(file_name))
         self.exposures.tag = Tag()
-        self.exposures.tag.file_name = file_name
+        self.exposures.tag.file_name = str(file_name)
         self.exposures.tag.description = description
 
         self.disc_rates = DiscRates()
