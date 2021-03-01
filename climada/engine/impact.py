@@ -913,7 +913,7 @@ class Impact():
         """
         return Exposures(
             data={
-                'value': self.imp_mat.toarray()[event_id - 1, :],
+                'value': self.imp_mat[event_id - 1].toarray().ravel(),
                 'latitude': self.coord_exp[:, 0],
                 'longitude': self.coord_exp[:, 1],
             },
