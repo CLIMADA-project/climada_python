@@ -926,7 +926,7 @@ class Centroids():
         self.clear()
         crs = DEF_CRS
         if data.get('crs'):
-            crs = to_crs_user_input(data.get('crs')[0])
+            crs = u_coord.to_crs_user_input(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
             self.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
         elif data.get('latitude') and data.get('latitude').size:
