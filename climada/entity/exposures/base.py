@@ -53,7 +53,7 @@ DEF_REF_YEAR = 2018
 """Default reference year"""
 
 DEF_VALUE_UNIT = 'USD'
-"""Default reference year"""
+"""Default value unit"""
 
 DEF_VAR_MAT = {'sup_field_name': 'entity',
                'field_name': 'assets',
