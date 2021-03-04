@@ -21,6 +21,7 @@ Test tc_surge_bathtub module
 
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 import rasterio
@@ -52,13 +53,10 @@ class tmp_artifical_topo(object):
         centroids.set_dist_coast(signed=True, precomputed=True)
         self.dist_coast = centroids.dist_coast
 
-
     def __enter__(self):
         """Write artifical elevation data to a temporary raster file and provide path as string."""
         elevation = -self.dist_coast / 168
         elevation = np.fmax(-1, elevation).reshape(self.shape)
-        self.tmpfile = tempfile.NamedTemporaryFile()
-        topo_path = self.tmpfile.name
         dst_meta = {
             'driver': 'GTiff',
             'compress': 'deflate',
@@ -70,14 +68,19 @@ class tmp_artifical_topo(object):
             'crs': 'epsg:4326',
             'nodata': -32767.0,
         }
-        with rasterio.open(topo_path, 'w', **dst_meta) as dst:
-            dst.write_band(1, elevation)
-        return topo_path
 
+        # In Windows, unlike Unix, the temporary file cannot be opened before it is closed
+        # Therefore it is closed right after creation and only the path/name is kept.
+        tmpfile = tempfile.NamedTemporaryFile()
+        self.topo_path = tmpfile.name
+        tmpfile.close()
+        with rasterio.open(self.topo_path, 'w', **dst_meta) as dst:
+            dst.write_band(1, elevation)
+        return self.topo_path
 
     def __exit__(self, *args, **kwargs):
-        """Close and remove temporary raster file."""
-        self.tmpfile.close()
+        """Remove temporary raster file."""
+        Path(self.topo_path).unlink()
 
 
 class TestTCSurgeBathtub(unittest.TestCase):
