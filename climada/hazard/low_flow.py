@@ -800,8 +800,8 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
             grid is masked out. e.g. ('mean', 1.)
 
     Returns:
-        p_grid (xarray): grid with dis of given percentile (1-timestep)
-        mean_grid (xarray): grid with mean(dis)
+        p_grid (xarray.Dataset): grid with dis of given percentile (1-timestep)
+        mean_grid (xarray.Dataset): grid with mean(dis)
         """
     LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i',
                 percentile, yearrange_ref[0], yearrange_ref[1])
