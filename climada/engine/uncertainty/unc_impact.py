@@ -34,9 +34,6 @@ from climada.util.config import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 
-# Future planed features:
-# Nice plots
-
 class UncImpact(Uncertainty):
     """
     Impact uncertainty analysis class
@@ -129,7 +126,7 @@ class UncImpact(Uncertainty):
         one_sample = self.sample.iloc[0:1].iterrows()
         imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+         eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start) 
         est_com_time = self.est_comp_time(elapsed_time, pool)
         LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
@@ -153,7 +150,7 @@ class UncImpact(Uncertainty):
         logger_exp.setLevel('ERROR')
         
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+         eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         
         logger_imp.setLevel(CONFIG.log_level.str())
         logger_impf.setLevel(CONFIG.log_level.str())
@@ -167,6 +164,8 @@ class UncImpact(Uncertainty):
                                     columns=['rp' + str(n) for n in rp])
         self.metrics['eai_exp'] =  pd.DataFrame(eai_exp_list)
         self.metrics['at_event'] = pd.DataFrame(at_event_list)
+        self.metrics['tot_value'] = pd.DataFrame(tot_value_list,
+                                                 columns = ['tot_value'])
         self.check()
         
         return None
@@ -215,7 +214,7 @@ class UncImpact(Uncertainty):
         else:
             at_event = np.array([])
 
-        return [imp.aai_agg, freq_curve, eai_exp, at_event]
+        return [imp.aai_agg, freq_curve, eai_exp, at_event, imp.tot_value]
 
 
     def plot_rp_distribution(self):
