@@ -281,6 +281,36 @@ class TestUncertainty(unittest.TestCase):
                 np.array([0.66666667, 1.33333333])
                 )
             )
+        
+    def test_calc_sensitivty_XY_pass(self):
+        
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        sample = pd.DataFrame({'x_exp': [1, 2, 3, 4],
+                               'x_haz': [0.1, 0.2, 0.3, 0.4]})
+        metrics = {'rp': pd.DataFrame({'rp100': [9.0, 10.0, 11.0, 12.0], 
+                                       'rp250': [100.0, 110.0, 120.0, 130.0]
+                                       }
+                                      )
+                   }
+
+        unc = Uncertainty(unc_vars = {'exp': exp_unc, 'haz': haz_unc},
+                          sample = sample,
+                          metrics = metrics)
+
+        sens = unc.calc_sensitivity(
+            salib_method = 'rbd_fast',
+            method_kwargs = {'M': 8}
+            )
+        self.assertSetEqual(set(sens.keys()), {'rp'})
+        self.assertSetEqual(set(sens['rp'].keys()), {'rp100', 'rp250'})
+        self.assertSetEqual(set(sens['rp']['rp100'].keys()), {'S1', 'names'})        
+        self.assertTrue(np.allclose(
+                sens['rp']['rp100']['S1'],
+                np.array([1.0, 1.0])
+                )
+            )
+        
+        
     def test_plot_sensitivity(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
@@ -296,6 +326,13 @@ class TestUncertainty(unittest.TestCase):
 
         unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
         unc.plot_sensitivity()
+        
+        unc.calc_sensitivity(
+            salib_method = 'rbd_fast',
+            method_kwargs = {'M': 8}
+            )
+        unc.plot_sensitivity()
+        
     
     def test_plot_distribution(self):
         

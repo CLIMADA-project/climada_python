@@ -457,6 +457,11 @@ class Uncertainty():
                        ),
             salib_method
             )
+        
+        #Certaint Salib method required model input (X) and output (Y), others
+        #need only ouput (Y)
+        salib_kwargs = method.analyze.__code__.co_varnames
+        X = self.sample.to_numpy() if 'X' in salib_kwargs else None
 
         if method_kwargs is None: method_kwargs = {} 
         sensitivity_dict = {}
@@ -464,7 +469,11 @@ class Uncertainty():
             sensitivity_dict[name] = {}
             for metric in df_metric:
                 Y = df_metric[metric].to_numpy()
-                sensitivity_index = method.analyze(self.problem, Y,
+                if X is not None:
+                    sensitivity_index = method.analyze(self.problem, X, Y,
+                                                            **method_kwargs)
+                else:
+                    sensitivity_index = method.analyze(self.problem, Y,
                                                             **method_kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
         
@@ -583,21 +592,23 @@ class Uncertainty():
 
 
    
-    def plot_sensitivity(self, salib_si='ST', metric_list=None):
+    def plot_sensitivity(self, salib_si='S1', metric_list=None):
         """
         Plot the first order sensitivity indices of the chosen metric.
 
         Parameters
         ----------
         salib_si: string, optional
-            The sensitivity index to plot (see SALib option)
+            The first order sensitivity index to plot (see SALib option)
             https://salib.readthedocs.io/en/latest/basics.html
-            Possible choices: "S1", "ST", "S2" (only if calc_second_order=True)
-            The default is ST
+            Possible choices: "S1", "ST" 
+            The default is S1
             
         metric_list: list of strings, optional
             List of metrics to plot the sensitivity
-            The default is ['aai_agg', 'freq_curve', ]
+            The default is ['aai_agg', 'freq_curve', 'tot_climate_risk', 
+                           'benefit', 'cost_ben_ratio', 'imp_meas_present',
+                           'imp_meas_future', 'tot_value']
 
         Raises
         ------
@@ -612,13 +623,13 @@ class Uncertainty():
         """
 
         if not self.metrics:
-            raise ValueError("No sensitivity present for this emtrics. "+
+            raise ValueError("No sensitivity present for this metrics. "
                     "Please run a sensitivity analysis first.")
             
         if metric_list is None:
-            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
+            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk', 
                            'benefit', 'cost_ben_ratio', 'imp_meas_present',
-                           'imp_meas_future']
+                           'imp_meas_future', 'tot_value']
             metric_list = list(set(metric_list) & set(self.metrics.keys()))
             
             
@@ -640,16 +651,22 @@ class Uncertainty():
                 continue
             si_dict = self.sensitivity[metric]
             S = {label: si[salib_si] for label, si in si_dict.items()}
-            S_conf = {
-                label: si[salib_si + '_conf']
-                for label, si in si_dict.items()
-                }
             df_S = pd.DataFrame(S)
-            df_S_conf = pd.DataFrame(S_conf)
             if df_S.empty:
                 ax.remove()
                 continue
-            df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
+            try:
+                S_conf = {
+                    label: si[salib_si + '_conf']
+                    for label, si in si_dict.items()
+                    }
+            except KeyError:
+                S_conf = []
+            df_S_conf = pd.DataFrame(S_conf)
+            if df_S_conf.empty:
+                df_S.plot(ax=ax, kind='bar')
+            else:
+                df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title('S1 - ' + metric)
         plt.tight_layout()
