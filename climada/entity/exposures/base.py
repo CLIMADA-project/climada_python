@@ -153,7 +153,7 @@ class Exposures():
             self.tag = self.meta.get('tag', Tag())
             if 'tag' not in self.meta:
                 LOGGER.info('tag set to default value %s', self.tag)
-        
+
         # reference year
         try:
             self.ref_year = kwargs.pop('ref_year')
@@ -161,7 +161,7 @@ class Exposures():
             self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR)
             if 'ref_year' not in self.meta:
                 LOGGER.info('ref_year set to default value %s', self.ref_year)
-        
+
         # value unit
         try:
             self.value_unit = kwargs.pop('value_unit')
@@ -491,11 +491,11 @@ class Exposures():
             raster = raster.reshape((meta['height'], meta['width']))
         # save tiff
         if save_tiff is not None:
-            ras_tiff = rasterio.open(save_tiff, 'w', driver='GTiff',
-                                     height=meta['height'], width=meta['width'], count=1,
-                                     dtype=np.float32, crs=self.crs, transform=meta['transform'])
-            ras_tiff.write(raster.astype(np.float32), 1)
-            ras_tiff.close()
+            with rasterio.open(save_tiff, 'w', driver='GTiff',
+                               height=meta['height'], width=meta['width'], count=1,
+                               dtype=np.float32, crs=self.crs, transform=meta['transform']
+                              ) as ras_tiff:
+                ras_tiff.write(raster.astype(np.float32), 1)
         # make plot
         proj_data, _ = u_plot.get_transformation(self.crs)
         proj_plot = proj_data
