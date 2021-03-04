@@ -116,12 +116,22 @@ class UncVar():
             The figure and axis handle of the plot.
 
         """
+        # zip_longest(flat_axes, cols, fillvalue=None):
 
         nplots = len(self.distr_dict)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
-        axis = np.asarray(axis)
-        for ax, (param_name, distr) in zip(axis.ravel(), self.distr_dict.items()):
+        if nplots > 1:
+            flat_axes = axis.flatten()
+        else:
+            flat_axes = [axis]
+        for ax, name_distr in zip_longest(flat_axes,
+                                    self.distr_dict.items(), 
+                                    fillvalue=None):
+            if name_distr is None:
+                ax.remove()
+                continue
+            (param_name, distr) = name_distr
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
