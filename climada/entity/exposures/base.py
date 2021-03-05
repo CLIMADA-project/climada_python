@@ -142,6 +142,10 @@ class Exposures():
         # meta data
         try:
             self.meta = kwargs.pop('meta')
+            if self.meta is None:
+                self.meta = {}
+            if not isinstance(self.meta, dict):
+                raise ValueError("meta must be a dictionary")
         except KeyError:
             self.meta = {}
             LOGGER.info('meta set to default value %s', self.meta)
