@@ -26,9 +26,9 @@ import unittest
 from climada.entity import ImpactFunc, ImpactFuncSet
 import numpy as np
 import pandas as pd
-from climada.entity import Entity, Exposures
+from climada.entity.entity_def import Entity
+from climada.entity import Exposures
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
-from climada.engine import CostBenefit
 from climada.hazard import Hazard
 from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit, Uncertainty
 import scipy as sp
@@ -51,7 +51,7 @@ def impf_dem(x_impf=1):
 def exp_dem(x_exp=1):
     exp = Exposures()
     exp.read_hdf5(EXP_DEMO_H5)
-    exp.value *= x_exp
+    exp.gdf.value *= x_exp
     exp.check()
     return exp
 
