@@ -321,3 +321,22 @@ CONFIG = Config.from_dict(_fetch_conf([
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
+
+
+class log_level:
+    """Context manager that sets ALL loggers to a given level."""
+
+    def __init__(self, level):
+        self.level = level
+        self.loggers = [
+            logging.getLogger(name)
+            for name in logging.root.manager.loggerDict
+            ]
+
+    def __enter__(self):
+        for logger in self.loggers:
+            logger.setLevel(self.level)
+
+    def __exit__(self, exception_type, exception, traceback):
+        for logger in self.loggers:
+            logger.setLevel(CONFIG.log_level.str())
