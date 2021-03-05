@@ -481,7 +481,7 @@ class Exposures():
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
+        if self.meta and self.meta.get('height', 0) * self.meta.get('height', 0) == len(self.gdf):
             raster = self.gdf.value.values.reshape((self.meta['height'],
                                                     self.meta['width']))
             # check raster starts by upper left corner
