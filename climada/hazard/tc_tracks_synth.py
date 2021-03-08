@@ -204,6 +204,21 @@ def calc_perturbed_trajectories(tracks,
                                  max_dspeed_rel, max_ddirection, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
+    cutoff_track_ids_cat = [x[1] for x in new_ens]
+    cutoff_track_ids_cat = sum(cutoff_track_ids_cat, [])
+    cutoff_track_ids_ok = [x[2] for x in new_ens]
+    cutoff_track_ids_ok = sum(cutoff_track_ids_ok, [])
+    if len(cutoff_track_ids_cat) > 0:
+        LOGGER.warning('The following generated synthetic tracks moved beyond '
+                        'the range of [-70, 70] degrees latitude. Cut out '
+                        'at TC category >1: %s.',
+                        ', '.join(cutoff_track_ids_cat))
+    if len(cutoff_track_ids_ok) > 0:
+        LOGGER.info('The following generated synthetic tracks moved beyond '
+                    'the range of [-70, 70] degrees latitude. Cut out '
+                    'at TC category <= 1: %s.',
+                    ', '.join(cutoff_track_ids_ok))
+    new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
 
     if decay:
@@ -265,6 +280,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     [dt] = np.unique(track['time_step'])
 
     ens_track.append(track)
+    cutoff_track_ids_ok = []
+    cutoff_track_ids_cat = []
     for i_ens in range(nb_synth_tracks):
         i_track = track.copy(True)
 
@@ -310,18 +327,12 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
                 ss_scale_end = np.where(max_wind_end < scale_thresholds)[0][0] - 1
                 # TC category at ending point should not be higher than 1
+                cutoff_txt = i_track.attrs['name'] + '_gen' + str(i_ens + 1)
+                cutoff_txt = cutoff_txt + ' (%s)' % climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
                 if ss_scale_end > 1:
-                    LOGGER.warning('The generated synthetic track %s moved beyond '
-                                   'the range of [-70, 70] degrees latitude. Cut out '
-                                   'at TC category %s',
-                                   i_track.attrs['name'] + '_gen' + str(i_ens + 1),
-                                   climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end])
+                    cutoff_track_ids_cat = cutoff_track_ids_cat + [cutoff_txt]
                 else:
-                    LOGGER.info('The generated synthetic track %s moved beyond '
-                                'the range of [-70, 70] degrees latitude. Cut out '
-                                'at TC category %s',
-                                i_track.attrs['name'] + '_gen' + str(i_ens + 1),
-                                climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end])
+                    cutoff_track_ids_ok = cutoff_track_ids_ok + [cutoff_txt]
                 break
 
         i_track.lon.values = new_lon
@@ -334,7 +345,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
 
         ens_track.append(i_track)
 
-    return ens_track
+    return ens_track, cutoff_track_ids_cat, cutoff_track_ids_ok
 
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
