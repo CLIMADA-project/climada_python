@@ -43,18 +43,17 @@ class TestIntegr(unittest.TestCase):
         bbox = [-5, 42, 16, 55]
         haz = RelativeCropyield()
         haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
-                                ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
-                                soc='2005soc', co2='co2', crop='whe', irr='noirr',
-                                fn_str_var=FN_STR_DEMO)
+                                   ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
+                                   soc='2005soc', co2='co2', crop='whe', irr='noirr',
+                                   fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(yearrange_mean=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
 
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
-                                              bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
-
+                                   bbox=bbox, yearrange=(2001, 2005),
+                                   scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
         exp.assign_centroids(haz, threshold=20)
 
@@ -65,9 +64,11 @@ class TestIntegr(unittest.TestCase):
         if_cp.check()
 
         impact = Impact()
-        impact.calc(exp.loc[exp.region_id == 276], if_cp, haz.select(['2002']), save_mat=True)
+        reg_sel = exp.copy()
+        reg_sel.gdf = reg_sel.gdf[reg_sel.gdf.region_id == 276]
+        impact.calc(reg_sel, if_cp, haz.select(['2002']), save_mat=True)
 
-        exp_manual = exp.value.loc[exp.region_id == 276].values
+        exp_manual = reg_sel.gdf.value
         impact_manual = haz.select(event_names=['2002'], reg_id=276).intensity.multiply(exp_manual)
         dif = (impact_manual - impact.imp_mat).data
 
@@ -75,10 +76,10 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual(haz.size, 5)
         self.assertEqual(haz.centroids.size, 1092)
         self.assertAlmostEqual(haz.intensity.mean(), -2.0489097e-08)
-        self.assertAlmostEqual(exp.value.max(), 53074789.755290434)
-        self.assertEqual(exp.latitude.values.size, 1092)
-        self.assertAlmostEqual(exp.value[3], 0.0)
-        self.assertAlmostEqual(exp.value[1077], 405026.6857207429)
+        self.assertAlmostEqual(exp.gdf.value.max(), 53074789.755290434)
+        self.assertEqual(exp.gdf.latitude.values.size, 1092)
+        self.assertAlmostEqual(exp.gdf.value[3], 0.0)
+        self.assertAlmostEqual(exp.gdf.value[1077], 405026.6857207429)
         self.assertAlmostEqual(impact.imp_mat.data[3], -176102.5359452465 )
         self.assertEqual(len(dif), 0)
 
@@ -113,7 +114,7 @@ class TestIntegr(unittest.TestCase):
         exp_nan.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=[0, 42, 10, 52], yearrange=(2001, 2005),
                                               scenario='flexible', unit='t/y', crop='whe', irr='firr')
-        exp_nan.value[exp_nan.value==0] = np.nan
+        exp_nan.gdf.value[exp_nan.gdf.value==0] = np.nan
         exp_nan.assign_centroids(haz, threshold=20)
 
         impact_nan = Impact()

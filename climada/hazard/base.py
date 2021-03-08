@@ -481,7 +481,7 @@ class Hazard():
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             data = u_hdf5.read(file_name)
@@ -1024,9 +1024,9 @@ class Hazard():
             if var_name == 'centroids':
                 self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
-                self.tag.haz_type = hf_data.get('haz_type')[0]
-                self.tag.file_name = hf_data.get('file_name')[0]
-                self.tag.description = hf_data.get('description')[0]
+                self.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
+                self.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
+                self.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
@@ -1039,11 +1039,13 @@ class Hazard():
                                                                hf_csr['indptr'][:]),
                                                               hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
-                setattr(self, var_name, hf_data.get(var_name)[0])
+                setattr(self, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
             elif isinstance(var_val, list):
-                setattr(self, var_name, np.array(hf_data.get(var_name)).tolist())
+                var_value = [x for x in map(u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
+                setattr(self, var_name, var_value)
             else:
                 setattr(self, var_name, hf_data.get(var_name))
+            
         hf_data.close()
 
     def concatenate(self, haz_src, append=False):

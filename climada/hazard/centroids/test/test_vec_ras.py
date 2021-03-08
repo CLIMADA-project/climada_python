@@ -18,13 +18,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test CentroidsVector and CentroidsRaster classes.
 """
-import os
 import unittest
 
 from cartopy.io import shapereader
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
+from pyproj.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
@@ -632,9 +631,9 @@ class TestReader(unittest.TestCase):
         centr = Centroids()
         inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertEqual(centr.geometry.size, centr.lat.size)
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertAlmostEqual(centr.lon[0], 12.453386544971766)
         self.assertAlmostEqual(centr.lon[-1], 114.18306345846304)
         self.assertAlmostEqual(centr.lat[0], 41.903282179960115)
@@ -730,6 +729,27 @@ class TestCentroidsFuncs(unittest.TestCase):
         self.assertEqual(fil_centr.lon[0], VEC_LON[100])
         self.assertEqual(fil_centr.lon[1], VEC_LON[200])
         self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
+
+    def test_select_extent_pass(self):
+        """Test select extent"""
+        centr = Centroids()
+        centr.set_lat_lon(np.array([-5, -3, 0, 3, 5]),
+                          np.array([-180, -175, -170, 170, 175]))
+        centr.check()
+        centr.region_id = np.zeros(len(centr.lat))
+        ext_centr = centr.select(extent=[-175, -170, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-175, -170]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-3, 0]))
+
+        # Cross antimeridian, version 1
+        ext_centr = centr.select(extent=[170, -175, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
+
+        # Cross antimeridian, version 2
+        ext_centr = centr.select(extent=[170, 185, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
 
 # Execute Tests
 if __name__ == "__main__":

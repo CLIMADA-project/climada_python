@@ -739,7 +739,7 @@ class TestCalc(unittest.TestCase):
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.exposures.gdf.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         entity.exposures.ref_year = 2018
 

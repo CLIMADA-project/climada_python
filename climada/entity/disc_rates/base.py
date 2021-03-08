@@ -197,7 +197,7 @@ class DiscRates():
         """
         disc = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             disc = disc[var_names['sup_field_name']]
@@ -223,7 +223,7 @@ class DiscRates():
         """
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             self.years = dfr[var_names['col_name']['year']].values. \
