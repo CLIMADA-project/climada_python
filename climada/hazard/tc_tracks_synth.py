@@ -334,6 +334,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 else:
                     cutoff_track_ids_ok = cutoff_track_ids_ok + [cutoff_txt]
                 break
+        # make sure longitude values are within (-180, 180)
+        climada.util.coordinates.lon_normalize(new_lon, center=0.0)
 
         i_track.lon.values = new_lon
         i_track.lat.values = new_lat
