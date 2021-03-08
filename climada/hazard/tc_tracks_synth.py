@@ -153,22 +153,13 @@ def calc_perturbed_trajectories(tracks,
         Default: True.
     """
     
-    # Remove tracks with a single point
-    single_point_ids = [track.attrs['sid'] for track in tracks.data if track.time.size < 2]
-    if len(single_point_ids) > 0:
-        LOGGER.info('%s storm events are discarded because they consist of a '
-                    'single point: %s.', len(single_point_ids),
-                    ", ".join(single_point_ids))
-        tracks.data = [track for track in tracks.data if track.time.size >= 2]
-
-    
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     if seed >= 0:
         np.random.seed(seed)
 
     # ensure tracks have constant time steps
-    time_step_h = np.unique([np.unique(x['time_step']) for x in tracks.data])
+    time_step_h = np.unique([np.unique(x['time_step']) for x in tracks.data if x.time.size > 1])
     if not np.allclose(time_step_h, time_step_h[0]):
         LOGGER.error('Tracks have different temporal resolution. '
                      'Please ensure constant time steps by applying equal_timestep beforehand')
@@ -189,6 +180,7 @@ def calc_perturbed_trajectories(tracks,
                                                          autocorr_ddirection, time_step_h),
                                       _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
                                                          autocorr_dspeed, time_step_h)))
+                      if track.time.size > 1 else np.random.uniform(size=nb_synth_tracks * 2)
                       for track in tracks.data]
 
     if tracks.pool:
