@@ -72,7 +72,7 @@ def mapping_grid2flattened(col, row, matrix_shape):
     Parameters
     ----------
     col : int
-        Column Index of an entry in the original matri
+        Column Index of an entry in the original matrix
     row : int
         Row index of an entry in the original matrix
     Returns
