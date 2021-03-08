@@ -1126,6 +1126,9 @@ class TCTracks():
         ----------
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        legend : bool, optional
+            whether to display a legend of Tropical Cyclone categories.
+            Default: True.
         kwargs : optional
             arguments for LineCollection matplotlib, e.g. alpha=0.5
 
