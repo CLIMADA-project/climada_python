@@ -49,8 +49,7 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     xmin: float
         coords top left corner of raster file - x
     res: float or tuple
-        resolution of raster file. Float if x and y are the same, else tuple
-        with (res_x, res_y)
+        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
     
     Returns
     ------- 
@@ -293,4 +292,3 @@ class Landslide(Hazard):
             self.plot_fraction(0)
 
         return self
-
