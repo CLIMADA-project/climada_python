@@ -94,8 +94,8 @@ def sample_events_from_probs(prob_matrix, n_years):
     Parameters
     ----------
     prob_matrix : scipy.sparse.csr matrix
-        matrix where each entry has an annual probability of occurrence of 
-        an event [0,1]
+        matrix where each entry has an annual probability [0,1] of occurrence of 
+        an event
     n_years : int
         the timespan of the probabilistic simulation in years
 
