@@ -39,9 +39,9 @@ def calc_perturbed_trajectories(tracks,
                                 nb_synth_tracks=9,
                                 max_shift_ini=0.75,
                                 max_dspeed_rel=0.3,
-                                max_ddirection=np.pi / 180,
+                                max_ddirection=np.pi / 360,
                                 autocorr_dspeed=0.85,
-                                autocorr_ddirection=0.85,
+                                autocorr_ddirection=0.5,
                                 seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
                                 decay=True):
     """
@@ -72,6 +72,10 @@ def calc_perturbed_trajectories(tracks,
     control how these perturbations persist in time and hence the amplitude of the
     perturbations towards the end of the track.
 
+    Note that the default parameter value have not been thoroughly calibrated, but they lead
+    to a reasonable distribution of tracks and their intensities over the North Atlantic
+    basin.
+
     The object is mutated in-place.
 
     Parameters
@@ -88,13 +92,13 @@ def calc_perturbed_trajectories(tracks,
         (e.g., 0.2 for +/-20%). Default: 0.3.
     max_ddirection : float, optional
         Amplitude of track direction (bearing angle) perturbation
-        per hour, in radians. Default: pi/180.
+        per hour, in radians. Default: pi/360.
     autocorr_dspeed : float, optional
         Temporal autocorrelation in translation speed perturbation
         at a lag of 1 hour. Default: 0.85.
     autocorr_ddirection : float, optional
         Temporal autocorrelation of translational direction perturbation
-        at a lag of 1 hour. Default: 0.85.
+        at a lag of 1 hour. Default: 0.5.
     seed : int, optional
         Random number generator seed for replicability of random walk.
         Put negative value if you don't want to use it. Default: configuration file.
