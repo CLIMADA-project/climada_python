@@ -234,7 +234,7 @@ def calc_perturbed_trajectories(tracks,
                 except ValueError:
                     LOGGER.info('No land decay coefficients could be applied.')
             else:
-                LOGGER.error('No historical tracks found. Historical'
+               raise ValueError('No historical tracks found. Historical'
                              'tracks are needed for land decay calibration'
                              'if use_global_decay_params=True.')
 
