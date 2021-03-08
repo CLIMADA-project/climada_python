@@ -35,16 +35,16 @@ import climada.hazard.tc_tracks
 LOGGER = logging.getLogger(__name__)
 
 LANDFALL_DECAY_V = {
-    2: 0.0017219917301371703,
-    6: 0.002595834561794121,
-    1: 0.00012285815226960615,
-    5: 0.002644866334692554,
-    3: 0.002299182035879582,
-    4: 0.0025887346457309896,
-    7: 0.00397813058576188
+    -1: 0.00012285815226960615,
+    0: 0.0017219917301371703,
+    1: 0.002299182035879582,
+    2: 0.0025887346457309896,
+    3: 0.002644866334692554,
+    4: 0.002595834561794121,
+    5: 0.00397813058576188
 }
 """Global landfall decay parameters for wind speed by TC category.
-Keys are TC categories with 1='TD', 2='TS', 3='Cat 1', ..., 7='Cat 5'.
+Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is v_rel as derived from:
 tracks = TCTracks()
 tracks.read_ibtracs_netcdf(year_range=(1980,2019),
@@ -57,16 +57,16 @@ v_rel, p_rel = _calc_land_decay(tracks.data, land_geom,
                                 pool=tracks.pool)"""
 
 LANDFALL_DECAY_P = {
-    2: (1.0194994980230085, 0.0030702654707023256),
-    6: (1.0825529416232729, 0.004157255859762298),
-    1: (1.0089315640011636, 0.0021694084866327895),
-    5: (1.0652603933624192, 0.0037557812788230143),
-    3: (1.0365767270424973, 0.0035347637567456768),
-    4: (1.0467348458061756, 0.004042906726642808),
-    7: (1.1092059075832368, 0.005485547796536179)
+    -1: (1.0089315640011636, 0.0021694084866327895),
+    0: (1.0194994980230085, 0.0030702654707023256),
+    1: (1.0365767270424973, 0.0035347637567456768),
+    2: (1.0467348458061756, 0.004042906726642808),
+    3: (1.0652603933624192, 0.0037557812788230143),
+    4: (1.0825529416232729, 0.004157255859762298),
+    5: (1.1092059075832368, 0.005485547796536179)
 }
 """Global landfall decay parameters for pressure by TC category.
-Keys are TC categories with 1='TD', 2='TS', 3='Cat 1', ..., 7='Cat 5'.
+Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is p_rel as derived from:
 tracks = TCTracks()
 tracks.read_ibtracs_netcdf(year_range=(1980,2019),
@@ -318,8 +318,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 last_idx = i + 2
                 # end the track here
                 max_wind_end = i_track.max_sustained_wind.values[last_idx]
-                scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-                ss_scale_end = np.where(max_wind_end < scale_thresholds)[0][0] - 1
+                ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
+                                                                     i_track.max_sustained_wind_unit)
                 # TC category at ending point should not be higher than 1
                 cutoff_txt = i_track.attrs['name'] + '_gen' + str(i_ens + 1)
                 cutoff_txt = cutoff_txt + ' (%s)' % climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
@@ -673,8 +673,8 @@ def _decay_values(track, land_geom, s_rel):
     if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
         for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
             v_landfall = track.max_sustained_wind[sea_land - 1].values
-            scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-            ss_scale_idx = np.where(v_landfall < scale_thresholds)[0][0] + 1
+            ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
+                                                             track.max_sustained_wind_unit)
 
             v_land = track.max_sustained_wind[sea_land - 1:land_sea].values
             if v_land[0] > 0:
@@ -690,17 +690,17 @@ def _decay_values(track, land_geom, s_rel):
                 track, p_landfall, land_sea - 1, s_rel)
             p_land_s = len(p_land) * [p_land_s]
 
-            if ss_scale_idx not in v_lf:
-                v_lf[ss_scale_idx] = array.array('f', v_land)
-                p_lf[ss_scale_idx] = (array.array('f', p_land_s),
+            if ss_scale not in v_lf:
+                v_lf[ss_scale] = array.array('f', v_land)
+                p_lf[ss_scale] = (array.array('f', p_land_s),
                                       array.array('f', p_land))
-                x_val[ss_scale_idx] = array.array('f',
+                x_val[ss_scale] = array.array('f',
                                                   track.dist_since_lf[sea_land:land_sea])
             else:
-                v_lf[ss_scale_idx].extend(v_land)
-                p_lf[ss_scale_idx][0].extend(p_land_s)
-                p_lf[ss_scale_idx][1].extend(p_land)
-                x_val[ss_scale_idx].extend(track.dist_since_lf[sea_land:land_sea])
+                v_lf[ss_scale].extend(v_land)
+                p_lf[ss_scale][0].extend(p_land_s)
+                p_lf[ss_scale][1].extend(p_land)
+                x_val[ss_scale].extend(track.dist_since_lf[sea_land:land_sea])
     return v_lf, p_lf, x_val
 
 
@@ -753,13 +753,13 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     if not scale_fill.size:
         LOGGER.info('No historical track with landfall.')
         return v_rel, p_rel
-    for ss_scale in range(1, len(climada.hazard.tc_tracks.SAFFIR_SIM_CAT) + 1):
+    for ss_scale in climada.hazard.tc_tracks.CAT_NAMES.keys():
         if ss_scale not in p_rel:
             close_scale = scale_fill[np.argmin(np.abs(scale_fill - ss_scale))]
             LOGGER.debug('No historical track of category %s with landfall. '
                          'Decay parameters from category %s taken.',
-                         climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2],
-                         climada.hazard.tc_tracks.CAT_NAMES[close_scale - 2])
+                         climada.hazard.tc_tracks.CAT_NAMES[ss_scale],
+                         climada.hazard.tc_tracks.CAT_NAMES[close_scale])
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
         elif v_rel[ss_scale] < 0:
@@ -770,7 +770,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
                              'Please use a larger number of tracks or '
                              'use global paramaters by setting '
                              '`use_global_decay_params` to True',
-                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
+                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale])
         elif p_rel[ss_scale][0] < 0 or p_rel[ss_scale][1] < 0:
             raise ValueError('The calibration of landfall decay for central '
                              'pressure resulted in a pressure decrease for '
@@ -779,7 +779,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
                              'Please use a larger number of tracks or '
                              'use global paramaters by setting '
                              '`use_global_decay_params` to True',
-                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale - 2])
+                             climada.hazard.tc_tracks.CAT_NAMES[ss_scale])
 
     return v_rel, p_rel
 
@@ -796,18 +796,18 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
         axes[0].set_xlabel('Distance from landfall (km)')
         axes[0].set_ylabel('Max sustained wind relative to landfall')
         axes[0].set_title('Wind, TC cat %s' %
-                          climada.hazard.tc_tracks.CAT_NAMES[track_cat-2])
+                          climada.hazard.tc_tracks.CAT_NAMES[track_cat])
         axes[0].plot(x_val[track_cat], v_lf[track_cat], '*', c=color,
-                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat - 2])
+                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat])
         axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
                      '-', c=color)
 
         axes[1].set_xlabel('Distance from landfall (km)')
         axes[1].set_ylabel('Central pressure relative to landfall')
         axes[1].set_title('Pressure, TC cat %s' %
-                          climada.hazard.tc_tracks.CAT_NAMES[track_cat-2])
+                          climada.hazard.tc_tracks.CAT_NAMES[track_cat])
         axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
-                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat - 2])
+                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat])
         axes[1].plot(
             x_eval,
             _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
@@ -847,11 +847,8 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             in enumerate(zip(sea_land_idx, land_sea_idx)):
         v_landfall = track.max_sustained_wind[sea_land - 1].values
         p_landfall = float(track.central_pressure[sea_land - 1].values)
-        scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-        try:
-            ss_scale_idx = np.where(v_landfall < scale_thresholds)[0][0] + 1
-        except IndexError:
-            continue
+        ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
+                                                         track.max_sustained_wind_unit)
         if land_sea - sea_land == 1:
             continue
         S = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
@@ -860,7 +857,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             # set central_pressure to environmental pressure during whole lf
             track.central_pressure[sea_land:land_sea] = track.environmental_pressure[sea_land:land_sea]
         else:
-            p_decay = _decay_p_function(S, p_rel[ss_scale_idx][1],
+            p_decay = _decay_p_function(S, p_rel[ss_scale][1],
                                         track.dist_since_lf[sea_land:land_sea].values)
             # dont apply decay if it would decrease central pressure
             if np.any(p_decay < 1):
@@ -873,7 +870,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
                 p_decay[p_decay < 1] = track.central_pressure[sea_land:land_sea][p_decay < 1] / p_landfall
             track.central_pressure[sea_land:land_sea] = p_landfall * p_decay
 
-        v_decay = _decay_v_function(v_rel[ss_scale_idx],
+        v_decay = _decay_v_function(v_rel[ss_scale],
                                     track.dist_since_lf[sea_land:land_sea].values)
         # dont apply decay if it would increase wind speeds
         if np.any(v_decay > 1):
@@ -1025,24 +1022,24 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                 v_lf = track.max_sustained_wind[sea_land - 1].values
                 p_lf = track.central_pressure[sea_land - 1].values
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-                ss_scale = np.where(v_lf < scale_thresholds)[0][0]
+                ss_scale_idx = np.where(v_lf < scale_thresholds)[0][0]
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
                 graph_v_a.plot(on_land, track.max_sustained_wind[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_v_b.plot(on_land, orig_wind[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_p_a.plot(on_land, track.central_pressure[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_p_b.plot(on_land, orig_pres[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_pd_a.plot(track.dist_since_lf[on_land],
                                 track.central_pressure[on_land] / p_lf,
-                                'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                                'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_ped_a.plot(track.dist_since_lf[on_land],
                                  track.environmental_pressure[on_land] -
                                  track.central_pressure[on_land],
-                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale])
+                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
 
             on_sea = np.arange(track.time.size)[~track.on_land]
             graph_v_a.plot(on_sea, track.max_sustained_wind[on_sea],
@@ -1089,22 +1086,22 @@ def _check_apply_decay_hist_plot(hist_tracks):
         if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-                scale = np.where(track.max_sustained_wind[sea_land - 1].values
+                ss_scale_idx = np.where(track.max_sustained_wind[sea_land - 1].values
                                  < scale_thresholds)[0][0]
                 on_land = np.arange(track.time.size)[sea_land:land_sea]
 
                 graph_hv.add_curve(on_land, track.max_sustained_wind[on_land],
-                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[scale])
+                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_hp.add_curve(on_land, track.central_pressure[on_land],
-                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[scale])
+                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_hpd_a.plot(track.dist_since_lf[on_land],
                                  track.central_pressure[on_land]
                                  / track.central_pressure[sea_land - 1].values,
-                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[scale])
+                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
                 graph_hped_a.plot(track.dist_since_lf[on_land],
                                   track.environmental_pressure[on_land] -
                                   track.central_pressure[on_land],
-                                  'o', c=climada.hazard.tc_tracks.CAT_COLORS[scale])
+                                  'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
 
             on_sea = np.arange(track.time.size)[~track.on_land]
             graph_hp.plot(on_sea, track.central_pressure[on_sea],
