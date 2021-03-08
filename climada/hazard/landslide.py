@@ -79,7 +79,7 @@ def mapping_grid2flattened(col, row, matrix_shape):
     -------
     index (1D) of the point in flattened array
     """
-    return row*matrix_shape[1]+col
+    return row * matrix_shape[1] + col
 
 def sample_events_from_probs(prob_matrix, n_years):
     """sample an event set for a specified representative time span from
