@@ -310,8 +310,9 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 _get_destination_points(new_lon[i], new_lat[i],
                                         bearings[i] + ang_pert_cum[i],
                                         trans_pert[i] * angular_dist[i])
-            # crossing latitudinal thresholds, keep up to this segment (i+1)
-            # hence point i+2 would be cut off (any further points)
+            # if track crosses latitudinal thresholds (+-70°),
+            # keep up to this segment (i+1), set i+2 as last point,
+            # and discard all further points > i+2.
             if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
                 last_idx = i + 2
                 # end the track here
