@@ -75,6 +75,8 @@ def mapping_grid2flattened(col, row, matrix_shape):
         Column Index of an entry in the original matrix
     row : int
         Row index of an entry in the original matrix
+    matrix_shape: (int, int)
+        Shape of the matrix (n_rows, n_cols)
     Returns
     -------
     index (1D) of the point in the flattened array (int)
