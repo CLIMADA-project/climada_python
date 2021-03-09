@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea']
+__all__ = ['Exposures', 'add_sea', 'INDICATOR_IF', 'INDICATOR_CENTR']
 
 import logging
 import copy
