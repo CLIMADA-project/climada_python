@@ -563,9 +563,9 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
     if ticklabels:
         if invert_axis:
-            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels);
+            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels)
         else:
-            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels);
+            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels)
 
     # Draw legend if we need
     if legend:
