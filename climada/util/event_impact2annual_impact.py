@@ -107,13 +107,15 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
 
 
     #NUMBER OF EVENTS
-    #[nonzero_pos] = np.where(eis.imp_mat.data >= (10*np.finfo(float).eps))
-    [nonzero_pos] = np.where(eis.at_event >= (10*np.finfo(float).eps))
+    nonzero_pos = np.where(eis.at_event >= (10*np.finfo(float).eps))
     n_annual_events = np.sum(eis.frequency[nonzero_pos])
     year_list = [str(date) + '-01-01' for date in np.arange(1,number_of_years+1).tolist()]
 
     if len(nonzero_pos) == 0:
         LOGGER.warning("No impact causing events.")
+    
+    if not np.all(eis.frequency == eis.frequency[0]):
+        LOGGER.warning("The frequencies of the single events differ among each other. Please beware that this might influence the results.")
      
     #test: all frequencies equal
     
@@ -174,14 +176,14 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
 
     return ais, sampling_vector, amount_events
 
-def sampling_uniform(number_events, nonzero_pos):
-    #sampling_vector = np.floor(np.random.rand(number_events)*len(nonzero_pos)).astype('int')
+def sampling_uniform(number_events, nonzero_pos):    
+    repetitions = np.ceil(number_events/(len(nonzero_pos)-1)).astype('int')
     
-    repetitions = np.ceil(number_events/len(nonzero_pos)).astype('int')
-    
-    #no doubling
     rng = default_rng()
-    sampling_vector = rng.choice(len(nonzero_pos)*repetitions, size=number_events, replace=False)
+    if repetitions >= 2:
+        sampling_vector = np.round(rng.choice((len(nonzero_pos)-1)*repetitions, size=number_events, replace=False)/repetitions)
+    else:
+        sampling_vector = rng.choice((len(nonzero_pos)-1), size=number_events, replace=False)
     
     return sampling_vector
 
