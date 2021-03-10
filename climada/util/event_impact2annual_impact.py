@@ -8,9 +8,10 @@ Created on Thu Dec  3 15:59:03 2020
 
 import copy
 import numpy as np
+from numpy.random import default_rng
 import logging
 
-#from climada.util.dates_times import date_to_str
+from climada.util.dates_times import str_to_date
 
 LOGGER = logging.getLogger(__name__)
 
@@ -109,12 +110,12 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
     #[nonzero_pos] = np.where(eis.imp_mat.data >= (10*np.finfo(float).eps))
     [nonzero_pos] = np.where(eis.at_event >= (10*np.finfo(float).eps))
     n_annual_events = np.sum(eis.frequency[nonzero_pos])
-    year_list = np.arange(1,number_of_years+1).tolist()
-    [str(date) + '-01-01' for date in year_list]
+    year_list = [str(date) + '-01-01' for date in np.arange(1,number_of_years+1).tolist()]
 
     if len(nonzero_pos) == 0:
         LOGGER.warning("No impact causing events.")
      
+    #test: all frequencies equal
     
     nonzero_impact = eis.at_event[nonzero_pos]
     # randomly populate years
@@ -128,10 +129,11 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
             sampling_vector = sampling_uniform(number_of_years, nonzero_pos)
             
         amount_events = np.ones(number_of_years)
-        for idx_year, year in enumerate(sampling_vector):
-            impact_per_year[idx_year] = sorted_impact[sampling_vector[year]]
         
-        ais.date = year_list
+        for idx_event, event in enumerate(sampling_vector):
+            impact_per_year[idx_event] = sorted_impact[sampling_vector[event]]
+        
+        event_names = year_list
     elif distribution == 'Poisson':
         if not sampling_vect:    
             sampling_vector, amount_events = sampling_poisson(number_of_years, n_annual_events, nonzero_pos)
@@ -139,13 +141,14 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
              
         impact_per_event = np.zeros(np.sum(amount_events))
         
-        for idx_year, year in enumerate(sampling_vector):
-            impact_per_event[idx_year] = sorted_impact[sampling_vector[year]]
-        
+        for idx_event, event in enumerate(sampling_vector):
+            impact_per_event[idx_event] = sorted_impact[sampling_vector[event]]
+            #event_names.append(year_list[year]*amount_events[year])
         
         idx = 0
+        event_names = []
         for year in range(number_of_years):   
-            ais.date = year_list[year]*amount_events[year]
+            
             
             impact_per_year[year] =  np.sum(impact_per_event[idx:(idx+amount_events[year])])
             idx += amount_events[year]
@@ -162,7 +165,9 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
     #     tex = raw_input("Do you want to exclude small events?")
     #Korrekturfaktor >10% logger warning (consider neglecting small events)
     #Schäden vergrössern unproblematisch, bei grossen add the posibility (for the user) to delete small events instead of rescaling all events
-
+    
+    
+    ais.date = str_to_date(event_names)
     ais.at_event = impact_per_year / correction_factor
     ais.frequency = np.ones(number_of_years)*sum(amount_events)/number_of_years
     
@@ -170,7 +175,13 @@ def eis2ais(eis, hazard= None, number_of_years=None, amount_events=None,
     return ais, sampling_vector, amount_events
 
 def sampling_uniform(number_events, nonzero_pos):
-    sampling_vector = np.floor(np.random.rand(number_events)*len(nonzero_pos)).astype('int')
+    #sampling_vector = np.floor(np.random.rand(number_events)*len(nonzero_pos)).astype('int')
+    
+    repetitions = np.ceil(number_events/len(nonzero_pos)).astype('int')
+    
+    #no doubling
+    rng = default_rng()
+    sampling_vector = rng.choice(len(nonzero_pos)*repetitions, size=number_events, replace=False)
     
     return sampling_vector
 
