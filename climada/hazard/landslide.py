@@ -30,60 +30,12 @@ from scipy.stats import binom
 import shapely
 
 from climada.hazard.base import Hazard
+from climada.util.coordinates import mapping_point2grid, mapping_grid2flattened
 
 LOGGER = logging.getLogger(__name__)
-
 HAZ_TYPE = 'LS'
 
-
-def mapping_point2grid(geometry, ymax, xmin, res):
-    """Given the coordinates of a point, find the index of a grid cell from 
-    a raster into which it falls.
-    
-    Parameters
-    ---------
-    geometry : shapely.geometry.Point object
-        Point which should be evaluated
-    ymax: float
-        coords of top left corner of raster file - y
-    xmin: float
-        coords top left corner of raster file - x
-    res: float or tuple
-        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
-    
-    Returns
-    ------- 
-    col, row : tuple
-        column index and row index in grid matrix where point falls into
-    """
-    if isinstance(res, tuple):
-        res_x, res_y = res
-    else:
-        res_x = res_y = res
-    col = int((geometry.x - xmin) / res_x)
-    row = int((ymax - geometry.y) / res_y)
-    return col, row
-    
-def mapping_grid2flattened(col, row, matrix_shape):
-    """ given a col and row index and the initial 2D matrix shape,
-    return the 1-dimensional index of the same point in the flattened matrix
-    - assumes concatenation in x-direction 
-    
-    Parameters
-    ----------
-    col : int
-        Column Index of an entry in the original matrix
-    row : int
-        Row index of an entry in the original matrix
-    matrix_shape: (int, int)
-        Shape of the matrix (n_rows, n_cols)
-    Returns
-    -------
-    index (1D) of the point in the flattened array (int)
-    """
-    return row * matrix_shape[1] + col
-
-def sample_events_from_probs(prob_matrix, n_years):
+def sample_events_from_probs(prob_matrix, n_years, dist='binom'):
     """sample an event set for a specified representative time span from
     a hazard layer with annual occurrence probabilities 
     Draws events from a binomial distribution with p ("success", aka LS
@@ -110,11 +62,14 @@ def sample_events_from_probs(prob_matrix, n_years):
 
     """
     LOGGER.info('Sampling landslide events for a %i year period' % n_years)
-
-    for i, j in zip(*prob_matrix.nonzero()):
-        prob_matrix[i, j] = binom.rvs(n=n_years,
-                                        p=prob_matrix[i, j])
-    return sparse.csr_matrix(prob_matrix)
+    
+    ev_matrix = prob_matrix.copy()
+    
+    if dist == 'binom':
+        for i, j in zip(*prob_matrix.nonzero()):
+            prob_matrix[i, j] = binom.rvs(n=n_years,
+                                            p=prob_matrix[i, j])
+        return sparse.csr_matrix(prob_matrix)
 
 
 class Landslide(Hazard):
@@ -125,10 +80,8 @@ class Landslide(Hazard):
     def __init__(self):
         """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
-        self.tag.haz_type = 'LS'
 
-
-    def set_ls_hist(self, bbox, path_sourcefile, res=0.0083333, check_plots=False):
+    def set_ls_hist(self, bbox, path_sourcefile, res=0.0083333):
         """
         Set historic landslide (ls) raster hazard from historical point records,
         for example as can be retrieved from the NASA COOLR initiative,
@@ -170,46 +123,29 @@ class Landslide(Hazard):
         
         # assign lat-lon points of LS events to corresponding grid & flattened
         # grid-index
-        ls_gdf_bbox = ls_gdf_bbox.reindex(columns = ls_gdf_bbox.columns.tolist() + 
-                                          ['col','row'])
+        ls_gdf_bbox = ls_gdf_bbox.assign(row=np.nan, col=np.nan)
         ls_gdf_bbox[['col', 'row']] = ls_gdf_bbox.apply(
-            lambda row: mapping_point2grid(row.geometry, bbox[-1],bbox[0], 
-                                           res),
-            axis = 1).tolist()
-        
+            lambda row: mapping_point2grid(row.geometry, bbox[-1], bbox[0], 
+                                           res), axis = 1).tolist()
         ls_gdf_bbox['flat_ix'] = ls_gdf_bbox.apply(
             lambda row: mapping_grid2flattened(row.col, row.row, 
-                                               self.centroids.shape), 
-            axis = 1)
-        
+                                               self.centroids.shape), axis = 1)        
         self.intensity = sparse.csr_matrix(
-            (np.ones(n_ev),(np.arange(n_ev),ls_gdf_bbox.flat_ix)), 
+            (np.ones(n_ev), (np.arange(n_ev), ls_gdf_bbox.flat_ix)), 
             shape=(n_ev, self.centroids.size))
-        self.units = 'm/m'
-        self.event_id = np.arange(n_ev, dtype=int)
+        self.units = ''
+        self.event_id = np.arange(n_ev, dtype=int) + 1
         self.orig = np.ones(n_ev, bool)
         if hasattr(ls_gdf_bbox, 'ev_date'):
             self.date = pd.to_datetime(ls_gdf_bbox.ev_date, yearfirst=True)
         else:
             LOGGER.info('No event dates set from source')
-        if not self.date.empty:
-            self.frequency = np.ones(n_ev)/(
-                (self.date.max()-self.date.min()).value/3.154e+16)
-        else: 
-            LOGGER.info('No frequency can be derived, no event dates')
         self.fraction = self.intensity.copy()
 
         self.check()
 
-        if check_plots:
-            self.centroids.plot()
-            self.plot_intensity(0)
 
-        return self
-
-
-    def set_ls_prob(self, bbox, path_sourcefile, corr_fact=10e6, n_years=500, 
-                    check_plots=False):
+    def set_ls_prob(self, bbox, path_sourcefile, corr_fact=10e6, n_years=500):
         """
         Set probabilistic landslide hazard (fraction, intensity and
         frequency) for a defined bounding box and time period from a raster.
@@ -245,7 +181,7 @@ class Landslide(Hazard):
             path to UNEP/NGI ls hazard file (.tif)
         corr_fact : float or int
             factor by which to divide the values in the original probability
-            file, in case not scaled to [0,1]. Default is 1'000'000
+            file, in case it is not scaled to [0,1]. Default is 1'000'000
         n_years : int
             sampling period
         check_plots : bool
@@ -289,8 +225,4 @@ class Landslide(Hazard):
         self.centroids.set_geometry_points()
         self.check()
 
-        if check_plots:
-            self.plot_intensity(0)
-            self.plot_fraction(0)
 
-        return self

@@ -801,6 +801,53 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
+def mapping_point2grid(geometry, ymax, xmin, res):
+    """Given the coordinates of a point, find the index of a grid cell from 
+    a raster into which it falls.
+    
+    Parameters
+    ---------
+    geometry : shapely.geometry.Point object
+        Point which should be evaluated
+    ymax: float
+        coords of top left corner of raster file - y
+    xmin: float
+        coords top left corner of raster file - x
+    res: float or tuple
+        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
+    
+    Returns
+    ------- 
+    col, row : tuple
+        column index and row index in grid matrix where point falls into
+    """
+    if isinstance(res, tuple):
+        res_x, res_y = res
+    else:
+        res_x = res_y = res
+    col = int((geometry.x - xmin) / res_x)
+    row = int((ymax - geometry.y) / res_y)
+    return col, row
+    
+def mapping_grid2flattened(col, row, matrix_shape):
+    """ given a col and row index and the initial 2D matrix shape,
+    return the 1-dimensional index of the same point in the flattened matrix
+    - assumes concatenation in x-direction 
+    
+    Parameters
+    ----------
+    col : int
+        Column Index of an entry in the original matrix
+    row : int
+        Row index of an entry in the original matrix
+    matrix_shape: (int, int)
+        Shape of the matrix (n_rows, n_cols)
+    Returns
+    -------
+    index (1D) of the point in the flattened array (int)
+    """
+    return row * matrix_shape[1] + col
+
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
 
