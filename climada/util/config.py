@@ -328,15 +328,19 @@ class log_level:
 
     def __init__(self, level):
         self.level = level
-        self.loggers = [
-            logging.getLogger(name)
-            for name in logging.root.manager.loggerDict
-            ]
+        self.loggers = {
+            name: logger
+            for name, logger in logging.root.manager.loggerDict.items()
+            if isinstance(logger, logging.Logger)
+            }
+        self.loglevels = [logger.level
+            for logger in self.loggers.values()
+            ] 
 
     def __enter__(self):
-        for logger in self.loggers:
+        for logger in self.loggers.values():
             logger.setLevel(self.level)
 
     def __exit__(self, exception_type, exception, traceback):
-        for logger in self.loggers:
-            logger.setLevel(CONFIG.log_level.str())
+        for logger, level in zip(self.loggers.values(), self.loglevels):
+            logger.setLevel(level)
