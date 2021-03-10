@@ -19,8 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test config module.
 """
 import unittest
+import logging
+from unittest import TestCase
 
-from climada.util.config import Config, CONFIG
+from climada.util.config import Config, CONFIG, log_level
 
 class TestConfig(unittest.TestCase):
     """Test Config methods"""
@@ -60,6 +62,21 @@ class TestConfig(unittest.TestCase):
         conf = Config.from_dict(dct)
         self.assertEqual(conf.a._root, conf._root)
         self.assertEqual(conf.a.str(), 'https://host/page.domain')
+
+    def test_set_logger(self):
+        #Check loggers are set to level
+        with self.assertLogs('climada', level='INFO') as cm:
+             with log_level('WARNING'):
+                logging.getLogger('climada').info('info')
+                logging.getLogger('climada').error('error')
+                self.assertEqual(cm.output, ['ERROR:climada:error'])
+        #Check other loggers are untouched
+        with self.assertLogs('matplotlib', level='DEBUG') as cm:
+            with log_level('ERROR'):
+                logging.getLogger('climada').info('info')
+            logging.getLogger('matplotlib').debug('debug')
+            self.assertEqual(cm.output, ['DEBUG:matplotlib:debug'])
+
 
 
 # Execute Tests
