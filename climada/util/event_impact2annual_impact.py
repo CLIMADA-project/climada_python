@@ -95,14 +95,12 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
 
 
     #NUMBER OF EVENTS
-    [nonzero_pos] = np.where(eis.at_event >= (10*np.finfo(float).eps))
-    nonzero_impact = eis.at_event[nonzero_pos]
-    sorted_impact = np.sort(nonzero_impact)
-    n_annual_events = np.sum(eis.frequency[nonzero_pos])
+    nr_input_events = len(eis.event_id)
+    n_annual_events = np.sum(eis.frequency)
     year_list = [str(date) + '-01-01' for date in np.arange(1, number_of_years+1).tolist()]
 
 
-    if len(nonzero_pos) == 0:
+    if nr_input_events == 0:
         LOGGER.warning("No impact causing events.")
 
     if not np.all(eis.frequency == eis.frequency[0]):
@@ -128,24 +126,24 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
 
     if distribution is None: #for hazards such as RC where there's an event every year
         if not sampling_vect:
-            sampling_vector = sampling_uniform(number_of_years, nonzero_pos)
+            sampling_vector = sampling_uniform(number_of_years, nr_input_events)
 
         amount_events = np.ones(number_of_years)
 
         for idx_event, event in enumerate(sampling_vector):
-            impact_per_year[idx_event] = sorted_impact[sampling_vector[event]]
+            impact_per_year[idx_event] = eis.at_event[sampling_vector[event]]
 
         event_names = year_list
     elif distribution == 'Poisson':
         if not sampling_vect:
             sampling_vector, amount_events = sampling_poisson(number_of_years,
-                                                              n_annual_events, nonzero_pos)
+                                                              n_annual_events, nr_input_events)
 
 
         impact_per_event = np.zeros(np.sum(amount_events))
 
         for idx_event, event in enumerate(sampling_vector):
-            impact_per_event[idx_event] = sorted_impact[sampling_vector[event]]
+            impact_per_event[idx_event] = eis.at_event[sampling_vector[event]]
             #event_names.append(year_list[year]*amount_events[year])
 
         idx = 0
@@ -171,25 +169,25 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
 
     return ais, sampling_vector, amount_events
 
-def sampling_uniform(number_events, nonzero_pos):
-    """Sample uniformely from an array (nonzero_pos) for a given amount of
+def sampling_uniform(number_events, nr_input_events):
+    """Sample uniformely from an array (nr_input_events) for a given amount of
     events (number events)
       """
 
-    repetitions = np.ceil(number_events/(len(nonzero_pos)-1)).astype('int')
+    repetitions = np.ceil(number_events/(nr_input_events-1)).astype('int')
 
     rng = default_rng()
     if repetitions >= 2:
-        sampling_vector = np.round(rng.choice((len(nonzero_pos)-1)*repetitions,
+        sampling_vector = np.round(rng.choice((nr_input_events-1)*repetitions,
                                               size=number_events, replace=False)/repetitions
                                    ).astype('int')
     else:
-        sampling_vector = rng.choice((len(nonzero_pos)-1), size=number_events,
+        sampling_vector = rng.choice((nr_input_events-1), size=number_events,
                                      replace=False).astype('int')
 
     return sampling_vector
 
-def sampling_poisson(number_of_years, n_annual_events, nonzero_pos):
+def sampling_poisson(number_of_years, n_annual_events, nr_input_events):
     """Sample amount of events per year following a Poisson distribution
       """
 
@@ -199,7 +197,7 @@ def sampling_poisson(number_of_years, n_annual_events, nonzero_pos):
     #non_zero_years =  np.where(amount_events_per_year != 0)
     number_events = sum(amount_events_per_year)
 
-    sampling_vector = sampling_uniform(number_events, nonzero_pos)
+    sampling_vector = sampling_uniform(number_events, nr_input_events)
 
     return sampling_vector, amount_events_per_year
 
