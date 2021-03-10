@@ -326,13 +326,20 @@ CONFIG = Config.from_dict(_fetch_conf([
 class log_level:
     """Context manager that sets ALL loggers to a given level."""
 
-    def __init__(self, level):
+    def __init__(self, level, climada_only=True):
         self.level = level
         self.loggers = {
             name: logger
             for name, logger in logging.root.manager.loggerDict.items()
             if isinstance(logger, logging.Logger)
             }
+        if climada_only:
+            self.loggers = {
+                name: logger
+                for name, logger in self.loggers.items()
+                if 'climada' in name
+                }
+            
         self.loglevels = [logger.level
             for logger in self.loggers.values()
             ] 

@@ -72,7 +72,7 @@ class TestConfig(unittest.TestCase):
                 self.assertEqual(cm.output, ['ERROR:climada:error'])
         #Check other loggers are untouched
         with self.assertLogs('matplotlib', level='DEBUG') as cm:
-            with log_level('ERROR'):
+            with log_level('ERROR', False):
                 logging.getLogger('climada').info('info')
             logging.getLogger('matplotlib').debug('debug')
             self.assertEqual(cm.output, ['DEBUG:matplotlib:debug'])
