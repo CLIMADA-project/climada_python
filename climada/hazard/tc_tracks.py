@@ -42,7 +42,7 @@ from numba import jit
 import numpy as np
 import pandas as pd
 import scipy.io.matlab as matlab
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, MultiLineString
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
@@ -1214,17 +1214,21 @@ class TCTracks():
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
 
-    def to_geodataframe(self, as_points=False):
+    def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
 
         Parameters
         ----------
         as_points : bool, optional
-            If False (default), one feature (row) per track with a LineString as geometry (or Point
-            geometry for tracks of length one) and all track attributes (sid, name,
-            orig_event_flag, etc) as dataframe columns. If True, one feature (row) per track time
-            step, with variable values per time step (radius_max_wind, max_sustained_wind, etc) as
-            columns in addition to attributes.
+            If False (default), one feature (row) per track with a LineString or MultiLineString
+            as geometry (or Point geometry for tracks of length one) and all track attributes
+            (sid, name, orig_event_flag, etc) as dataframe columns. If True, one feature (row)
+            per track time step, with variable values per time step (radius_max_wind,
+            max_sustained_wind, etc) as columns in addition to attributes.
+        split_lines_antimeridian : bool, optional
+            If True, tracks that cross the antimeridian are split into two Lines as a
+            MultiLineString, with one Line on each side of the meridian. This ensures all Lines
+            are within (-180, +180) degrees longitude.
 
         Returns
         -------
@@ -1237,6 +1241,7 @@ class TCTracks():
         if as_points:
             gdf_long = pd.concat([track.to_dataframe().assign(idx=i)
                                   for i, track in enumerate(self.data)])
+            gdf_long['lon'] = u_coord.lon_normalize(gdf_long['lon'].values.copy())
             gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'],x['lat']), axis=1)
             gdf_long = gdf_long.drop(columns=['lon', 'lat'])
             gdf_long = gpd.GeoDataFrame(gdf_long.reset_index().set_index('idx'),
@@ -1244,10 +1249,8 @@ class TCTracks():
             gdf = gdf_long.join(gdf)
 
         else:
-            # LineString only works with more than one lat/lon pair
             gdf.geometry = gpd.GeoSeries([
-                LineString(np.c_[track.lon, track.lat]) if track.lon.size > 1
-                else Point(track.lon.data, track.lat.data)
+                make_line_from_track(track, split_lines_antimeridian=split_lines_antimeridian)
                 for track in self.data
             ])
 
@@ -1851,3 +1854,51 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
+
+def make_line_from_track(track, split_lines_antimeridian):
+    lon = u_coord.lon_normalize(track.lon.values.copy(), center=0.0)
+    lat = track.lat.values
+    # LineString only works with more than one lat/lon pair
+    if lon.size == 1:
+        return Point(lon, lat)
+    extent = u_coord.lon_bounds(lon)
+    if split_lines_antimeridian and extent[0] <= 180 <= extent[1]:
+        # in this case split into multilines
+        hem_west = lon < 0
+        # if all points on one side are +180 or -180, keep as a single line
+        if np.all(lon[hem_west] == -180) or np.all(lon[~hem_west] == 180):
+            if np.all(lon[hem_west] == -180):
+                lon[hem_west] = 180
+            else:
+                lon[~hem_west] = -180
+            return LineString(np.c_[lon, lat])
+        # otherwise, split lines
+        split_idx = np.concatenate((np.array([0]),
+                                    np.where(np.diff(lon > 0))[0] + 1,
+                                    np.array([len(lon)+1])))
+        list_lines = []
+        for idx in range(len(split_idx)-1):
+            new_lon = lon[split_idx[idx]:split_idx[idx+1]]
+            new_lat = lat[split_idx[idx]:split_idx[idx+1]]
+            am_lon = 180 if lon[split_idx[idx]] > 0 else -180
+            if idx > 0:
+                # not first segment of the line: add first value
+                # for latitude, interpolate
+                lon_prev = u_coord.lon_normalize(lon.copy()[split_idx[idx]-1:split_idx[idx]+1],
+                                                 center=am_lon)
+                lat_prev = lat[split_idx[idx]-1:split_idx[idx]+1]
+                lat_app = np.interp(am_lon, lon_prev, lat_prev)
+                new_lon = np.append(am_lon, new_lon)
+                new_lat = np.append(lat_app, new_lat)
+            if idx < len(split_idx) - 2:
+                # not last setment of the line: add last value to antimeridian
+                lon_next = u_coord.lon_normalize(lon.copy()[split_idx[idx+1]-1:split_idx[idx+1]+1],
+                                                 center=am_lon)
+                lat_next = lat[split_idx[idx+1]-1:split_idx[idx+1]+1]
+                lat_app = np.interp(am_lon, lon_next, lat_next)
+                new_lon = np.append(new_lon, am_lon)
+                new_lat = np.append(new_lat, lat_app)
+            list_lines.append(LineString(np.c_[new_lon, new_lat]))
+        return MultiLineString(list_lines)
+    else:
+        return LineString(np.c_[track.lon, track.lat])
