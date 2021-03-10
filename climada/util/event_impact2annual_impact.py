@@ -95,7 +95,7 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
 
 
     #NUMBER OF EVENTS
-    nonzero_pos = np.where(eis.at_event >= (10*np.finfo(float).eps))
+    [nonzero_pos] = np.where(eis.at_event >= (10*np.finfo(float).eps))
     nonzero_impact = eis.at_event[nonzero_pos]
     sorted_impact = np.sort(nonzero_impact)
     n_annual_events = np.sum(eis.frequency[nonzero_pos])
@@ -181,9 +181,11 @@ def sampling_uniform(number_events, nonzero_pos):
     rng = default_rng()
     if repetitions >= 2:
         sampling_vector = np.round(rng.choice((len(nonzero_pos)-1)*repetitions,
-                                              size=number_events, replace=False)/repetitions)
+                                              size=number_events, replace=False)/repetitions
+                                   ).astype('int')
     else:
-        sampling_vector = rng.choice((len(nonzero_pos)-1), size=number_events, replace=False)
+        sampling_vector = rng.choice((len(nonzero_pos)-1), size=number_events,
+                                     replace=False).astype('int')
 
     return sampling_vector
 
