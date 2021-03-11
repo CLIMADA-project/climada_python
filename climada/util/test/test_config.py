@@ -63,20 +63,6 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(conf.a._root, conf._root)
         self.assertEqual(conf.a.str(), 'https://host/page.domain')
 
-    def test_set_logger(self):
-        #Check loggers are set to level
-        with self.assertLogs('climada', level='INFO') as cm:
-             with log_level('WARNING'):
-                logging.getLogger('climada').info('info')
-                logging.getLogger('climada').error('error')
-                self.assertEqual(cm.output, ['ERROR:climada:error'])
-        #Check if only climada loggers level change
-        with self.assertLogs('matplotlib', level='DEBUG') as cm:
-            with log_level('ERROR', name_prefix='climada'):
-                logging.getLogger('climada').info('info')
-            logging.getLogger('matplotlib').debug('debug')
-            self.assertEqual(cm.output, ['DEBUG:matplotlib:debug'])
-
 
 
 # Execute Tests
