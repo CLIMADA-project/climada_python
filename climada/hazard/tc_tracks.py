@@ -1242,7 +1242,7 @@ class TCTracks():
             gdf_long = pd.concat([track.to_dataframe().assign(idx=i)
                                   for i, track in enumerate(self.data)])
             gdf_long['lon'] = u_coord.lon_normalize(gdf_long['lon'].values.copy())
-            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'],x['lat']), axis=1)
+            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'], x['lat']), axis=1)
             gdf_long = gdf_long.drop(columns=['lon', 'lat'])
             gdf_long = gpd.GeoDataFrame(gdf_long.reset_index().set_index('idx'),
                                         geometry='geometry')
@@ -1250,7 +1250,7 @@ class TCTracks():
 
         else:
             gdf.geometry = gpd.GeoSeries([
-                make_line_from_track(track, split_lines_antimeridian=split_lines_antimeridian)
+                _make_line_from_track(track, split_lines_antimeridian=split_lines_antimeridian)
                 for track in self.data
             ])
 
@@ -1855,7 +1855,20 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
     except IndexError:
         return -1
 
-def make_line_from_track(track, split_lines_antimeridian):
+def _make_line_from_track(track, split_lines_antimeridian=True):
+    """Auxiliary function to convert a track into a Point (len==1), LineString
+    (standard case), or MultiLineString (crossing antimeridian).
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        A track as present as an element of TCTracks.data
+    
+    Returns
+    -------
+    line : Point, LineString, MultiLineString
+        A shapely feature representing a single TC track.
+    """
     lon = u_coord.lon_normalize(track.lon.values.copy(), center=0.0)
     lat = track.lat.values
     # LineString only works with more than one lat/lon pair
