@@ -321,5 +321,3 @@ CONFIG = Config.from_dict(_fetch_conf([
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
-
-
