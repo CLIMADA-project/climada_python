@@ -28,7 +28,7 @@ import pandas as pd
 
 from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.engine.cost_benefit import CostBenefit
-from climada.util.config import CONFIG
+from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
@@ -138,22 +138,13 @@ class UncCostBenefit(Uncertainty):
             cb_metrics = map(partial(self._map_costben_calc, **kwargs),
                              self.sample.iterrows())
         
-        logger_cb = logging.getLogger('climada.engine.cost_benefit')
-        logger_cb.setLevel('ERROR')
-        logger_imp = logging.getLogger('climada.engine.impact')
-        logger_imp.setLevel('ERROR')
-        logger_impf = logging.getLogger('climada.entity.impact_funcs')
-        logger_impf.setLevel('ERROR')
-        
-        [imp_meas_present,
-         imp_meas_future,
-         tot_climate_risk,
-         benefit,
-         cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
-        
-        logger_cb.setLevel(CONFIG.log_level.str())
-        logger_imp.setLevel(CONFIG.log_level.str())
-        logger_impf.setLevel(CONFIG.log_level.str())
+        #Perform the actual computation
+        with log_level(level='ERROR', name_prefix='climada'):
+            [imp_meas_present,
+             imp_meas_future,
+             tot_climate_risk,
+             benefit,
+             cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
 
         # Assign computed impact distribution data to self
         self.metrics['tot_climate_risk'] = \
