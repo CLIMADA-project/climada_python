@@ -212,5 +212,6 @@ dependencies:
     - bitstring==3.1.7
     - overpy==0.4
     - pybufrkit==0.2.18
+    - ipython
     - nbsphinx
 
