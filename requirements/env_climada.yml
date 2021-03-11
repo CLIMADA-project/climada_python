@@ -4,7 +4,7 @@ channels:
   - defaults
 dependencies:
   - bottleneck>=1.3
-  - cartopy=0.17
+  - cartopy>=0.18
   - contextily>=1.0
   - dask>=2.25
   - geopandas>=0.6,<0.9
