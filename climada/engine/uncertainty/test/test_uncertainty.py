@@ -26,6 +26,8 @@ import unittest
 from climada.entity import ImpactFunc, ImpactFuncSet
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
@@ -146,6 +148,7 @@ class TestUncVar(unittest.TestCase):
               }
         impf_unc = UncVar(impf, distr_dict)
         self.assertIsNotNone(impf_unc.plot());
+        plt.close()
         
     def test_vac_to_uncvar(self):
         
@@ -235,6 +238,7 @@ class TestUncertainty(unittest.TestCase):
         
         unc.make_sample(N=1)
         unc.plot_sample()
+        plt.close()
         
     def test_est_comp_time_pass(self):
         
@@ -326,12 +330,14 @@ class TestUncertainty(unittest.TestCase):
 
         unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
         unc.plot_sensitivity()
+        plt.close()
         
         unc.calc_sensitivity(
             salib_method = 'rbd_fast',
             method_kwargs = {'M': 8}
             )
         unc.plot_sensitivity()
+        plt.close()
         
     
     def test_plot_distribution(self):
@@ -348,6 +354,7 @@ class TestUncertainty(unittest.TestCase):
                           metrics = metrics)
 
         unc.plot_distribution()
+        plt.close()
     
         
         
@@ -410,6 +417,7 @@ class TestUncImpact(unittest.TestCase):
         unc.make_sample(N=1)
         unc.calc_distribution()
         unc.plot_rp_distribution()
+        plt.close()
         
         
 class TestUncCostBenefit(unittest.TestCase):
