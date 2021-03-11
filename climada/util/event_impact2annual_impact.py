@@ -16,7 +16,7 @@ from climada.util.dates_times import str_to_date
 LOGGER = logging.getLogger(__name__)
 
 def eis2ais(eis, number_of_years=None, amount_events=None,
-            distribution=None, sampling_vect=None):
+            distribution=None, sampling_vector=None):
 
     """PURPOSE:
       convert an event (per occurrence) impact set (eis) into an annual impact
@@ -120,37 +120,16 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
     ais.date = []
 
 
-    impact_per_year = np.zeros(number_of_years)
-
-    # sample from the sorted impact
-
-    if distribution is None: #for hazards such as RC where there's an event every year
-        if not sampling_vect:
-            sampling_vector = sampling_uniform(number_of_years, nr_input_events)
-
+    # sample from the given event impact set
+    if distribution == 'Poisson':
+        [impact_per_year, amount_events,
+         sampling_vector] = resample_multiple_annual_events(eis, number_of_years, nr_input_events,
+                                                            n_annual_events, sampling_vector=None)
+    else: #for hazards such as RC where there is exactly one event every year
+        [impact_per_year,
+         amount_events] = resample_single_annual_event(eis, number_of_years,
+                                                       nr_input_events, sampling_vector)
         amount_events = np.ones(number_of_years)
-
-        for idx_event, event in enumerate(sampling_vector):
-            impact_per_year[idx_event] = eis.at_event[sampling_vector[event]]
-
-        event_names = year_list
-    elif distribution == 'Poisson':
-        if not sampling_vect:
-            sampling_vector, amount_events = sampling_poisson(number_of_years,
-                                                              n_annual_events, nr_input_events)
-
-
-        impact_per_event = np.zeros(np.sum(amount_events))
-
-        for idx_event, event in enumerate(sampling_vector):
-            impact_per_event[idx_event] = eis.at_event[sampling_vector[event]]
-            #event_names.append(year_list[year]*amount_events[year])
-
-        idx = 0
-        event_names = []
-        for year in range(number_of_years):
-            impact_per_year[year] = np.sum(impact_per_event[idx:(idx+amount_events[year])])
-            idx += amount_events[year]
 
 
     #adjust for sampling error
@@ -162,12 +141,48 @@ def eis2ais(eis, number_of_years=None, amount_events=None,
     #     tex = raw_input("Do you want to exclude small events?")
 
 
-    ais.date = str_to_date(event_names)
+    ais.date = str_to_date(year_list)
     ais.at_event = impact_per_year / correction_factor
     ais.frequency = np.ones(number_of_years)*sum(amount_events)/number_of_years
 
 
     return ais, sampling_vector, amount_events
+
+def resample_single_annual_event(eis, number_of_years, nr_input_events, sampling_vector=None):
+    """Sample one single annual event
+      """
+    impact_per_year = np.zeros(number_of_years)
+    if not sampling_vector:
+        sampling_vector = sampling_uniform(number_of_years, nr_input_events)
+
+    for idx_event, event in enumerate(sampling_vector):
+        impact_per_year[idx_event] = eis.at_event[sampling_vector[event]]
+
+
+    return impact_per_year, sampling_vector
+
+def resample_multiple_annual_events(eis, number_of_years, nr_input_events,
+                                    n_annual_events, sampling_vector=None):
+    """Sample multiple events per year
+      """
+    if not sampling_vector:
+        sampling_vector, amount_events = sampling_poisson(number_of_years,
+                                                          n_annual_events, nr_input_events)
+
+
+    impact_per_event = np.zeros(np.sum(amount_events))
+    impact_per_year = np.zeros(number_of_years)
+
+    for idx_event, event in enumerate(sampling_vector):
+        impact_per_event[idx_event] = eis.at_event[sampling_vector[event]]
+
+    idx = 0
+    for year in range(number_of_years):
+        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+amount_events[year])])
+        idx += amount_events[year]
+
+    return impact_per_year, amount_events, sampling_vector
+
 
 def sampling_uniform(number_events, nr_input_events):
     """Sample uniformely from an array (nr_input_events) for a given amount of
