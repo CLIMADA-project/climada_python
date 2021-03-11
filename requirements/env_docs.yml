@@ -208,9 +208,12 @@ dependencies:
   - zipp=3.4.1=pyhd8ed1ab_0
   - zlib=1.2.11=h516909a_1010
   - zstd=1.4.9=ha95c52a_0
+  - nb_conda
+  - nb_conda_kernels
   - pip:
     - bitstring==3.1.7
     - overpy==0.4
     - pybufrkit==0.2.18
+    - ipython
     - nbsphinx
 

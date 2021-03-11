@@ -30,7 +30,7 @@ from scipy import stats
 import shapefile
 from matplotlib import pyplot as plt
 from iso3166 import countries as iso_cntry
-import gdal
+from osgeo import gdal
 from cartopy.io import shapereader
 
 from climada import CONFIG
@@ -1892,7 +1892,7 @@ def to_sparse_dataframe(ndarr):
     ----------
     ndarr : numpy.ndarray
         2 dimensional
-    
+
     Returns
     -------
     sparse dataframe : pandas.DataFrame
