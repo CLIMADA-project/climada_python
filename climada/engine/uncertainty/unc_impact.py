@@ -29,7 +29,7 @@ import time
 
 from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty, UncVar
-from climada.util.config import CONFIG
+from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
@@ -142,19 +142,12 @@ class UncImpact(Uncertainty):
         else:
             imp_metrics = map(self._map_impact_calc, self.sample.iterrows())
         
-        logger_imp = logging.getLogger('climada.engine.impact')
-        logger_imp.setLevel('ERROR')
-        logger_impf = logging.getLogger('climada.entity.impact_funcs')
-        logger_impf.setLevel('ERROR')
-        logger_exp = logging.getLogger('climada.entity.exposures')
-        logger_exp.setLevel('ERROR')
-        
-        [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
-        
-        logger_imp.setLevel(CONFIG.log_level.str())
-        logger_impf.setLevel(CONFIG.log_level.str())
-        logger_exp.setLevel(CONFIG.log_level.str())
+        #Perform the actual computation
+        with log_level(level='ERROR', name_prefix='climada'):
+            [aai_agg_list, freq_curve_list,
+             eai_exp_list, at_event_list,
+             tot_value_list] = list(zip(*imp_metrics))
+            
 
         # Assign computed impact distribution data to self
         self.metrics['aai_agg']  = pd.DataFrame(aai_agg_list,
