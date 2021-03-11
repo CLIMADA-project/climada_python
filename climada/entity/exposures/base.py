@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea']
+__all__ = ['Exposures', 'add_sea', 'INDICATOR_IF', 'INDICATOR_CENTR']
 
 import logging
 import copy
@@ -142,6 +142,10 @@ class Exposures():
         # meta data
         try:
             self.meta = kwargs.pop('meta')
+            if self.meta is None:
+                self.meta = {}
+            if not isinstance(self.meta, dict):
+                raise ValueError("meta must be a dictionary")
         except KeyError:
             self.meta = {}
             LOGGER.info('meta set to default value %s', self.meta)
@@ -477,7 +481,7 @@ class Exposures():
         Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
+        if self.meta and self.meta.get('height', 0) * self.meta.get('height', 0) == len(self.gdf):
             raster = self.gdf.value.values.reshape((self.meta['height'],
                                                     self.meta['width']))
             # check raster starts by upper left corner
