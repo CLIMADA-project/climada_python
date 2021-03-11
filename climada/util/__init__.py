@@ -38,7 +38,7 @@ class log_level:
     >>> with log_level(level='WARNING'):
     >>>     ...
 
-    Set the all climada loggers temporarily to the level 'ERROR'
+    Set all the climada loggers temporarily to the level 'ERROR'
     >>> with log_level(level='ERROR', name_prefix='climada'):
     >>>     ...
 

@@ -26,7 +26,8 @@ from climada.util import log_level
 class TestUtilInit(unittest.TestCase):
     """Test util __init__ methods"""
 
-    def test_set_logger_pass(self):
+    def test_log_level_pass(self):
+        """Test log level context manager passes"""
         #Check loggers are set to level
         with self.assertLogs('climada', level='INFO') as cm:
              with log_level('WARNING'):
