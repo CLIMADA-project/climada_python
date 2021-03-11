@@ -29,7 +29,6 @@ import pandas as pd
 from geopandas import GeoDataFrame
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR
-from climada.engine.impact import Impact
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
@@ -294,6 +293,7 @@ class Measure():
         else:
             exp_imp = exposures
 
+        from climada.engine.impact import Impact
         imp = Impact()
         imp.calc(exp_imp, if_set, hazard)
 

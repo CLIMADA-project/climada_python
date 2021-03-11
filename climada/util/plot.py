@@ -343,7 +343,7 @@ def add_shapes(axis):
                                          name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='black')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
@@ -563,9 +563,9 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
     if ticklabels:
         if invert_axis:
-            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels);
+            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels)
         else:
-            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels);
+            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels)
 
     # Draw legend if we need
     if legend:

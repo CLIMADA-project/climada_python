@@ -44,7 +44,7 @@ class tmp_artifical_topo(object):
         res_deg : float
             Resolution in degrees
         """
-        lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
+        lat = np.arange(bounds[3] - 0.5 * res_deg, bounds[1], -res_deg)
         lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
         self.shape = (lat.size, lon.size)
         self.transform = rasterio.Affine(res_deg, 0, bounds[0], 0, -res_deg, bounds[3])
@@ -69,9 +69,9 @@ class tmp_artifical_topo(object):
             'nodata': -32767.0,
         }
 
-        # In Windows, unlike Unix, the temporary file cannot be opened before it is closed
+        # In Windows, unlike Unix, the temporary file cannot be opened before it is closed.
         # Therefore it is closed right after creation and only the path/name is kept.
-        tmpfile = tempfile.NamedTemporaryFile()
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
         self.topo_path = tmpfile.name
         tmpfile.close()
         with rasterio.open(self.topo_path, 'w', **dst_meta) as dst:
@@ -107,14 +107,14 @@ class TestTCSurgeBathtub(unittest.TestCase):
 
         # check valid range and order of magnitude
         self.assertTrue(np.all((fraction >= 0) & (fraction <= 1)))
-        np.testing.assert_array_equal(fraction[dist_coast > 4000], 0)
-        np.testing.assert_array_equal(fraction[dist_coast < -2000], 1)
+        np.testing.assert_array_equal(fraction[dist_coast > 1000], 0)
+        np.testing.assert_array_equal(fraction[dist_coast < -1000], 1)
 
         # check individual known pixel values
-        self.assertEqual(fraction[28, 13], 0.0)
-        self.assertEqual(fraction[26, 11], 0.0625)
-        self.assertEqual(fraction[26, 12], 0.7)
-        self.assertEqual(fraction[23, 14], 1.0)
+        self.assertAlmostEqual(fraction[24, 10], 0.0)
+        self.assertAlmostEqual(fraction[22, 11], 0.21)
+        self.assertAlmostEqual(fraction[22, 12], 0.93)
+        self.assertAlmostEqual(fraction[21, 14], 1.0)
 
 
     def test_surge_from_track(self):
@@ -172,13 +172,14 @@ class TestTCSurgeBathtub(unittest.TestCase):
                 fraction = surge_haz.fraction.toarray().reshape(shape)
 
                 # check valid range and order of magnitude
-                self.assertTrue(np.all(inten >= 0))
-                self.assertTrue(np.all(inten <= 10))
-                self.assertTrue(np.all((fraction >= 0) & (fraction <= 1)))
+                np.testing.assert_array_equal(inten >= 0, True)
+                np.testing.assert_array_equal(inten <= 10, True)
+                np.testing.assert_array_equal((fraction >= 0) & (fraction <= 1), True)
+                np.testing.assert_array_equal(inten[fraction == 0], 0)
 
                 # check individual known pixel values
-                self.assertAlmostEqual(inten[14, 26], max(-0.125 + slr, 0), places=2)
-                self.assertAlmostEqual(inten[14, 34] - slr, 0.592, places=2)
+                self.assertAlmostEqual(inten[9, 31], max(-0.391 + slr, 0), places=2)
+                self.assertAlmostEqual(inten[14, 34] - slr, 3.637, places=2)
 
 
 # Execute Tests

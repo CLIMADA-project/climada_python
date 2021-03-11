@@ -37,10 +37,9 @@ import xlsxwriter
 from tqdm import tqdm
 
 
-from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures
-from climada.hazard.tag import Tag as TagHaz
-from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
+from climada.entity import Exposures, Tag
+from climada.entity.exposures import INDICATOR_IF, INDICATOR_CENTR
+from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
 from climada.util.constants import DEF_CRS
