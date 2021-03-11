@@ -19,10 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test config module.
 """
 import unittest
-import logging
-from unittest import TestCase
 
-from climada.util.config import Config, CONFIG, log_level
+from climada.util.config import Config, CONFIG
 
 class TestConfig(unittest.TestCase):
     """Test Config methods"""
@@ -62,7 +60,6 @@ class TestConfig(unittest.TestCase):
         conf = Config.from_dict(dct)
         self.assertEqual(conf.a._root, conf._root)
         self.assertEqual(conf.a.str(), 'https://host/page.domain')
-
 
 
 # Execute Tests
