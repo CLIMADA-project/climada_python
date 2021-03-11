@@ -19,20 +19,21 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Hazard base class.
 """
 
-import os
 import unittest
 import datetime as dt
 import numpy as np
 from scipy import sparse
+from pathos.pools import ProcessPool as Pool
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 from climada.util.coordinates import equal_crs
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
+DATA_DIR = CONFIG.hazard.test_data.dir()
+HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
 
 def dummy_hazard():
     hazard = Hazard('TC')
@@ -424,6 +425,28 @@ class TestSelect(unittest.TestCase):
         haz = dummy_hazard()
         sel_haz = haz.select(date=(6, 8), orig=False)
         self.assertEqual(sel_haz, None)
+
+    def test_select_date_invalid_pass(self):
+        """Test select with invalid date values"""
+        haz = dummy_hazard()
+
+        # lists and numpy arrays should work just like tuples
+        sel_haz = haz.select(date=['0001-01-02', '0001-01-03'])
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3])))
+        sel_haz = haz.select(date=np.array([2, 4]))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([2, 3, 4])))
+
+        # iterables of length not exactly 2 are invalid
+        with self.assertRaises(ValueError) as context:
+            haz.select(date=(3,))
+        self.assertTrue("not enough values to unpack" in str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            haz.select(date=(1, 2, 3))
+        self.assertTrue("too many values to unpack" in str(context.exception))
+
+        # only strings and numbers are valid
+        with self.assertRaises(TypeError) as context:
+            haz.select(date=({}, {}))
 
     def test_select_reg_id_pass(self):
         """Test select region of centroids."""
@@ -931,7 +954,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertFalse(hazard.orig[4818])
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, HAZ_TEST_MAT)
+        self.assertEqual(hazard.tag.file_name, str(HAZ_TEST_MAT))
         self.assertEqual(hazard.tag.description,
                          ' TC hazard event set, generated 14-Nov-2017 10:09:05')
         self.assertEqual(hazard.tag.haz_type, 'TC')
@@ -941,7 +964,7 @@ class TestHDF5(unittest.TestCase):
 
     def test_write_read_pass(self):
         """Read a hazard mat file correctly."""
-        file_name = os.path.join(DATA_DIR, 'test_haz.h5')
+        file_name = str(DATA_DIR.joinpath('test_haz.h5'))
 
         # Read demo excel file
         hazard = Hazard('TC')
@@ -956,7 +979,7 @@ class TestHDF5(unittest.TestCase):
             haz_read = Hazard('TC')
             haz_read.read_hdf5(file_name)
 
-            self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
+            self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
             self.assertIsInstance(haz_read.tag.file_name, str)
             self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
             self.assertIsInstance(haz_read.tag.haz_type, str)
@@ -1082,6 +1105,37 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(haz_fl.fraction.min() >= 0)
         self.assertTrue(haz_fl.fraction.max() <= 0.5 / 2)
 
+
+class TestClear(unittest.TestCase):
+    """Test clear method"""
+
+    def test_clear(self):
+        """Clear method clears everything"""
+        haz1 = Hazard('TC')
+        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz1.units = "m"
+        haz1.foo = np.arange(10)
+        haz1.clear()
+        self.assertEqual(list(vars(haz1.tag).values()), ['', '', ''])
+        self.assertEqual(haz1.units, '')
+        self.assertEqual(haz1.centroids.size, 0)
+        self.assertEqual(len(haz1.event_name), 0)
+        for attr in vars(haz1).keys():
+            if attr not in ['tag', 'units', 'event_name', 'pool']:
+                self.assertEqual(getattr(haz1, attr).size, 0)
+        self.assertIsNone(haz1.pool)
+
+    def test_clear_pool(self):
+        """Clear method should not clear a process pool"""
+        haz1 = Hazard('TC')
+        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        pool = Pool(nodes=2)
+        haz1.pool = pool
+        haz1.check()
+        haz1.clear()
+        self.assertEqual(haz1.pool, pool)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
@@ -1094,4 +1148,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

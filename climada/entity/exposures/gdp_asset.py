@@ -20,30 +20,26 @@ Define GDPAsset class.
 """
 
 __all__ = ['GDP2Asset']
-import os
+import logging
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy as sp
-import logging
-import geopandas as gpd
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.coordinates import pts_to_raster_meta
 from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
-from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, DEF_CRS, SYSTEM_DIR
+from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
+from .base import Exposures, INDICATOR_IF
+
 LOGGER = logging.getLogger(__name__)
 
 DEF_HAZ_TYPE = 'RF'
 
-CONVERTER = os.path.join(SYSTEM_DIR, 'GDP2Asset_converter_2.5arcmin.nc')
+CONVERTER = SYSTEM_DIR.joinpath('GDP2Asset_converter_2.5arcmin.nc')
 
 
 class GDP2Asset(Exposures):
-
-    @property
-    def _constructor(self):
-        return GDP2Asset
 
     def set_countries(self, countries=[], reg=[], ref_year=2000,
                       path=None):
@@ -63,7 +59,7 @@ class GDP2Asset(Exposures):
             LOGGER.error('No path for exposure data set')
             raise NameError
 
-        if not os.path.exists(path):
+        if not Path(path).is_file():
             LOGGER.error('Invalid path %s', path)
             raise NameError
         try:
@@ -81,27 +77,31 @@ class GDP2Asset(Exposures):
                                                         ref_year, path))
                 tag.description += ("{} GDP2Asset \n").\
                     format(countries[cntr_ind])
-            Exposures.__init__(self, gpd.GeoDataFrame(
-                pd.concat(gdp2a_list, ignore_index=True)))
         except KeyError:
             LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
                          ' reference year %s', countries, reg, ref_year)
-            raise KeyError
-        self.tag = tag
-        self.ref_year = ref_year
-        self.value_unit = 'USD'
-        self.tag.description = 'GDP2Asset ' + str(self.ref_year)
-        self.crs = DEF_CRS
+            raise
+        
+        tag.description += 'GDP2Asset ' + str(self.ref_year)
+        Exposures.__init__(
+            self,
+            data=Exposures.concat(gdp2a_list).gdf,
+            ref_year=ref_year,
+            tag=tag,
+            value_unit='USD'
+        )
+
         # set meta
         res = 0.0416666
 
-
-        rows, cols, ras_trans = pts_to_raster_meta((self.longitude.min(),
-                                                    self.latitude.min(),
-                                                    self.longitude.max(),
-                                                    self.latitude.max()), res)
+        rows, cols, ras_trans = pts_to_raster_meta((self.gdf.longitude.min(),
+                                                    self.gdf.latitude.min(),
+                                                    self.gdf.longitude.max(),
+                                                    self.gdf.latitude.max()), res)
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
                      'transform': ras_trans}
+
+
 
     @staticmethod
     def _set_one_country(countryISO, ref_year, path=None):
@@ -114,7 +114,7 @@ class GDP2Asset(Exposures):
         Raises:
             KeyError, OSError
         Returns:
-            np.array
+            GDP2Asset
         """
         natID = country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
@@ -126,11 +126,11 @@ class GDP2Asset(Exposures):
         if_rf_info = np.full((len(assets),), if_rf)
 
         exp_gdpasset = GDP2Asset()
-        exp_gdpasset['value'] = assets
-        exp_gdpasset['latitude'] = coord[:, 0]
-        exp_gdpasset['longitude'] = coord[:, 1]
-        exp_gdpasset[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
-        exp_gdpasset['region_id'] = reg_id_info
+        exp_gdpasset.gdf['value'] = assets
+        exp_gdpasset.gdf['latitude'] = coord[:, 0]
+        exp_gdpasset.gdf['longitude'] = coord[:, 1]
+        exp_gdpasset.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset.gdf['region_id'] = reg_id_info
         return exp_gdpasset
 
 

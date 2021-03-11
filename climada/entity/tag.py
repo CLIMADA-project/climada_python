@@ -36,7 +36,7 @@ class Tag():
             file_name (str, optional): file name to read
             description (str, optional): description of the data
         """
-        self.file_name = file_name
+        self.file_name = str(file_name)
         self.description = description
 
     def append(self, tag):

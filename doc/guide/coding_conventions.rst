@@ -16,6 +16,10 @@ Python Style
 ------------
 Follow `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_.
 
+Doc Strings
+-----------
+Modules, classes and public methods should have a Pydoc string in the `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_ format.
+
 Linter
 ------
 The PyLint configuration file is `here <https://github.com/CLIMADA-project/climada_python/blob/master/.pylintrc>`_.

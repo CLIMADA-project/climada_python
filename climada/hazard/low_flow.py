@@ -23,9 +23,9 @@ WORK IN PROGRESS
 __all__ = ['LowFlow']
 
 import logging
-import os
 import copy
 import datetime as dt
+from pathlib import Path
 import cftime
 import xarray as xr
 import geopandas as gpd
@@ -202,7 +202,7 @@ class LowFlow(Hazard):
             NameError
         """
         if input_dir:
-            if not os.path.exists(input_dir):
+            if not Path(input_dir).is_dir():
                 LOGGER.warning('Input directory %s does not exist', input_dir)
                 raise NameError
         else:
@@ -683,16 +683,15 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         else:
             bias_corr = 'ewembi'
 
-        filename = os.path.join(input_dir, \
-                                f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc'
-                                )
-        if not os.path.isfile(filename):
-            LOGGER.error('Netcdf file not found: %s', filename)
+        filepath = Path(input_dir,
+            f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc')
+        if not filepath.is_file():
+            LOGGER.error('Netcdf file not found: %s', filepath)
         if first_file:
-            dis_xarray = _read_single_nc(filename, yearrange, bbox)
+            dis_xarray = _read_single_nc(filepath, yearrange, bbox)
             first_file = False
         else:
-            dis_xarray = dis_xarray.combine_first(_read_single_nc(filename, yearrange, bbox))
+            dis_xarray = dis_xarray.combine_first(_read_single_nc(filepath, yearrange, bbox))
 
     # set negative discharge values to zero (debugging of input data):
     dis_xarray.dis.values[dis_xarray.dis.values < 0] = 0
@@ -703,7 +702,7 @@ def _read_single_nc(filename, yearrange, bbox):
 
     Parameters:
         filename (str or pathlib.Path): full path of input netcdf file
-        yearrange: (tuple): year range to be extracted from file
+        yearrange (tuple): year range to be extracted from file
         bbox (tuple of float): geographical bounding box in the form:
             (lon_min, lat_min, lon_max, lat_max)
 
@@ -757,7 +756,7 @@ def _xarray_reduce(dis_xarray, fun=None, percentile=None):
 def _split_bbox(bbox, width=BBOX_WIDTH):
     """split bounding box into squares, return new set of bounding boxes
     Note: Could this function be a candidate for climada.util in the future?
-    
+
     Parameters:
         bbox (tuple of float): geographical bounding box in the form:
             (lon_min, lat_min, lon_max, lat_max)
@@ -801,30 +800,33 @@ def _compute_threshold_grid(percentile, yearrange_ref, input_dir, gh_model, cl_m
             grid is masked out. e.g. ('mean', 1.)
 
     Returns:
-        p_grid (xarray): grid with dis of given percentile (1-timestep)
-        mean_grid (xarray): grid with mean(dis)
+        p_grid (xarray.Dataset): grid with dis of given percentile (1-timestep)
+        mean_grid (xarray.Dataset): grid with mean(dis)
         """
     LOGGER.info('Computing threshold value per grid cell for Q%i, %i-%i',
                 percentile, yearrange_ref[0], yearrange_ref[1])
     if isinstance(mask_threshold, tuple):
         mask_threshold = [mask_threshold]
     bbox = _split_bbox(bbox)
-    p_grid = []
-    mean_grid = []
+    p_grid_list = []
+    mean_grid_list = []
     # loop over coordinate bounding boxes to save memory:
     for box in bbox:
         dis_xarray = _read_and_combine_nc(yearrange_ref, input_dir, gh_model, cl_model,
                                     scenario, soc, fn_str_var, box, yearchunks)
         if dis_xarray.dis.data.size: # only if data is not empty
-            p_grid += [_xarray_reduce(dis_xarray, fun='p', percentile=percentile)]
+            p_grid_list += [_xarray_reduce(dis_xarray, fun='p', percentile=percentile)]
             # only compute mean_grid if required by user or mask_threshold:
             if keep_dis_data or (mask_threshold and True in ['mean' in x for x in mask_threshold]):
-                mean_grid += [_xarray_reduce(dis_xarray, fun='mean')]
-
+                mean_grid_list += [_xarray_reduce(dis_xarray, fun='mean')]
     del dis_xarray
-    p_grid = xr.combine_by_coords(p_grid)
-    if mean_grid:
-        mean_grid = xr.combine_by_coords(mean_grid)
+
+    p_grid = xr.combine_by_coords(p_grid_list)
+    del p_grid_list
+
+    if mean_grid_list:
+        mean_grid = xr.combine_by_coords(mean_grid_list)
+    del mean_grid_list
 
     if isinstance(mask_threshold, list):
         for crit in mask_threshold:

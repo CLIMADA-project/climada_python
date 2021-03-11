@@ -40,7 +40,7 @@ from rasterio.crs import CRS
 import requests
 
 from climada.util.files_handler import to_list
-from climada.util.coordinates import grid_is_regular
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         buffer (float, optional): border to add to coordinates
         extend (str, optional): extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
-        proj (ccrs): coordinate reference system used in coordinates
+        proj (ccrs): coordinate reference system of the given data
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -92,8 +92,15 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
+
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        proj_plot = proj
+        if isinstance(proj, ccrs.PlateCarree):
+            # use different projections for plot and data to shift the central lon in the plot
+            xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
+            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        _, axes = make_map(num_im, proj=proj_plot)
+
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
@@ -104,8 +111,13 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
 
+
         # Binned image with coastlines
-        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
+        if isinstance(proj, ccrs.PlateCarree):
+            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(coord[:, 0], coord[:, 1], buffer=buffer)
+            extent = (xmin, xmax, ymin, ymax)
+        else:
+            extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
         add_shapes(axis)
         if pop_name:
@@ -226,7 +238,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
 
-    is_reg, height, width = grid_is_regular(coord)
+    is_reg, height, width = u_coord.grid_is_regular(coord)
     extent = _get_borders(coord, proj_limits=(-360, 360, -90, 90))
     mid_lon = 0
     if not proj:
@@ -305,7 +317,7 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree()):
     for axis in axes_iter.flatten():
         try:
             grid = axis.gridlines(draw_labels=True, alpha=0.2, transform=proj)
-            grid.xlabels_top = grid.ylabels_right = False
+            grid.top_labels = grid.right_labels = False
             grid.xformatter = LONGITUDE_FORMATTER
             grid.yformatter = LATITUDE_FORMATTER
         except TypeError:
@@ -472,3 +484,89 @@ def get_transformation(crs_in):
     except KeyError:
         units = '°'
     return crs_epsg, units
+
+
+def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend=True, ticklabels=None, invert_axis=False):
+    """Draws a bar plot with multiple bars per data point.
+    https://stackoverflow.com/questions/14270391/python-matplotlib-multiple-bars
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.axis
+        The axis we want to draw our plot on.
+
+    data: dictionary
+        A dictionary containing the data we want to plot. Keys are the names of the
+        data, the items is a list of the values.
+
+        Example:
+        data = {
+            "x": [1, 2, 3],
+            "y": [1, 2, 3],
+            "z": [1, 2, 3],
+        }
+        fig, ax = plt.subplots()
+        multibar_plot(ax, data, xticklabels=["a", "b", "c"])
+
+
+    colors : array-like, optional
+        A list of colors which are used for the bars. If None, the colors
+        will be the standard matplotlib color cyle. (default: None)
+
+    total_width : float, optional, default: 0.8
+        The width of a bar group. 0.8 means that 80% of the x-axis is covered
+        by bars and 20% will be spaces between the bars.
+
+    single_width: float, optional, default: 1
+        The relative width of a single bar within a group. 1 means the bars
+        will touch eachother within a group, values less than 1 will make
+        these bars thinner.
+
+    legend: bool, optional, default: True
+        If this is set to true, a legend will be added to the axis.
+
+    ticklabels: list, optional, default: None
+        labels of the xticks (yticks if invert_axis=True)
+
+    invert_axis: boolean, default: False
+        Invert the x and y axis. By default, the bars are vertical.
+        invert_axis=True gives horizontal bars.
+    """
+
+    # Check if colors where provided, otherwhise use the default color cycle
+    if colors is None:
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Number of bars per group
+    n_bars = len(data)
+
+    # The width of a single bar
+    bar_width = total_width / n_bars
+
+    # List containing handles for the drawn bars, used for the legend
+    bars = []
+
+    # Iterate over all data
+    for i, (name, values) in enumerate(data.items()):
+        # The offset in x direction of that bar
+        x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
+
+        # Draw a bar for every value of that type
+        for x, y in enumerate(values):
+            if invert_axis:
+                bar = ax.barh(x + x_offset, width=y, height=bar_width * single_width, color=colors[i % len(colors)])
+            else:
+                bar = ax.bar(x + x_offset, y, width=bar_width * single_width, color=colors[i % len(colors)])
+
+        # Add a handle to the last drawn bar, which we'll need for the legend
+        bars.append(bar[0])
+
+    if ticklabels:
+        if invert_axis:
+            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels)
+        else:
+            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels)
+
+    # Draw legend if we need
+    if legend:
+        ax.legend(bars, data.keys())
