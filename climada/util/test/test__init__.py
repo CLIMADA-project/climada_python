@@ -20,14 +20,13 @@ Test config module.
 """
 import unittest
 import logging
-from unittest import TestCase
 
 from climada.util import log_level
 
 class TestUtilInit(unittest.TestCase):
     """Test util __init__ methods"""
 
-    def test_set_logger(self):
+    def test_set_logger_pass(self):
         #Check loggers are set to level
         with self.assertLogs('climada', level='INFO') as cm:
              with log_level('WARNING'):
@@ -40,7 +39,6 @@ class TestUtilInit(unittest.TestCase):
                 logging.getLogger('climada').info('info')
             logging.getLogger('matplotlib').debug('debug')
             self.assertEqual(cm.output, ['DEBUG:matplotlib:debug'])
-
 
 # Execute Tests
 if __name__ == "__main__":

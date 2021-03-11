@@ -29,19 +29,19 @@ from .save import *
 ureg = UnitRegistry()
 
 class log_level:
-    """Context manager that sets all loggers with names starting with 
-    name_prefix (default is "") to a given specified level.  
-    
+    """Context manager that sets all loggers with names starting with
+    name_prefix (default is "") to a given specified level.
+
     Examples
     --------
     Set ALL loggers temporarily to the level 'WARNING'
     >>> with log_level(level='WARNING'):
     >>>     ...
-        
+
     Set the all climada loggers temporarily to the level 'ERROR'
-    >>> with log_level(level='ERROR', name_prefix='cliamda'):
+    >>> with log_level(level='ERROR', name_prefix='climada'):
     >>>     ...
-    
+
     """
 
     def __init__(self, level, name_prefix=""):
