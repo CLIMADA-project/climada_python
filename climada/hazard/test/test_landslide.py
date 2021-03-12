@@ -34,20 +34,19 @@ class TestLandslideModule(unittest.TestCase):
         """ Test function set_ls_hist()"""
         LS_hist = Landslide()
         LS_hist.set_ls_hist(bbox=(20,40,23,46), 
-                                  path_sourcefile=LS_HIST_FILE, 
-                                  check_plots=0)
+                                  path_sourcefile=LS_HIST_FILE)
         self.assertEqual(LS_hist.size, 272)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
-        self.assertEqual(min(LS_hist.intensity.data),1)
-        self.assertEqual(max(LS_hist.intensity.data),1)
+        self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
+        self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
+        self.assertTrue(np.isnan(LS_hist.frequency.data).all())
 
         
     def test_set_ls_prob(self):
         """ Test the function set_ls_prob()"""
         LS_prob = Landslide()
         LS_prob.set_ls_prob(bbox=(8,45,11,46), 
-                            path_sourcefile=LS_PROB_FILE, 
-                            check_plots=0)
+                            path_sourcefile=LS_PROB_FILE)
         LS_prob.fraction = LS_prob.fraction/10e6
 
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
@@ -68,8 +67,7 @@ class TestLandslideModule(unittest.TestCase):
     def test_sample_events_from_probs(self):
         LS_sampled_evs = Landslide()
         LS_sampled_evs.set_ls_prob(bbox=(8,45,11,46), 
-                            path_sourcefile=LS_PROB_FILE, 
-                            check_plots=0)
+                            path_sourcefile=LS_PROB_FILE)
         LS_sampled_evs.fraction = LS_sampled_evs.fraction/10e6
         LS_sampled_evs.sample_events_from_probs(n_years=100)
         self.assertTrue(max(LS_sampled_evs.fraction_prob.data) == 2.1e-05)
