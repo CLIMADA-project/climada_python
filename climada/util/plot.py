@@ -31,6 +31,7 @@ import logging
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import box
 import cartopy.crs as ccrs
@@ -288,6 +289,87 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         cbar.set_label(name)
         axis.set_title(tit)
 
+    return axes
+
+def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
+                            cat_name=None, pop_name=True, buffer=BUFFER,
+                            extend='neither', proj=ccrs.PlateCarree(),
+                            shapes=True, axes=None, **kwargs):
+    """Map plots for categorical data defined in array(s) over input
+    coordinates. The categories cmust be a discrete number of unique
+    values as can be identified by np.unique().
+    
+
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are categorical values at each point
+            in corresponding geo_coord that are ploted in one subplot.
+        coord (2d np.array): (lat, lon) for each point in a row.
+            The same grid is used for all subplots.
+        var_name (str or list(str)): label to be shown in the colorbar. If one
+            provided, the same is used for all subplots. Otherwise provide as
+            many as subplots in array_sub.
+        cat_name (list(str)), optional: List of category names in same order
+            as the ordered categories obtain from np.unique(array_sub). All
+            subplots are assumed to have the same categories. 
+            Default is numbers (1,2,...)
+        title (str or list(str)): subplot title. If one provided, the same is
+            used for all subplots. Otherwise provide as many as subplots in
+            array_sub.
+        proj (ccrs): coordinate reference system used in coordinates
+        smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
+            True.
+        kwargs (optional): arguments for pcolormesh matplotlib function.
+
+    Returns:
+        cartopy.mpl.geoaxes.GeoAxesSubplot
+    """
+    
+    # Generate array of values used in each subplot
+    num_im, list_arr = _get_collection_arrays(array_sub)
+    list_tit = to_list(num_im, title, 'title')
+    list_name = to_list(num_im, var_name, 'var_name')
+    list_coord = to_list(num_im, geo_coord, 'geo_coord')
+
+    cmap_name = 'Accent'
+    if 'cmap' in kwargs:
+        cmap_name = kwargs['cmap']
+        del kwargs['cmap']
+    if axes is None:
+        _, axes = make_map(num_im, proj=proj)
+    axes_iter = axes
+    if not isinstance(axes, np.ndarray):
+        axes_iter = np.array([[axes]])
+    # Generate each subplot
+    for array_im, axis, tit, name, coord in \
+    zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
+        if coord.shape[0] != array_im.size:
+            raise ValueError("Size mismatch in input array: %s != %s." %
+                             (coord.shape[0], array_im.size))
+        # Binned image with coastlines
+        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
+        axis.set_extent((extent), proj)
+        if shapes:
+            add_shapes(axis)
+        if pop_name:
+            add_populated_places(axis, extent, proj)
+            
+        cmap = mpl.cm.get_cmap(cmap_name)  # define the colormap        
+        valcat = val_to_cat(array_im)
+        bounds = np.arange(-0.5, np.unique(valcat)[-1] + 1, 1)
+        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=valcat, norm=norm,
+                               cmap=cmap, transform=proj, **kwargs)
+        # Create colorbar in this axis
+        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
+                                                     pad=0.1, axes_class=plt.Axes)
+        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
+                            extend=extend)
+        cbar.set_ticks(np.unique(valcat))
+        if cat_name:
+            cbar.set_ticklabels(cat_name)
+        cbar.set_label(name)
+        axis.set_title(tit)
     return axes
 
 def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree()):
