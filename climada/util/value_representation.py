@@ -134,3 +134,30 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
 
     return (mon_val, name)
+
+def val_to_cat(values):
+    """
+    Converts an array of values to numbered categories.
+
+    Parameters
+    ----------
+    values : list or array 
+        List of categories (any type that can be used as input for np.unique())
+
+    Returns
+    -------
+    valcat : np.array
+        List of the input values mapped onto categories.
+        
+    Example
+    -------
+    val_to_cat([1, 2, 1, 2, 2, 10]) = np.array([0, 1, 0, 1, 1, 2])
+    val_to_cat([1, 'a', 'a']) = np.array([0, 1, 1])
+
+    """
+    
+    valcat = np.zeros(len(values))
+    all_cat = np.unique(values)
+    for n, cat in enumerate(all_cat):
+        np.put(valcat, np.argwhere(values==cat), n)
+    return valcat
