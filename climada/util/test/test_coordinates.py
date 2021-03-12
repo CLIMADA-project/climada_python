@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
 import shapely
-from shapely.geometry import box
+from shapely.geometry import box, Point
 from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
@@ -51,6 +51,8 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       latlon_bounds,
                                       latlon_to_geosph_vector,
                                       lon_normalize,
+                                      mapping_grid2flattened,
+                                      mapping_point2grid,
                                       nat_earth_resolution,
                                       points_to_raster,
                                       pts_to_raster_meta,
@@ -253,7 +255,34 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             to_crs_user_input('{init: epsg:4326, no_defs: True}')
 
-
+    def test_mapping_point2grid(self):
+        res = (-1, 0.5)
+        geometry = Point(10,40)
+        out = mapping_point2grid(geometry, 50, 5, res)
+        self.assertEqual(out, (5, 20))
+        
+        res = -0.5
+        geometry = Point(10,40)
+        out = mapping_point2grid(geometry, 50, 5, res)
+        self.assertEqual(out, (10, 20))
+        
+        res = 1
+        geometry = Point(-10,-40)
+        out = mapping_point2grid(geometry, -30, -20, res)
+        self.assertEqual(out, (10, 10))
+        
+        with self.assertRaises(ValueError):
+            mapping_point2grid( Point(-30,-40), -30, -20, res) 
+        
+    def test_mapping_grid2flattened(self):
+        matrix = np.ones((5,8))
+        out = mapping_grid2flattened(0, 0, matrix.shape)
+        self.assertEqual(out, 0)
+        out = mapping_grid2flattened(7, 4, matrix.shape)
+        self.assertEqual(out, 39)
+        with self.assertRaises(ValueError):
+            mapping_grid2flattened(4, 7, matrix.shape)
+        
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""

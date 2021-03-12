@@ -820,13 +820,20 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     ------- 
     col, row : tuple
         column index and row index in grid matrix where point falls into
+    
+    Raises
+    ------
+    ValueError if Point outside of top left corner of raster
     """
     if isinstance(res, tuple):
-        res_x, res_y = res
+        res_x, res_y = (abs(res) for res in res)
     else:
-        res_x = res_y = res
+        res_x = res_y = abs(res)
     col = int((geometry.x - xmin) / res_x)
     row = int((ymax - geometry.y) / res_y)
+    if (col < 0 or row < 0):
+        LOGGER.error('Point not inside grid')
+        raise ValueError  
     return col, row
     
 def mapping_grid2flattened(col, row, matrix_shape):
@@ -842,10 +849,14 @@ def mapping_grid2flattened(col, row, matrix_shape):
         Row index of an entry in the original matrix
     matrix_shape: (int, int)
         Shape of the matrix (n_rows, n_cols)
+    
     Returns
     -------
     index (1D) of the point in the flattened array (int)
     """
+    if (row > matrix_shape[0] or col > matrix_shape[1]):
+        LOGGER.error('Indicated row  or column index larger than matrix')
+        raise ValueError
     return row * matrix_shape[1] + col
 
 def region2isos(regions):

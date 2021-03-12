@@ -30,7 +30,6 @@ from scipy.stats import binom, poisson
 import shapely
 
 from climada.hazard.base import Hazard
-from climada.util.constants import DEF_CRS
 from climada.util.coordinates import (mapping_point2grid, 
                                       mapping_grid2flattened,
                                       read_raster)
@@ -169,8 +168,8 @@ class Landslide(Hazard):
         More details can be found in the landslide tutorial and under above-
         mentioned links.
 
-        The annual occurrence probabilites are sampled from a binomial 
-        distribution; intensity takes a binary value (0 - no
+        Events are sampled from annual occurrence probabilites via binomial or 
+        poisson distribution; intensity takes a binary value (0 - no
         ls occurrence; 1 - ls occurrence) and
         fraction stores the actual the occurrence count (0 to n) per grid cell.
         Frequency is occurrence count / n_years.
