@@ -638,6 +638,7 @@ class Uncertainty():
             
         if metric_list is None:
             metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk', 
+                           'eai_exp', 'at_event', 'tot_value',
                            'benefit', 'cost_ben_ratio', 'imp_meas_present',
                            'imp_meas_future', 'tot_value']
             metric_list = list(set(metric_list) & set(self.metrics.keys()))

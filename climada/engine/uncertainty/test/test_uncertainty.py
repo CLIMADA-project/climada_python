@@ -380,7 +380,7 @@ class TestUncImpact(unittest.TestCase):
         unc = UncImpact(exp_unc, impf_unc, haz)
         unc.make_sample(N=1)
         
-        unc.calc_distribution()
+        unc.calc_distribution(calc_eai_exp=False, calc_at_event=False)
         
         self.assertListEqual(unc.rp, [5, 10, 20, 50, 100, 250])
         self.assertEqual(unc.calc_eai_exp, False)

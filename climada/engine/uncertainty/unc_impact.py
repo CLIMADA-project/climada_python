@@ -30,6 +30,7 @@ import time
 from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.util import log_level
+from climada.util import plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,8 +74,8 @@ class UncImpact(Uncertainty):
 
     def calc_distribution(self,
                             rp=None,
-                            calc_eai_exp=False,
-                            calc_at_event=False,
+                            calc_eai_exp=True,
+                            calc_at_event=True,
                             pool=None
                             ):
         """
@@ -255,3 +256,29 @@ class UncImpact(Uncertainty):
         ax.set_yticklabels(df_values.columns)
 
         return fig, ax
+    
+    
+    def plot_sensitivity_map(self, exp):
+        
+        try:
+            si_eai = self.sensitivity['eai_exp']
+            eai_max_S1_idx = [
+                np.argmax(si_dict['S1'])
+                for si_dict in si_eai.values()
+                ]
+            
+        except KeyError as verr:
+            raise ValueError("No sensitivity indices found. Please compute "
+                  " ensitivity first using .calc_sensitivity()") from verr
+           
+        plot_val = np.array([eai_max_S1_idx]).astype(float)
+        coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
+        ax = u_plot.geo_scatter_categorical(
+                plot_val, coord,
+                var_name='Largest sensitivity index', title='Sensitivity map',
+                cat_name= self.param_labels
+                )
+        
+        return ax
+
+            
