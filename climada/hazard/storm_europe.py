@@ -423,8 +423,8 @@ class StormEurope(Hazard):
         # delete generated .grib2 and .4cc40.idx files
         for ind_i, file_i in enumerate(file_names):
             gripfile_path_i = Path(file_i[:-4])
-            idxfile_path_i = Path(str(gripfile_path_i.absolute()) +
-                                  '.4cc40.idx')
+            idxfile_path_i = next(gripfile_path_i.parent.glob(
+                str(gripfile_path_i.name) + '.*.idx'))
             gripfile_path_i.unlink()
             idxfile_path_i.unlink()
 
