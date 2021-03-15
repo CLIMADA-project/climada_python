@@ -630,6 +630,9 @@ def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
         tracks = [_apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel)
                   for track in tracks]
 
+    for track in tracks:
+        if track.orig_event_flag:
+            climada.hazard.tc_tracks.track_land_params(track, land_geom)
     if check_plot:
         _check_apply_decay_plot(tracks, orig_wind, orig_pres)
     return tracks
@@ -664,13 +667,8 @@ def _decay_values(track, land_geom, s_rel):
     x_val = dict()
 
     climada.hazard.tc_tracks.track_land_params(track, land_geom)
-    # Index in land that comes from previous sea index
-    sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
-    # Index in sea that comes from previous land index
-    land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
-    if track.on_land[-1]:
-        land_sea_idx = np.append(land_sea_idx, track.time.size)
-    if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
+    sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
+    if sea_land_idx.size:
         for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
             v_landfall = track.max_sustained_wind[sea_land - 1].values
             ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
@@ -835,13 +833,8 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         return track
 
     climada.hazard.tc_tracks.track_land_params(track, land_geom)
-    # Index in land that comes from previous sea index
-    sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
-    # Index in sea that comes from previous land index
-    land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
-    if track.on_land[-1]:
-        land_sea_idx = np.append(land_sea_idx, track.time.size)
-    if not sea_land_idx.size or land_sea_idx.size > sea_land_idx.size:
+    sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
+    if not sea_land_idx.size:
         return track
     for idx, (sea_land, land_sea) \
             in enumerate(zip(sea_land_idx, land_sea_idx)):
@@ -1011,13 +1004,8 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
 
     for track, orig_wind, orig_pres in \
             zip(sy_tracks, syn_orig_wind, syn_orig_pres):
-        # Index in land that comes from previous sea index
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
-        # Index in sea that comes from previous land index
-        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
-        if track.on_land[-1]:
-            land_sea_idx = np.append(land_sea_idx, track.time.size)
-        if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
+        sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
+        if sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
                 v_lf = track.max_sustained_wind[sea_land - 1].values
                 p_lf = track.central_pressure[sea_land - 1].values
@@ -1077,13 +1065,8 @@ def _check_apply_decay_hist_plot(hist_tracks):
     graph_hped_a.set_ylabel('Environmental pressure - Central pressure (mb)')
 
     for track in hist_tracks:
-        # Index in land that comes from previous sea index
-        sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
-        # Index in sea that comes from previous land index
-        land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
-        if track.on_land[-1]:
-            land_sea_idx = np.append(land_sea_idx, track.time.size)
-        if sea_land_idx.size and land_sea_idx.size <= sea_land_idx.size:
+        sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
+        if sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
                 ss_scale_idx = np.where(track.max_sustained_wind[sea_land - 1].values
