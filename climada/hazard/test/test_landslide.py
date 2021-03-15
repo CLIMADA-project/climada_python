@@ -20,9 +20,12 @@ Unit test landslide module.
 """
 import unittest
 import numpy as np
+import shapely
+from scipy import sparse
 
 from climada import CONFIG
-from climada.hazard.landslide import Landslide
+from climada.hazard.landslide import Landslide, sample_events_from_probs
+from climada.util.coordinates import read_raster
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 LS_HIST_FILE = DATA_DIR / 'test_ls_hist.shp'
@@ -39,41 +42,68 @@ class TestLandslideModule(unittest.TestCase):
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
         self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
         self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
-        self.assertTrue(np.isnan(LS_hist.frequency.data).all())
+        self.assertTrue((LS_hist.frequency.data<=1).all())
 
         
     def test_set_ls_prob(self):
         """ Test the function set_ls_prob()"""
         LS_prob = Landslide()
+        n_years=1000
         LS_prob.set_ls_prob(bbox=(8,45,11,46), 
-                            path_sourcefile=LS_PROB_FILE)
-        LS_prob.fraction = LS_prob.fraction/10e6
+                            path_sourcefile=LS_PROB_FILE, n_years=n_years,
+                            dist='binom')
 
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
         self.assertEqual(LS_prob.intensity.shape,(1, 43200))
         self.assertEqual(LS_prob.fraction.shape,(1, 43200))
-        self.assertEqual(max(LS_prob.intensity.data),1)
-        self.assertEqual(min(LS_prob.intensity.data),1)
-        self.assertEqual(LS_prob.intensity.todense().min(),0)
-        self.assertEqual(max(LS_prob.fraction.data),2.1e-05)
-        self.assertEqual(min(LS_prob.fraction.data),5e-07)
-        self.assertEqual(LS_prob.fraction.todense().min(),0)
-        self.assertEqual(LS_prob.frequency, np.array([1]))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
         
-        self.assertEqual(LS_prob.centroids.crs.data, {'init': 'epsg:4326'})
+        LS_prob = Landslide()
+        n_years=300
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
+                            path_sourcefile=LS_PROB_FILE,
+                            dist='poisson', n_years=n_years)
+
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
         self.assertTrue(LS_prob.centroids.coord.max() <= 46)
         self.assertTrue(LS_prob.centroids.coord.min() >= 8)
     
     def test_sample_events_from_probs(self):
-        LS_sampled_evs = Landslide()
-        LS_sampled_evs.set_ls_prob(bbox=(8,45,11,46), 
-                            path_sourcefile=LS_PROB_FILE)
-        LS_sampled_evs.fraction = LS_sampled_evs.fraction/10e6
-        LS_sampled_evs.sample_events_from_probs(n_years=100)
-        self.assertTrue(max(LS_sampled_evs.fraction_prob.data) == 2.1e-05)
-        self.assertTrue(min(LS_sampled_evs.fraction_prob.data) == 5e-07)
-        self.assertTrue(max(LS_sampled_evs.fraction.data) <= 100)
-        self.assertTrue(min(LS_sampled_evs.fraction.data) == 0)
+        bbox = (8,45,11,46)
+        corr_fact = 10e6
+        n_years = 400
+        __, prob_matrix = read_raster(LS_PROB_FILE, geometry=
+                                      [shapely.geometry.box(*bbox, ccw=True)])
+        prob_matrix = sparse.csr_matrix(prob_matrix/corr_fact)
+        
+        ev_matrix = sample_events_from_probs(prob_matrix, n_years, 
+                                             dist='binom')
+        self.assertTrue(max(ev_matrix.data) <= n_years)
+        self.assertEqual(min(ev_matrix.data), 0)
+        
+        ev_matrix = sample_events_from_probs(prob_matrix/corr_fact, n_years, 
+                                             dist='poisson')
+        self.assertTrue(max(ev_matrix.data) <= n_years)
+        self.assertEqual(min(ev_matrix.data), 0)
       
       
 if __name__ == "__main__":

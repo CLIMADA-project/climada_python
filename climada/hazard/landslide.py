@@ -33,6 +33,7 @@ from climada.hazard.base import Hazard
 from climada.util.coordinates import (mapping_point2grid, 
                                       mapping_grid2flattened,
                                       read_raster)
+from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'LS'
@@ -69,11 +70,12 @@ def sample_events_from_probs(prob_matrix, n_years, dist='binom'):
     
     if dist == 'binom':
         ev_matrix.data = binom.rvs(n=n_years, p=prob_matrix.data)
-    if dist == 'poisson':
+
+    elif dist == 'poisson':
         # λ (or μ in scipy)
         mu = prob_matrix.data * n_years
         ev_matrix.data = poisson.rvs(mu)
-        
+    
     return ev_matrix
 
 
@@ -137,15 +139,22 @@ class Landslide(Hazard):
             shape=(n_ev, self.centroids.size))
         self.fraction = self.intensity.copy()
         self.frequency = self.intensity.copy()
-        self.frequency[self.frequency.nonzero()] = np.nan        
-        self.units = ''
-        self.event_id = np.arange(n_ev, dtype=int) + 1
-        self.orig = np.ones(n_ev, bool)
+        
         if hasattr(ls_gdf_bbox, 'ev_date'):
             self.date = pd.to_datetime(ls_gdf_bbox.ev_date, yearfirst=True)
         else:
             LOGGER.info('No event dates set from source')
-
+            
+        if self.date.size > 0:
+            self.frequency = np.ones(n_ev)/(
+                (self.date.max()-self.date.min()).value/3.154e+16)
+        else:
+            LOGGER.warning('no event dates to derive proxy frequency from')
+            
+        self.units = ''
+        self.event_id = np.arange(n_ev, dtype=int) + 1
+        self.orig = np.ones(n_ev, bool)
+        
         self.check()
 
 
@@ -190,7 +199,7 @@ class Landslide(Hazard):
         n_years : int
             sampling period
         dist : str
-        distribution to sample from. currently 'binom' (default) and 'poisson'
+        distribution to sample from. 'poisson' (default) and 'binom'
 
         Returns
         -------
@@ -221,7 +230,12 @@ class Landslide(Hazard):
         # meaningless, such that check() method passes:
         self.date = np.array([])
         self.event_name = []
+        self.event_id = np.array([1])
         
+        # check for 
+        if not self.centroids.meta['crs'].is_epsg_code:
+            self.centroids.meta['crs'] = self.centroids.meta['crs'
+                               ].from_user_input(DEF_CRS)
         self.centroids.set_geometry_points()
         self.check()
 
