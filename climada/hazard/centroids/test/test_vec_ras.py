@@ -19,10 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test CentroidsVector and CentroidsRaster classes.
 """
 import unittest
+
 from cartopy.io import shapereader
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
+from pyproj.crs import CRS
+import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
@@ -457,15 +459,36 @@ class TestRaster(unittest.TestCase):
 
     def test_get_closest_point(self):
         """Test get_closest_point"""
+        for y_sign in [1, -1]:
+            centr_ras = Centroids()
+            centr_ras.meta = {
+                'width': 10,
+                'height': 20,
+                'transform': rasterio.Affine(0.5, 0, 0.1, 0, y_sign * 0.6, y_sign * (-0.3)),
+                'crs': DEF_CRS,
+            }
+            test_data = np.array([
+                [0.4, 0.1, 0.35, 0.0, 0],
+                [-0.1, 0.2, 0.35, 0.0, 0],
+                [2.2, 0.1, 2.35, 0.0, 4],
+                [1.4, 2.5, 1.35, 2.4, 42],
+                [5.5, -0.1, 4.85, 0.0, 9],
+            ])
+            test_data[:,[1,3]] *= y_sign
+            for x_in, y_in, x_out, y_out, idx_out in test_data:
+                x, y, idx = centr_ras.get_closest_point(x_in, y_in)
+                self.assertEqual(x, x_out)
+                self.assertEqual(y, y_out)
+                self.assertEqual(idx, idx_out)
+                self.assertEqual(centr_ras.lon[idx], x)
+                self.assertEqual(centr_ras.lat[idx], y)
+
         centr_ras = Centroids()
-        centr_ras.set_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        x, y, idx = centr_ras.get_closest_point(-69.334, 10.42)
-        self.assertAlmostEqual(x, -69.3326495969998)
-        self.assertAlmostEqual(y, 10.423720966978939)
-        self.assertEqual(idx, 0)
-        centr_ras.set_meta_to_lat_lon()
-        self.assertEqual(centr_ras.lon[idx], x)
-        self.assertEqual(centr_ras.lat[idx], y)
+        centr_ras.set_lat_lon(np.array([0, 0.2, 0.7]), np.array([-0.4, 0.2, 1.1]))
+        x, y, idx = centr_ras.get_closest_point(0.1, 0.0)
+        self.assertEqual(x, 0.2)
+        self.assertEqual(y, 0.2)
+        self.assertEqual(idx, 1)
 
     def test_set_meta_to_lat_lon_pass(self):
         """Test set_meta_to_lat_lon by using its inverse set_lat_lon_to_meta"""
@@ -589,6 +612,16 @@ class TestCentroids(unittest.TestCase):
         with self.assertRaises(ValueError):
             centr.check()
 
+        cen = Centroids()
+        cen.meta = {
+            'width': 10,
+            'height': 20,
+            'transform': rasterio.Affine(0.1, 0, 0, 0, 0.1, 0),
+            'crs': DEF_CRS,
+        }
+        with self.assertRaises(ValueError):
+            cen.check()
+
 class TestReader(unittest.TestCase):
     """Test Centroids setter vector and raster methods"""
     def test_set_vector_file_wrong_fail(self):
@@ -598,9 +631,9 @@ class TestReader(unittest.TestCase):
         centr = Centroids()
         inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertEqual(centr.geometry.size, centr.lat.size)
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertAlmostEqual(centr.lon[0], 12.453386544971766)
         self.assertAlmostEqual(centr.lon[-1], 114.18306345846304)
         self.assertAlmostEqual(centr.lat[0], 41.903282179960115)
@@ -696,6 +729,27 @@ class TestCentroidsFuncs(unittest.TestCase):
         self.assertEqual(fil_centr.lon[0], VEC_LON[100])
         self.assertEqual(fil_centr.lon[1], VEC_LON[200])
         self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
+
+    def test_select_extent_pass(self):
+        """Test select extent"""
+        centr = Centroids()
+        centr.set_lat_lon(np.array([-5, -3, 0, 3, 5]),
+                          np.array([-180, -175, -170, 170, 175]))
+        centr.check()
+        centr.region_id = np.zeros(len(centr.lat))
+        ext_centr = centr.select(extent=[-175, -170, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-175, -170]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-3, 0]))
+
+        # Cross antimeridian, version 1
+        ext_centr = centr.select(extent=[170, -175, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
+
+        # Cross antimeridian, version 2
+        ext_centr = centr.select(extent=[170, 185, -5, 5])
+        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
+        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
 
 # Execute Tests
 if __name__ == "__main__":

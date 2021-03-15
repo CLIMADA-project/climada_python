@@ -42,8 +42,8 @@ class TestReader(unittest.TestCase):
         def_entity.read_excel(ENT_TEMPLATE_XLS)
 
         # Check default demo excel file has been loaded
-        self.assertEqual(len(def_entity.exposures.deductible), 24)
-        self.assertEqual(def_entity.exposures.value[2], 12596064143.542929)
+        self.assertEqual(len(def_entity.exposures.gdf.deductible), 24)
+        self.assertEqual(def_entity.exposures.gdf.value[2], 12596064143.542929)
 
         self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1).mdd), 25)
 
@@ -60,20 +60,20 @@ class TestReader(unittest.TestCase):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity()
         entity_mat.read_mat(ENT_TEST_MAT)
-        self.assertEqual(entity_mat.exposures.tag.file_name, ENT_TEST_MAT)
-        self.assertEqual(entity_mat.disc_rates.tag.file_name, ENT_TEST_MAT)
-        self.assertEqual(entity_mat.measures.tag.file_name, ENT_TEST_MAT)
-        self.assertEqual(entity_mat.impact_funcs.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(entity_mat.exposures.tag.file_name, str(ENT_TEST_MAT))
+        self.assertEqual(entity_mat.disc_rates.tag.file_name, str(ENT_TEST_MAT))
+        self.assertEqual(entity_mat.measures.tag.file_name, str(ENT_TEST_MAT))
+        self.assertEqual(entity_mat.impact_funcs.tag.file_name, str(ENT_TEST_MAT))
 
     def test_read_excel(self):
         """Read entity from an xls file following the template."""
         entity_xls = Entity()
         entity_xls.read_excel(ENT_TEMPLATE_XLS)
-        self.assertEqual(entity_xls.exposures.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(entity_xls.disc_rates.tag.file_name, ENT_TEMPLATE_XLS)
-        self.assertEqual(entity_xls.measures.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(entity_xls.exposures.tag.file_name, str(ENT_TEMPLATE_XLS))
+        self.assertEqual(entity_xls.disc_rates.tag.file_name, str(ENT_TEMPLATE_XLS))
+        self.assertEqual(entity_xls.measures.tag.file_name, str(ENT_TEMPLATE_XLS))
         self.assertEqual(entity_xls.impact_funcs.tag.file_name,
-                         ENT_TEMPLATE_XLS)
+                         str(ENT_TEMPLATE_XLS))
 
 class TestCheck(unittest.TestCase):
     """Test entity checker."""

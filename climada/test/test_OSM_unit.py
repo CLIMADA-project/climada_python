@@ -92,6 +92,7 @@ class TestOSMFunctions(unittest.TestCase):
             if geom.type == 'LineString':
                 OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
             i += 1
+        # waterway_gdf_all_47_8 is in the global scope as defined in line 76 :|
         self.assertGreater(len(OSM_features_gdf_combined), len(waterway_gdf_all_47_8))
         self.assertNotIn('LineString', OSM_features_gdf_combined.geometry.type)
 

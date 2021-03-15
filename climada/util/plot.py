@@ -40,7 +40,7 @@ from rasterio.crs import CRS
 import requests
 
 from climada.util.files_handler import to_list
-from climada.util.coordinates import grid_is_regular
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         buffer (float, optional): border to add to coordinates
         extend (str, optional): extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
-        proj (ccrs): coordinate reference system used in coordinates
+        proj (ccrs): coordinate reference system of the given data
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -92,8 +92,15 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
+
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        proj_plot = proj
+        if isinstance(proj, ccrs.PlateCarree):
+            # use different projections for plot and data to shift the central lon in the plot
+            xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
+            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        _, axes = make_map(num_im, proj=proj_plot)
+
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
@@ -104,8 +111,13 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
 
+
         # Binned image with coastlines
-        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
+        if isinstance(proj, ccrs.PlateCarree):
+            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(coord[:, 0], coord[:, 1], buffer=buffer)
+            extent = (xmin, xmax, ymin, ymax)
+        else:
+            extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
         add_shapes(axis)
         if pop_name:
@@ -226,7 +238,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
 
-    is_reg, height, width = grid_is_regular(coord)
+    is_reg, height, width = u_coord.grid_is_regular(coord)
     extent = _get_borders(coord, proj_limits=(-360, 360, -90, 90))
     mid_lon = 0
     if not proj:
@@ -305,7 +317,7 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree()):
     for axis in axes_iter.flatten():
         try:
             grid = axis.gridlines(draw_labels=True, alpha=0.2, transform=proj)
-            grid.xlabels_top = grid.ylabels_right = False
+            grid.top_labels = grid.right_labels = False
             grid.xformatter = LONGITUDE_FORMATTER
             grid.yformatter = LATITUDE_FORMATTER
         except TypeError:
@@ -331,7 +343,7 @@ def add_shapes(axis):
                                          name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='black')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
@@ -495,7 +507,7 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
         }
         fig, ax = plt.subplots()
         multibar_plot(ax, data, xticklabels=["a", "b", "c"])
-        
+
 
     colors : array-like, optional
         A list of colors which are used for the bars. If None, the colors
@@ -512,12 +524,12 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
     legend: bool, optional, default: True
         If this is set to true, a legend will be added to the axis.
-        
+
     ticklabels: list, optional, default: None
         labels of the xticks (yticks if invert_axis=True)
-        
+
     invert_axis: boolean, default: False
-        Invert the x and y axis. By default, the bars are vertical. 
+        Invert the x and y axis. By default, the bars are vertical.
         invert_axis=True gives horizontal bars.
     """
 
@@ -548,12 +560,12 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
         # Add a handle to the last drawn bar, which we'll need for the legend
         bars.append(bar[0])
-           
+
     if ticklabels:
         if invert_axis:
-            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels);
+            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels)
         else:
-            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels);
+            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels)
 
     # Draw legend if we need
     if legend:

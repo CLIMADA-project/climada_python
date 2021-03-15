@@ -64,10 +64,6 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
     - -1 for water
     """
 
-    @property
-    def _constructor(self):
-        return SpamAgrar
-
     def init_spam_agrar(self, **parameters):
         """initiates agriculture exposure from SPAM data:
 
@@ -151,24 +147,24 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         else:
             i_1 = 7  # get sum over all crops (columns 7 to 48)
             i_2 = 49
-        self['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
-        self['latitude'] = lat.values
-        self['longitude'] = lon.values
+        self.gdf['value'] = data.iloc[:, i_1:i_2].sum(axis=1).values
+        self.gdf['latitude'] = lat.values
+        self.gdf['longitude'] = lon.values
         LOGGER.info('Lat. range: {:+.3f} to {:+.3f}.'.format(
-            np.min(self.latitude), np.max(self.latitude)))
+            np.min(self.gdf.latitude), np.max(self.gdf.latitude)))
         LOGGER.info('Lon. range: {:+.3f} to {:+.3f}.'.format(
-            np.min(self.longitude), np.max(self.longitude)))
+            np.min(self.gdf.longitude), np.max(self.gdf.longitude)))
 
         # set region_id (numeric ISO3):
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
-            region_id = np.ones(self.value.size, int)\
+            region_id = np.ones(self.gdf.value.size, int)\
                 * int(iso_cntry.get(country_id.iloc[0]).numeric)
         else:
-            region_id = np.zeros(self.value.size, int)
-            for i in range(0, self.value.size):
+            region_id = np.zeros(self.gdf.value.size, int)
+            for i in range(0, self.gdf.value.size):
                 region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
-        self['region_id'] = region_id
+        self.gdf['region_id'] = region_id
         self.ref_year = 2005
         self.tag = Tag()
         self.tag.description = ("SPAM agrar exposure for variable "
@@ -191,39 +187,41 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             self.value_unit = 'USD'
 
         LOGGER.info('Total {} {} {}: {:.1f} {}.'.format(
-            spam_v, spam_t, region, self.value.sum(), self.value_unit))
+            spam_v, spam_t, region, self.gdf.value.sum(), self.value_unit))
         self.check()
 
     def _set_if(self, spam_t, haz_type):
         """Set impact function id depending on technology."""
         # hazard type drought is default.
+        # TODO: review this method, for with iiv fixed to zero
+        #       there is no point in case distinction for if_* assignment
         iiv = 0
         if spam_t == 'TA':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
+            self.gdf[INDICATOR_IF + haz_type] = 1
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 1 * iiv
+            self.gdf[INDICATOR_IF + haz_type] = 1 + iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 2 * iiv
+            self.gdf[INDICATOR_IF + haz_type] = 1 + 2 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 3 * iiv
+            self.gdf[INDICATOR_IF + haz_type] = 1 + 3 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 4 * iiv
+            self.gdf[INDICATOR_IF + haz_type] = 1 + 4 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int) + 5 * iiv
+            self.gdf[INDICATOR_IF + haz_type] = 1 + 5 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self[INDICATOR_IF + haz_type] = np.ones(self.value.size, int)
+            self.gdf[INDICATOR_IF + haz_type] = 1
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):

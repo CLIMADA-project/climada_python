@@ -138,9 +138,9 @@ class TestPlotter(unittest.TestCase):
     def test_ctx_osm_pass(self):
         """Test basemap function using osm images"""
         myexp = Exposures()
-        myexp['latitude'] = np.array([30, 40, 50])
-        myexp['longitude'] = np.array([0, 0, 0])
-        myexp['value'] = np.array([1, 1, 1])
+        myexp.gdf['latitude'] = np.array([30, 40, 50])
+        myexp.gdf['longitude'] = np.array([0, 0, 0])
+        myexp.gdf['value'] = np.array([1, 1, 1])
         myexp.check()
 
         try:

@@ -55,17 +55,22 @@ class DownloadProgressBar(tqdm):
 
 
 def download_file(url, download_dir=None, overwrite=True):
-    """Download file from url in current folder and provide absolute file path
-    and name.
+    """Download file from url to given target folder and provide full path of the downloaded file.
 
-    Parameters:
-        url (str): url containing data to download
+    Parameters
+    ----------
+    url : str
+        url containing data to download
+    download_dir : Path or str, optional
+        the parent directory of the eventually downloaded file
+    overwrite : bool, optional
+        whether or not an alredy existing file at the target location should be overwritten,
+        by default True
 
-    Returns:
-        str
-
-    Raises:
-        ValueError
+    Returns
+    -------
+    str
+        the full path to the eventually downloaded file
     """
     file_name = url.split('/')[-1]
     if file_name.strip() == '':

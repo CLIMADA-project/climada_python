@@ -42,7 +42,7 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         with self.assertLogs('climada.util.save', level='INFO') as cm:
             save(file_name, ent)
-        self.assertTrue(Path(DATA_DIR, file_name).is_file())
+        self.assertTrue(CONFIG.local_data.save_dir.dir().joinpath(file_name).is_file())
         self.assertTrue((file_name in cm.output[0]) or
                         (file_name in cm.output[1]))
 
@@ -52,7 +52,6 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         save(file_name, ent)
         res = load(file_name)
-        self.assertTrue(Path(DATA_DIR, file_name).is_file())
         self.assertTrue('value' in res)
         self.assertTrue(res['value'] == ent['value'])
 

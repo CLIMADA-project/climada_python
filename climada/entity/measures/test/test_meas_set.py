@@ -375,7 +375,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
 
-        self.assertEqual(meas.tag.file_name, ENT_DEMO_TODAY)
+        self.assertEqual(meas.tag.file_name, str(ENT_DEMO_TODAY))
         self.assertEqual(meas.tag.description, description)
 
     def test_template_file_pass(self):
@@ -453,7 +453,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.risk_transf_cover, 1000000000)
         self.assertEqual(act_buil.risk_transf_cost_factor, 2)
 
-        self.assertEqual(meas.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(meas.tag.file_name, str(ENT_TEMPLATE_XLS))
         self.assertEqual(meas.tag.description, '')
 
 class TestReaderMat(unittest.TestCase):
@@ -519,7 +519,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
 
-        self.assertEqual(meas.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(meas.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(meas.tag.description, description)
 
 class TestWriter(unittest.TestCase):
@@ -568,7 +568,7 @@ class TestWriter(unittest.TestCase):
         meas_read = MeasureSet()
         meas_read.read_excel(file_name, 'test')
 
-        self.assertEqual(meas_read.tag.file_name, file_name)
+        self.assertEqual(meas_read.tag.file_name, str(file_name))
         self.assertEqual(meas_read.tag.description, 'test')
 
         meas_list = meas_read.get_measure('TC')

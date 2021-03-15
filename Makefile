@@ -12,7 +12,7 @@ lint : ## Static code analysis with Pylint
 
 .PHONY : unit_test
 unit_test : ## Unit tests execution with coverage and xml reports
-	python -m coverage run  tests_runner.py unit
+	python -m coverage run tests_runner.py unit
 	python -m coverage xml -o coverage.xml
 	python -m coverage html -d coverage
 

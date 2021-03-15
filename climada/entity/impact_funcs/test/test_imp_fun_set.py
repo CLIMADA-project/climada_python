@@ -501,7 +501,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(imp_funcs.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(imp_funcs.tag.description, description)
 
 class TestReaderExcel(unittest.TestCase):
@@ -578,7 +578,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_TODAY)
+        self.assertEqual(imp_funcs.tag.file_name, str(ENT_DEMO_TODAY))
         self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):
@@ -647,7 +647,7 @@ class TestWriter(unittest.TestCase):
         imp_res = ImpactFuncSet()
         imp_res.read_excel(file_name)
 
-        self.assertEqual(imp_res.tag.file_name, file_name)
+        self.assertEqual(imp_res.tag.file_name, str(file_name))
         self.assertEqual(imp_res.tag.description, '')
 
         # first function

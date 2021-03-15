@@ -7,7 +7,7 @@ Created on Fri Jul 13 10:11:45 2018
 import logging
 import subprocess
 
-import gdal
+from osgeo import gdal
 import pandas as pd
 from scipy import ndimage as nd
 import numpy as np

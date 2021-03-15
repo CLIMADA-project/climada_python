@@ -220,11 +220,11 @@ class Landslide(Hazard):
 
     def _get_raster_meta(self, path_sourcefile, window_array):
         """get geo-meta data from raster files to set centroids adequately"""
-        raster = rasterio.open(path_sourcefile, 'r',
-                               window=Window(window_array[0], window_array[1],
-                                             window_array[2], window_array[3]))
-        pixel_width = raster.meta['transform'][0]
-        pixel_height = raster.meta['transform'][4]
+        with rasterio.open(path_sourcefile, 'r',
+                           window=Window(window_array[0], window_array[1],
+                                         window_array[2], window_array[3])) as raster:
+            pixel_width = raster.meta['transform'][0]
+            pixel_height = raster.meta['transform'][4]
 
         return pixel_height, pixel_width
 
