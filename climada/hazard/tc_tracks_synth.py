@@ -195,20 +195,20 @@ def calc_perturbed_trajectories(tracks,
                                  max_dspeed_rel, max_ddirection, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
-    cutoff_track_ids_cat = [x[1] for x in new_ens]
-    cutoff_track_ids_cat = sum(cutoff_track_ids_cat, [])
-    cutoff_track_ids_ok = [x[2] for x in new_ens]
-    cutoff_track_ids_ok = sum(cutoff_track_ids_ok, [])
-    if len(cutoff_track_ids_cat) > 0:
+    cutoff_track_ids_tc = [x[1] for x in new_ens]
+    cutoff_track_ids_tc = sum(cutoff_track_ids_tc, [])
+    cutoff_track_ids_ts = [x[2] for x in new_ens]
+    cutoff_track_ids_ts = sum(cutoff_track_ids_ts, [])
+    if len(cutoff_track_ids_tc) > 0:
         LOGGER.warning('The following generated synthetic tracks moved beyond '
                         'the range of [-70, 70] degrees latitude. Cut out '
                         'at TC category >1: %s.',
-                        ', '.join(cutoff_track_ids_cat))
-    if len(cutoff_track_ids_ok) > 0:
+                        ', '.join(cutoff_track_ids_tc))
+    if len(cutoff_track_ids_ts) > 0:
         LOGGER.info('The following generated synthetic tracks moved beyond '
                     'the range of [-70, 70] degrees latitude. Cut out '
                     'at TC category <= 1: %s.',
-                    ', '.join(cutoff_track_ids_ok))
+                    ', '.join(cutoff_track_ids_ts))
     new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
 
@@ -264,6 +264,12 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     -------
     ens_track : list(xr.Dataset)
         List of the track and the generated synthetic tracks.
+    cutoff_track_ids_tc : List of str
+        List containing information about the tracks that were cut off at high
+        latitudes with wind speed of TC category 2-5.
+    curoff_track_ids_ts : List of str
+        List containing information about the tracks that were cut off at high
+        latitudes with a wind speed up to TC category 1.
     """
     ens_track = list()
     n_dat = track.time.size
@@ -272,8 +278,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     [dt] = np.unique(track['time_step'])
 
     ens_track.append(track)
-    cutoff_track_ids_ok = []
-    cutoff_track_ids_cat = []
+    cutoff_track_ids_ts = []
+    cutoff_track_ids_tc = []
     for i_ens in range(nb_synth_tracks):
         i_track = track.copy(True)
 
@@ -323,9 +329,9 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 cutoff_txt = i_track.attrs['name'] + '_gen' + str(i_ens + 1)
                 cutoff_txt = cutoff_txt + ' (%s)' % climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
                 if ss_scale_end > 1:
-                    cutoff_track_ids_cat = cutoff_track_ids_cat + [cutoff_txt]
+                    cutoff_track_ids_tc = cutoff_track_ids_tc + [cutoff_txt]
                 else:
-                    cutoff_track_ids_ok = cutoff_track_ids_ok + [cutoff_txt]
+                    cutoff_track_ids_ts = cutoff_track_ids_ts + [cutoff_txt]
                 break
         # make sure longitude values are within (-180, 180)
         climada.util.coordinates.lon_normalize(new_lon, center=0.0)
@@ -340,7 +346,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
 
         ens_track.append(i_track)
 
-    return ens_track, cutoff_track_ids_cat, cutoff_track_ids_ok
+    return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts
 
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
