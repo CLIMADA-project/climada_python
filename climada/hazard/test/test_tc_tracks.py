@@ -157,6 +157,11 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
         # the wind speed at position 44 is missing in the original data
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 58, places=0)
+        self.assertAlmostEqual(track_ds.radius_oci.values[40], 160, places=0)
+        # after position 42, ROCI is missing in the original data
+        self.assertAlmostEqual(track_ds.radius_oci.values[42], 200, places=-1)
+        self.assertAlmostEqual(track_ds.radius_oci.values[85], 165, places=-1)
+        self.assertAlmostEqual(track_ds.radius_oci.values[95], 155, places=-1)
 
     def test_read_official(self):
         """Read a tropical cyclone, only officially reported values."""
