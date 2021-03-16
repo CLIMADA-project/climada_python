@@ -42,6 +42,7 @@ import requests
 
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
+import climada.util.value_representation as u_vrpr
 
 LOGGER = logging.getLogger(__name__)
 
@@ -296,8 +297,8 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                             extend='neither', proj=ccrs.PlateCarree(),
                             shapes=True, axes=None, **kwargs):
     """Map plots for categorical data defined in array(s) over input
-    coordinates. The categories cmust be a discrete number of unique
-    values as can be identified by np.unique().
+    coordinates. The categories must be a finite set of unique
+    values as can be identified by np.unique() (int, float, strings, ...).
     
 
     Parameters:
@@ -330,7 +331,8 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
-
+    
+    #default cmap
     cmap_name = 'Accent'
     if 'cmap' in kwargs:
         cmap_name = kwargs['cmap']
@@ -340,6 +342,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
+        
     # Generate each subplot
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
@@ -347,19 +350,25 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
         # Binned image with coastlines
-        extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
+        extent = _get_borders(coord, buffer=buffer,
+                              proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
         if shapes:
             add_shapes(axis)
         if pop_name:
             add_populated_places(axis, extent, proj)
-            
-        cmap = mpl.cm.get_cmap(cmap_name)  # define the colormap        
-        valcat = val_to_cat(array_im)
-        bounds = np.arange(-0.5, np.unique(valcat)[-1] + 1, 1)
+        
+        # define the colormap
+        cmap = mpl.cm.get_cmap(cmap_name)       
+        # convert categories to numeric array [0, 1, ...]
+        valcat = u_vrpr.val_to_cat(array_im) 
+        bounds = np.arange(-0.5, np.unique(valcat)[-1] + 1, 1) #np.unique sorts values
         norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        
+        #plot 
         hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=valcat, norm=norm,
                                cmap=cmap, transform=proj, **kwargs)
+        
         # Create colorbar in this axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
@@ -369,8 +378,11 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         if cat_name:
             cbar.set_ticklabels(cat_name)
         cbar.set_label(name)
+        
         axis.set_title(tit)
+        
     return axes
+
 
 def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree()):
     """Create map figure with cartopy.
