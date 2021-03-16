@@ -76,7 +76,7 @@ class TestRiverFlood(unittest.TestCase):
         imp.calc(gdpa, if_set, testRF)
 
         self.assertAlmostEqual(imp.at_event[0], 226839.72426476143)
-        self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)
+        self.assertAlmostEqual(gdpa.gdf['if_RF'].iloc[0], 3.0)
 
 
 # Execute Tests
