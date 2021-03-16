@@ -94,6 +94,14 @@ climada\.hazard\.tc\_rainfield module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.tc\_surge\_bathtub module
+------------------------------------------
+
+.. automodule:: climada.hazard.tc_surge_bathtub
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.hazard\.tc\_tracks module
 ----------------------------------
 

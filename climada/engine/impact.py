@@ -37,13 +37,13 @@ import xlsxwriter
 from tqdm import tqdm
 
 
-from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures
-from climada.hazard.tag import Tag as TagHaz
-from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
+from climada.entity import Exposures, Tag
+from climada.entity.exposures import INDICATOR_IF, INDICATOR_CENTR
+from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
 from climada.util.constants import DEF_CRS
+import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 from climada.util.select import get_attributes_with_matching_dimension
 
@@ -666,7 +666,7 @@ class Impact():
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
         try:
-            self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+            self.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             self.crs = DEF_CRS
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
@@ -712,7 +712,7 @@ class Impact():
         self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
         self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
         try:
-            self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+            self.crs = u_coord.to_csr_user_input(dfr.exp_crs.values[0])
         except AttributeError:
             self.crs = DEF_CRS
 

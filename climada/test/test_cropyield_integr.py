@@ -43,18 +43,17 @@ class TestIntegr(unittest.TestCase):
         bbox = [-5, 42, 16, 55]
         haz = RelativeCropyield()
         haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
-                                ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
-                                soc='2005soc', co2='co2', crop='whe', irr='noirr',
-                                fn_str_var=FN_STR_DEMO)
+                                   ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
+                                   soc='2005soc', co2='co2', crop='whe', irr='noirr',
+                                   fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(yearrange_mean=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
 
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
-                                              bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
-
+                                   bbox=bbox, yearrange=(2001, 2005),
+                                   scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
         exp.assign_centroids(haz, threshold=20)
 

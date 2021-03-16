@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 
+import ast
 import copy
 import logging
 import math
@@ -1117,20 +1118,58 @@ def raster_to_meshgrid(transform, width, height):
     return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
                        np.arange(ymin + yres / 2, ymax, yres))
 
+
+def to_crs_user_input(crs_obj):
+    """Returns a crs string or dictionary from a hdf5 file object.
+
+    bytes are decoded to str
+    if the string starts with a '{' it is assumed to be a dumped string from a dictionary
+    and ast is used to parse it.
+
+    Parameters
+    ----------
+    crs_obj : int, dict or str or bytes
+        the crs object to be converted user input
+
+    Returns
+    -------
+    str or dict
+        to eventually be used as argument of rasterio.crs.CRS.from_user_input
+        and pyproj.crs.CRS.from_user_input
+
+    Raises
+    ------
+    ValueError
+        if type(crs_obj) has the wrong type
+    """
+    if type(crs_obj) in [dict, int]:
+        return crs_obj
+
+    crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
+
+    if not isinstance(crs_string, str):
+        raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
+
+    if crs_string[0] == '{':
+        return ast.literal_eval(crs_string)
+
+    return crs_string
+
+
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
     Parameters
     ----------
-    crs_one : dict or string or wkt
+    crs_one : dict, str or int
         user crs
-    crs_two : dict or string or wkt
+    crs_two : dict, str or int
         user crs
 
     Returns
     -------
     equal : bool
-        Whether the two specified CRS are equal.
+        Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
@@ -1250,7 +1289,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
                 src_crs = src.crs if src_crs is None else src_crs
                 if not src_crs:
-                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
+                    src_crs = rasterio.crs.CRS.from_user_input(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
@@ -1280,7 +1319,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 })
 
     if not dst_meta['crs']:
-        dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+        dst_meta['crs'] = rasterio.crs.CRS.from_user_input(DEF_CRS)
 
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])

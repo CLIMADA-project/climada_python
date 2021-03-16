@@ -363,7 +363,7 @@ class MeasureSet():
 
         data = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             data = data[var_names['sup_field_name']]
@@ -434,7 +434,7 @@ class MeasureSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             read_att_excel(self, dfr, var_names)

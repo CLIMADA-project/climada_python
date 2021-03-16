@@ -79,7 +79,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')
-        self.assertEqual(expo.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(expo.tag.file_name, str(ENT_TEST_MAT))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""

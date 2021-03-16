@@ -174,5 +174,8 @@ EARTH_RADIUS_KM = 6371
 DEF_EPSG = 4326
 """Default EPSG code"""
 
-DEF_CRS = from_epsg(DEF_EPSG)
-"""Default coordinate reference system WGS 84"""
+DEF_CRS = f'EPSG:{DEF_EPSG}'
+"""Default coordinate reference system WGS 84, str, for pyproj and rasterio CRS.from_string()"""
+
+DEF_CRS_FIONA = from_epsg(DEF_EPSG)
+"""Default coordinate reference system WGS 84, dict, for fiona interface"""
