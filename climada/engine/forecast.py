@@ -755,7 +755,8 @@ class Forecast():
         # add warning regions
         shp = shapereader.Reader(polygon_file)
         transformer = pyproj.Transformer.from_crs(polygon_file_crs,
-                                                  self._impact.crs['init'],
+                                                  # self._impact.crs['init'],
+                                                  self._impact.crs,
                                                   always_xy=True)
         # project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'),
         #                                             pyproj.Proj(init='epsg:4150'),
