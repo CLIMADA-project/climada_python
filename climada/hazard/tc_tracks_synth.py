@@ -200,15 +200,15 @@ def calc_perturbed_trajectories(tracks,
     cutoff_track_ids_ts = [x[2] for x in new_ens]
     cutoff_track_ids_ts = sum(cutoff_track_ids_ts, [])
     if len(cutoff_track_ids_tc) > 0:
-        LOGGER.warning('The following generated synthetic tracks moved beyond '
-                        'the range of [-70, 70] degrees latitude. Cut out '
-                        'at TC category >1: %s.',
-                        ', '.join(cutoff_track_ids_tc))
-    if len(cutoff_track_ids_ts) > 0:
         LOGGER.info('The following generated synthetic tracks moved beyond '
                     'the range of [-70, 70] degrees latitude. Cut out '
-                    'at TC category <= 1: %s.',
-                    ', '.join(cutoff_track_ids_ts))
+                    'at TC category >1: %s.',
+                    ', '.join(cutoff_track_ids_tc))
+    if len(cutoff_track_ids_ts) > 0:
+        LOGGER.debug('The following generated synthetic tracks moved beyond '
+                     'the range of [-70, 70] degrees latitude. Cut out '
+                     'at TC category <= 1: %s.',
+                     ', '.join(cutoff_track_ids_ts))
     new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
 
