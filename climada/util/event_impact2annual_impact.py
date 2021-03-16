@@ -15,7 +15,7 @@ from climada.util.dates_times import str_to_date
 
 LOGGER = logging.getLogger(__name__)
 
-def eis2ais(eis, number_of_years=None, year_list=None, distribution=None, 
+def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None, 
     sampling_vect=None):
 
     """PURPOSE:
@@ -25,7 +25,7 @@ def eis2ais(eis, number_of_years=None, year_list=None, distribution=None,
     INPUTS:
       eis: an event impact set (eis)
     OPTIONAL INPUT PARAMETERS:
-      number_of_years(int): the target number of years the impact yearset shall
+      nr_resampled_years(int): the target number of years the impact yearset shall
           contain.
       year_list (list): list of years for the resulting annual impact set 
           (by default a list starting on the 01-01-0001 is generated)
@@ -57,9 +57,9 @@ def eis2ais(eis, number_of_years=None, year_list=None, distribution=None,
 
     #NUMBER OF EVENTS
     nr_input_events = len(eis.event_id)
-    n_annual_events = np.sum(eis.frequency)
+    nr_annual_events = np.sum(eis.frequency)
     if not year_list:
-        year_list = [str(date) + '-01-01' for date in np.arange(1, number_of_years+1).tolist()]
+        year_list = [str(date) + '-01-01' for date in np.arange(1, nr_resampled_years+1).tolist()]
 
 
     if nr_input_events == 0:
@@ -71,31 +71,29 @@ def eis2ais(eis, number_of_years=None, year_list=None, distribution=None,
 
 
     # INITIALISATION
-    #to do: add a flag to distinguish ais from other impact class objects
+    # to do: add a flag to distinguish ais from other impact class objects
     # artificially generate a generic  annual impact set (by sampling the event impact set)
-    # essentially a copy, reset some fields:
     ais = copy.deepcopy(eis)
     ais.event_id = [] # to indicate not by event any more
-    ais.event_id = np.arange(1, number_of_years+1)
+    ais.event_id = np.arange(1, nr_resampled_years+1)
     ais.frequency = [] # init, see below
-    ais.at_event = np.zeros([1, number_of_years+1])
+    ais.at_event = np.zeros([1, nr_resampled_years+1])
     ais.date = []
 
 
     # sample from the given event impact set
     if distribution == 'Poisson':
-        [impact_per_year, amount_events,
-         sampling_vect] = resample_multiple_annual_events(eis, number_of_years, nr_input_events,
-                                                            n_annual_events, sampling_vect=None)
+        [impact_per_year, nr_events,
+         sampling_vect] = resample_multiple_annual_events(eis, nr_resampled_years, nr_input_events,
+                                                            nr_annual_events, sampling_vect=None)
     else: #for hazards such as RC where there is exactly one event every year
-        [impact_per_year, amount_events,
-         sampling_vect] = resample_single_annual_event(eis, number_of_years,
+        [impact_per_year, nr_events,
+         sampling_vect] = resample_single_annual_event(eis, nr_resampled_years,
                                                        nr_input_events, sampling_vect)
         
 
-
     #adjust for sampling error
-    ais_ed = np.sum(impact_per_year)/number_of_years
+    ais_ed = np.sum(impact_per_year)/nr_resampled_years
     eis_ed = np.sum(eis.frequency*eis.at_event)
     correction_factor = eis_ed/ais_ed
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
@@ -105,135 +103,135 @@ def eis2ais(eis, number_of_years=None, year_list=None, distribution=None,
 
     ais.date = str_to_date(year_list)
     ais.at_event = impact_per_year / correction_factor
-    ais.frequency = np.ones(number_of_years)*sum(amount_events)/number_of_years
+    ais.frequency = np.ones(nr_resampled_years)*sum(nr_events)/nr_resampled_years
 
 
-    return ais, sampling_vect, amount_events
+    return ais, sampling_vect, nr_events
 
-def resample_single_annual_event(eis, number_of_years, nr_input_events, sampling_vect=None):
+def resample_single_annual_event(eis, nr_resampled_years, nr_input_events, sampling_vect=None):
     """Sample one single annual event
     
     INPUTS:
         eis (impact class): event impact set
-        number_of_years (int): the target number of years the impact yearset shall
+        nr_resampled_years (int): the target number of years the impact yearset shall
           contain.
         nr_input_events (int): number of events in event impact set
         sampling_vect (array): the sampling vector
         
     OUTPUTS:
-        impact_per_year (array): resampled impact per year (length = number_of_years)
-        amount_events (array): amount of resampled events per year (length = number_of_years)
+        impact_per_year (array): resampled impact per year (length = nr_resampled_years)
+        nr_events (array): amount of resampled events per year (length = nr_resampled_years)
         sampling_vect (array): the sampling vector
       """
-    impact_per_year = np.zeros(number_of_years)
+    impact_per_year = np.zeros(nr_resampled_years)
     if not sampling_vect:
-        sampling_vect = sampling_uniform(number_of_years, nr_input_events)
+        sampling_vect = sampling_uniform(nr_resampled_years, nr_input_events)
 
     for idx_event, event in enumerate(sampling_vect):
         impact_per_year[idx_event] = eis.at_event[sampling_vect[event]]
 
-    amount_events = np.ones(number_of_years)
+    nr_events = np.ones(nr_resampled_years)
 
-    return impact_per_year, amount_events, sampling_vect
+    return impact_per_year, nr_events, sampling_vect
 
-def resample_multiple_annual_events(eis, number_of_years, nr_input_events,
-                                    n_annual_events, sampling_vect=None):
+def resample_multiple_annual_events(eis, nr_resampled_years, nr_input_events,
+                                    nr_annual_events, sampling_vect=None):
     """Sample multiple events per year
     
     INPUTS:
         eis (impact class): event impact set
-        number_of_years (int): the target number of years the impact yearset shall
+        nr_resampled_years (int): the target number of years the impact yearset shall
           contain.
         nr_input_events (int): number of events in event impact set
-        n_annual_events (int): number of events per year in given event impact set
+        nr_annual_events (int): number of events per year in given event impact set
         sampling_vect (array): the sampling vector
         
     OUTPUTS:
-        impact_per_year (array): resampled impact per year (length = number_of_years)
-        amount_events (array): amount of resampled events per year (length = number_of_years)
+        impact_per_year (array): resampled impact per year (length = nr_resampled_years)
+        nr_events (array): amount of resampled events per year (length = nr_resampled_years)
         sampling_vect (array): the sampling vector
       """
     if not sampling_vect:
-        sampling_vect, amount_events = sampling_poisson(number_of_years,
-                                                          n_annual_events, nr_input_events)
+        sampling_vect, nr_events = sampling_poisson(nr_resampled_years,
+                                                          nr_annual_events, nr_input_events)
 
-    impact_per_event = np.zeros(np.sum(amount_events))
-    impact_per_year = np.zeros(number_of_years)
+    impact_per_event = np.zeros(np.sum(nr_events))
+    impact_per_year = np.zeros(nr_resampled_years)
 
     for idx_event, event in enumerate(sampling_vect):
         impact_per_event[idx_event] = eis.at_event[sampling_vect[event]]
 
     idx = 0
-    for year in range(number_of_years):
-        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+amount_events[year])])
-        idx += amount_events[year]
+    for year in range(nr_resampled_years):
+        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+nr_events[year])])
+        idx += nr_events[year]
 
-    return impact_per_year, amount_events, sampling_vect
+    return impact_per_year, nr_events, sampling_vect
 
 
-def sampling_uniform(number_events, nr_input_events):
+def sampling_uniform(tot_nr_events, nr_input_events):
     """Sample uniformely from an array (nr_input_events) for a given amount of
     events (number events)
     
     INPUT:
-        number_events (int): number of events to be resampled
+        tot_nr_events (int): number of events to be resampled
         nr_input_events (int): number of events contained in given event impact set (eis)
         
     OUTPUT:
         sampling_vect (array): sampling vector
       """
 
-    repetitions = np.ceil(number_events/(nr_input_events-1)).astype('int')
+    repetitions = np.ceil(tot_nr_events/(nr_input_events-1)).astype('int')
 
     rng = default_rng()
     if repetitions >= 2:
         sampling_vect = np.round(rng.choice((nr_input_events-1)*repetitions,
-                                              size=number_events, replace=False)/repetitions
+                                              size=tot_nr_events, replace=False)/repetitions
                                    ).astype('int')
     else:
-        sampling_vect = rng.choice((nr_input_events-1), size=number_events,
+        sampling_vect = rng.choice((nr_input_events-1), size=tot_nr_events,
                                      replace=False).astype('int')
 
     return sampling_vect
 
-def sampling_poisson(number_of_years, n_annual_events, nr_input_events):
+def sampling_poisson(nr_resampled_years, nr_annual_events, nr_input_events):
     """Sample amount of events per year following a Poisson distribution
       
     INPUT:
-        number_of_years (int): the target number of years the impact yearset shall
+        nr_resampled_years (int): the target number of years the impact yearset shall
             contain.
-        n_annual_events (int): number of events per year in given event impact set
+        nr_annual_events (int): number of events per year in given event impact set
         nr_input_events (int): number of events contained in given event impact set (eis)
         
     OUTPUT:
         sampling_vect (array): sampling vector
-        amount_events_per_year (array): number of events per resampled year
+        nr_events_per_year (array): number of events per resampled year
     """
 
-    amount_events_per_year = np.round(np.random.poisson(lam=n_annual_events,
-                                                        size=number_of_years)).astype('int')
+    nr_events_per_year = np.round(np.random.poisson(lam=nr_annual_events,
+                                                        size=nr_resampled_years)).astype('int')
 
-    #non_zero_years =  np.where(amount_events_per_year != 0)
-    number_events = sum(amount_events_per_year)
+    #non_zero_years =  np.where(nr_events_per_year != 0)
+    tot_nr_events = sum(nr_events_per_year)
 
-    sampling_vect = sampling_uniform(number_events, nr_input_events)
+    sampling_vect = sampling_uniform(tot_nr_events, nr_input_events)
 
-    return sampling_vect, amount_events_per_year
+    return sampling_vect, nr_events_per_year
 
-def wrapper_multi_impact(list_impacts, number_of_years):
+def wrapper_multi_impact(list_impacts, nr_resampled_years):
     """Compute the total impact of several event impact sets in one annual impact set
     
     INPUT:
         list_impacts (list): list of impact class objects
-        number_of_years (int): the target number of years the impact yearset shall
+        nr_resampled_years (int): the target number of years the impact yearset shall
             contain.
     OUTPUT:
         ais_total (impact class): combined annual impact set for all given event impact sets
     """
 
-    ais_total = np.zeros(number_of_years)
+    ais_total = np.zeros(nr_resampled_years)
     for impact in list_impacts:
-        ais_impact = eis2ais(impact, number_of_years)
+        ais_impact = eis2ais(impact, nr_resampled_years)
         ais_total += ais_impact
 
     return ais_total
