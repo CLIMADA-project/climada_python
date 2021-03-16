@@ -494,7 +494,7 @@ class TCTracks():
             ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
             
         if discard_single_points:
-            valid_storms_mask = ibtracs_ds.valid_t.sum(axis=1) > 1
+            valid_storms_mask = ibtracs_ds.valid_t.sum(dim="date_time") > 1
             invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
             if invalid_storms_idx.size > 0:
                 invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
