@@ -230,12 +230,12 @@ def calc_perturbed_trajectories(tracks,
                                                     pool=tracks.pool)
                     tracks.data = _apply_land_decay(tracks.data, v_rel, p_rel,
                                                     land_geom, pool=tracks.pool)
-                except ValueError:
-                    LOGGER.info('No land decay coefficients could be applied.')
+                except ValueError as verr:
+                    raise ValueError('Landfall decay could not be applied.') from verr
             else:
                raise ValueError('No historical tracks found. Historical'
                                 'tracks are needed for land decay calibration'
-                                'if use_global_decay_params=True.')
+                                'if use_global_decay_params=False.')
 
 
 def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
