@@ -537,7 +537,7 @@ class TCTracks():
 
             if estimate_missing:
                 track_ds['rmw'][:] = estimate_rmw(track_ds.rmw.values, track_ds.pres.values)
-                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.rmw.values)
+                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.pres.values)
                 track_ds['roci'][:] = np.fmax(track_ds.rmw.values, track_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
