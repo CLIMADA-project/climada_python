@@ -15,7 +15,7 @@ from climada.util.dates_times import str_to_date
 
 LOGGER = logging.getLogger(__name__)
 
-def eis2ais(eis, number_of_years=None, distribution=None, 
+def eis2ais(eis, number_of_years=None, year_list=None, distribution=None, 
     sampling_vect=None):
 
     """PURPOSE:
@@ -27,6 +27,8 @@ def eis2ais(eis, number_of_years=None, distribution=None,
     OPTIONAL INPUT PARAMETERS:
       number_of_years(int): the target number of years the impact yearset shall
           contain.
+      year_list (list): list of years for the resulting annual impact set 
+          (by default a list starting on the 01-01-0001 is generated)
       sampling_vect: the sampling vector, technical, see code (can be used to
           re-create the exact same yearset). Needs to be obtained in a first
           call, i.e. [ais,sampling_vect]=climada_eis2ais(...) and then
@@ -56,7 +58,8 @@ def eis2ais(eis, number_of_years=None, distribution=None,
     #NUMBER OF EVENTS
     nr_input_events = len(eis.event_id)
     n_annual_events = np.sum(eis.frequency)
-    year_list = [str(date) + '-01-01' for date in np.arange(1, number_of_years+1).tolist()]
+    if not year_list:
+        year_list = [str(date) + '-01-01' for date in np.arange(1, number_of_years+1).tolist()]
 
 
     if nr_input_events == 0:
