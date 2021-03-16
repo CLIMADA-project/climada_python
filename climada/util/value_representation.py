@@ -143,21 +143,21 @@ def val_to_cat(values):
     ----------
     values : list or array 
         List of categories (any type that can be used as input for np.unique())
-
+        Note: int and float are considered different numbers (1 != 1.0)
     Returns
     -------
     valcat : np.array
         List of the input values mapped onto categories.
+        The categories are deduced from the ordered input values.
         
     Example
     -------
     val_to_cat([1, 2, 1, 2, 2, 10]) = np.array([0, 1, 0, 1, 1, 2])
     val_to_cat([1, 'a', 'a']) = np.array([0, 1, 1])
+    val_to_cat([1, 1.0, 'a']) = np.array([0, 1, 2])
 
     """
     
-    valcat = np.zeros(len(values))
-    all_cat = np.unique(values)
-    for n, cat in enumerate(all_cat):
-        np.put(valcat, np.argwhere(values==cat), n)
+    all_cat = {str(val): cat for cat, val in enumerate(np.unique(values))}
+    valcat = [all_cat[str(val)] for val in values]
     return valcat
