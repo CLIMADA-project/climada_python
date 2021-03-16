@@ -825,7 +825,7 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     ------
     ValueError if Point outside of top left corner of raster
     """
-    if isinstance(res, tuple):
+    if len(res) == 2:
         res_x, res_y = (abs(res) for res in res)
     else:
         res_x = res_y = abs(res)
