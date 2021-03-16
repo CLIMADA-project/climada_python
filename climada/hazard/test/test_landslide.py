@@ -72,7 +72,25 @@ class TestLandslideModule(unittest.TestCase):
         LS_prob.set_ls_prob(bbox=(8,45,11,46), 
                             path_sourcefile=LS_PROB_FILE,
                             dist='poisson', n_years=n_years)
-
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
+        
+        LS_prob = Landslide()
+        corr_fact = 1.8*10e6
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
+                            path_sourcefile=LS_PROB_FILE,
+                            dist='poisson', corr_fact=corr_fact)
         self.assertEqual(LS_prob.tag.haz_type, 'LS')
         self.assertEqual(LS_prob.intensity.shape,(1, 43200))
         self.assertEqual(LS_prob.fraction.shape,(1, 43200))

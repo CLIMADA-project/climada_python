@@ -805,6 +805,11 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     """Given the coordinates of a point, find the index of a grid cell from 
     a raster into which it falls.
     
+    Note
+    ----
+    Coordinates of the point and of the raster need to have the same CRS (e.g.
+    both in lat/lon, EPSG:4326)
+    
     Parameters
     ---------
     geometry : shapely.geometry.Point object
@@ -825,7 +830,7 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     ------
     ValueError if Point outside of top left corner of raster
     """
-    if len(res) == 2:
+    if (isinstance(res, tuple) or isinstance(res, list)):
         res_x, res_y = (abs(res) for res in res)
     else:
         res_x = res_y = abs(res)
@@ -839,7 +844,7 @@ def mapping_point2grid(geometry, ymax, xmin, res):
 def mapping_grid2flattened(col, row, matrix_shape):
     """ given a col and row index and the initial 2D matrix shape,
     return the 1-dimensional index of the same point in the flattened matrix
-    - assumes concatenation in x-direction 
+    - assumes concatenation along the row-axis (x-direction) 
     
     Parameters
     ----------

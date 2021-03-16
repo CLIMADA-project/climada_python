@@ -121,7 +121,7 @@ class Landslide(Hazard):
         """
         ls_gdf_bbox = gpd.read_file(path_sourcefile, bbox=bbox)
         
-        self.centroids.set_raster_from_pnt_bounds(bbox,res)
+        self.centroids.set_raster_from_pnt_bounds(bbox,res,crs=ls_gdf_bbox.crs)
 
         n_ev = len(ls_gdf_bbox)
         
