@@ -15,8 +15,8 @@ from climada.util.dates_times import str_to_date
 
 LOGGER = logging.getLogger(__name__)
 
-def generate_yearset(eis, nr_resampled_years=None, year_list=None, distribution=None,
-            sampling_vect=None, nr_events_per_year=None):
+def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_events=True,
+                     sampling_vect=None, nr_events_per_year=None):
 
     """PURPOSE:
       convert an event (per occurrence) impact set (eis) into an annual impact
@@ -24,19 +24,22 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, distribution=
 
     INPUTS:
       eis: an event impact set (eis)
-    OPTIONAL INPUT PARAMETERS:
-      nr_resampled_years(int): the target number of years the impact yearset shall
-          contain.
-      year_list (list): list of years for the resulting annual impact set
-          (by default a list starting on the 01-01-0001 is generated)
-      sampling_vect: the sampling vector, technical, see code (can be used to
+    OPTIONAL INPUT:
+        nr_resampled_years(int): the target number of years the impact yearset shall
+            contain.
+        year_list (list): list of years for the resulting annual impact set
+            (by default a list starting on the 01-01-0001 is generated)
+        multiple_events (boolean): True if the hazard causing the given impact can occur
+            several times per year (such as several tropical cyclones); False for hazards
+            that compute the impact on an annual scale (such as relative cropyield)
+        sampling_vect: the sampling vector, technical, see code (can be used to
           re-create the exact same yearset). Needs to be obtained in a first
           call, i.e. [ais,sampling_vect]=climada_eis2ais(...) and then
           provided in subsequent calls(s) to obtain the exact same sampling
           structure of yearset, i.e ais=climada_eis2ais(...,sampling_vect)
-     nr_events_per_year (array): amount of resampled events per year (length = nr_resampled_years),
-         can be reused similar to the sampling_vect (to do: combine these two in one
-                                                     variable?)
+        nr_events_per_year (array): amount of resampled events per year
+            (length = nr_resampled_years), can be reused similar to the sampling_vect
+            (to do: combine these two in one variable?)
     OUTPUTS:
       ais: the year impact set (ais), a struct with same fields as eis (such
           as Value, ed, ...). All fields same content as in eis, except:
@@ -79,7 +82,7 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, distribution=
 
 
     # sample from the given event impact set
-    if distribution == 'Poisson':
+    if multiple_events: #multiple events per year possible
         [impact_per_year, nr_events,
          sampling_vect] = resample_multiple_annual_events(eis, nr_resampled_years,
                                                           nr_events_per_year, sampling_vect=None)
@@ -249,7 +252,7 @@ def wrapper_multi_impact(list_impacts, nr_resampled_years):
 
     ais_total = np.zeros(nr_resampled_years)
     for impact in list_impacts:
-        ais_impact = eis2ais(impact, nr_resampled_years)
+        ais_impact = generate_yearset(impact, nr_resampled_years)
         ais_total += ais_impact
 
     return ais_total
