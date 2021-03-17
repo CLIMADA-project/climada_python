@@ -16,7 +16,7 @@ from climada.util.dates_times import str_to_date
 LOGGER = logging.getLogger(__name__)
 
 def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
-            sampling_vect=None):
+            sampling_vect=None, nr_events_per_year=None):
 
     """PURPOSE:
       convert an event (per occurrence) impact set (eis) into an annual impact
@@ -34,6 +34,9 @@ def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
           call, i.e. [ais,sampling_vect]=climada_eis2ais(...) and then
           provided in subsequent calls(s) to obtain the exact same sampling
           structure of yearset, i.e ais=climada_eis2ais(...,sampling_vect)
+     nr_events_per_year (array): amount of resampled events per year (length = nr_resampled_years),
+         can be reused similar to the sampling_vect (to do: combine these two in one
+                                                     variable?)
     OUTPUTS:
       ais: the year impact set (ais), a struct with same fields as eis (such
           as Value, ed, ...). All fields same content as in eis, except:
@@ -79,7 +82,7 @@ def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
     if distribution == 'Poisson':
         [impact_per_year, nr_events,
          sampling_vect] = resample_multiple_annual_events(eis, nr_resampled_years,
-                                                          sampling_vect=None)
+                                                          nr_events_per_year, sampling_vect=None)
     else: #for hazards such as RC where there is exactly one event every year
         [impact_per_year, nr_events,
          sampling_vect] = resample_single_annual_event(eis, nr_resampled_years,
@@ -116,8 +119,8 @@ def resample_single_annual_event(eis, nr_resampled_years, sampling_vect=None):
         nr_events (array): amount of resampled events per year (length = nr_resampled_years)
         sampling_vect (array): the sampling vector
       """
-    
-    
+
+
     impact_per_year = np.zeros(nr_resampled_years)
     if not sampling_vect:
         nr_input_events = len(eis.event_id)
@@ -130,7 +133,7 @@ def resample_single_annual_event(eis, nr_resampled_years, sampling_vect=None):
 
     return impact_per_year, nr_events, sampling_vect
 
-def resample_multiple_annual_events(eis, nr_resampled_years, nr_annual_events=None, sampling_vect=None):
+def resample_multiple_annual_events(eis, nr_resampled_years, nr_events=None, sampling_vect=None):
     """Sample multiple events per year
 
     INPUTS:
@@ -145,9 +148,9 @@ def resample_multiple_annual_events(eis, nr_resampled_years, nr_annual_events=No
         nr_events (array): amount of resampled events per year (length = nr_resampled_years)
         sampling_vect (array): the sampling vector
       """
-    if not nr_annual_events:
-        nr_annual_events = np.sum(eis.frequency)
-    
+
+    nr_annual_events = np.sum(eis.frequency)
+
     if not sampling_vect:
         nr_input_events = len(eis.event_id)
         sampling_vect, nr_events = sampling_poisson(nr_resampled_years,
