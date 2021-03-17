@@ -15,7 +15,7 @@ from climada.util.dates_times import str_to_date
 
 LOGGER = logging.getLogger(__name__)
 
-def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
+def generate_yearset(eis, nr_resampled_years=None, year_list=None, distribution=None,
             sampling_vect=None, nr_events_per_year=None):
 
     """PURPOSE:
