@@ -301,7 +301,13 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     coordinates. The categories must be a finite set of unique
     values as can be identified by np.unique() (int, float, strings, ...).
     
-
+    The categories are shared among all subplots, i.e. are obtained from 
+    np.unique(array_sub). 
+    Example:
+        array_sub = [[1, 2, 1.0, 2], [1, 2, 'a', 'a']] 
+        -> categories mapping is [[0, 2, 1, 2], [0, 2, 3, 3]]
+    
+    
     Parameters:
         array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
             or in  the list) are categorical values at each point
