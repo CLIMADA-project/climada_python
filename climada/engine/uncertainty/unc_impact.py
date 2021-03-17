@@ -74,8 +74,8 @@ class UncImpact(Uncertainty):
 
     def calc_distribution(self,
                             rp=None,
-                            calc_eai_exp=True,
-                            calc_at_event=True,
+                            calc_eai_exp=False,
+                            calc_at_event=False,
                             pool=None
                             ):
         """
@@ -258,24 +258,49 @@ class UncImpact(Uncertainty):
         return fig, ax
     
     
-    def plot_sensitivity_map(self, exp):
+    def plot_sensitivity_map(self, exp, salib_si='S1'):
+        """
+        Plot a map of the largest sensitivity index in each exposure point
+
+        Parameters
+        ----------
+        exp : climada.exposure
+            The exposure from which to take the coordinates
+        salib_si : str, optional
+            The name of the sensitivity index to plot.
+            The default is 'S1'.
+
+        Raises
+        ------
+        ValueError
+            If no sensitivity data is found, raise error.
+
+        Returns
+        -------
+        axes: matplotlib.pyplot.axes
+            The axis handle of the plot.
+
+        """
         
         try:
             si_eai = self.sensitivity['eai_exp']
-            eai_max_S1_idx = [
-                np.argmax(si_dict['S1'])
+            eai_max_si_idx = [
+                np.argmax(si_dict[salib_si])
                 for si_dict in si_eai.values()
                 ]
             
         except KeyError as verr:
-            raise ValueError("No sensitivity indices found. Please compute "
-                  " ensitivity first using .calc_sensitivity()") from verr
+            raise ValueError("No sensitivity indices found for"
+                  " impact.eai_exp. Please compute sensitivity first using"
+                  " UncImpact.calc_sensitivity(calc_eai_exp=True)"
+                  ) from verr
            
-        plot_val = np.array([eai_max_S1_idx]).astype(float)
+        plot_val = np.array([eai_max_si_idx]).astype(float)
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
-                var_name='Largest sensitivity index', title='Sensitivity map',
+                var_name='Largest sensitivity index' + salib_si,
+                title='Sensitivity map',
                 cat_name= self.param_labels
                 )
         
