@@ -197,6 +197,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
             add_shapes(axis)
         if pop_name:
             add_populated_places(axis, extent, proj)
+            
         hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
                                transform=proj, **kwargs)
         # Create colorbar in this axis
@@ -326,60 +327,35 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         cartopy.mpl.geoaxes.GeoAxesSubplot
     """
     
-    # Generate array of values used in each subplot
-    num_im, list_arr = _get_collection_arrays(array_sub)
-    list_tit = to_list(num_im, title, 'title')
-    list_name = to_list(num_im, var_name, 'var_name')
-    list_coord = to_list(num_im, geo_coord, 'geo_coord')
-    
     #default cmap
     cmap_name = 'Accent'
     if 'cmap' in kwargs:
         cmap_name = kwargs['cmap']
         del kwargs['cmap']
-    if axes is None:
-        _, axes = make_map(num_im, proj=proj)
-    axes_iter = axes
+        
+    # define the colormap
+    cmap = mpl.cm.get_cmap(cmap_name)       
+    # convert categories to numeric array [0, 1, ...]
+    array_sub_cat = u_vrpr.val_to_cat(array_sub) 
+    bounds = np.arange(-0.5, np.unique(array_sub_cat)[-1] + 1, 1) #np.unique sorts values
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    
+    #create the axes
+    kwargs['cmap'] = cmap
+    kwargs['norm'] = norm
+    axes = geo_scatter_from_array(array_sub_cat, geo_coord, var_name, title,
+                            pop_name=pop_name, buffer=buffer,
+                            extend=extend, proj=proj,
+                            shapes=shapes, axes=axes, **kwargs)
+    
+    #add colorbar labels
     if not isinstance(axes, np.ndarray):
-        axes_iter = np.array([[axes]])
-        
-    # Generate each subplot
-    for array_im, axis, tit, name, coord in \
-    zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
-        if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
-        # Binned image with coastlines
-        extent = _get_borders(coord, buffer=buffer,
-                              proj_limits=proj.x_limits + proj.y_limits)
-        axis.set_extent((extent), proj)
-        if shapes:
-            add_shapes(axis)
-        if pop_name:
-            add_populated_places(axis, extent, proj)
-        
-        # define the colormap
-        cmap = mpl.cm.get_cmap(cmap_name)       
-        # convert categories to numeric array [0, 1, ...]
-        valcat = u_vrpr.val_to_cat(array_im) 
-        bounds = np.arange(-0.5, np.unique(valcat)[-1] + 1, 1) #np.unique sorts values
-        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-        
-        #plot 
-        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=valcat, norm=norm,
-                               cmap=cmap, transform=proj, **kwargs)
-        
-        # Create colorbar in this axis
-        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-                                                     pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
-                            extend=extend)
-        cbar.set_ticks(np.unique(valcat))
+        axes = [axes]
+    for ax in axes:
+        cbar = ax.collections[-1].colorbar
+        cbar.set_ticks(np.unique(array_sub_cat))
         if cat_name:
             cbar.set_ticklabels(cat_name)
-        cbar.set_label(name)
-        
-        axis.set_title(tit)
         
     return axes
 

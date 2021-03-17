@@ -57,6 +57,13 @@ class TestPlots(unittest.TestCase):
                         pop_name=False, cmap='Dark2')
         plt.close()
 
+        values = np.array([[1, 2.0, 1, 'a'], [0, 0, 0, 0]])
+        coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
+        u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
+                        cat_name=['int', 'float', 'string'],
+                        pop_name=False, cmap='Dark2')
+        plt.close()
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
