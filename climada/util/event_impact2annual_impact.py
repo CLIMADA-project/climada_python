@@ -90,10 +90,7 @@ def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
 
 
     #adjust for sampling error
-    ais_ed = np.sum(impact_per_year)/nr_resampled_years
-    eis_ed = np.sum(eis.frequency*eis.at_event)
-    correction_factor = eis_ed/ais_ed
-    LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
+    correction_factor = apply_correction(impact_per_year, nr_resampled_years, eis)
     # if correction_factor > 0.1:
     #     tex = raw_input("Do you want to exclude small events?")
 
@@ -218,6 +215,26 @@ def sampling_poisson(nr_resampled_years, nr_annual_events, nr_input_events):
     sampling_vect = sampling_uniform(tot_nr_events, nr_input_events)
 
     return sampling_vect, nr_events_per_year
+
+def apply_correction(impact_per_year, nr_resampled_years, eis):
+    """Apply a correction factor to ensure the expected annual impact (eai) of the annual
+    impact set(ais) amounts to the eai of the event impact set (eis)
+
+    INPUT:
+        impact_per_year (array): resampled annual impact set before applying the correction factor
+        nr_resampled_years (int): the target number of years the annual impact set contains
+        eis (impact class): event impact set
+
+    OUTPUT:
+        correction_factor (int): the correction factor is calculated as eis_eai/ais_eai
+    """
+
+    ais_eai = np.sum(impact_per_year)/nr_resampled_years
+    eis_eai = np.sum(eis.frequency*eis.at_event)
+    correction_factor = eis_eai/ais_eai
+    LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
+
+    return correction_factor
 
 def wrapper_multi_impact(list_impacts, nr_resampled_years):
     """Compute the total impact of several event impact sets in one annual impact set
