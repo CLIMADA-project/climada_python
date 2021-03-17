@@ -343,7 +343,7 @@ def add_shapes(axis):
                                          name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='black')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
