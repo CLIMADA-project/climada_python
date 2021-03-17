@@ -32,9 +32,6 @@ from climada.util.value_representation import sig_dig as u_sig_dig
 
 LOGGER = logging.getLogger(__name__)
 
-# Future planed features:
-# - Add estimate of computation time and suggest surrogate models if needed
-
 
 class UncVar():
     """
@@ -106,6 +103,7 @@ class UncVar():
         self.distr_dict = distr_dict
         self.unc_var = unc_var
 
+
     def plot(self):
         """
         Plot the distributions of the parameters of the uncertainty variable.
@@ -136,6 +134,7 @@ class UncVar():
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
         return fig, axis
+
 
     def evaluate(self, uncvar_kwargs):
         """
@@ -220,9 +219,11 @@ class Uncertainty():
         self.unc_vars = unc_vars if unc_vars else {}
         self.sample = sample if sample is not None else pd.DataFrame(
             columns = self.param_labels)
+        self.sampling_method = None
         self.metrics = metrics if metrics is not None else {}
         self.sensitivity = sensitivity if sensitivity is not None else {}
         self.check()
+    
     
     def check(self):
         """
@@ -255,8 +256,7 @@ class Uncertainty():
                     "See https://github.com/SALib/SALib/issues/237")
         return check
         
-        
-
+    
     @property
     def n_samples(self):
         """
@@ -285,7 +285,6 @@ class Uncertainty():
 
         """
         return list(self.distr_dict.keys())
-
 
     @property
     def distr_dict(self):
@@ -345,7 +344,7 @@ class Uncertainty():
             Optional keyword arguments of the chosen SALib sampling method.
 
         """
-        
+        self.sample = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
                                                              sampling_kwargs)
@@ -425,9 +424,11 @@ class Uncertainty():
         time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
         if time_one_run > 5:
             LOGGER.warning("Computation time for one set of parameters is "+
-                f"{time_one_run}s. This is suspiciously long. Possible " +
-                "reasons: unc_vars are loading data, entroids not assigned " +
-                "to exp before defining unc_var, ...")
+                "%.2fs. This is suspiciously long. Possible " % time_one_run +
+                "Potential reasons: unc_vars are loading data, centroids not"+
+                " assigned to exp before defining unc_var, ..." +
+                "\n If computation cannot be reduced, consider using" 
+                " a surrogate model https://www.uqlab.com/")
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
@@ -458,6 +459,8 @@ class Uncertainty():
             as returned by SALib.
 
         """
+        
+        check_salib(self.sampling_method, salib_method)
         
         #To import a submodule from a module use 'from_list' necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
@@ -600,7 +603,6 @@ class Uncertainty():
             
         return fig, axis
 
-
    
     def plot_sensitivity(self, salib_si='S1', metric_list=None):
         """
@@ -611,8 +613,7 @@ class Uncertainty():
         salib_si: string, optional
             The first order sensitivity index to plot (see SALib option)
             https://salib.readthedocs.io/en/latest/basics.html
-            Possible choices: "S1", "ST" 
-            The default is S1
+            The default is S1.
             
         metric_list: list of strings, optional
             List of metrics to plot the sensitivity
@@ -679,7 +680,49 @@ class Uncertainty():
             else:
                 df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
             ax.set_xticklabels(self.param_labels, rotation=0)
-            ax.set_title('S1 - ' + metric)
+            ax.set_title(salib_si + ' - ' + metric)
         plt.tight_layout()
             
         return fig, axes
+    
+    
+SALIB_COMPATIBILITY = {
+    'fast': ['fast_sampler'],
+    'rbd_fast': ['latin'] ,
+    'morris': ['morris'],
+    'sobol' : ['saltelli'],
+    'delta' : ['latin'],
+    'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'], 
+    'ff' : ['ff'],
+    }
+
+def check_salib(sampling_method, sensitivity_method):
+    """
+    Checks whether the chosen salib sampling method and sensitivity method
+    respect the pairing recommendation by the salib package.
+
+    Parameters
+    ----------
+    sampling_method : str
+        Name of the sampling method.
+    sensitivity_method : str
+        Name of the sensitivity analysis method.
+
+    Returns
+    -------
+    bool
+        True if sampling and sensitivity methods respect the recommended
+        pairing.
+
+    """
+    
+    if sampling_method not in SALIB_COMPATIBILITY[sensitivity_method]:
+        LOGGER.warning("The chosen combination of sensitivity method (%s)"
+            " and sampling method (%s) does not correspond to the recommendation"
+            " of the salib pacakge."
+            "\n https://salib.readthedocs.io/en/latest/api.html"
+            %(sampling_method, sensitivity_method)
+            )
+        return False
+    return True
+    
