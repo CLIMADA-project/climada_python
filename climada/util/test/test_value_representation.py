@@ -94,6 +94,10 @@ class TestDigits(unittest.TestCase):
         cat = val_to_cat([1, 11.2, 'a', 1.0, 1, 'a', 'b'])
         num_cat = [0, 2, 3, 1, 0, 3, 4]
         self.assertTrue(np.array_equal(cat, num_cat))
+        
+        cat = val_to_cat([[0, 1, 1], [1, 2, 'a']])
+        num_cat = [[0,  1, 1], [1, 2, 3]]
+        self.assertTrue(np.array_equal(cat, num_cat))
 
 # Execute Tests
 if __name__ == "__main__":
