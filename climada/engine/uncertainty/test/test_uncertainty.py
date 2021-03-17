@@ -419,6 +419,27 @@ class TestUncImpact(unittest.TestCase):
         unc.plot_rp_distribution()
         plt.close()
         
+    def test_plot_sensitivity_map_pass(self):
+        
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        haz = haz_dem()
+        
+        #Default parameters
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1)
+        unc.calc_distribution(calc_eai_exp=True)
+        unc.calc_sensitivity()
+        unc.plot_sensitivity_map(exp_unc.evaluate({'x_exp': 1}))
+        plt.close()
+        
+        #Non-default parameters
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1, sampling_method='morris')
+        unc.calc_distribution(calc_eai_exp=True)
+        unc.calc_sensitivity(salib_method='morris')
+        unc.plot_sensitivity_map(exp_unc.evaluate({'x_exp': 1}), salib_si='mu')
+        plt.close()
+        
         
 class TestUncCostBenefit(unittest.TestCase):
     """Test the UncCostBenefit class"""  
