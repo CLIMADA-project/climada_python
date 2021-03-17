@@ -801,7 +801,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def mapping_point2grid(geometry, ymax, xmin, res):
+def mapping_point2grid(x, y, xmin, ymax, res):
     """Given the coordinates of a point, find the index of a grid cell from 
     a raster into which it falls.
     
@@ -812,12 +812,14 @@ def mapping_point2grid(geometry, ymax, xmin, res):
     
     Parameters
     ---------
-    geometry : shapely.geometry.Point object
-        Point which should be evaluated
-    ymax: float
-        coords of top left corner of raster file - y
+    x : float
+        x-coordinate of point
+    y : float
+        y-coordinate of point
     xmin: float
         coords top left corner of raster file - x
+    ymax: float
+        coords of top left corner of raster file - y
     res: float or tuple
         resolution of raster file. Float if res_x=res_y else (res_x, res_y).
     
@@ -834,8 +836,8 @@ def mapping_point2grid(geometry, ymax, xmin, res):
         res_x, res_y = (abs(res) for res in res)
     else:
         res_x = res_y = abs(res)
-    col = int((geometry.x - xmin) / res_x)
-    row = int((ymax - geometry.y) / res_y)
+    col = int((x - xmin) / res_x)
+    row = int((ymax - y) / res_y)
     if (col < 0 or row < 0):
         LOGGER.error('Point not inside grid')
         raise ValueError  

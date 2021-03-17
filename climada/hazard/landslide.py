@@ -129,8 +129,9 @@ class Landslide(Hazard):
         # grid-index
         ls_gdf_bbox = ls_gdf_bbox.assign(row=np.nan, col=np.nan)
         ls_gdf_bbox[['col', 'row']] = ls_gdf_bbox.apply(
-            lambda row: mapping_point2grid(row.geometry, bbox[-1], bbox[0], 
-                                           res), axis = 1).tolist()
+            lambda row: mapping_point2grid(row.geometry.x, row.geometry.y,
+                                           bbox[0], bbox[-1], res), axis = 1
+                                           ).tolist()
         ls_gdf_bbox['flat_ix'] = ls_gdf_bbox.apply(
             lambda row: mapping_grid2flattened(row.col, row.row, 
                                                self.centroids.shape), axis = 1)        

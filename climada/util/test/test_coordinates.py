@@ -258,21 +258,22 @@ class TestFunc(unittest.TestCase):
     def test_mapping_point2grid(self):
         res = (-1, 0.5)
         geometry = Point(10,40)
-        out = mapping_point2grid(geometry, 50, 5, res)
+        out = mapping_point2grid(geometry.x, geometry.y, 5, 50, res)
         self.assertEqual(out, (5, 20))
         
         res = -0.5
         geometry = Point(10,40)
-        out = mapping_point2grid(geometry, 50, 5, res)
+        out = mapping_point2grid(geometry.x, geometry.y, 5, 50,res)
         self.assertEqual(out, (10, 20))
         
         res = 1
         geometry = Point(-10,-40)
-        out = mapping_point2grid(geometry, -30, -20, res)
+        out = mapping_point2grid(geometry.x, geometry.y, -20,-30, res)
         self.assertEqual(out, (10, 10))
         
+        geometry = Point(-30,-40)
         with self.assertRaises(ValueError):
-            mapping_point2grid( Point(-30,-40), -30, -20, res) 
+            mapping_point2grid(geometry.x, geometry.y, -20,-30,  res) 
         
     def test_mapping_grid2flattened(self):
         matrix = np.ones((5,8))
