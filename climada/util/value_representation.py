@@ -55,7 +55,7 @@ def sig_dig_list(iterable, n_sig_dig=16):
 
     Parameters
     ----------
-    iterable : iter(float)
+    iterable : iter(float) (1D or 2D)
         iterable of numbers to be rounded
     n_sig_dig : int, optional
         Number of significant digits. The default is 16.
@@ -141,7 +141,7 @@ def val_to_cat(values):
 
     Parameters
     ----------
-    values : list or array 
+    values : list or array  (1D or 2D)
         List of categories (any type that can be used as input for np.unique())
         Note: int and float are considered different numbers (1 != 1.0)
     Returns
@@ -155,9 +155,23 @@ def val_to_cat(values):
     val_to_cat([1, 2, 1, 2, 2, 10]) = np.array([0, 1, 0, 1, 1, 2])
     val_to_cat([1, 'a', 'a']) = np.array([0, 1, 1])
     val_to_cat([1, 1.0, 'a']) = np.array([0, 1, 2])
+    val_to_cat([[1, 1, 2], [1, 'a']]) = np.array([[0, 0, 1],
+                                                  [0, 2]])
 
     """
     
-    all_cat = {str(val): cat for cat, val in enumerate(np.unique(values))}
-    valcat = [all_cat[str(val)] for val in values]
-    return valcat
+    values = np.array(values)
+    all_cat = {
+        str(val): cat
+        for cat, val in enumerate(np.unique(values.flatten()))
+        }
+    
+    return np.vectorize(_val_to_cat_single)(np.array(values, dtype=str), all_cat)
+
+def _val_to_cat_single(value, all_cat):
+    """
+    Helper function to vectorize dictionnary look-up
+
+    """
+    return all_cat[value]
+    
