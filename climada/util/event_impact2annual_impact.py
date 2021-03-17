@@ -90,7 +90,7 @@ def eis2ais(eis, nr_resampled_years=None, year_list=None, distribution=None,
 
 
     #adjust for sampling error
-    correction_factor = apply_correction(impact_per_year, nr_resampled_years, eis)
+    correction_factor = calculate_correction_fac(impact_per_year, nr_resampled_years, eis)
     # if correction_factor > 0.1:
     #     tex = raw_input("Do you want to exclude small events?")
 
@@ -216,7 +216,7 @@ def sampling_poisson(nr_resampled_years, nr_annual_events, nr_input_events):
 
     return sampling_vect, nr_events_per_year
 
-def apply_correction(impact_per_year, nr_resampled_years, eis):
+def calculate_correction_fac(impact_per_year, nr_resampled_years, eis):
     """Apply a correction factor to ensure the expected annual impact (eai) of the annual
     impact set(ais) amounts to the eai of the event impact set (eis)
 
