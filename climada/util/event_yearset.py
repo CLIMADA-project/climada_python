@@ -23,7 +23,7 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_even
       set (ais).
 
     INPUTS:
-      eis: an event impact set (eis)
+      eis (impact class object): an event impact set (eis)
     OPTIONAL INPUT:
         nr_resampled_years(int): the target number of years the impact yearset shall
             contain.
@@ -32,7 +32,7 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_even
         multiple_events (boolean): True if the hazard causing the given impact can occur
             several times per year (such as several tropical cyclones); False for hazards
             that compute the impact on an annual scale (such as relative cropyield)
-        sampling_vect: the sampling vector, technical, see code (can be used to
+        sampling_vect (array): the sampling vector, technical, see code (can be used to
           re-create the exact same yearset). Needs to be obtained in a first
           call, i.e. [ais,sampling_vect]=climada_eis2ais(...) and then
           provided in subsequent calls(s) to obtain the exact same sampling
@@ -109,7 +109,7 @@ def resample_single_annual_event(eis, nr_resampled_years, sampling_vect=None):
     """Sample one single annual event
 
     INPUTS:
-        eis (impact class): event impact set
+        eis (impact class object): event impact set
         nr_resampled_years (int): the target number of years the impact yearset shall
           contain.
         sampling_vect (array): the sampling vector
@@ -137,7 +137,7 @@ def resample_multiple_annual_events(eis, nr_resampled_years, nr_events=None, sam
     """Sample multiple events per year
 
     INPUTS:
-        eis (impact class): event impact set
+        eis (impact class object): event impact set
         nr_resampled_years (int): the target number of years the impact yearset shall
           contain.
         nr_annual_events (int): number of events per year in given event impact set
@@ -226,7 +226,7 @@ def calculate_correction_fac(impact_per_year, nr_resampled_years, eis):
     INPUT:
         impact_per_year (array): resampled annual impact set before applying the correction factor
         nr_resampled_years (int): the target number of years the annual impact set contains
-        eis (impact class): event impact set
+        eis (impact class object): event impact set
 
     OUTPUT:
         correction_factor (int): the correction factor is calculated as eis_eai/ais_eai
@@ -247,7 +247,7 @@ def wrapper_multi_impact(list_impacts, nr_resampled_years):
         nr_resampled_years (int): the target number of years the impact yearset shall
             contain.
     OUTPUT:
-        ais_total (impact class): combined annual impact set for all given event impact sets
+        ais_total (impact class object): combined annual impact set for all given event impact sets
     """
 
     ais_total = np.zeros(nr_resampled_years)
