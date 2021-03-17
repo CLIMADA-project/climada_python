@@ -37,7 +37,7 @@ class TestLandslideModule(unittest.TestCase):
         """ Test function set_ls_hist()"""
         LS_hist = Landslide()
         LS_hist.set_ls_hist(bbox=(20,40,23,46), 
-                                  path_sourcefile=LS_HIST_FILE)
+                                  input_gdf=LS_HIST_FILE)
         self.assertEqual(LS_hist.size, 272)
         self.assertEqual(LS_hist.tag.haz_type, 'LS')
         self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))

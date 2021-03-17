@@ -88,7 +88,7 @@ class Landslide(Hazard):
         """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
 
-    def set_ls_hist(self, bbox, path_sourcefile, res=0.0083333):
+    def set_ls_hist(self, bbox, input_gdf, res=0.0083333):
         """
         Set historic landslide (ls) raster hazard from historical point records,
         for example as can be retrieved from the NASA COOLR initiative,
@@ -97,21 +97,35 @@ class Landslide(Hazard):
         Points are assigned to the gridcell they fall into, and the whole grid-
         cell hence counts as equally affected.
         Event frequencies from an incomplete dataset are not meaningful and 
-        hence aren't set by default. probabilistic calculations! Use the probabilistic method for this!
+        hence aren't set by default. probabilistic calculations! 
+        Use the probabilistic method for this!
         
         See tutorial for details; the global ls catalog from NASA COOLR can be
         downloaded from https://maps.nccs.nasa.gov/arcgis/apps/webappviewer/index.html?id=824ea5864ec8423fb985b33ee6bc05b7
-
+        
+        Note
+        -----
+        The grid which is generated has the same projection as the geodataframe 
+        with point occurrences. By default, this is EPSG:4326, which is a non-
+        projected, geographic CRS. This means, depending on where on the globe
+        the analysis is performed, the area per gridcell differs vastly. 
+        Consider this when setting your resoluton (e.g. at the equator, 
+        1° ~ 111 km). In turn, one can use projected CRS which preserve angles
+        and areas within the reference area for which they are defined. To do 
+        this, reproject the input_gdf to the desired projection.
+        For more on projected & geographic CRS, see 
+        https://desktop.arcgis.com/en/arcmap/10.3/guide-books/map-projections/about-projected-coordinate-systems.htm
+        
         Parameters:
         ----------
         bbox : tuple
             (minx, miny, maxx, maxy) geographic extent of interest
-         path_sourcefile : str
-             path to shapefile (.shp) with ls point data
+        input_gdf : str or  or geopandas geodataframe
+             path to shapefile (.shp) with ls point data or already laoded gdf
         res : float
-            resolution in degrees of the final grid cells which are created.
-            (1° ~ 111 km at the equator). 
-            Affects the hazard extent! Default is 0.00833
+            resolution in units of the input_gdf crs of the final grid cells 
+            which are created. Whith EPSG:4326, this is degrees. Default is 
+            0.008333. 
             
         Returns:
         --------
@@ -119,8 +133,14 @@ class Landslide(Hazard):
                 set for either point hazards or polygons with specified
                 surrounding extent.
         """
-        ls_gdf_bbox = gpd.read_file(path_sourcefile, bbox=bbox)
+        if isinstance(input_gdf, gpd.GeoDataFrame):
+            LOGGER.info(f'Using pre-loaded gdf {input_gdf}')
+            ls_gdf_bbox = input_gdf.copy()        
+        else:
+            LOGGER.info(f'Reading in gdf from source {input_gdf}')
+            ls_gdf_bbox = gpd.read_file(input_gdf, bbox=bbox)          
         
+        LOGGER.info(f'Generating a raster with resolution {res} for box {bbox}')
         self.centroids.set_raster_from_pnt_bounds(bbox,res,crs=ls_gdf_bbox.crs)
 
         n_ev = len(ls_gdf_bbox)
