@@ -455,7 +455,7 @@ def _resample_land(geom, nightlight, lat, lon, res_fact, on_land):
     nightlight_res, lat_res, lon_res = nightlight, lat, lon
     if res_fact != 1.0:
         sum_val = nightlight.sum()
-        nightlight_res = ndimage.zoom(nightlight, res_fact, mode='constant', cval=0.0)
+        nightlight_res = ndimage.zoom(nightlight, res_fact, mode='nearest')
         nightlight_res[nightlight_res < 0.0] = 0.0
 
         lat_res, lon_res = np.mgrid[
