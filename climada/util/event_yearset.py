@@ -1,9 +1,17 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Thu Dec  3 15:59:03 2020
-
-@author: carmensteinmann
+This file is part of CLIMADA.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, version 3.
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+You should have received a copy of the GNU Lesser General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+---
+Define functions to handle impact year_sets
+"""
 """
 
 import copy
@@ -11,11 +19,11 @@ import logging
 import numpy as np
 from numpy.random import default_rng
 
-from climada.util.dates_times import str_to_date
+import climada.util.dates_times as u_dt 
 
 LOGGER = logging.getLogger(__name__)
 
-def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_events=True,
+def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=True,
                      sampling_vect=None, nr_events_per_year=None):
 
     """PURPOSE:
@@ -25,7 +33,7 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_even
     INPUTS:
       eis (impact class object): an event impact set (eis)
     OPTIONAL INPUT:
-        nr_resampled_years(int): the target number of years the impact yearset shall
+        n_resampled_years(int): the target number of years the impact yearset shall
             contain.
         year_list (list): list of years for the resulting annual impact set
             (by default a list starting on the 01-01-0001 is generated)
@@ -34,9 +42,9 @@ def generate_yearset(eis, nr_resampled_years=None, year_list=None, multiple_even
             that compute the impact on an annual scale (such as relative cropyield)
         sampling_vect (array): the sampling vector, technical, see code (can be used to
           re-create the exact same yearset). Needs to be obtained in a first
-          call, i.e. [ais,sampling_vect]=climada_eis2ais(...) and then
+          call, i.e. [ais, sampling_vect] = climada_eis2ais(...) and then
           provided in subsequent calls(s) to obtain the exact same sampling
-          structure of yearset, i.e ais=climada_eis2ais(...,sampling_vect)
+          structure of yearset, i.e ais = climada_eis2ais(..., sampling_vect)
         nr_events_per_year (array): amount of resampled events per year
             (length = nr_resampled_years), can be reused similar to the sampling_vect
             (to do: combine these two in one variable?)
