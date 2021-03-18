@@ -55,7 +55,7 @@ def sig_dig_list(iterable, n_sig_dig=16):
 
     Parameters
     ----------
-    iterable : iter(float) (1D or 2D)
+    iterable : iter(float)
         iterable of numbers to be rounded
     n_sig_dig : int, optional
         Number of significant digits. The default is 16.
@@ -134,5 +134,3 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
 
     return (mon_val, name)
-
-    
