@@ -199,7 +199,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
 
     Raises
     ------
-        ValueError
+    ValueError
     """
     
     # Generate array of values used in each subplot
