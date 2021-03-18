@@ -1109,7 +1109,7 @@ class Hazard():
             col_name (sparse matrix): Colorbar label
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple): figure size for plt.subplots
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
