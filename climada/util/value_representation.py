@@ -135,43 +135,4 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     return (mon_val, name)
 
-def val_to_cat(values):
-    """
-    Converts an array of values to numbered categories.
-
-    Parameters
-    ----------
-    values : list or array  (1D or 2D)
-        List of categories (any type that can be used as input for np.unique())
-        Note: int and float are considered different numbers (1 != 1.0)
-    Returns
-    -------
-    valcat : np.array
-        List of the input values mapped onto categories.
-        The categories are deduced from the ordered input values.
-        
-    Example
-    -------
-    val_to_cat([1, 2, 1, 2, 2, 10]) = np.array([0, 1, 0, 1, 1, 2])
-    val_to_cat([1, 'a', 'a']) = np.array([0, 1, 1])
-    val_to_cat([1, 1.0, 'a']) = np.array([0, 1, 2])
-    val_to_cat([[1, 1, 2], [1, 'a']]) = np.array([[0, 0, 1],
-                                                  [0, 2]])
-
-    """
-    
-    values = np.array(values)
-    all_cat = {
-        str(val): cat
-        for cat, val in enumerate(np.unique(values.flatten()))
-        }
-    
-    return np.vectorize(_val_to_cat_single)(np.array(values, dtype=str), all_cat)
-
-def _val_to_cat_single(value, all_cat):
-    """
-    Helper function to vectorize dictionnary look-up
-
-    """
-    return all_cat[value]
     
