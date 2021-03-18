@@ -230,7 +230,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         proj (ccrs): coordinate reference system used in coordinates
         smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
             True.
-        figsize (tuple): figure size for plt.subplots
+        figsize (tuple, optional): figure size for plt.subplots
         kwargs (optional): arguments for pcolormesh matplotlib function.
 
     Returns:
