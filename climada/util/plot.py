@@ -39,10 +39,13 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
+from docrep import DocstringProcessor
+
 
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
-import climada.util.value_representation as u_vrpr
+
+DOCSTRINGS = DocstringProcessor()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -153,6 +156,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     return axes
 
+@DOCSTRINGS.get_sections(base='geo_scatter_from_array')
+@DOCSTRINGS.dedent
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
                            pop_name=True, buffer=BUFFER, extend='neither',
                            proj=ccrs.PlateCarree(), shapes=True, axes=None, **kwargs):
@@ -330,12 +335,10 @@ def geo_im_from_array(array_sub, coord, var_name, title,
 
     return axes
 
-
+@DOCSTRINGS.dedent
 def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                             cat_name = None,
-                            pop_name=True, buffer=BUFFER,
-                            extend='neither', proj=ccrs.PlateCarree(),
-                            shapes=True, axes=None, **kwargs):
+                            **kwargs):
     """
     Map plots for categorical data defined in array(s) over input
     coordinates. The categories must be a finite set of unique
@@ -350,40 +353,16 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     Same category: 1 and '1'
     Different categories: 1 and 1.0
     
+    This method wraps round util.geo_scatter_from_array and uses 
+    all its args and kwargs.
     
     Parameters
     ----------
-    array_sub : np.array(1d or 2d) or list(np.array)
-        Each array (in a row or in  the list) are categorical values at
-        each point in corresponding geo_coord that are ploted in one subplot.
-    geo_coord : 2d np.array)
-        (lat, lon) for each point in a row. 
-        The same grid is used for all subplots.
-    var_name : str or list(str)
-        label to be shown in the colorbar. If one provided, the same is 
-        used for all subplots. Otherwise provide as many as subplots in
-        array_sub.
-    title : str or list(str)
-        Subplot title. If one provided, the same is
-        used for all subplots. Otherwise provide as many as subplots in
-        array_sub.
-    cat_name : dict
+    cat_name : dict, optional
         Categories name for the colorbar labels. 
         Keys are all the unique values in array_cub, values are their labels.
-    pop_name  : bool, optional
-        add names of the populated places. The default is True.
-    buffer  : float, optional
-        border to add to coordinates. The default is False.
-    extend : str, optional
-        extend border colorbar with arrows. The default is 'neither'.
-        options: [ 'neither' | 'both' | 'min' | 'max' ]
-    proj : ccrs
-        coordinate reference system used in coordinates
-    shapes : bool, optional
-        Overlay Earth's countries coastlines to matplotlib.pyplot axis.
-        The default is True.
-    kwargs : optional
-        arguments for hexbin matplotlib function.
+        The default is labels = unique values.
+    %(geo_scatter_from_array.parameters)s
 
     Returns
     -------
@@ -392,7 +371,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     """
     
     #default cmap
-    cmap_name = 'Accent'
+    cmap_name = 'set3'
     if 'cmap' in kwargs:
         cmap_name = kwargs['cmap']
         del kwargs['cmap'] 
@@ -409,10 +388,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
     
     # #create the axes
-    axes = geo_scatter_from_array(array_sub_cat, geo_coord, var_name, title,
-                            pop_name=pop_name, buffer=buffer,
-                            extend=extend, proj=proj,
-                            shapes=shapes, axes=axes, **kwargs)
+    axes = geo_scatter_from_array(array_sub_cat, geo_coord, var_name, title, **kwargs)
     
     #add colorbar labels
     if cat_name is None:
