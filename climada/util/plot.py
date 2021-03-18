@@ -293,8 +293,10 @@ def geo_im_from_array(array_sub, coord, var_name, title,
 
     return axes
 
+
 def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
-                            cat_name=None, pop_name=True, buffer=BUFFER,
+                            cat_name = None,
+                            pop_name=True, buffer=BUFFER,
                             extend='neither', proj=ccrs.PlateCarree(),
                             shapes=True, axes=None, **kwargs):
     """Map plots for categorical data defined in array(s) over input
@@ -303,65 +305,87 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     
     The categories are shared among all subplots, i.e. are obtained from 
     np.unique(array_sub). 
-    Example:
+    Eg.:
         array_sub = [[1, 2, 1.0, 2], [1, 2, 'a', 'a']] 
         -> categories mapping is [[0, 2, 1, 2], [0, 2, 3, 3]]
+        
+    Same category: 1 and '1'
+    Different categories: 1 and 1.0
     
     
-    Parameters:
-        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
-            or in  the list) are categorical values at each point
-            in corresponding geo_coord that are ploted in one subplot.
-        coord (2d np.array): (lat, lon) for each point in a row.
-            The same grid is used for all subplots.
-        var_name (str or list(str)): label to be shown in the colorbar. If one
-            provided, the same is used for all subplots. Otherwise provide as
-            many as subplots in array_sub.
-        cat_name (list(str)), optional: List of category names in same order
-            as the ordered categories obtain from np.unique(array_sub). All
-            subplots are assumed to have the same categories. 
-            Default is numbers (1,2,...)
-        title (str or list(str)): subplot title. If one provided, the same is
-            used for all subplots. Otherwise provide as many as subplots in
-            array_sub.
-        proj (ccrs): coordinate reference system used in coordinates
-        smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
-            True.
-        kwargs (optional): arguments for pcolormesh matplotlib function.
+    Parameters
+    ----------
+    array_sub : np.array(1d or 2d) or list(np.array)
+        Each array (in a row or in  the list) are categorical values at
+        each point in corresponding geo_coord that are ploted in one subplot.
+    geo_coord : 2d np.array)
+        (lat, lon) for each point in a row. 
+        The same grid is used for all subplots.
+    var_name : str or list(str)
+        label to be shown in the colorbar. If one provided, the same is 
+        used for all subplots. Otherwise provide as many as subplots in
+        array_sub.
+    title : str or list(str)
+        Subplot title. If one provided, the same is
+        used for all subplots. Otherwise provide as many as subplots in
+        array_sub.
+    cat_name : dict
+        Categories name for the colorbar labels. 
+        Keys are all the unique values in array_cub, values are their labels.
+    pop_name  : bool, optional
+        add names of the populated places. The default is True.
+    buffer  : float, optional
+        border to add to coordinates. The default is False.
+    extend : str, optional
+        extend border colorbar with arrows. The default is 'neither'.
+        options: [ 'neither' | 'both' | 'min' | 'max' ]
+    proj : ccrs
+        coordinate reference system used in coordinates
+    shapes : bool, optional
+        Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+        The default is True.
+    kwargs : optional
+        arguments for hexbin matplotlib function.
 
-    Returns:
+    Returns
+    -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
+        
     """
     
     #default cmap
     cmap_name = 'Accent'
     if 'cmap' in kwargs:
         cmap_name = kwargs['cmap']
-        del kwargs['cmap']
-        
-    # define the colormap
-    cmap = mpl.cm.get_cmap(cmap_name)       
-    # convert categories to numeric array [0, 1, ...]
-    array_sub_cat = u_vrpr.val_to_cat(array_sub) 
-    bounds = np.arange(-0.5, np.unique(array_sub_cat)[-1] + 1, 1) #np.unique sorts values
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        del kwargs['cmap'] 
     
-    #create the axes
-    kwargs['cmap'] = cmap
-    kwargs['norm'] = norm
+    # convert sorted categories to numeric array [0, 1, ...]
+    array_sub = np.array(array_sub)
+    array_sub_unique, array_sub_cat = np.unique(array_sub, return_inverse=True) #flattens array
+    array_sub_cat = array_sub_cat.reshape(array_sub.shape)
+    array_sub_n = array_sub_unique.size
+    
+    # define the discrete colormap
+    kwargs['cmap'] = mpl.cm.get_cmap(cmap_name, array_sub_n)
+    kwargs['vmin'] = -0.5
+    kwargs['vmax'] = array_sub_n - 0.5
+    
+    # #create the axes
     axes = geo_scatter_from_array(array_sub_cat, geo_coord, var_name, title,
                             pop_name=pop_name, buffer=buffer,
                             extend=extend, proj=proj,
                             shapes=shapes, axes=axes, **kwargs)
     
     #add colorbar labels
+    if not isinstance(cat_name, dict):
+        cat_name = dict(zip(array_sub_unique, cat_name))
+    cat_name = {str(key): value for key, value in cat_name.items()}
     if not isinstance(axes, np.ndarray):
         axes = [axes]
     for ax in axes:
         cbar = ax.collections[-1].colorbar
-        cbar.set_ticks(np.unique(array_sub_cat))
-        if cat_name:
-            cbar.set_ticklabels(cat_name)
+        cbar.set_ticks(np.arange(array_sub_n))
+        cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
         
     return axes
 
