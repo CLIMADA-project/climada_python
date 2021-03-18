@@ -366,7 +366,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
 
     Returns
     -------
-        cartopy.mpl.geoaxes.GeoAxesSubplot
+    cartopy.mpl.geoaxes.GeoAxesSubplot
         
     """
     
