@@ -370,17 +370,17 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         
     """
     
-    #default cmap
-    cmap_name = 'set3'
-    if 'cmap' in kwargs:
-        cmap_name = kwargs['cmap']
-        del kwargs['cmap'] 
-    
     # convert sorted categories to numeric array [0, 1, ...]
     array_sub = np.array(array_sub)
     array_sub_unique, array_sub_cat = np.unique(array_sub, return_inverse=True) #flattens array
     array_sub_cat = array_sub_cat.reshape(array_sub.shape)
     array_sub_n = array_sub_unique.size
+    
+    #default cmap
+    cmap_name = 'brg'
+    if 'cmap' in kwargs:
+        cmap_name = kwargs['cmap']
+        del kwargs['cmap'] 
     
     # define the discrete colormap
     kwargs['cmap'] = mpl.cm.get_cmap(cmap_name, array_sub_n)
