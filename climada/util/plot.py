@@ -41,7 +41,6 @@ from rasterio.crs import CRS
 import requests
 from docrep import DocstringProcessor
 
-
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
 
