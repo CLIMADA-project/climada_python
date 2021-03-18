@@ -12,19 +12,18 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 Define functions to handle impact year_sets
 """
-"""
 
 import copy
 import logging
 import numpy as np
 from numpy.random import default_rng
 
-import climada.util.dates_times as u_dt 
+import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
 def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=True,
-                     sampling_vect=None, nr_events_per_year=None):
+                   sampling_vect=None, nr_events_per_year=None):
 
     """PURPOSE:
       convert an event (per occurrence) impact set (eis) into an annual impact
@@ -62,7 +61,7 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=
     # if years are known:
     # events = list(EIS.calc_impact_year_set().keys())
 
-    # event_date = date_to_str(eis.date)
+    # event_date = u_dt.date_to_str(eis.date)
     # event_year = [i.split('-', 1)[0] for i in event_date]
 
     #n_years_his = np.ceil(1/min(eis.frequency)).astype('int')
@@ -70,7 +69,8 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=
 
 
     if not year_list:
-        year_list = [str(date) + '-01-01' for date in np.arange(1, nr_resampled_years+1).tolist()]
+        year_list = [str(date) + '-01-01' for date in np.arange(1, n_resampled_years+1
+                                                                ).tolist()]
 
 
     if not np.all(eis.frequency == eis.frequency[0]):
@@ -83,32 +83,32 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=
     # artificially generate a generic  annual impact set (by sampling the event impact set)
     ais = copy.deepcopy(eis)
     ais.event_id = [] # to indicate not by event any more
-    ais.event_id = np.arange(1, nr_resampled_years+1)
+    ais.event_id = np.arange(1, n_resampled_years+1)
     ais.frequency = [] # init, see below
-    ais.at_event = np.zeros([1, nr_resampled_years+1])
+    ais.at_event = np.zeros([1, n_resampled_years+1])
     ais.date = []
 
 
     # sample from the given event impact set
     if multiple_events: #multiple events per year possible
         [impact_per_year, nr_events,
-         sampling_vect] = resample_multiple_annual_events(eis, nr_resampled_years,
+         sampling_vect] = resample_multiple_annual_events(eis, n_resampled_years,
                                                           nr_events_per_year, sampling_vect=None)
     else: #for hazards such as RC where there is exactly one event every year
         [impact_per_year, nr_events,
-         sampling_vect] = resample_single_annual_event(eis, nr_resampled_years,
+         sampling_vect] = resample_single_annual_event(eis, n_resampled_years,
                                                        sampling_vect)
 
 
     #adjust for sampling error
-    correction_factor = calculate_correction_fac(impact_per_year, nr_resampled_years, eis)
+    correction_factor = calculate_correction_fac(impact_per_year, n_resampled_years, eis)
     # if correction_factor > 0.1:
     #     tex = raw_input("Do you want to exclude small events?")
 
 
-    ais.date = str_to_date(year_list)
+    ais.date = u_dt.str_to_date(year_list)
     ais.at_event = impact_per_year / correction_factor
-    ais.frequency = np.ones(nr_resampled_years)*sum(nr_events)/nr_resampled_years
+    ais.frequency = np.ones(n_resampled_years)*sum(nr_events)/n_resampled_years
 
 
     return ais, sampling_vect, nr_events
@@ -260,7 +260,7 @@ def wrapper_multi_impact(list_impacts, nr_resampled_years):
 
     ais_total = np.zeros(nr_resampled_years)
     for impact in list_impacts:
-        ais_impact = generate_yearset(impact, nr_resampled_years)
+        ais_impact = impact_yearset(impact, nr_resampled_years)
         ais_total += ais_impact
 
     return ais_total
