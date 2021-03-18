@@ -386,7 +386,8 @@ class Exposures():
         self.meta = meta
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
-                     buffer=0.0, extend='neither', axis=None, **kwargs):
+                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
+                     **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -399,6 +400,7 @@ class Exposures():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -417,11 +419,13 @@ class Exposures():
         coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
-                                             pop_name, buffer, extend, proj=crs_epsg,
-                                             axes=axis, **kwargs)
+                                             pop_name, buffer, extend,
+                                             proj=crs_epsg, axes=axis,
+                                             figsize=figsize, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
-                    buffer=0.0, extend='neither', axis=None, **kwargs):
+                    buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
+                    **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -435,6 +439,7 @@ class Exposures():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple): figure size for plt.subplots
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
@@ -456,11 +461,12 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, **kwargs)
+                                         axes=axis, figsize=figsize, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
-                    label='value (log10)', scheduler=None, axis=None, **kwargs):
+                    label='value (log10)', scheduler=None, axis=None,
+                    figsize=(9, 13), **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -476,6 +482,7 @@ class Exposures():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -513,7 +520,7 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot)
+            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
