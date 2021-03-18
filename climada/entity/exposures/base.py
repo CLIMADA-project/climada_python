@@ -400,7 +400,7 @@ class Exposures():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple): figure size for plt.subplots
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
