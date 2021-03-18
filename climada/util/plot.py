@@ -77,7 +77,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         extend (str, optional): extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
         proj (ccrs): coordinate reference system of the given data
-        figsize (tuple): figure size for plt.subplots
+        figsize (tuple, optional): figure size for plt.subplots
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
