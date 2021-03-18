@@ -624,7 +624,8 @@ def get_transformation(crs_in):
 
     Returns
     ------
-    crs_epsg, units: ccrs.Projection, str
+    crs_epsg : ccrs.Projection
+    units : str
     """
     try:
         if CRS.from_user_input(crs_in) == CRS.from_user_input({'init': 'epsg:3395'}):
