@@ -673,7 +673,7 @@ class Hazard():
             return_periods (tuple(int), optional): return periods to consider
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple): figure size for plt.subplots
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
