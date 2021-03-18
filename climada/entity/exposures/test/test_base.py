@@ -62,7 +62,9 @@ class TestFuncs(unittest.TestCase):
         haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         haz.raster_to_vector()
         ncentroids = haz.centroids.size
-
+        haz.centroids.lat = haz.centroids.lat.astype('float32')
+        haz.centroids.lon = haz.centroids.lon.astype('float32')
+        
         exp = Exposures()
         exp.gdf.crs = haz.centroids.crs
 
