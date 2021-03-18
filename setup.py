@@ -72,7 +72,7 @@ setup(
         'matplotlib==3.2.2',
         'pandas==1.0.5',
         'pandas-datareader==0.8.1',
-        'pillow==7.2.0',
+        'pillow==8.1.1',
         'pint==0.15',
         'proj==7.0.0',
         'tables==3.6.1',
