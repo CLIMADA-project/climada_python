@@ -225,7 +225,7 @@ class TropCyclone(Hazard):
             file_name (str, optional): file name to save video, if provided
             writer = (matplotlib.animation.*, optional): video writer. Default:
                 pillow with bitrate=500
-            figsize (tuple): figure size for plt.subplots
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
