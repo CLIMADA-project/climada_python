@@ -457,6 +457,19 @@ class TCTracks():
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
+            # Usually, if an agency reports about a track that crosses the antimeridian, the
+            # longitude is always chosen positive. However, it can happen, that the TC crosses the
+            # antimeridian according to one agency, but not according to another. When mixing
+            # agency data, this can yield inconsistent sign changes in longitude. We remove those:
+            if tc_var == 'lon':
+                # By IBTrACS default, no longitude should be <= -180, but this is not true for some
+                # agencies, so we have to manually enforce this policy:
+                ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+                crossing_mask = ((ibtracs_ds[tc_var] > 170).any(dim="date_time")
+                                 & (ibtracs_ds[tc_var] < -170).any(dim="date_time")
+                                 & (ibtracs_ds[tc_var] < 0)).values
+                ibtracs_ds[tc_var].values[crossing_mask] += 360
+
             if interpolate_missing:
                 with warnings.catch_warnings():
                     # Upstream issue, see https://github.com/pydata/xarray/issues/4167
@@ -510,6 +523,11 @@ class TCTracks():
             track_ds = ibtracs_ds.sel(storm=i_track, date_time=t_msk)
             st_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
 
+            # a track that crosses the antimeridian in IBTrACS might be truncated by `t_msk` in
+            # such a way that the remaining part is not crossing the antimeridian:
+            if (track_ds.lon.values > 180).all():
+                track_ds['lon'] -= 360
+
             # set time_step in hours
             track_ds['time_step'] = xr.ones_like(track_ds.time, dtype=float)
             if track_ds.time.size > 1:
@@ -537,7 +555,7 @@ class TCTracks():
 
             if estimate_missing:
                 track_ds['rmw'][:] = estimate_rmw(track_ds.rmw.values, track_ds.pres.values)
-                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.rmw.values)
+                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.pres.values)
                 track_ds['roci'][:] = np.fmax(track_ds.rmw.values, track_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
@@ -545,7 +563,7 @@ class TCTracks():
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
 
             all_tracks.append(xr.Dataset({
-                'time_step': ('time', track_ds.time_step),
+                'time_step': ('time', track_ds.time_step.data),
                 'radius_max_wind': ('time', track_ds.rmw.data),
                 'radius_oci': ('time', track_ds.roci.data),
                 'max_sustained_wind': ('time', track_ds.wind.data),
@@ -1119,13 +1137,16 @@ class TCTracks():
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
 
-    def plot(self, axis=None, legend=True, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), legend=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
         Parameters
         ----------
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        figsize: (float, float), optional
+            figure size for plt.subplots
+            The default is (9, 13)
         legend : bool, optional
             whether to display a legend of Tropical Cyclone categories.
             Default: True.
@@ -1150,7 +1171,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis = u_plot.make_map(proj=proj)
+            _, axis = u_plot.make_map(proj=proj, figsize=figsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 

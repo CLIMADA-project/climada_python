@@ -810,13 +810,16 @@ class Centroids():
         self.lat = ygrid.flatten()
         self.geometry = gpd.GeoSeries(crs=self.meta['crs'])
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids scatter points over earth.
 
         Parameters
         ----------
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        figsize: (float, float), optional
+            figure size for plt.subplots
+            The default is (9, 13)
         kwargs : optional
             arguments for scatter matplotlib function
 
@@ -839,7 +842,7 @@ class Centroids():
                                       self.lon.max() + pad, self.lat.max() + pad)
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot)
+            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)

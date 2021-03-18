@@ -55,7 +55,8 @@ MAX_BINS = 2000
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
                        buffer=BUFFER, extend='neither',
-                       proj=ccrs.PlateCarree(), axes=None, **kwargs):
+                       proj=ccrs.PlateCarree(), axes=None, figsize=(9, 13),
+                       **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -76,6 +77,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         extend (str, optional): extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
         proj (ccrs): coordinate reference system of the given data
+        figsize (tuple, optional): figure size for plt.subplots
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -99,7 +101,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes = make_map(num_im, proj=proj_plot)
+        _, axes = make_map(num_im, proj=proj_plot, figsize=figsize)
 
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -140,7 +142,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
                            pop_name=True, buffer=BUFFER, extend='neither',
-                           proj=ccrs.PlateCarree(), shapes=True, axes=None, **kwargs):
+                           proj=ccrs.PlateCarree(), shapes=True, axes=None,
+                           figsize=(9, 13), **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters:
@@ -161,6 +164,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         extend (str, optional): extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
         proj (ccrs): coordinate reference system used in coordinates
+        figsize (tuple, optional): figure size for plt.subplots
         kwargs (optional): arguments for hexbin matplotlib function
 
     Returns:
@@ -178,7 +182,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        _, axes = make_map(num_im, proj=proj, figsize=figsize)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -207,7 +211,8 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     return axes
 
 def geo_im_from_array(array_sub, coord, var_name, title,
-                      proj=None, smooth=True, axes=None, **kwargs):
+                      proj=None, smooth=True, axes=None, figsize=(9, 13),
+                      **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
     Parameters:
@@ -225,6 +230,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         proj (ccrs): coordinate reference system used in coordinates
         smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
             True.
+        figsize (tuple, optional): figure size for plt.subplots
         kwargs (optional): arguments for pcolormesh matplotlib function.
 
     Returns:
@@ -249,7 +255,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        _, axes = make_map(num_im, proj=proj, figsize=figsize)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -343,7 +349,7 @@ def add_shapes(axis):
                                          name='admin_0_countries')
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
-        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='',
+        axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='black')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
@@ -563,9 +569,9 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1, legend
 
     if ticklabels:
         if invert_axis:
-            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels);
+            plt.setp(ax, yticks=range(len(data)), yticklabels=ticklabels)
         else:
-            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels);
+            plt.setp(ax, xticks=range(len(data)), xticklabels=ticklabels)
 
     # Draw legend if we need
     if legend:
