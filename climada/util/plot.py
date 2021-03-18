@@ -415,6 +415,8 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                             shapes=shapes, axes=axes, **kwargs)
     
     #add colorbar labels
+    if cat_name is None:
+        cat_name = array_sub_unique.astype(str)
     if not isinstance(cat_name, dict):
         cat_name = dict(zip(array_sub_unique, cat_name))
     cat_name = {str(key): value for key, value in cat_name.items()}
