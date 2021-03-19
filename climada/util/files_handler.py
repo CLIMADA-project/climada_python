@@ -24,15 +24,19 @@ __all__ = [
     'get_file_names',
 ]
 
-import os
 import glob
 import logging
 import math
 import urllib
+from pathlib import Path
+
 import requests
 from tqdm import tqdm
 
+from climada.util.config import CONFIG
+
 LOGGER = logging.getLogger(__name__)
+
 
 class DownloadProgressBar(tqdm):
     """Class to use progress bar during dowloading"""
@@ -49,41 +53,57 @@ class DownloadProgressBar(tqdm):
             self.total = tsize
         self.update(blocks * bsize - self.n)
 
-def download_file(url):
-    """Download file from url in current folder and provide absolute file path
-    and name.
 
-    Parameters:
-        url (str): url containing data to download
+def download_file(url, download_dir=None, overwrite=True):
+    """Download file from url to given target folder and provide full path of the downloaded file.
 
-    Returns:
-        str
+    Parameters
+    ----------
+    url : str
+        url containing data to download
+    download_dir : Path or str, optional
+        the parent directory of the eventually downloaded file
+    overwrite : bool, optional
+        whether or not an alredy existing file at the target location should be overwritten,
+        by default True
 
-    Raises:
-        ValueError
+    Returns
+    -------
+    str
+        the full path to the eventually downloaded file
     """
+    file_name = url.split('/')[-1]
+    if file_name.strip() == '':
+        raise ValueError(f"cannot download {url} as a file")
+    download_path = CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
+    file_path = download_path.absolute().joinpath(file_name)
+    if file_path.exists():
+        if not file_path.is_file() or not overwrite:
+            raise FileExistsError(f"cannot download to {file_path}")
+
     try:
         req_file = requests.get(url, stream=True)
-    except IOError:
-        LOGGER.error('Connection error: check your internet connection.')
-        raise IOError
-    if req_file.status_code == 404:
+    except IOError as ioe:
+        LOGGER.error('Connection error: check url and internet connection.')
+        raise ioe
+    if req_file.status_code < 200 or req_file.status_code > 299:
         LOGGER.error('Error loading page %s.', url)
-        raise ValueError
-    if req_file.status_code == 503:
-        LOGGER.error('Service Unavailable: %s.', url)
-        raise ValueError
+        raise ValueError(f'Error loading page {url}\n'
+                         + f' Status: {req_file.status_code}\n'
+                         + f' Content: {req_file.content}')
+
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
-    file_name = url.split('/')[-1]
-    file_abs_name = os.path.abspath(os.path.join(os.getcwd(), file_name))
-    LOGGER.info('Downloading file %s', file_abs_name)
-    with open(file_name, 'wb') as file:
+
+    LOGGER.info('Downloading %s to file %s', url, file_path)
+    with file_path.open('wb') as file:
         for data in tqdm(req_file.iter_content(block_size),
                          total=math.ceil(total_size // block_size),
                          unit='KB', unit_scale=True):
             file.write(data)
-    return file_abs_name
+
+    return str(file_path)
+
 
 def download_ftp(url, file_name):
     """Download file from ftp in current folder.
@@ -101,7 +121,10 @@ def download_ftp(url, file_name):
                                  desc=url.split('/')[-1]) as prog_bar:
             urllib.request.urlretrieve(url, file_name, reporthook=prog_bar.update_to)
     except Exception as exc:
-        raise ValueError(f'{exc.__class__} - "{exc}": failed to retrieve {url} into {file_name}')
+        raise ValueError(
+            f'{exc.__class__} - "{exc}": failed to retrieve {url} into {file_name}'
+        ) from exc
+
 
 def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
@@ -129,6 +152,7 @@ def to_list(num_exp, values, val_name):
         val_list += num_exp * [values]
     return val_list
 
+
 def get_file_names(file_name):
     """Return list of files contained. Supports globbing.
 
@@ -140,15 +164,29 @@ def get_file_names(file_name):
                 - or a globbing pattern.
 
     Returns:
-        list
+        list(str)
     """
     file_list = list()
-    if isinstance(file_name, list):
-        for file in file_name:
-            _process_one_file_name(file, file_list)
-    else:
-        _process_one_file_name(file_name, file_list)
+
+    for pattern in file_name if isinstance(file_name, list) else [file_name]:
+        try:
+            if Path(pattern).is_file():
+                file_list.append(str(pattern))
+            elif Path(pattern).is_dir():
+                file_list.extend([
+                    str(fil) for fil in Path(pattern).iterdir() if fil.is_file()
+                ])
+            else:  # glob pattern
+                file_list.extend([
+                    str(Path(fil)) for fil in glob.glob(pattern)
+                ])
+        except OSError:
+            file_list.extend([
+                str(Path(fil)) for fil in glob.glob(pattern)
+            ])
+
     return file_list
+
 
 def get_extension(file_name):
     """Get file without extension and its extension (e.g. ".nc", ".grd.gz").
@@ -159,25 +197,6 @@ def get_extension(file_name):
     Returns:
         str, str
     """
-    file_pth, file_ext = os.path.splitext(file_name)
-    file_pth_bis, file_ext_bis = os.path.splitext(file_pth)
-    if file_ext_bis and file_ext_bis[0] == '.':
-        return file_pth_bis, file_ext_bis + file_ext
-    return file_pth, file_ext
-
-def _process_one_file_name(name, file_list):
-    """Apend to input list the file contained in name
-        Tries globbing if name is neither dir nor file.
-    """
-    if os.path.isdir(name):
-        tmp_files = glob.glob(os.path.join(name, '*'))
-        for file in tmp_files:
-            if os.path.isfile(file):
-                file_list.append(file)
-    if os.path.isfile(name):
-        file_list.append(name)
-    else:
-        tmp_files = sorted(glob.glob(name))
-        for file in tmp_files:
-            if os.path.isfile(file):
-                file_list.append(file)
+    file_path = Path(file_name)
+    cuts = file_path.name.split('.')
+    return str(file_path.parent.joinpath(cuts[0])), "".join(file_path.suffixes)

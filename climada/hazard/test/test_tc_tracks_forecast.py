@@ -19,14 +19,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks_forecast module.
 """
 
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.hazard.tc_tracks_forecast import TCForecast
 
+DATA_DIR = CONFIG.hazard.test_data.dir()
 TEST_BUFR_FILES = [
-    os.path.join(os.path.dirname(__file__), 'data', i) for i in [
+    DATA_DIR.joinpath(tbf) for tbf in [
         'tracks_22S_HEROLD_2020031912.det.bufr4',
         'tracks_22S_HEROLD_2020031912.eps.bufr4',
     ]
@@ -63,6 +64,20 @@ class TestECMWF(unittest.TestCase):
                          np.datetime64('2020-03-19T12:00:00.000000'))
         self.assertEqual(forecast.data[1].is_ensemble, True)
 
+    def test_equal_timestep(self):
+        """Test equal timestep"""
+        forecast = TCForecast()
+        forecast.fetch_ecmwf(TEST_BUFR_FILES)
+        forecast.equal_timestep(1)
+
+        self.assertEqual(forecast.data[1].time.size, 49)
+        self.assertEqual(forecast.data[1].lat.size, 49)
+        self.assertEqual(forecast.data[1].lon.size, 49)
+        self.assertEqual(forecast.data[1].max_sustained_wind.size, 49)
+        self.assertEqual(forecast.data[1].central_pressure.size, 49)
+        self.assertEqual(forecast.data[1].radius_max_wind.size, 49)
+        self.assertEqual(forecast.data[1].environmental_pressure.size, 49)
+        self.assertEqual(forecast.data[1].time_step[2], 1.)
 
 # Execute Tests
 if __name__ == "__main__":
