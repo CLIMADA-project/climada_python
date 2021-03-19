@@ -301,8 +301,8 @@ class Exposures():
             assigned[(x_i < 0) | (x_i >= hazard.centroids.meta['width'])] = -1
             assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
         else:
-            coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1)
-            haz_coord = hazard.centroids.coord
+            coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1).astype('float64')
+            haz_coord = hazard.centroids.coord.astype('float64')
 
             if np.array_equal(coord, haz_coord):
                 assigned = np.arange(self.gdf.shape[0])
