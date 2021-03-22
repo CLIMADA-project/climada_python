@@ -72,10 +72,9 @@ def calc_perturbed_trajectories(tracks,
     control how these perturbations persist in time and hence the amplitude of the
     perturbations towards the end of the track.
 
-    Note that the default parameter value have not been thoroughly calibrated, but they lead
-    to a reasonable distribution of tracks and their intensities over the North Atlantic
-    basin.
-
+    Note that the default parameter values have been only roughly calibrated so that
+    the frequency of tracks in each 5x5degree box remains approximately constant.
+    This is not an in-depth calibration and should be treated as such.
     The object is mutated in-place.
 
     Parameters
