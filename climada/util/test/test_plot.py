@@ -63,7 +63,7 @@ class TestPlots(unittest.TestCase):
                                   1: 'int',
                                   2.0: 'float',
                                   'a': 'string'},
-                        pop_name=False, cmap='Dark2')
+                        pop_name=False, cmap='Set1')
         plt.close()
 
 # Execute Tests
