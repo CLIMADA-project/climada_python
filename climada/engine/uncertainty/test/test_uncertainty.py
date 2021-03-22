@@ -99,7 +99,7 @@ def ent_fut_dem():
 
 
 class TestUncVar(unittest.TestCase):
-    """ Test UncVar calss """
+    """ Test UncVar class """
     
     def test_init_pass(self):
         
