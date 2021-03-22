@@ -157,12 +157,12 @@ class UncVar():
     @staticmethod
     def var_to_uncvar(var):
         """
-        Returns uncertainty variable with no distribution if var is not
+        Returns an uncertainty variable with no distribution if var is not
         an UncVar. Else, returns var.
 
         Parameters
         ----------
-        var : Object or else
+        var : climada.uncertainty.UncVar or any other CLIMADA object
 
         Returns
         -------
