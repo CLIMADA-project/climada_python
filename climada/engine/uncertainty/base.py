@@ -110,18 +110,18 @@ class UncVar():
 
         Returns
         -------
-        fig, ax: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
             The figure and axis handle of the plot.
 
         """
 
         nplots = len(self.distr_dict)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
         if nplots > 1:
-            flat_axes = axis.flatten()
+            flat_axes = axes.flatten()
         else:
-            flat_axes = [axis]
+            flat_axes = np.array([axes])
         for ax, name_distr in zip_longest(flat_axes,
                                     self.distr_dict.items(), 
                                     fillvalue=None):
@@ -132,7 +132,7 @@ class UncVar():
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
-        return fig, axis
+        return fig, axes
 
 
     def evaluate(self, uncvar_kwargs):
@@ -540,7 +540,7 @@ class Uncertainty():
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
-            flat_axes = [axes]
+            flat_axes = np.array([axes])
 
         for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
             if col is None:
@@ -654,7 +654,7 @@ class Uncertainty():
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
-            flat_axes = [axes]
+            flat_axes = np.array([axes])
         
         for ax, metric in zip_longest(flat_axes, metric_list, fillvalue=None):
             if metric is None:
