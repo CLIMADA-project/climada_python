@@ -418,7 +418,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
                        "using the colormap %s. Please specify "
-                       "another qualitative colormap using the `cmap` "
+                       "a different qualitative colormap using the `cmap` "
                        "attribute. For Matplotlib's built-in colormaps, see "
            "https://matplotlib.org/stable/tutorials/colors/colormaps.html",
                        cmap.N, cmap_name)
