@@ -188,7 +188,7 @@ class TestUncertainty(unittest.TestCase):
         
         unc = Uncertainty(
             {'exp': exp_unc, 'impf': impf_unc}, 
-            sample = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
+            samples = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
             metrics = {'aai_agg': pd.DataFrame({'aai_agg': [100, 200]})}
             )
         self.assertEqual(unc.n_samples, 2)
@@ -206,28 +206,27 @@ class TestUncertainty(unittest.TestCase):
         #default sampling saltelli
         unc.make_sample(N=1, sampling_kwargs = {'calc_second_order': True})
         self.assertEqual(unc.n_samples, 1*(2*2+2)) # N * (2 * D + 2)
-        self.assertTrue(isinstance(unc.sample, pd.DataFrame))
+        self.assertTrue(isinstance(unc.samples_df, pd.DataFrame))
         self.assertTrue(np.allclose(
-            unc.sample['x_exp'],
+            unc.samples_df['x_exp'],
             np.array([1.239453, 1.837109, 1.239453, 
                       1.239453, 1.837109, 1.837109]),
             rtol=1e-05
             ))
-        self.assertListEqual(list(unc.sample['x_haz']),
+        self.assertListEqual(list(unc.samples_df['x_haz']),
                              [0.0, 0.0, 1.0, 1.0, 0.0, 1.0])
         
         #latin sampling
         unc.make_sample(N=1, sampling_method='latin',
                         sampling_kwargs = {'seed': 11245})
         self.assertEqual(unc.n_samples, 1)
-        self.assertTrue(isinstance(unc.sample, pd.DataFrame))
-        print(unc.sample)
+        self.assertTrue(isinstance(unc.samples_df, pd.DataFrame))
         self.assertTrue(np.allclose(
-            unc.sample['x_exp'],
+            unc.samples_df['x_exp'],
             np.array([2.58309]),
             rtol=1e-05
             ))
-        self.assertListEqual(list(unc.sample['x_haz']), [2.0])
+        self.assertListEqual(list(unc.samples_df['x_haz']), [2.0])
         
     def test_plot_sample_pass(self):
         
@@ -261,7 +260,7 @@ class TestUncertainty(unittest.TestCase):
     def test_calc_sensitivty_pass(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
-        sample = pd.DataFrame({'x_exp': [1, 2, 3, 4],
+        samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'rp': pd.DataFrame({'rp100': [9, 10, 11, 12], 
                                        'rp250': [100, 110, 120, 130]
@@ -270,7 +269,7 @@ class TestUncertainty(unittest.TestCase):
                    }
 
         unc = Uncertainty(unc_vars = {'exp': exp_unc, 'haz': haz_unc},
-                          sample = sample,
+                          samples = samples,
                           metrics = metrics)
 
         sens = unc.calc_sensitivity(
@@ -289,7 +288,7 @@ class TestUncertainty(unittest.TestCase):
     def test_calc_sensitivty_XY_pass(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
-        sample = pd.DataFrame({'x_exp': [1, 2, 3, 4],
+        samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'rp': pd.DataFrame({'rp100': [9.0, 10.0, 11.0, 12.0], 
                                        'rp250': [100.0, 110.0, 120.0, 130.0]
@@ -298,7 +297,7 @@ class TestUncertainty(unittest.TestCase):
                    }
 
         unc = Uncertainty(unc_vars = {'exp': exp_unc, 'haz': haz_unc},
-                          sample = sample,
+                          samples = samples,
                           metrics = metrics)
 
         sens = unc.calc_sensitivity(
@@ -318,14 +317,14 @@ class TestUncertainty(unittest.TestCase):
     def test_plot_sensitivity(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
-        sample = pd.DataFrame({'x_exp': [1, 2, 3, 4],
+        samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'freq_curve': pd.DataFrame(
                 {'rp100': [9, 10, 11, 12], 'rp250': [100, 110, 120, 130]})
             }
 
         unc = Uncertainty(unc_vars = {'exp': exp_unc, 'haz': haz_unc},
-                          sample = sample,
+                          samples = samples,
                           metrics = metrics)
 
         unc.calc_sensitivity(method_kwargs = {'calc_second_order': False})
@@ -343,14 +342,14 @@ class TestUncertainty(unittest.TestCase):
     def test_plot_distribution(self):
         
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
-        sample = pd.DataFrame({'x_exp': [1, 2, 3, 4],
+        samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'freq_curve': pd.DataFrame(
                 {'rp100': [9, 10, 11, 12], 'rp250': [100, 110, 120, 130]})
             }
 
         unc = Uncertainty(unc_vars = {'exp': exp_unc, 'haz': haz_unc},
-                          sample = sample,
+                          samples = samples,
                           metrics = metrics)
 
         unc.plot_distribution()

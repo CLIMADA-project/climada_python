@@ -110,12 +110,12 @@ class UncCostBenefit(Uncertainty):
 
         """
 
-        if self.sample.empty:
+        if self.samples_df.empty:
             raise ValueError("No sample was found. Please create one first" + 
                         "using UncImpact.make_sample(N)")
             
         start = time.time()
-        one_sample = self.sample.iloc[0:1].iterrows()
+        one_sample = self.samples_df.iloc[0:1].iterrows()
         cb_metrics = map(self._map_costben_calc, one_sample)
         [imp_meas_present,
          imp_meas_future,
@@ -131,12 +131,12 @@ class UncCostBenefit(Uncertainty):
             LOGGER.info('Using %s CPUs.', pool.ncpus)
             chunksize = min(self.n_samples // pool.ncpus, 100)
             cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
-                                           self.sample.iterrows(),
+                                           self.samples_df.iterrows(),
                                            chunsize = chunksize)
 
         else:
             cb_metrics = map(partial(self._map_costben_calc, **kwargs),
-                             self.sample.iterrows())
+                             self.samples_df.iterrows())
         
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
