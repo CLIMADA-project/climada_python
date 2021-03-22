@@ -76,6 +76,14 @@ class TestPlots(unittest.TestCase):
                         pop_name=False, cmap='Set1')
         
         plt.close()
+        
+        #test colormap warning with 256 colors
+        values = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11],
+                           [12, 13, 14, 15]])
+        coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
+        u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
+                        pop_name=False, cmap='tab20c')
+        plt.close()
 
 # Execute Tests
 if __name__ == "__main__":
