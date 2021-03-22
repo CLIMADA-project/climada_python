@@ -109,22 +109,24 @@ class Forecast():
         country (str):
         vulnerability (ImpactFuncSet):
         save_dir (str):
-        haz_raw_storage (str):
     """
 
-    def __init__(self,haz_type = 'WS', country_or_exposure='Switzerland'):
+    def __init__(self,
+                 hazard,
+                 run_datetime,
+                 event_date,
+                 country_or_exposure='Switzerland'):
         """ Empty initialization."""
-        self.run_datetime = dt.datetime.today().replace(hour=0, 
-                                                    minute=0, 
-                                                    second=0, 
-                                                    microsecond=0)
-        self.event_date = (dt.datetime.today().replace(hour=0, 
-                                                       minute=0, 
-                                                       second=0,
-                                                       microsecond=0)
-                           + dt.timedelta(days=2))
-        self.hazard = []
-        self.haz_type = haz_type
+        self.run_datetime = run_datetime
+        self.hazard = hazard
+        #check event_date
+        if not len(np.unique(hazard.date)) == 1:
+            ValueError('Please provide a hazard containing only one ' +
+                       'event_date. The current hazard contains several ' +
+                       'events with different event_dates and the Forecast ' +
+                       'class cannot function proberly with such a hazard.')
+        self.event_date = dt.datetime.fromordinal(np.unique(hazard.date)[0])
+        self.haz_type = hazard.tag.haz_type
         self.haz_model = ''
         if isinstance(country_or_exposure, Exposures):
             self.exposure = country_or_exposure
@@ -134,7 +136,6 @@ class Forecast():
             self.country = country_or_exposure
         self.vulnerability = []
         self.save_dir = FORECAST_DIR
-        self.haz_raw_storage = ''
         self._impact = Impact()
 
     @property
@@ -186,7 +187,6 @@ class Forecast():
         if not Path(self.haz_dir).exists():
             Path(self.haz_dir).mkdir()        
         # generate all needed objects
-        self.generate_hazard()
         self.generate_exposure()
         self.generate_vulnerability()
 
@@ -217,88 +217,7 @@ class Forecast():
         if check_plot:
             self._impact.plot_hexbin_eai_exposure()
 
-    def generate_hazard(self):
-        """ use haz_type and hazard parameters to generate needed hazard """
-        if isinstance(self.hazard, Hazard):
-            if not self.haz_type == self.hazard.tag.haz_type:
-                LOGGER.warning('haz_type in Forecast ' +
-                               'and in Hazard does not match.')
-            self.haz_model='UnkownModel'
-
-        else: #generate hazard
-            if self.haz_type == 'WS':
-                if not self.hazard:
-                    self.hazard = 'icon-eu-eps'
-                if (self.hazard == 'cosmo1e_file'
-                    or
-                    self.hazard == 'cosmo2e_file'):
-                    if self.hazard == 'cosmo1e_file':
-                        self.haz_model='C1E'
-                        full_model_name_temp = 'COSMO-1E'
-                    if self.hazard == 'cosmo2e_file':
-                        self.haz_model='C2E'
-                        full_model_name_temp = 'COSMO-2E'
-                    haz_file_name = Path(self.haz_dir) / (self.haz_summary_str +
-                                                          '.hdf5')   
-                    if haz_file_name.exists():
-                        LOGGER.info('Loading hazard from ' + 
-                                    str(haz_file_name) + 
-                                    '.')
-                        self.hazard = StormEurope()
-                        self.hazard.read_hdf5(haz_file_name)
-                    else:
-                        LOGGER.info('Generating ' + 
-                                    self.hazard + 
-                                    ' hazard.')  
-                        if  not self.haz_raw_storage:
-                            self.haz_raw_storage = (
-                                "D:\\Documents_DATA\\Cosmo\\Wind\\" +
-                                "cosmoe_forecast_{}_vmax.nc"
-                                )
-                        fp_file = Path(
-                            self.haz_raw_storage.format(
-                                self.run_datetime.strftime('%y%m%d%H')
-                                )
-                            )
-                        self.hazard = StormEurope()
-                        self.hazard.read_cosmoe_file(
-                            fp_file, 
-                            event_date=self.event_date,
-                            run_datetime=self.run_datetime,
-                            model_name=full_model_name_temp
-                            )
-                elif self.hazard == 'icon-eu-eps':
-                    self.haz_model='IEE'
-                    haz_file_name = Path(self.haz_dir) / (self.haz_summary_str +
-                                                          '.hdf5')
-                    if haz_file_name.exists():
-                        LOGGER.info('Loading hazard from ' + 
-                                    str(haz_file_name) + 
-                                    '.')
-                        self.hazard = StormEurope()
-                        self.hazard.read_hdf5(haz_file_name)
-                    else:
-                        LOGGER.info('Generating ' + 
-                                    self.hazard + 
-                                    ' hazard.')                    
-                        self.hazard = StormEurope()
-                        self.hazard.read_icon_grib(
-                            self.run_datetime,
-                            event_date=self.event_date,
-                            delete_raw_data=False
-                            )
-                        self.hazard.write_hdf5(haz_file_name)
-                else:
-                    LOGGER.error("specific 'WS' hazard not implemented yet.")
-            else: #not implemented error
-                LOGGER.error("hazard type not implemented.")
-                return
-
-        # check if hazard is successfully generated for Forecast
-        if not isinstance(self.hazard, Hazard):
-            LOGGER.warning('Hazard generation unsuccessful.')
-        if not self.haz_model:
-            LOGGER.error("Forecast.params['haz_model'] not specified.")
+    
 
 
     def generate_exposure(self):
